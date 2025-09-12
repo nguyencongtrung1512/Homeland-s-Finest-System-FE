@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
+import path from '../../constants/path'
 
 function Header() {
   return (
@@ -75,9 +77,11 @@ function Header() {
               </clipPath>
             </defs>
           </svg>
+          <Link to={path.loginCustomer}>
           <Button variant='green' className='rounded-full px-5 py-2 ml-5'>
             Đăng nhập
-          </Button>
+            </Button>
+            </Link>
         </div>
       </div>
     </div>
