@@ -1,20 +1,8 @@
 import React, { useState } from 'react'
-import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Badge } from '../../../components/ui/badge'
-import {
-  Search,
-  Phone,
-  Video,
-  MoreVertical,
-  Paperclip,
-  Image as ImageIcon,
-  Send,
-  Share2,
-  Clock,
-  CheckCircle
-} from 'lucide-react'
+import { Search, Phone, Video, MoreVertical, Paperclip, Image as ImageIcon, Send, Share2 } from 'lucide-react'
 
 function ChatWithCustomer() {
   const [selectedChat, setSelectedChat] = useState(1)
@@ -55,7 +43,8 @@ function ChatWithCustomer() {
     {
       id: 1,
       sender: 'shop',
-      content: 'Chào bạn! Cảm ơn bạn đã quan tâm đến bánh tam giác mạch của shop. Mình có thêm lô mới về rất thơm ngon đó!',
+      content:
+        'Chào bạn! Cảm ơn bạn đã quan tâm đến bánh tam giác mạch của shop. Mình có thêm lô mới về rất thơm ngon đó!',
       timestamp: '10:25',
       avatar: '/api/placeholder/32/32'
     },
@@ -68,7 +57,8 @@ function ChatWithCustomer() {
     {
       id: 3,
       sender: 'shop',
-      content: 'Bánh có thể bảo quản 7-10 ngày ở nhiệt độ thường, hoặc 1 tháng nếu cho vào tủ lạnh. Đây là hình ảnh lô mới',
+      content:
+        'Bánh có thể bảo quản 7-10 ngày ở nhiệt độ thường, hoặc 1 tháng nếu cho vào tủ lạnh. Đây là hình ảnh lô mới',
       timestamp: '10:28',
       avatar: '/api/placeholder/32/32',
       image: '/api/placeholder/200/150'
@@ -89,7 +79,7 @@ function ChatWithCustomer() {
     }
   ]
 
-  const currentChat = conversations.find(chat => chat.id === selectedChat)
+  const currentChat = conversations.find((chat) => chat.id === selectedChat)
 
   const handleSendMessage = () => {
     if (message.trim()) {
@@ -119,10 +109,7 @@ function ChatWithCustomer() {
         <div className='p-4 border-b border-gray-200'>
           <div className='relative'>
             <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
-            <Input
-              placeholder='Tìm kiếm cuộc trò chuyện...'
-              className='pl-10 bg-gray-50 border-gray-200'
-            />
+            <Input placeholder='Tìm kiếm cuộc trò chuyện...' className='pl-10 bg-gray-50 border-gray-200' />
           </div>
         </div>
 
@@ -132,15 +119,14 @@ function ChatWithCustomer() {
             <div
               key={chat.id}
               onClick={() => setSelectedChat(chat.id)}
-              className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${chat.id === selectedChat ? 'bg-green-50 border-l-4 border-l-green-500' : ''
-                }`}
+              className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                chat.id === selectedChat ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+              }`}
             >
               <div className='flex items-center gap-3'>
                 <div className='relative'>
                   <div className='w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center'>
-                    <span className='text-sm font-medium text-gray-600'>
-                      {chat.name.charAt(0)}
-                    </span>
+                    <span className='text-sm font-medium text-gray-600'>{chat.name.charAt(0)}</span>
                   </div>
                   {chat.isActive && (
                     <div className='absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white'></div>
@@ -174,9 +160,7 @@ function ChatWithCustomer() {
             <div className='flex items-center gap-3'>
               <div className='relative'>
                 <div className='w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center'>
-                  <span className='text-sm font-medium text-gray-600'>
-                    {currentChat?.name.charAt(0)}
-                  </span>
+                  <span className='text-sm font-medium text-gray-600'>{currentChat?.name.charAt(0)}</span>
                 </div>
                 <div className='absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white'></div>
               </div>
@@ -225,9 +209,7 @@ function ChatWithCustomer() {
         <div className='flex-1 overflow-y-auto p-4 space-y-4'>
           {/* Date Separator */}
           <div className='text-center'>
-            <span className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>
-              Hôm nay
-            </span>
+            <span className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>Hôm nay</span>
           </div>
 
           {/* Messages */}
@@ -240,16 +222,23 @@ function ChatWithCustomer() {
                   </div>
                 )}
 
-                <div className={`rounded-lg px-3 py-2 ${msg.sender === 'customer'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-900'
-                  }`}>
+                <div
+                  className={`rounded-lg px-3 py-2 ${
+                    msg.sender === 'customer' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
+                  }`}
+                >
                   {msg.isTyping ? (
                     <div className='flex items-center gap-1'>
                       <div className='flex gap-1'>
                         <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'></div>
-                        <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce' style={{ animationDelay: '0.1s' }}></div>
-                        <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce' style={{ animationDelay: '0.2s' }}></div>
+                        <div
+                          className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
+                          style={{ animationDelay: '0.1s' }}
+                        ></div>
+                        <div
+                          className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
+                          style={{ animationDelay: '0.2s' }}
+                        ></div>
                       </div>
                     </div>
                   ) : (
@@ -257,11 +246,7 @@ function ChatWithCustomer() {
                       <p className='text-sm'>{msg.content}</p>
                       {msg.image && (
                         <div className='mt-2'>
-                          <img
-                            src={msg.image}
-                            alt='Product'
-                            className='w-32 h-24 object-cover rounded-lg'
-                          />
+                          <img src={msg.image} alt='Product' className='w-32 h-24 object-cover rounded-lg' />
                         </div>
                       )}
                     </>

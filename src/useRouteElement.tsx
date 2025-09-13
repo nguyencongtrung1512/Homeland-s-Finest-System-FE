@@ -24,6 +24,14 @@ import DetailHelp from './pages/seller/help/detailHelp'
 import MyStory from './pages/seller/mystory/myStory'
 import VerifyEmail from './pages/authentication/ForgotPassword/VerifyEmail'
 import NewPassword from './pages/authentication/ForgotPassword/NewPassword'
+import StaffDashboard from './pages/staff/dashboard/dashboard'
+import StaffLayout from './Layouts/StaffLayout/staffLayout'
+import ListStore from './pages/staff/managerstore/listStore'
+import ApproveStores from './pages/staff/managerstore/approveStores'
+import LockedStores from './pages/staff/managerstore/lockedStores'
+import StoreDetail from './pages/staff/managerstore/storeDetail'
+import ManagerProduct from './pages/staff/managerProduct/managerProduct'
+import DetailProduct from './pages/staff/managerProduct/detailProduct'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -127,6 +135,42 @@ export default function useRouteElements() {
     {
       path: path.resetPassword,
       element: <NewPassword />
+    },
+
+    // STAFF routes
+    {
+      path: "/",
+      element: <StaffLayout />,
+      children: [
+        {
+          path: path.dashboardStaff,
+          element: <StaffDashboard />
+        },
+        {
+          path: path.storesStaff,
+          element: <ListStore />
+        },
+        {
+          path: path.storeDetailStaff,
+          element: <StoreDetail />
+        },
+        {
+          path: path.approveStoresStaff,
+          element: <ApproveStores />
+        },
+        {
+          path: path.lockedStoresStaff,
+          element: <LockedStores />
+        },
+        {
+          path: path.managerProductStaff,
+          element: <ManagerProduct />
+        },
+        {
+          path: path.detailProductStaff,
+          element: <DetailProduct />
+        }
+      ]
     }
   ])
 
