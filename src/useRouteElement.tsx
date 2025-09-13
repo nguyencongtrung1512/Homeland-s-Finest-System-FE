@@ -22,6 +22,8 @@ import SetupStore from './pages/seller/setupStore/setupStore'
 import HelpCenter from './pages/seller/help/help'
 import DetailHelp from './pages/seller/help/detailHelp'
 import MyStory from './pages/seller/mystory/myStory'
+import VerifyEmail from './pages/authentication/ForgotPassword/VerifyEmail'
+import NewPassword from './pages/authentication/ForgotPassword/NewPassword'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -41,14 +43,6 @@ export default function useRouteElements() {
         {
           path: path.productDetail,
           element: <ProductsDetail />
-        },
-        {
-          path: path.loginCustomer,
-          element: <Login />
-        },
-        {
-          path: path.registerCustomer,
-          element: <Register />
         }
       ]
     },
@@ -117,7 +111,24 @@ export default function useRouteElements() {
           element: <DetailHelp />
         }
       ]
+    },
+    {
+      path: path.loginCustomer,
+      element: <Login />
+    },
+    {
+      path: path.registerCustomer,
+      element: <Register />
+    },
+    {
+      path: path.forgotPassword,
+      element: <VerifyEmail />
+    },
+    {
+      path: path.resetPassword,
+      element: <NewPassword />
     }
   ])
+
   return routeElements
 }

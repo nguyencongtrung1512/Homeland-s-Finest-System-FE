@@ -26,5 +26,8 @@ const path = {
   // ============ Staff========
   // ============ Admin =============
 
+  forgotPassword: '/forgot-password/verify-email',
+  verifyOTP: '/forgot-password/verify-otp',
+  resetPassword: '/forgot-password/reset-password'
 }
 export default path
