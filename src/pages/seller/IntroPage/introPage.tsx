@@ -1,7 +1,15 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import { path } from '~/constants/path'
 import Header from '../components/header'
 
 function IntroPage() {
+  const navigate = useNavigate()
+
+  const handleRegisterClick = () => {
+    navigate(path.registerSeller)
+  }
+
   return (
     <div>
       <Header />
@@ -176,7 +184,10 @@ function IntroPage() {
           <p className='text-lg text-white mb-8 max-w-2xl mx-auto'>
             Hãy cùng chúng tôi mang những sản phẩm đặc sản và thủ công tuyệt vời của bạn đến với nhiều khách hàng hơn.
           </p>
-          <button className='bg-yellow-400 text-gray-900 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-300 transition-colors'>
+          <button 
+            onClick={handleRegisterClick}
+            className='bg-yellow-400 text-gray-900 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-300 transition-colors'
+          >
             Đăng ký bán hàng ngay
           </button>
         </div>

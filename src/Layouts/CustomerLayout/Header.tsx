@@ -83,6 +83,16 @@ function Header() {
             </Button>
             </Link>
         </div>
+        
+           {/* Link cộng tác viên */}
+        <div className='flex items-center gap-4'>
+          <Link 
+            to={path.sellerPage}
+            className='text-sm text-[#2D5016] hover:text-[#F4A261] transition-colors font-medium whitespace-nowrap'
+          >
+            Bạn muốn làm cộng tác viên?
+          </Link>
+        </div>
       </div>
     </div>
   )

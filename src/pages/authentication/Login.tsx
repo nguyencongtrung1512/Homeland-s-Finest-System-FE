@@ -1,10 +1,19 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import LoginLayout from '../../Layouts/Authentication/loginLayout'
 import { Leaf, ThumbsUp } from 'lucide-react'
 import logoImage from '../../assets/luachin2-7984.webp'
-import path from '../../constants/path'
+import { path } from '../../constants/path'
 
 function Login() {
+  const navigate = useNavigate()
+
+  const handleForgotPassword = () => {
+    // Lưu thông tin về nguồn gốc vào localStorage
+    localStorage.setItem('forgotPasswordReturnTo', 'customer')
+    navigate(`${path.forgotPassword}?returnTo=customer`)
+  }
+
   return (
     <LoginLayout>
       <div className='w-full max-w-md bg-white shadow-xl rounded-tr-xl rounded-br-xl'>
@@ -74,9 +83,13 @@ function Login() {
           </form>
 
           <div className='text-center'>
-            <a href={path.forgotPassword} className='text-sm text-gray-600 hover:text-green-600'>
+            <button 
+              type='button'
+              onClick={handleForgotPassword} 
+              className='text-sm text-gray-600 hover:text-green-600'
+            >
               Quên mật khẩu?
-            </a>
+            </button>
           </div>
 
           <div className='text-center'>

@@ -7,7 +7,8 @@ import ProductsDetail from './pages/customer/Products/ProductDetail/productsDeta
 import Login from './pages/authentication/Login'
 import Register from './pages/authentication/Register'
 import IntroPage from './pages/seller/IntroPage/introPage'
-import LoginSeller from './pages/seller/components/login'
+import SellerRegisterPage from './Layouts/SellerLayout/Registration/SellerRegisterPage'
+import SellerLoginLayout from './Layouts/SellerLayout/LoginSeller/SellerLoginLayout'
 import Dashboard from './pages/seller/dashboard/dashboard'
 import SellerLayout from './Layouts/SellerLayout/sellerLayout'
 import ProductsSeller from './pages/seller/products/products'
@@ -60,7 +61,11 @@ export default function useRouteElements() {
     },
     {
       path: path.loginSeller,
-      element: <LoginSeller />
+      element: <SellerLoginLayout />
+    },
+    {
+      path: path.registerSeller,
+      element: <SellerRegisterPage />
     },
     {
       path: "/",

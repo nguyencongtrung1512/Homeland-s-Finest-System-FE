@@ -3,7 +3,7 @@ import NewPasswordLayout from '../../../Layouts/Authentication/ForgotPasswordLay
 import { Leaf, ThumbsUp, Mail, BadgeCheck, Eye, EyeOff } from 'lucide-react'
 import logoImage from '../../../assets/luachin2-7984.webp'
 import { useNavigate } from 'react-router-dom'
-import path from '../../../constants/path'
+import { path } from '../../../constants/path'
 
 interface NewPasswordProps {
   onPasswordSubmit?: (password: string) => void
@@ -17,6 +17,12 @@ function NewPassword({ onPasswordSubmit }: NewPasswordProps) {
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
 
+  // Function để lấy đúng đường dẫn login dựa trên returnTo
+  const getLoginPath = () => {
+    const returnTo = localStorage.getItem('forgotPasswordReturnTo') || 'customer'
+    return returnTo === 'seller' ? path.loginSeller : path.loginCustomer
+  }
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (password.trim() && password === confirmPassword && password.length >= 8) {
@@ -29,10 +35,24 @@ function NewPassword({ onPasswordSubmit }: NewPasswordProps) {
         }
         // Hiển thị thông báo thành công
         alert('🎉 Bạn đã cập nhật mật khẩu thành công!\n\nVui lòng đăng nhập lại với mật khẩu mới.')
-        // Chuyển về trang đăng nhập
-        navigate(path.loginCustomer)
+        
+        // Kiểm tra nguồn gốc và redirect về đúng trang login
+        const returnTo = localStorage.getItem('forgotPasswordReturnTo') || 'customer'
+        localStorage.removeItem('forgotPasswordReturnTo') // Xóa sau khi sử dụng
+        
+        if (returnTo === 'seller') {
+          navigate(path.loginSeller)
+        } else {
+          navigate(path.loginCustomer)
+        }
       }, 1500)
     }
+  }
+
+  // Function để handle back to login
+  const handleBackToLogin = () => {
+    const loginPath = getLoginPath()
+    navigate(loginPath)
   }
 
   return (
@@ -126,9 +146,12 @@ function NewPassword({ onPasswordSubmit }: NewPasswordProps) {
           </form>
 
           <div className='text-center'>
-            <a href={path.loginCustomer} className='text-green-600 hover:text-green-700 font-medium text-sm'>
+            <button 
+              onClick={handleBackToLogin}
+              className='text-green-600 hover:text-green-700 font-medium text-sm bg-transparent border-none cursor-pointer'
+            >
               ← Quay về trang đăng nhập
-            </a>
+            </button>
           </div>
 
           <div className='grid grid-cols-3 gap-4'>

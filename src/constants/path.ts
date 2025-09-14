@@ -1,4 +1,4 @@
-const path = {
+export const path = {
   //===============Public===============
   home: '/',
   login: '/login',
@@ -13,6 +13,7 @@ const path = {
   // ============ Seller=========
   sellerPage: '/sellerPage',
   loginSeller: '/loginSeller',
+  registerSeller: '/registerSeller',
   dashboard: '/dashboardSeller',
   productsSeller: '/productsSeller',
   createProduct: '/createProduct',

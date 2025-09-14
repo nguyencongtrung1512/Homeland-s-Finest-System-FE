@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Button } from '../../../components/ui/button'
-import path from '../../../constants/path'
+import { path } from '../../../constants/path'
 
 
 function Header() {
