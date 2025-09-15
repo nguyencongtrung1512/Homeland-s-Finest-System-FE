@@ -11,7 +11,7 @@ function SideBar() {
 
   const menuItems = [
     {
-      key: path.dashboardStaff,
+      key: path.BASE_STAFF,
       label: 'Dashboard',
       icon: <BarChart3 size={18} />
     },

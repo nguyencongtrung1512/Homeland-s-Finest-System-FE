@@ -12,6 +12,8 @@ export const path = {
   // ============ Customer ===========
   profileCustomer: '/profile',
   // ============ Seller=========
+  // ============ CUSTOMER ===========
+  // ============ SELLER=========
   sellerPage: '/sellerPage',
   loginSeller: '/loginSeller',
   registerSeller: '/registerSeller',
@@ -28,8 +30,8 @@ export const path = {
   setupStoreSeller: '/setupStoreSeller',
   helpSeller: '/helpSeller',
   detailHelpSeller: '/detailHelp/:requestId',
-  // ============ Staff========
-  dashboardStaff: '/dashboardStaff',
+  // ============ STAFF========
+  BASE_STAFF: '/dashboardStaff',
   storesStaff: '/storesStaff',
   storeDetailStaff: '/storeDetail/:storeId',
   approveStoresStaff: '/approveStoresStaff',
@@ -39,10 +41,20 @@ export const path = {
   detailProductStaff: '/detailProduct/:productId',
   transactionsStaff: '/transactionsStaff',
   reportsStaff: '/reportsStaff',
+  reportDetailStaff: '/reportDetail/:reportId',
   blogStaff: '/blogStaff',
   complianceStaff: '/complianceStaff',
-  settingsStaff: '/settingsStaff'
-  // ============ Admin =============
+
+  settingsStaff: '/settingsStaff',
+  BLOG_MANAGEMENT: '/blog/:id',
+  CATEGORY_MANAGEMENT: '/category-management',
+  BLOG_LIST_BY_CATEGORY: '/category/:categoryId/blogs',
+  BLOG_DETAIL: '/blog-detail/:id',
+  // ============ ADMIN =============
+  BASE_ADMIN: '/admin',
+  STORE_MANAGEMENT_ADMIN: '/storeManagement',
+  ACCOUNT_MANAGEMENT_ADMIN: '/accountManagement',
+  TERMS_MANAGEMENT_ADMIN: '/termsManagement',
 }
 
 export default path
