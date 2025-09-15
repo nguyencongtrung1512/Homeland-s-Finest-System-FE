@@ -54,7 +54,7 @@ function Header() {
           />
         </div> */}
 
-        {/* Cart + Đăng nhập */}
+        {/* Cart + Profile + Đăng nhập */}
         <div className='flex items-center justify-end gap-3'>
           <svg
             xmlns='http://www.w3.org/2000/svg'
@@ -77,11 +77,33 @@ function Header() {
               </clipPath>
             </defs>
           </svg>
+          
+          {/* Profile Link */}
+          <Link 
+            to={path.profileCustomer}
+            className='text-[#2D5016] hover:text-[#F4A261] transition-colors'
+          >
+            <svg 
+              xmlns='http://www.w3.org/2000/svg' 
+              width='24' 
+              height='24' 
+              viewBox='0 0 24 24' 
+              fill='none' 
+              stroke='currentColor' 
+              strokeWidth='2' 
+              strokeLinecap='round' 
+              strokeLinejoin='round'
+            >
+              <path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'></path>
+              <circle cx='12' cy='7' r='4'></circle>
+            </svg>
+          </Link>
+          
           <Link to={path.loginCustomer}>
-          <Button variant='green' className='rounded-full px-5 py-2 ml-5'>
-            Đăng nhập
+            <Button variant='green' className='rounded-full px-5 py-2 ml-5'>
+              Đăng nhập
             </Button>
-            </Link>
+          </Link>
         </div>
         
            {/* Link cộng tác viên */}

@@ -625,7 +625,6 @@ function SellerRegistrationForm() {
                 </div>
               </div>
             </div>
-
             {errors.agreements && (
               <p className="text-sm text-red-500">{errors.agreements}</p>
             )}

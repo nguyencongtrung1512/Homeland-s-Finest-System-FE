@@ -10,6 +10,7 @@ export const path = {
   verifyOTP: '/forgot-password/verify-otp',
   resetPassword: '/forgot-password/reset-password',
   // ============ Customer ===========
+  profileCustomer: '/profile',
   // ============ Seller=========
   sellerPage: '/sellerPage',
   loginSeller: '/loginSeller',
@@ -40,9 +41,8 @@ export const path = {
   reportsStaff: '/reportsStaff',
   blogStaff: '/blogStaff',
   complianceStaff: '/complianceStaff',
-  settingsStaff: '/settingsStaff',
+  settingsStaff: '/settingsStaff'
   // ============ Admin =============
-
-
 }
+
 export default path

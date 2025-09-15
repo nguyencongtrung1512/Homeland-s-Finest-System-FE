@@ -33,6 +33,8 @@ import LockedStores from './pages/staff/managerstore/lockedStores'
 import StoreDetail from './pages/staff/managerstore/storeDetail'
 import ManagerProduct from './pages/staff/managerProduct/managerProduct'
 import DetailProduct from './pages/staff/managerProduct/detailProduct'
+import ProfileCustomer from './pages/customer/Profile/ProfileCustomer'
+import ProfileLayout from './Layouts/CustomerLayout/ProfileLayout'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -52,6 +54,17 @@ export default function useRouteElements() {
         {
           path: path.productDetail,
           element: <ProductsDetail />
+        }
+      ]
+    },
+    // Profile Customer with separate layout
+    {
+      path: '',
+      element: <ProfileLayout />,
+      children: [
+        {
+          path: path.profileCustomer,
+          element: <ProfileCustomer />
         }
       ]
     },
