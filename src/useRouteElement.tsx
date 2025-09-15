@@ -26,12 +26,20 @@ import VerifyEmail from './pages/authentication/ForgotPassword/VerifyEmail'
 import NewPassword from './pages/authentication/ForgotPassword/NewPassword'
 import StaffDashboard from './pages/staff/dashboard/dashboard'
 import StaffLayout from './Layouts/StaffLayout/staffLayout'
-import ListStore from './pages/staff/managerstore/listStore'
-import ApproveStores from './pages/staff/managerstore/approveStores'
-import LockedStores from './pages/staff/managerstore/lockedStores'
-import StoreDetail from './pages/staff/managerstore/storeDetail'
-import ManagerProduct from './pages/staff/managerProduct/managerProduct'
-import DetailProduct from './pages/staff/managerProduct/detailProduct'
+import ListStore from './pages/staff/storeManagerment/listStore'
+import ApproveStores from './pages/staff/storeManagerment/approveStores'
+import LockedStores from './pages/staff/storeManagerment/lockedStores'
+import StoreDetail from './pages/staff/storeManagerment/storeDetail'
+import ManagerProduct from './pages/staff/productManagerment/managerProduct'
+import DetailProduct from './pages/staff/productManagerment/detailProduct'
+import TransactionManagement from './pages/staff/transactions/transactions'
+import ReportManagement from './pages/staff/reports/reports'
+import ReportDetail from './pages/staff/reports/reportDetail'
+import AdminLayout from './Layouts/AdminLayout/adminLayout'
+import AdminDashboard from './pages/admin/dashboard'
+import StoreManagement from './pages/admin/storeManagerment/list'
+import CustomerManagement from './pages/admin/accountManagerment/list'
+import TermsManagement from './pages/admin/terms/list'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -63,7 +71,7 @@ export default function useRouteElements() {
       element: <LoginSeller />
     },
     {
-      path: "/",
+      path: '/',
       element: <SellerLayout />,
       children: [
         {
@@ -139,11 +147,11 @@ export default function useRouteElements() {
 
     // STAFF routes
     {
-      path: "/",
+      path: '/',
       element: <StaffLayout />,
       children: [
         {
-          path: path.dashboardStaff,
+          path: path.BASE_STAFF,
           element: <StaffDashboard />
         },
         {
@@ -169,6 +177,41 @@ export default function useRouteElements() {
         {
           path: path.detailProductStaff,
           element: <DetailProduct />
+        },
+        {
+          path: path.transactionsStaff,
+          element: <TransactionManagement />
+        },
+        {
+          path: path.reportsStaff,
+          element: <ReportManagement />
+        },
+        {
+          path: path.reportDetailStaff,
+          element: <ReportDetail />
+        }
+      ]
+    },
+    // ADMIN routes
+    {
+      path: '/',
+      element: <AdminLayout />,
+      children: [
+        {
+          path: path.BASE_ADMIN,
+          element: <AdminDashboard />
+        },
+        {
+          path: path.STORE_MANAGEMENT_ADMIN,
+          element: <StoreManagement />
+        },
+        {
+          path: path.ACCOUNT_MANAGEMENT_ADMIN,
+          element: <CustomerManagement />
+        },
+        {
+          path: path.TERMS_MANAGEMENT_ADMIN,
+          element: <TermsManagement />
         }
       ]
     }
