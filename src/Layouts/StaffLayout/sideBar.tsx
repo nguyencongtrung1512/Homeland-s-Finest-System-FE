@@ -1,5 +1,5 @@
 import { Layout, Menu } from 'antd'
-import { BarChart3, Store, CheckCircle, CreditCard, FileText, MessageSquare, Shield, Settings, Leaf } from 'lucide-react'
+import { BarChart3, Store, CheckCircle, CreditCard, FileText, MessageSquare, Shield, Settings, Leaf, LibraryBig } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import path from '../../constants/path'
 
@@ -55,7 +55,7 @@ function SideBar() {
     {
       key: path.blogStaff,
       label: 'Blog / Nội dung',
-      icon: <MessageSquare size={18} />
+      icon: <LibraryBig size={18} />
     },
     {
       key: path.complianceStaff,

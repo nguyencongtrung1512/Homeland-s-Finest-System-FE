@@ -44,8 +44,14 @@ import AdminDashboard from './pages/admin/dashboard'
 import StoreManagement from './pages/admin/storeManagerment/list'
 import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
+
 import StoriesLayout from './Layouts/CustomerLayout/StoriesLayout/StoriesLayout'
 import { Stories } from './pages/customer/Stories'
+
+import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
+import BlogList from './pages/admin/blogManagerment/list'
+import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
+
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -242,12 +248,24 @@ export default function useRouteElements() {
           element: <StoreManagement />
         },
         {
+          path: path.PRODUCT_MANAGEMENT_ADMIN,
+          element: <ManagerProductAdmin />
+        },
+        {
           path: path.ACCOUNT_MANAGEMENT_ADMIN,
           element: <CustomerManagement />
         },
         {
           path: path.TERMS_MANAGEMENT_ADMIN,
           element: <TermsManagement />
+        },
+        {
+          path: path.TRANSACTION_MANAGEMENT_ADMIN,
+          element: <TransactionManagementAdmin />
+        },
+        {
+          path: path.BLOG_MANAGEMENT_ADMIN,
+          element: <BlogList />
         }
       ]
     }

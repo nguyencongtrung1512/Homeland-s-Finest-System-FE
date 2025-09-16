@@ -56,7 +56,14 @@ export const path = {
   BASE_ADMIN: '/admin',
   STORE_MANAGEMENT_ADMIN: '/storeManagement',
   ACCOUNT_MANAGEMENT_ADMIN: '/accountManagement',
+
   TERMS_MANAGEMENT_ADMIN: '/termsManagement'
+  TERMS_MANAGEMENT_ADMIN: '/termsManagement',
+  COMBO_MANAGEMENT_ADMIN: '/comboManagement',
+  TRANSACTION_MANAGEMENT_ADMIN: '/transactionManagement',
+  REPORT_MANAGEMENT_ADMIN: '/reportManagement',
+  PRODUCT_MANAGEMENT_ADMIN: '/productManagement', 
+  BLOG_MANAGEMENT_ADMIN: '/blogManagement',
 }
 
 export default path
