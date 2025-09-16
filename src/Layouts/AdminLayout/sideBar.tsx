@@ -1,11 +1,14 @@
-import { Layout, Menu } from 'antd'
-import { BarChart3, CheckCircle, FileText, Leaf, User2Icon } from 'lucide-react'
+import { BarChart3, CheckCircle, CreditCard, FileText, Leaf, LibraryBig, User } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Button } from '../../components/ui/button'
+import { cn } from '../../lib/utils'
 import path from '../../constants/path'
 
-const { Sider } = Layout
+interface SideBarProps {
+  isCollapsed: boolean
+}
 
-function SideBar() {
+function SideBar({ isCollapsed }: SideBarProps) {
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -20,10 +23,30 @@ function SideBar() {
       label: 'Quản lý cửa hàng',
       icon: <CheckCircle size={18} />
     },
+    // {
+    //   key: path.COMBO_MANAGEMENT_ADMIN,
+    //   label: 'Quản lý Combo',
+    //   icon: <Component size={18} />
+    // },
+    // {
+    //   key: path.PRODUCT_MANAGEMENT_ADMIN,
+    //   label: 'Quản lý sản phẩm',
+    //   icon: <Package size={18} />
+    // },
+    {
+      key: path.TRANSACTION_MANAGEMENT_ADMIN,
+      label: 'Quản lí giao dịch',
+      icon: <CreditCard size={18} />
+    },
+    {
+      key: path.BLOG_MANAGEMENT_ADMIN,
+      label: 'Quản lý blog',
+      icon: <LibraryBig size={18} />
+    },
     {
       key: path.ACCOUNT_MANAGEMENT_ADMIN,
-      label: 'Quản lí tài khoản',
-      icon: <User2Icon size={18} />
+      label: 'Quản lí người dùng',
+      icon: <User size={18} />
     },
     {
       key: path.TERMS_MANAGEMENT_ADMIN,
@@ -32,66 +55,52 @@ function SideBar() {
     }
   ]
 
-  const handleMenuClick = ({ key }: { key: string }) => {
+  const handleMenuClick = (key: string) => {
     navigate(key)
   }
 
   return (
-    <Sider
-      width={256}
-      style={{
-        background: '#fff',
-        borderRight: '1px solid #f0f0f0'
-      }}
+    <div
+      className={cn(
+        'bg-white border-r border-gray-200 h-full flex flex-col transition-all duration-300 ease-in-out',
+        isCollapsed ? 'w-16' : 'w-64'
+      )}
     >
       {/* Logo */}
       <div
-        style={{
-          padding: '24px',
-          borderBottom: '1px solid #f0f0f0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}
+        className={cn(
+          'border-b border-gray-200 flex items-center transition-all duration-300',
+          isCollapsed ? 'p-5 justify-center' : 'p-5 gap-2'
+        )}
       >
-        <div
-          style={{
-            width: '32px',
-            height: '32px',
-            background: '#1890ff',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <Leaf size={20} color='white' />
+        <div className='w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center'>
+          <Leaf size={20} className='text-white' />
         </div>
-        <span
-          style={{
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: '#1890ff'
-          }}
-        >
-          StaffPanel
-        </span>
+        {!isCollapsed && <span className='text-lg font-bold text-blue-600 whitespace-nowrap'>StaffPanel</span>}
       </div>
 
       {/* Navigation Menu */}
-      <Menu
-        mode='inline'
-        selectedKeys={[location.pathname]}
-        defaultOpenKeys={['store-management']}
-        items={menuItems}
-        onClick={handleMenuClick}
-        style={{
-          border: 'none',
-          background: '#fff'
-        }}
-        className='custom-menu'
-      />
-    </Sider>
+      <nav className={cn('flex-1 space-y-2 transition-all duration-300', isCollapsed ? 'p-2' : 'p-4')}>
+        {menuItems.map((item) => (
+          <Button
+            key={item.key}
+            variant={location.pathname === item.key ? 'default' : 'ghost'}
+            className={cn(
+              'h-10 transition-all duration-300',
+              isCollapsed ? 'w-full justify-center px-2' : 'w-full justify-start gap-3 px-3',
+              location.pathname === item.key
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+            )}
+            onClick={() => handleMenuClick(item.key)}
+            title={isCollapsed ? item.label : undefined}
+          >
+            {item.icon}
+            {!isCollapsed && item.label}
+          </Button>
+        ))}
+      </nav>
+    </div>
   )
 }
 

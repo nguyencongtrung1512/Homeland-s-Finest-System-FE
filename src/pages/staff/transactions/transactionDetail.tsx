@@ -1,8 +1,9 @@
-import { X, User, Mail, Store, ShoppingCart, TrendingUp, CheckCircle, Clock, RefreshCw } from 'lucide-react'
+import { User, Mail, Store, ShoppingCart, TrendingUp, CheckCircle, Clock, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { Badge } from '../../../components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 
 interface TransactionDetailProps {
   transaction: {
@@ -13,10 +14,11 @@ interface TransactionDetailProps {
     amount: number
     status: 'disbursed' | 'pending' | 'delivering' | 'pending_confirmation' | 'refunded'
   }
+  open: boolean
   onClose: () => void
 }
 
-function TransactionDetail({ transaction, onClose }: TransactionDetailProps) {
+function TransactionDetail({ transaction, open, onClose }: TransactionDetailProps) {
   const getStatusConfig = (status: string) => {
     const configs = {
       disbursed: {
@@ -88,28 +90,20 @@ function TransactionDetail({ transaction, onClose }: TransactionDetailProps) {
   }
 
   return (
-    <div className='fixed inset-0  bg-opacity-40 flex items-center justify-center z-50 p-4'>
-      <div className='bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto'>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className='max-w-2xl w-full max-h-[85vh] overflow-y-auto p-0'>
         {/* Header */}
-        <div className='flex items-center justify-between p-5 border-b border-gray-100'>
+        <DialogHeader className='p-5 border-b border-gray-100'>
           <div className='flex items-center gap-3'>
             <div className='w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center'>
               <TrendingUp className='w-5 h-5 text-white' />
             </div>
             <div>
-              <h2 className='text-lg font-bold text-gray-900'>Chi tiết giao dịch</h2>
+              <DialogTitle className='text-lg font-bold text-gray-900'>Chi tiết giao dịch</DialogTitle>
               <p className='text-sm text-gray-500'>#{transaction.id}</p>
             </div>
           </div>
-          <Button
-            variant='ghost'
-            size='sm'
-            onClick={onClose}
-            className='h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full'
-          >
-            <X size={18} />
-          </Button>
-        </div>
+        </DialogHeader>
 
         {/* Content */}
         <div className='p-5 space-y-5'>
@@ -229,9 +223,11 @@ function TransactionDetail({ transaction, onClose }: TransactionDetailProps) {
               </div>
             </CardContent>
           </Card>
+        </div>
 
-          {/* Action Buttons */}
-          <div className='flex justify-end gap-3 pt-2'>
+        {/* Action Buttons */}
+        <DialogFooter className='p-5 pt-2'>
+          <div className='flex justify-end gap-3 w-full'>
             <Button variant='outline' onClick={onClose} className='px-6'>
               Đóng
             </Button>
@@ -243,9 +239,9 @@ function TransactionDetail({ transaction, onClose }: TransactionDetailProps) {
               Hoàn tiền
             </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
