@@ -119,7 +119,7 @@ export default function Profile() {
             <img src='/src/assets/react.svg' alt='Profile' className='w-full h-full object-cover rounded-full' />
           </Avatar>
           <div>
-            <h1 className='text-xl font-bold text-gray-900'>Chào mừng trở lại, Minh Anh</h1>
+            <h2 className='text-xl font-bold text-gray-900'>Chào mừng trở lại, Minh Anh</h2>
             <p className='text-sm text-gray-500'>Thành viên từ Tháng 1 năm 2024</p>
           </div>
         </div>
