@@ -155,6 +155,7 @@ function TransactionManagement() {
           variant='ghost'
           size='sm'
           onClick={() => handleView(transaction)}
+          title='Xem chi tiết'
           className='h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full'
         >
           <Eye size={14} />
@@ -331,7 +332,9 @@ function TransactionManagement() {
       </Card>
 
       {/* Transaction Detail Modal */}
-      {selectedTransaction && <TransactionDetail transaction={selectedTransaction} onClose={handleCloseModal} />}
+      {selectedTransaction && (
+        <TransactionDetail transaction={selectedTransaction} open={!!selectedTransaction} onClose={handleCloseModal} />
+      )}
     </div>
   )
 }
