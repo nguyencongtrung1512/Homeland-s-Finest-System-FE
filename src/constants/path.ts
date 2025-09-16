@@ -4,6 +4,8 @@ export const path = {
   login: '/login',
   product: '/products',
   productDetail: '/product/:id',
+  store: '/store/:storeId',
+  stories: '/stories',
   loginCustomer: '/login',
   registerCustomer: '/register',
   forgotPassword: '/forgot-password/verify-email',
@@ -54,7 +56,7 @@ export const path = {
   BASE_ADMIN: '/admin',
   STORE_MANAGEMENT_ADMIN: '/storeManagement',
   ACCOUNT_MANAGEMENT_ADMIN: '/accountManagement',
-  TERMS_MANAGEMENT_ADMIN: '/termsManagement',
+  TERMS_MANAGEMENT_ADMIN: '/termsManagement'
 }
 
 export default path

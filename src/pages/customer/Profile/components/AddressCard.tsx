@@ -1,18 +1,24 @@
 import { Button } from '../../../../components/ui/button'
 import { Badge } from '../../../../components/ui/badge'
 
+interface Address {
+  id: number
+  name: string
+  phone: string
+  province: string
+  district: string
+  ward: string
+  address: string
+  fullAddress: string
+  isDefault: boolean
+}
+
 interface AddressCardProps {
-  address: {
-    id: number
-    name: string
-    phone: string
-    fullAddress: string
-    isDefault: boolean
-  }
-  onEdit?: (address: any) => void
-  onDelete?: (addressId: number) => void
-  onSetDefault?: (addressId: number) => void
-  isLoading?: boolean
+  address: Address
+  onEdit: (address: Address) => void
+  onDelete: (addressId: number) => void
+  onSetDefault: (addressId: number) => void
+  isLoading: boolean
 }
 
 export default function AddressCard({ address, onEdit, onDelete, onSetDefault, isLoading }: AddressCardProps) {
