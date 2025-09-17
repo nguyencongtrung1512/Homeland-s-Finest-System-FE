@@ -39,6 +39,7 @@ export const path = {
   approveProductsStaff: '/approveProductsStaff',
   managerProductStaff: '/managerProductStaff',
   detailProductStaff: '/detailProduct/:productId',
+  Order_Management_Staff: '/orders',
   transactionsStaff: '/transactionsStaff',
   reportsStaff: '/reportsStaff',
   reportDetailStaff: '/reportDetail/:reportId',
