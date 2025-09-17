@@ -54,6 +54,7 @@ import { Stories } from './pages/customer/Stories'
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
 import BlogList from './pages/admin/blogManagerment/list'
 import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
+import OrderManagementStaff from './pages/staff/orderManager/list'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -245,6 +246,10 @@ export default function useRouteElements() {
         {
           path: path.reportDetailStaff,
           element: <ReportDetail />
+        },
+        {
+          path: path.Order_Management_Staff,
+          element: <OrderManagementStaff />
         }
       ]
     },
