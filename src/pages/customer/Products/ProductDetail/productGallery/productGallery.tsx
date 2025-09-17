@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useCart } from '../../../../../contexts/cart.context'
 import type { Product } from '../../../../../types/productType'
 
 interface ProductDetail extends Product {
@@ -17,15 +18,16 @@ function ProductGallery() {
   const [selectedImage, setSelectedImage] = useState(0)
   const [selectedWeight, setSelectedWeight] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const { addToCart, cart } = useCart()
 
   useEffect(() => {
     // Mock data theo ảnh mẫu mật ong
     const mockProducts: ProductDetail[] = [
       {
         id: '1',
+        storeId: 'store-1',
         name: 'Mật Ong Rừng Nguyên Chất U Minh Hạ',
-        price: 289000,
-        originalPrice: 350000,
+        description: 'Rừng U Minh Hạ, Cà Mau',
         productImages: [
           'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?q=80&w=800&auto=format&fit=crop',
           'https://images.unsplash.com/photo-1587049352846-4a222e784d38?q=80&w=800&auto=format&fit=crop',
@@ -34,32 +36,64 @@ function ProductGallery() {
           'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=800&auto=format&fit=crop',
           'https://images.unsplash.com/photo-1587049352846-4a222e784d38?q=80&w=800&auto=format&fit=crop'
         ],
-        description: 'Rừng U Minh Hạ, Cà Mau',
+        price: 289000,
+        type: 'food',
+        categoryId: ['cat-1'],
+        brandName: 'U Minh',
+        weight: 800,
+        dimensions: '10x10x20',
+        material: 'Thủy tinh',
+        size: '800g',
+        color: 'Vàng',
+        viewCount: 1000,
+        saleCount: 3216,
         rating: 4.9,
         reviewCount: 47,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isActive: true,
+        status: 'available',
+        itemCombo: [],
+        log: [],
+        originalPrice: 350000,
         soldCount: 3216,
         stockCount: 49,
         weightOptions: [
           { value: '800g', price: 289000 },
           { value: '500g', price: 189000 }
-        ],
-        badge: { text: 'Organic', color: 'bg-green-600' }
+        ]
       },
       {
         id: '2',
+        storeId: 'store-2',
         name: 'Sữa Tươi Milk Organic',
-        price: 28000,
-        productImages: ['https://images.unsplash.com/photo-1550581190-9c1c48d21d6c?q=80&w=800&auto=format&fit=crop'],
         description: 'Nông trại TH True Milk, Hà Nội',
+        productImages: ['https://images.unsplash.com/photo-1550581190-9c1c48d21d6c?q=80&w=800&auto=format&fit=crop'],
+        price: 28000,
+        type: 'drink',
+        categoryId: ['cat-2'],
+        brandName: 'TH True Milk',
+        weight: 1000,
+        dimensions: '10x10x25',
+        material: 'Nhựa',
+        size: '1L',
+        color: 'Trắng',
+        viewCount: 500,
+        saleCount: 1200,
         rating: 5,
         reviewCount: 456,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isActive: true,
+        status: 'available',
+        itemCombo: [],
+        log: [],
         soldCount: 1200,
         stockCount: 100,
         weightOptions: [
           { value: '1L', price: 28000 },
           { value: '500ml', price: 15000 }
-        ],
-        badge: { text: 'Organic', color: 'bg-green-600' }
+        ]
       }
     ]
 
@@ -85,6 +119,23 @@ function ProductGallery() {
 
   const currentPrice = product.weightOptions?.[selectedWeight]?.price || product.price
 
+  const handleAddToCart = () => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: currentPrice,
+      image: product.productImages[0],
+      quantity,
+      weight: product.weightOptions?.[selectedWeight]?.value
+    })
+    // Không chuyển trang, chỉ cập nhật badge trên Header
+  }
+
+  const handleBuyNow = () => {
+    // Không thêm vào giỏ, chỉ chuyển sang trang xác nhận đơn hàng
+    navigate('/cart/confirm')
+  }
+
   return (
     <div className='max-w-7xl mx-auto px-6 py-8'>
       {/* Breadcrumb */}
@@ -107,7 +158,7 @@ function ProductGallery() {
           {/* Main Image */}
           <div className='max-w-[600px] aspect-square rounded-xl overflow-hidden bg-gray-100'>
             <img
-              src={product.productImages?.[selectedImage] || product.productImages}
+              src={product.productImages?.[selectedImage] ?? product.productImages[0]}
               alt={product.name}
               className='w-full h-full object-cover'
             />
@@ -247,13 +298,19 @@ function ProductGallery() {
 
             {/* Action Buttons */}
             <div className='flex space-x-3'>
-              <button className='flex-1 border-2 border-green-500 text-green-600 py-3 px-6 rounded-lg font-semibold hover:bg-green-50 transition-colors flex items-center justify-center space-x-2'>
+              <button
+                className='flex-1 border-2 border-green-500 text-green-600 py-3 px-6 rounded-lg font-semibold hover:bg-green-50 transition-colors flex items-center justify-center space-x-2 relative'
+                onClick={handleAddToCart}
+              >
                 <svg className='w-5 h-5' fill='currentColor' viewBox='0 0 20 20'>
                   <path d='M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z' />
                 </svg>
                 <span>Thêm vào giỏ</span>
               </button>
-              <button className='flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors'>
+              <button
+                className='flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors'
+                onClick={handleBuyNow}
+              >
                 Mua ngay
               </button>
             </div>

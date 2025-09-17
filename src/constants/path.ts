@@ -12,6 +12,9 @@ export const path = {
   verifyOTP: '/forgot-password/verify-otp',
   resetPassword: '/forgot-password/reset-password',
   // ============ Customer ===========
+  cart: '/cart',
+  cartOrderConfirm: '/cart/confirm',
+  cartInvoice: '/cart/invoice',
   profileCustomer: '/profile',
   // ============ Seller=========
   // ============ CUSTOMER ===========
@@ -57,13 +60,12 @@ export const path = {
   STORE_MANAGEMENT_ADMIN: '/storeManagement',
   ACCOUNT_MANAGEMENT_ADMIN: '/accountManagement',
 
-  TERMS_MANAGEMENT_ADMIN: '/termsManagement'
   TERMS_MANAGEMENT_ADMIN: '/termsManagement',
   COMBO_MANAGEMENT_ADMIN: '/comboManagement',
   TRANSACTION_MANAGEMENT_ADMIN: '/transactionManagement',
   REPORT_MANAGEMENT_ADMIN: '/reportManagement',
-  PRODUCT_MANAGEMENT_ADMIN: '/productManagement', 
-  BLOG_MANAGEMENT_ADMIN: '/blogManagement',
+  PRODUCT_MANAGEMENT_ADMIN: '/productManagement',
+  BLOG_MANAGEMENT_ADMIN: '/blogManagement'
 }
 
 export default path
