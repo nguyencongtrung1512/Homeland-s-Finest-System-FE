@@ -1,13 +1,48 @@
 import { Link } from 'react-router-dom'
+import { ShoppingCart } from 'lucide-react'
+import { useCart } from '../../contexts/cart.context'
 import { Button } from '../../components/ui/button'
 import path from '../../constants/path'
+import { useState, useRef } from 'react'
 
 function Header() {
+  const { cart } = useCart()
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [isHoveringIcon, setIsHoveringIcon] = useState(false)
+  const [isHoveringPopup, setIsHoveringPopup] = useState(false)
+  const hideTimeout = useRef<NodeJS.Timeout | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Hiển thị popup khi hover icon hoặc popup
+  const handleIconEnter = () => {
+    if (hideTimeout.current) clearTimeout(hideTimeout.current)
+    setIsHoveringIcon(true)
+    setShowDropdown(true)
+  }
+  const handleIconLeave = () => {
+    setIsHoveringIcon(false)
+    hideTimeout.current = setTimeout(() => {
+      if (!isHoveringPopup) setShowDropdown(false)
+    }, 120)
+  }
+  const handlePopupEnter = () => {
+    if (hideTimeout.current) clearTimeout(hideTimeout.current)
+    setIsHoveringPopup(true)
+    setShowDropdown(true)
+  }
+  const handlePopupLeave = () => {
+    setIsHoveringPopup(false)
+    hideTimeout.current = setTimeout(() => {
+      if (!isHoveringIcon) setShowDropdown(false)
+    }, 120)
+  }
+
   return (
-    <div className='w-full fixed top-0 left-0 z-50 bg-[#ecf2ea] flex justify-center items-center border-b border-gray-500'>
-      <div className='mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-4 py-3 flex-nowrap'>
+    <div className='w-full fixed top-0 left-0 z-50 bg-[#ecf2ea] border-b border-gray-500'>
+      <div className='mx-auto flex w-full max-w-8xl items-center justify-between px-4 py-3 gap-4 flex-nowrap'>
         {/* Logo + Tên */}
-        <div className='flex items-center gap-2'>
+        <Link to='/' className='flex items-center gap-2 ml-20 flex-shrink-0'>
           <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none'>
             <path d='M24 24H0V0H24V24Z' stroke='#ecf2ea' />
             <path
@@ -16,101 +51,132 @@ function Header() {
             />
           </svg>
           <h3 className='text-xl font-bold text-[#2D5016] whitespace-nowrap'>Tinh Hoa Quê Nhà</h3>
-        </div>
+        </Link>
 
         {/* Menu */}
-        <nav className='flex mr-100 items-start gap-8 text-[#2D5016] font-medium whitespace-nowrap'>
-          <a href='/products' className=' hover:text-green-700 transition'>
+        <nav className='hidden md:flex items-center gap-8 text-[#2D5016] font-medium'>
+          <a href='/products' className='hover:text-green-700 transition whitespace-nowrap'>
             Sản phẩm
           </a>
-          <a href='/stories' className=' hover:text-green-700 transition'>
+          <a href='/stories' className='hover:text-green-700 transition whitespace-nowrap'>
             Câu chuyện
           </a>
-          <a href='/contact' className='  hover:text-green-700 transition'>
+          <a href='/contact' className='hover:text-green-700 transition whitespace-nowrap'>
             Liên hệ
           </a>
         </nav>
 
-        {/* Search box */}
-        {/* <div className='flex w-full max-w-[420px] items-center justify-self-center rounded-full border border-[#D5E4CF] bg-white px-3 py-1.5 shadow-sm'>
-          <svg
-            className='mr-2 h-4 w-4 text-gray-400'
-            xmlns='http://www.w3.org/2000/svg'
-            fill='none'
-            viewBox='0 0 24 24'
-            stroke='currentColor'
+        {/* Right side actions + CTV link */}
+        <div className='flex items-center gap-4 flex-nowrap'>
+          {/* Cart */}
+          <div
+            className='hidden md:inline text-sm text-[#2D5016] hover:text-orange-500 transition-colors font-medium whitespace-nowrap ml-2 relative'
+            onMouseEnter={handleIconEnter}
+            onMouseLeave={handleIconLeave}
           >
-            <path
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              strokeWidth='2'
-              d='M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z'
-            />
-          </svg>
-          <input
-            className='w-full border-none bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none'
-            type='text'
-            placeholder='Tìm kiếm sản phẩm, vùng miền...'
-          />
-        </div> */}
+            <button
+              type='button'
+              onClick={() => window.location.assign(path.cart)}
+              className='relative focus:outline-none'
+              aria-label='Xem giỏ hàng'
+            >
+              <ShoppingCart size={28} />
+              {cartCount > 0 && (
+                <span className='absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center pointer-events-auto'>
+                  {cartCount}
+                </span>
+              )}
+            </button>
+            {/* Dropdown hiển thị sản phẩm trong giỏ */}
+            {showDropdown && (
+              <div
+                ref={dropdownRef}
+                className='absolute right-0 top-full w-[420px] bg-white shadow-2xl rounded-xl border border-gray-200 z-50 animate-fade-in'
+                style={{ marginTop: 12 }}
+                onMouseEnter={handlePopupEnter}
+                onMouseLeave={handlePopupLeave}
+              >
+                <div className='p-4 border-b text-gray-500 text-base font-semibold'>Sản phẩm mới thêm</div>
+                {cart.length === 0 ? (
+                  <div className='flex flex-col items-center justify-center py-8 text-gray-400'>
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      width='64'
+                      height='64'
+                      fill='none'
+                      viewBox='0 0 24 24'
+                      stroke='#e5e7eb'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={1.5}
+                        d='M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m13-9l2 9m-5-9V6a2 2 0 10-4 0v3'
+                      />
+                    </svg>
+                    <div className='mt-3 text-lg font-semibold'>Chưa có sản phẩm nào trong giỏ</div>
+                  </div>
+                ) : (
+                  <ul className='max-h-80 overflow-y-auto divide-y'>
+                    {cart.slice(0, 5).map((item, idx) => (
+                      <li key={item.id + idx} className='flex items-center gap-3 px-4 py-3'>
+                        <img src={item.image} alt={item.name} className='w-16 h-16 object-cover rounded border' />
+                        <div className='flex-1 min-w-0'>
+                          <div className='truncate font-medium text-gray-900 text-base'>{item.name}</div>
+                          <div className='text-xs text-gray-500'>Số lượng: {item.quantity}</div>
+                        </div>
+                        <div className='text-orange-600 font-semibold text-base whitespace-nowrap'>
+                          {item.price.toLocaleString('vi-VN')}₫
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className='flex items-center justify-between p-4 border-t'>
+                  <span className='text-base text-gray-500'>Thêm hàng vào giỏ</span>
+                  <button
+                    className='bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded font-semibold text-base transition-colors'
+                    onClick={() => window.location.assign(path.cart)}
+                    tabIndex={0}
+                  >
+                    Xem giỏ hàng
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
-        {/* Cart + Profile + Đăng nhập */}
-        <div className='flex items-center justify-end gap-3'>
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            width='23'
-            height='24'
-            viewBox='0 0 23 24'
-            fill='none'
-            className='text-[#2D5016]'
-          >
-            <path d='M22.6406 24H0.140625V0H22.6406V24Z' stroke='#ecf2ea' />
-            <g clipPath='url(#clip0_2_301)'>
-              <path
-                d='M0.140625 2.4375C0.140625 1.91797 0.558594 1.5 1.07812 1.5H2.85547C3.71484 1.5 4.47656 2 4.83203 2.75H20.8867C21.9141 2.75 22.6641 3.72656 22.3945 4.71875L20.793 10.668C20.4609 11.8945 19.3477 12.75 18.0781 12.75H6.80859L7.01953 13.8633C7.10547 14.3047 7.49219 14.625 7.94141 14.625H19.2031C19.7227 14.625 20.1406 15.043 20.1406 15.5625C20.1406 16.082 19.7227 16.5 19.2031 16.5H7.94141C6.58984 16.5 5.42969 15.5391 5.17969 14.2148L3.16406 3.62891C3.13672 3.48047 3.00781 3.375 2.85547 3.375H1.07812C0.558594 3.375 0.140625 2.95703 0.140625 2.4375ZM5.14062 19.625C5.14062 19.3788 5.18912 19.135 5.28335 18.9075C5.37758 18.68 5.51569 18.4733 5.6898 18.2992C5.86391 18.1251 6.07061 17.987 6.29809 17.8927C6.52558 17.7985 6.7694 17.75 7.01562 17.75C7.26185 17.75 7.50567 17.7985 7.73316 17.8927C7.96064 17.987 8.16734 18.1251 8.34145 18.2992C8.51556 18.4733 8.65367 18.68 8.7479 18.9075C8.84213 19.135 8.89062 19.3788 8.89062 19.625C8.89062 19.8712 8.84213 20.115 8.7479 20.3425C8.65367 20.57 8.51556 20.7767 8.34145 20.9508C8.16734 21.1249 7.96064 21.263 7.73316 21.3573C7.50567 21.4515 7.26185 21.5 7.01562 21.5C6.7694 21.5 6.52558 21.4515 6.29809 21.3573C6.07061 21.263 5.86391 21.1249 5.6898 20.9508C5.51569 20.7767 5.37758 20.57 5.28335 20.3425C5.18912 20.115 5.14062 19.8712 5.14062 19.625ZM18.2656 17.75C18.7629 17.75 19.2398 17.9475 19.5914 18.2992C19.9431 18.6508 20.1406 19.1277 20.1406 19.625C20.1406 20.1223 19.9431 20.5992 19.5914 20.9508C19.2398 21.3025 18.7629 21.5 18.2656 21.5C17.7683 21.5 17.2914 21.3025 16.9398 20.9508C16.5882 20.5992 16.3906 20.1223 16.3906 19.625C16.3906 19.1277 16.5882 18.6508 16.9398 18.2992C17.2914 17.9475 17.7683 17.75 18.2656 17.75Z'
-                fill='#2D5016'
-              />
-            </g>
-            <defs>
-              <clipPath id='clip0_2_301'>
-                <path d='M0.140625 1.5H22.6406V21.5H0.140625V1.5Z' fill='white' />
-              </clipPath>
-            </defs>
-          </svg>
-          
-          {/* Profile Link */}
-          <Link 
-            to={path.profileCustomer}
-            className='text-[#2D5016] hover:text-[#F4A261] transition-colors'
-          >
-            <svg 
-              xmlns='http://www.w3.org/2000/svg' 
-              width='24' 
-              height='24' 
-              viewBox='0 0 24 24' 
-              fill='none' 
-              stroke='currentColor' 
-              strokeWidth='2' 
-              strokeLinecap='round' 
+          {/* Profile */}
+          <Link to={path.profileCustomer} className='text-[#2D5016] hover:text-[#F4A261] transition-colors p-1'>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              width='24'
+              height='24'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              strokeLinecap='round'
               strokeLinejoin='round'
             >
               <path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'></path>
               <circle cx='12' cy='7' r='4'></circle>
             </svg>
           </Link>
-          
+
+          {/* Login Button */}
           <Link to={path.loginCustomer}>
-            <Button variant='green' className='rounded-full px-5 py-2 ml-5'>
+            <Button
+              variant='default'
+              className='rounded-full px-4 py-2 text-sm whitespace-nowrap transition-colors hover:bg-green-600 hover:text-white'
+            >
               Đăng nhập
             </Button>
           </Link>
-        </div>
-        
-           {/* Link cộng tác viên */}
-        <div className='flex items-center gap-4'>
-          <Link 
+          {/* Cộng tác viên link - chỉ hiện trên md trở lên */}
+          <Link
             to={path.sellerPage}
-            className='text-sm text-[#2D5016] hover:text-[#F4A261] transition-colors font-medium whitespace-nowrap'
+            className='hidden md:inline text-sm text-[#2D5016] hover:text-orange-500 transition-colors font-medium whitespace-nowrap ml-2'
           >
             Bạn muốn làm cộng tác viên?
           </Link>

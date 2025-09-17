@@ -1,24 +1,40 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Avatar } from '../../../components/ui/avatar'
 import ProfileContent from './components/ProfileContent'
 import OrdersContent from './components/OrdersContent'
 import AddressContent from './components/AddressContent'
 import AddressModal from './components/AddressModal'
 
-interface Address {
-  id: number
-  name: string
-  phone: string
-  province: string
-  district: string
-  ward: string
-  address: string
-  fullAddress: string
-  isDefault: boolean
-}
-
 export default function Profile() {
+  interface Address {
+    id: number
+    name: string
+    phone: string
+    province: string
+    district: string
+    ward: string
+    address: string
+    fullAddress: string
+    isDefault: boolean
+  }
+
+  const location = useLocation()
   const [activeTab, setActiveTab] = useState('profile')
+
+  // Khi vào trang, nếu có query tab=orders thì active tab đơn hàng
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const tab = params.get('tab')
+    if (tab === 'orders') {
+      setActiveTab('orders')
+    } else if (tab === 'addresses') {
+      setActiveTab('addresses')
+    } else if (tab === 'profile') {
+      setActiveTab('profile')
+    }
+  }, [location.search])
+
   const [addresses, setAddresses] = useState<Address[]>([
     {
       id: 1,
@@ -63,7 +79,7 @@ export default function Profile() {
       setIsLoading(true)
       // Simulate API call
       setTimeout(() => {
-        setAddresses(addresses.filter(addr => addr.id !== addressId))
+        setAddresses(addresses.filter((addr) => addr.id !== addressId))
         setIsLoading(false)
       }, 1000)
     }
@@ -73,10 +89,12 @@ export default function Profile() {
     setIsLoading(true)
     // Simulate API call
     setTimeout(() => {
-      setAddresses(addresses.map(addr => ({
-        ...addr,
-        isDefault: addr.id === addressId
-      })))
+      setAddresses(
+        addresses.map((addr) => ({
+          ...addr,
+          isDefault: addr.id === addressId
+        }))
+      )
       setIsLoading(false)
     }, 1000)
   }
@@ -87,15 +105,17 @@ export default function Profile() {
     setTimeout(() => {
       if (editingAddress) {
         // Update existing address
-        setAddresses(addresses.map(addr => 
-          addr.id === editingAddress.id 
-            ? { 
-                ...addr, 
-                ...formData, 
-                fullAddress: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}`
-              }
-            : addr
-        ))
+        setAddresses(
+          addresses.map((addr) =>
+            addr.id === editingAddress.id
+              ? {
+                  ...addr,
+                  ...formData,
+                  fullAddress: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}`
+                }
+              : addr
+          )
+        )
       } else {
         // Add new address
         const newAddress: Address = {

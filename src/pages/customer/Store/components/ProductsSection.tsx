@@ -2,6 +2,8 @@ import { type FC, useState } from 'react'
 import { Star, ShoppingCart, Search, Grid, List } from 'lucide-react'
 import { Button } from '../../../../components/ui/button'
 import { Input } from '../../../../components/ui/input'
+import { useCart } from '../../../../contexts/cart.context'
+import { useNavigate } from 'react-router-dom'
 
 interface Product {
   id: string
@@ -23,6 +25,8 @@ interface ProductsSectionProps {
 }
 
 const ProductsSection: FC<ProductsSectionProps> = ({ storeId, products }) => {
+  const { addToCart, cart } = useCart()
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('newest')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -166,9 +170,26 @@ const ProductsSection: FC<ProductsSectionProps> = ({ storeId, products }) => {
                 </div>
 
                 {/* Add to cart button */}
-                <Button className='w-full bg-green-600 hover:bg-green-700 text-white'>
+                <Button
+                  className='w-full bg-green-600 hover:bg-green-700 text-white relative'
+                  onClick={() => {
+                    addToCart({
+                      id: product.id,
+                      name: product.name,
+                      price: product.price,
+                      image: product.image,
+                      quantity: 1
+                    })
+                    navigate('/cart')
+                  }}
+                >
                   <ShoppingCart className='w-4 h-4 mr-2' />
                   Thêm vào giỏ
+                  {cart.filter((item) => item.id === product.id).reduce((sum, item) => sum + item.quantity, 0) > 0 && (
+                    <span className='absolute top-1 right-2 bg-white text-green-600 border border-green-600 rounded-full text-xs px-2 py-0.5'>
+                      {cart.filter((item) => item.id === product.id).reduce((sum, item) => sum + item.quantity, 0)}
+                    </span>
+                  )}
                 </Button>
               </div>
             </div>

@@ -5,6 +5,9 @@ import Products from './pages/customer/Products/products'
 import Store from './pages/customer/Store/Store'
 import path from './constants/path'
 import ProductsDetail from './pages/customer/Products/ProductDetail/productsDetail'
+import Cart from './pages/customer/Cart/Cart'
+import OrderConfirm from './pages/customer/Cart/OrderConfirm'
+import Invoice from './pages/customer/Cart/Invoice'
 import Login from './pages/authentication/Login'
 import Register from './pages/authentication/Register'
 import IntroPage from './pages/seller/IntroPage/introPage'
@@ -52,7 +55,6 @@ import TransactionManagementAdmin from './pages/admin/transactionManager/transac
 import BlogList from './pages/admin/blogManagerment/list'
 import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
 
-
 export default function useRouteElements() {
   const routeElements = useRoutes([
     // CUSTOMER routes
@@ -71,6 +73,18 @@ export default function useRouteElements() {
         {
           path: path.productDetail,
           element: <ProductsDetail />
+        },
+        {
+          path: path.cart,
+          element: <Cart />
+        },
+        {
+          path: path.cartOrderConfirm,
+          element: <OrderConfirm />
+        },
+        {
+          path: path.cartInvoice,
+          element: <Invoice />
         },
         {
           path: '/store/:storeId',
