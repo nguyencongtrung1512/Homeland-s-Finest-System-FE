@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react'
 import { Star, MapPin, Flag } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 
 // Import components
 import StorySection from './components/StorySection'
 import ProductsSection from './components/ProductsSection'
 import CertificatesSection from './components/CertificatesSection'
 import ReportModal from './components/ReportModal'
+import MapComponent from '../../../components/Mapbox/mapBox'
 
 // Import types
 import type { Store } from './types'
@@ -18,6 +20,7 @@ const Store = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false)
 
   // Get initial tab from URL or default to 'story'
   const [activeTab, setActiveTab] = useState(() => {
@@ -37,6 +40,10 @@ const Store = () => {
     setActiveTab(tab)
   }
 
+  const handleAddressClick = () => {
+    setIsMapModalOpen(true)
+  }
+
   // TODO: Replace with actual API calls
   // const { data: storeData, isLoading: storeLoading } = useQuery(['store', storeId], () => fetchStore(storeId))
   // const { data: productsData, isLoading: productsLoading } = useQuery(['store-products', storeId], () => fetchStoreProducts(storeId))
@@ -47,7 +54,7 @@ const Store = () => {
     id: '1',
     name: 'Nông sản sạch Việt Nam',
     description: 'Chuyên cung cấp các sản phẩm nông sản sạch, tươi ngon từ các vùng miền Việt Nam',
-    address: 'Hà Nội, Việt Nam',
+    address: 'Tân Bình, Dĩ An, Binh Duong, Vietnam',
     rating: 4.8,
     ratingCount: 1250,
     image: 'https://images.unsplash.com/photo-1560493676-04071c5f467b?w=100&h=100&fit=crop&crop=center',
@@ -139,9 +146,13 @@ const Store = () => {
                       <p className='text-gray-600 mb-3'>{store.description}</p>
 
                       <div className='flex flex-wrap items-center gap-4 text-sm text-gray-600'>
-                        <div className='flex items-center gap-1'>
+                        <div
+                          className='flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors'
+                          onClick={handleAddressClick}
+                          title='Click để xem bản đồ'
+                        >
                           <MapPin className='w-4 h-4' />
-                          <span>{store.address}</span>
+                          <span className='hover:underline'>{store.address}</span>
                         </div>
                         <div className='flex items-center gap-1'>
                           <Star className='w-4 h-4 fill-yellow-400 text-yellow-400' />
@@ -198,6 +209,21 @@ const Store = () => {
         storeName={store.name}
         storeId={storeId || ''}
       />
+
+      {/* Map Modal */}
+      <Dialog open={isMapModalOpen} onOpenChange={setIsMapModalOpen}>
+        <DialogContent className='max-w-4xl w-full max-h-[90vh] overflow-y-auto p-0'>
+          <DialogHeader className='p-6 border-b border-gray-200'>
+            <DialogTitle className='text-xl font-bold text-gray-900'>Vị trí cửa hàng</DialogTitle>
+            <p className='text-sm text-gray-600 mt-1'>{store.name}</p>
+            <p className='text-sm text-gray-500 mt-1'>{store.address}</p>
+          </DialogHeader>
+
+          <div className='p-6'>
+            <MapComponent storeAddress={store.address} storeName={store.name} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
