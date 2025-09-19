@@ -1,11 +1,12 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingCart } from 'lucide-react'
 import { useCart } from '../../contexts/cart.context'
 import { Button } from '../../components/ui/button'
 import path from '../../constants/path'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 function Header() {
+  const navigate = useNavigate()
   const { cart } = useCart()
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const [showDropdown, setShowDropdown] = useState(false)
@@ -13,6 +14,26 @@ function Header() {
   const [isHoveringPopup, setIsHoveringPopup] = useState(false)
   const hideTimeout = useRef<NodeJS.Timeout | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const cartContainerRef = useRef<HTMLDivElement>(null)
+
+  // Xử lý click outside để đóng dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cartContainerRef.current && !cartContainerRef.current.contains(event.target as Node)) {
+        setShowDropdown(false)
+        setIsHoveringIcon(false)
+        setIsHoveringPopup(false)
+      }
+    }
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showDropdown])
 
   // Hiển thị popup khi hover icon hoặc popup
   const handleIconEnter = () => {
@@ -24,7 +45,7 @@ function Header() {
     setIsHoveringIcon(false)
     hideTimeout.current = setTimeout(() => {
       if (!isHoveringPopup) setShowDropdown(false)
-    }, 120)
+    }, 100)
   }
   const handlePopupEnter = () => {
     if (hideTimeout.current) clearTimeout(hideTimeout.current)
@@ -35,7 +56,7 @@ function Header() {
     setIsHoveringPopup(false)
     hideTimeout.current = setTimeout(() => {
       if (!isHoveringIcon) setShowDropdown(false)
-    }, 120) 
+    }, 100)
   }
 
   return (
@@ -55,13 +76,13 @@ function Header() {
 
         {/* Menu */}
         <nav className='hidden md:flex items-center gap-8 text-[#2D5016] font-medium'>
-          <a href='/products' className='hover:text-green-700 transition whitespace-nowrap'>
+          <a href={path.product} className='hover:text-green-700 transition whitespace-nowrap'>
             Sản phẩm
           </a>
-          <a href='/stories' className='hover:text-green-700 transition whitespace-nowrap'>
+          <a href={path.stories} className='hover:text-green-700 transition whitespace-nowrap'>
             Câu chuyện
           </a>
-          <a href='/contact' className='hover:text-green-700 transition whitespace-nowrap'>
+          <a href={path.home} className='hover:text-green-700 transition whitespace-nowrap'>
             Liên hệ
           </a>
         </nav>
@@ -70,13 +91,14 @@ function Header() {
         <div className='flex items-center gap-4 flex-nowrap'>
           {/* Cart */}
           <div
+            ref={cartContainerRef}
             className='hidden md:inline text-sm text-[#2D5016] hover:text-orange-500 transition-colors font-medium whitespace-nowrap ml-2 relative'
             onMouseEnter={handleIconEnter}
             onMouseLeave={handleIconLeave}
           >
             <button
               type='button'
-              onClick={() => window.location.assign(path.cart)}
+              onClick={() => navigate(path.cart)}
               className='relative focus:outline-none'
               aria-label='Xem giỏ hàng'
             >
@@ -136,7 +158,10 @@ function Header() {
                   <span className='text-base text-gray-500'>Thêm hàng vào giỏ</span>
                   <button
                     className='bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded font-semibold text-base transition-colors'
-                    onClick={() => window.location.assign(path.cart)}
+                    onClick={() => {
+                      setShowDropdown(false)
+                      navigate(path.cart)
+                    }}
                     tabIndex={0}
                   >
                     Xem giỏ hàng
