@@ -46,16 +46,12 @@ import AdminDashboard from './pages/admin/dashboard'
 import StoreManagement from './pages/admin/storeManagerment/list'
 import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
-
-import StoriesLayout from './Layouts/CustomerLayout/StoriesLayout/StoriesLayout'
-import { Stories } from './pages/customer/stories'
-
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
 import BlogList from './pages/admin/blogManagerment/list'
 import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import StorePage from './pages/customer/store/Store'
-
+import Stories from './pages/customer/stories/Stories'
 export default function useRouteElements() {
   const routeElements = useRoutes([
     // CUSTOMER routes
@@ -105,16 +101,10 @@ export default function useRouteElements() {
       ]
     },
     // Stories pages with dedicated layout
-    {
-      path: '',
-      element: <StoriesLayout />,
-      children: [
         {
           path: path.stories,
           element: <Stories />
-        }
-      ]
-    },
+        },
     {
       path: path.sellerPage,
       element: <IntroPage />
