@@ -87,8 +87,8 @@ export default function useRouteElements() {
           path: path.store,
           element: <StorePage />
         },
-         // Stories pages with dedicated layout
-         {
+        // Stories pages with dedicated layout
+        {
           path: path.stories,
           element: <Stories />
         }
@@ -105,7 +105,6 @@ export default function useRouteElements() {
         }
       ]
     },
-   
     {
       path: path.sellerPage,
       element: <IntroPage />

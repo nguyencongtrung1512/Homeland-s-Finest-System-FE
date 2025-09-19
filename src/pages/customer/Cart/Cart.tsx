@@ -22,6 +22,42 @@ type CartItem = {
   inStock: boolean
 }
 
+type ComboItem = {
+  id: string
+  comboId: string
+  productVariantId: string
+  price: number
+  quantity: number
+  isActive: boolean
+  productVariant: {
+    id: string
+    productId: string
+    variantName: string
+    price: number
+    isActive: boolean
+    product: {
+      id: string
+      name: string
+      description: string
+      productImages: string[]
+      madeBy: string
+    }
+  }
+}
+
+type Combo = {
+  id: string
+  name: string
+  provinceId: string
+  description: string
+  isActive: boolean
+  comboItems: ComboItem[]
+  shop: string
+  selected: boolean
+  inStock: boolean
+  quantity: number
+}
+
 type Address = {
   id: number
   name: string
@@ -68,6 +104,101 @@ export default function Cart() {
       shop: 'Cửa hàng Đặc sản Tây Ninh',
       selected: false,
       inStock: false
+    }
+  ])
+
+  const [cartCombos, setCartCombos] = useState<Combo[]>([
+    {
+      id: 'combo-1',
+      name: 'Combo Đặc Sản Miền Nam',
+      provinceId: 'province-hcm',
+      description: 'Bộ sưu tập đặc sản miền Nam với giá ưu đãi',
+      isActive: true,
+      shop: 'Cửa hàng Đặc sản miền Nam',
+      selected: true,
+      inStock: true,
+      quantity: 1,
+      comboItems: [
+        {
+          id: 'combo-item-1',
+          comboId: 'combo-1',
+          productVariantId: 'variant-1',
+          price: 89000,
+          quantity: 1,
+          isActive: true,
+          productVariant: {
+            id: 'variant-1',
+            productId: 'product-1',
+            variantName: 'Chai 500ml',
+            price: 89000,
+            isActive: true,
+            product: {
+              id: 'product-1',
+              name: 'Nước mắm Phú Quốc truyền thống',
+              description: 'Nước mắm Phú Quốc truyền thống độ đạm 30°N',
+              productImages: ['/src/assets/BannerWelcome.png'],
+              madeBy: 'Nhà sản xuất Phú Quốc'
+            }
+          }
+        },
+        {
+          id: 'combo-item-2',
+          comboId: 'combo-1',
+          productVariantId: 'variant-2',
+          price: 65000,
+          quantity: 1,
+          isActive: true,
+          productVariant: {
+            id: 'variant-2',
+            productId: 'product-2',
+            variantName: 'Hũ 250g',
+            price: 65000,
+            isActive: true,
+            product: {
+              id: 'product-2',
+              name: 'Mắm tôm chua Cần Thơ',
+              description: 'Mắm tôm chua Cần Thơ đặc sản truyền thống',
+              productImages: ['/src/assets/BannerWelcome.png'],
+              madeBy: 'Nhà sản xuất Cần Thơ'
+            }
+          }
+        }
+      ]
+    },
+    {
+      id: 'combo-2',
+      name: 'Combo Bánh Kẹo Tây Ninh',
+      provinceId: 'province-tn',
+      description: 'Bộ sưu tập bánh kẹo đặc sản Tây Ninh',
+      isActive: true,
+      shop: 'Cửa hàng Đặc sản Tây Ninh',
+      selected: false,
+      inStock: true,
+      quantity: 1,
+      comboItems: [
+        {
+          id: 'combo-item-3',
+          comboId: 'combo-2',
+          productVariantId: 'variant-3',
+          price: 45000,
+          quantity: 2,
+          isActive: true,
+          productVariant: {
+            id: 'variant-3',
+            productId: 'product-3',
+            variantName: 'Gói 200g',
+            price: 45000,
+            isActive: true,
+            product: {
+              id: 'product-3',
+              name: 'Bánh tráng nướng Tây Ninh',
+              description: 'Bánh tráng nướng Tây Ninh vị tôm cay',
+              productImages: ['/src/assets/BannerWelcome.png'],
+              madeBy: 'Nhà sản xuất Tây Ninh'
+            }
+          }
+        }
+      ]
     }
   ])
 
@@ -125,6 +256,20 @@ export default function Cart() {
     const newSelectAll = !selectAll
     setSelectAll(newSelectAll)
     setCartItems((prev) => prev.map((item) => ({ ...item, selected: newSelectAll && item.inStock })))
+    setCartCombos((prev) => prev.map((combo) => ({ ...combo, selected: newSelectAll && combo.inStock })))
+  }
+
+  const toggleComboSelection = (id: string) => {
+    setCartCombos((prev) => prev.map((combo) => (combo.id === id ? { ...combo, selected: !combo.selected } : combo)))
+  }
+
+  const removeCombo = (id: string) => {
+    setCartCombos((prev) => prev.filter((combo) => combo.id !== id))
+  }
+
+  const updateComboQuantity = (id: string, newQuantity: number) => {
+    if (newQuantity < 1) return
+    setCartCombos((prev) => prev.map((combo) => (combo.id === id ? { ...combo, quantity: newQuantity } : combo)))
   }
 
   const addNewAddress = () => {
@@ -170,20 +315,41 @@ export default function Cart() {
   }
 
   const selectedItems = cartItems.filter((item) => item.selected)
-  const subtotal = selectedItems.reduce((total, item) => total + item.price * item.quantity, 0)
+  const selectedCombos = cartCombos.filter((combo) => combo.selected)
+
+  const itemsSubtotal = selectedItems.reduce((total, item) => total + item.price * item.quantity, 0)
+  const combosSubtotal = selectedCombos.reduce((total, combo) => {
+    const comboTotal = combo.comboItems.reduce((comboTotal, item) => comboTotal + item.price * item.quantity, 0)
+    return total + comboTotal * combo.quantity
+  }, 0)
+
+  const subtotal = itemsSubtotal + combosSubtotal
   const shipping = 30000
   const total = subtotal + shipping
 
-  const groupedItems = cartItems.reduce<Record<string, CartItem[]>>((acc, item) => {
-    if (!acc[item.shop]) {
-      acc[item.shop] = []
-    }
-    acc[item.shop].push(item)
-    return acc
-  }, {})
+  // Gộp sản phẩm thường và combo theo shop
+  const groupedByShop = [...cartItems, ...cartCombos].reduce<Record<string, { items: CartItem[]; combos: Combo[] }>>(
+    (acc, item) => {
+      const shopName = item.shop
+      if (!acc[shopName]) {
+        acc[shopName] = { items: [], combos: [] }
+      }
+
+      if ('comboItems' in item) {
+        // Đây là combo
+        acc[shopName].combos.push(item as Combo)
+      } else {
+        // Đây là sản phẩm thường
+        acc[shopName].items.push(item as CartItem)
+      }
+
+      return acc
+    },
+    {}
+  )
 
   // Empty state
-  if (cartItems.length === 0) {
+  if (cartItems.length === 0 && cartCombos.length === 0) {
     return (
       <div className='flex flex-col items-center justify-center min-h-[60vh] bg-gray-50'>
         <ShoppingCart className='w-16 h-16 text-gray-300 mb-4' />
@@ -202,7 +368,7 @@ export default function Cart() {
         <div className='mb-6'>
           <h1 className='text-2xl font-bold text-gray-900 flex items-center gap-2'>
             <ShoppingCart className='w-6 h-6' />
-            Giỏ hàng ({cartItems.length} sản phẩm)
+            Giỏ hàng ({cartItems.length + cartCombos.length} sản phẩm)
           </h1>
         </div>
 
@@ -215,14 +381,14 @@ export default function Cart() {
                 <div className='flex items-center justify-between'>
                   <div className='flex items-center gap-3'>
                     <Checkbox checked={selectAll} onCheckedChange={toggleSelectAll} />
-                    <span className='font-medium'>Chọn tất cả ({cartItems.length} sản phẩm)</span>
+                    <span className='font-medium'>Chọn tất cả ({cartItems.length + cartCombos.length} sản phẩm)</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Cart Items by Shop */}
-            {Object.entries(groupedItems).map(([shopName, items]) => (
+            {Object.entries(groupedByShop).map(([shopName, { items, combos }]) => (
               <Card key={shopName} className='bg-white shadow-sm'>
                 <CardContent className='p-0'>
                   {/* Shop Header */}
@@ -238,7 +404,7 @@ export default function Cart() {
 
                   {/* Shop Items */}
                   <div className='divide-y'>
-                    {(items as CartItem[]).map((item) => (
+                    {items.map((item) => (
                       <div key={item.id} className='p-4 flex items-center gap-4'>
                         {/* Checkbox */}
                         <Checkbox
@@ -315,6 +481,130 @@ export default function Cart() {
                         </Button>
                       </div>
                     ))}
+
+                    {/* Combo Items trong cùng shop */}
+                    {combos.length > 0 && (
+                      <div className='border-t bg-gradient-to-r from-purple-50 to-pink-50'>
+                        <div className='p-4 border-b border-purple-200'>
+                          <div className='flex items-center gap-2'>
+                            <div className='w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded text-white text-xs flex items-center justify-center font-bold'>
+                              C
+                            </div>
+                            <span className='font-medium text-purple-700'>Sản phẩm combo</span>
+                            <span className='ml-auto text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded'>
+                              COMBO
+                            </span>
+                          </div>
+                        </div>
+
+                        {combos.map((combo) => (
+                          <div key={combo.id} className='p-4 border-b border-purple-100 last:border-b-0'>
+                            {/* Combo Header */}
+                            <div className='flex items-center gap-4 mb-4'>
+                              <Checkbox
+                                checked={combo.selected}
+                                disabled={!combo.inStock}
+                                onCheckedChange={() => toggleComboSelection(combo.id)}
+                              />
+                              <div className='flex-1'>
+                                <h3
+                                  className={`font-semibold text-lg ${!combo.inStock ? 'text-gray-400' : 'text-gray-900'}`}
+                                >
+                                  {combo.name}
+                                </h3>
+                                <p className='text-sm text-gray-500 mb-2'>{combo.description}</p>
+                                <div className='flex items-center gap-4'>
+                                  <span className='text-sm text-gray-600'>
+                                    {combo.comboItems.length} sản phẩm trong combo
+                                  </span>
+                                  <span className='text-lg font-bold text-purple-600'>
+                                    ₫
+                                    {combo.comboItems
+                                      .reduce((total, item) => total + item.price * item.quantity, 0)
+                                      .toLocaleString('vi-VN')}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Quantity Controls cho combo */}
+                              <div className='flex items-center border rounded min-w-[120px]'>
+                                <Button
+                                  variant='ghost'
+                                  size='sm'
+                                  disabled={!combo.inStock}
+                                  onClick={() => updateComboQuantity(combo.id, combo.quantity - 1)}
+                                  className='h-8 w-8 p-0'
+                                >
+                                  <Minus className='w-3 h-3' />
+                                </Button>
+                                <Input
+                                  value={combo.quantity}
+                                  disabled={!combo.inStock}
+                                  onChange={(e) => updateComboQuantity(combo.id, parseInt(e.target.value) || 1)}
+                                  className='h-8 w-16 text-center border-none'
+                                />
+                                <Button
+                                  variant='ghost'
+                                  size='sm'
+                                  disabled={!combo.inStock}
+                                  onClick={() => updateComboQuantity(combo.id, combo.quantity + 1)}
+                                  className='h-8 w-8 p-0'
+                                >
+                                  <Plus className='w-3 h-3' />
+                                </Button>
+                              </div>
+
+                              {/* Total Price cho combo */}
+                              <div className='text-right min-w-[100px]'>
+                                <div className='font-bold text-purple-600'>
+                                  ₫
+                                  {(
+                                    combo.comboItems.reduce((total, item) => total + item.price * item.quantity, 0) *
+                                    combo.quantity
+                                  ).toLocaleString('vi-VN')}
+                                </div>
+                              </div>
+
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={() => removeCombo(combo.id)}
+                                className='text-gray-400 hover:text-red-500'
+                              >
+                                <Trash2 className='w-4 h-4' />
+                              </Button>
+                            </div>
+
+                            {/* Combo Items List */}
+                            <div className='ml-8 space-y-3 bg-white rounded-lg p-4 border border-purple-100'>
+                              {combo.comboItems.map((comboItem) => (
+                                <div key={comboItem.id} className='flex items-center gap-3'>
+                                  <img
+                                    src={comboItem.productVariant.product.productImages[0]}
+                                    alt={comboItem.productVariant.product.name}
+                                    className='w-12 h-12 rounded object-cover border'
+                                  />
+                                  <div className='flex-1 min-w-0'>
+                                    <h4 className='font-medium text-gray-900 text-sm'>
+                                      {comboItem.productVariant.product.name}
+                                    </h4>
+                                    <p className='text-xs text-gray-500'>
+                                      {comboItem.productVariant.variantName} - {comboItem.productVariant.product.madeBy}
+                                    </p>
+                                  </div>
+                                  <div className='text-right'>
+                                    <div className='text-sm font-medium text-gray-900'>
+                                      ₫{comboItem.price.toLocaleString('vi-VN')}
+                                    </div>
+                                    <div className='text-xs text-gray-500'>x{comboItem.quantity}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -434,11 +724,10 @@ export default function Cart() {
                   {savedAddresses.map((address) => (
                     <div
                       key={address.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                        selectedAddressId === address.id
-                          ? 'border-orange-500 bg-orange-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedAddressId === address.id
+                        ? 'border-orange-500 bg-orange-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
                       onClick={() => setSelectedAddressId(address.id)}
                     >
                       <div className='flex items-start justify-between'>
@@ -499,8 +788,22 @@ export default function Cart() {
                   <h3 className='font-semibold text-lg mb-4'>Tóm tắt đơn hàng</h3>
 
                   <div className='space-y-3 mb-6'>
+                    {selectedItems.length > 0 && (
+                      <div className='flex justify-between text-sm'>
+                        <span className='text-gray-600'>Sản phẩm ({selectedItems.length} món)</span>
+                        <span>₫{itemsSubtotal.toLocaleString('vi-VN')}</span>
+                      </div>
+                    )}
+                    {selectedCombos.length > 0 && (
+                      <div className='flex justify-between text-sm'>
+                        <span className='text-gray-600'>Combo ({selectedCombos.length} bộ)</span>
+                        <span>₫{combosSubtotal.toLocaleString('vi-VN')}</span>
+                      </div>
+                    )}
                     <div className='flex justify-between text-sm'>
-                      <span className='text-gray-600'>Tạm tính ({selectedItems.length} sản phẩm)</span>
+                      <span className='text-gray-600'>
+                        Tạm tính ({selectedItems.length + selectedCombos.length} sản phẩm)
+                      </span>
                       <span>₫{subtotal.toLocaleString('vi-VN')}</span>
                     </div>
                     <div className='flex justify-between text-sm'>
@@ -518,10 +821,10 @@ export default function Cart() {
                   <div className='space-y-3'>
                     <Button
                       className='w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3'
-                      disabled={selectedItems.length === 0}
+                      disabled={selectedItems.length === 0 && selectedCombos.length === 0}
                       onClick={() => navigate('/cart/confirm')}
                     >
-                      Mua hàng ({selectedItems.length})
+                      Mua hàng ({selectedItems.length + selectedCombos.length})
                     </Button>
                     <Button variant='outline' className='w-full' onClick={() => navigate('/products')}>
                       Tiếp tục mua sắm
