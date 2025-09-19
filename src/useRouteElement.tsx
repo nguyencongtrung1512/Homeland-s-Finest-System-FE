@@ -51,7 +51,7 @@ import BlogList from './pages/admin/blogManagerment/list'
 import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import StoryWithSeller from './pages/customer/storyWithSeller'
-import StorePage from './pages/customer/store/storePage'
+import StorePage from './pages/customer/storeSeller/storePage'
 
 
 export default function useRouteElements() {
