@@ -76,15 +76,15 @@ function Header() {
 
         {/* Menu */}
         <nav className='hidden md:flex items-center gap-8 text-[#2D5016] font-medium'>
-          <a href={path.product} className='hover:text-green-700 transition whitespace-nowrap'>
+          <Link to={path.product} className='hover:text-green-700 transition whitespace-nowrap'>
             Sản phẩm
-          </a>
-          <a href={path.stories} className='hover:text-green-700 transition whitespace-nowrap'>
+          </Link>
+          <Link to={path.stories} className='hover:text-green-700 transition whitespace-nowrap'>
             Câu chuyện
-          </a>
-          <a href={path.home} className='hover:text-green-700 transition whitespace-nowrap'>
+          </Link>
+          <Link to={path.home} className='hover:text-green-700 transition whitespace-nowrap'>
             Liên hệ
-          </a>
+          </Link>
         </nav>
 
         {/* Right side actions + CTV link */}
