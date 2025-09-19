@@ -50,8 +50,8 @@ import TransactionManagementAdmin from './pages/admin/transactionManager/transac
 import BlogList from './pages/admin/blogManagerment/list'
 import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
 import OrderManagementStaff from './pages/staff/orderManager/list'
-import StorePage from './pages/customer/store/Store'
-import Stories from './pages/customer/stories/Stories'
+import StorePage from './pages/customer/store'
+import Stories from './pages/customer/stories'
 export default function useRouteElements() {
   const routeElements = useRoutes([
     // CUSTOMER routes
