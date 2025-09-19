@@ -1,8 +1,93 @@
 import React from 'react'
-import FooterBrand from './FooterBrand'
-import FooterNavColumn from './FooterNavColumn'
-import FooterSocial from './FooterSocial'
 
+// Interfaces
+interface FooterNavItem {
+  label: string
+  href?: string
+}
+
+interface SocialIcon {
+  src: string
+  alt: string
+  href?: string
+  className: string
+}
+
+interface FooterBrandProps {
+  logo?: React.ReactNode
+  brandName: string
+  tagline: string
+}
+
+interface FooterNavColumnProps {
+  title: string
+  items: FooterNavItem[]
+}
+
+interface FooterSocialProps {
+  title: string
+  socialIcons: SocialIcon[]
+}
+
+// FooterBrand Component
+const FooterBrand: React.FC<FooterBrandProps> = ({ logo, brandName, tagline }) => {
+  return (
+    <section className='pb-8 mx-auto w-full text-gray-300 bg-lime-900 bg-opacity-0 max-md:mt-8'>
+      <div className='flex gap-2 text-2xl font-bold bg-lime-900 bg-opacity-0 items-center'>
+        {logo}
+        <h2 className='flex-auto w-[249px]'>{brandName}</h2>
+      </div>
+      <p className='mt-4 text-base leading-6 w-[260px]'>{tagline}</p>
+    </section>
+  )
+}
+
+// FooterNavColumn Component
+const FooterNavColumn: React.FC<FooterNavColumnProps> = ({ title, items }) => {
+  return (
+    <nav className='flex flex-col grow w-full bg-lime-900 bg-opacity-0 max-md:mt-8'>
+      <h3 className='self-start text-base text-white'>{title}</h3>
+      <ul className='mt-6 text-sm leading-none text-gray-300 bg-lime-900 bg-opacity-0'>
+        {items.map((item, index) => (
+          <li
+            key={index}
+            className='flex flex-col justify-center items-start py-1 mt-2 first:mt-0 bg-lime-900 bg-opacity-0 max-md:pr-5'
+          >
+            {item.href ? (
+              <a href={item.href} className='hover:text-white transition-colors'>
+                {item.label}
+              </a>
+            ) : (
+              <span>{item.label}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+// FooterSocial Component
+const FooterSocial: React.FC<FooterSocialProps> = ({ title, socialIcons }) => {
+  return (
+    <section className='flex flex-col pb-12 mx-auto w-full bg-lime-900 bg-opacity-0 max-md:mt-8'>
+      <h3 className='self-start text-base text-white'>{title}</h3>
+      <div className='flex gap-4 pr-14 mt-7 bg-lime-900 bg-opacity-0 max-md:pr-5'>
+        {socialIcons.map((icon, index) =>
+          icon.href ? (
+            <a key={index} href={icon.href} className='hover:opacity-80 transition-opacity' aria-label={icon.alt}>
+              <img src={icon.src} alt={icon.alt} className={icon.className} />
+            </a>
+          ) : (
+            <img key={index} src={icon.src} alt={icon.alt} className={icon.className} />
+          )
+        )}
+      </div>
+    </section>
+  )
+}
+
+// Main Footer Component
 const Footer: React.FC = () => {
   const productItems = [{ label: 'Nông sản' }, { label: 'Đặc sản' }, { label: 'Thủ công mỹ nghệ' }]
 
@@ -69,7 +154,7 @@ const Footer: React.FC = () => {
         </div>
 
         <section className='flex flex-col items-center px-16 pt-8 pb-2 mt-8 text-sm leading-none text-center text-gray-400 bg-lime-900 bg-opacity-0 max-md:px-5 max-md:max-w-full'>
-          <p>© 2024 GrainHeart. All rights reserved.</p>
+          <p>© 2025 Tinh Hoa Quê Nhà. All rights reserved.</p>
         </section>
       </div>
     </footer>

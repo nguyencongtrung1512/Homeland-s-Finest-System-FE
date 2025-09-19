@@ -35,7 +35,7 @@ function Header() {
     setIsHoveringPopup(false)
     hideTimeout.current = setTimeout(() => {
       if (!isHoveringIcon) setShowDropdown(false)
-    }, 120)
+    }, 120) 
   }
 
   return (

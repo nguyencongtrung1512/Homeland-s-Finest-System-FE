@@ -89,7 +89,6 @@ export const ProductTabs: React.FC = () => {
         </div>
       )
     },
-
     {
       id: 'storage',
       label: 'Lưu ý & Bảo quản',
@@ -130,6 +129,58 @@ export const ProductTabs: React.FC = () => {
           </div>
         </div>
       )
+    },
+    {
+      id: 'store story',
+      label: 'Câu chuyện của chúng tôi',
+      content: (
+        <div className='max-w-4xl mx-auto'>
+          <h3 className='text-black text-xl font-bold mb-4'>Câu chuyện của chúng tôi</h3>
+          <p className='text-gray-700 text-base leading-6 mb-8'>
+            Chúng tôi là một cửa hàng chuyên cung cấp các sản phẩm nông sản sạch từ các vùng miền Việt Nam. Với hơn 10 năm kinh nghiệm trong ngành, chúng tôi cam kết mang đến cho khách hàng những sản phẩm tươi ngon, an toàn và chất lượng cao nhất.
+          </p>
+
+          <h4 className='text-black text-base font-bold mb-2'>Thành phần dinh dưỡng:</h4>
+          <ul className='space-y-1 mb-8'>
+            <li className='flex items-center'>
+              <span className='text-gray-700 mr-2'>•</span>
+              <span className='text-gray-700 text-base'>Đường tự nhiên (fructose, glucose): 75-80%</span>
+            </li>
+            <li className='flex items-center'>
+              <span className='text-gray-700 mr-2'>•</span>
+              <span className='text-gray-700 text-base'>Vitamin B1, B2, B6, C</span>
+            </li>
+            <li className='flex items-center'>
+              <span className='text-gray-700 mr-2'>•</span>
+              <span className='text-gray-700 text-base'>Khoáng chất: Canxi, Sắt, Kali</span>
+            </li>
+            <li className='flex items-center'>
+              <span className='text-gray-700 mr-2'>•</span>
+              <span className='text-gray-700 text-base'>Enzyme và acid amin tự nhiên</span>
+            </li>
+          </ul>
+
+          <h4 className='text-black text-base font-bold mb-2'>Công dụng:</h4>
+          <ul className='space-y-1'>
+            <li className='flex items-center'>
+              <span className='text-gray-700 mr-2'>•</span>
+              <span className='text-gray-700 text-base'>Tăng cường sức đề kháng</span>
+            </li>
+            <li className='flex items-center'>
+              <span className='text-gray-700 mr-2'>•</span>
+              <span className='text-gray-700 text-base'>Hỗ trợ tiêu hóa</span>
+            </li>
+            <li className='flex items-center'>
+              <span className='text-gray-700 mr-2'>•</span>
+              <span className='text-gray-700 text-base'>Làm đẹp da, chống lão hóa</span>
+            </li>
+            <li className='flex items-center'>
+              <span className='text-gray-700 mr-2'>•</span>
+              <span className='text-gray-700 text-base'>Cung cấp năng lượng tự nhiên</span>
+            </li>
+          </ul>
+        </div>
+      )
     }
   ]
 
@@ -143,8 +194,8 @@ export const ProductTabs: React.FC = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-6 py-4 text-base font-medium border-b-2 transition-colors ${activeTab === tab.id
-                    ? 'border-green-600 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-green-600 text-green-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
               >
                 {tab.label}

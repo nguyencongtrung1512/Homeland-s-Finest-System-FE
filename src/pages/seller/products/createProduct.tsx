@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -6,8 +6,18 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
-import { Switch } from '../../../components/ui/switch'
-import { Upload, Sun, BookOpen, Shield, Info, ChevronRight, Home, Plus, Trash2 } from 'lucide-react'
+import {
+  Upload,
+  Sun,
+  BookOpen,
+  Shield,
+  Info,
+  ChevronRight,
+  Plus,
+  Trash2,
+  Video,
+  Image as ImageIcon
+} from 'lucide-react'
 
 function CreateProduct() {
   const navigate = useNavigate()
@@ -22,6 +32,23 @@ function CreateProduct() {
     allowPreOrder: false
   })
 
+  const [storyData, setStoryData] = useState({
+    mainTitle: 'Nông sản sạch Việt Nam',
+    mainSubtitle:
+      'Câu chuyện bắt đầu từ đây, đất trời - nơi mà những giống đầu tiên được gieo trồng. Với niềm tin vào sức mạnh của thiên nhiên và tình yêu đối với đất nước, chúng tôi mang đến những sản phẩm nông nghiệp sạch, xanh và an toàn cho sức khỏe.',
+    video: null,
+    storyTitle: 'Câu chuyện của chúng tôi',
+    storyContent1:
+      'Chúng tôi là một cửa hàng chuyên cung cấp các sản phẩm nông sản sạch từ các vùng miền Việt Nam. Với hơn 10 năm kinh nghiệm trong ngành, chúng tôi cam kết mang đến cho khách hàng những sản phẩm tươi ngon, an toàn và chất lượng cao nhất.',
+    storyContent2:
+      'Với hơn 10 năm kinh nghiệm trong lĩnh vực nông nghiệp, chúng tôi hiểu rõ giá trị của từng sản phẩm và cam kết mang đến chất lượng tốt nhất cho khách hàng.',
+    storyImage: null,
+    galleryTitle: 'Hình ảnh hạt trưởng',
+    galleryImages: [null, null, null, null],
+    commitmentContent:
+      'Chúng tôi cam kết: Tất cả sản phẩm đều được kiểm tra chất lượng nghiêm ngặt trước khi đến tay khách hàng. Từ khâu gieo trồng, chăm sóc, thu hoạch đến bảo quản và vận chuyển, mọi quy trình đều được thực hiện theo tiêu chuẩn cao nhất để đảm bảo sản phẩm tươi ngon, an toàn và giữ trọn vẹn giá trị dinh dưỡng.'
+  })
+
   const [productVariants, setProductVariants] = useState([
     {
       id: 1,
@@ -31,18 +58,23 @@ function CreateProduct() {
     }
   ])
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setProductData((prev) => ({
       ...prev,
       [field]: value
     }))
   }
 
-  const handleVariantChange = (variantId: number, field: string, value: any) => {
+  const handleStoryInputChange = (field: string, value: string) => {
+    setStoryData((prev) => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleVariantChange = (variantId: number, field: string, value: string | number) => {
     setProductVariants((prev) =>
-      prev.map((variant) =>
-        variant.id === variantId ? { ...variant, [field]: value } : variant
-      )
+      prev.map((variant) => (variant.id === variantId ? { ...variant, [field]: value } : variant))
     )
   }
 
@@ -153,9 +185,7 @@ function CreateProduct() {
                   {productVariants.map((variant, index) => (
                     <div key={variant.id} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
                       <div className='flex items-center justify-between mb-3'>
-                        <h4 className='text-sm font-medium text-gray-700'>
-                          Loại {index + 1}
-                        </h4>
+                        <h4 className='text-sm font-medium text-gray-700'>Loại {index + 1}</h4>
                         {productVariants.length > 1 && (
                           <Button
                             type='button'
@@ -242,6 +272,140 @@ function CreateProduct() {
               </div>
             </CardContent>
           </Card>
+          {/* Story Connection */}
+          <Card>
+            <CardHeader>
+              <CardTitle className='text-green-700 flex items-center gap-2'>
+                <BookOpen className='w-5 h-5 text-green-600' />
+                Câu chuyện gắn kết
+              </CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='flex items-start gap-2'>
+                <Info className='w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0' />
+                <p className='text-sm text-gray-600'>Câu chuyện giúp khách hàng hiểu rõ hơn về giá trị sản phẩm</p>
+              </div>
+
+              {/* Main Title */}
+              <div>
+                <Label className='text-sm font-medium'>Tiêu đề chính</Label>
+                <Input
+                  placeholder='Nông sản sạch Việt Nam'
+                  value={storyData.mainTitle}
+                  onChange={(e) => handleStoryInputChange('mainTitle', e.target.value)}
+                  className='mt-1'
+                />
+              </div>
+
+              {/* Main Subtitle */}
+              <div>
+                <Label className='text-sm font-medium'>Đoạn mô tả</Label>
+                <Textarea
+                  placeholder='Câu chuyện bắt đầu từ đây, đất trời...'
+                  value={storyData.mainSubtitle}
+                  onChange={(e) => handleStoryInputChange('mainSubtitle', e.target.value)}
+                  className='mt-1 min-h-[80px]'
+                />
+              </div>
+
+              {/* Video Upload */}
+              <div>
+                <Label className='text-sm font-medium'>Video trung tâm</Label>
+                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
+                  <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
+                  <p className='text-sm text-gray-600 mb-2'>Tải lên video của bạn</p>
+                  <Button variant='outline' size='sm' className='bg-gray-100'>
+                    <Upload className='w-4 h-4 mr-2' />
+                    Chọn tệp
+                  </Button>
+                </div>
+              </div>
+
+              {/* Story Title */}
+              <div>
+                <Label className='text-sm font-medium'>Tiêu đề câu chuyện</Label>
+                <Input
+                  placeholder='Câu chuyện của chúng tôi'
+                  value={storyData.storyTitle}
+                  onChange={(e) => handleStoryInputChange('storyTitle', e.target.value)}
+                  className='mt-1'
+                />
+              </div>
+
+              {/* Story Content */}
+              <div>
+                <Label className='text-sm font-medium'>Nội dung câu chuyện</Label>
+                <Textarea
+                  placeholder='Chúng tôi là một cửa hàng chuyên cung cấp...'
+                  value={storyData.storyContent1}
+                  onChange={(e) => handleStoryInputChange('storyContent1', e.target.value)}
+                  className='mt-1 min-h-[80px]'
+                />
+              </div>
+
+              <div>
+                <Textarea
+                  placeholder='Với hơn 10 năm kinh nghiệm...'
+                  value={storyData.storyContent2}
+                  onChange={(e) => handleStoryInputChange('storyContent2', e.target.value)}
+                  className='min-h-[80px]'
+                />
+              </div>
+
+              {/* Story Image */}
+              <div>
+                <Label className='text-sm font-medium'>Hình ảnh câu chuyện</Label>
+                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
+                  <ImageIcon className='w-8 h-8 text-gray-400 mx-auto mb-2' />
+                  <p className='text-sm text-gray-600 mb-2'>Tải lên hình ảnh minh họa</p>
+                  <Button variant='outline' size='sm' className='bg-gray-100'>
+                    <Upload className='w-4 h-4 mr-2' />
+                    Chọn ảnh
+                  </Button>
+                </div>
+              </div>
+
+              {/* Gallery Title */}
+              <div>
+                <Label className='text-sm font-medium'>Tiêu đề gallery</Label>
+                <Input
+                  placeholder='Hình ảnh hạt trưởng'
+                  value={storyData.galleryTitle}
+                  onChange={(e) => handleStoryInputChange('galleryTitle', e.target.value)}
+                  className='mt-1'
+                />
+              </div>
+
+              {/* Gallery Images */}
+              <div>
+                <Label className='text-sm font-medium'>Hình ảnh gallery (4 ảnh)</Label>
+                <div className='grid grid-cols-2 gap-2 mt-2'>
+                  {storyData.galleryImages.map((_, index) => (
+                    <div
+                      key={index}
+                      className='border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                    >
+                      <ImageIcon className='w-6 h-6 text-gray-400 mx-auto mb-1' />
+                      <p className='text-xs text-gray-500'>Ảnh {index + 1}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Commitment */}
+              <div>
+                <Label className='text-sm font-medium'>Cam kết của chúng tôi</Label>
+                <div className='mt-2 bg-green-50 p-4 rounded-lg border border-green-200'>
+                  <Textarea
+                    placeholder='Chúng tôi cam kết: Tất cả sản phẩm đều được kiểm tra...'
+                    value={storyData.commitmentContent}
+                    onChange={(e) => handleStoryInputChange('commitmentContent', e.target.value)}
+                    className='min-h-[80px] bg-transparent border-none resize-none'
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right Column - Sidebar */}
@@ -307,72 +471,7 @@ function CreateProduct() {
             </CardContent>
           </Card>
 
-          {/* Story Connection */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-green-700 flex items-center gap-2'>
-                <BookOpen className='w-5 h-5 text-green-600' />
-                Gắn kết "Câu chuyện"
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div>
-                <Label htmlFor='story' className='text-sm font-medium'>
-                  Liên kết với một câu chuyện
-                </Label>
-                <Select value={productData.story} onValueChange={(value) => handleInputChange('story', value)}>
-                  <SelectTrigger className='mt-1'>
-                    <SelectValue placeholder='Chọn câu chuyện...' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='story1'>Câu chuyện về làng gốm Bát Tràng</SelectItem>
-                    <SelectItem value='story2'>Hành trình mật ong rừng U Minh</SelectItem>
-                    <SelectItem value='story3'>Nghề làm bánh tráng truyền thống</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className='flex items-start gap-2 mt-2'>
-                  <Info className='w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0' />
-                  <p className='text-sm text-gray-600'>Câu chuyện giúp khách hàng hiểu rõ hơn về giá trị sản phẩm</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Additional Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-green-700'>Cài đặt bổ sung</CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <Label htmlFor='isVisible' className='text-sm font-medium'>
-                    Hiển thị sản phẩm
-                  </Label>
-                  <p className='text-xs text-gray-500'>Sản phẩm sẽ hiển thị trên cửa hàng</p>
-                </div>
-                <Switch
-                  id='isVisible'
-                  checked={productData.isVisible}
-                  onCheckedChange={(checked) => handleInputChange('isVisible', checked)}
-                />
-              </div>
-
-              <div className='flex items-center justify-between'>
-                <div>
-                  <Label htmlFor='allowPreOrder' className='text-sm font-medium'>
-                    Cho phép đặt hàng trước
-                  </Label>
-                  <p className='text-xs text-gray-500'>Khách hàng có thể đặt hàng khi hết stock</p>
-                </div>
-                <Switch
-                  id='allowPreOrder'
-                  checked={productData.allowPreOrder}
-                  onCheckedChange={(checked) => handleInputChange('allowPreOrder', checked)}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          
         </div>
       </div>
 
