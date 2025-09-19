@@ -14,7 +14,7 @@ interface CertificatesSectionProps {
   certificates: Certificate[]
 }
 
-const CertificatesSection: FC<CertificatesSectionProps> = ({ storeId, certificates }) => {
+const CertificatesSection: FC<CertificatesSectionProps> = ({ certificates }) => {
   // TODO: Replace with actual API call
   // const { data: certificatesData, isLoading } = useQuery(['store-certificates', storeId], () => fetchStoreCertificates(storeId))
 

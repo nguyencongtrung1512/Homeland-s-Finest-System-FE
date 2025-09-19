@@ -1,5 +1,4 @@
-import React from 'react'
-import SellerLogin from '~/pages/seller/components/login'
+import SellerLogin from '../../../pages/seller/components/login'
 
 function SellerLoginLayout() {
   return (

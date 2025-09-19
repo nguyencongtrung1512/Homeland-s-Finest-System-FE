@@ -2,7 +2,6 @@ import { useRoutes } from 'react-router-dom'
 import MainLayout from './Layouts/CustomerLayout/MainLayout'
 import HomePage from './pages/customer/Home/HomePage'
 import Products from './pages/customer/Products/products'
-import Store from './pages/customer/Store/Store'
 import path from './constants/path'
 import ProductsDetail from './pages/customer/Products/ProductDetail/productsDetail'
 import Cart from './pages/customer/Cart/Cart'
@@ -49,12 +48,13 @@ import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
 
 import StoriesLayout from './Layouts/CustomerLayout/StoriesLayout/StoriesLayout'
-import { Stories } from './pages/customer/Stories'
+import { Stories } from './pages/customer/stories'
 
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
 import BlogList from './pages/admin/blogManagerment/list'
 import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
 import OrderManagementStaff from './pages/staff/orderManager/list'
+import StorePage from './pages/customer/store/Store'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -88,8 +88,8 @@ export default function useRouteElements() {
           element: <Invoice />
         },
         {
-          path: '/store/:storeId',
-          element: <Store />
+          path: path.store,
+          element: <StorePage />
         }
       ]
     },

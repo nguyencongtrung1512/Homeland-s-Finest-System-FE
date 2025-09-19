@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import VerifyOTPLayout from '../../../Layouts/Authentication/ForgotPasswordLayout/VerifyOTPLayout'
 import { Leaf, ThumbsUp, Mail, RectangleEllipsis, BadgeCheck } from 'lucide-react'
 import logoImage from '../../../assets/luachin2-7984.webp'

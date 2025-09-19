@@ -1,17 +1,8 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
-import {
-  FileText,
-  Star,
-  DollarSign,
-  Truck,
-  RotateCcw,
-  Lock,
-  Plus,
-  Eye
-} from 'lucide-react'
+import { FileText, Star, DollarSign, Truck, RotateCcw, Lock, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import CreateHelpModal from './createHelp'
 
@@ -107,29 +98,15 @@ function HelpCenter() {
   const getStatusBadge = (status: string, statusText: string) => {
     switch (status) {
       case 'waiting_staff':
-        return (
-          <Badge className='bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200'>
-            {statusText}
-          </Badge>
-        )
+        return <Badge className='bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200'>{statusText}</Badge>
       case 'waiting_response':
         return (
-          <Badge className='bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200'>
-            {statusText}
-          </Badge>
+          <Badge className='bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200'>{statusText}</Badge>
         )
       case 'resolved':
-        return (
-          <Badge className='bg-green-100 text-green-800 hover:bg-green-100 border-green-200'>
-            {statusText}
-          </Badge>
-        )
+        return <Badge className='bg-green-100 text-green-800 hover:bg-green-100 border-green-200'>{statusText}</Badge>
       default:
-        return (
-          <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>
-            {statusText}
-          </Badge>
-        )
+        return <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>{statusText}</Badge>
     }
   }
 
@@ -145,7 +122,7 @@ function HelpCenter() {
     navigate(`/detailHelp/${requestId}`)
   }
 
-  const filteredRequests = supportRequests.filter(request => {
+  const filteredRequests = supportRequests.filter((request) => {
     if (activeTab === 'all') return true
     if (activeTab === 'pending') return request.status !== 'resolved'
     if (activeTab === 'resolved') return request.status === 'resolved'
@@ -174,9 +151,7 @@ function HelpCenter() {
             <Card key={policy.id} className='hover:shadow-md transition-shadow cursor-pointer'>
               <CardContent className='p-6'>
                 <div className='flex flex-col items-center text-center space-y-4'>
-                  <div className='w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center'>
-                    {policy.icon}
-                  </div>
+                  <div className='w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center'>{policy.icon}</div>
                   <div>
                     <h3 className='font-semibold text-green-700 mb-2'>{policy.title}</h3>
                     <p className='text-sm text-gray-600 mb-4'>{policy.description}</p>
@@ -195,10 +170,7 @@ function HelpCenter() {
       <div>
         <div className='flex items-center justify-between mb-6'>
           <h2 className='text-xl font-semibold text-green-700'>Yêu cầu Hỗ trợ của tôi</h2>
-          <Button
-            onClick={handleCreateRequest}
-            className='bg-yellow-500 hover:bg-yellow-600 text-white'
-          >
+          <Button onClick={handleCreateRequest} className='bg-yellow-500 hover:bg-yellow-600 text-white'>
             <Plus className='w-4 h-4 mr-2' />
             Tạo yêu cầu mới
           </Button>
@@ -214,10 +186,11 @@ function HelpCenter() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 text-sm font-medium transition-colors ${activeTab === tab.key
-                ? 'text-green-600 border-b-2 border-green-600'
-                : 'text-gray-600 hover:text-gray-900'
-                }`}
+              className={`pb-3 text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? 'text-green-600 border-b-2 border-green-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
             >
               {tab.label}
             </button>
@@ -246,9 +219,7 @@ function HelpCenter() {
                       <td className='py-4 px-6 text-gray-700'>{request.title}</td>
                       <td className='py-4 px-6 text-gray-700'>{request.dateSent}</td>
                       <td className='py-4 px-6 text-gray-700'>{request.lastUpdated}</td>
-                      <td className='py-4 px-6'>
-                        {getStatusBadge(request.status, request.statusText)}
-                      </td>
+                      <td className='py-4 px-6'>{getStatusBadge(request.status, request.statusText)}</td>
                       <td className='py-4 px-6'>
                         <button
                           onClick={() => handleViewDetails(request.id)}
@@ -265,17 +236,12 @@ function HelpCenter() {
 
             {/* Pagination */}
             <div className='flex items-center justify-between p-6 border-t border-gray-200'>
-              <div className='text-sm text-gray-700'>
-                Hiển thị 1 đến 5 của 23 kết quả
-              </div>
+              <div className='text-sm text-gray-700'>Hiển thị 1 đến 5 của 23 kết quả</div>
               <div className='flex items-center gap-2'>
                 <Button variant='outline' size='sm' className='text-gray-600'>
                   Trước
                 </Button>
-                <Button
-                  size='sm'
-                  className='bg-green-600 hover:bg-green-700 text-white'
-                >
+                <Button size='sm' className='bg-green-600 hover:bg-green-700 text-white'>
                   1
                 </Button>
                 <Button variant='outline' size='sm' className='text-gray-600'>
@@ -294,10 +260,7 @@ function HelpCenter() {
       </div>
 
       {/* Create Help Modal */}
-      <CreateHelpModal
-        isOpen={isCreateModalOpen}
-        onClose={handleCloseModal}
-      />
+      <CreateHelpModal isOpen={isCreateModalOpen} onClose={handleCloseModal} />
     </div>
   )
 }

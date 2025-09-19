@@ -8,7 +8,6 @@ interface ProductDetail extends Product {
   soldCount?: number
   stockCount?: number
   weightOptions?: { value: string; price: number }[]
-  productImages: string[]
 }
 
 function ProductGallery() {
@@ -18,7 +17,7 @@ function ProductGallery() {
   const [selectedImage, setSelectedImage] = useState(0)
   const [selectedWeight, setSelectedWeight] = useState(0)
   const [quantity, setQuantity] = useState(1)
-  const { addToCart, cart } = useCart()
+  const { addToCart } = useCart()
 
   useEffect(() => {
     // Mock data theo ảnh mẫu mật ong
@@ -26,8 +25,10 @@ function ProductGallery() {
       {
         id: '1',
         storeId: 'store-1',
+        provinceId: 'province-1',
         name: 'Mật Ong Rừng Nguyên Chất U Minh Hạ',
-        description: 'Rừng U Minh Hạ, Cà Mau',
+        description:
+          'Mật ong rừng nguyên chất từ rừng U Minh Hạ, Cà Mau. Sản phẩm tự nhiên, không pha trộn, đảm bảo chất lượng cao.',
         productImages: [
           'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?q=80&w=800&auto=format&fit=crop',
           'https://images.unsplash.com/photo-1587049352846-4a222e784d38?q=80&w=800&auto=format&fit=crop',
@@ -36,26 +37,20 @@ function ProductGallery() {
           'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=800&auto=format&fit=crop',
           'https://images.unsplash.com/photo-1587049352846-4a222e784d38?q=80&w=800&auto=format&fit=crop'
         ],
-        price: 289000,
-        type: 'food',
+        productVideo: '',
         categoryId: ['cat-1'],
-        brandName: 'U Minh',
-        weight: 800,
-        dimensions: '10x10x20',
-        material: 'Thủy tinh',
-        size: '800g',
-        color: 'Vàng',
-        viewCount: 1000,
-        saleCount: 3216,
+        madeBy: 'U Minh Hạ, Cà Mau',
+        saleCount: 1000,
         rating: 4.9,
         reviewCount: 47,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
         isActive: true,
-        status: 'available',
-        itemCombo: [],
-        log: [],
-        originalPrice: 350000,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Sản phẩm tự nhiên từ rừng U Minh Hạ',
+        embedding: [],
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-15T00:00:00Z',
+        // Thêm fields cho ProductDetail
         soldCount: 3216,
         stockCount: 49,
         weightOptions: [
@@ -66,28 +61,24 @@ function ProductGallery() {
       {
         id: '2',
         storeId: 'store-2',
+        provinceId: 'province-2',
         name: 'Sữa Tươi Milk Organic',
-        description: 'Nông trại TH True Milk, Hà Nội',
+        description: 'Sữa tươi organic từ nông trại TH True Milk, Hà Nội. Đảm bảo chất lượng và an toàn thực phẩm cao nhất.',
         productImages: ['https://images.unsplash.com/photo-1550581190-9c1c48d21d6c?q=80&w=800&auto=format&fit=crop'],
-        price: 28000,
-        type: 'drink',
+        productVideo: '',
         categoryId: ['cat-2'],
-        brandName: 'TH True Milk',
-        weight: 1000,
-        dimensions: '10x10x25',
-        material: 'Nhựa',
-        size: '1L',
-        color: 'Trắng',
-        viewCount: 500,
+        madeBy: 'TH True Milk, Hà Nội',
         saleCount: 1200,
-        rating: 5,
+        rating: 4.5,
         reviewCount: 456,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
         isActive: true,
-        status: 'available',
-        itemCombo: [],
-        log: [],
+        typeProduct: 'Dairy',
+        status: 'active',
+        note: 'Sản phẩm organic chất lượng cao',
+        embedding: [],
+        createdAt: '2024-01-02T00:00:00Z',
+        updatedAt: '2024-01-16T00:00:00Z',
+        // Thêm fields cho ProductDetail
         soldCount: 1200,
         stockCount: 100,
         weightOptions: [
@@ -117,7 +108,7 @@ function ProductGallery() {
     )
   }
 
-  const currentPrice = product.weightOptions?.[selectedWeight]?.price || product.price
+  const currentPrice = product.weightOptions?.[selectedWeight]?.price || 0
 
   const handleAddToCart = () => {
     addToCart({
@@ -239,7 +230,9 @@ function ProductGallery() {
 
           {/* Price */}
           <div className='flex items-center space-x-3'>
-            <div className='text-3xl font-bold text-green-600'>{currentPrice.toLocaleString('vi-VN')}₫</div>
+            <div className='text-3xl font-bold text-green-600'>
+              {currentPrice > 0 ? `${currentPrice.toLocaleString('vi-VN')}₫` : 'Liên hệ để biết giá'}
+            </div>
           </div>
           {/* Weight Options */}
           {product.weightOptions && (
@@ -250,11 +243,10 @@ function ProductGallery() {
                   <button
                     key={index}
                     onClick={() => setSelectedWeight(index)}
-                    className={`px-4 py-2 border-2 rounded-lg font-medium transition-colors ${
-                      selectedWeight === index
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    className={`px-4 py-2 border-2 rounded-lg font-medium transition-colors ${selectedWeight === index
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-300 hover:border-gray-400'
+                      }`}
                   >
                     {option.value}
                   </button>

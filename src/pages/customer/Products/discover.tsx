@@ -1,5 +1,3 @@
-import React from 'react'
-
 function Discover() {
   return (
     <section className='relative w-full h-[300px] overflow-hidden'>

@@ -1,4 +1,3 @@
-import React from 'react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
@@ -8,11 +7,11 @@ import {
   Paperclip,
   User
 } from 'lucide-react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 function DetailHelp() {
   const navigate = useNavigate()
-  const { requestId } = useParams()
+  // const { requestId } = useParams()
 
   // Mock data for the specific request
   const requestData = {

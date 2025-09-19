@@ -1,4 +1,3 @@
-import React from 'react'
 import ProductGallery from './productGallery/productGallery'
 import { ProductTabs } from './ProductTab/productsTab'
 import { ViewRating } from './Rating/viewRating'

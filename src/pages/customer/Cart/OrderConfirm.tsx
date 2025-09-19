@@ -1,5 +1,5 @@
 import { Button } from '../../../components/ui/button'
-import { CheckCircle, Truck, ShieldCheck, RotateCcw } from 'lucide-react'
+import { CheckCircle, Truck, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 function OrderConfirm() {

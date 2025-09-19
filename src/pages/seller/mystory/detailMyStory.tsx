@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -24,7 +24,6 @@ import {
   Image as ImageIcon,
   Type,
   Calendar,
-  User,
   Share2
 } from 'lucide-react'
 

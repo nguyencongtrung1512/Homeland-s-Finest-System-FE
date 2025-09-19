@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -22,7 +22,7 @@ import {
 
 function OrderDetail() {
   const navigate = useNavigate()
-  const { orderId } = useParams()
+  // const { orderId } = useParams()
   const [orderStatus, setOrderStatus] = useState('pending') // pending, confirmed, delivering, delivered, cancelled
 
   // Mock data - trong thực tế sẽ fetch từ API
@@ -318,7 +318,7 @@ function OrderDetail() {
             </CardHeader>
             <CardContent>
               <div className='space-y-4'>
-                {orderData.history.map((item, index) => (
+                {orderData.history.map((item) => (
                   <div key={item.id} className='flex items-start gap-3'>
                     <div className='flex-shrink-0 mt-1'>
                       {getStatusIcon(item.status)}

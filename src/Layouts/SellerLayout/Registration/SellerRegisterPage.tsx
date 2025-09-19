@@ -1,4 +1,3 @@
-import React from 'react'
 import SellerRegistrationLayout from './SellerRegistrationLayout'
 import SellerRegistrationForm from './SellerRegistrationForm'
 

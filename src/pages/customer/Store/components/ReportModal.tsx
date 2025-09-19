@@ -1,9 +1,9 @@
-import { useState } from 'react'
 import { Camera, AlertTriangle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ui/dialog'
 import { Button } from '../../../../components/ui/button'
 import { Textarea } from '../../../../components/ui/textarea'
 import { Label } from '../../../../components/ui/label'
+import { useState } from 'react'
 
 interface ReportModalProps {
   isOpen: boolean
@@ -24,12 +24,14 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
   ]
 
   const handleReasonToggle = (reason: string) => {
-    setSelectedReasons((prev) => (prev.includes(reason) ? prev.filter((r) => r !== reason) : [...prev, reason]))
+    setSelectedReasons((prev: string[]) =>
+      prev.includes(reason) ? prev.filter((r) => r !== reason) : [...prev, reason]
+    )
   }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
-    setImages((prev) => [...prev, ...files])
+    setImages((prev: File[]) => [...prev, ...files])
   }
 
   const handleSubmit = () => {

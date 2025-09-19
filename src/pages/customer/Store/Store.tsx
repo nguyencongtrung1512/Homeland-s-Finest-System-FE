@@ -7,15 +7,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../compo
 
 // Import components
 import StorySection from './components/StorySection'
-import ProductsSection from './components/ProductsSection'
-import CertificatesSection from './components/CertificatesSection'
-import ReportModal from './components/ReportModal'
+
 import MapComponent from '../../../components/Mapbox/mapBox'
 
 // Import types
+
+import ProductsSection from './components/ProductsSection'
+import CertificatesSection from './components/CertificatesSection'
+import ReportModal from './components/ReportModal'
 import type { Store } from './types'
 
-const Store = () => {
+const StorePage = () => {
   const { storeId } = useParams<{ storeId: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -228,4 +230,4 @@ const Store = () => {
   )
 }
 
-export default Store
+export default StorePage

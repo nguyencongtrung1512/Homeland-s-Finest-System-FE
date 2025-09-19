@@ -25,7 +25,7 @@ function SellerRegistrationLayout({ children }: SellerRegistrationLayoutProps) {
                 <p className='text-sm text-gray-600'>Nền tảng kết nối người mua và người bán</p>
               </div>
             </Link>
-            
+
             {/* Security Info */}
             <div className='flex items-center space-x-2 text-gray-600'>
               <svg className='w-5 h-5' fill='currentColor' viewBox='0 0 20 20'>
@@ -42,18 +42,14 @@ function SellerRegistrationLayout({ children }: SellerRegistrationLayoutProps) {
       </header>
 
       {/* Main Content */}
-      <div className="py-8">
-        <div className="max-w-full mx-auto px-6">
-          {children}
-        </div>
+      <div className='py-8'>
+        <div className='max-w-full mx-auto px-6'>{children}</div>
       </div>
 
       {/* Footer */}
-      <div className="bg-white border-t mt-8">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="text-center text-sm text-gray-500">
-            © 2024 Tinh Hoa Quê Nhà. Tất cả quyền được bảo lưu.
-          </div>
+      <div className='bg-white border-t mt-8'>
+        <div className='max-w-7xl mx-auto px-4 py-6'>
+          <div className='text-center text-sm text-gray-500'>© 2024 Tinh Hoa Quê Nhà. Tất cả quyền được bảo lưu.</div>
         </div>
       </div>
     </div>

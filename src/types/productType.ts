@@ -1,26 +1,57 @@
 export interface Product {
-  id: string; // UUID
-  storeId: string; // UUID
-  name: string;
-  description: string;
-  productImages: string[]; // jsonb (có thể khai báo cụ thể hơn: string[] nếu chỉ chứa url ảnh)
-  price: number; // numeric(10,2)
-  type: string; // varchar(100)
-  categoryId: string[]; // array
-  brandName: string;
-  weight: number; // numeric(10,2)
-  dimensions: string;
-  material: string;
-  size: string;
-  color: string;
-  viewCount: number;
-  saleCount: number;
-  rating: number; // numeric(3,2)
-  reviewCount: number;
-  createdAt: string; // TIMESTAMPTZ -> ISO string
-  updatedAt: string; // TIMESTAMPTZ
-  isActive: boolean;
-  status: string;
-  itemCombo: string[]; // JsonB (nếu cấu trúc rõ ràng thì định nghĩa interface riêng)
-  log: string[]; // JsonB (tương tự, có thể refine)
+  id: string // UUID - Primary Key
+  storeId: string // UUID - Foreign Key to Store
+  provinceId: string // UUID - Foreign Key to Province
+  name: string // varchar(255)
+  description: string // text
+  productImages: string[] // JSONB - Array of image URLs
+  productVideo: string // varchar(500) - Video URL
+  categoryId: string[] // JSONB - Array of category IDs
+  madeBy: string // varchar(255) - Brand/Manufacturer
+  saleCount: number // integer
+  rating: number // numeric(3,2) - Average rating
+  reviewCount: number // integer
+  isActive: boolean // boolean
+  typeProduct: string // varchar(100) - Product type
+  status: string // varchar(50) - Product status
+  note: string // text
+  embedding: number[] // JSONB - Vector embedding for search
+  createdAt: string // TIMESTAMPTZ
+  updatedAt: string // TIMESTAMPTZ
+}
+
+export interface ProductCreateInput {
+  storeId: string
+  provinceId: string
+  name: string
+  description: string
+  productImages?: string[]
+  productVideo?: string
+  categoryId?: string[]
+  madeBy?: string
+  saleCount?: number
+  rating?: number
+  reviewCount?: number
+  isActive?: boolean
+  typeProduct?: string
+  status?: string
+  note?: string
+  embedding?: number[]
+}
+
+export interface ProductUpdateInput {
+  name?: string
+  description?: string
+  productImages?: string[]
+  productVideo?: string
+  categoryId?: string[]
+  madeBy?: string
+  saleCount?: number
+  rating?: number
+  reviewCount?: number
+  isActive?: boolean
+  typeProduct?: string
+  status?: string
+  note?: string
+  embedding?: number[]
 }

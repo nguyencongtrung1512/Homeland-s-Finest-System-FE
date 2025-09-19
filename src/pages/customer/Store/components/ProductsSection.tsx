@@ -24,7 +24,7 @@ interface ProductsSectionProps {
   products: Product[]
 }
 
-const ProductsSection: FC<ProductsSectionProps> = ({ storeId, products }) => {
+const ProductsSection: FC<ProductsSectionProps> = ({ products }) => {
   const { addToCart, cart } = useCart()
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')

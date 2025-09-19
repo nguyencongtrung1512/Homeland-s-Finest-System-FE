@@ -1,52 +1,116 @@
-import React, { useEffect, useState } from 'react'
-import type { Product } from '../../../types/productType'
-import ProductCard from '../Products/Product/productCard'
+import { useEffect, useState } from 'react'
+import ProductCard, { type ProductCardData } from '../Products/Product/productCard'
 
-const FeaturedProducts: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([])
+function FeaturedProducts() {
+  const [products, setProducts] = useState<ProductCardData[]>([])
 
   useEffect(() => {
     async function fetchProducts() {
-
-      const data: Product[] = [
+      const data: ProductCardData[] = [
         {
-          id: 1,
+          id: '1',
+          storeId: 'store-1',
+          provinceId: 'province-1',
           name: 'Trà Shan Tuyết Cổ Thụ',
-          price: 450000,
-          image: 'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0',
-          location: 'Làng Suối Giàng, Yên Bái',
+          description:
+            'Trà Shan Tuyết cổ thụ được hái từ những cây trà cổ thụ hàng trăm năm tuổi tại vùng núi cao Yên Bái, mang hương vị đặc trưng và tinh tế.',
+          productImages: [
+            'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0'
+          ],
+          productVideo: '',
+          categoryId: ['cat-1', 'cat-2'],
+          madeBy: 'Nông sản Yên Bái',
+          saleCount: 89,
           rating: 5,
-          ratingCount: 127,
+          reviewCount: 127,
+          isActive: true,
+          typeProduct: 'Beverage',
+          status: 'active',
+          note: '',
+          embedding: [],
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-15T00:00:00Z',
+          // Thêm fields cho ProductCard
+          price: 450000,
+      
           badge: { text: 'VietGAP', color: 'bg-green-600' }
         },
         {
-          id: 2,
+          id: '2',
+          storeId: 'store-2',
+          provinceId: 'province-2',
           name: 'Cà Phê Robusta Đặc Biệt',
-          price: 320000,
-          image: 'https://tse4.mm.bing.net/th/id/OIP.eyClux-tbPJODVkWttmwdQHaFA?rs=1&pid=ImgDetMain&o=7&rm=3',
-          location: 'Nông trại Ea Kar, Đắk Lắk',
+          description:
+            'Cà phê Robusta được trồng và chế biến theo phương pháp truyền thống tại nông trại Ea Kar, Đắk Lắk với hương vị đậm đà đặc trưng.',
+          productImages: ['https://tse4.mm.bing.net/th/id/OIP.eyClux-tbPJODVkWttmwdQHaFA?rs=1&pid=ImgDetMain&o=7&rm=3'],
+          productVideo: '',
+          categoryId: ['cat-1'],
+          madeBy: 'Cà phê Tây Nguyên',
+          saleCount: 67,
           rating: 4,
-          ratingCount: 89,
+          reviewCount: 89,
+          isActive: true,
+          typeProduct: 'Beverage',
+          status: 'active',
+          note: '',
+          embedding: [],
+          createdAt: '2024-01-02T00:00:00Z',
+          updatedAt: '2024-01-16T00:00:00Z',
+          // Thêm fields cho ProductCard
+          price: 320000,
           badge: { text: 'OCOP 4 sao', color: 'bg-yellow-500' }
         },
         {
-          id: 3,
+          id: '3',
+          storeId: 'store-3',
+          provinceId: 'province-3',
           name: 'Bộ Ấm Chén Gốm Bát Tràng',
-          price: 1250000,
-          image: 'https://cbu01.alicdn.com/img/ibank/2016/511/227/3707722115_220681559.jpg',
-          location: 'Làng gốm Bát Tràng, Hà Nội',
+          description:
+            'Bộ ấm chén gốm Bát Tràng được làm thủ công bởi các nghệ nhân lành nghề, mang đậm nét văn hóa truyền thống Việt Nam.',
+          productImages: ['https://cbu01.alicdn.com/img/ibank/2016/511/227/3707722115_220681559.jpg'],
+          productVideo: '',
+          categoryId: ['cat-3'],
+          madeBy: 'Gốm Bát Tràng',
+          saleCount: 45,
           rating: 5,
-          ratingCount: 156,
+          reviewCount: 156,
+          isActive: true,
+          typeProduct: 'Handicraft',
+          status: 'active',
+          note: '',
+          embedding: [],
+          createdAt: '2024-01-03T00:00:00Z',
+          updatedAt: '2024-01-17T00:00:00Z',
+          // Thêm fields cho ProductCard
+          price: 1250000,
+          
           badge: { text: 'Thủ công', color: 'bg-red-500' }
         },
         {
-          id: 4,
+          id: '4',
+          storeId: 'store-4',
+          provinceId: 'province-4',
           name: 'Nước Mắm Phú Quốc',
-          price: 180000,
-          image: 'https://tse3.mm.bing.net/th/id/OIP.P9LAOlp5UA-1KAmvcXdPFAHaFj?w=206&h=180&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3',
-          location: 'Làng chài Hàm Ninh, Phú Quốc',
+          description:
+            'Nước mắm Phú Quốc được ủ chín từ cá cơm tươi ngon theo công thức truyền thống, mang hương vị đậm đà đặc trưng của biển.',
+          productImages: [
+            'https://tse3.mm.bing.net/th/id/OIP.P9LAOlp5UA-1KAmvcXdPFAHaFj?w=206&h=180&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3'
+          ],
+          productVideo: '',
+          categoryId: ['cat-4'],
+          madeBy: 'Mắm Phú Quốc',
+          saleCount: 123,
           rating: 4,
-          ratingCount: 203,
+          reviewCount: 203,
+          isActive: true,
+          typeProduct: 'Food',
+          status: 'active',
+          note: '',
+          embedding: [],
+          createdAt: '2024-01-04T00:00:00Z',
+          updatedAt: '2024-01-18T00:00:00Z',
+          // Thêm fields cho ProductCard
+          price: 180000,
           badge: { text: 'Truyền thống', color: 'bg-sky-500' }
         }
       ]

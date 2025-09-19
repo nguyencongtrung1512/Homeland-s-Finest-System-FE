@@ -1,6 +1,5 @@
-import React from 'react'
-import { Card, Button, Avatar, Tag } from 'antd'
-import { ArrowLeft, Store, User, FileText, Clock, Edit, Lock, Mail, Phone, CreditCard, Eye } from 'lucide-react'
+import { Card, Button, Avatar } from 'antd'
+import { ArrowLeft, Store, User, FileText, Clock, Edit, Lock, Mail, Phone, CreditCard } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 function StoreDetail() {

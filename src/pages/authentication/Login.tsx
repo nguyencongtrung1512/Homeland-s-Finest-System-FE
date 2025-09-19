@@ -1,4 +1,3 @@
-import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import LoginLayout from '../../Layouts/Authentication/loginLayout'
 import { Leaf, ThumbsUp } from 'lucide-react'

@@ -1,4 +1,3 @@
-import React from 'react'
 import { Card, Row, Col, Statistic, Select } from 'antd'
 import {
   Store,
@@ -12,10 +11,10 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
   ChartLegendContent,
+  ChartLegend,
 } from '../../../components/ui/chart'
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, XAxis, YAxis } from 'recharts'
 
 function StaffDashboard() {
   // Chart data

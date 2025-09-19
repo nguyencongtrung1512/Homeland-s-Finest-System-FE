@@ -1,51 +1,274 @@
 import { useState } from 'react'
 import VietnamMap, { type ProvinceProperties } from '../../../components/Province/VietnamMap'
 
-const provinceSpecialties = {
+// Interface cho đặc sản tỉnh thành
+interface Specialty {
+  id: string
+  name: string
+  price: string
+  image: string
+  rating: number
+  saleCount: number
+  // Thêm các field từ Product interface
+  storeId: string
+  provinceId: string
+  description: string
+  productImages: string[]
+  productVideo: string
+  categoryId: string[]
+  madeBy: string
+  isActive: boolean
+  typeProduct: string
+  status: string
+  note: string
+  embedding: number[]
+  createdAt: string
+  updatedAt: string
+}
+
+interface ProvinceSpecialties {
+  specialties: Specialty[]
+}
+
+const provinceSpecialties: Record<string, ProvinceSpecialties> = {
   'Hà Nội': {
     specialties: [
       {
+        id: 'hn-1',
         name: 'Bánh cuốn trôi',
         price: '25,000₫',
         image: 'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0',
         rating: 5,
-        saleCount: 333
+        saleCount: 333,
+        storeId: 'store-hn-1',
+        provinceId: 'province-hn',
+        description: 'Bánh cuốn trôi truyền thống Hà Nội với nhân thịt băm và nấm hương',
+        productImages: [
+          'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0'
+        ],
+        productVideo: '',
+        categoryId: ['cat-food'],
+        madeBy: 'Quán bánh cuốn Hà Nội',
+        isActive: true,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Đặc sản Hà Nội',
+        embedding: [],
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-15T00:00:00Z'
       },
       {
+        id: 'hn-2',
         name: 'Chả cá Lã Vọng',
         price: '120,000₫',
         image: 'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0',
         rating: 4,
-        saleCount: 63
+        saleCount: 63,
+        storeId: 'store-hn-2',
+        provinceId: 'province-hn',
+        description: 'Chả cá Lã Vọng nổi tiếng với hương vị đặc trưng',
+        productImages: [
+          'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0'
+        ],
+        productVideo: '',
+        categoryId: ['cat-food'],
+        madeBy: 'Nhà hàng Lã Vọng',
+        isActive: true,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Món ăn truyền thống Hà Nội',
+        embedding: [],
+        createdAt: '2024-01-02T00:00:00Z',
+        updatedAt: '2024-01-16T00:00:00Z'
       },
       {
+        id: 'hn-3',
         name: 'Bún chả',
         price: '45,000₫',
         image: 'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0',
         rating: 3,
-        saleCount: 3533
+        saleCount: 3533,
+        storeId: 'store-hn-3',
+        provinceId: 'province-hn',
+        description: 'Bún chả Hà Nội với thịt nướng thơm ngon',
+        productImages: [
+          'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0'
+        ],
+        productVideo: '',
+        categoryId: ['cat-food'],
+        madeBy: 'Quán bún chả Hà Nội',
+        isActive: true,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Món ăn đường phố nổi tiếng',
+        embedding: [],
+        createdAt: '2024-01-03T00:00:00Z',
+        updatedAt: '2024-01-17T00:00:00Z'
       },
       {
+        id: 'hn-4',
         name: 'Phở Hà Nội',
         price: '50,000₫',
         image: 'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0',
         rating: 2,
-        saleCount: 433
+        saleCount: 433,
+        storeId: 'store-hn-4',
+        provinceId: 'province-hn',
+        description: 'Phở bò Hà Nội truyền thống với nước dùng đậm đà',
+        productImages: [
+          'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0'
+        ],
+        productVideo: '',
+        categoryId: ['cat-food'],
+        madeBy: 'Quán phở Hà Nội',
+        isActive: true,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Món ăn quốc hồn quốc túy',
+        embedding: [],
+        createdAt: '2024-01-04T00:00:00Z',
+        updatedAt: '2024-01-18T00:00:00Z'
       }
     ]
   },
   'Hồ Chí Minh': {
     specialties: [
-      { name: 'Bánh mì Sài Gòn', price: '15,000₫', image: '/images/banh-mi.jpg', rating: 5, saleCount: 123 },
-      { name: 'Hủ tiếu Nam Vang', price: '45,000₫', image: '/images/hu-tieu.jpg', rating: 4, saleCount: 456 },
-      { name: 'Cơm tấm sườn', price: '35,000₫', image: '/images/com-tam.jpg', rating: 5, saleCount: 789 }
+      {
+        id: 'hcm-1',
+        name: 'Bánh mì Sài Gòn',
+        price: '15,000₫',
+        image: '/images/banh-mi.jpg',
+        rating: 5,
+        saleCount: 123,
+        storeId: 'store-hcm-1',
+        provinceId: 'province-hcm',
+        description: 'Bánh mì Sài Gòn với pate, thịt nướng và rau củ tươi ngon',
+        productImages: ['/images/banh-mi.jpg'],
+        productVideo: '',
+        categoryId: ['cat-food'],
+        madeBy: 'Quán bánh mì Sài Gòn',
+        isActive: true,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Đặc sản Sài Gòn',
+        embedding: [],
+        createdAt: '2024-01-05T00:00:00Z',
+        updatedAt: '2024-01-19T00:00:00Z'
+      },
+      {
+        id: 'hcm-2',
+        name: 'Hủ tiếu Nam Vang',
+        price: '45,000₫',
+        image: '/images/hu-tieu.jpg',
+        rating: 4,
+        saleCount: 456,
+        storeId: 'store-hcm-2',
+        provinceId: 'province-hcm',
+        description: 'Hủ tiếu Nam Vang với tôm, thịt và nước dùng đậm đà',
+        productImages: ['/images/hu-tieu.jpg'],
+        productVideo: '',
+        categoryId: ['cat-food'],
+        madeBy: 'Quán hủ tiếu Nam Vang',
+        isActive: true,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Món ăn đường phố Sài Gòn',
+        embedding: [],
+        createdAt: '2024-01-06T00:00:00Z',
+        updatedAt: '2024-01-20T00:00:00Z'
+      },
+      {
+        id: 'hcm-3',
+        name: 'Cơm tấm sườn',
+        price: '35,000₫',
+        image: '/images/com-tam.jpg',
+        rating: 5,
+        saleCount: 789,
+        storeId: 'store-hcm-3',
+        provinceId: 'province-hcm',
+        description: 'Cơm tấm sườn nướng với bì, chả và nước mắm pha',
+        productImages: ['/images/com-tam.jpg'],
+        productVideo: '',
+        categoryId: ['cat-food'],
+        madeBy: 'Quán cơm tấm Sài Gòn',
+        isActive: true,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Món ăn truyền thống miền Nam',
+        embedding: [],
+        createdAt: '2024-01-07T00:00:00Z',
+        updatedAt: '2024-01-21T00:00:00Z'
+      }
     ]
   },
   'Đà Nẵng': {
     specialties: [
-      { name: 'Mì Quảng', price: '40,000₫', image: '/images/mi-quang.jpg', rating: 5, saleCount: 210 },
-      { name: 'Bánh xèo tôm thịt', price: '30,000₫', image: '/images/banh-xeo.jpg', rating: 4, saleCount: 88 },
-      { name: 'Nem lụi nướng', price: '35,000₫', image: '/images/nem-lui.jpg', rating: 4, saleCount: 145 }
+      {
+        id: 'dn-1',
+        name: 'Mì Quảng',
+        price: '40,000₫',
+        image: '/images/mi-quang.jpg',
+        rating: 5,
+        saleCount: 210,
+        storeId: 'store-dn-1',
+        provinceId: 'province-dn',
+        description: 'Mì Quảng Đà Nẵng với tôm, thịt và bánh tráng nướng',
+        productImages: ['/images/mi-quang.jpg'],
+        productVideo: '',
+        categoryId: ['cat-food'],
+        madeBy: 'Quán mì Quảng Đà Nẵng',
+        isActive: true,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Đặc sản miền Trung',
+        embedding: [],
+        createdAt: '2024-01-08T00:00:00Z',
+        updatedAt: '2024-01-22T00:00:00Z'
+      },
+      {
+        id: 'dn-2',
+        name: 'Bánh xèo tôm thịt',
+        price: '30,000₫',
+        image: '/images/banh-xeo.jpg',
+        rating: 4,
+        saleCount: 88,
+        storeId: 'store-dn-2',
+        provinceId: 'province-dn',
+        description: 'Bánh xèo giòn với tôm, thịt và rau sống',
+        productImages: ['/images/banh-xeo.jpg'],
+        productVideo: '',
+        categoryId: ['cat-food'],
+        madeBy: 'Quán bánh xèo Đà Nẵng',
+        isActive: true,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Món ăn truyền thống miền Trung',
+        embedding: [],
+        createdAt: '2024-01-09T00:00:00Z',
+        updatedAt: '2024-01-23T00:00:00Z'
+      },
+      {
+        id: 'dn-3',
+        name: 'Nem lụi nướng',
+        price: '35,000₫',
+        image: '/images/nem-lui.jpg',
+        rating: 4,
+        saleCount: 145,
+        storeId: 'store-dn-3',
+        provinceId: 'province-dn',
+        description: 'Nem lụi nướng với thịt heo và gia vị đặc trưng',
+        productImages: ['/images/nem-lui.jpg'],
+        productVideo: '',
+        categoryId: ['cat-food'],
+        madeBy: 'Quán nem lụi Đà Nẵng',
+        isActive: true,
+        typeProduct: 'Food',
+        status: 'active',
+        note: 'Đặc sản ẩm thực miền Trung',
+        embedding: [],
+        createdAt: '2024-01-10T00:00:00Z',
+        updatedAt: '2024-01-24T00:00:00Z'
+      }
     ]
   }
 }
@@ -82,8 +305,8 @@ function VietnamSpecialtyMap() {
           <VietnamMap setSelectedProvince={setSelectedProvince} />
 
           <div className='absolute -top-6 -right-6 w-24 h-16 bg-red-600 flex items-center justify-center shadow-lg animate-pulse'>
-            <svg className="w-8 h-8 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            <svg className='w-8 h-8 text-yellow-400' viewBox='0 0 24 24' fill='currentColor'>
+              <path d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' />
             </svg>
           </div>
         </div>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Card, Input, Select, DatePicker, Button, Table, Avatar, Tag, Pagination } from 'antd'
+import { useState } from 'react'
+import { Card, Input, Select, DatePicker, Button, Table, Tag, Pagination } from 'antd'
 import { Search, Filter, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'

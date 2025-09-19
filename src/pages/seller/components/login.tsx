@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '~/components/ui/button'
-import { Input } from '~/components/ui/input'
-import { Label } from '~/components/ui/label'
-import { Checkbox } from '~/components/ui/checkbox'
-import { path } from '~/constants/path'
+import path from '../../../constants/path'
+import { Label } from '../../../components/ui/label'
+import { Input } from '../../../components/ui/input'
+import { Checkbox } from '../../../components/ui/checkbox'
+import { Button } from '../../../components/ui/button'
+
 
 function SellerLogin() {
   const navigate = useNavigate()

@@ -1,4 +1,3 @@
-import React, { useState } from 'react'
 import { ArrowLeft, X, Check, XCircle, User, Mail, Phone, Home, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/button'
@@ -21,13 +20,13 @@ function DetailProduct() {
     console.log('Rejecting product')
   }
 
-  const handleCancel = () => {
-    console.log('Canceling action')
-  }
+  // const handleCancel = () => {
+  //   console.log('Canceling action')
+  // }
 
-  const handleConfirm = () => {
-    console.log('Confirming action')
-  }
+  // const handleConfirm = () => {
+  //   console.log('Confirming action')
+  // }
 
   return (
     <div className='space-y-6'>
