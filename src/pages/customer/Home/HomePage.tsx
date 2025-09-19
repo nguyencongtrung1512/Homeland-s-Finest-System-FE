@@ -1,12 +1,13 @@
 import FeaturedProducts from './featuredProducts'
 import HandicraftProducts from './handicraftProducts'
 import VietnamSpecialtyMap from './VietnamSpecialtyMap'
+import BannerWelcome from '../../../assets/BannerWelcome.png'
 
 function HomePage() {
   return (
     <main>
       <section className='relative w-full'>
-        <img src={'/src/assets/BannerWelcome.png'} alt='Tinh Hoa Quê Nhà' className='h-[420px] w-full object-cover' />
+        <img src={BannerWelcome} alt='Tinh Hoa Quê Nhà' className='h-[420px] w-full object-cover' />
         <div className='absolute inset-0 bg-lime-900/35' />
 
         <div className='absolute left-6 top-1/2 z-10 -translate-y-1/2 sm:left-12 md:left-16 lg:left-20'>
