@@ -1,1 +1,3 @@
-export { default } from './storePage'
+import StorePage from './storePage'
+
+export default StorePage

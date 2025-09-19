@@ -50,8 +50,10 @@ import TransactionManagementAdmin from './pages/admin/transactionManager/transac
 import BlogList from './pages/admin/blogManagerment/list'
 import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
 import OrderManagementStaff from './pages/staff/orderManager/list'
-import StorePage from './pages/customer/store'
-import Stories from './pages/customer/stories'
+import StoryWithSeller from './pages/customer/storyWithSeller'
+import StorePage from './pages/customer/store/storePage'
+
+
 export default function useRouteElements() {
   const routeElements = useRoutes([
     // CUSTOMER routes
@@ -90,7 +92,7 @@ export default function useRouteElements() {
         // Stories pages with dedicated layout
         {
           path: path.stories,
-          element: <Stories />
+          element: <StoryWithSeller />
         }
       ]
     },

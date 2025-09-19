@@ -16,7 +16,7 @@ interface StoryData {
   tags: string[]
 }
 
-const Stories: React.FC = () => {
+const StoryWithSeller: React.FC = () => {
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -166,4 +166,4 @@ const Stories: React.FC = () => {
   )
 }
 
-export default Stories
+export default StoryWithSeller
