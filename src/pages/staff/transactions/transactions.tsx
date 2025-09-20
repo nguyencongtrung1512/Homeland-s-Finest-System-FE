@@ -308,10 +308,11 @@ function TransactionManagement() {
                   variant={currentPage === page ? 'default' : 'ghost'}
                   size='sm'
                   onClick={() => setCurrentPage(page)}
-                  className={`h-8 w-8 p-0 ${currentPage === page
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
+                  className={`h-8 w-8 p-0 ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
                 >
                   {page}
                 </Button>

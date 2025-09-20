@@ -38,7 +38,8 @@ function ReportDetail() {
     customerPhone: '0123 456 789',
     customerAvatar: 'NM',
     reportReason: 'Sản phẩm giả mạo',
-    reportDescription: 'Sản phẩm này có chất lượng rất kém, không giống như mô tả. Tôi nghi ngờ đây là hàng giả mạo vì logo và bao bì trông rất khác so với sản phẩm chính hãng.',
+    reportDescription:
+      'Sản phẩm này có chất lượng rất kém, không giống như mô tả. Tôi nghi ngờ đây là hàng giả mạo vì logo và bao bì trông rất khác so với sản phẩm chính hãng.',
     reportEvidence: [
       '/api/placeholder/80/80',
       '/api/placeholder/80/80',
@@ -218,9 +219,7 @@ function ReportDetail() {
                   <p className='text-lg font-bold text-gray-900 mt-2'>
                     {report.productPrice.toLocaleString('vi-VN')} VNĐ
                   </p>
-                  <Badge className='bg-green-100 text-green-600 mt-2'>
-                    {report.productStatus}
-                  </Badge>
+                  <Badge className='bg-green-100 text-green-600 mt-2'>{report.productStatus}</Badge>
                 </div>
               </div>
             </CardContent>
@@ -247,9 +246,7 @@ function ReportDetail() {
                         <span className='text-xs text-gray-500'>{item.time}</span>
                       </div>
                       <p className='text-sm text-gray-600 mt-1'>{item.user}</p>
-                      {item.description && (
-                        <p className='text-sm text-gray-500 mt-1'>{item.description}</p>
-                      )}
+                      {item.description && <p className='text-sm text-gray-500 mt-1'>{item.description}</p>}
                     </div>
                   </div>
                 ))}
@@ -267,32 +264,19 @@ function ReportDetail() {
             </CardHeader>
             <CardContent>
               <div className='grid grid-cols-2 gap-3'>
-                <Button
-                  onClick={handleMarkProcessing}
-                  className='bg-blue-600 hover:bg-blue-700 text-white h-12'
-                >
+                <Button onClick={handleMarkProcessing} className='bg-blue-600 hover:bg-blue-700 text-white h-12'>
                   <RefreshCw className='w-4 h-4 mr-2' />
                   <span className='text-sm'>Đánh dấu 'Đang xử lý'</span>
                 </Button>
-                <Button
-                  onClick={handleMarkProcessed}
-                  className='bg-green-600 hover:bg-green-700 text-white h-12'
-                >
+                <Button onClick={handleMarkProcessed} className='bg-green-600 hover:bg-green-700 text-white h-12'>
                   <CheckCircle className='w-4 h-4 mr-2' />
                   <span className='text-sm'>Đã xử lý</span>
                 </Button>
-                <Button
-                  onClick={handleLockProduct}
-                  className='bg-red-600 hover:bg-red-700 text-white h-12'
-                >
+                <Button onClick={handleLockProduct} className='bg-red-600 hover:bg-red-700 text-white h-12'>
                   <Lock className='w-4 h-4 mr-2' />
                   <span className='text-sm'>Khóa sản phẩm</span>
                 </Button>
-                <Button
-                  onClick={handleSendFeedback}
-                  variant='outline'
-                  className='h-12'
-                >
+                <Button onClick={handleSendFeedback} variant='outline' className='h-12'>
                   <Mail className='w-4 h-4 mr-2' />
                   <span className='text-sm'>Gửi phản hồi</span>
                 </Button>

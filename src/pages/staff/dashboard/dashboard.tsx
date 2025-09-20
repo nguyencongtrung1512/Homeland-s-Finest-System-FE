@@ -1,18 +1,11 @@
 import { Card, Row, Col, Statistic, Select } from 'antd'
-import {
-  Store,
-  Clock,
-  BarChart3,
-  AlertTriangle,
-  Lock,
-  TrendingUp
-} from 'lucide-react'
+import { Store, Clock, BarChart3, AlertTriangle, Lock, TrendingUp } from 'lucide-react'
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   ChartLegendContent,
-  ChartLegend,
+  ChartLegend
 } from '../../../components/ui/chart'
 import { Bar, BarChart, XAxis, YAxis } from 'recharts'
 
@@ -29,7 +22,7 @@ function StaffDashboard() {
     { period: 'T9', revenue: 662000000 },
     { period: 'T10', revenue: 22550000 },
     { period: 'T11', revenue: 22000000 },
-    { period: 'T12', revenue: 220000000 },
+    { period: 'T12', revenue: 220000000 }
   ]
 
   const ordersTransactionsData = [
@@ -39,22 +32,22 @@ function StaffDashboard() {
     { period: 'T5', orders: 92, transactions: 72 },
     { period: 'T6', orders: 65, transactions: 45 },
     { period: 'T7', orders: 0, transactions: 0 },
-    { period: 'CN', orders: 0, transactions: 0 },
+    { period: 'CN', orders: 0, transactions: 0 }
   ]
 
   const chartConfig = {
     revenue: {
       label: 'Doanh thu',
-      color: '#fa8c16',
+      color: '#fa8c16'
     },
     orders: {
       label: 'Đơn hàng',
-      color: '#52c41a',
+      color: '#52c41a'
     },
     transactions: {
       label: 'Giao dịch',
-      color: '#fa8c16',
-    },
+      color: '#fa8c16'
+    }
   }
 
   return (
@@ -64,9 +57,9 @@ function StaffDashboard() {
         <Col xs={24} sm={12} lg={8} xl={4}>
           <Card>
             <Statistic
-              title="Cửa hàng"
+              title='Cửa hàng'
               value={24}
-              prefix={<Store size={20} color="#1890ff" />}
+              prefix={<Store size={20} color='#1890ff' />}
               valueStyle={{ color: '#1890ff' }}
             />
           </Card>
@@ -74,9 +67,9 @@ function StaffDashboard() {
         <Col xs={24} sm={12} lg={8} xl={4}>
           <Card>
             <Statistic
-              title="Sản phẩm chờ"
+              title='Sản phẩm chờ'
               value={156}
-              prefix={<Clock size={20} color="#fa8c16" />}
+              prefix={<Clock size={20} color='#fa8c16' />}
               valueStyle={{ color: '#fa8c16' }}
             />
           </Card>
@@ -84,9 +77,9 @@ function StaffDashboard() {
         <Col xs={24} sm={12} lg={8} xl={4}>
           <Card>
             <Statistic
-              title="Giao dịch hôm nay"
+              title='Giao dịch hôm nay'
               value={1247}
-              prefix={<BarChart3 size={20} color="#52c41a" />}
+              prefix={<BarChart3 size={20} color='#52c41a' />}
               valueStyle={{ color: '#52c41a' }}
             />
           </Card>
@@ -94,9 +87,9 @@ function StaffDashboard() {
         <Col xs={24} sm={12} lg={8} xl={4}>
           <Card>
             <Statistic
-              title="Báo cáo"
+              title='Báo cáo'
               value={12}
-              prefix={<AlertTriangle size={20} color="#ff4d4f" />}
+              prefix={<AlertTriangle size={20} color='#ff4d4f' />}
               valueStyle={{ color: '#ff4d4f' }}
             />
           </Card>
@@ -104,9 +97,9 @@ function StaffDashboard() {
         <Col xs={24} sm={12} lg={8} xl={4}>
           <Card>
             <Statistic
-              title="Cửa hàng bị khóa"
+              title='Cửa hàng bị khóa'
               value={5}
-              prefix={<Lock size={20} color="#8c8c8c" />}
+              prefix={<Lock size={20} color='#8c8c8c' />}
               valueStyle={{ color: '#8c8c8c' }}
             />
           </Card>
@@ -114,9 +107,9 @@ function StaffDashboard() {
         <Col xs={24} sm={12} lg={8} xl={4}>
           <Card>
             <Statistic
-              title="Doanh thu"
-              value="2.4M"
-              prefix={<TrendingUp size={20} color="#722ed1" />}
+              title='Doanh thu'
+              value='2.4M'
+              prefix={<TrendingUp size={20} color='#722ed1' />}
               valueStyle={{ color: '#722ed1' }}
             />
           </Card>
@@ -127,23 +120,18 @@ function StaffDashboard() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card
-            title="Doanh thu"
+            title='Doanh thu'
             extra={
-              <Select defaultValue="2025" style={{ width: 80 }}>
-                <Select.Option value="2025">2025</Select.Option>
-                <Select.Option value="2024">2024</Select.Option>
-                <Select.Option value="2023">2023</Select.Option>
+              <Select defaultValue='2025' style={{ width: 80 }}>
+                <Select.Option value='2025'>2025</Select.Option>
+                <Select.Option value='2024'>2024</Select.Option>
+                <Select.Option value='2023'>2023</Select.Option>
               </Select>
             }
           >
-            <ChartContainer config={chartConfig} className="h-[300px]">
+            <ChartContainer config={chartConfig} className='h-[300px]'>
               <BarChart data={revenueData}>
-                <XAxis
-                  dataKey="period"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                />
+                <XAxis dataKey='period' tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
@@ -152,60 +140,31 @@ function StaffDashboard() {
                 />
                 <ChartTooltip
                   content={
-                    <ChartTooltipContent
-                      formatter={(value) => [
-                        `${value.toLocaleString('vi-VN')}₫`,
-                        'Doanh thu'
-                      ]}
-                    />
+                    <ChartTooltipContent formatter={(value) => [`${value.toLocaleString('vi-VN')}₫`, 'Doanh thu']} />
                   }
                 />
-                <Bar
-                  dataKey="revenue"
-                  fill="var(--color-revenue)"
-                  radius={[4, 4, 0, 0]}
-                />
+                <Bar dataKey='revenue' fill='var(--color-revenue)' radius={[4, 4, 0, 0]} />
               </BarChart>
             </ChartContainer>
           </Card>
         </Col>
 
         <Col xs={24} lg={12}>
-          <Card title="Đơn hàng vs Giao dịch">
-            <ChartContainer config={chartConfig} className="h-[300px]">
+          <Card title='Đơn hàng vs Giao dịch'>
+            <ChartContainer config={chartConfig} className='h-[300px]'>
               <BarChart data={ordersTransactionsData}>
-                <XAxis
-                  dataKey="period"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                />
+                <XAxis dataKey='period' tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(value, name) => [
-                        value,
-                        name === 'orders' ? 'Đơn hàng' : 'Giao dịch'
-                      ]}
+                      formatter={(value, name) => [value, name === 'orders' ? 'Đơn hàng' : 'Giao dịch']}
                     />
                   }
                 />
                 <ChartLegend content={<ChartLegendContent />} />
-                <Bar
-                  dataKey="orders"
-                  fill="var(--color-orders)"
-                  radius={[2, 2, 0, 0]}
-                />
-                <Bar
-                  dataKey="transactions"
-                  fill="var(--color-transactions)"
-                  radius={[2, 2, 0, 0]}
-                />
+                <Bar dataKey='orders' fill='var(--color-orders)' radius={[2, 2, 0, 0]} />
+                <Bar dataKey='transactions' fill='var(--color-transactions)' radius={[2, 2, 0, 0]} />
               </BarChart>
             </ChartContainer>
           </Card>
@@ -215,7 +174,7 @@ function StaffDashboard() {
       {/* Lists Section */}
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
-          <Card title="Cửa hàng có doanh thu cao">
+          <Card title='Cửa hàng có doanh thu cao'>
             <div className='space-y-4'>
               <div className='flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200'>
                 <div className='flex items-center gap-3'>
@@ -245,7 +204,7 @@ function StaffDashboard() {
         </Col>
 
         <Col xs={24} lg={12}>
-          <Card title="Báo cáo chờ xử lí">
+          <Card title='Báo cáo chờ xử lí'>
             <div className='space-y-4'>
               <div className='flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200'>
                 <div className='flex items-center gap-3'>

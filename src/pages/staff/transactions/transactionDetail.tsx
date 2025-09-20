@@ -203,8 +203,9 @@ function TransactionDetail({ transaction, open, onClose }: TransactionDetailProp
                   <div key={index} className='flex items-center gap-2'>
                     <div className='flex flex-col items-center'>
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center ${item.completed ? 'bg-green-100' : 'bg-gray-100'
-                          }`}
+                        className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                          item.completed ? 'bg-green-100' : 'bg-gray-100'
+                        }`}
                       >
                         {item.completed ? (
                           <CheckCircle className='w-3 h-3 text-green-600' />

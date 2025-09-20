@@ -3,11 +3,7 @@ function Discover() {
     <section className='relative w-full h-[300px] overflow-hidden'>
       {/* Background Image */}
       <div className='absolute inset-0'>
-        <img
-          src='/src/assets/discover.png'
-          alt='Nông dân thu hoạch lúa'
-          className='w-full h-full object-cover'
-        />
+        <img src='/src/assets/discover.png' alt='Nông dân thu hoạch lúa' className='w-full h-full object-cover' />
         {/* Dark overlay */}
         <div className='absolute inset-0 bg-black/40' />
       </div>

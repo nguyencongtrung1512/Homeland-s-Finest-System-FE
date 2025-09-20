@@ -4,9 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import path from '../../../constants/path'
 import { Label } from '../../../components/ui/label'
 import { Input } from '../../../components/ui/input'
-import { Checkbox } from '../../../components/ui/checkbox'
 import { Button } from '../../../components/ui/button'
-
 
 function SellerLogin() {
   const navigate = useNavigate()
@@ -19,7 +17,7 @@ function SellerLogin() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
@@ -43,17 +41,19 @@ function SellerLogin() {
 
   return (
     <div className='w-full'>
-      {/* Welcome Title */}
-      <div className='text-center mb-4'>
-        <h2 className='text-lg font-semibold text-gray-800 mb-1'>Chào mừng đối tác</h2>
+      {/* Welcome Title - Hidden on mobile since it's in layout */}
+      <div className='text-center mb-6 hidden md:block'>
+        <h2 className='text-xl font-semibold text-gray-800 mb-2'>Chào mừng đối tác</h2>
         <p className='text-sm text-gray-600'>Đăng nhập để quản lý cửa hàng của bạn</p>
       </div>
 
       {/* Login Form */}
-      <form onSubmit={handleSubmit} className='space-y-4'>
+      <form onSubmit={handleSubmit} className='space-y-5'>
         {/* Email Field */}
         <div className='space-y-2'>
-          <Label htmlFor='email'>Email / Số điện thoại</Label>
+          <Label htmlFor='email' className='text-sm font-medium text-gray-700'>
+            Email / Số điện thoại
+          </Label>
           <Input
             id='email'
             type='text'
@@ -61,13 +61,15 @@ function SellerLogin() {
             value={formData.email}
             onChange={handleInputChange}
             placeholder='Nhập email hoặc số điện thoại'
-            className='w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:border-gray-300'
+            className='w-full h-12 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors'
           />
         </div>
 
         {/* Password Field */}
         <div className='space-y-2'>
-          <Label htmlFor='password'>Mật khẩu</Label>
+          <Label htmlFor='password' className='text-sm font-medium text-gray-700'>
+            Mật khẩu
+          </Label>
           <div className='relative'>
             <Input
               id='password'
@@ -76,69 +78,70 @@ function SellerLogin() {
               value={formData.password}
               onChange={handleInputChange}
               placeholder='Nhập mật khẩu'
-              className='w-full pr-10 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:border-gray-300'
+              className='w-full h-12 px-4 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors'
             />
             <button
               type='button'
               onClick={() => setShowPassword(!showPassword)}
-              className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600'
+              className='absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors'
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
         </div>
 
         {/* Remember Me and Forgot Password */}
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center space-x-2'>
-            <Checkbox
-              id='rememberMe'
-              name='rememberMe'
-              checked={formData.rememberMe}
-              onCheckedChange={(checked) => 
-                setFormData(prev => ({ ...prev, rememberMe: checked as boolean }))
-              }
-            />
-            <Label htmlFor='rememberMe' className='text-sm text-gray-600'>
-              Ghi nhớ đăng nhập
-            </Label>
-          </div>
+        <div className='flex items-center justify-end pt-2'>
           <button
             type='button'
             onClick={handleForgotPassword}
-            className='text-sm text-green-600 hover:text-green-700 font-medium'
+            className='text-sm text-green-600 hover:text-green-700 font-medium transition-colors'
           >
             Quên mật khẩu?
           </button>
         </div>
 
         {/* Login Button */}
-        <Button type='submit' className='w-full bg-green-600 hover:bg-green-700'>
+        <Button
+          type='submit'
+          className='w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-md hover:shadow-lg'
+        >
           Đăng nhập →
         </Button>
 
         {/* Registration Section */}
-        <div className='text-center space-y-3 pt-4'>
-          <p className='text-sm text-gray-500'>Chưa có tài khoản?</p>
-          <p className='text-sm text-gray-600'>Tham gia cộng đồng người bán</p>
-          <Button 
-            type='button' 
-            variant='outline' 
-            className='w-full border-green-600 text-green-600 hover:bg-green-50'
-            onClick={handleRegister}
-          >
-            Đăng ký bán hàng
-          </Button>
+        <div className='text-center space-y-4 pt-3'>
+          <div className='relative'>
+            <div className='absolute inset-0 flex items-center'>
+              <div className='w-full border-t border-gray-200'></div>
+            </div>
+            <div className='relative flex justify-center text-sm'>
+              <span className='px-4 bg-white text-gray-500'>Hoặc</span>
+            </div>
+          </div>
+
+          <div className='space-y-3'>
+            <p className='text-sm text-gray-500'>Chưa có tài khoản?</p>
+            <p className='text-sm text-gray-600'>Tham gia cộng đồng người bán</p>
+            <Button
+              type='button'
+              variant='outline'
+              className='w-full h-12 border-2 border-green-600 text-green-600 hover:bg-green-50 font-semibold rounded-lg transition-colors'
+              onClick={handleRegister}
+            >
+              Đăng ký bán hàng
+            </Button>
+          </div>
         </div>
 
         {/* Terms and Privacy */}
-        <div className='text-center pt-4 border-t border-gray-200'>
-          <p className='text-xs text-gray-500 mb-2'>Bằng việc đăng nhập, bạn đồng ý với</p>
+        <div className='text-center pt-6 border-t border-gray-200'>
+          <p className='text-xs text-gray-500 mb-3'>Bằng việc đăng nhập, bạn đồng ý với</p>
           <div className='space-x-4 text-xs text-green-600'>
-            <button type='button' className='hover:underline'>
+            <button type='button' className='hover:underline transition-colors'>
               Điều khoản sử dụng
             </button>
-            <button type='button' className='hover:underline'>
+            <button type='button' className='hover:underline transition-colors'>
               Chính sách bảo mật
             </button>
           </div>

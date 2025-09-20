@@ -344,7 +344,7 @@ function TermsManagement() {
             {/* Content Field */}
             <div className='space-y-2'>
               <Label htmlFor='content'>Nội dung</Label>
-              <div >
+              <div>
                 <ReactQuill
                   theme='snow'
                   value={formData.content}
@@ -359,7 +359,7 @@ function TermsManagement() {
                       ['clean']
                     ]
                   }}
-                  className="h-[200px]"
+                  className='h-[200px]'
                 />
               </div>
             </div>

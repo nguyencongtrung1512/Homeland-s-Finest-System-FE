@@ -53,7 +53,6 @@ import OrderManagementStaff from './pages/staff/orderManager/list'
 import StoryWithSeller from './pages/customer/storyWithSeller'
 import StorePage from './pages/customer/storeSeller/storePage'
 
-
 export default function useRouteElements() {
   const routeElements = useRoutes([
     // CUSTOMER routes
@@ -89,7 +88,6 @@ export default function useRouteElements() {
           path: path.store,
           element: <StorePage />
         },
-        // Stories pages with dedicated layout
         {
           path: path.stories,
           element: <StoryWithSeller />
@@ -112,13 +110,14 @@ export default function useRouteElements() {
       element: <IntroPage />
     },
     {
-      path: path.loginSeller,
-      element: <SellerLoginLayout />
-    },
-    {
       path: path.registerSeller,
       element: <SellerRegisterPage />
     },
+    {
+      path: path.loginSeller,
+      element: <SellerLoginLayout />
+    },
+    // =================================SELLER================================
     {
       path: '/',
       element: <SellerLayout />,
@@ -194,7 +193,8 @@ export default function useRouteElements() {
       element: <NewPassword />
     },
 
-    // STAFF routes
+    // =================================STAFF================================
+
     {
       path: '/',
       element: <StaffLayout />,
@@ -245,7 +245,7 @@ export default function useRouteElements() {
         }
       ]
     },
-    // ADMIN routes
+    // =================================ADMIN================================
     {
       path: '/',
       element: <AdminLayout />,

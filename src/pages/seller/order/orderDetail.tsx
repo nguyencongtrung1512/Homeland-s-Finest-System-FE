@@ -131,11 +131,7 @@ function OrderDetail() {
           </Badge>
         )
       default:
-        return (
-          <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>
-            {status}
-          </Badge>
-        )
+        return <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>{status}</Badge>
     }
   }
 
@@ -178,10 +174,7 @@ function OrderDetail() {
         )
       case 'confirmed':
         return (
-          <Button
-            className='bg-blue-600 hover:bg-blue-700 text-white'
-            onClick={() => handleStatusChange('delivering')}
-          >
+          <Button className='bg-blue-600 hover:bg-blue-700 text-white' onClick={() => handleStatusChange('delivering')}>
             <Truck className='w-4 h-4 mr-2' />
             BẮT ĐẦU GIAO HÀNG
           </Button>
@@ -210,11 +203,7 @@ function OrderDetail() {
           </>
         )
       case 'cancelled':
-        return (
-          <div className='text-sm text-gray-500'>
-            Đơn hàng đã bị hủy
-          </div>
-        )
+        return <div className='text-sm text-gray-500'>Đơn hàng đã bị hủy</div>
       default:
         return null
     }
@@ -234,9 +223,7 @@ function OrderDetail() {
             <ArrowLeft className='w-4 h-4' />
           </Button>
           <div>
-            <h1 className='text-2xl font-bold text-gray-900'>
-              Chi tiết Đơn hàng #{orderData.id}
-            </h1>
+            <h1 className='text-2xl font-bold text-gray-900'>Chi tiết Đơn hàng #{orderData.id}</h1>
             <p className='text-gray-600 mt-1'>Ngày đặt: {orderData.date}</p>
           </div>
         </div>
@@ -320,9 +307,7 @@ function OrderDetail() {
               <div className='space-y-4'>
                 {orderData.history.map((item) => (
                   <div key={item.id} className='flex items-start gap-3'>
-                    <div className='flex-shrink-0 mt-1'>
-                      {getStatusIcon(item.status)}
-                    </div>
+                    <div className='flex-shrink-0 mt-1'>{getStatusIcon(item.status)}</div>
                     <div className='flex-1'>
                       <p className='text-sm text-gray-900'>{item.action}</p>
                       <p className='text-xs text-gray-500'>{item.timestamp}</p>
@@ -415,9 +400,7 @@ function OrderDetail() {
             <CardContent>
               <div className='space-y-3'>
                 {getActionButtons()}
-                {orderStatus === 'cancelled' && (
-                  <p className='text-xs text-gray-500'>Hủy đơn cần lý do hủy</p>
-                )}
+                {orderStatus === 'cancelled' && <p className='text-xs text-gray-500'>Hủy đơn cần lý do hủy</p>}
               </div>
             </CardContent>
           </Card>

@@ -65,7 +65,7 @@ export default function AddressContent({
       ) : (
         <div className='space-y-4'>
           {addresses.map((address, index) => (
-            <div 
+            <div
               key={address.id}
               className='transform transition-all duration-300 hover:scale-[1.02] hover:shadow-md'
               style={{ animationDelay: `${index * 100}ms` }}

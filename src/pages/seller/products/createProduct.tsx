@@ -470,8 +470,6 @@ function CreateProduct() {
               </div>
             </CardContent>
           </Card>
-
-          
         </div>
       </div>
 

@@ -1,4 +1,3 @@
-
 import RegisterLayout from '../../Layouts/Authentication/registerLayout'
 import { Leaf, ThumbsUp } from 'lucide-react'
 import logoImage from '../../assets/luachin2-7984.webp'

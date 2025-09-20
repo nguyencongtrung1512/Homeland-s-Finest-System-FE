@@ -45,10 +45,7 @@ function ProductsSeller() {
       {/* Header */}
       <div className='flex justify-between items-center mb-6'>
         <h1 className='text-2xl font-semibold text-gray-900'>Quản lý sản phẩm</h1>
-        <Button
-          className='bg-green-600 hover:bg-green-700'
-          onClick={handleCreateProduct}
-        >
+        <Button className='bg-green-600 hover:bg-green-700' onClick={handleCreateProduct}>
           <Plus className='w-4 h-4 mr-2' />
           Thêm sản phẩm mới
         </Button>

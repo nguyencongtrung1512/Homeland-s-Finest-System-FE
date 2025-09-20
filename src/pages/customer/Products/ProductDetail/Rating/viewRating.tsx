@@ -1,4 +1,3 @@
-
 export const ViewRating: React.FC = () => {
   return (
     <section className='max-w-6xl mx-auto px-6 py-8'>
@@ -9,9 +8,7 @@ export const ViewRating: React.FC = () => {
           <div className='flex items-center gap-4'>
             <div className='flex items-center gap-2'>
               <span className='text-3xl font-bold text-gray-900'>4.9</span>
-              <div className='flex text-yellow-500 text-xl'>
-                {'★'.repeat(5)}
-              </div>
+              <div className='flex text-yellow-500 text-xl'>{'★'.repeat(5)}</div>
             </div>
             <span className='text-gray-600'>(47 đánh giá)</span>
           </div>
@@ -61,15 +58,13 @@ export const ViewRating: React.FC = () => {
             <div className='flex-1'>
               <div className='flex items-center gap-2 mb-2'>
                 <span className='font-medium text-gray-900'>Nguyễn Thị Lan</span>
-                <div className='flex text-yellow-500'>
-                  {'★'.repeat(5)}
-                </div>
+                <div className='flex text-yellow-500'>{'★'.repeat(5)}</div>
                 <span className='text-sm text-gray-500'>15/12/2024</span>
               </div>
 
               <p className='text-gray-700 mb-4'>
-                Mật ong rất ngon, vị ngọt tự nhiên, không bị pha trộn. Đóng gói cẩn thận, giao hàng nhanh.
-                Gia đình tôi rất hài lòng với sản phẩm này.
+                Mật ong rất ngon, vị ngọt tự nhiên, không bị pha trộn. Đóng gói cẩn thận, giao hàng nhanh. Gia đình tôi
+                rất hài lòng với sản phẩm này.
               </p>
 
               {/* Product Images */}

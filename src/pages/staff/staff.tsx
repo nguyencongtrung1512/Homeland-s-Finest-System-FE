@@ -1,7 +1,5 @@
 function staff() {
-  return (
-    <div>staff</div>
-  )
+  return <div>staff</div>
 }
 
 export default staff

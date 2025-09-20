@@ -4,12 +4,7 @@ import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
-import {
-  Upload,
-  Image as ImageIcon,
-  Save,
-  X
-} from 'lucide-react'
+import { Upload, Image as ImageIcon, Save, X } from 'lucide-react'
 
 function SetupStore() {
   const [activeTab, setActiveTab] = useState('basic')
@@ -22,7 +17,7 @@ function SetupStore() {
   })
 
   const handleInputChange = (field: string, value: string) => {
-    setStoreData(prev => ({
+    setStoreData((prev) => ({
       ...prev,
       [field]: value
     }))
@@ -60,19 +55,17 @@ function SetupStore() {
       <div className='flex space-x-8 border-b border-gray-200 mb-8'>
         <button
           onClick={() => setActiveTab('basic')}
-          className={`pb-3 text-sm font-medium transition-colors ${activeTab === 'basic'
-            ? 'text-green-600 border-b-2 border-green-600'
-            : 'text-gray-600 hover:text-gray-900'
-            }`}
+          className={`pb-3 text-sm font-medium transition-colors ${
+            activeTab === 'basic' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-600 hover:text-gray-900'
+          }`}
         >
           Thông tin cơ bản
         </button>
         <button
           onClick={() => setActiveTab('legal')}
-          className={`pb-3 text-sm font-medium transition-colors ${activeTab === 'legal'
-            ? 'text-green-600 border-b-2 border-green-600'
-            : 'text-gray-600 hover:text-gray-900'
-            }`}
+          className={`pb-3 text-sm font-medium transition-colors ${
+            activeTab === 'legal' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-600 hover:text-gray-900'
+          }`}
         >
           Pháp lý & Chứng nhận
         </button>
@@ -91,16 +84,11 @@ function SetupStore() {
                     <ImageIcon className='w-8 h-8 text-gray-400' />
                   </div>
                   <div className='flex-1'>
-                    <Button
-                      onClick={handleLogoUpload}
-                      className='bg-green-600 hover:bg-green-700 text-white mb-2'
-                    >
+                    <Button onClick={handleLogoUpload} className='bg-green-600 hover:bg-green-700 text-white mb-2'>
                       <Upload className='w-4 h-4 mr-2' />
                       Tải lên Logo
                     </Button>
-                    <p className='text-sm text-gray-500'>
-                      Khuyến nghị: 200x200px, định dạng PNG hoặc JPG
-                    </p>
+                    <p className='text-sm text-gray-500'>Khuyến nghị: 200x200px, định dạng PNG hoặc JPG</p>
                   </div>
                 </div>
               </div>
@@ -111,16 +99,11 @@ function SetupStore() {
                 <div className='border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-gray-400 transition-colors'>
                   <div className='flex flex-col items-center'>
                     <ImageIcon className='w-16 h-16 text-gray-400 mb-4' />
-                    <Button
-                      onClick={handleCoverUpload}
-                      className='bg-green-600 hover:bg-green-700 text-white mb-2'
-                    >
+                    <Button onClick={handleCoverUpload} className='bg-green-600 hover:bg-green-700 text-white mb-2'>
                       <Upload className='w-4 h-4 mr-2' />
                       Tải lên ảnh bìa
                     </Button>
-                    <p className='text-sm text-gray-500'>
-                      Khuyến nghị: 1200x400px, định dạng PNG hoặc JPG
-                    </p>
+                    <p className='text-sm text-gray-500'>Khuyến nghị: 1200x400px, định dạng PNG hoặc JPG</p>
                   </div>
                 </div>
               </div>
@@ -186,18 +169,11 @@ function SetupStore() {
 
           {/* Action Buttons */}
           <div className='flex justify-end gap-4 pt-8 border-t border-gray-200 mt-8'>
-            <Button
-              variant='outline'
-              onClick={handleCancel}
-              className='border-gray-300 text-gray-700 hover:bg-gray-50'
-            >
+            <Button variant='outline' onClick={handleCancel} className='border-gray-300 text-gray-700 hover:bg-gray-50'>
               <X className='w-4 h-4 mr-2' />
               Hủy bỏ
             </Button>
-            <Button
-              onClick={handleSave}
-              className='bg-yellow-500 hover:bg-yellow-600 text-white'
-            >
+            <Button onClick={handleSave} className='bg-yellow-500 hover:bg-yellow-600 text-white'>
               <Save className='w-4 h-4 mr-2' />
               Lưu thay đổi
             </Button>

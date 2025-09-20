@@ -1,7 +1,5 @@
 function create() {
-  return (
-    <div>create</div>
-  )
+  return <div>create</div>
 }
 
 export default create

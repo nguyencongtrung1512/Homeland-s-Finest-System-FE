@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent} from '../../../components/ui/card'
+import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Input } from '../../../components/ui/input'
@@ -46,35 +46,20 @@ function OrderManagement() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return (
-          <Badge className='bg-orange-100 text-orange-800 hover:bg-orange-100'>
-            Chờ xác nhận
-          </Badge>
-        )
+        return <Badge className='bg-orange-100 text-orange-800 hover:bg-orange-100'>Chờ xác nhận</Badge>
       case 'delivering':
-        return (
-          <Badge className='bg-blue-100 text-blue-800 hover:bg-blue-100'>
-            Đang giao
-          </Badge>
-        )
+        return <Badge className='bg-blue-100 text-blue-800 hover:bg-blue-100'>Đang giao</Badge>
       case 'delivered':
-        return (
-          <Badge className='bg-green-100 text-green-800 hover:bg-green-100'>
-            Đã giao
-          </Badge>
-        )
+        return <Badge className='bg-green-100 text-green-800 hover:bg-green-100'>Đã giao</Badge>
       default:
-        return (
-          <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>
-            {status}
-          </Badge>
-        )
+        return <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>{status}</Badge>
     }
   }
 
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = orders.filter((order) => {
     const matchesTab = activeTab === 'all' || order.status === activeTab
-    const matchesSearch = searchTerm === '' ||
+    const matchesSearch =
+      searchTerm === '' ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesTab && matchesSearch
@@ -92,10 +77,11 @@ function OrderManagement() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 text-sm font-medium transition-colors ${activeTab === tab.key
-                ? 'text-orange-600 border-b-2 border-orange-600'
-                : 'text-gray-600 hover:text-gray-900'
-                }`}
+              className={`pb-3 text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? 'text-orange-600 border-b-2 border-orange-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
             >
               {tab.label}
             </button>
@@ -135,12 +121,8 @@ function OrderManagement() {
                     <td className='py-4 px-6 text-gray-900 font-medium'>#{order.id}</td>
                     <td className='py-4 px-6 text-gray-700'>{order.date}</td>
                     <td className='py-4 px-6 text-gray-700'>{order.customerName}</td>
-                    <td className='py-4 px-6 text-gray-900 font-medium'>
-                      {order.totalAmount.toLocaleString()}₫
-                    </td>
-                    <td className='py-4 px-6'>
-                      {getStatusBadge(order.status)}
-                    </td>
+                    <td className='py-4 px-6 text-gray-900 font-medium'>{order.totalAmount.toLocaleString()}₫</td>
+                    <td className='py-4 px-6'>{getStatusBadge(order.status)}</td>
                     <td className='py-4 px-6'>
                       <Button
                         variant='ghost'
