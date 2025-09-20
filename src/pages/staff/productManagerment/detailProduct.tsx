@@ -95,17 +95,11 @@ function DetailProduct() {
                 </div>
 
                 <div className='flex gap-3 mb-3'>
-                  <Button
-                    onClick={handleApprove}
-                    className='bg-green-600 hover:bg-green-700 text-white'
-                  >
+                  <Button onClick={handleApprove} className='bg-green-600 hover:bg-green-700 text-white'>
                     <Check size={16} className='mr-2' />
                     Duyệt sản phẩm
                   </Button>
-                  <Button
-                    onClick={handleReject}
-                    className='bg-red-600 hover:bg-red-700 text-white'
-                  >
+                  <Button onClick={handleReject} className='bg-red-600 hover:bg-red-700 text-white'>
                     <XCircle size={16} className='mr-2' />
                     Từ chối
                   </Button>
@@ -199,7 +193,6 @@ function DetailProduct() {
             </div>
           </div>
         </div>
-
       </Card>
     </div>
   )

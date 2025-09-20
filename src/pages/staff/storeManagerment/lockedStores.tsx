@@ -97,11 +97,11 @@ function LockedStores() {
       dataIndex: 'store',
       key: 'store',
       render: (store) => (
-        <div className="flex items-center gap-3">
+        <div className='flex items-center gap-3'>
           <Avatar src={store.avatar} size={40} />
           <div>
-            <div className="font-medium text-gray-900">{store.name}</div>
-            <div className="text-sm text-gray-500">#{store.id}</div>
+            <div className='font-medium text-gray-900'>{store.name}</div>
+            <div className='text-sm text-gray-500'>#{store.id}</div>
           </div>
         </div>
       )
@@ -112,8 +112,8 @@ function LockedStores() {
       key: 'owner',
       render: (owner) => (
         <div>
-          <div className="font-medium text-gray-900">{owner.name}</div>
-          <div className="text-sm text-gray-500">{owner.email}</div>
+          <div className='font-medium text-gray-900'>{owner.name}</div>
+          <div className='text-sm text-gray-500'>{owner.email}</div>
         </div>
       )
     },
@@ -121,26 +121,26 @@ function LockedStores() {
       title: 'Ngày tạo',
       dataIndex: 'createdDate',
       key: 'createdDate',
-      render: (date) => <span className="text-gray-700">{date}</span>
+      render: (date) => <span className='text-gray-700'>{date}</span>
     },
     {
       title: 'Sản phẩm',
       dataIndex: 'products',
       key: 'products',
-      render: (products) => <span className="text-gray-700">{products}</span>
+      render: (products) => <span className='text-gray-700'>{products}</span>
     },
     {
       title: 'Ngày khóa',
       dataIndex: 'lockedDate',
       key: 'lockedDate',
-      render: (date) => <span className="text-red-600 font-medium">{date}</span>
+      render: (date) => <span className='text-red-600 font-medium'>{date}</span>
     },
     {
       title: 'Lý do khóa',
       dataIndex: 'reason',
       key: 'reason',
       render: (reason) => (
-        <span className="text-red-600 text-sm" title={reason}>
+        <span className='text-red-600 text-sm' title={reason}>
           {reason.length > 30 ? `${reason.substring(0, 30)}...` : reason}
         </span>
       )
@@ -149,24 +149,24 @@ function LockedStores() {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      render: () => <Tag color="red">Bị khóa</Tag>
+      render: () => <Tag color='red'>Bị khóa</Tag>
     },
     {
       title: 'Hành động',
       key: 'action',
       render: (_, record) => (
-        <div className="flex items-center gap-2">
+        <div className='flex items-center gap-2'>
           <Button
-            type="text"
+            type='text'
             icon={<Eye size={16} />}
             onClick={() => navigate(`/storeDetail/${record.store.id}`)}
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100"
+            className='flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
           />
           <Button
-            type="text"
+            type='text'
             icon={<Unlock size={16} />}
             onClick={() => handleUnlock(record.store.id)}
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-green-50 text-green-600 hover:bg-green-100"
+            className='flex items-center justify-center w-8 h-8 rounded-full bg-green-50 text-green-600 hover:bg-green-100'
           />
         </div>
       )
@@ -178,50 +178,40 @@ function LockedStores() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Cửa hàng bị khóa</h1>
-        <p className="text-gray-600 mt-1">Quản lý các cửa hàng bị khóa do vi phạm quy định</p>
+        <h1 className='text-2xl font-bold text-gray-900'>Cửa hàng bị khóa</h1>
+        <p className='text-gray-600 mt-1'>Quản lý các cửa hàng bị khóa do vi phạm quy định</p>
       </div>
 
       {/* Search and Filters */}
       <Card>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex-1 min-w-[300px]">
+        <div className='flex flex-wrap items-center gap-4'>
+          <div className='flex-1 min-w-[300px]'>
             <AntSearch
-              placeholder="Tìm kiếm theo tên cửa hàng hoặc ID..."
+              placeholder='Tìm kiếm theo tên cửa hàng hoặc ID...'
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              prefix={<Search size={16} className="text-gray-400" />}
-              className="w-full"
+              prefix={<Search size={16} className='text-gray-400' />}
+              className='w-full'
             />
           </div>
 
-          <Select
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-            className="w-40"
-            placeholder="Tất cả ngành hàng"
-          >
-            <Option value="all">Tất cả ngành hàng</Option>
-            <Option value="fashion">Thời trang</Option>
-            <Option value="tech">Công nghệ</Option>
-            <Option value="home">Gia dụng</Option>
+          <Select value={categoryFilter} onChange={setCategoryFilter} className='w-40' placeholder='Tất cả ngành hàng'>
+            <Option value='all'>Tất cả ngành hàng</Option>
+            <Option value='fashion'>Thời trang</Option>
+            <Option value='tech'>Công nghệ</Option>
+            <Option value='home'>Gia dụng</Option>
           </Select>
 
-          <DatePicker
-            placeholder="mm/dd/yyyy"
-            value={dateFilter}
-            onChange={setDateFilter}
-            className="w-40"
-          />
+          <DatePicker placeholder='mm/dd/yyyy' value={dateFilter} onChange={setDateFilter} className='w-40' />
 
           <Button
-            type="primary"
+            type='primary'
             icon={<Filter size={16} />}
             onClick={handleFilter}
-            className="bg-blue-600 hover:bg-blue-700"
+            className='bg-blue-600 hover:bg-blue-700'
           >
             Lọc
           </Button>
@@ -230,25 +220,18 @@ function LockedStores() {
 
       {/* Table */}
       <Card>
-        <Table
-          columns={columns}
-          dataSource={storeData}
-          pagination={false}
-          className="w-full"
-        />
+        <Table columns={columns} dataSource={storeData} pagination={false} className='w-full' />
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-6">
-          <div className="text-sm text-gray-600">
-            Hiển thị 1 đến 10 của 15 kết quả
-          </div>
+        <div className='flex items-center justify-between mt-6'>
+          <div className='text-sm text-gray-600'>Hiển thị 1 đến 10 của 15 kết quả</div>
           <Pagination
             current={currentPage}
             total={15}
             pageSize={10}
             onChange={setCurrentPage}
             showSizeChanger={false}
-            className="flex items-center gap-2"
+            className='flex items-center gap-2'
           />
         </div>
       </Card>

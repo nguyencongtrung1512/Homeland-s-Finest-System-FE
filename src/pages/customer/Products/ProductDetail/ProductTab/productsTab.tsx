@@ -137,7 +137,9 @@ export const ProductTabs: React.FC = () => {
         <div className='max-w-4xl mx-auto'>
           <h3 className='text-black text-xl font-bold mb-4'>Câu chuyện của chúng tôi</h3>
           <p className='text-gray-700 text-base leading-6 mb-8'>
-            Chúng tôi là một cửa hàng chuyên cung cấp các sản phẩm nông sản sạch từ các vùng miền Việt Nam. Với hơn 10 năm kinh nghiệm trong ngành, chúng tôi cam kết mang đến cho khách hàng những sản phẩm tươi ngon, an toàn và chất lượng cao nhất.
+            Chúng tôi là một cửa hàng chuyên cung cấp các sản phẩm nông sản sạch từ các vùng miền Việt Nam. Với hơn 10
+            năm kinh nghiệm trong ngành, chúng tôi cam kết mang đến cho khách hàng những sản phẩm tươi ngon, an toàn và
+            chất lượng cao nhất.
           </p>
 
           <h4 className='text-black text-base font-bold mb-2'>Thành phần dinh dưỡng:</h4>
@@ -193,10 +195,11 @@ export const ProductTabs: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-4 text-base font-medium border-b-2 transition-colors ${activeTab === tab.id
-                  ? 'border-green-600 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                className={`px-6 py-4 text-base font-medium border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-green-600 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
               >
                 {tab.label}
               </button>

@@ -11,9 +11,7 @@ const VerifyOTPLayout: React.FC<VerifyOTPLayoutProps> = ({ children }) => {
     <div>
       <HeaderLayout />
       <div className='min-h-screen bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center p-4 pt-20'>
-        <div className='w-full max-w-md mx-auto'>
-          {children}
-        </div>
+        <div className='w-full max-w-md mx-auto'>{children}</div>
       </div>
       <Footer />
     </div>

@@ -724,10 +724,11 @@ export default function Cart() {
                   {savedAddresses.map((address) => (
                     <div
                       key={address.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedAddressId === address.id
-                        ? 'border-orange-500 bg-orange-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                        }`}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                        selectedAddressId === address.id
+                          ? 'border-orange-500 bg-orange-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
                       onClick={() => setSelectedAddressId(address.id)}
                     >
                       <div className='flex items-start justify-between'>

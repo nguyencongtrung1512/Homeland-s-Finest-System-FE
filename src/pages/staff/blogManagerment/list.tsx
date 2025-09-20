@@ -1,9 +1,5 @@
-
-
 function blogList() {
-  return (
-    <div>blogList</div>
-  )
+  return <div>blogList</div>
 }
 
 export default blogList

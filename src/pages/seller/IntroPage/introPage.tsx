@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { path } from '../../../constants/path'
-import Header from '../components/header'
+import Footer from '../../../Layouts/CustomerLayout/Footer/Footer'
+import BannerWelcome from '../../../assets/BannerWelcome.png'
+import HeaderRegister from '../components/headerRegister'
 
 function IntroPage() {
   const navigate = useNavigate()
@@ -11,8 +13,58 @@ function IntroPage() {
 
   return (
     <div>
-      <Header />
-      <div className='min-h-screen bg-white'>
+      <HeaderRegister />
+      <div className='min-h-screen bg-green-50'>
+        {/* Hero Banner Section */}
+        <section className='relative w-full bg-[#f2f2ea]'>
+          <div className='max-w-7xl mx-auto px-6 py-16 lg:py-24'>
+            <div className='grid lg:grid-cols-2 gap-12 items-center'>
+              {/* Left Content */}
+              <div className='text-black space-y-6'>
+                <h1 className='text-4xl lg:text-6xl font-bold leading-tight'>
+                  <span className='block'>Mang Câu Chuyện &</span>
+                  <span className='block'>Sản Vật Quê Hương</span>
+                  <span className='block text-yellow-300'>Vươn Xa</span>
+                </h1>
+
+                <p className='text-lg lg:text-xl text-black/90 leading-relaxed max-w-2xl'>
+                  Tinh hoa Quê nhà không chỉ là một nền tảng thương mại điện tử. Đây là nơi những giá trị đích thực được
+                  tôn vinh, kết nối những nhà sản xuất tâm huyết với khách hàng trân trọng câu chuyện và chất lượng.
+                </p>
+
+                <button
+                  onClick={handleRegisterClick}
+                  className='bg-yellow-400 hover:bg-yellow-300 text-gray-900 px-8 py-4 rounded-lg text-lg font-semibold transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200'
+                >
+                  Trở thành đối tác
+                </button>
+              </div>
+
+              {/* Right Image */}
+              <div className='relative'>
+                <div className='relative rounded-2xl overflow-hidden shadow-2xl'>
+                  <img
+                    src={BannerWelcome}
+                    alt='Thợ thủ công đang làm việc'
+                    className='w-full h-[500px] lg:h-[600px] object-cover'
+                  />
+                  <div className='absolute inset-0 bg-gradient-to-t from-black/20 to-transparent'></div>
+                </div>
+
+                {/* Decorative elements */}
+                <div className='absolute -top-4 -right-4 w-24 h-24 bg-yellow-400/20 rounded-full blur-xl'></div>
+                <div className='absolute -bottom-4 -left-4 w-32 h-32 bg-amber-300/20 rounded-full blur-xl'></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Background decorative elements */}
+          <div className='absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none'>
+            <div className='absolute top-20 left-10 w-64 h-64 bg-yellow-300/10 rounded-full blur-3xl'></div>
+            <div className='absolute bottom-20 right-10 w-80 h-80 bg-amber-200/10 rounded-full blur-3xl'></div>
+          </div>
+        </section>
+
         {/* Section 1: Why Choose Tinh Hoa Quê nhà */}
         <section className='py-16 px-6'>
           <div className='max-w-6xl mx-auto'>
@@ -171,20 +223,20 @@ function IntroPage() {
         </section>
 
         {/* Section 3: Call to Action */}
-        <section className='py-16 px-6 bg-green-800'>
+        <section className='py-16 px-6 bg-green-50'>
           <div className='max-w-4xl mx-auto text-center'>
-            <h2 className='text-4xl font-bold text-white mb-4'>Sẵn sàng chia sẻ câu chuyện của bạn?</h2>
-            <p className='text-lg text-white mb-8 max-w-2xl mx-auto'>
+            <h2 className='text-4xl font-bold text-green-800 mb-4'>
+              HƯỚNG DẪN ĐĂNG KÝ TRỞ THÀNH CỘNG TÁC VIÊN BÁN HÀNG CÙNG CHÚNG TÔI
+            </h2>
+            <p className='text-lg text-black mb-8 max-w-2xl mx-auto'>
               Hãy cùng chúng tôi mang những sản phẩm đặc sản và thủ công tuyệt vời của bạn đến với nhiều khách hàng hơn.
             </p>
-            <button
-              onClick={handleRegisterClick}
-              className='bg-yellow-400 text-gray-900 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-300 transition-colors'
-            >
-              Đăng ký bán hàng ngay
-            </button>
+            <h1 className='text-red-500'> Bussiness Role và cách tính hoa hồng....CHƯA LÀM</h1>
           </div>
         </section>
+        <div className='mt-10'>
+          <Footer />
+        </div>
       </div>
     </div>
   )

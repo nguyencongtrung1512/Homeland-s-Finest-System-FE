@@ -1,3 +1,3 @@
-  import StoryWithSeller from './storyWithSeller'
+import StoryWithSeller from './storyWithSeller'
 
-  export default StoryWithSeller
+export default StoryWithSeller

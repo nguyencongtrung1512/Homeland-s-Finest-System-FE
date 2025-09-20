@@ -35,11 +35,11 @@ function NewPassword({ onPasswordSubmit }: NewPasswordProps) {
         }
         // Hiển thị thông báo thành công
         alert('🎉 Bạn đã cập nhật mật khẩu thành công!\n\nVui lòng đăng nhập lại với mật khẩu mới.')
-        
+
         // Kiểm tra nguồn gốc và redirect về đúng trang login
         const returnTo = localStorage.getItem('forgotPasswordReturnTo') || 'customer'
         localStorage.removeItem('forgotPasswordReturnTo') // Xóa sau khi sử dụng
-        
+
         if (returnTo === 'seller') {
           navigate(path.loginSeller)
         } else {
@@ -77,7 +77,9 @@ function NewPassword({ onPasswordSubmit }: NewPasswordProps) {
               <img src={logoImage} alt='Logo' className='w-full h-full object-cover object-center' />
             </div>
             <h2 className='text-xl font-bold text-gray-800'>Tạo Mật Khẩu Mới</h2>
-            <p className='text-sm text-gray-600 mt-1'>Mật khẩu mới của bạn phải khác với những mật khẩu đã sử dụng trước đây</p>
+            <p className='text-sm text-gray-600 mt-1'>
+              Mật khẩu mới của bạn phải khác với những mật khẩu đã sử dụng trước đây
+            </p>
           </div>
         </div>
 
@@ -146,7 +148,7 @@ function NewPassword({ onPasswordSubmit }: NewPasswordProps) {
           </form>
 
           <div className='text-center'>
-            <button 
+            <button
               onClick={handleBackToLogin}
               className='text-green-600 hover:text-green-700 font-medium text-sm bg-transparent border-none cursor-pointer'
             >

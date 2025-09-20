@@ -43,10 +43,11 @@ function AsideFilter() {
             <button
               key={b.id}
               onClick={() => toggleBrand(b.id)}
-              className={`text-sm rounded border px-3 py-1.5 transition ${selectedBrands.includes(b.id)
-                ? 'bg-green-600 text-white border-green-600'
-                : 'bg-white text-gray-700 hover:border-green-400'
-                }`}
+              className={`text-sm rounded border px-3 py-1.5 transition ${
+                selectedBrands.includes(b.id)
+                  ? 'bg-green-600 text-white border-green-600'
+                  : 'bg-white text-gray-700 hover:border-green-400'
+              }`}
             >
               {b.name}
             </button>

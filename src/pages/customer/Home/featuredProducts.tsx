@@ -32,7 +32,7 @@ function FeaturedProducts() {
           updatedAt: '2024-01-15T00:00:00Z',
           // Thêm fields cho ProductCard
           price: 450000,
-      
+
           badge: { text: 'VietGAP', color: 'bg-green-600' }
         },
         {
@@ -83,7 +83,7 @@ function FeaturedProducts() {
           updatedAt: '2024-01-17T00:00:00Z',
           // Thêm fields cho ProductCard
           price: 1250000,
-          
+
           badge: { text: 'Thủ công', color: 'bg-red-500' }
         },
         {

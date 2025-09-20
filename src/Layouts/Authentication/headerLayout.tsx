@@ -8,15 +8,15 @@ function HeaderLayout() {
         {/* Back Button + Logo + Tên */}
         <div className='flex items-center gap-4'>
           {/* Back Button */}
-          <Link 
+          <Link
             to='/'
             className='flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 shadow-sm hover:shadow-md transition-all duration-200 group'
             title='Quay lại trang chủ'
           >
-            <svg 
-              className='w-4 h-4 text-[#2D5016] group-hover:text-[#F4A261] transition-colors' 
-              fill='none' 
-              stroke='currentColor' 
+            <svg
+              className='w-4 h-4 text-[#2D5016] group-hover:text-[#F4A261] transition-colors'
+              fill='none'
+              stroke='currentColor'
               viewBox='0 0 24 24'
             >
               <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 19l-7-7 7-7' />
@@ -39,7 +39,7 @@ function HeaderLayout() {
         </div>
 
         {/* Link cộng tác viên */}
-        <Link 
+        <Link
           to={path.sellerPage}
           className='text-sm text-[#2D5016] hover:text-[#F4A261] transition-colors font-medium whitespace-nowrap'
         >

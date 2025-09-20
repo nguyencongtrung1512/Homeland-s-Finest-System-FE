@@ -8,7 +8,7 @@ function productsDetail() {
     <div>
       <ProductGallery />
       <div className='max-w-7xl mx-auto px-6 py-8'>
-      <Brand />
+        <Brand />
         <ProductTabs />
         <ViewRating />
       </div>

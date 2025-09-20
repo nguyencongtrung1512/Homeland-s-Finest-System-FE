@@ -1,12 +1,7 @@
 import { Card, CardContent } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
-import {
-  ArrowLeft,
-  CheckCircle,
-  Paperclip,
-  User
-} from 'lucide-react'
+import { ArrowLeft, CheckCircle, Paperclip, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 function DetailHelp() {
@@ -77,11 +72,7 @@ Trần Mai Anh`,
           </div>
         )
       default:
-        return (
-          <Badge className='bg-gray-100 text-gray-800'>
-            {statusText}
-          </Badge>
-        )
+        return <Badge className='bg-gray-100 text-gray-800'>{statusText}</Badge>
     }
   }
 
@@ -89,19 +80,14 @@ Trần Mai Anh`,
     <div className='p-6 bg-gray-50 min-h-screen'>
       {/* Breadcrumb */}
       <div className='mb-4'>
-        <button
-          onClick={handleBack}
-          className='text-green-600 hover:text-green-700 text-sm font-medium'
-        >
+        <button onClick={handleBack} className='text-green-600 hover:text-green-700 text-sm font-medium'>
           Trung tâm Trợ giúp
         </button>
       </div>
 
       {/* Header */}
       <div className='mb-6'>
-        <h1 className='text-2xl font-bold text-green-700 mb-4'>
-          Chi tiết yêu cầu #{requestData.id}
-        </h1>
+        <h1 className='text-2xl font-bold text-green-700 mb-4'>Chi tiết yêu cầu #{requestData.id}</h1>
 
         {/* Request Info Card */}
         <Card className='mb-6'>
@@ -127,28 +113,20 @@ Trần Mai Anh`,
       {/* User Request Section */}
       <div className='mb-8'>
         <div className='flex items-center justify-between mb-4'>
-          <h2 className='text-lg font-semibold text-green-700'>
-            Nội dung yêu cầu của bạn
-          </h2>
-          <span className='text-sm text-gray-500'>
-            Bạn đã gửi vào lúc {requestData.userRequest.sentTime}
-          </span>
+          <h2 className='text-lg font-semibold text-green-700'>Nội dung yêu cầu của bạn</h2>
+          <span className='text-sm text-gray-500'>Bạn đã gửi vào lúc {requestData.userRequest.sentTime}</span>
         </div>
 
         <Card>
           <CardContent className='p-6'>
             <div className='border-l-4 border-green-500 bg-gray-50 p-4 rounded-r-lg'>
-              <div className='whitespace-pre-line text-gray-700 mb-4'>
-                {requestData.userRequest.content}
-              </div>
+              <div className='whitespace-pre-line text-gray-700 mb-4'>{requestData.userRequest.content}</div>
 
               {/* Attachments */}
               {requestData.userRequest.attachments && requestData.userRequest.attachments.length > 0 && (
                 <div className='flex items-center gap-2'>
                   <Paperclip className='w-4 h-4 text-gray-500' />
-                  <span className='text-sm text-gray-600'>
-                    {requestData.userRequest.attachments[0].name}
-                  </span>
+                  <span className='text-sm text-gray-600'>{requestData.userRequest.attachments[0].name}</span>
                 </div>
               )}
             </div>
@@ -159,9 +137,7 @@ Trần Mai Anh`,
       {/* Support Response Section */}
       <div>
         <div className='flex items-center justify-between mb-4'>
-          <h2 className='text-lg font-semibold text-green-700'>
-            Phản hồi từ đội ngũ hỗ trợ
-          </h2>
+          <h2 className='text-lg font-semibold text-green-700'>Phản hồi từ đội ngũ hỗ trợ</h2>
           <span className='text-sm text-gray-500'>
             {requestData.supportResponse.agent.name} đã phản hồi vào lúc {requestData.supportResponse.responseTime}
           </span>
@@ -182,9 +158,7 @@ Trần Mai Anh`,
               </div>
 
               {/* Response Content */}
-              <div className='whitespace-pre-line text-gray-700'>
-                {requestData.supportResponse.content}
-              </div>
+              <div className='whitespace-pre-line text-gray-700'>{requestData.supportResponse.content}</div>
             </div>
           </CardContent>
         </Card>
@@ -192,19 +166,11 @@ Trần Mai Anh`,
 
       {/* Action Buttons */}
       <div className='flex justify-end gap-3 mt-8'>
-        <Button
-          variant='outline'
-          onClick={handleBack}
-          className='px-6'
-        >
+        <Button variant='outline' onClick={handleBack} className='px-6'>
           <ArrowLeft className='w-4 h-4 mr-2' />
           Quay lại
         </Button>
-        <Button
-          className='bg-green-600 hover:bg-green-700 text-white px-6'
-        >
-          Tạo yêu cầu mới
-        </Button>
+        <Button className='bg-green-600 hover:bg-green-700 text-white px-6'>Tạo yêu cầu mới</Button>
       </div>
     </div>
   )

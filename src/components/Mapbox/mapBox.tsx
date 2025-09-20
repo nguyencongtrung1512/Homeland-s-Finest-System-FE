@@ -21,7 +21,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ storeAddress, storeName }) 
     const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 
     if (!mapboxToken) {
-      console.error('❌ Mapbox access token không được tìm thấy! Vui lòng kiểm tra file .env và đảm bảo có VITE_MAPBOX_ACCESS_TOKEN')
+      console.error(
+        '❌ Mapbox access token không được tìm thấy! Vui lòng kiểm tra file .env và đảm bảo có VITE_MAPBOX_ACCESS_TOKEN'
+      )
       return
     }
 

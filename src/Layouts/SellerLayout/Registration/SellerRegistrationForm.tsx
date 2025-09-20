@@ -559,18 +559,11 @@ function SellerRegistrationForm() {
               {/* Giấy tờ kinh doanh */}
               <div className='md:col-span-2'>
                 <h3 className='font-medium text-gray-900 mb-4'>Giấy tờ kinh doanh</h3>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                <div className='grid grid-cols-1 md:grid-cols-1 gap-6'>
                   <FileUploadField
                     label='Giấy phép kinh doanh'
                     onChange={(files) => handleFileChange('businessLicense', files)}
                     description='Giấy chứng nhận đăng ký kinh doanh (nếu có)'
-                  />
-
-                  <FileUploadField
-                    label='Chứng nhận chất lượng sản phẩm'
-                    onChange={(files) => handleFileChange('productCertificates', files)}
-                    multiple
-                    description='Các chứng nhận về chất lượng, an toàn thực phẩm (nếu có)'
                   />
                 </div>
               </div>

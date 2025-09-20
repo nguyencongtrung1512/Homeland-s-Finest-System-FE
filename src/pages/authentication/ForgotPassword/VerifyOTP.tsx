@@ -13,7 +13,7 @@ function VerifyOTP({ email: propEmail, onOTPSubmit }: VerifyOTPProps) {
   const [otp, setOtp] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const location = useLocation()
-  
+
   // Get email from navigation state or props
   const email = location.state?.email || propEmail || 'của bạn'
 
@@ -57,9 +57,7 @@ function VerifyOTP({ email: propEmail, onOTPSubmit }: VerifyOTPProps) {
               <img src={logoImage} alt='Logo' className='w-full h-full object-cover object-center' />
             </div>
             <h2 className='text-xl font-bold text-gray-800'>Nhập mã xác thực</h2>
-            <p className='text-sm text-gray-600 mt-1'>
-              Chúng tôi đã gửi mã 6 số đến email {email || 'của bạn'}
-            </p>
+            <p className='text-sm text-gray-600 mt-1'>Chúng tôi đã gửi mã 6 số đến email {email || 'của bạn'}</p>
           </div>
         </div>
 
@@ -94,10 +92,7 @@ function VerifyOTP({ email: propEmail, onOTPSubmit }: VerifyOTPProps) {
 
           <div className='text-center'>
             <p className='text-sm text-gray-600'>
-              Không nhận được mã?{' '}
-              <button className='text-green-600 hover:text-green-700 font-medium'>
-                Gửi lại
-              </button>
+              Không nhận được mã? <button className='text-green-600 hover:text-green-700 font-medium'>Gửi lại</button>
             </p>
           </div>
 

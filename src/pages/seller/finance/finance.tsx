@@ -64,23 +64,11 @@ function FinanceManagement() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
-        return (
-          <Badge className='bg-green-100 text-green-800 hover:bg-green-100 border-green-200'>
-            Đã thanh toán
-          </Badge>
-        )
+        return <Badge className='bg-green-100 text-green-800 hover:bg-green-100 border-green-200'>Đã thanh toán</Badge>
       case 'pending':
-        return (
-          <Badge className='bg-yellow-100 text-orange-800 hover:bg-yellow-100 border-yellow-200'>
-            Đang chờ
-          </Badge>
-        )
+        return <Badge className='bg-yellow-100 text-orange-800 hover:bg-yellow-100 border-yellow-200'>Đang chờ</Badge>
       default:
-        return (
-          <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>
-            {status}
-          </Badge>
-        )
+        return <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>{status}</Badge>
     }
   }
 
@@ -143,12 +131,9 @@ function FinanceManagement() {
             <div className='flex justify-between items-start'>
               <div>
                 <h3 className='text-sm font-medium text-gray-600 mb-2'>Tổng doanh thu</h3>
-                <p className='text-3xl font-bold text-green-600'>
-                  {financialSummary.totalRevenue.toLocaleString()} ₫
-                </p>
+                <p className='text-3xl font-bold text-green-600'>{financialSummary.totalRevenue.toLocaleString()} ₫</p>
                 <p className='text-sm text-green-600 mt-1 flex items-center gap-1'>
-                  <TrendingUp className='w-4 h-4' />
-                  +{financialSummary.revenueGrowth}% so với tháng trước
+                  <TrendingUp className='w-4 h-4' />+{financialSummary.revenueGrowth}% so với tháng trước
                 </p>
               </div>
               <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
@@ -207,18 +192,10 @@ function FinanceManagement() {
                   <tr key={transaction.id} className='border-b border-gray-100 hover:bg-gray-50'>
                     <td className='py-4 px-4 text-gray-900 font-medium'>#{transaction.id}</td>
                     <td className='py-4 px-4 text-gray-700'>{transaction.date}</td>
-                    <td className='py-4 px-4 text-gray-900 font-medium'>
-                      {transaction.amount.toLocaleString()} ₫
-                    </td>
-                    <td className='py-4 px-4 text-gray-700'>
-                      {transaction.platformFee.toLocaleString()} ₫
-                    </td>
-                    <td className='py-4 px-4 text-green-600 font-medium'>
-                      {transaction.netAmount.toLocaleString()} ₫
-                    </td>
-                    <td className='py-4 px-4'>
-                      {getStatusBadge(transaction.status)}
-                    </td>
+                    <td className='py-4 px-4 text-gray-900 font-medium'>{transaction.amount.toLocaleString()} ₫</td>
+                    <td className='py-4 px-4 text-gray-700'>{transaction.platformFee.toLocaleString()} ₫</td>
+                    <td className='py-4 px-4 text-green-600 font-medium'>{transaction.netAmount.toLocaleString()} ₫</td>
+                    <td className='py-4 px-4'>{getStatusBadge(transaction.status)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -268,10 +245,7 @@ function FinanceManagement() {
 
             {/* Action Buttons */}
             <div className='flex flex-col gap-4'>
-              <Button
-                onClick={handleUpdateInfo}
-                className='bg-green-600 hover:bg-green-700 text-white'
-              >
+              <Button onClick={handleUpdateInfo} className='bg-green-600 hover:bg-green-700 text-white'>
                 <Edit className='w-4 h-4 mr-2' />
                 Cập nhật thông tin
               </Button>

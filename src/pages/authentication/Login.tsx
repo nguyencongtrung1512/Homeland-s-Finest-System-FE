@@ -82,11 +82,7 @@ function Login() {
           </form>
 
           <div className='text-center'>
-            <button 
-              type='button'
-              onClick={handleForgotPassword} 
-              className='text-sm text-gray-600 hover:text-green-600'
-            >
+            <button type='button' onClick={handleForgotPassword} className='text-sm text-gray-600 hover:text-green-600'>
               Quên mật khẩu?
             </button>
           </div>

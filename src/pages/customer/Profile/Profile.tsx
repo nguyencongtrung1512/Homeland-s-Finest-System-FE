@@ -32,9 +32,7 @@ export default function Profile() {
               <button
                 onClick={() => setActiveTab('profile')}
                 className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                  activeTab === 'profile' 
-                    ? 'bg-green-600 text-white' 
-                    : 'text-gray-700 hover:bg-gray-100'
+                  activeTab === 'profile' ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
                 🔧 Thông tin cá nhân
@@ -42,9 +40,7 @@ export default function Profile() {
               <button
                 onClick={() => setActiveTab('orders')}
                 className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                  activeTab === 'orders' 
-                    ? 'bg-green-600 text-white' 
-                    : 'text-gray-700 hover:bg-gray-100'
+                  activeTab === 'orders' ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
                 📋 Đơn hàng của tôi
@@ -67,7 +63,7 @@ function ProfileContent() {
   return (
     <div className='max-w-2xl'>
       <h2 className='text-lg font-semibold text-gray-900 mb-6'>Thông tin cá nhân</h2>
-      
+
       {/* Stats Cards */}
       <div className='grid grid-cols-3 gap-4 mb-8'>
         <div className='bg-white p-4 rounded-lg border text-center'>
@@ -89,44 +85,24 @@ function ProfileContent() {
         <div className='grid grid-cols-2 gap-6'>
           <div>
             <Label htmlFor='fullName'>Họ và tên</Label>
-            <Input
-              id='fullName'
-              defaultValue='Nguyễn Minh Anh'
-              className='mt-1'
-            />
+            <Input id='fullName' defaultValue='Nguyễn Minh Anh' className='mt-1' />
           </div>
           <div>
             <Label htmlFor='email'>Email</Label>
-            <Input
-              id='email'
-              type='email'
-              defaultValue='minhanh@email.com'
-              className='mt-1'
-            />
+            <Input id='email' type='email' defaultValue='minhanh@email.com' className='mt-1' />
           </div>
           <div>
             <Label htmlFor='phone'>Số điện thoại</Label>
-            <Input
-              id='phone'
-              defaultValue='0362 345 678'
-              className='mt-1'
-            />
+            <Input id='phone' defaultValue='0362 345 678' className='mt-1' />
           </div>
           <div>
             <Label htmlFor='birthDate'>Ngày sinh</Label>
-            <Input
-              id='birthDate'
-              type='date'
-              defaultValue='1990-01-15'
-              className='mt-1'
-            />
+            <Input id='birthDate' type='date' defaultValue='1990-01-15' className='mt-1' />
           </div>
         </div>
-        
+
         <div className='mt-6'>
-          <Button className='bg-[#2D5016] hover:bg-[#1f3710] text-white'>
-            Cập nhật thông tin
-          </Button>
+          <Button className='bg-[#2D5016] hover:bg-[#1f3710] text-white'>Cập nhật thông tin</Button>
         </div>
       </div>
     </div>
@@ -149,7 +125,7 @@ function OrdersContent() {
     },
     {
       id: 'SH6E764506941',
-      status: 'Đã giao hàng', 
+      status: 'Đã giao hàng',
       statusColor: 'bg-green-100 text-green-800',
       products: ['Gia vị Tôm Khô Cà Mau Đặc Biệt Quận Góng', 'Tôm Khô Đặc Sản Thượng Hạng Cà Mau Quận Góng'],
       total: '265.000đ',
@@ -164,7 +140,7 @@ function OrdersContent() {
   return (
     <div>
       <h2 className='text-lg font-semibold text-gray-900 mb-6'>Đơn hàng của tôi</h2>
-      
+
       <div className='space-y-6'>
         {orders.map((order) => (
           <div key={order.id} className='bg-white p-6 rounded-lg border'>
@@ -177,7 +153,7 @@ function OrdersContent() {
                 <div className='font-semibold text-lg'>{order.total}</div>
               </div>
             </div>
-            
+
             <div className='space-y-2 mb-4'>
               {order.products.map((product, index) => (
                 <div key={index} className='text-sm text-gray-600'>
@@ -185,7 +161,7 @@ function OrdersContent() {
                 </div>
               ))}
             </div>
-            
+
             <div className='border-t pt-4'>
               <h4 className='text-sm font-medium text-gray-900 mb-2'>Thông tin giao hàng</h4>
               <div className='text-sm text-gray-600'>
@@ -194,10 +170,14 @@ function OrdersContent() {
                 <div>Địa chỉ: {order.deliveryInfo.address}</div>
               </div>
             </div>
-            
+
             <div className='flex gap-2 mt-4'>
-              <Button variant='outline' size='sm'>Xem chi tiết</Button>
-              <Button variant='outline' size='sm'>Mua lại</Button>
+              <Button variant='outline' size='sm'>
+                Xem chi tiết
+              </Button>
+              <Button variant='outline' size='sm'>
+                Mua lại
+              </Button>
             </div>
           </div>
         ))}

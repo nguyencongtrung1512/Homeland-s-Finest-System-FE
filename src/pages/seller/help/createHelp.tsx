@@ -1,15 +1,10 @@
-import  { useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
-import {
-  Headphones,
-  ChevronDown,
-  Upload,
-  Send
-} from 'lucide-react'
+import { Headphones, ChevronDown, Upload, Send } from 'lucide-react'
 
 interface CreateHelpModalProps {
   isOpen: boolean
@@ -26,7 +21,7 @@ function CreateHelpModal({ isOpen, onClose }: CreateHelpModalProps) {
   const [isDragOver, setIsDragOver] = useState(false)
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value
     }))
@@ -35,7 +30,7 @@ function CreateHelpModal({ isOpen, onClose }: CreateHelpModalProps) {
   const handleFileUpload = (files: FileList | null) => {
     if (files) {
       const newFiles = Array.from(files)
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         attachments: [...prev.attachments, ...newFiles]
       }))
@@ -116,14 +111,11 @@ function CreateHelpModal({ isOpen, onClose }: CreateHelpModalProps) {
 
             {/* Attachment Field */}
             <div>
-              <Label className='text-green-700 font-medium mb-2 block'>
-                Tệp đính kèm
-              </Label>
+              <Label className='text-green-700 font-medium mb-2 block'>Tệp đính kèm</Label>
               <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragOver
-                  ? 'border-green-400 bg-green-50'
-                  : 'border-gray-300 bg-white hover:border-gray-400'
-                  }`}
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  isDragOver ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-white hover:border-gray-400'
+                }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -133,12 +125,8 @@ function CreateHelpModal({ isOpen, onClose }: CreateHelpModalProps) {
                     <Upload className='w-6 h-6 text-gray-400' />
                   </div>
                   <div>
-                    <p className='text-gray-700 font-medium'>
-                      Kéo thả tệp vào đây hoặc chọn tệp
-                    </p>
-                    <p className='text-sm text-gray-500 mt-1'>
-                      JPG, PNG, PDF tối đa 10MB
-                    </p>
+                    <p className='text-gray-700 font-medium'>Kéo thả tệp vào đây hoặc chọn tệp</p>
+                    <p className='text-sm text-gray-500 mt-1'>JPG, PNG, PDF tối đa 10MB</p>
                   </div>
                   <input
                     type='file'
@@ -170,7 +158,7 @@ function CreateHelpModal({ isOpen, onClose }: CreateHelpModalProps) {
                         variant='ghost'
                         size='sm'
                         onClick={() => {
-                          setFormData(prev => ({
+                          setFormData((prev) => ({
                             ...prev,
                             attachments: prev.attachments.filter((_, i) => i !== index)
                           }))
@@ -188,19 +176,10 @@ function CreateHelpModal({ isOpen, onClose }: CreateHelpModalProps) {
 
           {/* Action Buttons */}
           <div className='flex justify-end gap-3 mt-8'>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={onClose}
-              className='px-6'
-            >
+            <Button type='button' variant='outline' onClick={onClose} className='px-6'>
               Hủy
             </Button>
-            <Button
-              type='button'
-              onClick={handleSubmit}
-              className='bg-green-600 hover:bg-green-700 text-white px-6'
-            >
+            <Button type='button' onClick={handleSubmit} className='bg-green-600 hover:bg-green-700 text-white px-6'>
               <Send className='w-4 h-4 mr-2' />
               Gửi Yêu Cầu
             </Button>
