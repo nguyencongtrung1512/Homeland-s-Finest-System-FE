@@ -1,23 +1,12 @@
 import { Button } from '../../../../components/ui/button'
 import { Badge } from '../../../../components/ui/badge'
-
-interface Address {
-  id: number
-  name: string
-  phone: string
-  province: string
-  district: string
-  ward: string
-  address: string
-  fullAddress: string
-  isDefault: boolean
-}
+import type { Address } from '../../../../types/addressType'
 
 interface AddressCardProps {
   address: Address
   onEdit: (address: Address) => void
-  onDelete: (addressId: number) => void
-  onSetDefault: (addressId: number) => void
+  onDelete: (addressId: string) => void
+  onSetDefault: (addressId: string) => void
   isLoading: boolean
 }
 
@@ -27,11 +16,13 @@ export default function AddressCard({ address, onEdit, onDelete, onSetDefault, i
       <div className='flex justify-between items-start mb-4'>
         <div className='flex-1'>
           <div className='flex items-center gap-2 mb-2'>
-            <h3 className='font-medium text-gray-900'>{address.name}</h3>
+            <h3 className='font-medium text-gray-900'>Địa chỉ giao hàng</h3>
             {address.isDefault && <Badge className='bg-green-600 text-white text-xs'>Mặc định</Badge>}
           </div>
-          <p className='text-sm text-gray-600 mb-1'>📞 {address.phone}</p>
-          <p className='text-sm text-gray-600'>📍 {address.fullAddress}</p>
+          <p className='text-sm text-gray-600 mb-1'>📍 {address.streetAddress}</p>
+          <p className='text-sm text-gray-600'>
+            {address.ward}, {address.district}, {address.province}
+          </p>
         </div>
       </div>
 

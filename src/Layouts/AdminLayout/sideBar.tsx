@@ -52,6 +52,11 @@ function SideBar({ isCollapsed }: SideBarProps) {
       key: path.TERMS_MANAGEMENT_ADMIN,
       label: 'Điều khoản dịch vụ',
       icon: <FileText size={18} />
+    },
+    {
+      key: path.REPORT_MANAGEMENT_ADMIN,
+      label: 'Quản lí hoa hồng',
+      icon: <FileText size={18} />
     }
   ]
 

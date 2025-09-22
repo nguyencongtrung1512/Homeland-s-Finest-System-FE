@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import type { Product } from '../../../../types/productType'
+import path from '../../../../constants/path'
 
-// Interface mở rộng cho ProductCard để hiển thị thêm thông tin
 export interface ProductCardData extends Product {
   price?: number // Giá từ ProductVariant
   badge?: { text: string; color: string } // Badge cho hiển thị huy hiệu
@@ -12,7 +12,7 @@ const ProductCard: React.FC<{ product: ProductCardData }> = ({ product }) => {
   const navigate = useNavigate()
 
   const handleProductClick = () => {
-    navigate(`/product/${product.id}`)
+    navigate(path.productDetail.replace(':id', product.id))
   }
 
   return (
@@ -22,11 +22,7 @@ const ProductCard: React.FC<{ product: ProductCardData }> = ({ product }) => {
     >
       {/* Ảnh */}
       <div className='relative h-40 w-full rounded-lg overflow-hidden'>
-        <img
-          src={product.productImages[0] || '/placeholder-image.jpg'}
-          alt={product.name}
-          className='w-full h-full object-cover'
-        />
+        <img src={product.productImages[0]} alt='' className='w-full h-full object-cover' />
         {product.badge && (
           <span className={`absolute top-2 left-2 px-2 py-1 text-xs text-white rounded ${product.badge.color}`}>
             {product.badge.text}

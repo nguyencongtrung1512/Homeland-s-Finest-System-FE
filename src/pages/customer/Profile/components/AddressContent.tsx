@@ -1,40 +1,100 @@
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '../../../../components/ui/button'
 import AddressCard from './AddressCard'
-
-interface Address {
-  id: number
-  name: string
-  phone: string
-  province: string
-  district: string
-  ward: string
-  address: string
-  fullAddress: string
-  isDefault: boolean
-}
+import { addressApi } from '../../../../apis/address.api'
+import type { Address } from '../../../../types/addressType'
 
 interface AddressContentProps {
-  addresses: Address[]
+  userId?: string // Thêm userId để lấy địa chỉ của user cụ thể
   onAddAddress: () => void
   onEditAddress: (address: Address) => void
-  onDeleteAddress: (addressId: number) => void
-  onSetDefault: (addressId: number) => void
-  isLoading: boolean
+  onDeleteAddress: (addressId: string) => void
+  onSetDefault: (addressId: string) => void
 }
 
 export default function AddressContent({
-  addresses,
+  userId,
   onAddAddress,
   onEditAddress,
   onDeleteAddress,
-  onSetDefault,
-  isLoading
+  onSetDefault
 }: AddressContentProps) {
+  // State management
+  const [addresses, setAddresses] = useState<Address[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch addresses from API
+  const fetchAddresses = useCallback(async () => {
+    if (!userId) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await addressApi.getByUser(userId, {
+        pageSize: 50, // Lấy tối đa 50 địa chỉ
+        pageNumber: 1,
+        isActive: true // Chỉ lấy địa chỉ đang active
+      })
+
+      if (response.status === 200) {
+        setAddresses(response.data)
+      } else {
+        setError(response.message || 'Có lỗi xảy ra khi tải địa chỉ')
+      }
+    } catch (err: unknown) {
+      console.error('Error fetching addresses:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Không thể tải danh sách địa chỉ'
+      setError(errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [userId])
+
+  // Load addresses when component mounts or userId changes
+  useEffect(() => {
+    fetchAddresses()
+  }, [userId, fetchAddresses])
+
+  // Handle delete address
+  const handleDeleteAddress = async (addressId: string) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) return
+
+    setIsLoading(true)
+    try {
+      await addressApi.delete(addressId)
+      // Refresh the list after deletion
+      await fetchAddresses()
+      onDeleteAddress(addressId)
+    } catch (err: unknown) {
+      console.error('Error deleting address:', err)
+      setError('Không thể xóa địa chỉ')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle set default address
+  const handleSetDefault = async (addressId: string) => {
+    setIsLoading(true)
+    try {
+      await addressApi.setAsDefault(addressId)
+      // Refresh the list after setting default
+      await fetchAddresses()
+      onSetDefault(addressId)
+    } catch (err: unknown) {
+      console.error('Error setting default address:', err)
+      setError('Không thể đặt địa chỉ mặc định')
+    } finally {
+      setIsLoading(false)
+    }
+  }
   return (
     <div className='bg-gradient-to-br from-slate-50 to-green-50/30 p-6 rounded-2xl min-h-[500px]'>
       <div className='flex justify-between items-center mb-8'>
         <div>
-          <h2 className='text-2xl font-bold text-gray-800 mb-1'>📍 Sổ địa chỉ</h2>
+          <h2 className='text-2xl font-bold text-gray-800 mb-1'> Sổ địa chỉ</h2>
           <p className='text-green-600 text-sm'>Quản lý địa chỉ giao hàng của bạn</p>
         </div>
         <Button
@@ -45,6 +105,29 @@ export default function AddressContent({
           Thêm địa chỉ mới
         </Button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className='mb-4 p-4 bg-red-50 border border-red-200 rounded-lg'>
+          <p className='text-red-600 text-sm'>{error}</p>
+          <Button
+            variant='outline'
+            size='sm'
+            className='mt-2 text-red-600 border-red-300 hover:bg-red-50'
+            onClick={fetchAddresses}
+          >
+            Thử lại
+          </Button>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading && addresses.length === 0 && (
+        <div className='flex justify-center items-center py-12'>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-600'></div>
+          <span className='ml-3 text-gray-600'>Đang tải địa chỉ...</span>
+        </div>
+      )}
 
       {/* Address Cards */}
       {addresses.length === 0 ? (
@@ -73,8 +156,8 @@ export default function AddressContent({
               <AddressCard
                 address={address}
                 onEdit={onEditAddress}
-                onDelete={onDeleteAddress}
-                onSetDefault={onSetDefault}
+                onDelete={handleDeleteAddress}
+                onSetDefault={handleSetDefault}
                 isLoading={isLoading}
               />
             </div>

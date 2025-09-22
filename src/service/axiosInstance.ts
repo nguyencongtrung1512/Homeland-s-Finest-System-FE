@@ -3,7 +3,7 @@ import axios from 'axios'
 let isTokenExpired = false
 
 export const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8883/api',
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json'
   },

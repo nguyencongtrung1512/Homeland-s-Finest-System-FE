@@ -7,22 +7,6 @@ export default function ProfileContent() {
     <div className='max-w-2xl'>
       <h2 className='text-lg font-semibold text-gray-900 mb-6'>Thông tin cá nhân</h2>
 
-      {/* Stats Cards */}
-      <div className='grid grid-cols-3 gap-4 mb-8'>
-        <div className='bg-white p-4 rounded-lg border text-center'>
-          <div className='text-2xl font-bold text-green-600'>24</div>
-          <div className='text-sm text-gray-500'>Đơn hàng hoàn thành</div>
-        </div>
-        <div className='bg-white p-4 rounded-lg border text-center'>
-          <div className='text-2xl font-bold text-green-600'>1250</div>
-          <div className='text-sm text-gray-500'>Điểm tích lũy</div>
-        </div>
-        <div className='bg-white p-4 rounded-lg border text-center'>
-          <div className='text-2xl font-bold text-green-600'>6</div>
-          <div className='text-sm text-gray-500'>Sản phẩm yêu thích</div>
-        </div>
-      </div>
-
       {/* Profile Form */}
       <div className='bg-white p-6 rounded-lg border'>
         <div className='grid grid-cols-2 gap-6'>

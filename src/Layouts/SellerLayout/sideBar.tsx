@@ -11,7 +11,7 @@ function SideBar() {
 
   const menuItems = [
     {
-      key: path.dashboard,
+      key: path.BASE_SELLER,
       label: 'Trang tổng quan',
       icon: <Home size={18} />
     },

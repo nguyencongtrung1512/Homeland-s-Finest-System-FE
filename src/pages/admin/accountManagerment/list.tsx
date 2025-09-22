@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, Users, UserX, ChevronLeft, ChevronRight, Lock, Eye } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -14,17 +14,16 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../components/ui/dialog'
+import { getUsers, updateUser, type User } from '../../../apis/user.api'
+import { toast } from 'react-toastify'
 
-interface Customer {
-  id: string
-  name: string
-  email: string
-  phone: string
-  avatar: string
-  joinDate: string
-  role: 'admin' | 'staff' | 'customer'
-  status: 'active' | 'temporarily_locked' | 'banned'
-  orderCount: number
+// Sử dụng User interface từ API, thêm một số field computed
+interface Customer extends User {
+  name: string // Computed từ firstName + lastName
+  phone: string // Alias cho phoneNumber
+  joinDate: string // Computed từ createdAt
+  status: 'active' | 'temporarily_locked' | 'banned' // Computed từ isActive
+  orderCount: number // Mock data, có thể lấy từ API khác
 }
 
 function CustomerManagement() {
@@ -37,76 +36,57 @@ function CustomerManagement() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showLockConfirm, setShowLockConfirm] = useState(false)
   const [customerToLock, setCustomerToLock] = useState<Customer | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
-  // Mock data
-  const customers: Customer[] = [
-    {
-      id: 'C001',
-      name: 'Nguyễn Thị Lan',
-      email: 'lan.nguyen@email.com',
-      phone: '0912345678',
-      avatar: 'NL',
-      joinDate: '15/03/2024',
-      role: 'admin',
-      status: 'active',
-      orderCount: 23
-    },
-    {
-      id: 'C002',
-      name: 'Trần Minh Tuấn',
-      email: 'tuan.tran@email.com',
-      phone: '0987654321',
-      avatar: 'TT',
-      joinDate: '22/02/2024',
-      role: 'staff',
-      status: 'temporarily_locked',
-      orderCount: 15
-    },
-    {
-      id: 'C003',
-      name: 'Lê Thị Mai',
-      email: 'mai.le@email.com',
-      phone: '0901234567',
-      avatar: 'LM',
-      joinDate: '08/01/2024',
-      role: 'customer',
-      status: 'banned',
-      orderCount: 8
-    },
-    {
-      id: 'C004',
-      name: 'Phạm Văn Hùng',
-      email: 'hung.pham@email.com',
-      phone: '0934567890',
-      avatar: 'PH',
-      joinDate: '12/04/2024',
-      role: 'customer',
-      status: 'active',
-      orderCount: 31
-    },
-    {
-      id: 'C005',
-      name: 'Hoàng Thị Hoa',
-      email: 'hoa.hoang@email.com',
-      phone: '0945678901',
-      avatar: 'HH',
-      joinDate: '05/05/2024',
-      role: 'customer',
-      status: 'active',
-      orderCount: 12
-    },
-    {
-      id: 'C006',
-      name: 'Vũ Đức Minh',
-      email: 'minh.vu@email.com',
-      phone: '0956789012',
-      avatar: 'VM',
-      joinDate: '18/06/2024',
-      role: 'staff',
-      status: 'active',
-      orderCount: 0
+  // API states
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Function để transform User data thành Customer format
+  const transformUserToCustomer = (user: User): Customer => {
+    return {
+      ...user,
+      name: `${user.firstName} ${user.lastName}`.trim(),
+      phone: user.phoneNumber,
+      joinDate: user.createdAt,
+      status: user.isActive ? 'active' : 'temporarily_locked',
+      orderCount: Math.floor(Math.random() * 50) // Mock data, có thể lấy từ API khác
     }
-  ]
+  }
+
+  // Function để fetch users từ API
+  const fetchUsers = async () => {
+    setLoading(true)
+    setError('')
+
+    try {
+      const users = await getUsers({
+        pageSize: 100, // Lấy tất cả users, có thể implement pagination sau
+        pageNumber: 1
+      })
+
+      const transformedCustomers = users.map(transformUserToCustomer)
+      setCustomers(transformedCustomers)
+    } catch (err: unknown) {
+      const error = err as { message?: string }
+      const errorMessage = error.message || 'Có lỗi xảy ra khi tải danh sách người dùng'
+      setError(errorMessage)
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch data khi component mount
+  useEffect(() => {
+    fetchUsers()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getRoleConfig = (role: string) => {
     const configs = {
@@ -178,14 +158,69 @@ function CustomerManagement() {
     setShowLockConfirm(true)
   }
 
-  const confirmLock = () => {
+  const confirmLock = async () => {
     if (customerToLock) {
-      // Update customer status to locked
-      console.log('Locking customer:', customerToLock.name)
-      // Here you would typically make an API call to update the customer status
+      setActionLoading(true)
+      try {
+        await updateUser(customerToLock.id, {
+          isPermission: false
+        })
+
+        toast.success(`Đã khóa quyền hạn của ${customerToLock.name}`, {
+          position: 'top-right',
+          autoClose: 3000
+        })
+
+        // Refresh data
+        await fetchUsers()
+      } catch (err: unknown) {
+        const error = err as { message?: string }
+        const errorMessage = error.message || 'Có lỗi xảy ra khi khóa quyền hạn'
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } finally {
+        setActionLoading(false)
+        setShowLockConfirm(false)
+        setCustomerToLock(null)
+      }
     }
-    setShowLockConfirm(false)
-    setCustomerToLock(null)
+  }
+
+  const handleDelete = (customer: Customer) => {
+    setCustomerToDelete(customer)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = async () => {
+    if (customerToDelete) {
+      setActionLoading(true)
+      try {
+        await updateUser(customerToDelete.id, {
+          isActive: false
+        })
+
+        toast.success(`Đã xóa tài khoản ${customerToDelete.name}`, {
+          position: 'top-right',
+          autoClose: 3000
+        })
+
+        // Refresh data
+        await fetchUsers()
+      } catch (err: unknown) {
+        const error = err as { message?: string }
+        const errorMessage = error.message || 'Có lỗi xảy ra khi xóa tài khoản'
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } finally {
+        setActionLoading(false)
+        setShowDeleteConfirm(false)
+        setCustomerToDelete(null)
+      }
+    }
   }
 
   const closeDetailModal = () => {
@@ -196,6 +231,11 @@ function CustomerManagement() {
   const closeLockConfirm = () => {
     setShowLockConfirm(false)
     setCustomerToLock(null)
+  }
+
+  const closeDeleteConfirm = () => {
+    setShowDeleteConfirm(false)
+    setCustomerToDelete(null)
   }
 
   // Calculate summary statistics
@@ -209,7 +249,13 @@ function CustomerManagement() {
         <div className='flex items-center gap-3'>
           <h1 className='text-2xl font-bold text-gray-900'>Quản lý tài khoản</h1>
         </div>
+        <Button onClick={fetchUsers} disabled={loading} className='bg-blue-600 hover:bg-blue-700 text-white'>
+          {loading ? 'Đang tải...' : 'Làm mới'}
+        </Button>
       </div>
+
+      {/* Error Message */}
+      {error && <div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg'>{error}</div>}
 
       {/* Summary Cards */}
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
@@ -307,88 +353,110 @@ function CustomerManagement() {
           </div>
         </CardHeader>
         <CardContent className='p-0'>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className='px-6 py-3'>Tên khách hàng</TableHead>
-                <TableHead className='px-6 py-3'>Email / SDT</TableHead>
-                <TableHead className='px-6 py-3'>Ngày tham gia</TableHead>
-                <TableHead className='px-6 py-3'>Vai trò</TableHead>
-                <TableHead className='px-6 py-3'>Trạng thái</TableHead>
-                <TableHead className='px-6 py-3'>Hành động</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentCustomers.map((customer) => {
-                const roleConfig = getRoleConfig(customer.role)
-                const statusConfig = getStatusConfig(customer.status)
-
-                return (
-                  <TableRow key={customer.id}>
-                    <TableCell className='px-6 py-3'>
-                      <div className='flex items-center gap-3'>
-                        <Avatar className='w-10 h-10'>
-                          <AvatarFallback className='bg-blue-100 text-blue-600 text-sm font-semibold'>
-                            {customer.avatar}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className='font-medium text-gray-900 text-sm'>{customer.name}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className='px-6 py-3'>
-                      <div>
-                        <p className='font-medium text-gray-900 text-sm'>{customer.email}</p>
-                        <p className='text-xs text-gray-600'>{customer.phone}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className='px-6 py-3'>
-                      <span className='text-sm text-gray-700'>{customer.joinDate}</span>
-                    </TableCell>
-                    <TableCell className='px-6 py-3'>
-                      <div
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${roleConfig.bgColor} ${roleConfig.textColor}`}
-                      >
-                        {roleConfig.text}
-                      </div>
-                    </TableCell>
-                    <TableCell className='px-6 py-3'>
-                      <div
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.textColor}`}
-                      >
-                        {statusConfig.text}
-                      </div>
-                    </TableCell>
-                    <TableCell className='px-6 py-3'>
-                      <div className='flex items-center gap-2'>
-                        <Button
-                          variant='ghost'
-                          size='sm'
-                          onClick={() => handleView(customer)}
-                          className='text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1 text-sm flex items-center gap-1'
-                        >
-                          <Eye className='w-4 h-4' />
-                          Xem chi tiết
-                        </Button>
-                        {customer.status !== 'banned' && (
-                          <Button
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => handleLock(customer)}
-                            className='text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1 text-sm flex items-center gap-1'
-                          >
-                            <Lock className='w-4 h-4' />
-                            Khóa
-                          </Button>
-                        )}
-                      </div>
+          {loading ? (
+            <div className='flex items-center justify-center py-12'>
+              <div className='text-center'>
+                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
+                <p className='text-gray-600'>Đang tải dữ liệu...</p>
+              </div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className='px-6 py-3'>Tên khách hàng</TableHead>
+                  <TableHead className='px-6 py-3'>Email / SDT</TableHead>
+                  <TableHead className='px-6 py-3'>Ngày tham gia</TableHead>
+                  <TableHead className='px-6 py-3'>Vai trò</TableHead>
+                  <TableHead className='px-6 py-3'>Trạng thái</TableHead>
+                  <TableHead className='px-6 py-3'>Hành động</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentCustomers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className='text-center py-12 text-gray-500'>
+                      Không có dữ liệu
                     </TableCell>
                   </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                ) : (
+                  currentCustomers.map((customer) => {
+                    const roleConfig = getRoleConfig(customer.role)
+                    const statusConfig = getStatusConfig(customer.status)
+
+                    return (
+                      <TableRow key={customer.id}>
+                        <TableCell className='px-6 py-3'>
+                          <div className='flex items-center gap-3'>
+                            <Avatar className='w-10 h-10'>
+                              <AvatarFallback className='bg-blue-100 text-blue-600 text-sm font-semibold'>
+                                {customer.avatar ||
+                                  customer.name
+                                    .split(' ')
+                                    .map((n) => n[0])
+                                    .join('')
+                                    .toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className='font-medium text-gray-900 text-sm'>{customer.name}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className='px-6 py-3'>
+                          <div>
+                            <p className='font-medium text-gray-900 text-sm'>{customer.email}</p>
+                            <p className='text-xs text-gray-600'>{customer.phone}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className='px-6 py-3'>
+                          <span className='text-sm text-gray-700'>{customer.joinDate}</span>
+                        </TableCell>
+                        <TableCell className='px-6 py-3'>
+                          <div
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${roleConfig.bgColor} ${roleConfig.textColor}`}
+                          >
+                            {roleConfig.text}
+                          </div>
+                        </TableCell>
+                        <TableCell className='px-6 py-3'>
+                          <div
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.textColor}`}
+                          >
+                            {statusConfig.text}
+                          </div>
+                        </TableCell>
+                        <TableCell className='px-6 py-3'>
+                          <div className='flex items-center gap-2'>
+                            <Button
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => handleView(customer)}
+                              className='text-black hover:text-blue-800 hover:bg-blue-50 px-3 py-1 text-sm flex items-center gap-1'
+                            >
+                              <Eye className='w-4 h-4' />
+                              Xem chi tiết
+                            </Button>
+                            {customer.isPermission && (
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={() => handleLock(customer)}
+                                className='text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1 text-sm flex items-center gap-1'
+                              >
+                                <Lock className='w-4 h-4' />
+                                Khóa quyền hạn
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          )}
 
           {/* Pagination */}
           <div className='flex items-center justify-between px-6 py-4 border-t border-gray-200'>
@@ -474,10 +542,22 @@ function CustomerManagement() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className='flex gap-2'>
             <Button variant='outline' onClick={closeDetailModal}>
               Đóng
             </Button>
+            {selectedCustomer && selectedCustomer.isActive && (
+              <Button
+                variant='destructive'
+                onClick={() => {
+                  closeDetailModal()
+                  handleDelete(selectedCustomer)
+                }}
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Đang xử lý...' : 'Xóa tài khoản'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -493,7 +573,7 @@ function CustomerManagement() {
                   Bạn có muốn khóa người dùng <span className='font-semibold'>{customerToLock.name}</span> không?
                   <br />
                   <span className='text-sm text-gray-500 mt-2 block'>
-                    Người dùng sẽ không thể đăng nhập vào hệ thống sau khi bị khóa.
+                    Người dùng sẽ không thể thực hiện các chức năng trên hệ thống sau khi bị khóa.
                   </span>
                 </>
               )}
@@ -501,11 +581,40 @@ function CustomerManagement() {
           </DialogHeader>
 
           <DialogFooter>
-            <Button variant='outline' onClick={closeLockConfirm}>
+            <Button variant='outline' onClick={closeLockConfirm} disabled={actionLoading}>
               Hủy
             </Button>
-            <Button onClick={confirmLock} className='bg-red-600 hover:bg-red-700 text-white'>
-              Khóa tài khoản
+            <Button onClick={confirmLock} className='bg-red-600 hover:bg-red-700 text-white' disabled={actionLoading}>
+              {actionLoading ? 'Đang xử lý...' : 'Khóa quyền hạn'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa tài khoản</DialogTitle>
+            <DialogDescription>
+              {customerToDelete && (
+                <>
+                  Bạn có muốn xóa tài khoản <span className='font-semibold'>{customerToDelete.name}</span> không?
+                  <br />
+                  <span className='text-sm text-gray-500 mt-2 block'>
+                    Tài khoản sẽ bị vô hiệu hóa và không thể đăng nhập vào hệ thống.
+                  </span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button variant='outline' onClick={closeDeleteConfirm} disabled={actionLoading}>
+              Hủy
+            </Button>
+            <Button onClick={confirmDelete} className='bg-red-600 hover:bg-red-700 text-white' disabled={actionLoading}>
+              {actionLoading ? 'Đang xử lý...' : 'Xóa tài khoản'}
             </Button>
           </DialogFooter>
         </DialogContent>

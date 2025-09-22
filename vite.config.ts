@@ -9,7 +9,13 @@ export default defineConfig({
     react(), tailwindcss()
   ],
   server: {
-    port: 3000
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5219',
+        changeOrigin: true,
+      }
+    }
   },
   css: {
     devSourcemap: true

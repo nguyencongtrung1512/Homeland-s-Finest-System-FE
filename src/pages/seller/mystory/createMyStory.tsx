@@ -169,6 +169,23 @@ function CreateMyStory() {
           </CardContent>
         </Card>
 
+        {/* Commitment Content */}
+        <Card>
+          <CardContent className='p-6'>
+            <div className='space-y-4'>
+              <Label className='text-lg font-semibold text-green-700'>Nội dung cam kết</Label>
+              <div className='bg-green-50 p-6 rounded-lg border border-green-200'>
+                <Textarea
+                  placeholder='Chúng tôi cam kết: Tất cả sản phẩm đều được kiểm tra chất lượng nghiêm ngặt...'
+                  value={storyData.commitmentContent}
+                  onChange={(e) => handleInputChange('commitmentContent', e.target.value)}
+                  className='min-h-[120px] text-base bg-transparent border-none resize-none'
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Action Buttons */}
         <div className='flex justify-end gap-4 pt-6'>
           <Button

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Plus, Edit, Trash2, Eye, ChevronRight, Home } from 'lucide-react'
+import path from '../../../constants/path'
 
 function ProductsSeller() {
   const navigate = useNavigate()
@@ -29,19 +30,15 @@ function ProductsSeller() {
   ]
 
   const handleCreateProduct = () => {
-    navigate('/createProduct')
+    navigate(`../${path.createProduct}`)
+  }
+
+  const handleEditProduct = (productId: string) => {
+    navigate(`../${path.updateProduct.replace(':id', productId)}`)
   }
 
   return (
     <div className='p-6'>
-      {/* Breadcrumb */}
-      <div className='flex items-center space-x-2 text-sm text-gray-600 mb-4'>
-        <Home className='w-4 h-4' />
-        <span>Dashboard</span>
-        <ChevronRight className='w-4 h-4' />
-        <span className='text-gray-900 font-medium'>Quản lý sản phẩm</span>
-      </div>
-
       {/* Header */}
       <div className='flex justify-between items-center mb-6'>
         <h1 className='text-2xl font-semibold text-gray-900'>Quản lý sản phẩm</h1>
@@ -91,7 +88,7 @@ function ProductsSeller() {
                         <Button variant='ghost' size='sm'>
                           <Eye className='w-4 h-4' />
                         </Button>
-                        <Button variant='ghost' size='sm'>
+                        <Button variant='ghost' size='sm' onClick={() => handleEditProduct(product.id)}>
                           <Edit className='w-4 h-4' />
                         </Button>
                         <Button variant='ghost' size='sm' className='text-red-600 hover:text-red-700'>

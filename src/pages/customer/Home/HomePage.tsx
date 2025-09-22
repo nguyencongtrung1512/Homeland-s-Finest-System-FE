@@ -2,6 +2,7 @@ import FeaturedProducts from './featuredProducts'
 import HandicraftProducts from './handicraftProducts'
 import VietnamSpecialtyMap from './VietnamSpecialtyMap'
 import BannerWelcome from '../../../assets/BannerWelcome.png'
+import ChatBot from '../../../components/ChatBot/chatbot'
 
 function HomePage() {
   return (
@@ -40,6 +41,7 @@ function HomePage() {
       <section>
         <HandicraftProducts />
       </section>
+      <ChatBot />
     </main>
   )
 }

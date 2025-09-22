@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Search, MapPin, Users } from 'lucide-react'
+import ChatBot from '../../../components/ChatBot/chatbot'
 
 interface StoryData {
   id: string
@@ -162,6 +163,7 @@ const StoryWithSeller: React.FC = () => {
           <p className='text-gray-500'>Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc</p>
         </div>
       )}
+      <ChatBot />
     </div>
   )
 }

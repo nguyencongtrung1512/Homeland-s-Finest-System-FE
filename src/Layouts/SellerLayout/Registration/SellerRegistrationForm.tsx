@@ -380,20 +380,6 @@ function SellerRegistrationForm() {
                 {errors.storeName && <p className='text-sm text-red-500'>{errors.storeName}</p>}
               </div>
 
-              <div className='space-y-2'>
-                <Label htmlFor='businessType'>Loại hình kinh doanh</Label>
-                <Select onValueChange={(value) => handleInputChange('businessType', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder='Chọn loại hình kinh doanh' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='individual'>Cá nhân</SelectItem>
-                    <SelectItem value='company'>Công ty</SelectItem>
-                    <SelectItem value='cooperative'>Hợp tác xã</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               <div className='space-y-2 md:col-span-2'>
                 <Label htmlFor='storeDescription'>
                   Mô tả cửa hàng <span className='text-red-500'>*</span>

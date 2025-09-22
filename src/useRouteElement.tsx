@@ -16,10 +16,10 @@ import Dashboard from './pages/seller/dashboard/dashboard'
 import SellerLayout from './Layouts/SellerLayout/sellerLayout'
 import ProductsSeller from './pages/seller/products/products'
 import CreateProduct from './pages/seller/products/createProduct'
+import UpdateProduct from './pages/seller/products/updateProduct'
 import OrderManagement from './pages/seller/order/order'
 import OrderDetail from './pages/seller/order/orderDetail'
 import CreateMyStory from './pages/seller/mystory/createMyStory'
-import DetailMyStory from './pages/seller/mystory/detailMyStory'
 import ChatWithCustomer from './pages/seller/ChatWithCustomer/ChatWithCustomer'
 import FinanceManagement from './pages/seller/finance/finance'
 import SetupStore from './pages/seller/setupStore/setupStore'
@@ -52,6 +52,8 @@ import ManagerProductAdmin from './pages/admin/productManagerment/productManager
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import StoryWithSeller from './pages/customer/storyWithSeller'
 import StorePage from './pages/customer/storeSeller/storePage'
+import NotFound from './components/Error/NotFound'
+// import ProtectedRoute from './components/ProtectedRoute'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -94,6 +96,22 @@ export default function useRouteElements() {
         }
       ]
     },
+    {
+      path: path.loginCustomer,
+      element: <Login />
+    },
+    {
+      path: path.registerCustomer,
+      element: <Register />
+    },
+    {
+      path: path.forgotPassword,
+      element: <VerifyEmail />
+    },
+    {
+      path: path.resetPassword,
+      element: <NewPassword />
+    },
     // Profile Customer with separate layout
     {
       path: '',
@@ -118,12 +136,16 @@ export default function useRouteElements() {
       element: <SellerLoginLayout />
     },
     // =================================SELLER================================
+    // {
+    //   path: path.BASE_SELLER,
+    //   element: <ProtectedRoute requiredRole='Seller' />,
+    //   children: [
     {
-      path: '/',
+      path: '',
       element: <SellerLayout />,
       children: [
         {
-          path: path.dashboard,
+          path: path.BASE_SELLER,
           element: <Dashboard />
         },
         {
@@ -133,6 +155,10 @@ export default function useRouteElements() {
         {
           path: path.createProduct,
           element: <CreateProduct />
+        },
+        {
+          path: path.updateProduct,
+          element: <UpdateProduct />
         },
         {
           path: path.ordersSeller,
@@ -149,10 +175,6 @@ export default function useRouteElements() {
         {
           path: path.createMyStorySeller,
           element: <CreateMyStory />
-        },
-        {
-          path: path.detailMyStorySeller,
-          element: <DetailMyStory />
         },
         {
           path: path.chatWithCustomerSeller,
@@ -176,27 +198,15 @@ export default function useRouteElements() {
         }
       ]
     },
-    {
-      path: path.loginCustomer,
-      element: <Login />
-    },
-    {
-      path: path.registerCustomer,
-      element: <Register />
-    },
-    {
-      path: path.forgotPassword,
-      element: <VerifyEmail />
-    },
-    {
-      path: path.resetPassword,
-      element: <NewPassword />
-    },
-
+    //   ]
+    // },
     // =================================STAFF================================
-
+    // {
+    //   path: path.BASE_STAFF,
+    //   element: <ProtectedRoute requiredRole='Staff' />,
+    //   children: [
     {
-      path: '/',
+      path: '',
       element: <StaffLayout />,
       children: [
         {
@@ -245,9 +255,16 @@ export default function useRouteElements() {
         }
       ]
     },
+    //   ]
+    // },
+
     // =================================ADMIN================================
+    // {
+    //   path: path.BASE_ADMIN,
+    //   element: <ProtectedRoute requiredRole='Admin' />,
+    //   children: [
     {
-      path: '/',
+      path: '',
       element: <AdminLayout />,
       children: [
         {
@@ -279,6 +296,14 @@ export default function useRouteElements() {
           element: <BlogList />
         }
       ]
+    },
+    //   ]
+    // },
+
+    // Catch-all route for 404 Not Found
+    {
+      path: '*',
+      element: <NotFound />
     }
   ])
 

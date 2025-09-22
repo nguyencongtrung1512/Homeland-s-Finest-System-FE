@@ -98,14 +98,17 @@ function CreateProduct() {
   }
 
   const handleCancel = () => {
-    navigate('/productsSeller')
+    navigate('../product-management')
   }
 
   return (
     <div className='p-6 bg-gray-50 min-h-screen'>
       {/* Breadcrumb */}
       <div className='flex items-center space-x-2 text-sm text-gray-600 mb-4'>
-        <span className='text-gray-600 hover:text-gray-900 cursor-pointer' onClick={() => navigate('/productsSeller')}>
+        <span
+          className='text-gray-600 hover:text-gray-900 cursor-pointer'
+          onClick={() => navigate('../product-management')}
+        >
           Quản lý sản phẩm
         </span>
         <ChevronRight className='w-4 h-4' />
@@ -366,7 +369,7 @@ function CreateProduct() {
               </div>
 
               {/* Gallery Title */}
-              <div>
+              {/* <div>
                 <Label className='text-sm font-medium'>Tiêu đề gallery</Label>
                 <Input
                   placeholder='Hình ảnh hạt trưởng'
@@ -374,10 +377,10 @@ function CreateProduct() {
                   onChange={(e) => handleStoryInputChange('galleryTitle', e.target.value)}
                   className='mt-1'
                 />
-              </div>
+              </div> */}
 
               {/* Gallery Images */}
-              <div>
+              {/* <div>
                 <Label className='text-sm font-medium'>Hình ảnh gallery (4 ảnh)</Label>
                 <div className='grid grid-cols-2 gap-2 mt-2'>
                   {storyData.galleryImages.map((_, index) => (
@@ -390,7 +393,7 @@ function CreateProduct() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </div> */}
 
               {/* Commitment */}
               <div>

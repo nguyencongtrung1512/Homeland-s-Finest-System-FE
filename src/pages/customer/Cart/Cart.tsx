@@ -366,10 +366,10 @@ export default function Cart() {
       <div className='container mx-auto px-4 py-6'>
         {/* Header */}
         <div className='mb-6'>
-          <h1 className='text-2xl font-bold text-gray-900 flex items-center gap-2'>
+          <h2 className='text-2xl font-bold text-gray-900 flex items-center gap-2'>
             <ShoppingCart className='w-6 h-6' />
             Giỏ hàng ({cartItems.length + cartCombos.length} sản phẩm)
-          </h1>
+          </h2>
         </div>
 
         <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
@@ -490,7 +490,7 @@ export default function Cart() {
                             <div className='w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded text-white text-xs flex items-center justify-center font-bold'>
                               C
                             </div>
-                            <span className='font-medium text-purple-700'>Sản phẩm combo</span>
+                            <span className='font-medium text-black'>Sản phẩm combo</span>
                             <span className='ml-auto text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded'>
                               COMBO
                             </span>
