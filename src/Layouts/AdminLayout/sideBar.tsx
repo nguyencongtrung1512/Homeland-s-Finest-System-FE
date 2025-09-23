@@ -1,4 +1,4 @@
-import { BarChart3, CheckCircle, CreditCard, FileText, Leaf, LibraryBig, User } from 'lucide-react'
+import { BarChart3, CheckCircle, ClipboardMinus, CreditCard, FileText, Leaf, LibraryBig, User } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
@@ -54,9 +54,9 @@ function SideBar({ isCollapsed }: SideBarProps) {
       icon: <FileText size={18} />
     },
     {
-      key: path.REPORT_MANAGEMENT_ADMIN,
-      label: 'Quản lí hoa hồng',
-      icon: <FileText size={18} />
+      key: path.SYSTEM_STORAGE_ADMIN,
+      label: 'Quản lí hệ thống',
+      icon: <ClipboardMinus size={18} />
     }
   ]
 

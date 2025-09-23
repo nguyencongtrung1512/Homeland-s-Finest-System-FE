@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Search, Users, UserX, ChevronLeft, ChevronRight, Lock, Eye } from 'lucide-react'
+import {
+  Search,
+  Users,
+  UserX,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Eye,
+  UserPlus,
+  Calendar as CalendarIcon
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -14,7 +24,10 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../components/ui/dialog'
+import { Calendar } from '../../../components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { getUsers, updateUser, type User } from '../../../apis/user.api'
+import { registerStaff, type StaffRegistrationData } from '../../../apis/auth.api'
 import { toast } from 'react-toastify'
 
 // Sử dụng User interface từ API, thêm một số field computed
@@ -23,7 +36,6 @@ interface Customer extends User {
   phone: string // Alias cho phoneNumber
   joinDate: string // Computed từ createdAt
   status: 'active' | 'temporarily_locked' | 'banned' // Computed từ isActive
-  orderCount: number // Mock data, có thể lấy từ API khác
 }
 
 function CustomerManagement() {
@@ -40,6 +52,20 @@ function CustomerManagement() {
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
+  // Staff creation states
+  const [showCreateStaffModal, setShowCreateStaffModal] = useState(false)
+  const [staffFormData, setStaffFormData] = useState<StaffRegistrationData>({
+    email: '',
+    password: '',
+    gender: 'Male',
+    phoneNumber: '',
+    dateOfBirth: '',
+    hireDate: ''
+  })
+  const [staffFormLoading, setStaffFormLoading] = useState(false)
+  const [dateOfBirthOpen, setDateOfBirthOpen] = useState(false)
+  const [hireDateOpen, setHireDateOpen] = useState(false)
+
   // API states
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(false)
@@ -47,13 +73,16 @@ function CustomerManagement() {
 
   // Function để transform User data thành Customer format
   const transformUserToCustomer = (user: User): Customer => {
+    const firstName = user.firstName || ''
+    const lastName = user.lastName || ''
+    const fullName = `${firstName} ${lastName}`.trim()
+
     return {
       ...user,
-      name: `${user.firstName} ${user.lastName}`.trim(),
-      phone: user.phoneNumber,
-      joinDate: user.createdAt,
-      status: user.isActive ? 'active' : 'temporarily_locked',
-      orderCount: Math.floor(Math.random() * 50) // Mock data, có thể lấy từ API khác
+      name: fullName || 'Không có tên',
+      phone: user.phoneNumber || '',
+      joinDate: user.createdAt || '',
+      status: user.isActive ? 'active' : 'temporarily_locked'
     }
   }
 
@@ -69,6 +98,9 @@ function CustomerManagement() {
       })
 
       const transformedCustomers = users.map(transformUserToCustomer)
+      console.log('Fetched users:', users.length)
+      console.log('Transformed customers:', transformedCustomers.length)
+      console.log('Sample customer:', transformedCustomers[0])
       setCustomers(transformedCustomers)
     } catch (err: unknown) {
       const error = err as { message?: string }
@@ -90,23 +122,18 @@ function CustomerManagement() {
 
   const getRoleConfig = (role: string) => {
     const configs = {
-      admin: {
-        text: 'Admin',
-        bgColor: 'bg-purple-100',
-        textColor: 'text-purple-600'
-      },
-      staff: {
+      Staff: {
         text: 'Nhân viên',
         bgColor: 'bg-blue-100',
         textColor: 'text-blue-600'
       },
-      customer: {
+      Customer: {
         text: 'Khách hàng',
         bgColor: 'bg-green-100',
         textColor: 'text-green-600'
       }
     }
-    return configs[role as keyof typeof configs] || configs.customer
+    return configs[role as keyof typeof configs] || configs.Customer
   }
 
   const getStatusConfig = (status: string) => {
@@ -131,16 +158,35 @@ function CustomerManagement() {
   }
 
   const filteredCustomers = customers.filter((customer) => {
+    const searchLower = searchText.toLowerCase()
     const matchesSearch =
       searchText === '' ||
-      customer.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchText.toLowerCase()) ||
-      customer.phone.includes(searchText)
+      customer.name.toLowerCase().includes(searchLower) ||
+      customer.email.toLowerCase().includes(searchLower) ||
+      customer.phone.includes(searchText) ||
+      (customer.firstName && customer.firstName.toLowerCase().includes(searchLower)) ||
+      (customer.lastName && customer.lastName.toLowerCase().includes(searchLower))
 
     const matchesRole = roleFilter === 'all' || customer.role === roleFilter
     const matchesStatus = statusFilter === 'all' || customer.status === statusFilter
 
-    return matchesSearch && matchesRole && matchesStatus
+    const result = matchesSearch && matchesRole && matchesStatus
+
+    // Debug logging
+    if (searchText && result) {
+      console.log('Search match found:', {
+        searchText,
+        customer: {
+          name: customer.name,
+          email: customer.email,
+          phone: customer.phone,
+          firstName: customer.firstName,
+          lastName: customer.lastName
+        }
+      })
+    }
+
+    return result
   })
 
   const totalPages = Math.ceil(filteredCustomers.length / pageSize)
@@ -238,6 +284,97 @@ function CustomerManagement() {
     setCustomerToDelete(null)
   }
 
+  // Staff creation functions
+  const handleCreateStaff = () => {
+    setShowCreateStaffModal(true)
+    // Reset form data
+    setStaffFormData({
+      email: '',
+      password: '',
+      gender: 'Male',
+      phoneNumber: '',
+      dateOfBirth: '',
+      hireDate: ''
+    })
+  }
+
+  const handleStaffFormChange = (field: keyof StaffRegistrationData, value: string) => {
+    setStaffFormData((prev) => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleStaffFormSubmit = async () => {
+    // Basic validation
+    if (
+      !staffFormData.email ||
+      !staffFormData.password ||
+      !staffFormData.phoneNumber ||
+      !staffFormData.dateOfBirth ||
+      !staffFormData.hireDate
+    ) {
+      toast.error('Vui lòng điền đầy đủ thông tin', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    setStaffFormLoading(true)
+    try {
+      await registerStaff(staffFormData)
+
+      toast.success('Tạo tài khoản nhân viên thành công!', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+
+      // Close modal and refresh data
+      setShowCreateStaffModal(false)
+      await fetchUsers()
+    } catch (err: unknown) {
+      const error = err as { message?: string }
+      const errorMessage = error.message || 'Có lỗi xảy ra khi tạo tài khoản nhân viên'
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setStaffFormLoading(false)
+    }
+  }
+
+  const closeCreateStaffModal = () => {
+    setShowCreateStaffModal(false)
+    setStaffFormData({
+      email: '',
+      password: '',
+      gender: 'Male',
+      phoneNumber: '',
+      dateOfBirth: '',
+      hireDate: ''
+    })
+    setDateOfBirthOpen(false)
+    setHireDateOpen(false)
+  }
+
+  // Date formatting functions
+  const formatDate = (date: Date | undefined): string => {
+    if (!date) return ''
+    return date.toISOString().split('T')[0] // Format as YYYY-MM-DD
+  }
+
+  const formatDisplayDate = (dateString: string): string => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    return date.toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+  }
+
   // Calculate summary statistics
   const totalCustomers = customers.length
   const bannedCustomers = customers.filter((c) => c.status === 'banned').length
@@ -249,9 +386,18 @@ function CustomerManagement() {
         <div className='flex items-center gap-3'>
           <h1 className='text-2xl font-bold text-gray-900'>Quản lý tài khoản</h1>
         </div>
-        <Button onClick={fetchUsers} disabled={loading} className='bg-blue-600 hover:bg-blue-700 text-white'>
-          {loading ? 'Đang tải...' : 'Làm mới'}
-        </Button>
+        <div className='flex items-center gap-3'>
+          <Button
+            onClick={handleCreateStaff}
+            className='bg-green-600 hover:bg-green-700 text-white flex items-center gap-2'
+          >
+            <UserPlus className='w-4 h-4' />
+            Tạo nhân viên
+          </Button>
+          <Button onClick={fetchUsers} disabled={loading} className='bg-blue-600 hover:bg-blue-700 text-white'>
+            {loading ? 'Đang tải...' : 'Làm mới'}
+          </Button>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -533,12 +679,12 @@ function CustomerManagement() {
                 <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedCustomer.joinDate}</div>
               </div>
 
-              <div>
+              {/* <div>
                 <label className='block text-sm font-medium text-gray-700 mb-1'>Số đơn đã mua</label>
                 <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>
                   {selectedCustomer.orderCount} đơn hàng
                 </div>
-              </div>
+              </div> */}
             </div>
           )}
 
@@ -615,6 +761,150 @@ function CustomerManagement() {
             </Button>
             <Button onClick={confirmDelete} className='bg-red-600 hover:bg-red-700 text-white' disabled={actionLoading}>
               {actionLoading ? 'Đang xử lý...' : 'Xóa tài khoản'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Staff Modal */}
+      <Dialog open={showCreateStaffModal} onOpenChange={setShowCreateStaffModal}>
+        <DialogContent className='sm:max-w-lg'>
+          <DialogHeader>
+            <DialogTitle>Tạo tài khoản nhân viên</DialogTitle>
+            <DialogDescription>Điền thông tin để tạo tài khoản nhân viên mới</DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-4'>
+            {/* Email */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Email *</label>
+              <Input
+                type='email'
+                placeholder='Nhập email nhân viên'
+                value={staffFormData.email}
+                onChange={(e) => handleStaffFormChange('email', e.target.value)}
+                className='h-10'
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Mật khẩu *</label>
+              <Input
+                type='password'
+                placeholder='Nhập mật khẩu'
+                value={staffFormData.password}
+                onChange={(e) => handleStaffFormChange('password', e.target.value)}
+                className='h-10'
+              />
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Số điện thoại *</label>
+              <Input
+                type='tel'
+                placeholder='Nhập số điện thoại'
+                value={staffFormData.phoneNumber}
+                onChange={(e) => handleStaffFormChange('phoneNumber', e.target.value)}
+                className='h-10'
+              />
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Giới tính *</label>
+              <Select value={staffFormData.gender} onValueChange={(value) => handleStaffFormChange('gender', value)}>
+                <SelectTrigger className='h-10'>
+                  <SelectValue placeholder='Chọn giới tính' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='Male'>Nam</SelectItem>
+                  <SelectItem value='Female'>Nữ</SelectItem>
+                  <SelectItem value='Other'>Khác</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date of Birth */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày sinh *</label>
+              <Popover open={dateOfBirthOpen} onOpenChange={setDateOfBirthOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
+                      }`}
+                  >
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {staffFormData.dateOfBirth ? formatDisplayDate(staffFormData.dateOfBirth) : 'Chọn ngày sinh'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar
+                    mode='single'
+                    selected={staffFormData.dateOfBirth ? new Date(staffFormData.dateOfBirth) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        handleStaffFormChange('dateOfBirth', formatDate(date))
+                        setDateOfBirthOpen(false)
+                      }
+                    }}
+                    disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                    captionLayout='dropdown'
+                    fromYear={1900}
+                    toYear={new Date().getFullYear()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Hire Date */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày tuyển dụng *</label>
+              <Popover open={hireDateOpen} onOpenChange={setHireDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.hireDate ? 'text-muted-foreground' : ''
+                      }`}
+                  >
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {staffFormData.hireDate ? formatDisplayDate(staffFormData.hireDate) : 'Chọn ngày tuyển dụng'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar
+                    mode='single'
+                    selected={staffFormData.hireDate ? new Date(staffFormData.hireDate) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        handleStaffFormChange('hireDate', formatDate(date))
+                        setHireDateOpen(false)
+                      }
+                    }}
+                    disabled={(date) => date < new Date('2020-01-01')}
+                    captionLayout='dropdown'
+                    fromYear={2020}
+                    toYear={new Date().getFullYear() + 1}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <DialogFooter className='flex gap-2'>
+            <Button variant='outline' onClick={closeCreateStaffModal} disabled={staffFormLoading}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleStaffFormSubmit}
+              className='bg-green-600 hover:bg-green-700 text-white'
+              disabled={staffFormLoading}
+            >
+              {staffFormLoading ? 'Đang tạo...' : 'Tạo nhân viên'}
             </Button>
           </DialogFooter>
         </DialogContent>

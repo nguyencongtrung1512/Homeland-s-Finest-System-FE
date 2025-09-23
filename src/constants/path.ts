@@ -51,6 +51,7 @@ export const path = {
   reportDetailStaff: 'reportDetail/:reportId',
   blogStaff: '/blog',
   complianceStaff: '/complianceStaff',
+  productCategoryStaff: '/product-category',
 
   settingsStaff: '/settingsStaff',
   BLOG_MANAGEMENT: '/blog/:id',
@@ -63,11 +64,9 @@ export const path = {
   STORE_MANAGEMENT_ADMIN: 'storeManagement',
   ACCOUNT_MANAGEMENT_ADMIN: 'accountManagement',
   TERMS_MANAGEMENT_ADMIN: 'termsManagement',
-  COMBO_MANAGEMENT_ADMIN: 'comboManagement',
   TRANSACTION_MANAGEMENT_ADMIN: 'transactionManagement',
-  REPORT_MANAGEMENT_ADMIN: 'reportManagement',
-  PRODUCT_MANAGEMENT_ADMIN: 'productManagement',
-  BLOG_MANAGEMENT_ADMIN: 'blogManagement'
+  BLOG_MANAGEMENT_ADMIN: 'blogManagement',
+  SYSTEM_STORAGE_ADMIN: 'systemStorage'
 }
 
 export default path

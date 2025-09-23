@@ -9,7 +9,8 @@ import {
   Settings,
   Leaf,
   LibraryBig,
-  ShoppingCart
+  ShoppingCart,
+  Package
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import path from '../../constants/path'
@@ -52,6 +53,11 @@ function SideBar() {
       key: path.managerProductStaff,
       label: 'Quản lý sản phẩm',
       icon: <CheckCircle size={18} />
+    },
+    {
+      key: path.productCategoryStaff,
+      label: 'Quản lý danh mục',
+      icon: <Package size={18} />
     },
     {
       key: path.Order_Management_Staff,

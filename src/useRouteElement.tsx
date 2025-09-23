@@ -48,11 +48,13 @@ import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
 import BlogList from './pages/admin/blogManagerment/list'
-import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
+// import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import StoryWithSeller from './pages/customer/storyWithSeller'
 import StorePage from './pages/customer/storeSeller/storePage'
 import NotFound from './components/Error/NotFound'
+import SystemStorage from './pages/admin/systemStorage/list'
+import ListCategory from './pages/staff/productCategory/listCategory'
 // import ProtectedRoute from './components/ProtectedRoute'
 
 export default function useRouteElements() {
@@ -252,6 +254,10 @@ export default function useRouteElements() {
         {
           path: path.Order_Management_Staff,
           element: <OrderManagementStaff />
+        },
+        {
+          path: path.productCategoryStaff,
+          element: <ListCategory />
         }
       ]
     },
@@ -275,10 +281,10 @@ export default function useRouteElements() {
           path: path.STORE_MANAGEMENT_ADMIN,
           element: <StoreManagement />
         },
-        {
-          path: path.PRODUCT_MANAGEMENT_ADMIN,
-          element: <ManagerProductAdmin />
-        },
+        // {
+        //   path: path.PRODUCT_MANAGEMENT_ADMIN,
+        //   element: <ManagerProductAdmin />
+        // },
         {
           path: path.ACCOUNT_MANAGEMENT_ADMIN,
           element: <CustomerManagement />
@@ -294,6 +300,10 @@ export default function useRouteElements() {
         {
           path: path.BLOG_MANAGEMENT_ADMIN,
           element: <BlogList />
+        },
+        {
+          path: path.SYSTEM_STORAGE_ADMIN,
+          element: <SystemStorage />
         }
       ]
     },
