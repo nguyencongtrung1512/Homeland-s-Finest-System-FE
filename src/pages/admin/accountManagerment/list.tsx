@@ -57,6 +57,8 @@ function CustomerManagement() {
   const [staffFormData, setStaffFormData] = useState<StaffRegistrationData>({
     email: '',
     password: '',
+    firstName: '',
+    lastName: '',
     gender: 'Male',
     phoneNumber: '',
     dateOfBirth: '',
@@ -291,6 +293,8 @@ function CustomerManagement() {
     setStaffFormData({
       email: '',
       password: '',
+      firstName: '',
+      lastName: '',
       gender: 'Male',
       phoneNumber: '',
       dateOfBirth: '',
@@ -310,6 +314,8 @@ function CustomerManagement() {
     if (
       !staffFormData.email ||
       !staffFormData.password ||
+      !staffFormData.firstName ||
+      !staffFormData.lastName ||
       !staffFormData.phoneNumber ||
       !staffFormData.dateOfBirth ||
       !staffFormData.hireDate
@@ -350,6 +356,8 @@ function CustomerManagement() {
     setStaffFormData({
       email: '',
       password: '',
+      firstName: '',
+      lastName: '',
       gender: 'Male',
       phoneNumber: '',
       dateOfBirth: '',
@@ -461,7 +469,6 @@ function CustomerManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value='all'>Tất cả vai trò</SelectItem>
-                  <SelectItem value='admin'>Admin</SelectItem>
                   <SelectItem value='staff'>Nhân viên</SelectItem>
                   <SelectItem value='customer'>Khách hàng</SelectItem>
                 </SelectContent>
@@ -775,6 +782,30 @@ function CustomerManagement() {
           </DialogHeader>
 
           <div className='space-y-4'>
+            {/* First Name and Last Name */}
+            <div className='grid grid-cols-2 gap-4'>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Họ *</label>
+                <Input
+                  type='text'
+                  placeholder='Nhập họ'
+                  value={staffFormData.firstName}
+                  onChange={(e) => handleStaffFormChange('firstName', e.target.value)}
+                  className='h-10'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Tên *</label>
+                <Input
+                  type='text'
+                  placeholder='Nhập tên'
+                  value={staffFormData.lastName}
+                  onChange={(e) => handleStaffFormChange('lastName', e.target.value)}
+                  className='h-10'
+                />
+              </div>
+            </div>
+
             {/* Email */}
             <div>
               <label className='block text-sm font-medium text-gray-700 mb-2'>Email *</label>

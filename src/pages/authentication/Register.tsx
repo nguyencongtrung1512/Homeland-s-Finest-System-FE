@@ -17,7 +17,8 @@ import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
 interface RegisterFormData {
-  fullName: string
+  firstName: string
+  lastName: string
   email: string
   phoneNumber: string
   password: string
@@ -29,7 +30,8 @@ interface RegisterFormData {
 function Register() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState<RegisterFormData>({
-    fullName: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phoneNumber: '',
     password: '',
@@ -63,8 +65,14 @@ function Register() {
   }
 
   const validateForm = (): boolean => {
-    if (!formData.fullName.trim()) {
-      const errorMsg = 'Vui lòng nhập họ và tên'
+    if (!formData.firstName.trim()) {
+      const errorMsg = 'Vui lòng nhập tên'
+      setError(errorMsg)
+      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
+      return false
+    }
+    if (!formData.lastName.trim()) {
+      const errorMsg = 'Vui lòng nhập họ'
       setError(errorMsg)
       toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
       return false
@@ -155,6 +163,8 @@ function Register() {
       const apiData = {
         email: formData.email,
         password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         gender: formData.gender,
         phoneNumber: formData.phoneNumber,
         dateOfBirth: formData.dateOfBirth!.toISOString().split('T')[0] // Convert to YYYY-MM-DD format
@@ -176,7 +186,8 @@ function Register() {
 
         // Reset form
         setFormData({
-          fullName: '',
+          firstName: '',
+          lastName: '',
           email: '',
           phoneNumber: '',
           password: '',
@@ -190,7 +201,7 @@ function Register() {
           navigate(path.login)
         }, 2000)
       } else {
-        const errorMsg = response?.message || 'Đăng ký thất bại'
+        const errorMsg = response?.data?.message || 'Đăng ký thất bại'
         setError(errorMsg)
         toast.error(errorMsg, {
           position: 'top-right',
@@ -264,21 +275,41 @@ function Register() {
           )}
 
           <form className='space-y-4' onSubmit={handleSubmit}>
-            <div className='space-y-2'>
-              <Label htmlFor='fullName'>
-                Họ và tên<span className='text-destructive'>*</span>
-              </Label>
-              <div className='relative'>
-                <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                <Input
-                  id='fullName'
-                  type='text'
-                  name='fullName'
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  placeholder='Nhập họ và tên của bạn'
-                  className='pl-10'
-                />
+            <div className='grid grid-cols-2 gap-4'>
+              <div className='space-y-2'>
+                <Label htmlFor='firstName'>
+                  Tên<span className='text-destructive'>*</span>
+                </Label>
+                <div className='relative'>
+                  <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
+                  <Input
+                    id='firstName'
+                    type='text'
+                    name='firstName'
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    placeholder='Nhập tên của bạn'
+                    className='pl-10'
+                  />
+                </div>
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='lastName'>
+                  Họ<span className='text-destructive'>*</span>
+                </Label>
+                <div className='relative'>
+                  <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
+                  <Input
+                    id='lastName'
+                    type='text'
+                    name='lastName'
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    placeholder='Nhập họ của bạn'
+                    className='pl-10'
+                  />
+                </div>
               </div>
             </div>
 
