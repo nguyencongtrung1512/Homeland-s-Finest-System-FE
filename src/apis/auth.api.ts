@@ -61,6 +61,12 @@ export const login = async (data: LoginData): Promise<LoginResponseData> => {
   return response.data
 }
 
+// Seller Login
+export const loginSeller = async (data: LoginData): Promise<LoginResponseData> => {
+  const response = await axiosInstance.post(`${API_URL_SELLER}/login`, data)
+  return response.data
+}
+
 export interface LogoutResponse {
   status: number
   message: string

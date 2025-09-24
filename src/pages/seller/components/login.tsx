@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import path from '../../../constants/path'
 import { Label } from '../../../components/ui/label'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
+import { loginSeller } from '../../../apis/auth.api'
+import Loading from '../../../components/Loading/loading'
 
 function SellerLogin() {
   const navigate = useNavigate()
@@ -14,6 +17,7 @@ function SellerLogin() {
     rememberMe: false
   })
   const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -23,10 +27,49 @@ function SellerLogin() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Login data:', formData)
-    // Handle login logic here
+
+    // Validation
+    if (!formData.email || !formData.password) {
+      toast.error('Vui lòng nhập đầy đủ thông tin')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await loginSeller({
+        email: formData.email,
+        password: formData.password
+      })
+
+      if (response.token) {
+        // Store token and user info
+        localStorage.setItem('token', response.token)
+        localStorage.setItem('userRole', response.role)
+        localStorage.setItem('userEmail', formData.email)
+
+        toast.success('Đăng nhập thành công!')
+
+        // Redirect to seller dashboard
+        setTimeout(() => {
+          navigate(path.BASE_SELLER)
+        }, 1000)
+      }
+    } catch (error: any) {
+      console.error('Login error:', error)
+
+      // Handle different types of errors
+      if (error?.response?.data?.message) {
+        toast.error(error.response.data.message)
+      } else if (error?.message) {
+        toast.error(error.message)
+      } else {
+        toast.error('Đăng nhập thất bại. Vui lòng thử lại.')
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleForgotPassword = () => {
@@ -41,6 +84,15 @@ function SellerLogin() {
 
   return (
     <div className='w-full'>
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
+          <div className='bg-white rounded-xl p-8 shadow-xl'>
+            <Loading size='lg' text='Đang đăng nhập...' />
+          </div>
+        </div>
+      )}
+
       {/* Welcome Title - Hidden on mobile since it's in layout */}
       <div className='text-center mb-6 hidden md:block'>
         <h2 className='text-xl font-semibold text-gray-800 mb-2'>Chào mừng đối tác</h2>
@@ -104,9 +156,17 @@ function SellerLogin() {
         {/* Login Button */}
         <Button
           type='submit'
-          className='w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-md hover:shadow-lg'
+          disabled={isLoading}
+          className='w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-md hover:shadow-lg disabled:opacity-50'
         >
-          Đăng nhập →
+          {isLoading ? (
+            <div className='flex items-center gap-2'>
+              <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
+              Đang đăng nhập...
+            </div>
+          ) : (
+            'Đăng nhập →'
+          )}
         </Button>
 
         {/* Registration Section */}

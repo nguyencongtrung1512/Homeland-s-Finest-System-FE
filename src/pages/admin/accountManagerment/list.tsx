@@ -94,10 +94,36 @@ function CustomerManagement() {
     setError('')
 
     try {
-      const users = await getUsers({
-        pageSize: 100, // Lấy tất cả users, có thể implement pagination sau
+      // Prepare API parameters
+      const apiParams: {
+        pageSize: number
+        pageNumber: number
+        searchTerm?: string
+        role?: string
+        isActive?: boolean
+      } = {
+        pageSize: 100,
         pageNumber: 1
-      })
+      }
+
+      // Add search term if provided
+      if (searchText.trim()) {
+        apiParams.searchTerm = searchText.trim()
+      }
+
+      // Add role filter if not 'all'
+      if (roleFilter !== 'all') {
+        apiParams.role = roleFilter
+      }
+
+      // Add status filter if not 'all'
+      if (statusFilter !== 'all') {
+        apiParams.isActive = statusFilter === 'active'
+      }
+
+      console.log('API params:', apiParams)
+
+      const users = await getUsers(apiParams)
 
       const transformedCustomers = users.map(transformUserToCustomer)
       console.log('Fetched users:', users.length)
@@ -117,10 +143,10 @@ function CustomerManagement() {
     }
   }
 
-  // Fetch data khi component mount
+  // Fetch data khi component mount và khi có thay đổi filter
   useEffect(() => {
     fetchUsers()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchText, roleFilter, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getRoleConfig = (role: string) => {
     const configs = {
@@ -133,6 +159,11 @@ function CustomerManagement() {
         text: 'Khách hàng',
         bgColor: 'bg-green-100',
         textColor: 'text-green-600'
+      },
+      Seller: {
+        text: 'Người bán',
+        bgColor: 'bg-purple-100',
+        textColor: 'text-purple-600'
       }
     }
     return configs[role as keyof typeof configs] || configs.Customer
@@ -159,37 +190,8 @@ function CustomerManagement() {
     return configs[status as keyof typeof configs] || configs.active
   }
 
-  const filteredCustomers = customers.filter((customer) => {
-    const searchLower = searchText.toLowerCase()
-    const matchesSearch =
-      searchText === '' ||
-      customer.name.toLowerCase().includes(searchLower) ||
-      customer.email.toLowerCase().includes(searchLower) ||
-      customer.phone.includes(searchText) ||
-      (customer.firstName && customer.firstName.toLowerCase().includes(searchLower)) ||
-      (customer.lastName && customer.lastName.toLowerCase().includes(searchLower))
-
-    const matchesRole = roleFilter === 'all' || customer.role === roleFilter
-    const matchesStatus = statusFilter === 'all' || customer.status === statusFilter
-
-    const result = matchesSearch && matchesRole && matchesStatus
-
-    // Debug logging
-    if (searchText && result) {
-      console.log('Search match found:', {
-        searchText,
-        customer: {
-          name: customer.name,
-          email: customer.email,
-          phone: customer.phone,
-          firstName: customer.firstName,
-          lastName: customer.lastName
-        }
-      })
-    }
-
-    return result
-  })
+  // No need for client-side filtering since we're using API search
+  const filteredCustomers = customers
 
   const totalPages = Math.ceil(filteredCustomers.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
@@ -327,6 +329,36 @@ function CustomerManagement() {
       return
     }
 
+    // Password validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+    if (!passwordRegex.test(staffFormData.password)) {
+      toast.error('Mật khẩu phải chứa ít nhất một chữ hoa, một chữ thường, một số và một ký tự đặc biệt', {
+        position: 'top-right',
+        autoClose: 5000
+      })
+      return
+    }
+
+    // Email validation
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    if (!emailRegex.test(staffFormData.email)) {
+      toast.error('Email không hợp lệ', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    // Phone validation
+    const phoneRegex = /^[0-9]{10,12}$/
+    if (!phoneRegex.test(staffFormData.phoneNumber)) {
+      toast.error('Số điện thoại phải có 10-12 chữ số', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
     setStaffFormLoading(true)
     try {
       await registerStaff(staffFormData)
@@ -340,12 +372,45 @@ function CustomerManagement() {
       setShowCreateStaffModal(false)
       await fetchUsers()
     } catch (err: unknown) {
-      const error = err as { message?: string }
-      const errorMessage = error.message || 'Có lỗi xảy ra khi tạo tài khoản nhân viên'
-      toast.error(errorMessage, {
-        position: 'top-right',
-        autoClose: 5000
-      })
+      console.error('Staff creation error:', err)
+
+      // Handle different types of errors
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+
+        if (axiosError.response?.data?.errors) {
+          // Handle validation errors from backend
+          const errors = axiosError.response.data.errors
+          const errorMessages = Object.values(errors).flat()
+          const firstError = errorMessages[0] || 'Có lỗi xảy ra khi tạo tài khoản nhân viên'
+          toast.error(firstError, {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        } else if (axiosError.response?.data?.message) {
+          // Handle backend error message
+          toast.error(axiosError.response.data.message, {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        } else {
+          toast.error('Có lỗi xảy ra khi tạo tài khoản nhân viên', {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        }
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        const errorWithMessage = err as { message: string }
+        toast.error(errorWithMessage.message, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } else {
+        toast.error('Có lỗi xảy ra khi tạo tài khoản nhân viên', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      }
     } finally {
       setStaffFormLoading(false)
     }
@@ -471,6 +536,7 @@ function CustomerManagement() {
                   <SelectItem value='all'>Tất cả vai trò</SelectItem>
                   <SelectItem value='staff'>Nhân viên</SelectItem>
                   <SelectItem value='customer'>Khách hàng</SelectItem>
+                  <SelectItem value='seller'>Người bán</SelectItem>
                 </SelectContent>
               </Select>
             </div>

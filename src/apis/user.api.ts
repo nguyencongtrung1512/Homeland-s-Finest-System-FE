@@ -28,6 +28,9 @@ export interface GetUsersResponse {
 export interface GetUsersParams {
   pageSize?: number
   pageNumber?: number
+  searchTerm?: string
+  role?: string
+  isActive?: boolean
 }
 
 export const getUsers = async (params?: GetUsersParams): Promise<User[]> => {
@@ -39,6 +42,18 @@ export const getUsers = async (params?: GetUsersParams): Promise<User[]> => {
 
   if (params?.pageNumber) {
     queryParams.append('pageNumber', params.pageNumber.toString())
+  }
+
+  if (params?.searchTerm) {
+    queryParams.append('searchTerm', params.searchTerm)
+  }
+
+  if (params?.role) {
+    queryParams.append('role', params.role)
+  }
+
+  if (params?.isActive !== undefined) {
+    queryParams.append('isActive', params.isActive.toString())
   }
 
   const url = queryParams.toString() ? `${API_URL}?${queryParams.toString()}` : API_URL
