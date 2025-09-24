@@ -192,7 +192,7 @@ function Header() {
           {/* Login Button */}
           <Link to={path.loginCustomer}>
             <Button
-              variant='default'
+              variant='green'
               className='rounded-full px-4 py-2 text-sm whitespace-nowrap transition-colors hover:bg-green-600 hover:text-white'
             >
               Đăng nhập

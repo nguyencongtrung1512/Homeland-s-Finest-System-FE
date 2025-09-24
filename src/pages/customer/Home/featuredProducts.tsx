@@ -123,7 +123,7 @@ function FeaturedProducts() {
   return (
     <div className='max-w-7xl mx-auto px-6 py-12'>
       {/* Tiêu đề */}
-      {/* <div className='flex justify-between items-center mb-6'>
+      <div className='flex justify-between items-center mb-6'>
         <div>
           <h2 className='text-2xl font-bold text-green-800'>Sản Phẩm Nổi Bật</h2>
           <p className='text-gray-500 text-sm'>Được tuyển chọn từ những nghệ nhân tâm huyết</p>
@@ -131,7 +131,7 @@ function FeaturedProducts() {
         <a href='/products' className='text-green-700 font-medium hover:underline'>
           Xem tất cả →
         </a>
-      </div> */}
+      </div>
 
       {/* Grid sản phẩm */}
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
