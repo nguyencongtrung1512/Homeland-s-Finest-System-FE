@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, Edit, Trash2, Eye } from 'lucide-react'
+import { Search, Plus, Edit, Eye, MoreHorizontal } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '../../../components/ui/dropdown-menu'
 import { Switch } from '../../../components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
 import {
@@ -21,7 +27,6 @@ import {
   getDocuments,
   createDocument,
   updateDocument,
-  deleteDocument,
   type DocumentType,
   type CreateDocumentData
 } from '../../../apis/document.api'
@@ -58,12 +63,21 @@ function TermsManagement() {
       const data = await getDocuments({
         pageSize: 100,
         pageNumber: 1,
-        search: searchText || undefined,
         type: typeFilter !== 'all' ? typeFilter : undefined,
         isPublished: statusFilter !== 'all' ? statusFilter === 'published' : undefined
       })
-      console.log('data', data)
-      setDocuments(data)
+      // Ensure data is an array
+      let documentsArray: DocumentType[] = []
+
+      if (Array.isArray(data)) {
+        documentsArray = data
+      } else if (data && Array.isArray((data as any).data)) {
+        documentsArray = (data as any).data
+      } else if (data && (data as any).data && Array.isArray((data as any).data.data)) {
+        documentsArray = (data as any).data.data
+      }
+
+      setDocuments(documentsArray)
     } catch (err: unknown) {
       const error = err as { message?: string }
       const errorMessage = error.message || 'Có lỗi xảy ra khi tải danh sách tài liệu'
@@ -72,15 +86,17 @@ function TermsManagement() {
         position: 'top-right',
         autoClose: 5000
       })
+      // Set empty array on error
+      setDocuments([])
     } finally {
       setLoading(false)
     }
   }
 
-  // Load data on component mount and when filters change
+  // Load data on component mount and when filters change (not search text)
   useEffect(() => {
     fetchDocuments()
-  }, [searchText, typeFilter, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [typeFilter, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getStatusConfig = (isPublished: boolean) => {
     return isPublished
@@ -96,8 +112,22 @@ function TermsManagement() {
       }
   }
 
-  // No need for filtering since API handles it
-  const filteredDocuments = documents
+  // Helper function to safely search in text
+  const safeSearch = (text: string | null | undefined, searchTerm: string): boolean => {
+    if (!text || !searchTerm) return false
+    return text.toLowerCase().includes(searchTerm.toLowerCase())
+  }
+
+  // Filter documents based on search text and other filters
+  const filteredDocuments = Array.isArray(documents) ? documents.filter((document) => {
+    // Search filter with safe null checks
+    const matchesSearch = !searchText.trim() ||
+      safeSearch(document.title, searchText) ||
+      safeSearch(document.slug, searchText) ||
+      safeSearch(document.content, searchText)
+
+    return matchesSearch
+  }) : []
 
   const handleAdd = () => {
     setFormData({
@@ -106,7 +136,7 @@ function TermsManagement() {
       content: '',
       version: '1.0',
       isPublished: false,
-      type: 'terms',
+      type: '',
       effectiveDate: new Date().toISOString().split('T')[0]
     })
     setShowAddModal(true)
@@ -129,26 +159,6 @@ function TermsManagement() {
   const handleView = (document: DocumentType) => {
     setSelectedDocument(document)
     setShowViewModal(true)
-  }
-
-  const handleDelete = async (document: DocumentType) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa tài liệu "${document.title}"?`)) {
-      try {
-        await deleteDocument(document.id)
-        toast.success('Xóa tài liệu thành công!', {
-          position: 'top-right',
-          autoClose: 3000
-        })
-        await fetchDocuments()
-      } catch (err: unknown) {
-        const error = err as { message?: string }
-        const errorMessage = error.message || 'Có lỗi xảy ra khi xóa tài liệu'
-        toast.error(errorMessage, {
-          position: 'top-right',
-          autoClose: 5000
-        })
-      }
-    }
   }
 
   const handleInputChange = (field: keyof CreateDocumentData, value: string | boolean) => {
@@ -190,8 +200,26 @@ function TermsManagement() {
     }
 
     try {
-      console.log('Sending data:', formData) // Debug log
-      await createDocument(formData)
+      // Ensure all required fields are present and not empty
+      const documentData = {
+        slug: formData.slug.trim(),
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        version: formData.version.trim(),
+        isPublished: formData.isPublished,
+        type: formData.type.trim(),
+        effectiveDate: formData.effectiveDate
+      }
+
+      console.log('Sending data:', documentData) // Debug log
+      console.log('Data validation:', {
+        slug: !!documentData.slug,
+        title: !!documentData.title,
+        content: !!documentData.content,
+        type: !!documentData.type
+      })
+
+      await createDocument(documentData)
       toast.success('Tạo tài liệu thành công!', {
         position: 'top-right',
         autoClose: 3000
@@ -222,8 +250,57 @@ function TermsManagement() {
   const handleUpdate = async () => {
     if (!selectedDocument) return
 
+    // Validation
+    if (!formData.slug.trim()) {
+      toast.error('Vui lòng nhập slug', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+    if (!formData.title.trim()) {
+      toast.error('Vui lòng nhập tiêu đề', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+    if (!formData.content.trim()) {
+      toast.error('Vui lòng nhập nội dung', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+    if (!formData.type.trim()) {
+      toast.error('Vui lòng chọn loại tài liệu', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
     try {
-      await updateDocument(selectedDocument.id, formData)
+      // Ensure all required fields are present and not empty
+      const documentData = {
+        slug: formData.slug.trim(),
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        version: formData.version.trim(),
+        isPublished: formData.isPublished,
+        type: formData.type.trim(),
+        effectiveDate: formData.effectiveDate
+      }
+
+      console.log('Updating document with data:', documentData) // Debug log
+      console.log('Data validation:', {
+        slug: !!documentData.slug,
+        title: !!documentData.title,
+        content: !!documentData.content,
+        type: !!documentData.type
+      })
+
+      await updateDocument(selectedDocument.id, documentData)
       toast.success('Cập nhật tài liệu thành công!', {
         position: 'top-right',
         autoClose: 3000
@@ -232,12 +309,23 @@ function TermsManagement() {
       setSelectedDocument(null)
       await fetchDocuments()
     } catch (err: unknown) {
-      const error = err as { message?: string }
-      const errorMessage = error.message || 'Có lỗi xảy ra khi cập nhật tài liệu'
-      toast.error(errorMessage, {
-        position: 'top-right',
-        autoClose: 5000
-      })
+      console.error('Update document error:', err) // Debug log
+      const error = err as { message?: string; response?: { data?: { errors?: Record<string, string[]> } } }
+      // Handle validation errors from API
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors
+        const errorMessages = Object.values(errors).flat()
+        toast.error(errorMessages.join(', '), {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } else {
+        const errorMessage = error.message || 'Có lỗi xảy ra khi cập nhật tài liệu'
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      }
     }
   }
 
@@ -298,10 +386,10 @@ function TermsManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value='all'>Tất cả loại</SelectItem>
-                  <SelectItem value='terms'>Điều khoản</SelectItem>
-                  <SelectItem value='policy'>Chính sách</SelectItem>
-                  <SelectItem value='privacy'>Bảo mật</SelectItem>
-                  <SelectItem value='shipping'>Giao hàng</SelectItem>
+                  <SelectItem value='Điều khoản'>Điều khoản</SelectItem>
+                  <SelectItem value='Chính sách'>Chính sách</SelectItem>
+                  <SelectItem value='Bảo mật'>Bảo mật</SelectItem>
+                  <SelectItem value='Giao hàng'>Giao hàng</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -404,35 +492,27 @@ function TermsManagement() {
                           </div>
                         </TableCell>
                         <TableCell className='px-6 py-3'>
-                          <div className='flex items-center gap-2'>
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              onClick={() => handleView(document)}
-                              className='h-8 w-8 p-0 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full'
-                              title='Xem chi tiết'
-                            >
-                              <Eye size={16} />
-                            </Button>
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              onClick={() => handleEdit(document)}
-                              className='h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full'
-                              title='Chỉnh sửa'
-                            >
-                              <Edit size={16} />
-                            </Button>
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              onClick={() => handleDelete(document)}
-                              className='h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full'
-                              title='Xóa'
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                className='h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-full'
+                              >
+                                <MoreHorizontal size={16} />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align='end'>
+                              <DropdownMenuItem onClick={() => handleView(document)}>
+                                <Eye className='mr-2 h-4 w-4' />
+                                Xem chi tiết
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEdit(document)}>
+                                <Edit className='mr-2 h-4 w-4' />
+                                Chỉnh sửa
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     )
@@ -483,10 +563,10 @@ function TermsManagement() {
                   <SelectValue placeholder='Chọn loại tài liệu' />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='terms'>Điều khoản</SelectItem>
-                  <SelectItem value='policy'>Chính sách</SelectItem>
-                  <SelectItem value='privacy'>Bảo mật</SelectItem>
-                  <SelectItem value='shipping'>Giao hàng</SelectItem>
+                  <SelectItem value='Điều khoản'>Điều khoản</SelectItem>
+                  <SelectItem value='Chính sách'>Chính sách</SelectItem>
+                  <SelectItem value='Bảo mật'>Bảo mật</SelectItem>
+                  <SelectItem value='Giao hàng'>Giao hàng</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -537,7 +617,7 @@ function TermsManagement() {
             </div>
 
             {/* Status Field */}
-            <div className='space-y-2 pt-4'>
+            <div className='space-y-2 pt-12'>
               <Label htmlFor='isPublished'>Trạng thái</Label>
               <div className='flex items-center gap-3'>
                 <Switch
@@ -600,10 +680,10 @@ function TermsManagement() {
                   <SelectValue placeholder='Chọn loại tài liệu' />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='terms'>Điều khoản</SelectItem>
-                  <SelectItem value='policy'>Chính sách</SelectItem>
-                  <SelectItem value='privacy'>Bảo mật</SelectItem>
-                  <SelectItem value='shipping'>Giao hàng</SelectItem>
+                  <SelectItem value='Điều khoản'>Điều khoản</SelectItem>
+                  <SelectItem value='Chính sách'>Chính sách</SelectItem>
+                  <SelectItem value='Bảo mật'>Bảo mật</SelectItem>
+                  <SelectItem value='Giao hàng'>Giao hàng</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -654,7 +734,7 @@ function TermsManagement() {
             </div>
 
             {/* Status Field */}
-            <div className='space-y-2 pt-4'>
+            <div className='space-y-2 pt-12'>
               <Label htmlFor='edit-isPublished'>Trạng thái</Label>
               <div className='flex items-center gap-3'>
                 <Switch

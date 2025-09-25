@@ -26,13 +26,13 @@ export interface CreateDocumentData {
 }
 
 export interface UpdateDocumentData {
-  slug?: string
-  title?: string
-  content?: string
-  version?: string
-  isPublished?: boolean
-  type?: string
-  effectiveDate?: string
+  slug: string
+  title: string
+  content: string
+  version: string
+  isPublished: boolean
+  type: string
+  effectiveDate: string
 }
 
 export interface DocumentListParams {
@@ -54,25 +54,63 @@ export const getDocuments = async (params?: DocumentListParams): Promise<Documen
       ...(params?.isPublished !== undefined && { isPublished: params.isPublished })
     }
   })
-  return response.data
+
+  // Handle different response structures
+  if (Array.isArray(response)) {
+    return response
+  } else if (response && Array.isArray(response.data)) {
+    return response.data
+  } else if (response && Array.isArray((response as any).items)) {
+    return (response as any).items
+  } else if (response && response.data && Array.isArray(response.data.data)) {
+    return response.data.data
+  } else {
+    return []
+  }
 }
 
 // Get document by ID
 export const getDocumentById = async (id: string): Promise<DocumentType> => {
   const response = await axiosInstance.get(`${API_URL}/${id}`)
-  return response.data
+  return response as unknown as DocumentType
 }
 
 // Create new document
 export const createDocument = async (data: CreateDocumentData): Promise<DocumentType> => {
-  const response = await axiosInstance.post(API_URL, data)
-  return response.data
+  const formData = new FormData()
+  formData.append('slug', data.slug)
+  formData.append('title', data.title)
+  formData.append('content', data.content)
+  formData.append('version', data.version)
+  formData.append('isPublished', data.isPublished.toString())
+  formData.append('type', data.type)
+  formData.append('effectiveDate', data.effectiveDate)
+
+  const response = await axiosInstance.post(API_URL, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+  return response as unknown as DocumentType
 }
 
 // Update document
 export const updateDocument = async (id: string, data: UpdateDocumentData): Promise<DocumentType> => {
-  const response = await axiosInstance.put(`${API_URL}/${id}`, data)
-  return response.data
+  const formData = new FormData()
+  formData.append('slug', data.slug)
+  formData.append('title', data.title)
+  formData.append('content', data.content)
+  formData.append('version', data.version)
+  formData.append('isPublished', data.isPublished.toString())
+  formData.append('type', data.type)
+  formData.append('effectiveDate', data.effectiveDate)
+
+  const response = await axiosInstance.put(`${API_URL}/${id}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+  return response as unknown as DocumentType
 }
 
 // Delete document

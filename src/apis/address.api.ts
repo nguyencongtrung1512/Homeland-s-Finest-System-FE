@@ -86,22 +86,75 @@ export const addressApi = {
 
   // Create new address
   create: async (data: AddressCreateInput): Promise<AddressResponse> => {
-    console.log('=== API CREATE ADDRESS ===')
-    console.log('API URL:', API_URL_ADDRESS)
-    console.log('Request data:', data)
-    console.log('Data type:', typeof data)
-    console.log('Data keys:', Object.keys(data))
-
     try {
-      const response = await axiosInstance.post(API_URL_ADDRESS, data)
-      console.log('✅ API Response:', response)
-      console.log('Response status:', response.status)
-      console.log('Response data:', response.data)
+      // Try with multipart/form-data first
+      const formData = new FormData()
+      formData.append('userId', data.userId)
+      formData.append('Province', data.province)
+      formData.append('District', data.district)
+      formData.append('Ward', data.ward)
+      formData.append('provinceId', data.provinceId.toString())
+      formData.append('districtId', data.districtId.toString())
+      formData.append('wardId', data.wardId.toString())
+      formData.append('streetAddress', data.streetAddress)
+      formData.append('isDefault', data.isDefault ? 'true' : 'false')
+
+      const response = await axiosInstance.post(API_URL_ADDRESS, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
       return response as unknown as AddressResponse
-    } catch (error) {
-      console.log('❌ API Error:', error)
-      console.log('Error response:', error.response)
-      console.log('Error message:', error.message)
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number; data?: unknown }; message?: string }
+
+      // If multipart/form-data fails, try JSON format
+      if (apiError.response?.status === 400) {
+        try {
+          const jsonData = {
+            userId: data.userId,
+            Province: data.province,
+            District: data.district,
+            Ward: data.ward,
+            provinceId: data.provinceId,
+            districtId: data.districtId,
+            wardId: data.wardId,
+            streetAddress: data.streetAddress,
+            isDefault: data.isDefault
+          }
+          const retryResponse = await axiosInstance.post(API_URL_ADDRESS, jsonData, {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+          return retryResponse as unknown as AddressResponse
+        } catch {
+          // Try capitalized format as last resort
+          try {
+            const capitalizedData = {
+              UserId: data.userId,
+              Province: data.province,
+              District: data.district,
+              Ward: data.ward,
+              ProvinceId: data.provinceId,
+              DistrictId: data.districtId,
+              WardId: data.wardId,
+              StreetAddress: data.streetAddress,
+              IsDefault: data.isDefault
+            }
+            const capitalizedResponse = await axiosInstance.post(API_URL_ADDRESS, capitalizedData, {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+            return capitalizedResponse as unknown as AddressResponse
+          } catch {
+            // All formats failed, throw the original error
+            throw error
+          }
+        }
+      }
+
       throw error
     }
   },
