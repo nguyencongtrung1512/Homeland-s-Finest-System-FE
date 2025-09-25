@@ -66,6 +66,8 @@ export const path = {
   TERMS_MANAGEMENT_ADMIN: 'termsManagement',
   TRANSACTION_MANAGEMENT_ADMIN: 'transactionManagement',
   BLOG_MANAGEMENT_ADMIN: 'blogManagement',
+  BLOG_CATEGORY_DETAIL_ADMIN: 'admin/blogManagement/detail/:id',
+  BLOG_CATEGORY_EDIT_ADMIN: 'admin/blogManagement/edit/:id',
   SYSTEM_STORAGE_ADMIN: 'systemStorage'
 }
 

@@ -74,7 +74,7 @@ function StaffDashboard() {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={8} xl={4}>
+        {/* <Col xs={24} sm={12} lg={8} xl={4}>
           <Card>
             <Statistic
               title='Giao dịch hôm nay'
@@ -83,7 +83,7 @@ function StaffDashboard() {
               valueStyle={{ color: '#52c41a' }}
             />
           </Card>
-        </Col>
+        </Col> */}
         <Col xs={24} sm={12} lg={8} xl={4}>
           <Card>
             <Statistic
@@ -150,7 +150,7 @@ function StaffDashboard() {
         </Col>
 
         <Col xs={24} lg={12}>
-          <Card title='Đơn hàng vs Giao dịch'>
+          <Card title='Đơn hàng thành công và đơn hàng hủy'>
             <ChartContainer config={chartConfig} className='h-[300px]'>
               <BarChart data={ordersTransactionsData}>
                 <XAxis dataKey='period' tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />

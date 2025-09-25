@@ -47,14 +47,14 @@ import StoreManagement from './pages/admin/storeManagerment/list'
 import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
-import BlogList from './pages/admin/blogManagerment/list'
-// import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import StoryWithSeller from './pages/customer/storyWithSeller'
 import StorePage from './pages/customer/storeSeller/storePage'
 import NotFound from './components/Error/NotFound'
 import SystemStorage from './pages/admin/systemStorage/list'
 import ListCategory from './pages/staff/productCategory/listCategory'
+import BlogCategoryList from './pages/admin/blogManagerment/list'
+import BlogCategoryDetail from './pages/admin/blogManagerment/detail'
 // import ProtectedRoute from './components/ProtectedRoute'
 
 export default function useRouteElements() {
@@ -299,7 +299,7 @@ export default function useRouteElements() {
         },
         {
           path: path.BLOG_MANAGEMENT_ADMIN,
-          element: <BlogList />
+          element: <BlogCategoryList />
         },
         {
           path: path.SYSTEM_STORAGE_ADMIN,
@@ -309,6 +309,18 @@ export default function useRouteElements() {
     },
     //   ]
     // },
+
+    // Blog Category Detail Route (absolute path)
+    {
+      path: path.BLOG_CATEGORY_DETAIL_ADMIN,
+      element: <AdminLayout />,
+      children: [
+        {
+          path: '',
+          element: <BlogCategoryDetail />
+        }
+      ]
+    },
 
     // Catch-all route for 404 Not Found
     {
