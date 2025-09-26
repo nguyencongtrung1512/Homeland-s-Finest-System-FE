@@ -17,7 +17,12 @@ function SideBar() {
     },
     {
       key: path.productsSeller,
-      label: 'Sản phẩm',
+      label: 'Quản lý sản phẩm',
+      icon: <Package size={18} />
+    },
+    {
+      key: path.comboSeller,
+      label: 'Quản lý Combo',
       icon: <Package size={18} />
     },
     {

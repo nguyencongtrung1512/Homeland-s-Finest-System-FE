@@ -55,6 +55,7 @@ import SystemStorage from './pages/admin/systemStorage/list'
 import ListCategory from './pages/staff/productCategory/listCategory'
 import BlogCategoryList from './pages/admin/blogManagerment/list'
 import BlogCategoryDetail from './pages/admin/blogManagerment/detail'
+import ComboSeller from './pages/seller/combos/listCombo'
 // import ProtectedRoute from './components/ProtectedRoute'
 
 export default function useRouteElements() {
@@ -197,6 +198,10 @@ export default function useRouteElements() {
         {
           path: path.detailHelpSeller,
           element: <DetailHelp />
+        },
+        {
+          path: path.comboSeller,
+          element: <ComboSeller />
         }
       ]
     },

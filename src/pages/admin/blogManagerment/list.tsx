@@ -333,7 +333,7 @@ function BlogCategoryList() {
           </div>
 
           {/* Table */}
-          <div className='overflow-x-auto'>
+          <div className='overflow-x-auto px-2'>
             <Table>
               <TableHeader>
                 <TableRow className='border-border hover:bg-muted/50'>

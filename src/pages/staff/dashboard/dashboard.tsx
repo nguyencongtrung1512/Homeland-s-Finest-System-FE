@@ -1,5 +1,5 @@
 import { Card, Row, Col, Statistic, Select } from 'antd'
-import { Store, Clock, BarChart3, AlertTriangle, Lock, TrendingUp } from 'lucide-react'
+import { Store, Clock, AlertTriangle, Lock, TrendingUp } from 'lucide-react'
 import {
   ChartContainer,
   ChartTooltip,
@@ -104,23 +104,13 @@ function StaffDashboard() {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={8} xl={4}>
-          <Card>
-            <Statistic
-              title='Doanh thu'
-              value='2.4M'
-              prefix={<TrendingUp size={20} color='#722ed1' />}
-              valueStyle={{ color: '#722ed1' }}
-            />
-          </Card>
-        </Col>
       </Row>
 
       {/* Charts Section */}
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card
-            title='Doanh thu'
+            title='Biểu đồ hiện thị các cửa hàng đăng kí'//Các đơn tố cáo
             extra={
               <Select defaultValue='2025' style={{ width: 80 }}>
                 <Select.Option value='2025'>2025</Select.Option>
