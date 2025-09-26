@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Edit, Eye, Trash2, Plus, MoreVertical } from 'lucide-react'
+import { Search, Edit, Eye, Trash2, Plus, MoreHorizontal } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -249,7 +249,7 @@ function SystemStorage() {
                   <TableHead className='px-6 py-3'>Tên</TableHead>
                   <TableHead className='px-6 py-3'>Mô tả</TableHead>
                   <TableHead className='px-6 py-3'>Giá trị</TableHead>
-                  <TableHead className='px-6 py-3'>Hành động</TableHead>
+                  <TableHead className='px-6 py-3'>Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -277,11 +277,9 @@ function SystemStorage() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
-                              size='sm'
-                              variant='outline'
-                              className='h-8 w-8 p-0 hover:bg-gray-100'
+                              variant='outline' size='sm' className='border-border hover:bg-accent'
                             >
-                              <MoreVertical className='h-4 w-4' />
+                              <MoreHorizontal className='h-4 w-4' />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align='end' className='w-48'>

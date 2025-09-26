@@ -11,3 +11,6 @@ export * from './provinceType'
 
 // Search and Log types
 export * from './searchLogType'
+
+// Transaction Dashboard types
+export * from './transactionDashboardType'

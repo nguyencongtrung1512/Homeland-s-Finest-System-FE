@@ -119,15 +119,18 @@ function TermsManagement() {
   }
 
   // Filter documents based on search text and other filters
-  const filteredDocuments = Array.isArray(documents) ? documents.filter((document) => {
-    // Search filter with safe null checks
-    const matchesSearch = !searchText.trim() ||
-      safeSearch(document.title, searchText) ||
-      safeSearch(document.slug, searchText) ||
-      safeSearch(document.content, searchText)
+  const filteredDocuments = Array.isArray(documents)
+    ? documents.filter((document) => {
+      // Search filter with safe null checks
+      const matchesSearch =
+        !searchText.trim() ||
+        safeSearch(document.title, searchText) ||
+        safeSearch(document.slug, searchText) ||
+        safeSearch(document.content, searchText)
 
-    return matchesSearch
-  }) : []
+      return matchesSearch
+    })
+    : []
 
   const handleAdd = () => {
     setFormData({
@@ -494,11 +497,7 @@ function TermsManagement() {
                         <TableCell className='px-6 py-3'>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button
-                                variant='ghost'
-                                size='sm'
-                                className='h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-full'
-                              >
+                              <Button variant='outline' size='sm' className='border-border hover:bg-accent'>
                                 <MoreHorizontal size={16} />
                               </Button>
                             </DropdownMenuTrigger>

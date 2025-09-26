@@ -25,6 +25,7 @@ export const path = {
   productsSeller: 'product-management',
   createProduct: 'create-product',
   updateProduct: 'update-product/:id',
+  comboSeller: 'combo-management',
   ordersSeller: 'order-management',
   orderDetailSeller: 'order-detail/:orderId',
   myStorySeller: 'my-story',
@@ -52,7 +53,7 @@ export const path = {
   blogStaff: '/blog',
   complianceStaff: '/complianceStaff',
   productCategoryStaff: '/product-category',
-
+  comboStaff: 'combo-management',
   settingsStaff: '/settingsStaff',
   BLOG_MANAGEMENT: '/blog/:id',
   CATEGORY_MANAGEMENT: '/category-management',
