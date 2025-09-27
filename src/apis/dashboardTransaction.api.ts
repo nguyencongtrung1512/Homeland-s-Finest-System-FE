@@ -52,7 +52,13 @@ export const getAvailableYears = async (): Promise<number[]> => {
   })
 
   // Lấy danh sách năm từ revenueByYear
-  const years = Object.keys(response.data.summary.revenueByYear).map((year) => parseInt(year))
+  const revenueByYear = response.data?.summary?.revenueByYear
+  if (!revenueByYear) {
+    console.warn('No revenueByYear data available')
+    return []
+  }
+
+  const years = Object.keys(revenueByYear).map((year) => parseInt(year))
   return years.sort((a, b) => b - a) // Sắp xếp từ năm mới nhất đến cũ nhất
 }
 

@@ -34,6 +34,8 @@ export interface LoginResponseData {
   token: string
   expiresAt: string
   role: string
+  userId: string
+  email: string
 }
 
 export const registerCustomer = async (data: RegisterCustomerData) => {
@@ -63,7 +65,7 @@ export const login = async (data: LoginData): Promise<LoginResponseData> => {
 
 // Seller Login
 export const loginSeller = async (data: LoginData): Promise<LoginResponseData> => {
-  const response = await axiosInstance.post(`${API_URL_SELLER}/login`, data)
+  const response = await axiosInstance.post(`${API_URL}/login`, data)
   return response.data
 }
 
@@ -102,6 +104,12 @@ export interface SellerRegistrationData {
   storeInfo: {
     storeName: string
     address: string
+    province: string
+    district: string
+    ward: string
+    provinceID: number
+    districtID: number
+    wardID: number
     vendorApplicationImageUrl: File[]
   }
 }
@@ -131,6 +139,12 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   // Add storeInfo
   formData.append('StoreInfo.StoreName', data.storeInfo.storeName)
   formData.append('StoreInfo.Address', data.storeInfo.address)
+  formData.append('StoreInfo.Province', data.storeInfo.province)
+  formData.append('StoreInfo.District', data.storeInfo.district)
+  formData.append('StoreInfo.Ward', data.storeInfo.ward)
+  formData.append('StoreInfo.ProvinceID', data.storeInfo.provinceID.toString())
+  formData.append('StoreInfo.DistrictID', data.storeInfo.districtID.toString())
+  formData.append('StoreInfo.WardID', data.storeInfo.wardID.toString())
 
   // Add vendor application images
   data.storeInfo.vendorApplicationImageUrl.forEach((file, index) => {

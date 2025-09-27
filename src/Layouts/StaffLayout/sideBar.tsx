@@ -92,7 +92,9 @@ function SideBar() {
   ]
 
   const handleMenuClick = ({ key }: { key: string }) => {
-    navigate(key)
+    // Nếu key là relative path, cần kết hợp với base path
+    const fullPath = key.startsWith('/') ? key : `${path.BASE_STAFF}/${key}`
+    navigate(fullPath)
   }
 
   return (

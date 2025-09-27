@@ -14,7 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 
 function Login() {
   const navigate = useNavigate()
-  const { login: authLogin } = useAuth()
+  const authContext = useAuth()
+  const { login: authLogin } = authContext
   const [formData, setFormData] = useState<LoginData>({
     email: '',
     password: ''
@@ -30,6 +31,21 @@ function Login() {
     }))
     // Clear error when user starts typing
     if (error) setError('')
+  }
+
+  // Hàm xác định đường dẫn redirect theo role
+  const getRedirectPath = (role: string): string => {
+    switch (role) {
+      case 'Seller':
+        return path.BASE_SELLER
+      case 'Staff':
+        return path.BASE_STAFF
+      case 'Admin':
+        return path.BASE_ADMIN
+      case 'Customer':
+      default:
+        return path.home
+    }
   }
 
   const validateForm = (): boolean => {
@@ -69,11 +85,25 @@ function Login() {
       // Response thực tế chứa { token: "...", expiresAt: "...", role: "..." }
       if (response && response.token) {
         // Lưu thông tin user vào auth context
-        authLogin({
+        const userData = {
           roleName: response.role,
           token: response.token,
-          expiresAt: response.expiresAt
-        })
+          expiresAt: response.expiresAt,
+          userId: response.userId,
+          email: response.email
+        }
+
+        // Kiểm tra xem authLogin có tồn tại không
+        if (authLogin && typeof authLogin === 'function') {
+          try {
+            authLogin(userData)
+            console.log('authLogin called successfully')
+          } catch (error) {
+            console.error('Error calling authLogin:', error)
+          }
+        } else {
+          console.error('authLogin is not a function or is undefined:', authLogin)
+        }
 
         // Show success toast
         toast.success('Đăng nhập thành công!', {
@@ -87,13 +117,16 @@ function Login() {
 
         // Delay redirect to allow toast to show
         setTimeout(() => {
+          // Xác định đường dẫn redirect theo role
+          const redirectPath = getRedirectPath(response.role)
+
           // Try navigate first
-          navigate(path.home)
+          navigate(redirectPath)
 
           // Fallback: direct window.location if navigate doesn't work
           setTimeout(() => {
-            if (window.location.pathname !== path.home) {
-              window.location.href = path.home
+            if (window.location.pathname !== redirectPath) {
+              window.location.href = redirectPath
             }
           }, 100)
         }, 1500)

@@ -61,7 +61,9 @@ function SideBar({ isCollapsed }: SideBarProps) {
   ]
 
   const handleMenuClick = (key: string) => {
-    navigate(key)
+    // Nếu key là relative path, cần kết hợp với base path
+    const fullPath = key.startsWith('/') ? key : `${path.BASE_ADMIN}/${key}`
+    navigate(fullPath)
   }
 
   return (

@@ -37,7 +37,7 @@ export const path = {
   helpSeller: 'help',
   detailHelpSeller: 'help/:requestId',
   // ============ STAFF========
-  BASE_STAFF: 'staff',
+  BASE_STAFF: '/staff',
   // Staff nested routes (relative paths)
   storesStaff: 'stores',
   storeDetailStaff: 'store-detail/:storeId',
@@ -50,11 +50,11 @@ export const path = {
   transactionsStaff: 'transactions',
   reportsStaff: 'reports',
   reportDetailStaff: 'reportDetail/:reportId',
-  blogStaff: '/blog',
-  complianceStaff: '/complianceStaff',
-  productCategoryStaff: '/product-category',
+  blogStaff: 'blog',
+  complianceStaff: 'compliance',
+  productCategoryStaff: 'product-category',
   comboStaff: 'combo-management',
-  settingsStaff: '/settingsStaff',
+  settingsStaff: 'settings',
   BLOG_MANAGEMENT: '/blog/:id',
   CATEGORY_MANAGEMENT: '/category-management',
   BLOG_LIST_BY_CATEGORY: '/category/:categoryId/blogs',
@@ -67,7 +67,7 @@ export const path = {
   TERMS_MANAGEMENT_ADMIN: 'termsManagement',
   TRANSACTION_MANAGEMENT_ADMIN: 'transactionManagement',
   BLOG_MANAGEMENT_ADMIN: 'blogManagement',
-  BLOG_CATEGORY_DETAIL_ADMIN: 'admin/blogManagement/detail/:id',
+  BLOG_CATEGORY_DETAIL_ADMIN: '/admin/blogManagement/detail/:id',
   BLOG_CATEGORY_EDIT_ADMIN: 'admin/blogManagement/edit/:id',
   SYSTEM_STORAGE_ADMIN: 'systemStorage'
 }

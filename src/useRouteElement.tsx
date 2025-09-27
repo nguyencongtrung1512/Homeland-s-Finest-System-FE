@@ -53,9 +53,11 @@ import StorePage from './pages/customer/storeSeller/storePage'
 import NotFound from './components/Error/NotFound'
 import SystemStorage from './pages/admin/systemStorage/list'
 import ListCategory from './pages/staff/productCategory/listCategory'
+import BlogManagement from './pages/staff/blogManagerment/list'
 import BlogCategoryList from './pages/admin/blogManagerment/list'
 import BlogCategoryDetail from './pages/admin/blogManagerment/detail'
 import ComboSeller from './pages/seller/combos/listCombo'
+import ProtectedRoute from './components/ProtectedRoute'
 // import ProtectedRoute from './components/ProtectedRoute'
 
 export default function useRouteElements() {
@@ -139,181 +141,194 @@ export default function useRouteElements() {
       element: <SellerLoginLayout />
     },
     // =================================SELLER================================
-    // {
-    //   path: path.BASE_SELLER,
-    //   element: <ProtectedRoute requiredRole='Seller' />,
-    //   children: [
     {
-      path: '',
-      element: <SellerLayout />,
+      path: path.BASE_SELLER,
+      element: <ProtectedRoute requiredRole='Seller' />,
       children: [
         {
-          path: path.BASE_SELLER,
-          element: <Dashboard />
-        },
-        {
-          path: path.productsSeller,
-          element: <ProductsSeller />
-        },
-        {
-          path: path.createProduct,
-          element: <CreateProduct />
-        },
-        {
-          path: path.updateProduct,
-          element: <UpdateProduct />
-        },
-        {
-          path: path.ordersSeller,
-          element: <OrderManagement />
-        },
-        {
-          path: path.orderDetailSeller,
-          element: <OrderDetail />
-        },
-        {
-          path: path.myStorySeller,
-          element: <MyStory />
-        },
-        {
-          path: path.createMyStorySeller,
-          element: <CreateMyStory />
-        },
-        {
-          path: path.chatWithCustomerSeller,
-          element: <ChatWithCustomer />
-        },
-        {
-          path: path.financeSeller,
-          element: <FinanceManagement />
-        },
-        {
-          path: path.setupStoreSeller,
-          element: <SetupStore />
-        },
-        {
-          path: path.helpSeller,
-          element: <HelpCenter />
-        },
-        {
-          path: path.detailHelpSeller,
-          element: <DetailHelp />
-        },
-        {
-          path: path.comboSeller,
-          element: <ComboSeller />
+          path: '',
+          element: <SellerLayout />,
+          children: [
+            {
+              path: '',
+              element: <Dashboard />
+            },
+            {
+              path: path.productsSeller,
+              element: <ProductsSeller />
+            },
+            {
+              path: path.createProduct,
+              element: <CreateProduct />
+            },
+            {
+              path: path.updateProduct,
+              element: <UpdateProduct />
+            },
+            {
+              path: path.ordersSeller,
+              element: <OrderManagement />
+            },
+            {
+              path: path.orderDetailSeller,
+              element: <OrderDetail />
+            },
+            {
+              path: path.myStorySeller,
+              element: <MyStory />
+            },
+            {
+              path: path.createMyStorySeller,
+              element: <CreateMyStory />
+            },
+            {
+              path: path.chatWithCustomerSeller,
+              element: <ChatWithCustomer />
+            },
+            {
+              path: path.financeSeller,
+              element: <FinanceManagement />
+            },
+            {
+              path: path.setupStoreSeller,
+              element: <SetupStore />
+            },
+            {
+              path: path.helpSeller,
+              element: <HelpCenter />
+            },
+            {
+              path: path.detailHelpSeller,
+              element: <DetailHelp />
+            },
+            {
+              path: path.comboSeller,
+              element: <ComboSeller />
+            }
+          ]
         }
       ]
     },
-    //   ]
-    // },
-    // =================================STAFF================================
-    // {
-    //   path: path.BASE_STAFF,
-    //   element: <ProtectedRoute requiredRole='Staff' />,
-    //   children: [
+    //=================================STAFF================================
     {
-      path: '',
-      element: <StaffLayout />,
+      path: path.BASE_STAFF,
+      element: <ProtectedRoute requiredRole='Staff' />,
       children: [
         {
-          path: path.BASE_STAFF,
-          element: <StaffDashboard />
-        },
-        {
-          path: path.storesStaff,
-          element: <ListStore />
-        },
-        {
-          path: path.storeDetailStaff,
-          element: <StoreDetail />
-        },
-        {
-          path: path.approveStoresStaff,
-          element: <ApproveStores />
-        },
-        {
-          path: path.lockedStoresStaff,
-          element: <LockedStores />
-        },
-        {
-          path: path.managerProductStaff,
-          element: <ManagerProduct />
-        },
-        {
-          path: path.detailProductStaff,
-          element: <DetailProduct />
-        },
-        {
-          path: path.transactionsStaff,
-          element: <TransactionManagement />
-        },
-        {
-          path: path.reportsStaff,
-          element: <ReportManagement />
-        },
-        {
-          path: path.reportDetailStaff,
-          element: <ReportDetail />
-        },
-        {
-          path: path.Order_Management_Staff,
-          element: <OrderManagementStaff />
-        },
-        {
-          path: path.productCategoryStaff,
-          element: <ListCategory />
+          path: '',
+          element: <StaffLayout />,
+          children: [
+            {
+              path: '',
+              element: <StaffDashboard />
+            },
+            {
+              path: path.storesStaff,
+              element: <ListStore />
+            },
+            {
+              path: path.storeDetailStaff,
+              element: <StoreDetail />
+            },
+            {
+              path: path.approveStoresStaff,
+              element: <ApproveStores />
+            },
+            {
+              path: path.lockedStoresStaff,
+              element: <LockedStores />
+            },
+            {
+              path: path.managerProductStaff,
+              element: <ManagerProduct />
+            },
+            {
+              path: path.detailProductStaff,
+              element: <DetailProduct />
+            },
+            {
+              path: path.transactionsStaff,
+              element: <TransactionManagement />
+            },
+            {
+              path: path.reportsStaff,
+              element: <ReportManagement />
+            },
+            {
+              path: path.reportDetailStaff,
+              element: <ReportDetail />
+            },
+            {
+              path: path.Order_Management_Staff,
+              element: <OrderManagementStaff />
+            },
+            {
+              path: path.productCategoryStaff,
+              element: <ListCategory />
+            },
+            {
+              path: path.blogStaff,
+              element: <BlogManagement />
+            }
+            // TODO: Thêm các routes còn thiếu khi có components
+            // {
+            //   path: path.complianceStaff,
+            //   element: <ComplianceStaff />
+            // },
+            // {
+            //   path: path.settingsStaff,
+            //   element: <SettingsStaff />
+            // }
+          ]
         }
       ]
     },
-    //   ]
-    // },
 
     // =================================ADMIN================================
-    // {
-    //   path: path.BASE_ADMIN,
-    //   element: <ProtectedRoute requiredRole='Admin' />,
-    //   children: [
     {
-      path: '',
-      element: <AdminLayout />,
+      path: path.BASE_ADMIN,
+      element: <ProtectedRoute requiredRole='Admin' />,
       children: [
         {
-          path: path.BASE_ADMIN,
-          element: <AdminDashboard />
-        },
-        {
-          path: path.STORE_MANAGEMENT_ADMIN,
-          element: <StoreManagement />
-        },
-        // {
-        //   path: path.PRODUCT_MANAGEMENT_ADMIN,
-        //   element: <ManagerProductAdmin />
-        // },
-        {
-          path: path.ACCOUNT_MANAGEMENT_ADMIN,
-          element: <CustomerManagement />
-        },
-        {
-          path: path.TERMS_MANAGEMENT_ADMIN,
-          element: <TermsManagement />
-        },
-        {
-          path: path.TRANSACTION_MANAGEMENT_ADMIN,
-          element: <TransactionManagementAdmin />
-        },
-        {
-          path: path.BLOG_MANAGEMENT_ADMIN,
-          element: <BlogCategoryList />
-        },
-        {
-          path: path.SYSTEM_STORAGE_ADMIN,
-          element: <SystemStorage />
+          path: '',
+          element: <AdminLayout />,
+          children: [
+            {
+              path: '',
+              element: <AdminDashboard />
+            },
+            {
+              path: path.STORE_MANAGEMENT_ADMIN,
+              element: <StoreManagement />
+            },
+            // {
+            //   path: path.PRODUCT_MANAGEMENT_ADMIN,
+            //   element: <ManagerProductAdmin />
+            // },
+            {
+              path: path.ACCOUNT_MANAGEMENT_ADMIN,
+              element: <CustomerManagement />
+            },
+            {
+              path: path.TERMS_MANAGEMENT_ADMIN,
+              element: <TermsManagement />
+            },
+            {
+              path: path.TRANSACTION_MANAGEMENT_ADMIN,
+              element: <TransactionManagementAdmin />
+            },
+            {
+              path: path.BLOG_MANAGEMENT_ADMIN,
+              element: <BlogCategoryList />
+            },
+            {
+              path: path.SYSTEM_STORAGE_ADMIN,
+              element: <SystemStorage />
+            }
+          ]
         }
       ]
     },
-    //   ]
-    // },
 
     // Blog Category Detail Route (absolute path)
     {

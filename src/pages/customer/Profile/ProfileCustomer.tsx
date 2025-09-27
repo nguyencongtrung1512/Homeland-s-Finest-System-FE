@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Settings, FileText, MapPin } from 'lucide-react'
 import type { Address, AddressCreateInput } from '../../../types/addressType'
+import { addressApi } from '../../../apis/address.api'
 import ProfileContent from './components/ProfileContent'
 import OrdersContent from './components/OrdersContent'
 import AddressContent from './components/AddressContent'
@@ -13,6 +14,9 @@ import AddressModal from './components/AddressModal'
 export default function Profile() {
   const location = useLocation()
   const [activeTab, setActiveTab] = useState('profile')
+
+  // Fixed UserId for testing
+  const USER_ID = 'e6c5717f-d4da-4bea-8836-f16712bf6c8f'
 
   // Khi vào trang, nếu có query tab=orders thì active tab đơn hàng
   useEffect(() => {
@@ -31,6 +35,21 @@ export default function Profile() {
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
 
+  // Load addresses from API
+  const loadAddresses = async () => {
+    try {
+      const response = await addressApi.getByUser(USER_ID)
+      setAddresses(response.data)
+    } catch (error) {
+      console.error('Error loading addresses:', error)
+    }
+  }
+
+  // Load addresses when component mounts
+  useEffect(() => {
+    loadAddresses()
+  }, [])
+
   // Address handlers
   const handleAddAddress = () => {
     setEditingAddress(null)
@@ -44,46 +63,67 @@ export default function Profile() {
 
   const handleDeleteAddress = async (addressId: string) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) {
-      // Simulate API call
-      setTimeout(() => {
+      try {
+        // Call API to delete address
+        await addressApi.delete(addressId)
+
+        // Update local state
         setAddresses(addresses.filter((addr) => addr.id !== addressId))
-      }, 1000)
+      } catch (error) {
+        console.error('Error deleting address:', error)
+      }
     }
   }
 
   const handleSetDefault = async (addressId: string) => {
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Call API to set address as default
+      await addressApi.setAsDefault(addressId)
+
+      // Update local state
       setAddresses(
         addresses.map((addr) => ({
           ...addr,
           isDefault: addr.id === addressId
         }))
       )
-    }, 1000)
+    } catch (error) {
+      console.error('Error setting default address:', error)
+    }
   }
 
   const handleSaveAddress = async (formData: AddressCreateInput) => {
-    // Simulate API call
-    setTimeout(() => {
+    try {
       if (editingAddress) {
-        // Update existing address
+        // Call API to update address
+        await addressApi.update(editingAddress.id, formData)
+
+        // Update local state
         setAddresses(
           addresses.map((addr) =>
             addr.id === editingAddress.id
               ? {
-                  ...addr,
-                  ...formData,
-                  updatedAt: new Date().toISOString()
-                }
+                ...addr,
+                ...formData,
+                updatedAt: new Date().toISOString()
+              }
               : addr
           )
         )
       } else {
-        // Add new address
-        const newAddress: Address = {
-          id: Date.now().toString(),
+        const addressDataWithUserId = {
           ...formData,
+          userId: USER_ID
+        }
+
+        // Call API to create address
+        const response = await addressApi.create(addressDataWithUserId)
+
+        // Add new address to local state
+        const newAddress: Address = {
+          id: response.data.id,
+          ...formData,
+          userId: USER_ID,
           isDefault: formData.isDefault || false,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -91,8 +131,12 @@ export default function Profile() {
         }
         setAddresses([...addresses, newAddress])
       }
+
       setShowAddressModal(false)
-    }, 1000)
+    } catch (error) {
+      console.error('Error in address operation:', error)
+      // You can add toast notification here if needed
+    }
   }
 
   return (
@@ -156,7 +200,7 @@ export default function Profile() {
               {activeTab === 'orders' && <OrdersContent />}
               {activeTab === 'addresses' && (
                 <AddressContent
-                  userId='user-1'
+                  userId={USER_ID}
                   onAddAddress={handleAddAddress}
                   onEditAddress={handleEditAddress}
                   onDeleteAddress={handleDeleteAddress}

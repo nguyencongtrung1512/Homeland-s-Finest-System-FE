@@ -6,6 +6,8 @@ interface User {
   roleName: string
   token: string
   expiresAt: string
+  userId: string
+  email: string
 }
 
 interface AuthContextType {

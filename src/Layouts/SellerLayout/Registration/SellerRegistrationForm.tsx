@@ -305,11 +305,11 @@ function SellerRegistrationForm() {
   const loadProvinces = async () => {
     setIsLoadingProvinces(true)
     try {
-      const response = await fetch('https://dev-online-gateway.ghn.vn/shiip/public-api/master-data/province', {
+      const response = await fetch(`${import.meta.env.VITE_GHN_API_URL}/master-data/province`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          Token: 'ed8771b7-8afe-11f0-bdaf-ae7fa045a771'
+          Token: import.meta.env.VITE_GHN_TOKEN
         }
       })
 
@@ -336,12 +336,12 @@ function SellerRegistrationForm() {
     setSelectedWard(null)
     try {
       const response = await fetch(
-        `https://dev-online-gateway.ghn.vn/shiip/public-api/master-data/district?province_id=${provinceId}`,
+        `${import.meta.env.VITE_GHN_API_URL}/master-data/district?province_id=${provinceId}`,
         {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            Token: 'ed8771b7-8afe-11f0-bdaf-ae7fa045a771'
+            Token: import.meta.env.VITE_GHN_TOKEN
           }
         }
       )
@@ -366,16 +366,13 @@ function SellerRegistrationForm() {
     setWards([])
     setSelectedWard(null)
     try {
-      const response = await fetch(
-        `https://dev-online-gateway.ghn.vn/shiip/public-api/master-data/ward?district_id=${districtId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Token: 'ed8771b7-8afe-11f0-bdaf-ae7fa045a771'
-          }
+      const response = await fetch(`${import.meta.env.VITE_GHN_API_URL}/master-data/ward?district_id=${districtId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Token: import.meta.env.VITE_GHN_TOKEN
         }
-      )
+      })
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -574,6 +571,12 @@ function SellerRegistrationForm() {
         storeInfo: {
           storeName: formData.storeName,
           address: formData.address,
+          province: selectedProvince?.ProvinceName || '',
+          district: selectedDistrict?.DistrictName || '',
+          ward: selectedWard?.WardName || '',
+          provinceID: selectedProvince?.ProvinceID || 0,
+          districtID: selectedDistrict?.DistrictID || 0,
+          wardID: selectedWard ? parseInt(selectedWard.WardCode) || 0 : 0,
           vendorApplicationImageUrl: formData.vendorApplicationImageUrl
         }
       }

@@ -1,22 +1,25 @@
-import { useState } from 'react'
 import { Layout, Dropdown, Avatar, Button } from 'antd'
 import { UserOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import SideBar from './sideBar'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/auth.context'
+import { toast } from 'react-toastify'
 
 const { Header, Content } = Layout
 
 function SellerLayout() {
-  const [userData] = useState({
-    fullname: 'Nguyễn Văn A',
-    email: 'seller@example.com',
-    avatar: null
-  })
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
 
-  const handleLogout = () => {
-    console.log('Logout')
-    // Implement logout logic here
+  const handleLogout = async () => {
+    try {
+      await logout()
+      navigate('/')
+    } catch (error) {
+      console.error('Logout error:', error)
+      toast.error('Có lỗi xảy ra khi đăng xuất')
+    }
   }
 
   const items: MenuProps['items'] = [
@@ -60,13 +63,10 @@ function SellerLayout() {
           }}
         >
           <div>
-            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#262626' }}>Dashboard</h1>
+            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#262626' }}>Dashboard Seller</h1>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {/* Notifications */}
-            <Button type='text' icon={<UserOutlined />} style={{ fontSize: '16px' }} />
-
             {/* User Dropdown */}
             <Dropdown menu={{ items }} placement='bottomRight' arrow>
               <div
@@ -83,7 +83,7 @@ function SellerLayout() {
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 <Avatar size='small' icon={<UserOutlined />} style={{ backgroundColor: '#16a34a' }} />
-                <span style={{ color: '#262626', fontSize: '14px' }}>{userData.fullname}</span>
+                <span style={{ color: '#262626', fontSize: '14px' }}>{user?.email || 'N/A'}</span>
               </div>
             </Dropdown>
           </div>

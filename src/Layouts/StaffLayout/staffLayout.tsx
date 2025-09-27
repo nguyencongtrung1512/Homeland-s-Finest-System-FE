@@ -9,10 +9,7 @@ const { Header, Content } = Layout
 
 function StaffLayout() {
   const [userData] = useState({
-    fullname: 'Nguyễn Admin',
-    email: 'admin@example.com',
-    avatar: null,
-    role: 'Staff'
+    email: 'staff@example.com',
   })
 
   const handleLogout = () => {
@@ -78,11 +75,11 @@ function StaffLayout() {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f5')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
-                <Avatar size='small' style={{ backgroundColor: '#1890ff' }} src={userData.avatar}>
-                  {userData.fullname.charAt(0)}
+                <Avatar size='small' style={{ backgroundColor: '#1890ff' }} src={userData.email}>
+                  {userData.email.charAt(0)}
                 </Avatar>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ color: '#8c8c8c', fontSize: '17px' }}>{userData.role}</div>
+                  <div style={{ color: '#8c8c8c', fontSize: '17px' }}>{userData.email}</div>
                 </div>
               </div>
             </Dropdown>

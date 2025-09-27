@@ -87,14 +87,14 @@ function AdminDashboard() {
   }, [selectedYear])
 
   // Transform data for charts
-  const revenueData = dashboardData
+  const revenueData = dashboardData?.summary?.revenueByMonth
     ? monthNames.map((month, index) => ({
       month: monthLabels[index],
       revenue: dashboardData.summary.revenueByMonth[month] || 0
     }))
     : []
 
-  const productCategoryData = dashboardData
+  const productCategoryData = dashboardData?.summary?.revenueByCategoryPercentage
     ? Object.entries(dashboardData.summary.revenueByCategoryPercentage).map(([name, value], index) => ({
       name,
       value,
@@ -123,6 +123,18 @@ function AdminDashboard() {
         <div className='text-center'>
           <p className='text-red-600 mb-4'>{error}</p>
           <Button onClick={() => fetchDashboardData(selectedYear)}>Thử lại</Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Nếu không có dữ liệu, hiển thị thông báo
+  if (!dashboardData) {
+    return (
+      <div className='flex items-center justify-center min-h-screen'>
+        <div className='text-center'>
+          <p className='text-gray-600 mb-4'>Không có dữ liệu để hiển thị</p>
+          <Button onClick={() => fetchDashboardData(selectedYear)}>Tải lại</Button>
         </div>
       </div>
     )
@@ -157,7 +169,9 @@ function AdminDashboard() {
               <div>
                 <p className='text-sm font-medium text-gray-600'>Tổng đơn hàng</p>
                 <p className='text-3xl font-bold text-gray-900'>
-                  {dashboardData ? formatNumber(dashboardData.summary.totalTransactions) : '0'}
+                  {dashboardData?.summary?.totalTransactions
+                    ? formatNumber(dashboardData.summary.totalTransactions)
+                    : '0'}
                 </p>
               </div>
               <div className='p-3 bg-blue-100 rounded-full'>
@@ -173,7 +187,7 @@ function AdminDashboard() {
               <div>
                 <p className='text-sm font-medium text-gray-600'>Doanh thu</p>
                 <p className='text-3xl font-bold text-gray-900'>
-                  {dashboardData ? formatCurrency(dashboardData.summary.totalRevenue) : '0 VNĐ'}
+                  {dashboardData?.summary?.totalRevenue ? formatCurrency(dashboardData.summary.totalRevenue) : '0 VNĐ'}
                 </p>
               </div>
               <div className='p-3 bg-green-100 rounded-full'>
@@ -189,7 +203,9 @@ function AdminDashboard() {
               <div>
                 <p className='text-sm font-medium text-gray-600'>Đơn đang xử lý</p>
                 <p className='text-3xl font-bold text-gray-900'>
-                  {dashboardData ? formatNumber(dashboardData.summary.pendingTransactions) : '0'}
+                  {dashboardData?.summary?.pendingTransactions
+                    ? formatNumber(dashboardData.summary.pendingTransactions)
+                    : '0'}
                 </p>
               </div>
               <div className='p-3 bg-orange-100 rounded-full'>
@@ -304,7 +320,7 @@ function AdminDashboard() {
             <CardTitle className='text-lg font-semibold text-gray-900'>Cửa hàng có doanh thu cao</CardTitle>
           </CardHeader>
           <CardContent className='space-y-4'>
-            {dashboardData && dashboardData.summary.topStoresByRevenue.length > 0 ? (
+            {dashboardData?.summary?.topStoresByRevenue && dashboardData.summary.topStoresByRevenue.length > 0 ? (
               dashboardData.summary.topStoresByRevenue.map((store, index) => (
                 <div key={store.storeId} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
                   <div className='flex items-center gap-3'>
@@ -347,7 +363,7 @@ function AdminDashboard() {
             <CardTitle className='text-lg font-semibold text-gray-900'>Giao dịch đang chờ xử lý</CardTitle>
           </CardHeader>
           <CardContent className='space-y-4'>
-            {dashboardData && dashboardData.transactions.filter((t) => t.status === 'Pending').length > 0 ? (
+            {dashboardData?.transactions && dashboardData.transactions.filter((t) => t.status === 'Pending').length > 0 ? (
               dashboardData.transactions
                 .filter((t) => t.status === 'Pending')
                 .slice(0, 5)
