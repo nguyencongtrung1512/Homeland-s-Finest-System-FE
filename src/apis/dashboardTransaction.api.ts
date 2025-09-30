@@ -1,6 +1,9 @@
 import axiosInstance from '../service/axiosInstance'
-import type { TransactionDashboardParams, TransactionDashboardData } from '../types/transactionDashboardType'
-
+import type {
+  TransactionDashboardParams,
+  TransactionDashboardData,
+  MonthlyStatsData
+} from '../types/transactionDashboardType'
 
 /**
  * Lấy dữ liệu dashboard giao dịch
@@ -13,28 +16,6 @@ export const getTransactionDashboard = async (
   const response = await axiosInstance.get(`/transaction-dashboard`, {
     params: {
       Year: params.Year
-    }
-  })
-  return response.data
-}
-
-/**
- * Lấy dữ liệu dashboard giao dịch với pagination
- * @param params - Tham số truy vấn
- * @param page - Trang hiện tại (mặc định: 1)
- * @param pageSize - Số lượng item per page (mặc định: 10)
- * @returns Promise<TransactionDashboardData>
- */
-export const getTransactionDashboardWithPagination = async (
-  params: TransactionDashboardParams,
-  page: number = 1,
-  pageSize: number = 10
-): Promise<TransactionDashboardData> => {
-  const response = await axiosInstance.get(`/transaction-dashboard`, {
-    params: {
-      Year: params.Year,
-      page,
-      pageSize
     }
   })
   return response.data
@@ -63,15 +44,15 @@ export const getAvailableYears = async (): Promise<number[]> => {
 }
 
 /**
- * Lấy dữ liệu thống kê tổng quan từ transaction-dashboard endpoint
- * @param params - Tham số truy vấn
- * @returns Promise<TransactionDashboardData>
+ * Lấy dữ liệu thống kê theo tháng
+ * @param year - Năm cần lấy dữ liệu
+ * @returns Promise<MonthlyStatsData>
  */
-export const getTransactionSummary = async (params: TransactionDashboardParams): Promise<TransactionDashboardData> => {
-  const response = await axiosInstance.get(`/transaction-dashboard`, {
+export const getTransactionMonthlyStats = async (year: number): Promise<MonthlyStatsData> => {
+  const response = await axiosInstance.get(`/transaction-dashboard/monthly-stats`, {
     params: {
-      Year: params.Year
+      year
     }
   })
-  return response.data
+  return response
 }

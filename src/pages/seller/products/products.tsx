@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
-import { Plus, Edit, Trash2, Eye, ChevronRight, Home } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye } from 'lucide-react'
 import path from '../../../constants/path'
 
 function ProductsSeller() {

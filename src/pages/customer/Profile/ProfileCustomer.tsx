@@ -103,10 +103,10 @@ export default function Profile() {
           addresses.map((addr) =>
             addr.id === editingAddress.id
               ? {
-                ...addr,
-                ...formData,
-                updatedAt: new Date().toISOString()
-              }
+                  ...addr,
+                  ...formData,
+                  updatedAt: new Date().toISOString()
+                }
               : addr
           )
         )

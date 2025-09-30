@@ -149,7 +149,6 @@ function ListCategory() {
     setViewingItem(null)
   }
 
-
   // Format date
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN', {
@@ -417,13 +416,9 @@ function ListCategory() {
               <div className='p-2 bg-green-100 rounded-lg'>
                 <Eye className='w-5 h-5 text-green-600' />
               </div>
-              <DialogTitle className='text-xl font-bold text-green-800'>
-                Chi tiết danh mục sản phẩm
-              </DialogTitle>
+              <DialogTitle className='text-xl font-bold text-green-800'>Chi tiết danh mục sản phẩm</DialogTitle>
             </div>
-            <DialogDescription className='text-green-600'>
-              Thông tin chi tiết về danh mục sản phẩm
-            </DialogDescription>
+            <DialogDescription className='text-green-600'>Thông tin chi tiết về danh mục sản phẩm</DialogDescription>
           </DialogHeader>
 
           {viewingItem && (
@@ -461,11 +456,7 @@ function ListCategory() {
                   }
                 >
                   <div className='flex items-center gap-2'>
-                    {viewingItem.isActive ? (
-                      <CheckCircle className='w-4 h-4' />
-                    ) : (
-                      <XCircle className='w-4 h-4' />
-                    )}
+                    {viewingItem.isActive ? <CheckCircle className='w-4 h-4' /> : <XCircle className='w-4 h-4' />}
                     {viewingItem.isActive ? 'Hoạt động' : 'Không hoạt động'}
                   </div>
                 </Badge>

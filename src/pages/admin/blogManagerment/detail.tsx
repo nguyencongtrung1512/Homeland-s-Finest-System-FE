@@ -8,7 +8,6 @@ import { blogCategoryApi, type BlogCategoryItem } from '../../../apis/categoryBl
 import { blogApi, type BlogItem } from '../../../apis/blog.api'
 import { path } from '../../../constants/path'
 
-
 function BlogCategoryDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()

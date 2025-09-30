@@ -87,3 +87,16 @@ export interface TransactionDashboardData {
   totalPages: number
   currentPage: number
 }
+
+// Interface cho dữ liệu thống kê theo tháng
+export interface MonthlyStatsData {
+  storeRegistrationsByMonth: {
+    [key: string]: number
+  }
+  successfulTransactionsByMonth: {
+    [key: string]: number
+  }
+  cancelledTransactionsByMonth: {
+    [key: string]: number
+  }
+}

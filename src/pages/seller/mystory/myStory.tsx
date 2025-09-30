@@ -6,7 +6,6 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 import { Badge } from '../../../components/ui/badge'
 import {
-  ArrowLeft,
   Edit,
   Save,
   X,
@@ -22,8 +21,7 @@ import {
   Quote,
   Image as ImageIcon,
   Type,
-  Calendar,
-  Share2
+  Calendar
 } from 'lucide-react'
 
 function MyStory() {
@@ -78,10 +76,10 @@ Mỗi sản phẩm đan lát tre không chỉ là một vật dụng thực tế
     // Reset to original data
   }
 
-  const handleTogglePublish = () => {
-    setIsPublished(!isPublished)
-    // Implement publish/unpublish logic
-  }
+  // const handleTogglePublish = () => {
+  //   setIsPublished(!isPublished)
+  //   // Implement publish/unpublish logic
+  // }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -134,7 +132,6 @@ Mỗi sản phẩm đan lát tre không chỉ là một vật dụng thực tế
                 <Edit className='w-4 h-4 mr-2' />
                 Chỉnh sửa
               </Button>
-
             </>
           ) : (
             <>
@@ -156,7 +153,6 @@ Mỗi sản phẩm đan lát tre không chỉ là một vật dụng thực tế
       </div>
 
       <div className='max-w-4xl mx-auto space-y-8'>
-
         {/* Main Title Section */}
         <Card>
           <CardContent className='p-6'>
@@ -307,8 +303,8 @@ Mỗi sản phẩm đan lát tre không chỉ là một vật dụng thực tế
           </CardContent>
         </Card>
 
-         {/* Commitment Content */}
-         <Card>
+        {/* Commitment Content */}
+        <Card>
           <CardContent className='p-6'>
             <div className='space-y-4'>
               <Label className='text-lg font-semibold text-green-700'>Nội dung cam kết</Label>

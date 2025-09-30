@@ -183,7 +183,6 @@ export const getBlogByCategory = async (categoryId: string, params?: Omit<BlogPa
   return response
 }
 
-
 // Function để cập nhật trạng thái active của Blog
 export const updateBlogActiveStatus = async (id: string, isActive: boolean) => {
   const response = await axiosInstance.patch(`${API_URL}/${id}/active`, { isActive })

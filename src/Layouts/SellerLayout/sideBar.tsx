@@ -1,5 +1,16 @@
 import { Layout, Menu } from 'antd'
-import { Home, Package, ShoppingCart, BookOpen, MessageCircle, DollarSign, Store, HelpCircle, Leaf } from 'lucide-react'
+import {
+  Home,
+  Package,
+  ShoppingCart,
+  BookOpen,
+  MessageCircle,
+  DollarSign,
+  Store,
+  HelpCircle,
+  Leaf,
+  Component
+} from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import path from '../../constants/path'
 
@@ -23,7 +34,7 @@ function SideBar() {
     {
       key: path.comboSeller,
       label: 'Quản lý Combo',
-      icon: <Package size={18} />
+      icon: <Component size={18} />
     },
     {
       key: path.ordersSeller,

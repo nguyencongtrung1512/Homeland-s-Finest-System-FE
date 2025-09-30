@@ -930,8 +930,9 @@ function CustomerManagement() {
                 <PopoverTrigger asChild>
                   <Button
                     variant='outline'
-                    className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
-                      }`}
+                    className={`w-full h-10 justify-start text-left font-normal ${
+                      !staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
+                    }`}
                   >
                     <CalendarIcon className='mr-2 h-4 w-4' />
                     {staffFormData.dateOfBirth ? formatDisplayDate(staffFormData.dateOfBirth) : 'Chọn ngày sinh'}
@@ -964,8 +965,9 @@ function CustomerManagement() {
                 <PopoverTrigger asChild>
                   <Button
                     variant='outline'
-                    className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.hireDate ? 'text-muted-foreground' : ''
-                      }`}
+                    className={`w-full h-10 justify-start text-left font-normal ${
+                      !staffFormData.hireDate ? 'text-muted-foreground' : ''
+                    }`}
                   >
                     <CalendarIcon className='mr-2 h-4 w-4' />
                     {staffFormData.hireDate ? formatDisplayDate(staffFormData.hireDate) : 'Chọn ngày tuyển dụng'}

@@ -101,7 +101,6 @@ export const updateBlogCategory = async (id: string, data: UpdateBlogCategoryInp
   return response
 }
 
-
 // Export tất cả functions như một object để dễ sử dụng
 export const blogCategoryApi = {
   getAll: getAllBlogCategory,

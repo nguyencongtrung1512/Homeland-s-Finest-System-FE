@@ -9,7 +9,7 @@ const { Header, Content } = Layout
 
 function StaffLayout() {
   const [userData] = useState({
-    email: 'staff@example.com',
+    email: 'staff@example.com'
   })
 
   const handleLogout = () => {

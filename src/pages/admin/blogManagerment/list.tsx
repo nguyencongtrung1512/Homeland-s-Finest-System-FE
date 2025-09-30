@@ -1,5 +1,3 @@
-'use client'
-
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Edit, Database, Users, Activity, MoreHorizontal, Eye } from 'lucide-react'
@@ -31,7 +29,7 @@ import {
   type UpdateBlogCategoryInput
 } from '../../../apis/categoryBlog.api'
 import { Switch } from '../../../components/ui/switch'
-import { path } from '../../../constants/path'
+// import { path } from '../../../constants/path'
 
 function BlogCategoryList() {
   const navigate = useNavigate()
@@ -367,8 +365,9 @@ function BlogCategoryList() {
                       <TableCell className='font-medium text-foreground'>{category.name}</TableCell>
                       <TableCell>
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${category.isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
-                            }`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            category.isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+                          }`}
                         >
                           {category.isActive ? 'Hoạt động' : 'Không hoạt động'}
                         </span>

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Button } from '../../components/ui/button'
 import { ChartContainer, ChartTooltip } from '../../components/ui/chart'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { getTransactionSummary, getAvailableYears } from '../../apis/dashboardTransaction.api'
+import { getTransactionDashboard, getAvailableYears } from '../../apis/dashboardTransaction.api'
 import type { TransactionDashboardData } from '../../types/transactionDashboardType'
 
 // Helper functions
@@ -61,9 +61,9 @@ function AdminDashboard() {
     try {
       setLoading(true)
       setError(null)
-      const data = await getTransactionSummary({
-        StartDate: '',
-        EndDate: '',
+      const data = await getTransactionDashboard({
+        StartDate: `${year}-01-01`,
+        EndDate: `${year}-12-31`,
         Year: year
       })
       console.log('data trung', data)
@@ -363,7 +363,8 @@ function AdminDashboard() {
             <CardTitle className='text-lg font-semibold text-gray-900'>Giao dịch đang chờ xử lý</CardTitle>
           </CardHeader>
           <CardContent className='space-y-4'>
-            {dashboardData?.transactions && dashboardData.transactions.filter((t) => t.status === 'Pending').length > 0 ? (
+            {dashboardData?.transactions &&
+              dashboardData.transactions.filter((t) => t.status === 'Pending').length > 0 ? (
               dashboardData.transactions
                 .filter((t) => t.status === 'Pending')
                 .slice(0, 5)

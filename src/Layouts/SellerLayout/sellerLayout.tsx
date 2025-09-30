@@ -1,4 +1,4 @@
-import { Layout, Dropdown, Avatar, Button } from 'antd'
+import { Layout, Dropdown, Avatar } from 'antd'
 import { UserOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import SideBar from './sideBar'

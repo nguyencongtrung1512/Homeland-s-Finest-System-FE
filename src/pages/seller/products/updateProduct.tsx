@@ -165,7 +165,10 @@ function UpdateProduct() {
     <div className='p-6 bg-gray-50 min-h-screen'>
       {/* Breadcrumb */}
       <div className='flex items-center space-x-2 text-sm text-gray-600 mb-4'>
-        <span className='text-gray-600 hover:text-gray-900 cursor-pointer' onClick={() => navigate('../product-management')}>
+        <span
+          className='text-gray-600 hover:text-gray-900 cursor-pointer'
+          onClick={() => navigate('../product-management')}
+        >
           Quản lý sản phẩm
         </span>
         <ChevronRight className='w-4 h-4' />

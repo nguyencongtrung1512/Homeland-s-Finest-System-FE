@@ -26,7 +26,7 @@ import {
   createSystemStorage,
   updateSystemStorage,
   deleteSystemStorage,
-  type SystemStorageItem,
+  type SystemStorageItem
 } from '../../../apis/systemStorage.api'
 import { toast } from 'react-toastify'
 import Loading from '../../../components/Loading/loading'
@@ -276,24 +276,16 @@ function SystemStorage() {
                       <TableCell className='px-6 py-4'>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button
-                              variant='outline' size='sm' className='border-border hover:bg-accent'
-                            >
+                            <Button variant='outline' size='sm' className='border-border hover:bg-accent'>
                               <MoreHorizontal className='h-4 w-4' />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align='end' className='w-48'>
-                            <DropdownMenuItem
-                              onClick={() => handleViewDetails(item)}
-                              className='cursor-pointer'
-                            >
+                            <DropdownMenuItem onClick={() => handleViewDetails(item)} className='cursor-pointer'>
                               <Eye className='mr-2 h-4 w-4 text-blue-600' />
                               <span>Xem chi tiết</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleEdit(item)}
-                              className='cursor-pointer'
-                            >
+                            <DropdownMenuItem onClick={() => handleEdit(item)} className='cursor-pointer'>
                               <Edit className='mr-2 h-4 w-4 text-green-600' />
                               <span>Chỉnh sửa</span>
                             </DropdownMenuItem>
@@ -322,11 +314,7 @@ function SystemStorage() {
           <DialogHeader className='space-y-3'>
             <div className='flex items-center gap-3'>
               <div className='p-2 bg-blue-100 rounded-lg'>
-                {editingItem ? (
-                  <Edit className='w-5 h-5 text-blue-600' />
-                ) : (
-                  <Plus className='w-5 h-5 text-blue-600' />
-                )}
+                {editingItem ? <Edit className='w-5 h-5 text-blue-600' /> : <Plus className='w-5 h-5 text-blue-600' />}
               </div>
               <DialogTitle className='text-xl font-bold text-blue-800'>
                 {editingItem ? 'Chỉnh sửa SystemStorage' : 'Tạo SystemStorage mới'}
@@ -434,13 +422,9 @@ function SystemStorage() {
               <div className='p-2 bg-blue-100 rounded-lg'>
                 <Eye className='w-5 h-5 text-blue-600' />
               </div>
-              <DialogTitle className='text-xl font-bold text-blue-800'>
-                Chi tiết SystemStorage
-              </DialogTitle>
+              <DialogTitle className='text-xl font-bold text-blue-800'>Chi tiết SystemStorage</DialogTitle>
             </div>
-            <DialogDescription className='text-blue-600'>
-              Thông tin chi tiết về SystemStorage
-            </DialogDescription>
+            <DialogDescription className='text-blue-600'>Thông tin chi tiết về SystemStorage</DialogDescription>
           </DialogHeader>
 
           {viewingItem && (
