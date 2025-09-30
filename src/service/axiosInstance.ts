@@ -26,7 +26,7 @@ axiosInstance.interceptors.request.use(
 
 axiosInstance.interceptors.response.use(
   (response) => {
-    if (response.status === 200 || response.status === 201) {
+    if (response.status === 200 || response.status === 201 || response.status === 202) {
       return response.data
     }
     return response
