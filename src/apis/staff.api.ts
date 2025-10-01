@@ -1,0 +1,102 @@
+import axiosInstance from '../service/axiosInstance'
+
+const API_URL = `/Staff`
+
+// Interface cho Store được assigned
+export interface AssignedStore {
+  id: string
+  sellerId: string
+  storeName: string
+  address: string
+  logoUrl: string | null
+  coverImageUrl: string | null
+  status: 'ReviewedByStaff' | 'Processing'
+  note: string | null
+  history: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// Interface cho API response
+export interface AssignedStoresResponse {
+  status: number
+  message: string
+  data: AssignedStore[]
+}
+
+// Interface cho pagination params
+export interface AssignedStoresParams {
+  pageSize?: number
+  pageNumber?: number
+}
+
+// Interface cho review store request
+export interface ReviewStoreRequest {
+  NewStatus: 'ReviewedByStaff'
+  StaffNotes: string
+  StaffFeedback: string
+  StaffImages?: string[]
+}
+
+// Interface cho review store response
+export interface ReviewStoreResponse {
+  status?: number
+  message?: string
+  storeId?: string
+  newStatus?: string
+  reviewedByStaffId?: string
+  decisionDate?: string
+  data?: {
+    storeId: string
+    newStatus: string
+    staffNotes: string
+    staffFeedback: string
+    reviewedAt: string
+  }
+}
+
+// API functions
+export const staffApi = {
+  // Lấy danh sách cửa hàng đã được assigned cho staff
+  getAssignedStores: async (staffId: string, params?: AssignedStoresParams): Promise<AssignedStoresResponse> => {
+    const queryParams = new URLSearchParams()
+
+    if (params?.pageSize) {
+      queryParams.append('pageSize', params.pageSize.toString())
+    }
+
+    if (params?.pageNumber) {
+      queryParams.append('pageNumber', params.pageNumber.toString())
+    }
+
+    const url = `${API_URL}/assigned-stores/${staffId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    
+    const response = await axiosInstance.get(url)
+    return response.data
+  },
+
+  // Review store (approve/reject)
+  reviewStore: async (storeId: string, reviewData: ReviewStoreRequest & { selectedImages?: File[] }): Promise<ReviewStoreResponse> => {
+    const formData = new FormData()
+    
+    formData.append('NewStatus', reviewData.NewStatus)
+    formData.append('StaffNotes', reviewData.StaffNotes)
+    formData.append('StaffFeedback', reviewData.StaffFeedback)
+    
+    // Thêm images từ selectedImages nếu có
+    if (reviewData.selectedImages && reviewData.selectedImages.length > 0) {
+      // Gửi từng ảnh với key StaffImages (BE sẽ nhận array)
+      reviewData.selectedImages.forEach((image) => {
+        formData.append('StaffImages', image)
+      })
+    }
+    
+    const response = await axiosInstance.put(`${API_URL}/stores/${storeId}/review`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    return response.data
+  }
+}
