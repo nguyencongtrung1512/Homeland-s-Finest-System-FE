@@ -15,6 +15,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../components/ui/select'
 import { addressApi, type GHNProvince, type GHNDistrict, type GHNWard } from '../../../../apis/address.api'
 import type { Address, AddressCreateInput } from '../../../../types/addressType'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../components/ui/tabs'
+import MapBoxGetLocation from '../../../../components/Mapbox/mapBoxGetLocation'
 
 interface AddressModalProps {
   isOpen: boolean
@@ -62,6 +64,7 @@ export default function AddressModal({
   const [wards, setWards] = useState<GHNWard[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<string>('manual')
 
   // Memoized handlers để tránh re-render không cần thiết
   const handleStreetAddressChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,191 +215,141 @@ export default function AddressModal({
     }
   }, [])
 
-  // Load provinces when modal opens
-  useEffect(() => {
-    if (isOpen && provinces.length === 0) {
-      loadProvinces()
-    }
-  }, [isOpen, provinces.length, loadProvinces])
-
-  // Load districts when province changes
-  useEffect(() => {
-    if (formData.provinceId > 0) {
-      loadDistricts(formData.provinceId)
-    } else {
-      setDistricts([])
-      setWards([])
-    }
-  }, [formData.provinceId, loadDistricts])
-
-  // Load wards when district changes
-  useEffect(() => {
-    if (formData.districtId > 0) {
-      loadWards(formData.districtId)
-    } else {
-      setWards([])
-    }
-  }, [formData.districtId, loadWards])
-
+  // Xử lý khi chọn tỉnh/thành phố
   const handleProvinceChange = useCallback(
-    (provinceId: string) => {
-      const selectedProvince = provinces.find((p) => p.ProvinceID.toString() === provinceId)
-      setFormData((prev) => ({
-        ...prev,
-        provinceId: selectedProvince?.ProvinceID || 0,
-        province: selectedProvince?.ProvinceName || '',
-        districtId: 0,
-        district: '',
-        wardId: 0,
-        ward: ''
-      }))
+    (value: string) => {
+      const provinceId = parseInt(value)
+      const selectedProvince = provinces.find((p) => p.ProvinceID === provinceId)
+
+      if (selectedProvince) {
+        setFormData((prev) => ({
+          ...prev,
+          province: selectedProvince.ProvinceName,
+          provinceId,
+          district: '',
+          districtId: 0,
+          ward: '',
+          wardId: 0
+        }))
+
+        // Load districts for selected province
+        loadDistricts(provinceId)
+      }
     },
-    [provinces]
+    [provinces, loadDistricts]
   )
 
+  // Xử lý khi chọn quận/huyện
   const handleDistrictChange = useCallback(
-    (districtId: string) => {
-      const selectedDistrict = districts.find((d) => d.DistrictID.toString() === districtId)
-      setFormData((prev) => ({
-        ...prev,
-        districtId: selectedDistrict?.DistrictID || 0,
-        district: selectedDistrict?.DistrictName || '',
-        wardId: 0,
-        ward: ''
-      }))
+    (value: string) => {
+      const districtId = parseInt(value)
+      const selectedDistrict = districts.find((d) => d.DistrictID === districtId)
+
+      if (selectedDistrict) {
+        setFormData((prev) => ({
+          ...prev,
+          district: selectedDistrict.DistrictName,
+          districtId,
+          ward: '',
+          wardId: 0
+        }))
+
+        // Load wards for selected district
+        loadWards(districtId)
+      }
     },
-    [districts]
+    [districts, loadWards]
   )
 
+  // Xử lý khi chọn phường/xã
   const handleWardChange = useCallback(
-    (wardCode: string) => {
+    (value: string) => {
+      const wardCode = value
       const selectedWard = wards.find((w) => w.WardCode === wardCode)
-      setFormData((prev) => ({
-        ...prev,
-        wardId: parseInt(selectedWard?.WardCode || '0'),
-        ward: selectedWard?.WardName || ''
-      }))
+
+      if (selectedWard) {
+        setFormData((prev) => ({
+          ...prev,
+          ward: selectedWard.WardName,
+          wardId: parseInt(wardCode)
+        }))
+      }
     },
     [wards]
   )
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault()
+  // Xử lý khi xác nhận vị trí từ bản đồ
+  const handleLocationConfirm = useCallback((locationData: {
+    coordinates: [number, number]
+    province: string
+    provinceId: number
+    district: string
+    districtId: number
+    ward: string
+    wardId: number
+    streetAddress: string
+  }) => {
+    setFormData((prev) => ({
+      ...prev,
+      province: locationData.province,
+      provinceId: locationData.provinceId,
+      district: locationData.district,
+      districtId: locationData.districtId,
+      ward: locationData.ward,
+      wardId: locationData.wardId,
+      streetAddress: locationData.streetAddress
+    }))
+    
+    // Chuyển sang tab nhập tay để người dùng có thể chỉnh sửa thêm nếu cần
+    setActiveTab('manual')
+    
+    // Hiển thị thông báo thành công
+    toast.success('Đã lấy thông tin địa chỉ từ bản đồ thành công!', {
+      position: 'top-right',
+      autoClose: 2000
+    })
+  }, [])
 
-      // Hardcode userId
-      const hardcodedUserId = 'de92782e-2cab-4dc4-ae34-60f078ac33b7'
-
-      console.log('=== DEBUG ADDRESS MODAL ===')
-      console.log('Form data:', formData)
-      console.log('Hardcoded User ID:', hardcodedUserId)
-      console.log('Province:', formData.province)
-      console.log('District:', formData.district)
-      console.log('Ward:', formData.ward)
-      console.log('Street Address:', formData.streetAddress)
-      console.log('Is Default:', formData.isDefault)
-
-      if (!formData.province || !formData.district || !formData.ward || !formData.streetAddress) {
-        console.log('❌ Validation failed - missing required fields')
-        console.log('Missing province:', !formData.province)
-        console.log('Missing district:', !formData.district)
-        console.log('Missing ward:', !formData.ward)
-        console.log('Missing streetAddress:', !formData.streetAddress)
-        setError('Vui lòng điền đầy đủ thông tin bắt buộc')
-
-        // Hiển thị toast lỗi
-        toast.error('Vui lòng điền đầy đủ thông tin bắt buộc!', {
-          position: 'top-right',
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: 'light'
-        })
-        return
-      }
-
-      const addressData: AddressCreateInput = {
-        userId: hardcodedUserId, // Sử dụng hardcoded userId
-        province: formData.province,
-        district: formData.district,
-        ward: formData.ward,
-        provinceId: formData.provinceId,
-        districtId: formData.districtId,
-        wardId: formData.wardId,
-        streetAddress: formData.streetAddress,
-        isDefault: formData.isDefault
-      }
-
-      console.log('✅ Address data to be sent:', addressData)
-      console.log('=== END DEBUG ===')
-
-      onSave(addressData)
-
-      // Hiển thị toast thành công
-      toast.success(address ? 'Cập nhật địa chỉ thành công!' : 'Thêm địa chỉ mới thành công!', {
-        position: 'top-right',
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: 'light'
-      })
-
-      onClose()
-    },
-    [formData, onSave, onClose, address]
-  )
-
+  // Retry handler
   const retryHandler = useCallback(() => {
-    if (provinces.length === 0) {
-      loadProvinces()
-    } else if (formData.provinceId > 0 && districts.length === 0) {
-      loadDistricts(formData.provinceId)
-    } else if (formData.districtId > 0 && wards.length === 0) {
-      loadWards(formData.districtId)
-    }
-  }, [
-    provinces.length,
-    districts.length,
-    wards.length,
-    formData.provinceId,
-    formData.districtId,
-    loadProvinces,
-    loadDistricts,
-    loadWards
-  ])
+    setError(null)
+    loadProvinces()
+  }, [loadProvinces])
 
-  // Reset form khi modal đóng/mở
+  // Load provinces on mount
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        userId: userId || '',
-        province: address?.province || '',
-        district: address?.district || '',
-        ward: address?.ward || '',
-        provinceId: address?.provinceId || 0,
-        districtId: address?.districtId || 0,
-        wardId: address?.wardId || 0,
-        streetAddress: address?.streetAddress || '',
-        isDefault: address?.isDefault || false
-      })
-      setError(null)
+      loadProvinces()
     }
-  }, [isOpen, address, userId])
+  }, [isOpen, loadProvinces])
 
-  // Memoized computed values
-  const hasOtherDefault = useMemo(
-    () => existingAddresses.some((addr) => addr.isDefault && addr.id !== address?.id),
-    [existingAddresses, address?.id]
-  )
+  // Load districts if province is already selected (for editing)
+  useEffect(() => {
+    if (isOpen && formData.provinceId > 0) {
+      loadDistricts(formData.provinceId)
+    }
+  }, [isOpen, formData.provinceId, loadDistricts])
+
+  // Load wards if district is already selected (for editing)
+  useEffect(() => {
+    if (isOpen && formData.districtId > 0) {
+      loadWards(formData.districtId)
+    }
+  }, [isOpen, formData.districtId, loadWards])
+
+  // Check if there's another default address
+  const hasOtherDefault = useMemo(() => {
+    return existingAddresses.some((addr) => addr.isDefault && addr.id !== address?.id)
+  }, [existingAddresses, address])
+
+  // Form submission handler
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave(formData)
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>{address ? 'Sửa địa chỉ' : 'Thêm địa chỉ mới'}</DialogTitle>
@@ -405,129 +358,152 @@ export default function AddressModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className='space-y-4'>
-          {/* Error Message */}
-          {error && (
-            <div className='p-4 bg-red-50 border border-red-200 rounded-lg'>
-              <p className='text-red-600 text-sm mb-2'>{error}</p>
-              <Button
-                type='button'
-                variant='outline'
-                size='sm'
-                className='text-red-600 border-red-300 hover:bg-red-50'
-                onClick={retryHandler}
-              >
-                Thử lại
-              </Button>
-            </div>
-          )}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="manual">Nhập thủ công</TabsTrigger>
+            <TabsTrigger value="map">Chọn trên bản đồ</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="manual">
+            <form onSubmit={handleSubmit} className='space-y-4'>
+              {/* Error Message */}
+              {error && (
+                <div className='p-4 bg-red-50 border border-red-200 rounded-lg'>
+                  <p className='text-red-600 text-sm mb-2'>{error}</p>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    className='text-red-600 border-red-300 hover:bg-red-50'
+                    onClick={retryHandler}
+                  >
+                    Thử lại
+                  </Button>
+                </div>
+              )}
 
-          {/* Loading State */}
-          {loading && (
-            <div className='flex justify-center items-center py-4'>
-              <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-600'></div>
-              <span className='ml-2 text-gray-600'>Đang tải...</span>
-            </div>
-          )}
+              {/* Loading State */}
+              {loading && (
+                <div className='flex justify-center items-center py-4'>
+                  <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-600'></div>
+                  <span className='ml-2 text-gray-600'>Đang tải...</span>
+                </div>
+              )}
 
-          <div className='grid grid-cols-3 gap-4'>
-            <div>
-              <Label htmlFor='province'>Tỉnh/thành *</Label>
-              <Select
-                value={formData.provinceId > 0 ? formData.provinceId.toString() : ''}
-                onValueChange={handleProvinceChange}
-                disabled={loading}
-              >
-                <SelectTrigger className='mt-1'>
-                  <SelectValue placeholder='Chọn tỉnh/thành' />
-                </SelectTrigger>
-                <SelectContent>
-                  {provinces?.map((province) => (
-                    <SelectItem key={province.ProvinceID} value={province.ProvinceID.toString()}>
-                      {province.ProvinceName}
-                    </SelectItem>
-                  )) || []}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className='grid grid-cols-3 gap-4'>
+                <div>
+                  <Label htmlFor='province'>Tỉnh/thành *</Label>
+                  <Select
+                    value={formData.provinceId > 0 ? formData.provinceId.toString() : ''}
+                    onValueChange={handleProvinceChange}
+                    disabled={loading}
+                  >
+                    <SelectTrigger className='mt-1'>
+                      <SelectValue placeholder='Chọn tỉnh/thành' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provinces?.map((province) => (
+                        <SelectItem key={province.ProvinceID} value={province.ProvinceID.toString()}>
+                          {province.ProvinceName}
+                        </SelectItem>
+                      )) || []}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div>
-              <Label htmlFor='district'>Quận/huyện *</Label>
-              <Select
-                value={formData.districtId > 0 ? formData.districtId.toString() : ''}
-                onValueChange={handleDistrictChange}
-                disabled={!formData.provinceId || loading}
-              >
-                <SelectTrigger className='mt-1'>
-                  <SelectValue placeholder='Chọn quận/huyện' />
-                </SelectTrigger>
-                <SelectContent>
-                  {districts?.map((district) => (
-                    <SelectItem key={district.DistrictID} value={district.DistrictID.toString()}>
-                      {district.DistrictName}
-                    </SelectItem>
-                  )) || []}
-                </SelectContent>
-              </Select>
-            </div>
+                <div>
+                  <Label htmlFor='district'>Quận/huyện *</Label>
+                  <Select
+                    value={formData.districtId > 0 ? formData.districtId.toString() : ''}
+                    onValueChange={handleDistrictChange}
+                    disabled={!formData.provinceId || loading}
+                  >
+                    <SelectTrigger className='mt-1'>
+                      <SelectValue placeholder='Chọn quận/huyện' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {districts?.map((district) => (
+                        <SelectItem key={district.DistrictID} value={district.DistrictID.toString()}>
+                          {district.DistrictName}
+                        </SelectItem>
+                      )) || []}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div>
-              <Label htmlFor='ward'>Phường/xã *</Label>
-              <Select
-                value={formData.wardId > 0 ? formData.wardId.toString() : ''}
-                onValueChange={handleWardChange}
-                disabled={!formData.districtId || loading}
-              >
-                <SelectTrigger className='mt-1'>
-                  <SelectValue placeholder='Chọn phường/xã' />
-                </SelectTrigger>
-                <SelectContent>
-                  {wards?.map((ward) => (
-                    <SelectItem key={ward.WardCode} value={ward.WardCode}>
-                      {ward.WardName}
-                    </SelectItem>
-                  )) || []}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor='streetAddress'>Địa chỉ cụ thể *</Label>
-            <Input
-              id='streetAddress'
-              value={formData.streetAddress}
-              onChange={handleStreetAddressChange}
-              className='mt-1'
-              placeholder='Số nhà, tên đường...'
-              required
-            />
-          </div>
-
-          <div className='space-y-2'>
-            <div className='flex items-center gap-2'>
-              <Checkbox id='isDefault' checked={formData.isDefault} onCheckedChange={handleDefaultChange} />
-              <Label htmlFor='isDefault' className='text-sm'>
-                Đặt làm địa chỉ mặc định
-              </Label>
-            </div>
-
-            {formData.isDefault && hasOtherDefault && (
-              <div className='text-xs text-amber-600 bg-amber-50 p-2 rounded'>
-                ⚠️ Địa chỉ mặc định hiện tại sẽ được thay thế bởi địa chỉ này
+                <div>
+                  <Label htmlFor='ward'>Phường/xã *</Label>
+                  <Select
+                    value={formData.wardId > 0 ? formData.wardId.toString() : ''}
+                    onValueChange={handleWardChange}
+                    disabled={!formData.districtId || loading}
+                  >
+                    <SelectTrigger className='mt-1'>
+                      <SelectValue placeholder='Chọn phường/xã' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {wards?.map((ward) => (
+                        <SelectItem key={ward.WardCode} value={ward.WardCode}>
+                          {ward.WardName}
+                        </SelectItem>
+                      )) || []}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            )}
-          </div>
 
-          <DialogFooter className='flex gap-3 pt-4'>
-            <Button type='button' variant='outline' onClick={onClose} className='flex-1'>
-              Hủy
-            </Button>
-            <Button type='submit' className='flex-1 bg-green-600 hover:bg-green-700 text-white' disabled={loading}>
-              Lưu địa chỉ
-            </Button>
-          </DialogFooter>
-        </form>
+              <div>
+                <Label htmlFor='streetAddress'>Địa chỉ cụ thể *</Label>
+                <Input
+                  id='streetAddress'
+                  value={formData.streetAddress}
+                  onChange={handleStreetAddressChange}
+                  className='mt-1'
+                  placeholder='Số nhà, tên đường...'
+                  required
+                />
+              </div>
+
+              <div className='space-y-2'>
+                <div className='flex items-center gap-2'>
+                  <Checkbox id='isDefault' checked={formData.isDefault} onCheckedChange={handleDefaultChange} />
+                  <Label htmlFor='isDefault' className='text-sm'>
+                    Đặt làm địa chỉ mặc định
+                  </Label>
+                </div>
+
+                {formData.isDefault && hasOtherDefault && (
+                  <div className='text-xs text-amber-600 bg-amber-50 p-2 rounded'>
+                    ⚠️ Địa chỉ mặc định hiện tại sẽ được thay thế bởi địa chỉ này
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className='flex gap-3 pt-4'>
+                <Button type='button' variant='outline' onClick={onClose} className='flex-1'>
+                  Hủy
+                </Button>
+                <Button type='submit' className='flex-1 bg-green-600 hover:bg-green-700 text-white' disabled={loading}>
+                  Lưu địa chỉ
+                </Button>
+              </DialogFooter>
+            </form>
+          </TabsContent>
+          
+          <TabsContent value="map">
+            <div className='space-y-4'>
+              <p className='text-sm text-gray-600'>
+                Sử dụng bản đồ để chọn vị trí chính xác của bạn. Bạn có thể kéo thả marker để điều chỉnh vị trí.
+              </p>
+              
+              <MapBoxGetLocation onLocationConfirm={handleLocationConfirm} />
+              
+              <div className='text-xs text-blue-600 bg-blue-50 p-2 rounded'>
+                ℹ️ Sau khi xác nhận vị trí, bạn sẽ được chuyển sang tab nhập thủ công để kiểm tra và điều chỉnh thông tin nếu cần.
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )
