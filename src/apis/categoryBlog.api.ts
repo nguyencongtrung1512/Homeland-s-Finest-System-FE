@@ -11,6 +11,20 @@ export interface BlogCategoryItem {
   updatedAt: string | null
 }
 
+// Interface cho Blog item trong danh mục
+export interface BlogItem {
+  blogId: string
+  title: string
+  description: string
+  image: string
+  createdAt: string
+}
+
+// Interface cho BlogCategory với danh sách blogs
+export interface BlogCategoryDetail extends BlogCategoryItem {
+  blogs: BlogItem[]
+}
+
 // Interface cho pagination info
 export interface PaginationInfo {
   pageSize: number
@@ -32,6 +46,13 @@ export interface BlogCategorySingleResponse {
   status: number
   message: string
   data: BlogCategoryItem
+}
+
+// Interface cho BlogCategoryDetail response
+export interface BlogCategoryDetailResponse {
+  status: number
+  message: string
+  data: BlogCategoryDetail
 }
 
 // Interface cho pagination parameters
@@ -76,6 +97,12 @@ export const getBlogCategoryById = async (id: string) => {
   return response
 }
 
+// Function để lấy chi tiết BlogCategory kèm danh sách blogs
+export const getBlogCategoryDetail = async (id: string) => {
+  const response = await axiosInstance.get(`${API_URL}?categoryId=${id}`)
+  return response
+}
+
 // Function để tạo BlogCategory mới
 export const createBlogCategory = async (data: CreateBlogCategoryInput) => {
   // Tạo FormData để match với API requirement (multipart/form-data)
@@ -105,6 +132,7 @@ export const updateBlogCategory = async (id: string, data: UpdateBlogCategoryInp
 export const blogCategoryApi = {
   getAll: getAllBlogCategory,
   getById: getBlogCategoryById,
+  getDetail: getBlogCategoryDetail,
   create: createBlogCategory,
   update: updateBlogCategory
 }

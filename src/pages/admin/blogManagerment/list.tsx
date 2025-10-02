@@ -29,7 +29,8 @@ import {
   type UpdateBlogCategoryInput
 } from '../../../apis/categoryBlog.api'
 import { Switch } from '../../../components/ui/switch'
-// import { path } from '../../../constants/path'
+import path from '../../../constants/path'
+
 
 function BlogCategoryList() {
   const navigate = useNavigate()
@@ -86,7 +87,6 @@ function BlogCategoryList() {
     try {
       console.log('Loading all categories without pagination')
 
-      // Call API without pagination parameters
       const response = await blogCategoryApi.getAll()
 
       console.log('All categories response:', response)

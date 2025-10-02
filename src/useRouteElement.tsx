@@ -55,9 +55,13 @@ import SystemStorage from './pages/admin/systemStorage/list'
 import ListCategory from './pages/staff/productCategory/listCategory'
 import BlogManagement from './pages/staff/blogManagerment/list'
 import BlogCategoryList from './pages/admin/blogManagerment/list'
-import BlogCategoryDetail from './pages/admin/blogManagerment/detail'
 import ComboSeller from './pages/seller/combos/listCombo'
 import ProtectedRoute from './components/ProtectedRoute'
+import Discover from './pages/customer/Discover/discover'
+import BlogByCategory from './pages/admin/blogManagerment'
+import CreateBlogByCategory from './pages/admin/blogManagerment/createBlog'
+import UpdateBlogByCategory from './pages/admin/blogManagerment/updateBlog'
+
 // import ProtectedRoute from './components/ProtectedRoute'
 
 export default function useRouteElements() {
@@ -98,6 +102,10 @@ export default function useRouteElements() {
         {
           path: path.stories,
           element: <StoryWithSeller />
+        },
+        {
+          path: path.discover,
+          element: <Discover />
         }
       ]
     },
@@ -322,6 +330,10 @@ export default function useRouteElements() {
               element: <BlogCategoryList />
             },
             {
+              path: path.BLOG_CATEGORY_DETAIL,
+              element: <BlogByCategory />
+            },
+            {
               path: path.SYSTEM_STORAGE_ADMIN,
               element: <SystemStorage />
             }
@@ -332,12 +344,16 @@ export default function useRouteElements() {
 
     // Blog Category Detail Route (absolute path)
     {
-      path: path.BLOG_CATEGORY_DETAIL_ADMIN,
+      path: '',
       element: <AdminLayout />,
       children: [
         {
-          path: '',
-          element: <BlogCategoryDetail />
+          path: path.CREATE_BLOG,
+          element: <CreateBlogByCategory />
+        },
+        {
+          path: path.BLOG_CATEGORY_EDIT,
+          element: <UpdateBlogByCategory />
         }
       ]
     },

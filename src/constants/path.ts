@@ -6,6 +6,7 @@ export const path = {
   productDetail: '/product/:id',
   store: '/store/:storeId',
   stories: '/stories',
+  discover: '/discover',
   loginCustomer: '/login',
   registerCustomer: '/register',
   forgotPassword: '/forgot-password/verify-email',
@@ -67,9 +68,12 @@ export const path = {
   TERMS_MANAGEMENT_ADMIN: 'termsManagement',
   TRANSACTION_MANAGEMENT_ADMIN: 'transactionManagement',
   BLOG_MANAGEMENT_ADMIN: 'blogManagement',
-  BLOG_CATEGORY_DETAIL_ADMIN: '/admin/blogManagement/detail/:id',
-  BLOG_CATEGORY_EDIT_ADMIN: 'admin/blogManagement/edit/:id',
-  SYSTEM_STORAGE_ADMIN: 'systemStorage'
+  BLOG_CATEGORY_DETAIL: '/admin/blogManagement/detail/:id',
+  SYSTEM_STORAGE_ADMIN: 'systemStorage',
+
+  // ============ BLOG =============
+  CREATE_BLOG: '/admin/blogManagement/detail/:id/create-blog',
+  BLOG_CATEGORY_EDIT: '/admin/blogManagement/edit/:id'
 }
 
 export default path
