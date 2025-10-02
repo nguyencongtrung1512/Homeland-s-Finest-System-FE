@@ -1,24 +1,37 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Database, Calendar, MoreVertical, Eye, Edit } from 'lucide-react'
+import { ArrowLeft, Database, Calendar, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { blogCategoryApi, type BlogCategoryDetail } from '../../../apis/categoryBlog.api'
+import { blogApi } from '../../../apis/blog.api'
 import { path } from '../../../constants/path'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from '../../../components/ui/dropdown-menu'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription
+  DialogDescription,
+  DialogFooter
 } from '../../../components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../../../components/ui/alert-dialog'
 
 function BlogByCategory() {
   const { id } = useParams<{ id: string }>()
@@ -28,6 +41,8 @@ function BlogByCategory() {
   const [loading, setLoading] = useState(true)
   const [selectedBlog, setSelectedBlog] = useState<any>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [blogToDelete, setBlogToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     if (id) {
@@ -83,6 +98,27 @@ function BlogByCategory() {
 
   const handleEditBlog = (blogId: string) => {
     navigate(`/admin/blogManagement/edit/${blogId}`)
+  }
+
+  const handleDeleteBlog = async () => {
+    if (!blogToDelete) return
+
+    try {
+      const response = await blogApi.delete(blogToDelete)
+      if (response.status === 200) {
+        // Reload category detail to update the blog list
+        loadCategoryDetail()
+        setIsDeleteDialogOpen(false)
+        setBlogToDelete(null)
+      }
+    } catch (error) {
+      console.error('Error deleting blog:', error)
+    }
+  }
+
+  const openDeleteDialog = (blogId: string) => {
+    setBlogToDelete(blogId)
+    setIsDeleteDialogOpen(true)
   }
 
   if (loading) {
@@ -249,7 +285,17 @@ function BlogByCategory() {
                   >
                     <div className='flex items-start justify-between'>
                       <div className='flex-1'>
-                        <h4 className='font-semibold text-foreground mb-2 text-lg'>{blog.title}</h4>
+                        <div className='flex items-center justify-between mb-2'>
+                          <h4 className='font-semibold text-foreground text-lg'>{blog.title}</h4>
+                          <Badge
+                            variant={blog.isActive ? 'default' : 'destructive'}
+                            className={
+                              blog.isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+                            }
+                          >
+                            {blog.isActive ? 'Hoạt động' : 'Không hoạt động'}
+                          </Badge>
+                        </div>
                         <p className='text-muted-foreground mb-4 line-clamp-3'>{blog.description}</p>
 
                         <div className='flex items-center space-x-6 text-sm text-muted-foreground'>
@@ -281,6 +327,14 @@ function BlogByCategory() {
                             <Edit className="mr-2 h-4 w-4" />
                             Chỉnh sửa
                           </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-destructive focus:text-destructive" 
+                            onClick={() => openDeleteDialog(blog.blogId)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Xóa
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -304,12 +358,20 @@ function BlogByCategory() {
           
           {selectedBlog && (
             <div className="space-y-4 mt-4">
-              <div>
+              <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">{selectedBlog.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Ngày tạo: {new Date(selectedBlog.createdAt).toLocaleDateString('vi-VN')}
-                </p>
+                <Badge
+                  variant={selectedBlog.isActive ? 'default' : 'destructive'}
+                  className={
+                    selectedBlog.isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+                  }
+                >
+                  {selectedBlog.isActive ? 'Hoạt động' : 'Không hoạt động'}
+                </Badge>
               </div>
+              <p className="text-sm text-muted-foreground">
+                Ngày tạo: {new Date(selectedBlog.createdAt).toLocaleDateString('vi-VN')}
+              </p>
               
               {selectedBlog.image && (
                 <div className="my-4">
@@ -334,18 +396,36 @@ function BlogByCategory() {
                 />
               </div>
               
-              <div className="flex justify-end space-x-2 pt-4">
+              <DialogFooter className="flex justify-end space-x-2 pt-4">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Đóng
                 </Button>
                 <Button onClick={() => handleEditBlog(selectedBlog.blogId)}>
                   Chỉnh sửa
                 </Button>
-              </div>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Dialog xác nhận xóa blog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa bài viết</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setBlogToDelete(null)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteBlog} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

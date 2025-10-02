@@ -146,7 +146,7 @@ export const createBlog = async (data: CreateBlogInput) => {
 // Function để cập nhật Blog
 export const updateBlog = async (id: string, data: FormData | UpdateBlogInput) => {
   let headers = {};
-  
+
   if (data instanceof FormData) {
     headers = {
       'Content-Type': 'multipart/form-data'
@@ -157,7 +157,7 @@ export const updateBlog = async (id: string, data: FormData | UpdateBlogInput) =
     };
     data = convertToFormData(data);
   }
-  
+
   const response = await axiosInstance.put(`${API_URL}/${id}`, data, {
     headers
   })
@@ -167,20 +167,20 @@ export const updateBlog = async (id: string, data: FormData | UpdateBlogInput) =
 // Hàm hỗ trợ chuyển đổi object thành FormData
 function convertToFormData(data: UpdateBlogInput): FormData {
   const formData = new FormData();
-  
+
   if (data.title) formData.append('Title', data.title);
   if (data.description) formData.append('Description', data.description);
   if (data.content) formData.append('Content', data.content);
-  
+
   if (data.blogCategoryId && data.blogCategoryId.length > 0) {
     data.blogCategoryId.forEach((categoryId, index) => {
       formData.append(`BlogCategoryId[${index}]`, categoryId);
     });
   }
-  
+
   if (data.image) formData.append('Image', data.image);
   if (data.isActive !== undefined) formData.append('IsActive', data.isActive.toString());
-  
+
   return formData;
 }
 
@@ -220,6 +220,16 @@ export const updateBlogActiveStatus = async (id: string, isActive: boolean) => {
   return response
 }
 
+// Function để xóa Blog
+export const deleteBlog = async (id: string) => {
+  const response = await axiosInstance.put(`/delete-blog/${id}`, null, {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  return response
+}
+
 // Export tất cả functions như một object để dễ sử dụng
 export const blogApi = {
   getAll: getAllBlog,
@@ -227,7 +237,8 @@ export const blogApi = {
   create: createBlog,
   update: updateBlog,
   getByCategory: getBlogByCategory,
-  updateActiveStatus: updateBlogActiveStatus
+  updateActiveStatus: updateBlogActiveStatus,
+  delete: deleteBlog
 }
 
 export default blogApi
