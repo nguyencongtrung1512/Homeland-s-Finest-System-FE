@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import LoginLayout from '../../Layouts/Authentication/loginLayout'
-import { Leaf, ThumbsUp } from 'lucide-react'
+import { Eye, EyeOff, Leaf, ThumbsUp } from 'lucide-react'
 import logoImage from '../../assets/luachin2-7984.webp'
 import { path } from '../../constants/path'
 import { useState } from 'react'
@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 function Login() {
   const navigate = useNavigate()
   const authContext = useAuth()
+  const [showPassword, setShowPassword] = useState(false)
   const { login: authLogin } = authContext
   const [formData, setFormData] = useState<LoginData>({
     email: '',
@@ -79,7 +80,11 @@ function Login() {
     setError('')
 
     try {
-      const response: LoginResponseData = await login(formData)
+      const loginData = {
+        ...formData,
+        email: formData.email.toLowerCase()
+      }
+      const response: LoginResponseData = await login(loginData)
 
       // Kiểm tra response có token không (vì interceptor đã trả về response.data)
       // Response thực tế chứa { token: "...", expiresAt: "...", role: "..." }
@@ -106,14 +111,14 @@ function Login() {
         }
 
         // Show success toast
-        toast.success('Đăng nhập thành công!', {
-          position: 'top-right',
-          autoClose: 2000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true
-        })
+        // toast.success('Đăng nhập thành công!', {
+        //   position: 'top-right',
+        //   autoClose: 2000,
+        //   hideProgressBar: false,
+        //   closeOnClick: true,
+        //   pauseOnHover: true,
+        //   draggable: true
+        // })
 
         // Delay redirect to allow toast to show
         setTimeout(() => {
@@ -209,16 +214,26 @@ function Login() {
               <Label htmlFor='password' className='text-sm font-medium'>
                 Mật khẩu<span className='text-red-500 ml-1'>*</span>
               </Label>
-              <Input
-                id='password'
-                type='password'
-                name='password'
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder='Nhập mật khẩu'
-                className='w-full'
-                required
-              />
+              <div className='relative'>
+                <Input
+                  id='password'
+                  type={showPassword ? 'text' : 'password'}
+                  name='password'
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder='Nhập mật khẩu'
+                  className='w-full pr-10'
+                  required
+                />
+                <button
+                  type='button'
+                  className='absolute right-2 top-1/2 -translate-y-1/2 text-gray-500'
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
 
             <Button

@@ -147,7 +147,8 @@ function StoreManagement() {
     try {
       setAssignLoading(true)
       const response = await adminApi.assignStaffToStore(selectedStore.id, selectedStaffId)
-      if (response.status === 200 || response.status === 202) {
+      console.log('response', response)
+      if (response) {
         toast.success('Gán nhân viên thành công!')
         setAssignDialogOpen(false)
         fetchStores()
@@ -267,7 +268,7 @@ function StoreManagement() {
                                 handleView(store)
                               }}
                               className='h-8 w-8 p-0 flex items-center justify-center text-black hover:text-blue-600'
-                              title="Xem chi tiết"
+                              title='Xem chi tiết'
                             >
                               <Eye className='w-4 h-4' />
                             </Button>
@@ -280,7 +281,7 @@ function StoreManagement() {
                                   handleAssignStaff(store)
                                 }}
                                 className='h-8 w-8 p-0 flex items-center justify-center text-black hover:text-purple-600'
-                                title="Gán nhân viên"
+                                title='Gán nhân viên'
                               >
                                 <UserPlus className='w-4 h-4' />
                               </Button>
@@ -392,10 +393,10 @@ function StoreManagement() {
                             </div>
 
                             {/* Thông tin nhân viên */}
-                            <div className="flex items-center gap-3 mt-3">
-                              <p className="text-sm font-medium text-gray-900   ">{staff.staffName}</p>
+                            <div className='flex items-center gap-3 mt-3'>
+                              <p className='text-sm font-medium text-gray-900   '>{staff.staffName}</p>
 
-                              <p className="text-xs text-gray-500">{staff.email}</p>
+                              <p className='text-xs text-gray-500'>{staff.email}</p>
                             </div>
                           </div>
                         </SelectItem>

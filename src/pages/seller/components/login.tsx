@@ -26,6 +26,19 @@ function SellerLogin() {
       [name]: type === 'checkbox' ? checked : value
     }))
   }
+  const getRedirectPath = (role: string): string => {
+    switch (role) {
+      case 'Seller':
+        return path.BASE_SELLER
+      case 'Staff':
+        return path.BASE_STAFF
+      case 'Admin':
+        return path.BASE_ADMIN
+      case 'Customer':
+      default:
+        return path.home
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +52,7 @@ function SellerLogin() {
     setIsLoading(true)
     try {
       const response = await loginSeller({
-        email: formData.email,
+        email: formData.email.toLowerCase(),
         password: formData.password
       })
 
@@ -49,11 +62,12 @@ function SellerLogin() {
         localStorage.setItem('userRole', response.role)
         localStorage.setItem('userEmail', formData.email)
 
-        toast.success('Đăng nhập thành công!')
+        // toast.success('Đăng nhập thành công!')
 
         // Redirect to seller dashboard
         setTimeout(() => {
-          navigate(path.BASE_SELLER)
+          const redirectPath = getRedirectPath(response.role)
+          navigate(redirectPath)
         }, 1000)
       }
     } catch (error: any) {
@@ -104,7 +118,7 @@ function SellerLogin() {
         {/* Email Field */}
         <div className='space-y-2'>
           <Label htmlFor='email' className='text-sm font-medium text-gray-700'>
-            Email / Số điện thoại
+            Email
           </Label>
           <Input
             id='email'
@@ -112,7 +126,7 @@ function SellerLogin() {
             name='email'
             value={formData.email}
             onChange={handleInputChange}
-            placeholder='Nhập email hoặc số điện thoại'
+            placeholder='Nhập email'
             className='w-full h-12 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors'
           />
         </div>

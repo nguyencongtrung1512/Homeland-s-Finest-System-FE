@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Building2, User, FileText, Mail, Phone, CreditCard as IdCard, Edit, Lock, Loader2, UserPlus } from 'lucide-react'
+import {
+  ArrowLeft,
+  Building2,
+  User,
+  FileText,
+  Mail,
+  Phone,
+  CreditCard as IdCard,
+  Edit,
+  Lock,
+  Loader2,
+  UserPlus
+} from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
@@ -16,27 +28,26 @@ function StoreDetailAdmin() {
   const [store, setStore] = useState<StoreResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   // Staff assignment states
   const [staffList, setStaffList] = useState<Staff[]>([])
   const [selectedStaffId, setSelectedStaffId] = useState('')
   const [assignLoading, setAssignLoading] = useState(false)
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
 
-
   const fetchStoreDetail = async () => {
     if (!storeId) return
-    
+
     try {
       setLoading(true)
       setError(null)
-      
+
       const response = await storeApi.getStoreById(storeId)
       console.log('API Response:', response) // Debug log
-      
+
       // Xử lý response có thể có nhiều format khác nhau
       let storeData = null
-      
+
       if (response) {
         // Trường hợp 1: response trực tiếp là StoreResponse
         if (response.id || response.storeName) {
@@ -47,11 +58,11 @@ function StoreDetailAdmin() {
           storeData = (response as any).data
         }
         // Trường hợp 3: response có cấu trúc { status: 200, data: StoreResponse }
-        else if ((response as any).status && (response as any).data && ((response as any).data.id || (response as any).data.storeName)) {
-          storeData = (response as any).data
-        }
+        // else if ((response as any).status && (response as any).data && ((response as any).data.id || (response as any).data.storeName)) {
+        //   storeData = (response as any).data
+        // }
       }
-      
+
       if (storeData) {
         console.log('Setting store data:', storeData) // Debug log
         setStore(storeData)
@@ -59,7 +70,7 @@ function StoreDetailAdmin() {
         console.log('No valid data found in response:', response) // Debug log
         console.log('Response type:', typeof response) // Debug log
         console.log('Response keys:', Object.keys(response || {})) // Debug log
-        
+
         // Fallback: thử set response trực tiếp nếu có vẻ hợp lệ
         if (response && typeof response === 'object' && response !== null) {
           console.log('Trying to use response directly as fallback') // Debug log
@@ -68,7 +79,6 @@ function StoreDetailAdmin() {
           setError('Không tìm thấy thông tin cửa hàng')
         }
       }
-      
     } catch (err: unknown) {
       console.error('API Error:', err)
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải thông tin cửa hàng'
@@ -107,7 +117,7 @@ function StoreDetailAdmin() {
 
   const formatDateToVietnamese = (dateString: string | null | undefined): string => {
     if (!dateString) return 'Chưa có'
-    
+
     try {
       const date = new Date(dateString)
       return date.toLocaleDateString('vi-VN', {
@@ -128,7 +138,7 @@ function StoreDetailAdmin() {
 
   const handleLockStore = async () => {
     if (!store) return
-    
+
     try {
       // TODO: Implement lock store API
       // await storeApi.updateStoreStatus(store.id, 'Blocked', 'Cửa hàng bị khóa bởi admin')
@@ -140,13 +150,13 @@ function StoreDetailAdmin() {
 
   const handleUpdateStatus = async (newStatus: 'Approved' | 'Rejected' | 'Blocked') => {
     if (!store) return
-    
+
     try {
       const response = await adminApi.reviewStore(store.id, {
         newStatus: newStatus,
         adminFeedback: `Trạng thái được cập nhật bởi admin: ${newStatus}`
       })
-      
+
       if (response.status === 200 || response.status === 202) {
         toast.success(`Cửa hàng đã được ${newStatus} thành công!`)
         // Refresh store data
@@ -160,8 +170,6 @@ function StoreDetailAdmin() {
     }
   }
 
-
-
   const handleAssignStaff = () => {
     setSelectedStaffId('')
     setAssignDialogOpen(true)
@@ -169,11 +177,11 @@ function StoreDetailAdmin() {
 
   const handleConfirmAssign = async () => {
     if (!store || !selectedStaffId) return
-    
+
     try {
       setAssignLoading(true)
       const response = await adminApi.assignStaffToStore(store.id, selectedStaffId)
-      if (response.status === 200 || response.status === 202) {
+      if (response) {
         toast.success('Gán nhân viên thành công!')
         setAssignDialogOpen(false)
         // Refresh store data
@@ -258,37 +266,38 @@ function StoreDetailAdmin() {
                   </div>
                   <div className='flex-1'>
                     <div className='flex items-center gap-3 mb-4'>
-                      <h2 className='text-xl font-semibold text-gray-900'>{store.storeName || 'tên cửa hanggf chua có '}</h2>
+                      <h2 className='text-xl font-semibold text-gray-900'>
+                        {store.storeName || 'tên cửa hanggf chua có '}
+                      </h2>
                       <div className='flex items-center gap-2'>
                         <div className={`w-2 h-2 rounded-full ${statusConfig.color}`} />
-                        <span className={`text-sm font-medium ${statusConfig.textColor}`}>
-                          {statusConfig.text}
-                        </span>
+                        <span className={`text-sm font-medium ${statusConfig.textColor}`}>{statusConfig.text}</span>
                       </div>
                     </div>
-                    
+
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                       <div className='space-y-3'>
                         <div>
                           <span className='text-sm text-gray-500'>Địa chỉ:</span>
                           <p className='text-sm font-medium text-gray-900'>
-                            {[store.address, store.ward, store.district, store.province]
-                              .filter(Boolean)
-                              .join(', ') || 'Chưa có thông tin địa chỉ'}
+                            {[store.address, store.ward, store.district, store.province].filter(Boolean).join(', ') ||
+                              'Chưa có thông tin địa chỉ'}
                           </p>
                         </div>
                       </div>
                       <div className='space-y-3'>
-                        
                         <div>
                           <span className='text-sm text-gray-500'>Ngày nộp đơn:</span>
-                          <p className='text-sm font-medium text-gray-900'>{formatDateToVietnamese(store.submittedDate)}</p>
+                          <p className='text-sm font-medium text-gray-900'>
+                            {formatDateToVietnamese(store.submittedDate)}
+                          </p>
                         </div>
                         <div>
                           <span className='text-sm text-gray-500'>Ngày quyết định:</span>
-                          <p className='text-sm font-medium text-gray-900'>{formatDateToVietnamese(store.decisionDate)}</p>
+                          <p className='text-sm font-medium text-gray-900'>
+                            {formatDateToVietnamese(store.decisionDate)}
+                          </p>
                         </div>
-                        
                       </div>
                     </div>
                   </div>
@@ -305,18 +314,17 @@ function StoreDetailAdmin() {
                   </div>
                   <div className='flex-1'>
                     <h3 className='text-lg font-semibold text-gray-900 mb-4'>Người đại diện pháp lý</h3>
-                    
+
                     {store.sellerInfo ? (
                       <div className='space-y-4'>
                         <div className='flex items-center gap-3'>
-                          
                           <div>
                             <p className='font-medium text-gray-900'>
                               {store.sellerInfo.userInfo.firstName} {store.sellerInfo.userInfo.lastName}
                             </p>
                           </div>
                         </div>
-                        
+
                         <div className='space-y-2'>
                           <div className='flex items-center gap-2 text-sm text-gray-600'>
                             <Mail className='w-4 h-4' />
@@ -331,17 +339,17 @@ function StoreDetailAdmin() {
                             <span>{store.sellerInfo.identifyCard || 'Chưa có thông tin'}</span>
                           </div>
                         </div>
-                        
+
                         <div>
                           <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh CMND/CCCD:</p>
                           <div className='flex gap-4'>
                             <div className='text-center'>
                               <div className='w-24 h-16 bg-gray-100 border rounded-lg flex items-center justify-center mb-1'>
                                 {store.sellerInfo.identifyFrontImage ? (
-                                  <img 
-                                    src={store.sellerInfo.identifyFrontImage} 
-                                    alt="Mặt trước CMND" 
-                                    className="w-full h-full object-cover rounded"
+                                  <img
+                                    src={store.sellerInfo.identifyFrontImage}
+                                    alt='Mặt trước CMND'
+                                    className='w-full h-full object-cover rounded'
                                   />
                                 ) : (
                                   <FileText className='w-6 h-6 text-gray-400' />
@@ -352,10 +360,10 @@ function StoreDetailAdmin() {
                             <div className='text-center'>
                               <div className='w-24 h-16 bg-gray-100 border rounded-lg flex items-center justify-center mb-1'>
                                 {store.sellerInfo.identifyBackImage ? (
-                                  <img 
-                                    src={store.sellerInfo.identifyBackImage} 
-                                    alt="Mặt sau CMND" 
-                                    className="w-full h-full object-cover rounded"
+                                  <img
+                                    src={store.sellerInfo.identifyBackImage}
+                                    alt='Mặt sau CMND'
+                                    className='w-full h-full object-cover rounded'
                                   />
                                 ) : (
                                   <FileText className='w-6 h-6 text-gray-400' />
@@ -378,7 +386,7 @@ function StoreDetailAdmin() {
                             <p className='font-medium text-gray-900'>Chủ cửa hàng</p>
                           </div>
                         </div>
-                        
+
                         <div className='space-y-2'>
                           <div className='flex items-center gap-2 text-sm text-gray-600'>
                             <Mail className='w-4 h-4' />
@@ -393,7 +401,7 @@ function StoreDetailAdmin() {
                             <span>Chưa có thông tin CMND/CCCD</span>
                           </div>
                         </div>
-                        
+
                         <div>
                           <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh CMND/CCCD:</p>
                           <div className='flex gap-4'>
@@ -427,20 +435,22 @@ function StoreDetailAdmin() {
                   </div>
                   <div className='flex-1'>
                     <h3 className='text-lg font-semibold text-gray-900 mb-4'>Ghi chú của nhân viên</h3>
-                    
+
                     <div className='space-y-4'>
                       {/* Thông tin nhân viên đã review */}
                       <div>
                         <span className='text-sm text-gray-500'>Nhân viên đã đánh giá:</span>
                         <p className='text-sm font-medium text-gray-900'>{store.reviewedBy || 'Chưa có'}</p>
                       </div>
-                      
+
                       {/* Ngày quyết định */}
                       <div>
                         <span className='text-sm text-gray-500'>Ngày duyệt:</span>
-                        <p className='text-sm font-medium text-gray-900'>{formatDateToVietnamese(store.decisionDate)}</p>
+                        <p className='text-sm font-medium text-gray-900'>
+                          {formatDateToVietnamese(store.decisionDate)}
+                        </p>
                       </div>
-                      
+
                       {/* Ghi chú của nhân viên */}
                       {store.staffNotes && (
                         <div>
@@ -450,7 +460,7 @@ function StoreDetailAdmin() {
                           </p>
                         </div>
                       )}
-                      
+
                       {/* Phản hồi của nhân viên */}
                       {store.staffFeedback && (
                         <div>
@@ -460,23 +470,23 @@ function StoreDetailAdmin() {
                           </p>
                         </div>
                       )}
-                      
+
                       {/* Ảnh của nhân viên */}
                       {store.staffImage && (
                         <div>
                           <span className='text-sm text-gray-500'>Ảnh chứng minh:</span>
                           <div className='mt-2'>
-                            <img 
-                              src={store.staffImage} 
-                              alt="Ảnh chứng minh của nhân viên" 
-                              className="w-32 h-32 object-cover rounded-lg border"
+                            <img
+                              src={store.staffImage}
+                              alt='Ảnh chứng minh của nhân viên'
+                              className='w-32 h-32 object-cover rounded-lg border'
                               onClick={() => store.staffImage && window.open(store.staffImage, '_blank')}
                               style={{ cursor: 'pointer' }}
                             />
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Trạng thái khi chưa có thông tin */}
                       {!store.reviewedBy && !store.staffNotes && !store.staffFeedback && !store.staffImage && (
                         <div className='text-center py-8 text-gray-500'>
@@ -499,10 +509,7 @@ function StoreDetailAdmin() {
                 <div className='space-y-3'>
                   {/* Pending: Giao cho nhân viên */}
                   {store.status === 'Pending' && (
-                    <Button
-                      onClick={handleAssignStaff}
-                      className='w-full bg-purple-500 hover:bg-purple-600 text-white'
-                    >
+                    <Button onClick={handleAssignStaff} className='w-full bg-purple-500 hover:bg-purple-600 text-white'>
                       <UserPlus className='w-4 h-4 mr-2' />
                       Giao cho nhân viên
                     </Button>
@@ -518,11 +525,7 @@ function StoreDetailAdmin() {
                         <Edit className='w-4 h-4 mr-2' />
                         Approved
                       </Button>
-                      <Button
-                        onClick={() => handleUpdateStatus('Rejected')}
-                        variant='destructive'
-                        className='w-full'
-                      >
+                      <Button onClick={() => handleUpdateStatus('Rejected')} variant='destructive' className='w-full'>
                         <Lock className='w-4 h-4 mr-2' />
                         Rejected
                       </Button>
@@ -531,13 +534,9 @@ function StoreDetailAdmin() {
 
                   {/* Approved: Chỉ hiện Booked (Khóa cửa hàng) */}
                   {store.status === 'Approved' && (
-                    <Button
-                      onClick={handleLockStore}
-                      variant='destructive'
-                      className='w-full'
-                    >
+                    <Button onClick={handleLockStore} variant='destructive' className='w-full'>
                       <Lock className='w-4 h-4 mr-2' />
-                     Khóa cửa hàng
+                      Khóa cửa hàng
                     </Button>
                   )}
 
@@ -551,11 +550,7 @@ function StoreDetailAdmin() {
                         <Edit className='w-4 h-4 mr-2' />
                         Yêu cầu chỉnh sửa
                       </Button>
-                      <Button
-                        onClick={handleLockStore}
-                        variant='destructive'
-                        className='w-full'
-                      >
+                      <Button onClick={handleLockStore} variant='destructive' className='w-full'>
                         <Lock className='w-4 h-4 mr-2' />
                         Khóa cửa hàng
                       </Button>
@@ -615,9 +610,9 @@ function StoreDetailAdmin() {
                             </div>
 
                             {/* Thông tin nhân viên */}
-                            <div className="flex items-center gap-3 mt-3">
-                              <p className="text-sm font-medium text-gray-900">{staff.staffName}</p>
-                              <p className="text-xs text-gray-500">{staff.email}</p>
+                            <div className='flex items-center gap-3 mt-3'>
+                              <p className='text-sm font-medium text-gray-900'>{staff.staffName}</p>
+                              <p className='text-xs text-gray-500'>{staff.email}</p>
                             </div>
                           </div>
                         </SelectItem>
