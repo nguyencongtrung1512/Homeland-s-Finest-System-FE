@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Filter, Eye, ChevronLeft, ChevronRight, Loader2, UserPlus, Users } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Search, Eye, ChevronLeft, ChevronRight, Loader2, UserPlus, Users, RefreshCw } from 'lucide-react'
+import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
@@ -9,10 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { adminApi, type Staff } from '../../../apis/admin.api'
-import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from 'react-toastify'
 
-// Interface cho Store hiển thị trong UI
 interface Store {
   id: string
   name: string
@@ -21,7 +19,7 @@ interface Store {
   ownerAvatar: string
   createDate: string
   productCount: number
-  status: 'active' | 'pending' | 'locked'
+  status: 'Approved' | 'Pending' | 'Rejected' | 'Processing' | 'ReviewedByStaff'
 }
 
 function StoreManagement() {
@@ -41,7 +39,6 @@ function StoreManagement() {
   const [assignLoading, setAssignLoading] = useState(false)
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
 
-
   const convertStoreResponse = (apiStore: StoreResponse): Store => {
     const avatarText = apiStore.storeName
       .split(' ')
@@ -49,13 +46,6 @@ function StoreManagement() {
       .join('')
       .toUpperCase()
       .slice(0, 2)
-
-    const statusMap: Record<string, 'active' | 'pending' | 'locked'> = {
-      Approved: 'active',
-      Pending: 'pending',
-      Rejected: 'locked',
-      Locked: 'locked'
-    }
 
     const formatDate = (dateString: string) => {
       const date = new Date(dateString)
@@ -65,25 +55,21 @@ function StoreManagement() {
     return {
       id: apiStore.id,
       name: apiStore.storeName,
-      ownerName: 'Chủ cửa hàng', // API không có thông tin owner name, có thể cần call API khác
-      ownerEmail: 'N/A', // API không có thông tin owner email
+      ownerName: 'Chủ cửa hàng',
+      ownerEmail: 'N/A',
       ownerAvatar: avatarText,
       createDate: formatDate(apiStore.createdAt),
-      productCount: 0, // API không có thông tin product count, có thể cần call API khác
-      status: statusMap[apiStore.status] || 'pending'
+      productCount: 0,
+      status: apiStore.status as 'Approved' | 'Pending' | 'Rejected' | 'Processing' | 'ReviewedByStaff'
     }
   }
 
-  // Function để fetch stores từ API
   const fetchStores = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const response = await storeApi.getAllStores({
-        pageSize: 100, // Lấy tất cả để có thể filter ở frontend
-        pageNumber: 1
-      })
+      const response = await storeApi.getAllStores({ pageSize: 100, pageNumber: 1 })
       if (response.status === 200) {
         const convertedStores = response.data.map(convertStoreResponse)
         setStores(convertedStores)
@@ -91,7 +77,6 @@ function StoreManagement() {
         setError('Không thể tải danh sách cửa hàng')
       }
     } catch (err: unknown) {
-      console.error('Error fetching stores:', err)
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải danh sách cửa hàng'
       setError(errorMessage)
     } finally {
@@ -99,60 +84,40 @@ function StoreManagement() {
     }
   }
 
-  // Function để fetch staff list
   const fetchStaffList = async () => {
     try {
       const response = await adminApi.getAllStaff()
-      
-      // Kiểm tra xem response có phải là array không
-      if (Array.isArray(response)) {
-        setStaffList(response)
-      } else if (response && response.data && Array.isArray(response.data)) {
-        setStaffList(response.data)
-      } else {
-        toast.error('Định dạng dữ liệu nhân viên không đúng')
-      }
-    } catch (err: any) {
+      if (Array.isArray(response)) setStaffList(response)
+      else if (response && response.data && Array.isArray(response.data)) setStaffList(response.data)
+      else toast.error('Định dạng dữ liệu nhân viên không đúng')
+    } catch {
       toast.error('Có lỗi xảy ra khi tải danh sách nhân viên')
     }
   }
 
-  // Load stores và staff khi component mount
   useEffect(() => {
     fetchStores()
     fetchStaffList()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   const getStatusConfig = (status: string) => {
     const configs = {
-      active: {
-        text: 'Hoạt động',
-        bgColor: 'bg-green-100',
-        textColor: 'text-green-600'
-      },
-      pending: {
-        text: 'Chờ duyệt',
-        bgColor: 'bg-yellow-100',
-        textColor: 'text-yellow-600'
-      },
-      locked: {
-        text: 'Bị khóa',
-        bgColor: 'bg-red-100',
-        textColor: 'text-red-600'
-      }
+      Approved: { text: 'Đã duyệt', dotColor: 'bg-blue-500' },
+      Pending: { text: 'Chờ duyệt', dotColor: 'bg-yellow-500' },
+      Rejected: { text: 'Từ chối', dotColor: 'bg-red-500' },
+      Processing: { text: 'Nhân viên xử lí', dotColor: 'bg-indigo-500' },
+      ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', dotColor: 'bg-purple-500' }
     }
-    return configs[status as keyof typeof configs] || configs.pending
+    return configs[status as keyof typeof configs] || configs.Pending
   }
 
   const filteredStores = stores.filter((store) => {
     const matchesSearch =
       searchText === '' ||
       store.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      store.id.toLowerCase().includes(searchText.toLowerCase()) ||
       store.ownerName.toLowerCase().includes(searchText.toLowerCase())
 
     const matchesStatus = statusFilter === 'all' || store.status === statusFilter
-
     return matchesSearch && matchesStatus
   })
 
@@ -165,51 +130,29 @@ function StoreManagement() {
     navigate(`/admin/store-detail/${store.id}`)
   }
 
-  const handleFilter = () => {
-    // Filter logic here
-    console.log('Filtering with:', { searchText, statusFilter, dateFilter })
-  }
-
   const handleRefresh = () => {
     fetchStores()
     fetchStaffList()
   }
 
-  // Function để mở dialog assign staff
   const handleAssignStaff = (store: Store) => {
     setSelectedStore(store)
     setSelectedStaffId('')
     setAssignDialogOpen(true)
   }
 
-  // Function để assign staff cho store
   const handleConfirmAssign = async () => {
     if (!selectedStore || !selectedStaffId) return
-
     try {
       setAssignLoading(true)
       const response = await adminApi.assignStaffToStore(selectedStore.id, selectedStaffId)
-      
-      // Kiểm tra nếu response có status property
       if (response.status === 200 || response.status === 202) {
         toast.success('Gán nhân viên thành công!')
         setAssignDialogOpen(false)
-        // Refresh data
         fetchStores()
         fetchStaffList()
-      } 
-      // Nếu response không có status property nhưng có data (thành công)
-      else if (response && ((response as any).storeId || (response as any).assignedStaffId || (response as any).newStatus)) {
-        toast.success('Gán nhân viên thành công!')
-        setAssignDialogOpen(false)
-        // Refresh data
-        fetchStores()
-        fetchStaffList()
-      } 
-      else {
-        toast.error(`Có lỗi xảy ra khi gán nhân viên: ${response.message || 'Lỗi không xác định'}`)
-      }
-    } catch (err: any) {
+      } else toast.error('Có lỗi xảy ra khi gán nhân viên')
+    } catch {
       toast.error('Có lỗi xảy ra khi gán nhân viên')
     } finally {
       setAssignLoading(false)
@@ -217,303 +160,240 @@ function StoreManagement() {
   }
 
   return (
-    <div className='space-y-6 p-6 bg-gray-50 min-h-screen'>
-      {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-3'>
-          <h1 className='text-2xl font-bold text-gray-900'>Quản lý cửa hàng</h1>
-        </div>
-        <Button onClick={handleRefresh} disabled={loading} variant='outline' className='flex items-center gap-2'>
-          {loading ? <Loader2 className='w-4 h-4 animate-spin' /> : <Search className='w-4 h-4' />}
-          Làm mới
-        </Button>
-      </div>
-
-      {/* Search and Filter Section */}
-      <Card className='bg-white shadow-sm'>
-        <CardContent className='p-6'>
-          <div className='flex items-end gap-4'>
-            {/* Search Bar */}
-            <div className='flex-1'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Tìm kiếm</label>
-              <div className='relative'>
-                <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400' />
-                <Input
-                  placeholder='Tìm kiếm theo tên cửa hàng hoặc ID...'
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  className='pl-10 h-10'
-                />
-              </div>
-            </div>
-
-            {/* Status Filter */}
-            <div className='w-48'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className='h-10'>
-                  <SelectValue placeholder='Tất cả trạng thái' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>Tất cả trạng thái</SelectItem>
-                  <SelectItem value='active'>Hoạt động</SelectItem>
-                  <SelectItem value='pending'>Chờ duyệt</SelectItem>
-                  <SelectItem value='locked'>Bị khóa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date Filter */}
-            <div className='w-40'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày tạo</label>
-              <Input
-                placeholder='mm/dd/yyyy'
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className='h-10'
-              />
-            </div>
-
-            {/* Filter Button */}
-            <div>
-              <Button
-                onClick={handleFilter}
-                className='bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 rounded-lg shadow-sm'
-              >
-                <Filter className='w-4 h-4 mr-2' />
-                Lọc
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Stores List Section */}
-      <Card className='bg-white shadow-sm'>
-        <CardHeader className='flex flex-row items-center justify-between p-6 border-b border-gray-200'>
+    <div className='min-h-screen bg-gray-50 text-gray-900'>
+      <div className='max-w-7xl mx-auto px-6 py-8'>
+        {/* Header */}
+        <div className='flex items-center justify-between mb-8'>
           <div>
-            <CardTitle className='text-lg font-semibold text-gray-900'>Danh sách cửa hàng</CardTitle>
-            <p className='text-sm text-gray-600 mt-1'>
-              Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredStores?.length || 0)} của {filteredStores?.length || 0} cửa hàng
-            </p>
+            <h1 className='text-2xl font-semibold text-gray-900 mb-1'>Quản lý cửa hàng</h1>
+            <p className='text-sm text-gray-500'>Quản lý và theo dõi tất cả các cửa hàng trong hệ thống</p>
           </div>
-        </CardHeader>
-        <CardContent className='p-0'>
-          {loading ? (
-            <div className='flex items-center justify-center py-12'>
-              <div className='flex flex-col items-center gap-3'>
-                <Loader2 className='w-8 h-8 animate-spin text-blue-600' />
-                <p className='text-gray-600'>Đang tải danh sách cửa hàng...</p>
+          <Button
+            onClick={handleRefresh}
+            disabled={loading}
+            variant='outline'
+            className='h-9 border-gray-300 text-gray-700 hover:bg-gray-100'
+          >
+            {loading ? <Loader2 className='w-4 h-4 mr-2 animate-spin' /> : <RefreshCw className='w-4 h-4 mr-2' />}
+            Làm mới
+          </Button>
+        </div>
+
+        {/* Search and Filter */}
+        <div className='flex items-center gap-3 mb-6'>
+          <div className='flex-1 relative'>
+            <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400' />
+            <Input
+              placeholder='Tìm kiếm cửa hàng...'
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className='pl-10 h-9'
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className='w-[200px] h-9'>
+              <SelectValue placeholder='Tất cả trạng thái' />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='all'>Tất cả trạng thái</SelectItem>
+              <SelectItem value='Approved'>Đã duyệt</SelectItem>
+              <SelectItem value='Pending'>Chờ duyệt</SelectItem>
+              <SelectItem value='Rejected'>Từ chối</SelectItem>
+              <SelectItem value='Processing'>Xử lý</SelectItem>
+              <SelectItem value='ReviewedByStaff'>Đã duyệt bởi nhân viên</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            type='date'
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className='w-[160px] h-9'
+          />
+        </div>
+
+        {/* Store List */}
+        <Card>
+          <CardContent className='p-0'>
+            {loading ? (
+              <div className='flex items-center justify-center py-20 text-gray-500'>
+                <Loader2 className='w-6 h-6 animate-spin text-blue-500' />
+                <p className='ml-2 text-sm'>Đang tải danh sách cửa hàng...</p>
               </div>
-            </div>
-          ) : error ? (
-            <div className='flex items-center justify-center py-12'>
-              <div className='flex flex-col items-center gap-3'>
-                <div className='w-12 h-12 bg-red-100 rounded-full flex items-center justify-center'>
-                  <span className='text-red-600 text-xl'>!</span>
-                </div>
-                <p className='text-red-600 font-medium'>{error}</p>
-                <Button onClick={handleRefresh} variant='outline' size='sm'>
+            ) : error ? (
+              <div className='flex flex-col items-center justify-center py-20 text-red-500'>
+                <p className='text-sm'>{error}</p>
+                <Button onClick={handleRefresh} variant='outline' size='sm' className='mt-3'>
                   Thử lại
                 </Button>
               </div>
-            </div>
-          ) : !stores || stores.length === 0 ? (
-            <div className='flex items-center justify-center py-12'>
-              <div className='flex flex-col items-center gap-3'>
-                <div className='w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center'>
-                  <span className='text-gray-600 text-xl'>📦</span>
-                </div>
-                <p className='text-gray-600'>Chưa có cửa hàng nào</p>
+            ) : !stores || stores.length === 0 ? (
+              <div className='flex flex-col items-center justify-center py-20 text-gray-400'>
+                <span className='text-2xl'>📦</span>
+                <p className='text-sm mt-2'>Chưa có cửa hàng nào</p>
               </div>
-            </div>
-          ) : (
-            <div className='overflow-x-auto'>
-              <table className='w-full'>
-                <thead>
-                  <tr className='border-b border-gray-200 bg-gray-50'>
-                    <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Cửa hàng</th>
-                    <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Chủ sở hữu</th>
-                    <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Ngày tạo</th>
-                    <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Sản phẩm</th>
-                    <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Trạng thái</th>
-                    <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className='bg-white'>
+            ) : (
+              <>
+                <div className='divide-y'>
                   {currentStores.map((store) => {
                     const statusConfig = getStatusConfig(store.status)
-
                     return (
-                      <tr key={store.id} className='border-b border-gray-100 hover:bg-gray-50'>
-                        <td className='px-6 py-3'>
-                          <div className='flex items-center gap-3'>
-                            <Avatar className='w-10 h-10'>
-                              <AvatarFallback className='bg-blue-100 text-blue-600 text-sm font-semibold'>
+                      <div key={store.id} className='px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer group'>
+                        <div className='flex items-center justify-between'>
+                          <div className='flex items-center gap-4 flex-1'>
+                            <Avatar className='w-10 h-10 border border-gray-200'>
+                              <AvatarFallback className='bg-gray-100 text-blue-500 text-sm font-medium'>
                                 {store.ownerAvatar}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <p className='font-medium text-gray-900 text-sm'>{store.name}</p>
-                              <p className='text-xs text-gray-600'>#{store.id}</p>
+                            <div className='flex-1 min-w-0'>
+                              <div className='flex items-center gap-3 mb-1'>
+                                <h3 className='font-medium text-gray-900 text-sm truncate'>{store.name}</h3>
+                                <div className='flex items-center gap-1.5'>
+                                  <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotColor}`} />
+                                  <span className='text-xs text-gray-500'>{statusConfig.text}</span>
+                                </div>
+                              </div>
+                              <span className='text-xs text-gray-500'>{store.createDate}</span>
                             </div>
                           </div>
-                        </td>
-                        <td className='px-6 py-3'>
-                          <div>
-                            <p className='font-medium text-gray-900 text-sm'>{store.ownerName}</p>
-                            <p className='text-xs text-gray-600'>{store.ownerEmail}</p>
-                          </div>
-                        </td>
-                        <td className='px-6 py-3'>
-                          <span className='text-sm text-gray-700'>{store.createDate}</span>
-                        </td>
-                        <td className='px-6 py-3'>
-                          <span className='text-sm text-gray-700'>{store.productCount}</span>
-                        </td>
-                        <td className='px-6 py-3'>
-                          <div
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.textColor}`}
-                          >
-                            {statusConfig.text}
-                          </div>
-                        </td>
-                        <td className='px-6 py-3'>
-                          <div className='flex items-center gap-2'>
+                          <div className='flex items-center gap-2 '>
                             <Button
                               variant='ghost'
                               size='sm'
-                              onClick={() => handleView(store)}
-                              className='h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full'
-                              title='Xem chi tiết'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleView(store)
+                              }}
+                              className='h-8 w-8 p-0 flex items-center justify-center text-black hover:text-blue-600'
+                              title="Xem chi tiết"
                             >
-                              <Eye size={16} />
+                              <Eye className='w-4 h-4' />
                             </Button>
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              onClick={() => handleAssignStaff(store)}
-                              className='h-8 w-8 p-0 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full'
-                              title='Gán nhân viên'
-                            >
-                              <UserPlus size={16} />
-                            </Button>
+                            {store.status === 'Pending' && (
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleAssignStaff(store)
+                                }}
+                                className='h-8 w-8 p-0 flex items-center justify-center text-black hover:text-purple-600'
+                                title="Gán nhân viên"
+                              >
+                                <UserPlus className='w-4 h-4' />
+                              </Button>
+                            )}
                           </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     )
                   })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </div>
 
-          {/* Pagination - chỉ hiển thị khi có dữ liệu */}
-          {!loading && !error && stores && stores.length > 0 && (
-            <div className='flex items-center justify-between px-6 py-4 border-t border-gray-200'>
-              <p className='text-sm text-gray-600'>
-                Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredStores?.length || 0)} của {filteredStores?.length || 0} kết
-                quả
-              </p>
-              <div className='flex items-center gap-2'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className='h-8 px-3 flex items-center gap-1'
-                >
-                  <ChevronLeft className='w-4 h-4' />
-                  Trước
-                </Button>
-                {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
-                  const pageNum = i + 1
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? 'default' : 'outline'}
-                      size='sm'
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`h-8 w-8 p-0 ${currentPage === pageNum ? 'bg-blue-600 text-white' : ''}`}
-                    >
-                      {pageNum}
-                    </Button>
-                  )
-                })}
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className='h-8 px-3 flex items-center gap-1'
-                >
-                  Sau
-                  <ChevronRight className='w-4 h-4' />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className='flex items-center justify-between px-6 py-4 border-t text-xs text-gray-500'>
+                    <p>
+                      Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredStores?.length || 0)} của{' '}
+                      {filteredStores?.length || 0} kết quả
+                    </p>
+                    <div className='flex items-center gap-1'>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className='w-4 h-4 mr-1' />
+                        Trước
+                      </Button>
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum
+                        if (totalPages <= 5) pageNum = i + 1
+                        else if (currentPage <= 3) pageNum = i + 1
+                        else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                        else pageNum = currentPage - 2 + i
 
-      {/* Dialog để assign staff */}
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant='ghost'
+                            size='sm'
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`${currentPage === pageNum ? 'bg-blue-500 text-white' : 'text-gray-600'}`}
+                          >
+                            {pageNum}
+                          </Button>
+                        )
+                      })}
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Sau
+                        <ChevronRight className='w-4 h-4 ml-1' />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Assign Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle className='flex items-center gap-2'>
-              <Users className='w-5 h-5 text-green-600' />
+            <DialogTitle className='flex items-center gap-2 text-gray-900'>
+              <Users className='w-5 h-5 text-blue-500' />
               Gán nhân viên cho cửa hàng
             </DialogTitle>
           </DialogHeader>
-          
           {selectedStore && (
-            <div className='space-y-4'>
-              {/* Thông tin cửa hàng */}
-              <div className='p-4 bg-gray-50 rounded-lg'>
-                <h4 className='font-medium text-gray-900 mb-2'>Cửa hàng được chọn:</h4>
+            <div className='space-y-4 mt-4'>
+              <div className='p-4 bg-gray-50 border rounded-lg'>
+                <h4 className='text-xs font-medium text-gray-500 mb-2'>Cửa hàng được chọn:</h4>
                 <div className='flex items-center gap-3'>
-                  <Avatar className='w-8 h-8'>
-                    <AvatarFallback className='bg-blue-100 text-blue-600 text-xs font-semibold'>
-                      {selectedStore.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
                   <div>
                     <p className='font-medium text-sm'>{selectedStore.name}</p>
-                    <p className='text-xs text-gray-600'>#{selectedStore.id}</p>
                   </div>
                 </div>
               </div>
-
-              {/* Chọn nhân viên */}
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>
-                  Chọn nhân viên:
-                </label>
+                <label className='block text-xs font-medium text-gray-600 mb-2'>Chọn nhân viên:</label>
                 {!staffList || staffList.length === 0 ? (
-                  <EmptyState 
-                    type='users' 
-                    title='Chưa có nhân viên nào'
-                    description='Vui lòng thêm nhân viên trước khi gán cho cửa hàng'
-                    showAction={false}
-                    className='border-0 shadow-none'
-                  />
+                  <div className='p-6 bg-gray-50 border rounded-lg text-center text-sm text-gray-500'>
+                    Chưa có nhân viên nào
+                  </div>
                 ) : (
                   <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                    <SelectTrigger className='w-full'>
+                    <SelectTrigger className='w-full h-[480px] '>
                       <SelectValue placeholder='Chọn nhân viên...' />
                     </SelectTrigger>
                     <SelectContent>
                       {staffList.map((staff) => (
-                        <SelectItem key={staff.staffId} value={staff.staffId}>
-                          <div className='flex items-center gap-2'>
-                            <div className='w-6 h-6 bg-green-100 rounded-full flex items-center justify-center'>
-                              <span className='text-xs font-medium text-green-600'>
-                                {staff.staffName.charAt(0)}
+                        <SelectItem
+                          key={staff.staffId}
+                          value={staff.staffId}
+                          className='hover:bg-gray-100 focus:bg-gray-100 px-2 py-2 rounded-md cursor-pointer'
+                        >
+                          <div className='flex items-center gap-3 w-full h-[64px]'>
+                            {/* Avatar tròn */}
+                            <div className='w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center'>
+                              <span className='text-sm font-semibold text-blue-600'>
+                                {staff.staffName.charAt(0).toUpperCase()}
                               </span>
                             </div>
-                            <div>
-                              <p className='font-medium text-sm'>{staff.staffName}</p>
-                              <p className='text-xs text-gray-500'>{staff.email}</p>
+
+                            {/* Thông tin nhân viên */}
+                            <div className="flex items-center gap-3 mt-3">
+                              <p className="text-sm font-medium text-gray-900   ">{staff.staffName}</p>
+
+                              <p className="text-xs text-gray-500">{staff.email}</p>
                             </div>
                           </div>
                         </SelectItem>
@@ -522,20 +402,14 @@ function StoreManagement() {
                   </Select>
                 )}
               </div>
-
-              {/* Buttons */}
-              <div className='flex items-center justify-end gap-3 pt-4'>
-                <Button
-                  variant='outline'
-                  onClick={() => setAssignDialogOpen(false)}
-                  disabled={assignLoading}
-                >
+              <div className='flex justify-end gap-3 pt-2'>
+                <Button variant='outline' onClick={() => setAssignDialogOpen(false)} disabled={assignLoading}>
                   Hủy
                 </Button>
                 <Button
                   onClick={handleConfirmAssign}
                   disabled={!selectedStaffId || assignLoading}
-                  className='bg-green-600 hover:bg-green-700 text-white'
+                  className='bg-blue-500 hover:bg-blue-600 text-white'
                 >
                   {assignLoading ? (
                     <>

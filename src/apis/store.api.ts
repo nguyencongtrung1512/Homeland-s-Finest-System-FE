@@ -8,7 +8,7 @@ export interface StoreResponse {
   address: string
   logoUrl: string
   coverImageUrl: string
-  status: 'Approved' | 'Pending' | 'Rejected' | 'Locked'
+  status: 'Approved' | 'Pending' | 'Rejected' | 'Processing' | 'ReviewedByStaff'
   note: string
   history: string | null
   createdAt: string
