@@ -19,7 +19,7 @@ interface Store {
   ownerAvatar: string
   createDate: string
   productCount: number
-  status: 'Approved' | 'Pending' | 'Rejected' | 'Processing' | 'ReviewedByStaff'
+  status: 'Approved' | 'Pending' | 'Rejected' | 'Processing' | 'ReviewedByStaff' | 'Blocked'
 }
 
 function StoreManagement() {
@@ -102,11 +102,12 @@ function StoreManagement() {
 
   const getStatusConfig = (status: string) => {
     const configs = {
-      Approved: { text: 'Đã duyệt', dotColor: 'bg-blue-500' },
+      Approved: { text: 'Hoạt động', dotColor: 'bg-green-500' },
       Pending: { text: 'Chờ duyệt', dotColor: 'bg-yellow-500' },
       Rejected: { text: 'Từ chối', dotColor: 'bg-red-500' },
       Processing: { text: 'Nhân viên xử lí', dotColor: 'bg-indigo-500' },
-      ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', dotColor: 'bg-purple-500' }
+      ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', dotColor: 'bg-purple-500' },
+      Blocked: { text: 'Bị khóa', dotColor: 'bg-red-500' }
     }
     return configs[status as keyof typeof configs] || configs.Pending
   }
@@ -127,7 +128,7 @@ function StoreManagement() {
   const currentStores = (filteredStores || []).slice(startIndex, endIndex)
 
   const handleView = (store: Store) => {
-    navigate(`/admin/store-detail/${store.id}`)
+    navigate(`/admin/storeManagement/store-detail/${store.id}`)
   }
 
   const handleRefresh = () => {
@@ -201,6 +202,7 @@ function StoreManagement() {
               <SelectItem value='Rejected'>Từ chối</SelectItem>
               <SelectItem value='Processing'>Xử lý</SelectItem>
               <SelectItem value='ReviewedByStaff'>Đã duyệt bởi nhân viên</SelectItem>
+              <SelectItem value='Blocked'>Bị khóa</SelectItem>
             </SelectContent>
           </Select>
           <Input

@@ -64,6 +64,7 @@ export const path = {
   BASE_ADMIN: '/admin',
   // Admin nested routes (relative paths)
   STORE_MANAGEMENT_ADMIN: 'storeManagement',
+  STORE_DETAIL_ADMIN: 'storeManagement/store-detail/:storeId',
   ACCOUNT_MANAGEMENT_ADMIN: 'accountManagement',
   TERMS_MANAGEMENT_ADMIN: 'termsManagement',
   TRANSACTION_MANAGEMENT_ADMIN: 'transactionManagement',

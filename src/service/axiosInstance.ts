@@ -1,6 +1,27 @@
 import axios from 'axios'
 
 let isTokenExpired = false
+let sessionExpiredHandled = false
+
+// Reset flag khi app khởi động
+sessionExpiredHandled = false
+
+// Function để clear auth data
+const clearAuthData = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+}
+
+// Function để trigger session expired modal
+const triggerSessionExpired = () => {
+  window.dispatchEvent(new CustomEvent('session-expired'))
+}
+
+// Function để reset session expired flag (gọi khi login thành công)
+export const resetSessionExpiredFlag = () => {
+  sessionExpiredHandled = false
+}
+
 
 export const axiosInstance = axios.create({
   baseURL: '/api',
@@ -41,11 +62,14 @@ axiosInstance.interceptors.response.use(
       } else {
         switch (error.response.status) {
           case 401: {
-            console.log('Unauthorized: Token is invalid or expired')
-            localStorage.removeItem('token')
-            localStorage.removeItem('user')
-            // Redirect to login page
-            window.location.href = '/login'
+            // Luôn xử lý lỗi 401, không cần kiểm tra token
+            if (!sessionExpiredHandled) {
+              sessionExpiredHandled = true
+              clearAuthData()
+              
+              // Trigger session expired modal
+              triggerSessionExpired()
+            }
             break
           }
           

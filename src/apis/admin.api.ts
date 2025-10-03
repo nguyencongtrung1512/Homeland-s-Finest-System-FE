@@ -34,6 +34,27 @@ export interface AssignStaffResponse {
   }
 }
 
+// Interface cho review store request
+export interface ReviewStoreRequest {
+  newStatus: 'Approved' | 'Rejected' | 'Blocked'
+  adminFeedback?: string
+}
+
+// Interface cho review store response
+export interface ReviewStoreResponse {
+  status: number
+  message: string
+  data?: {
+    storeId: string
+    storeStatus: string
+    sellerUserId: string
+    sellerStatus: string
+    approvedByAdminId: string
+    decisionDate: string
+    adminFeedback: string
+  }
+}
+
 // API functions
 export const adminApi = {
   // Lấy danh sách tất cả staff
@@ -55,6 +76,27 @@ export const adminApi = {
       return response.data as AssignStaffResponse
     } else {
       // If the API returns an error message in data, use it, otherwise a generic one
+      throw new Error(response.data?.message || `API returned status ${response.status}`)
+    }
+  },
+
+  // Admin duyệt review của staff
+  reviewStore: async (storeId: string, reviewData: ReviewStoreRequest): Promise<ReviewStoreResponse> => {
+    // Tạo FormData cho multipart/form-data
+    const formData = new FormData()
+    formData.append('newStatus', reviewData.newStatus)
+    formData.append('adminFeedback', reviewData.adminFeedback || '')
+    
+    const response = await axiosInstance.put(`${API_URL}/Store/${storeId}/review`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    // Accept both 200 and 202 as success statuses
+    if (response.status === 200 || response.status === 202) {
+      return response.data as ReviewStoreResponse
+    } else {
       throw new Error(response.data?.message || `API returned status ${response.status}`)
     }
   }

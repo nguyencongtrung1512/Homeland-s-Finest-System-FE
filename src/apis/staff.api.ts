@@ -2,7 +2,6 @@ import axiosInstance from '../service/axiosInstance'
 
 const API_URL = `/Staff`
 
-// Interface cho Store được assigned
 export interface AssignedStore {
   id: string
   sellerId: string
@@ -17,20 +16,17 @@ export interface AssignedStore {
   updatedAt: string
 }
 
-// Interface cho API response
 export interface AssignedStoresResponse {
   status: number
   message: string
   data: AssignedStore[]
 }
 
-// Interface cho pagination params
 export interface AssignedStoresParams {
   pageSize?: number
   pageNumber?: number
 }
 
-// Interface cho review store request
 export interface ReviewStoreRequest {
   NewStatus: 'ReviewedByStaff'
   StaffNotes: string
@@ -38,7 +34,6 @@ export interface ReviewStoreRequest {
   StaffImages?: string[]
 }
 
-// Interface cho review store response
 export interface ReviewStoreResponse {
   status?: number
   message?: string
@@ -55,9 +50,7 @@ export interface ReviewStoreResponse {
   }
 }
 
-// API functions
 export const staffApi = {
-  // Lấy danh sách cửa hàng đã được assigned cho staff
   getAssignedStores: async (staffId: string, params?: AssignedStoresParams): Promise<AssignedStoresResponse> => {
     const queryParams = new URLSearchParams()
 
@@ -75,7 +68,6 @@ export const staffApi = {
     return response.data
   },
 
-  // Review store (approve/reject)
   reviewStore: async (storeId: string, reviewData: ReviewStoreRequest & { selectedImages?: File[] }): Promise<ReviewStoreResponse> => {
     const formData = new FormData()
     
@@ -83,9 +75,7 @@ export const staffApi = {
     formData.append('StaffNotes', reviewData.StaffNotes)
     formData.append('StaffFeedback', reviewData.StaffFeedback)
     
-    // Thêm images từ selectedImages nếu có
     if (reviewData.selectedImages && reviewData.selectedImages.length > 0) {
-      // Gửi từng ảnh với key StaffImages (BE sẽ nhận array)
       reviewData.selectedImages.forEach((image) => {
         formData.append('StaffImages', image)
       })

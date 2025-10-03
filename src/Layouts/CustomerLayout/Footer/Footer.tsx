@@ -1,3 +1,4 @@
+import { Facebook, Instagram, Twitter } from 'lucide-react'
 import React from 'react'
 
 // Interfaces
@@ -7,7 +8,7 @@ interface FooterNavItem {
 }
 
 interface SocialIcon {
-  src: string
+  src: React.ReactNode
   alt: string
   href?: string
   className: string
@@ -72,14 +73,23 @@ const FooterSocial: React.FC<FooterSocialProps> = ({ title, socialIcons }) => {
   return (
     <section className='flex flex-col pb-12 mx-auto w-full bg-lime-900 bg-opacity-0 max-md:mt-8'>
       <h3 className='self-start text-base text-white'>{title}</h3>
-      <div className='flex gap-4 pr-14 mt-7 bg-lime-900 bg-opacity-0 max-md:pr-5'>
+      <div className='flex gap-4 pr-10 mt-5 bg-lime-900 bg-opacity-0 max-md:pr-3'>
         {socialIcons.map((icon, index) =>
           icon.href ? (
-            <a key={index} href={icon.href} className='hover:opacity-80 transition-opacity' aria-label={icon.alt}>
-              <img src={icon.src} alt={icon.alt} className={icon.className} />
+            <a 
+              key={index} 
+              href={icon.href} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className='hover:opacity-80 transition-opacity cursor-pointer' 
+              aria-label={icon.alt}
+            >
+              {icon.src}
             </a>
           ) : (
-            <img key={index} src={icon.src} alt={icon.alt} className={icon.className} />
+            <div key={index} className={icon.className}>
+              {icon.src}
+            </div>
           )
         )}
       </div>
@@ -95,19 +105,22 @@ const Footer: React.FC = () => {
 
   const socialIcons = [
     {
-      src: 'https://api.builder.io/api/v1/image/assets/9932d9fef19b42818562293c1777e31a/6b03769196e456662b85a9d37e98bad466e7a9f3?placeholderIfAbsent=true',
-      alt: 'Social media icon 1',
-      className: 'object-contain shrink-0 aspect-[0.64] w-[18px]'
+      src: <Facebook className="text-orange-300" />,
+      alt: 'Facebook',
+      href: 'https://facebook.com/tinhhoaquenha',
+      className: 'w-4 h-4'
     },
     {
-      src: 'https://api.builder.io/api/v1/image/assets/9932d9fef19b42818562293c1777e31a/f834eca026285368430590e14365d1ca551f9d17?placeholderIfAbsent=true',
-      alt: 'Social media icon 2',
-      className: 'object-contain shrink-0 w-4 aspect-[0.57]'
+      src: <Instagram className="text-orange-300" />,
+      alt: 'Instagram',
+      href: 'https://instagram.com/tinhhoaquenha',
+      className: 'w-4 h-4'
     },
     {
-      src: 'https://api.builder.io/api/v1/image/assets/9932d9fef19b42818562293c1777e31a/0954fa1084981768c3e936a3754baea717b4dbf6?placeholderIfAbsent=true',
-      alt: 'Social media icon 3',
-      className: 'object-contain shrink-0 aspect-[0.64] w-[18px]'
+      src: <Twitter className="text-orange-300" />,
+      alt: 'Twitter',
+      href: 'https://twitter.com/tinhhoaquenha',
+      className: 'w-4 h-4'
     }
   ]
 
@@ -134,7 +147,7 @@ const Footer: React.FC = () => {
                   </svg>
                 }
                 brandName='Tinh Hoa Quê Nhà'
-                tagline='Kết nối tinh hoa đặc sản Việt Nam với thế giới'
+                tagline='Kết nối tinh hoa đặc sản Vùng miền Việt Nam với mọi nhà'
               />
             </div>
 

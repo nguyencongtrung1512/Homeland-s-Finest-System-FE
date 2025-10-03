@@ -15,13 +15,15 @@ interface AuthContextType {
   isAuthenticated: boolean
   logout: () => Promise<void>
   login: (userData: User) => void
+  clearAuth: () => void
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   logout: async () => {},
-  login: () => {}
+  login: () => {},
+  clearAuth: () => {}
 })
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -38,8 +40,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('token', userData.token)
   }
 
+  const clearAuth = () => {
+    setUser(null)
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+    // Xóa tất cả dữ liệu liên quan đến auth
+    localStorage.removeItem('chatbot_msg')
+  }
+
   const logout = async () => {
     try {
+      // Xóa dữ liệu local trước khi gọi API
+      clearAuth()
+      
       // Gọi API logout để thông báo server
       await logoutAPI()
 
@@ -55,16 +68,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         position: 'top-right',
         autoClose: 2000
       })
-    } finally {
-      // Luôn xóa dữ liệu local
-      setUser(null)
-      localStorage.removeItem('user')
-      localStorage.removeItem('token')
-      // localStorage.removeItem('chatbot_msg')
     }
   }
 
-  return <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, isAuthenticated, login, logout, clearAuth }}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => useContext(AuthContext)

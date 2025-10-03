@@ -61,6 +61,7 @@ import Discover from './pages/customer/Discover/discover'
 import BlogByCategory from './pages/admin/blogManagerment'
 import CreateBlogByCategory from './pages/admin/blogManagerment/createBlog'
 import UpdateBlogByCategory from './pages/admin/blogManagerment/updateBlog'
+import StoreDetailAdmin from './pages/admin/storeManagerment/detail'
 
 // import ProtectedRoute from './components/ProtectedRoute'
 
@@ -308,6 +309,10 @@ export default function useRouteElements() {
             {
               path: path.STORE_MANAGEMENT_ADMIN,
               element: <StoreManagement />
+            },
+            {
+              path: path.STORE_DETAIL_ADMIN,
+              element: <StoreDetailAdmin />
             },
             // {
             //   path: path.PRODUCT_MANAGEMENT_ADMIN,

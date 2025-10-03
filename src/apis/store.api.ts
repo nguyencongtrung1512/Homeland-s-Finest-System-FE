@@ -2,17 +2,67 @@ import axiosInstance from '../service/axiosInstance'
 
 // Interface cho Store response từ API
 export interface StoreResponse {
-  id: string
-  sellerId: string
-  storeName: string
-  address: string
-  logoUrl: string
-  coverImageUrl: string
-  status: 'Approved' | 'Pending' | 'Rejected' | 'Processing' | 'ReviewedByStaff'
-  note: string
-  history: string | null
-  createdAt: string
-  updatedAt: string
+  /** Thông tin cơ bản của cửa hàng */
+  id: string;
+  sellerId: string;
+  storeName: string;
+  province: string;
+  district: string;
+  ward: string;
+  provinceId: number;
+  districtId: number;
+  wardId: number;
+  address: string;
+  logoUrl: string | null;
+  coverImageUrl: string | null;
+  status: 'ReviewedByStaff' | 'Approved' | 'Pending' | 'Rejected' | 'Active' | 'Blocked';
+  adminNote: string | null;
+  reviewedBy: string | null; // ID của nhân viên đã đánh giá
+  approvedBy: string | null; // ID của nhân viên đã duyệt/chấp thuận
+
+  /** Thông tin liên quan đến quá trình nộp đơn/phản hồi */
+  vendorApplicationImageUrl: string[];
+  staffNotes: string | null;
+  staffFeedback: string | null;
+  staffImage: string | null; // Đường dẫn ảnh staff có vẻ là ảnh chứng minh việc review
+
+  /** Thông tin thời gian */
+  submittedDate: string; // "2025-10-03T05:51:07.965784Z"
+  decisionDate: string | null; // "2025-10-03T05:56:37.986779Z"
+  createdAt: string;
+  updatedAt: string;
+
+  /** Thông tin Người bán (Seller Info) chi tiết */
+  sellerInfo: {
+    userId: string;
+    approvedBy: string | null;
+    businessName: string | null;
+    businessLicense: string | null; // Có thể là null trong data
+    identifyCard: string | null;
+    taxCode: string | null;
+    identifyFrontImage: string | null;
+    identifyBackImage: string | null;
+    sellerStatus: 'Active' | 'Inactive' | 'Pending'; // 'Inactive'
+    approvedAt: string | null;
+    reportCount: number;
+    userInfo: {
+      id: string;
+      email: string;
+      gender: 'Male' | 'Female' | 'Other' | null;
+      phoneNumber: string | null;
+      role: 'Seller' | 'Admin' | 'User';
+      firstName: string | null;
+      lastName: string | null;
+      bankAccount: string | null; // Có thể là số tài khoản hoặc mã định danh
+      avatar: string | null;
+      isActive: boolean;
+      dateOfBirth: string | null; // Dạng "YYYY-MM-DD"
+    };
+  };
+
+  /** Danh sách liên quan */
+  storeStories: any[]; // Dạng mảng rỗng []
+  products: any[]; // Dạng mảng rỗng []
 }
 
 export interface StoreListResponse {
