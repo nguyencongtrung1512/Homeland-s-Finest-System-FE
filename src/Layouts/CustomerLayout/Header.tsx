@@ -95,8 +95,11 @@ function Header() {
           <Link to={path.stories} className='hover:text-green-700 transition whitespace-nowrap'>
             Câu chuyện
           </Link>
+          <Link to={path.discover} className='hover:text-green-700 transition whitespace-nowrap'>
+            Khám phá cửa hàng
+          </Link>
           <Link to={path.home} className='hover:text-green-700 transition whitespace-nowrap'>
-            Liên hệ
+            Blog
           </Link>
         </nav>
 

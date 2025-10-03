@@ -40,6 +40,15 @@ axiosInstance.interceptors.response.use(
         })
       } else {
         switch (error.response.status) {
+          case 401: {
+            console.log('Unauthorized: Token is invalid or expired')
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            // Redirect to login page
+            window.location.href = '/login'
+            break
+          }
+          
           case 403: {
             if (!isTokenExpired) {
               isTokenExpired = true
