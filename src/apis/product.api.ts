@@ -1,5 +1,5 @@
 import axiosInstance from '../service/axiosInstance'
-import type { Product, ProductCreateInput, ProductUpdateInput } from '../types'
+import type { Product, ProductUpdateInput } from '../types'
 
 const API_URL = `/Product`
 
@@ -28,6 +28,30 @@ export interface ProductResponse {
   status: number
   message: string
   data: Product
+}
+
+// Form Data interface for creating product with files
+export interface ProductCreateFormData {
+ storeId: string
+  provinceId: string
+  name: string
+  description: string
+  categoryId: string[]
+  productImages?: string[]
+  productVideo?: string
+  madeBy?: string
+  saleCount?: number
+  rating?: number
+  reviewCount?: number
+  isActive?: boolean
+  typeProduct?: string
+  status?: string
+  note?: string
+  storyTitle?: string
+  storyDetail?: string
+  certificateImages?: string[]
+  storyVideo?: string
+  storyImages?: string[]
 }
 
 // Query Parameters
@@ -62,9 +86,64 @@ export const productApi = {
     return response as unknown as ProductResponse
   },
 
-  // Create new product
-  create: async (data: ProductCreateInput): Promise<ProductResponse> => {
-    const response = await axiosInstance.post(API_URL, data)
+  // Create new product with FormData (for file uploads)
+  create: async (data: ProductCreateFormData): Promise<ProductResponse> => {
+    const formData = new FormData()
+    
+    // Add basic product info
+    formData.append('StoreId', data.storeId)
+    formData.append('ProvinceId', data.provinceId)
+    formData.append('Name', data.name)
+    formData.append('Description', data.description)
+    
+    if (data.categoryId && data.categoryId.length > 0) {
+      data.categoryId.forEach((categoryId, index) => {
+        formData.append(`CategoryId[${index}]`, categoryId)
+      })
+    }
+    
+    if (data.madeBy) formData.append('MadeBy', data.madeBy)
+    if (data.typeProduct) formData.append('TypeProduct', data.typeProduct)
+    if (data.note) formData.append('Note', data.note)
+    if (data.storyTitle) formData.append('StoryTitle', data.storyTitle)
+    if (data.storyDetail) formData.append('StoryDetail', data.storyDetail)
+    
+    // Add product images
+    if (data.productImages && data.productImages.length > 0) {
+      data.productImages.forEach((file) => {
+        formData.append('ProductImages', file)
+      })
+    }
+    
+    // Add product video
+    if (data.productVideo) {
+      formData.append('ProductVideo', data.productVideo)
+    }
+    
+    // Add certificate images
+    if (data.certificateImages && data.certificateImages.length > 0) {
+      data.certificateImages.forEach((file) => {
+        formData.append('CertificateImages', file)
+      })
+    }
+    
+    // Add story video
+    if (data.storyVideo) {
+      formData.append('StoryVideo', data.storyVideo)
+    }
+    
+    // Add story images
+    if (data.storyImages && data.storyImages.length > 0) {
+      data.storyImages.forEach((file) => {
+        formData.append('StoryImages', file)
+      })
+    }
+
+    const response = await axiosInstance.post(API_URL, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
     return response as unknown as ProductResponse
   },
 
@@ -82,7 +161,7 @@ export const productApi = {
 
   // Get products by store
   getByStore: async (storeId: string, params?: Omit<ProductQueryParams, 'storeId'>): Promise<ProductListResponse> => {
-    const response = await axiosInstance.get(`${API_URL}/store/${storeId}`, { params })
+    const response = await axiosInstance.get(`${API_URL}/by-store/${storeId}`, { params })
     return response as unknown as ProductListResponse
   },
 

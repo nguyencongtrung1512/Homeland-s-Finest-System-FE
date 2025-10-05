@@ -3,7 +3,7 @@ import { ToastContainer } from 'react-toastify'
 import { CartProvider } from './contexts/cart.context'
 import { AuthProvider } from './contexts/auth.context'
 import { SessionProvider } from './contexts/session.context'
-
+import './service/axiosInstance'
 function App() {
   const routeElement = useRouteElements()
 

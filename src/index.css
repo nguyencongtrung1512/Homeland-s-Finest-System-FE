@@ -49,7 +49,6 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-
 body {
   margin: 0;
   min-width: 320px;
@@ -65,7 +64,6 @@ h1 {
   font-size: 3.2em;
   line-height: 1.1;
 }
-
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -103,6 +101,24 @@ h1 {
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  @keyframes marquee {
+  from {
+    transform: translateX(0);
+    }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+    }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+    }
+  }
 }
 
 .dark {

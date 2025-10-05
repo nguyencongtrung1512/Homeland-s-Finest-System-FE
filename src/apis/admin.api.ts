@@ -40,6 +40,11 @@ export interface ReviewStoreRequest {
   adminFeedback?: string
 }
 
+export interface StatusStoreRequest {
+  action: 'Approve' | 'Reject' | 'Ban' | 'Unban'
+  reason: string
+}
+
 // Interface cho review store response
 export interface ReviewStoreResponse {
   status: number
@@ -66,9 +71,9 @@ export const adminApi = {
   // Gán staff cho store
   assignStaffToStore: async (storeId: string, staffId: string): Promise<AssignStaffResponse> => {
     const response = await axiosInstance.put(`${API_URL}/Store/${storeId}/assign`, {
-      staffId   
+      staffId
     })
-    
+
     // Accept both 200 and 202 as success statuses
     if (response.status === 200 || response.status === 202) {
       // The API response structure is { status, message, data }
@@ -86,13 +91,27 @@ export const adminApi = {
     const formData = new FormData()
     formData.append('newStatus', reviewData.newStatus)
     formData.append('adminFeedback', reviewData.adminFeedback || '')
-    
+
     const response = await axiosInstance.put(`${API_URL}/Store/${storeId}/review`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     })
-    
+
+    // Accept both 200 and 202 as success statuses
+    if (response.status === 200 || response.status === 202) {
+      return response.data as ReviewStoreResponse
+    } else {
+      throw new Error(response.data?.message || `API returned status ${response.status}`)
+    }
+  },
+  statusStore: async (storeId: string, statusData: StatusStoreRequest): Promise<ReviewStoreResponse> => {
+    const response = await axiosInstance.put(`${API_URL}/Store/${storeId}/status`, statusData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
     // Accept both 200 and 202 as success statuses
     if (response.status === 200 || response.status === 202) {
       return response.data as ReviewStoreResponse
@@ -101,3 +120,4 @@ export const adminApi = {
     }
   }
 }
+

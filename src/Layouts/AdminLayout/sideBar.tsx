@@ -83,7 +83,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
         <div className='w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center'>
           <Leaf size={20} className='text-white' />
         </div>
-        {!isCollapsed && <span className='text-lg font-bold text-blue-600 whitespace-nowrap'>StaffPanel</span>}
+        {!isCollapsed && <span className='text-lg font-bold text-blue-600 whitespace-nowrap'>AdminPanel</span>}
       </div>
 
       {/* Navigation Menu */}

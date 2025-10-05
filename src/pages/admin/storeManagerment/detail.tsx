@@ -9,17 +9,22 @@ import {
   Phone,
   CreditCard as IdCard,
   Edit,
-  Lock,
   Loader2,
-  UserPlus
+  UserPlus,
+  Check,
+  X,
+  Ban,
+  Unlock
 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Textarea } from '../../../components/ui/textarea'
+import { Label } from '../../../components/ui/label'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
-import { adminApi, type Staff } from '../../../apis/admin.api'
+import { adminApi, type Staff, type StatusStoreRequest } from '../../../apis/admin.api'
 import { toast } from 'react-toastify'
 
 function StoreDetailAdmin() {
@@ -34,6 +39,13 @@ function StoreDetailAdmin() {
   const [selectedStaffId, setSelectedStaffId] = useState('')
   const [assignLoading, setAssignLoading] = useState(false)
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+
+  // Status update states
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+  const [selectedAction, setSelectedAction] = useState<'Approve' | 'Reject' | 'Ban' | 'Unban' | null>(null)
+  const [reason, setReason] = useState('')
+  const [statusLoading, setStatusLoading] = useState(false)
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
 
   const fetchStoreDetail = async () => {
     if (!storeId) return
@@ -136,38 +148,62 @@ function StoreDetailAdmin() {
     toast.info('Tính năng yêu cầu chỉnh sửa đang được phát triển')
   }
 
-  const handleLockStore = async () => {
-    if (!store) return
-
-    try {
-      // TODO: Implement lock store API
-      // await storeApi.updateStoreStatus(store.id, 'Blocked', 'Cửa hàng bị khóa bởi admin')
-      toast.success('Cửa hàng đã được khóa thành công')
-    } catch (error) {
-      toast.error('Có lỗi xảy ra khi khóa cửa hàng')
-    }
+  const handleStatusAction = (action: 'Approve' | 'Reject' | 'Ban' | 'Unban') => {
+    setSelectedAction(action)
+    setReason('')
+    setStatusDialogOpen(true)
   }
 
-  const handleUpdateStatus = async (newStatus: 'Approved' | 'Rejected' | 'Blocked') => {
-    if (!store) return
+  const handleSaveReason = () => {
+    if (!reason.trim()) {
+      toast.error('Vui lòng nhập lý do')
+      return
+    }
+    setStatusDialogOpen(false)
+    setConfirmDialogOpen(true)
+  }
+
+  const handleConfirmStatusUpdate = async () => {
+    if (!store || !selectedAction || !reason.trim()) return
 
     try {
-      const response = await adminApi.reviewStore(store.id, {
-        newStatus: newStatus,
-        adminFeedback: `Trạng thái được cập nhật bởi admin: ${newStatus}`
-      })
+      setStatusLoading(true)
+      const statusData: StatusStoreRequest = {
+        action: selectedAction,
+        reason: reason.trim()
+      }
+
+      const response = await adminApi.statusStore(store.id, statusData)
 
       if (response.status === 200 || response.status === 202) {
-        toast.success(`Cửa hàng đã được ${newStatus} thành công!`)
+        const actionText = {
+          'Approve': 'duyệt',
+          'Reject': 'từ chối',
+          'Ban': 'khóa',
+          'Unban': 'mở khóa'
+        }
+        toast.success(`Cửa hàng đã được ${actionText[selectedAction]} thành công!`)
         // Refresh store data
         fetchStoreDetail()
       } else {
         toast.error('Có lỗi xảy ra khi cập nhật trạng thái')
       }
     } catch (error) {
-      console.error('Review store error:', error)
+      console.error('Status store error:', error)
       toast.error('Có lỗi xảy ra khi cập nhật trạng thái')
+    } finally {
+      setStatusLoading(false)
+      setConfirmDialogOpen(false)
+      setSelectedAction(null)
+      setReason('')
     }
+  }
+
+  const handleCancelStatusUpdate = () => {
+    setConfirmDialogOpen(false)
+    setStatusDialogOpen(false)
+    setSelectedAction(null)
+    setReason('')
   }
 
   const handleAssignStaff = () => {
@@ -515,46 +551,59 @@ function StoreDetailAdmin() {
                     </Button>
                   )}
 
-                  {/* ReviewedByStaff: Approved hoặc Rejected */}
+                  {/* ReviewedByStaff: Approve hoặc Reject */}
                   {store.status === 'ReviewedByStaff' && (
                     <>
                       <Button
-                        onClick={() => handleUpdateStatus('Approved')}
+                        onClick={() => handleStatusAction('Approve')}
                         className='w-full bg-green-500 hover:bg-green-600 text-white'
                       >
-                        <Edit className='w-4 h-4 mr-2' />
-                        Approved
+                        <Check className='w-4 h-4 mr-2' />
+                        Duyệt cửa hàng
                       </Button>
-                      <Button onClick={() => handleUpdateStatus('Rejected')} variant='destructive' className='w-full'>
-                        <Lock className='w-4 h-4 mr-2' />
-                        Rejected
+                      <Button
+                        onClick={() => handleStatusAction('Reject')}
+                        variant='destructive'
+                        className='w-full'
+                      >
+                        <X className='w-4 h-4 mr-2' />
+                        Từ chối cửa hàng
                       </Button>
                     </>
                   )}
 
-                  {/* Approved: Chỉ hiện Booked (Khóa cửa hàng) */}
+                  {/* Approved: Ban (Khóa cửa hàng) */}
                   {store.status === 'Approved' && (
-                    <Button onClick={handleLockStore} variant='destructive' className='w-full'>
-                      <Lock className='w-4 h-4 mr-2' />
+                    <Button
+                      onClick={() => handleStatusAction('Ban')}
+                      variant='destructive'
+                      className='w-full'
+                    >
+                      <Ban className='w-4 h-4 mr-2' />
                       Khóa cửa hàng
                     </Button>
                   )}
 
-                  {/* Các trạng thái khác: Yêu cầu chỉnh sửa và Khóa cửa hàng */}
-                  {store.status !== 'Pending' && store.status !== 'ReviewedByStaff' && store.status !== 'Approved' && (
-                    <>
-                      <Button
-                        onClick={handleRequestEdit}
-                        className='w-full bg-yellow-500 hover:bg-yellow-600 text-white'
-                      >
-                        <Edit className='w-4 h-4 mr-2' />
-                        Yêu cầu chỉnh sửa
-                      </Button>
-                      <Button onClick={handleLockStore} variant='destructive' className='w-full'>
-                        <Lock className='w-4 h-4 mr-2' />
-                        Khóa cửa hàng
-                      </Button>
-                    </>
+                  {/* Banned: Unban (Mở khóa cửa hàng) */}
+                  {store.status === 'Banned' && (
+                    <Button
+                      onClick={() => handleStatusAction('Unban')}
+                      className='w-full bg-blue-500 hover:bg-blue-600 text-white'
+                    >
+                      <Unlock className='w-4 h-4 mr-2' />
+                      Mở khóa cửa hàng
+                    </Button>
+                  )}
+
+                  {/* Các trạng thái khác: Yêu cầu chỉnh sửa */}
+                  {store.status !== 'Pending' && store.status !== 'ReviewedByStaff' && store.status !== 'Approved' && store.status !== 'Banned' && (
+                    <Button
+                      onClick={handleRequestEdit}
+                      className='w-full bg-yellow-500 hover:bg-yellow-600 text-white'
+                    >
+                      <Edit className='w-4 h-4 mr-2' />
+                      Yêu cầu chỉnh sửa
+                    </Button>
                   )}
                 </div>
               </CardContent>
@@ -639,6 +688,130 @@ function StoreDetailAdmin() {
                     <>
                       <UserPlus className='w-4 h-4 mr-2' />
                       Gán nhân viên
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Action Dialog - Nhập lý do */}
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-gray-900'>
+              {selectedAction === 'Approve' && <Check className='w-5 h-5 text-green-500' />}
+              {selectedAction === 'Reject' && <X className='w-5 h-5 text-red-500' />}
+              {selectedAction === 'Ban' && <Ban className='w-5 h-5 text-red-500' />}
+              {selectedAction === 'Unban' && <Unlock className='w-5 h-5 text-blue-500' />}
+              {selectedAction === 'Approve' && 'Duyệt cửa hàng'}
+              {selectedAction === 'Reject' && 'Từ chối cửa hàng'}
+              {selectedAction === 'Ban' && 'Khóa cửa hàng'}
+              {selectedAction === 'Unban' && 'Mở khóa cửa hàng'}
+            </DialogTitle>
+          </DialogHeader>
+          {store && (
+            <div className='space-y-4 mt-4'>
+              <div className='p-4 bg-gray-50 border rounded-lg'>
+                <h4 className='text-xs font-medium text-gray-500 mb-2'>Cửa hàng:</h4>
+                <div className='flex items-center gap-3'>
+                  <div>
+                    <p className='font-medium text-sm'>{store.storeName}</p>
+                    <p className='text-xs text-gray-500'>Trạng thái hiện tại: {getStatusConfig(store.status).text}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='reason' className='text-sm font-medium text-gray-700'>
+                  Lý do {selectedAction === 'Approve' ? 'duyệt' : selectedAction === 'Reject' ? 'từ chối' : selectedAction === 'Ban' ? 'khóa' : 'mở khóa'} *
+                </Label>
+                <Textarea
+                  id='reason'
+                  placeholder={`Nhập lý do ${selectedAction === 'Approve' ? 'duyệt' : selectedAction === 'Reject' ? 'từ chối' : selectedAction === 'Ban' ? 'khóa' : 'mở khóa'} cửa hàng...`}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className='min-h-[100px] resize-none'
+                />
+                <p className='text-xs text-gray-500'>Lý do này sẽ được gửi đến chủ cửa hàng</p>
+              </div>
+
+              <div className='flex justify-end gap-3 pt-2'>
+                <Button variant='outline' onClick={() => setStatusDialogOpen(false)}>
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleSaveReason}
+                  disabled={!reason.trim()}
+                  className={
+                    selectedAction === 'Approve' ? 'bg-green-500 hover:bg-green-600 text-white' :
+                      selectedAction === 'Reject' || selectedAction === 'Ban' ? 'bg-red-500 hover:bg-red-600 text-white' :
+                        'bg-blue-500 hover:bg-blue-600 text-white'
+                  }
+                >
+                  Lưu và tiếp tục
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-gray-900'>
+              {selectedAction === 'Approve' && <Check className='w-5 h-5 text-green-500' />}
+              {selectedAction === 'Reject' && <X className='w-5 h-5 text-red-500' />}
+              {selectedAction === 'Ban' && <Ban className='w-5 h-5 text-red-500' />}
+              {selectedAction === 'Unban' && <Unlock className='w-5 h-5 text-blue-500' />}
+              Xác nhận hành động
+            </DialogTitle>
+          </DialogHeader>
+          {store && selectedAction && (
+            <div className='space-y-4 mt-4'>
+              <div className='p-4 bg-gray-50 border rounded-lg'>
+                <p className='text-sm text-gray-700 mb-2'>
+                  Bạn có chắc chắn muốn <strong>
+                    {selectedAction === 'Approve' ? 'duyệt' :
+                      selectedAction === 'Reject' ? 'từ chối' :
+                        selectedAction === 'Ban' ? 'khóa' : 'mở khóa'}
+                  </strong> cửa hàng <strong>{store.storeName}</strong>?
+                </p>
+                <div className='mt-3 p-3 bg-white border rounded'>
+                  <p className='text-xs text-gray-500 mb-1'>Lý do:</p>
+                  <p className='text-sm text-gray-900'>{reason}</p>
+                </div>
+              </div>
+
+              <div className='flex justify-end gap-3 pt-2'>
+                <Button variant='outline' onClick={handleCancelStatusUpdate} disabled={statusLoading}>
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleConfirmStatusUpdate}
+                  disabled={statusLoading}
+                  className={
+                    selectedAction === 'Approve' ? 'bg-green-500 hover:bg-green-600 text-white' :
+                      selectedAction === 'Reject' || selectedAction === 'Ban' ? 'bg-red-500 hover:bg-red-600 text-white' :
+                        'bg-blue-500 hover:bg-blue-600 text-white'
+                  }
+                >
+                  {statusLoading ? (
+                    <>
+                      <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      {selectedAction === 'Approve' && <Check className='w-4 h-4 mr-2' />}
+                      {selectedAction === 'Reject' && <X className='w-4 h-4 mr-2' />}
+                      {selectedAction === 'Ban' && <Ban className='w-4 h-4 mr-2' />}
+                      {selectedAction === 'Unban' && <Unlock className='w-4 h-4 mr-2' />}
+                      Xác nhận
                     </>
                   )}
                 </Button>

@@ -449,7 +449,8 @@ function SellerRegistrationForm() {
       'bankAccount',
       'identifyCard',
       'storeName',
-      'address'
+      'address',
+      'vendorApplicationImageUrl'
     ]
 
     requiredFields.forEach((field) => {
@@ -521,6 +522,9 @@ function SellerRegistrationForm() {
     }
     if (formData.identifyBackImage.length === 0) {
       newErrors.identifyBackImage = 'Vui lòng tải lên mặt sau CCCD'
+    }
+    if (formData.vendorApplicationImageUrl.length === 0) {
+      newErrors.vendorApplicationImageUrl = 'Vui lòng tải lên giấy phép kinh doanh'
     }
 
     // Agreements validation

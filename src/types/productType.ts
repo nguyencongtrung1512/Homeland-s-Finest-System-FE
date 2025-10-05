@@ -25,9 +25,9 @@ export interface ProductCreateInput {
   provinceId: string
   name: string
   description: string
+  categoryId: string[]
   productImages?: string[]
   productVideo?: string
-  categoryId?: string[]
   madeBy?: string
   saleCount?: number
   rating?: number
@@ -36,7 +36,11 @@ export interface ProductCreateInput {
   typeProduct?: string
   status?: string
   note?: string
-  embedding?: number[]
+  storyTitle?: string
+  storyDetail?: string
+  certificateImages?: string[]
+  storyVideo?: string
+  storyImages?: string[]
 }
 
 export interface ProductUpdateInput {

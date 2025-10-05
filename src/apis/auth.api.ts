@@ -147,8 +147,8 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   formData.append('StoreInfo.WardID', data.storeInfo.wardID.toString())
 
   // Add vendor application images
-  data.storeInfo.vendorApplicationImageUrl.forEach((file, index) => {
-    formData.append(`StoreInfo.VendorApplicationImageUrl[${index}]`, file)
+  data.storeInfo.vendorApplicationImageUrl.forEach((file) => {
+    formData.append(`StoreInfo.VendorApplicationImageUrl`, file)
   })
 
   const response = await axiosInstance.post(`${API_URL_SELLER}/Register`, formData, {

@@ -101,6 +101,11 @@ export const storeApi = {
     return await axiosInstance.get(`/Store/${storeId}`)
   },
 
+  // Lấy thông tin store theo seller ID (userId)
+  getStoreBySellerId: async (userId: string): Promise<{ status: number; message: string; data: StoreResponse }> => {
+    return await axiosInstance.get(`/Store/${userId}/Seller`)
+  },
+
   // Cập nhật trạng thái store
   updateStoreStatus: async (
     storeId: string,

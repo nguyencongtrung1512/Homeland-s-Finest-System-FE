@@ -1,5 +1,19 @@
 import { useState, useEffect } from 'react'
-import { Card, Input, Select, DatePicker, Button, Table, Avatar, Tag, Pagination, Spin, Modal, Form, Upload } from 'antd'
+import {
+  Card,
+  Input,
+  Select,
+  DatePicker,
+  Button,
+  Table,
+  Avatar,
+  Tag,
+  Pagination,
+  Spin,
+  Modal,
+  Form,
+  Upload
+} from 'antd'
 import { Search, Filter, Eye, Check, X, RefreshCw, Upload as UploadIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
@@ -87,7 +101,7 @@ function ApproveStores() {
       // Lấy staffId từ localStorage
       const userString = localStorage.getItem('user')
       let staffId = null
-      
+
       if (userString) {
         try {
           const user = JSON.parse(userString)
@@ -96,17 +110,17 @@ function ApproveStores() {
           // Silent error handling
         }
       }
-      
+
       if (!staffId) {
         setError('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.')
         return
       }
-      
+
       const response = await staffApi.getAssignedStores(staffId, {
         pageSize: 100, // Lấy tất cả để có thể filter ở frontend
         pageNumber: 1
       })
-      
+
       // axiosInstance trả về response.data, không phải full response
       // Nên response chính là data từ API
       if (response && Array.isArray(response)) {
@@ -142,7 +156,7 @@ function ApproveStores() {
   }, [])
 
   const handleApprove = (storeId: string) => {
-    const store = storeData.find(s => s.store.id === storeId)
+    const store = storeData.find((s) => s.store.id === storeId)
     if (store) {
       setSelectedStore(store)
       setReviewModalOpen(true)
@@ -155,7 +169,7 @@ function ApproveStores() {
   }
 
   const handleReject = (storeId: string) => {
-    const store = storeData.find(s => s.store.id === storeId)
+    const store = storeData.find((s) => s.store.id === storeId)
     if (store) {
       setSelectedStore(store)
       setReviewModalOpen(true)
@@ -171,9 +185,9 @@ function ApproveStores() {
   const handleImageChange = (info: any) => {
     const fileList = info.fileList
     const files = fileList.map((file: any) => file.originFileObj).filter(Boolean)
-    
+
     setSelectedImages(files)
-    
+
     // Create previews
     const previews = files.map((file: File) => URL.createObjectURL(file))
     setImagePreviews(previews)
@@ -183,7 +197,7 @@ function ApproveStores() {
   const removeImage = (index: number) => {
     const newImages = selectedImages.filter((_, i) => i !== index)
     const newPreviews = imagePreviews.filter((_, i) => i !== index)
-    
+
     setSelectedImages(newImages)
     setImagePreviews(newPreviews)
   }
@@ -199,12 +213,12 @@ function ApproveStores() {
 
     try {
       setReviewLoading(true)
-      
+
       const response = await staffApi.reviewStore(selectedStore.store.id, {
         ...values,
         selectedImages: selectedImages
       })
-      
+
       // Check success conditions - axiosInstance returns response.data (data payload only)
       // Success indicators: có storeId, newStatus, reviewedByStaffId, decisionDate
       if (response && response.storeId && response.newStatus && response.reviewedByStaffId && response.decisionDate) {
@@ -332,8 +346,8 @@ function ApproveStores() {
           <h1 className='text-2xl font-bold text-gray-900'>Duyệt cửa hàng</h1>
           <p className='text-gray-600 mt-1'>Xem xét và phê duyệt các cửa hàng được phân công</p>
         </div>
-        <Button 
-          onClick={fetchAssignedStores} 
+        <Button
+          onClick={fetchAssignedStores}
           disabled={loading}
           icon={<RefreshCw size={16} className={loading ? 'animate-spin' : ''} />}
           className='flex items-center gap-2'
@@ -434,81 +448,63 @@ function ApproveStores() {
         footer={null}
         width={600}
       >
-        <Form
-          form={reviewForm}
-          layout="vertical"
-          onFinish={handleReviewSubmit}
-        >
+        <Form form={reviewForm} layout='vertical' onFinish={handleReviewSubmit}>
           <Form.Item
-            name="NewStatus"
-            label="Trạng thái"
+            name='NewStatus'
+            label='Trạng thái'
             rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
           >
             <Select disabled>
-              <Option value="ReviewedByStaff">Đã xem xét</Option>
+              <Option value='ReviewedByStaff'>Đã xem xét</Option>
             </Select>
           </Form.Item>
 
           <Form.Item
-            name="StaffNotes"
-            label="Ghi chú của nhân viên"
+            name='StaffNotes'
+            label='Ghi chú của nhân viên'
             rules={[{ required: true, message: 'Vui lòng nhập ghi chú' }]}
           >
-            <Input.TextArea
-              rows={4}
-              placeholder="Nhập ghi chú về cửa hàng..."
-            />
+            <Input.TextArea rows={4} placeholder='Nhập ghi chú về cửa hàng...' />
           </Form.Item>
 
           <Form.Item
-            name="StaffFeedback"
-            label="Phản hồi của nhân viên"
+            name='StaffFeedback'
+            label='Phản hồi của nhân viên'
             rules={[{ required: true, message: 'Vui lòng nhập phản hồi' }]}
           >
-            <Input.TextArea
-              rows={4}
-              placeholder="Nhập phản hồi về cửa hàng..."
-            />
+            <Input.TextArea rows={4} placeholder='Nhập phản hồi về cửa hàng...' />
           </Form.Item>
 
           <Form.Item
-            name="StaffImages"
-            label="Hình ảnh đính kèm (Bắt buộc)"
+            name='StaffImages'
+            label='Hình ảnh đính kèm (Bắt buộc)'
             rules={[{ required: true, message: 'Vui lòng chọn ít nhất 1 hình ảnh' }]}
           >
-            <div className="space-y-4">
+            <div className='space-y-4'>
               <Upload
                 multiple
                 beforeUpload={() => false} // Prevent auto upload
                 onChange={handleImageChange}
                 showUploadList={false}
-                accept="image/*"
+                accept='image/*'
               >
-                <Button icon={<UploadIcon size={16} />}>
-                  Chọn hình ảnh
-                </Button>
+                <Button icon={<UploadIcon size={16} />}>Chọn hình ảnh</Button>
               </Upload>
-              
+
               {/* Image Previews */}
               {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className='grid grid-cols-2 gap-4'>
                   {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative border rounded-lg p-2">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-32 object-cover rounded"
-                      />
+                    <div key={index} className='relative border rounded-lg p-2'>
+                      <img src={preview} alt={`Preview ${index + 1}`} className='w-full h-32 object-cover rounded' />
                       <button
-                        type="button"
+                        type='button'
                         onClick={() => removeImage(index)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                        className='absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600'
                       >
                         ×
                       </button>
-                      <div className="text-xs text-gray-500 mt-1 truncate">
-                        {selectedImages[index]?.name}
-                      </div>
+                      <div className='text-xs text-gray-500 mt-1 truncate'>{selectedImages[index]?.name}</div>
                     </div>
                   ))}
                 </div>
@@ -516,7 +512,7 @@ function ApproveStores() {
             </div>
           </Form.Item>
 
-          <div className="flex justify-end gap-2 mt-4">
+          <div className='flex justify-end gap-2 mt-4'>
             <Button
               onClick={() => {
                 setReviewModalOpen(false)
@@ -527,11 +523,7 @@ function ApproveStores() {
             >
               Hủy
             </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={reviewLoading}
-            >
+            <Button type='primary' htmlType='submit' loading={reviewLoading}>
               Xác nhận đánh giá
             </Button>
           </div>

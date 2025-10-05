@@ -7,9 +7,9 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
+import { productApi, type ProductCreateFormData } from '../../../apis/product.api'
 import {
   Upload,
-  Sun,
   BookOpen,
   Shield,
   Info,
@@ -19,54 +19,74 @@ import {
   Video,
   Image as ImageIcon,
   Package,
-  FileImage
+  FileImage,
+  DollarSign,
+  Archive,
+  Loader2,
+  X
 } from 'lucide-react'
 
 function CreateProduct() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('product-info')
-  // const [productId, setProductId] = useState<string | null>(null) // Sẽ sử dụng sau khi implement API
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Hardcoded storeId as requested
+  const STORE_ID = 'bcea18d2-1ec0-41a4-b3fe-1d771ec48c82'
 
   const [productData, setProductData] = useState({
     name: '',
     description: '',
     category: '',
     region: '',
-    story: '',
-    isVisible: true,
-    allowPreOrder: false
+    story: ''
   })
 
   const [mediaData, setMediaData] = useState({
     productImages: [] as File[],
-    productVideo: null as File | null
+    productVideo: null as File | null,
+    certificateImages: [] as File[]
   })
 
   const [storyData, setStoryData] = useState({
-    mainTitle: 'Nông sản sạch Việt Nam',
-    mainSubtitle:
-      'Câu chuyện bắt đầu từ đây, đất trời - nơi mà những giống đầu tiên được gieo trồng. Với niềm tin vào sức mạnh của thiên nhiên và tình yêu đối với đất nước, chúng tôi mang đến những sản phẩm nông nghiệp sạch, xanh và an toàn cho sức khỏe.',
-    video: null as File | null,
-    storyTitle: 'Câu chuyện của chúng tôi',
-    storyContent1:
-      'Chúng tôi là một cửa hàng chuyên cung cấp các sản phẩm nông sản sạch từ các vùng miền Việt Nam. Với hơn 10 năm kinh nghiệm trong ngành, chúng tôi cam kết mang đến cho khách hàng những sản phẩm tươi ngon, an toàn và chất lượng cao nhất.',
-    storyContent2:
-      'Với hơn 10 năm kinh nghiệm trong lĩnh vực nông nghiệp, chúng tôi hiểu rõ giá trị của từng sản phẩm và cam kết mang đến chất lượng tốt nhất cho khách hàng.',
+    mainTitle: '',
+    storyDetail: '',
     storyImage: null as File | null,
-    galleryTitle: 'Hình ảnh hạt trưởng',
-    galleryImages: [null, null, null, null] as (File | null)[],
-    commitmentContent:
-      'Chúng tôi cam kết: Tất cả sản phẩm đều được kiểm tra chất lượng nghiêm ngặt trước khi đến tay khách hàng. Từ khâu gieo trồng, chăm sóc, thu hoạch đến bảo quản và vận chuyển, mọi quy trình đều được thực hiện theo tiêu chuẩn cao nhất để đảm bảo sản phẩm tươi ngon, an toàn và giữ trọn vẹn giá trị dinh dưỡng.'
+    storyVideo: null as File | null
   })
 
   const [productVariants, setProductVariants] = useState([
     {
       id: 1,
+      name: '',
       price: 0,
       stock: 0,
-      unit: ''
+      unit: '',
+      weight: '',
+      dimensions: ''
     }
   ])
+
+  // Helper function to create preview URL
+  const createPreviewUrl = (file: File): string => {
+    return URL.createObjectURL(file)
+  }
+
+  // Helper function to remove image from array
+  const removeProductImage = (indexToRemove: number) => {
+    setMediaData((prev) => ({
+      ...prev,
+      productImages: prev.productImages.filter((_, index) => index !== indexToRemove)
+    }))
+  }
+
+  // Helper function to remove certificate image from array
+  const removeCertificateImage = (indexToRemove: number) => {
+    setMediaData((prev) => ({
+      ...prev,
+      certificateImages: prev.certificateImages.filter((_, index) => index !== indexToRemove)
+    }))
+  }
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setProductData((prev) => ({
@@ -82,10 +102,19 @@ function CreateProduct() {
     }))
   }
 
-  const handleMediaChange = (field: string, value: File | File[] | null) => {
+  // Helper function to add more images to existing array
+  const addProductImages = (newFiles: File[]) => {
     setMediaData((prev) => ({
       ...prev,
-      [field]: value
+      productImages: [...prev.productImages, ...newFiles]
+    }))
+  }
+
+  // Helper function to add more certificate images
+  const addCertificateImages = (newFiles: File[]) => {
+    setMediaData((prev) => ({
+      ...prev,
+      certificateImages: [...prev.certificateImages, ...newFiles]
     }))
   }
 
@@ -94,6 +123,21 @@ function CreateProduct() {
       ...prev,
       [field]: value
     }))
+  }
+
+  const handleMediaChange = (field: string, value: File | File[] | null) => {
+    if (field === 'productImages' && Array.isArray(value)) {
+      // Add new images to existing array instead of replacing
+      addProductImages(value)
+    } else if (field === 'certificateImages' && Array.isArray(value)) {
+      // Add new certificate images to existing array
+      addCertificateImages(value)
+    } else {
+      setMediaData((prev) => ({
+        ...prev,
+        [field]: value
+      }))
+    }
   }
 
   const handleVariantChange = (variantId: number, field: string, value: string | number) => {
@@ -108,9 +152,12 @@ function CreateProduct() {
       ...prev,
       {
         id: newId,
+        name: '',
         price: 0,
         stock: 0,
-        unit: ''
+        unit: '',
+        weight: '',
+        dimensions: ''
       }
     ])
   }
@@ -123,6 +170,96 @@ function CreateProduct() {
 
   const handleCancel = () => {
     navigate('../product-management')
+  }
+
+  const handleCreateProduct = async () => {
+    try {
+      setIsSubmitting(true)
+
+      // Validate required fields
+      if (!productData.name.trim()) {
+        alert('Vui lòng nhập tên sản phẩm')
+        return
+      }
+
+      if (!productData.description.trim()) {
+        alert('Vui lòng nhập mô tả sản phẩm')
+        return
+      }
+
+      if (mediaData.productImages.length === 0) {
+        alert('Vui lòng chọn ít nhất một hình ảnh sản phẩm')
+        return
+      }
+
+      if (!mediaData.productVideo) {
+        alert('Vui lòng chọn video sản phẩm')
+        return
+      }
+
+      // Prepare story images array
+      const storyImages: File[] = []
+      if (storyData.storyImage) {
+        storyImages.push(storyData.storyImage)
+      }
+
+      // Prepare form data theo cấu trúc mới
+      const formData: ProductCreateFormData = {
+        storeId: STORE_ID,
+        provinceId: '1', // Default province ID, có thể làm dynamic
+        name: productData.name,
+        description: productData.description,
+        categoryId: productData.category,
+        madeBy: productData.region || 'Việt Nam',
+        typeProduct: 'nông sản', // Default type, có thể làm dynamic
+        note: productData.story,
+        storyTitle: storyData.mainTitle,
+        storyDetail: storyData.storyDetail || '',
+        productImages: mediaData.productImages,
+        productVideo: mediaData.productVideo,
+        certificateImages: mediaData.certificateImages,
+        storyVideo: storyData.storyVideo || undefined,
+        storyImages: storyImages.length > 0 ? storyImages : undefined
+      }
+
+      console.log('Creating product with data:', formData)
+
+      // Call API với FormData
+      const response = await productApi.create(formData)
+
+      console.log('Product created successfully:', response)
+
+      // Hiển thị thông tin response theo format mẫu
+      if (response.data) {
+        const productData = response.data
+        console.log('Product Response Data:', {
+          id: productData.id,
+          name: productData.name,
+          status: productData.status,
+          createdAt: productData.createdAt,
+          productImages: productData.productImages,
+          productVideo: productData.productVideo,
+          certificates: productData.certificates || [],
+          storyId: productData.storyId,
+          storyTitle: productData.storyTitle,
+          contentCount: productData.contentCount || 0
+        })
+      }
+
+      // Show success message
+      alert('Tạo sản phẩm thành công!')
+
+      // Navigate back to product management
+      navigate('../product-management')
+    } catch (error: any) {
+      console.error('Error creating product:', error)
+
+      // Show error message
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi tạo sản phẩm'
+      alert(`Lỗi: ${errorMessage}`)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -147,26 +284,18 @@ function CreateProduct() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-        <TabsList className='grid w-full grid-cols-4 mb-6'>
+        <TabsList className='grid w-full grid-cols-2 mb-6'>
           <TabsTrigger value='product-info' className='flex items-center gap-2'>
             <Package className='w-4 h-4' />
             Thông tin sản phẩm
           </TabsTrigger>
-          <TabsTrigger value='media' className='flex items-center gap-2'>
-            <FileImage className='w-4 h-4' />
-            Hình ảnh & Video
-          </TabsTrigger>
-          <TabsTrigger value='story' className='flex items-center gap-2'>
-            <BookOpen className='w-4 h-4' />
-            Câu chuyện
-          </TabsTrigger>
-          <TabsTrigger value='story' className='flex items-center gap-2'>
-            <BookOpen className='w-4 h-4' />
-            Giấy chứng nhận
+          <TabsTrigger value='variants' className='flex items-center gap-2'>
+            <Archive className='w-4 h-4' />
+            Loại sản phẩm
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Product Information */}
+        {/* Tab 1: Product Information (Combined) */}
         <TabsContent value='product-info'>
           <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
             {/* Left Column - Main Content */}
@@ -192,7 +321,7 @@ function CreateProduct() {
 
                   <div>
                     <Label htmlFor='description' className='text-sm font-medium'>
-                      Mô tả chi tiết
+                      Mô tả chi tiết <span className='text-red-500'>*</span>
                     </Label>
                     <Textarea
                       id='description'
@@ -202,84 +331,386 @@ function CreateProduct() {
                       className='mt-1 min-h-[120px]'
                     />
                   </div>
+                </CardContent>
+              </Card>
 
-                  {/* Product Variants */}
+              {/* Media Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className='text-green-700 flex items-center gap-2'>
+                    <FileImage className='w-5 h-5' />
+                    Hình ảnh & Video
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className='space-y-6'>
+                  {/* Product Images */}
                   <div>
-                    <div className='flex items-center justify-between mb-4'>
-                      <Label className='text-sm font-medium'>Loại sản phẩm</Label>
+                    <Label className='text-sm font-medium'>
+                      Hình ảnh sản phẩm <span className='text-red-500'>*</span>
+                    </Label>
+                    
+                    {/* Upload Area */}
+                    <div 
+                      className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                      onClick={() => document.getElementById('product-images')?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault()
+                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                        const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'))
+                        if (files.length > 0) {
+                          addProductImages(files)
+                        }
+                      }}
+                    >
+                      <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                      <p className='text-gray-600 mb-2'>
+                        {mediaData.productImages.length > 0 ? 'Thêm ảnh khác' : 'Kéo thả hoặc click để tải ảnh lên'}
+                      </p>
+                      <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
+                      <input
+                        type='file'
+                        multiple
+                        accept='image/*'
+                        className='hidden'
+                        id='product-images'
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || [])
+                          if (files.length > 0) {
+                            addProductImages(files)
+                          }
+                          // Reset input value to allow selecting same files again
+                          e.target.value = ''
+                        }}
+                      />
                       <Button
                         type='button'
                         variant='outline'
                         size='sm'
-                        onClick={addVariant}
-                        className='text-green-600 border-green-600 hover:bg-green-50'
+                        className='mt-3'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          document.getElementById('product-images')?.click()
+                        }}
                       >
-                        <Plus className='w-4 h-4 mr-2' />
-                        Thêm loại khác
+                        <Upload className='w-4 h-4 mr-2' />
+                        {mediaData.productImages.length > 0 ? 'Thêm ảnh' : 'Chọn ảnh'}
                       </Button>
                     </div>
 
-                    <div className='space-y-4'>
-                      {productVariants.map((variant, index) => (
-                        <div key={variant.id} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
-                          <div className='flex items-center justify-between mb-3'>
-                            <h4 className='text-sm font-medium text-gray-700'>Loại {index + 1}</h4>
-                            {productVariants.length > 1 && (
-                              <Button
+                    {/* Image Preview Grid */}
+                    {mediaData.productImages.length > 0 && (
+                      <div className='mt-6'>
+                        <div className='flex items-center justify-between mb-4'>
+                          <p className='text-sm font-medium text-gray-700'>
+                            Đã chọn {mediaData.productImages.length} ảnh
+                          </p>
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            onClick={() => setMediaData(prev => ({ ...prev, productImages: [] }))}
+                            className='text-red-600 hover:text-red-700 hover:bg-red-50'
+                          >
+                            <Trash2 className='w-4 h-4 mr-1' />
+                            Xóa tất cả
+                          </Button>
+                        </div>
+                        
+                        <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'>
+                          {mediaData.productImages.map((file, index) => (
+                            <div key={`${file.name}-${index}`} className='relative group'>
+                              <div className='aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-gray-300 transition-colors'>
+                                <img
+                                  src={createPreviewUrl(file)}
+                                  alt={`Product ${index + 1}`}
+                                  className='w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform'
+                                  onClick={() => {
+                                    // Open image in new tab for full view
+                                    const newWindow = window.open()
+                                    if (newWindow) {
+                                      newWindow.document.write(`
+                                        <html>
+                                          <head><title>${file.name}</title></head>
+                                          <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;">
+                                            <img src="${createPreviewUrl(file)}" style="max-width:100%;max-height:100vh;object-fit:contain;" />
+                                          </body>
+                                        </html>
+                                      `)
+                                    }
+                                  }}
+                                />
+                              </div>
+                              
+                              {/* Remove button */}
+                              <button
                                 type='button'
-                                variant='ghost'
-                                size='sm'
-                                onClick={() => removeVariant(variant.id)}
-                                className='text-red-600 hover:text-red-700 hover:bg-red-50'
+                                onClick={() => removeProductImage(index)}
+                                className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg'
+                                title='Xóa ảnh này'
                               >
-                                <Trash2 className='w-4 h-4' />
-                              </Button>
-                            )}
-                          </div>
-
-                          <div className='grid grid-cols-2 gap-4'>
-                            <div>
-                              <Label className='text-sm font-medium'>
-                                Giá bán (VNĐ) <span className='text-red-500'>*</span>
-                              </Label>
-                              <Input
-                                type='number'
-                                value={variant.price}
-                                onChange={(e) =>
-                                  handleVariantChange(variant.id, 'price', parseInt(e.target.value) || 0)
-                                }
-                                className='mt-1'
-                              />
+                                <X className='w-3 h-3' />
+                              </button>
+                              
+                              {/* Image index */}
+                              <div className='absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity'>
+                                {index + 1}
+                              </div>
+                              
+                              {/* File name */}
+                              <p className='text-xs text-gray-500 mt-2 truncate' title={file.name}>
+                                {file.name}
+                              </p>
+                              
+                              {/* File size */}
+                              <p className='text-xs text-gray-400'>
+                                {(file.size / (1024 * 1024)).toFixed(1)} MB
+                              </p>
                             </div>
-                            <div>
-                              <Label className='text-sm font-medium'>
-                                Số lượng tồn kho <span className='text-red-500'>*</span>
-                              </Label>
-                              <Input
-                                type='number'
-                                value={variant.stock}
-                                onChange={(e) =>
-                                  handleVariantChange(variant.id, 'stock', parseInt(e.target.value) || 0)
-                                }
-                                className='mt-1'
-                              />
-                            </div>
-                          </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-                          <div className='mt-4'>
-                            <Label className='text-sm font-medium'>
-                              Loại <span className='text-red-500'>*</span>
-                            </Label>
-                            <Input
-                              placeholder='ml, kg...'
-                              value={variant.unit}
-                              onChange={(e) => handleVariantChange(variant.id, 'unit', e.target.value)}
-                              className='mt-1'
+                  {/* Product Video */}
+                  <div>
+                    <Label className='text-sm font-medium'>
+                      Video sản phẩm <span className='text-red-500'>*</span>
+                    </Label>
+                    <div 
+                      className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                      onClick={() => document.getElementById('product-video')?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault()
+                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                        const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('video/'))
+                        if (files.length > 0) {
+                          handleMediaChange('productVideo', files[0])
+                        }
+                      }}
+                    >
+                      <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                      <p className='text-gray-600 mb-2'>
+                        {mediaData.productVideo ? 'Thay đổi video' : 'Kéo thả hoặc click để tải video lên'}
+                      </p>
+                      <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
+                      <input
+                        type='file'
+                        accept='video/*'
+                        className='hidden'
+                        id='product-video'
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null
+                          handleMediaChange('productVideo', file)
+                          e.target.value = ''
+                        }}
+                      />
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        className='mt-3'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          document.getElementById('product-video')?.click()
+                        }}
+                      >
+                        <Upload className='w-4 h-4 mr-2' />
+                        {mediaData.productVideo ? 'Thay đổi video' : 'Chọn video'}
+                      </Button>
+                    </div>
+                    
+                    {mediaData.productVideo && (
+                      <div className='mt-6'>
+                        <div className='flex items-center justify-between mb-4'>
+                          <p className='text-sm font-medium text-gray-700'>Video đã chọn:</p>
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            onClick={() => handleMediaChange('productVideo', null)}
+                            className='text-red-600 hover:text-red-700 hover:bg-red-50'
+                          >
+                            <Trash2 className='w-4 h-4 mr-1' />
+                            Xóa video
+                          </Button>
+                        </div>
+                        
+                        <div className='relative group max-w-2xl'>
+                          <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200 bg-black'>
+                            <video
+                              src={createPreviewUrl(mediaData.productVideo)}
+                              controls
+                              className='w-full h-full object-contain'
+                              preload='metadata'
                             />
                           </div>
+                          
+                          <div className='mt-3 p-3 bg-gray-50 rounded-lg'>
+                            <p className='text-sm font-medium text-gray-700 truncate' title={mediaData.productVideo.name}>
+                              📹 {mediaData.productVideo.name}
+                            </p>
+                            <p className='text-xs text-gray-500 mt-1'>
+                              Kích thước: {(mediaData.productVideo.size / (1024 * 1024)).toFixed(1)} MB
+                            </p>
+                          </div>
                         </div>
-                      ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Story Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className='text-green-700 flex items-center gap-2'>
+                    <BookOpen className='w-5 h-5 text-green-600' />
+                    Câu chuyện gắn kết
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className='space-y-4'>
+                  <div className='flex items-start gap-2'>
+                    <Info className='w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0' />
+                    <p className='text-sm text-gray-600'>Câu chuyện giúp khách hàng hiểu rõ hơn về giá trị sản phẩm</p>
+                  </div>
+
+                  <div>
+                    <Label className='text-sm font-medium'>Tiêu đề chính</Label>
+                    <Input
+                      placeholder='Nông sản sạch Việt Nam'
+                      value={storyData.mainTitle}
+                      onChange={(e) => handleStoryInputChange('mainTitle', e.target.value)}
+                      className='mt-1'
+                    />
+                  </div>
+
+                  <div>
+                    <Label className='text-sm font-medium'>Nội dung câu chuyện</Label>
+                    <Textarea
+                      placeholder='Chia sẻ câu chuyện về sản phẩm của bạn...'
+                      value={storyData.storyDetail}
+                      onChange={(e) => handleStoryInputChange('storyDetail', e.target.value)}
+                      className='mt-1 min-h-[100px]'
+                    />
+                  </div>
+
+                  {/* Story Images */}
+                  <div>
+                    <Label className='text-sm font-medium'>Hình ảnh câu chuyện</Label>
+                    <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
+                      <ImageIcon className='w-8 h-8 text-gray-400 mx-auto mb-2' />
+                      <p className='text-gray-600 mb-2'>Tải ảnh minh họa cho câu chuyện</p>
+                      <input
+                        type='file'
+                        accept='image/*'
+                        className='hidden'
+                        id='story-image'
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null
+                          handleStoryMediaChange('storyImage', file)
+                        }}
+                      />
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        className='mt-2'
+                        onClick={() => document.getElementById('story-image')?.click()}
+                      >
+                        <Upload className='w-4 h-4 mr-2' />
+                        Chọn ảnh
+                      </Button>
                     </div>
+                    {storyData.storyImage && (
+                      <div className='mt-4'>
+                        <p className='text-sm text-gray-600 mb-3'>Ảnh câu chuyện:</p>
+                        <div className='relative group max-w-xs'>
+                          <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200'>
+                            <img
+                              src={createPreviewUrl(storyData.storyImage)}
+                              alt='Story'
+                              className='w-full h-full object-cover'
+                            />
+                          </div>
+                          <button
+                            type='button'
+                            onClick={() => handleStoryMediaChange('storyImage', null)}
+                            className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity'
+                          >
+                            <X className='w-4 h-4' />
+                          </button>
+                          <p className='text-xs text-gray-500 mt-1 truncate'>{storyData.storyImage.name}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Story Video */}
+                  <div>
+                    <Label className='text-sm font-medium'>Video câu chuyện</Label>
+                    <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
+                      <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
+                      <p className='text-gray-600 mb-2'>Tải video minh họa cho câu chuyện</p>
+                      <input
+                        type='file'
+                        accept='video/*'
+                        className='hidden'
+                        id='story-video'
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null
+                          handleStoryMediaChange('storyVideo', file)
+                        }}
+                      />
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        className='mt-2'
+                        onClick={() => document.getElementById('story-video')?.click()}
+                      >
+                        <Upload className='w-4 h-4 mr-2' />
+                        Chọn video
+                      </Button>
+                    </div>
+                    {storyData.storyVideo && (
+                      <div className='mt-4'>
+                        <p className='text-sm text-gray-600 mb-3'>Video câu chuyện:</p>
+                        <div className='relative group max-w-xs'>
+                          <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200 bg-black'>
+                            <video
+                              src={createPreviewUrl(storyData.storyVideo)}
+                              controls
+                              className='w-full h-full object-contain'
+                            />
+                          </div>
+                          <button
+                            type='button'
+                            onClick={() => handleStoryMediaChange('storyVideo', null)}
+                            className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity'
+                          >
+                            <X className='w-4 h-4' />
+                          </button>
+                          <p className='text-xs text-gray-500 mt-1 truncate'>{storyData.storyVideo.name}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -305,8 +736,8 @@ function CreateProduct() {
                         <SelectValue placeholder='Chọn danh mục' />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value='food'>Thực phẩm</SelectItem>
-                        <SelectItem value='beverage'>Đồ uống</SelectItem>
+                        <SelectItem value='13000000-0000-0000-0000-000000000005'>Thực phẩm</SelectItem>
+                        <SelectItem value='13000000-0000-0000-0000-000000000004'>Đồ uống</SelectItem>
                         <SelectItem value='handicraft'>Thủ công mỹ nghệ</SelectItem>
                         <SelectItem value='agriculture'>Nông sản</SelectItem>
                       </SelectContent>
@@ -319,18 +750,18 @@ function CreateProduct() {
               <Card>
                 <CardHeader>
                   <CardTitle className='text-green-700 flex items-center gap-2'>
-                    <Sun className='w-5 h-5 text-yellow-500' />
-                    Nguồn gốc & Chứng nhận
+                    <Shield className='w-5 h-5' />
+                    Xuất xứ & Chứng nhận
                   </CardTitle>
                 </CardHeader>
                 <CardContent className='space-y-4'>
                   <div>
                     <Label htmlFor='region' className='text-sm font-medium'>
-                      Vùng miền/Làng nghề
+                      Vùng miền
                     </Label>
                     <Input
                       id='region'
-                      placeholder='VD: Làng gốm Bát Tràng, Hà Nội'
+                      placeholder='Ví dụ: Đồng bằng sông Cửu Long'
                       value={productData.region}
                       onChange={(e) => handleInputChange('region', e.target.value)}
                       className='mt-1'
@@ -338,15 +769,77 @@ function CreateProduct() {
                   </div>
 
                   <div>
-                    <Label className='text-sm font-medium'>Tải lên chứng nhận</Label>
-                    <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
+                    <Label className='text-sm font-medium'>Hình ảnh chứng nhận</Label>
+                    <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors cursor-pointer'>
                       <Shield className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                      <p className='text-sm text-gray-600 mb-3'>VietGAP, OCOP, hoặc chứng nhận khác</p>
-                      <Button variant='outline' size='sm' className='bg-gray-100'>
+                      <p className='text-gray-600 text-sm mb-2'>Tải lên chứng nhận chất lượng</p>
+                      <input
+                        type='file'
+                        multiple
+                        accept='image/*'
+                        className='hidden'
+                        id='certificate-images'
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || [])
+                          handleMediaChange('certificateImages', files)
+                        }}
+                      />
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        onClick={() => document.getElementById('certificate-images')?.click()}
+                      >
                         <Upload className='w-4 h-4 mr-2' />
-                        Tải file lên
+                        Chọn ảnh
                       </Button>
                     </div>
+                    {mediaData.certificateImages.length > 0 && (
+                      <div className='mt-4'>
+                        <p className='text-sm text-gray-600 mb-3'>Chứng nhận ({mediaData.certificateImages.length}):</p>
+                        <div className='grid grid-cols-2 gap-3'>
+                          {mediaData.certificateImages.map((file, index) => (
+                            <div key={index} className='relative group'>
+                              <div className='aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-gray-300 transition-colors'>
+                                <img
+                                  src={createPreviewUrl(file)}
+                                  alt={`Certificate ${index + 1}`}
+                                  className='w-full h-full object-cover'
+                                />
+                              </div>
+                              <button
+                                type='button'
+                                onClick={() => removeCertificateImage(index)}
+                                className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg'
+                                title='Xóa chứng nhận này'
+                              >
+                                <X className='w-3 h-3' />
+                              </button>
+                              <div className='absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity'>
+                                {index + 1}
+                              </div>
+                              <p className='text-xs text-gray-500 mt-1 truncate'>{file.name}</p>
+                              <p className='text-xs text-gray-400'>
+                                {(file.size / (1024 * 1024)).toFixed(1)} MB
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor='story' className='text-sm font-medium'>
+                      Ghi chú thêm
+                    </Label>
+                    <Textarea
+                      id='story'
+                      placeholder='Thông tin bổ sung về sản phẩm...'
+                      value={productData.story}
+                      onChange={(e) => handleInputChange('story', e.target.value)}
+                      className='mt-1 min-h-[80px]'
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -354,270 +847,205 @@ function CreateProduct() {
           </div>
         </TabsContent>
 
-        {/* Tab 2: Media */}
-        <TabsContent value='media'>
-          <div className='space-y-6'>
-            <Card>
-              <CardHeader>
-                <CardTitle className='text-green-700'>Hình ảnh sản phẩm</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label className='text-sm font-medium'>
-                    Hình ảnh sản phẩm <span className='text-red-500'>*</span>
-                  </Label>
-                  <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                    <Upload className='w-12 h-12 text-gray-400 mx-auto mb-4' />
-                    <p className='text-gray-600 mb-2'>Kéo thả hoặc click để tải ảnh lên</p>
-                    <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB</p>
-                    <input
-                      type='file'
-                      multiple
-                      accept='image/*'
-                      className='hidden'
-                      id='product-images'
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || [])
-                        handleMediaChange('productImages', files)
-                      }}
-                    />
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      className='mt-4'
-                      onClick={() => document.getElementById('product-images')?.click()}
-                    >
-                      <Upload className='w-4 h-4 mr-2' />
-                      Chọn ảnh
-                    </Button>
-                  </div>
-                  {mediaData.productImages.length > 0 && (
-                    <div className='mt-4'>
-                      <p className='text-sm text-gray-600 mb-2'>Đã chọn {mediaData.productImages.length} ảnh:</p>
-                      <div className='flex flex-wrap gap-2'>
-                        {mediaData.productImages.map((file, index) => (
-                          <div key={index} className='text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded'>
-                            {file.name}
-                          </div>
-                        ))}
+        {/* Tab 2: Product Variants */}
+        <TabsContent value='variants'>
+          <Card>
+            <CardHeader>
+              <CardTitle className='text-green-700 flex items-center gap-2'>
+                <Archive className='w-5 h-5' />
+                Loại sản phẩm
+              </CardTitle>
+              <p className='text-sm text-gray-600'>Thêm các loại sản phẩm khác nhau với giá và thông tin riêng biệt</p>
+            </CardHeader>
+            <CardContent>
+              <div className='space-y-6'>
+                {productVariants.map((variant, index) => (
+                  <div key={variant.id} className='border border-gray-200 rounded-lg p-6 bg-gray-50'>
+                    <div className='flex items-center justify-between mb-4'>
+                      <h3 className='text-lg font-medium text-gray-900'>Loại sản phẩm {index + 1}</h3>
+                      {productVariants.length > 1 && (
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => removeVariant(variant.id)}
+                          className='text-red-600 hover:text-red-700 hover:bg-red-50'
+                        >
+                          <Trash2 className='w-4 h-4 mr-1' />
+                          Xóa
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                      {/* Tên loại sản phẩm */}
+                      <div>
+                        <Label className='text-sm font-medium p-2'>
+                          Tên loại <span className='text-red-500'>*</span>
+                        </Label>
+                        <Input
+                          placeholder='VD: Gạo tám xoan 5kg'
+                          value={variant.name}
+                          onChange={(e) => handleVariantChange(variant.id, 'name', e.target.value)}
+                          className='mt-1'
+                        />
+                      </div>
+
+                      {/* Giá */}
+                      <div>
+                        <Label className='text-sm font-medium p-2'>
+                          Giá bán <span className='text-red-500'>*</span>
+                        </Label>
+                        <div className='relative '>
+                          <DollarSign className='absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400' />
+                          <Input
+                            type='number'
+                            placeholder='0'
+                            value={variant.price || ''}
+                            onChange={(e) => handleVariantChange(variant.id, 'price', parseFloat(e.target.value) || 0)}
+                            className='pl-10 mt-3'
+                            min='0'
+                            step='1000'
+                          />
+                        </div>
+                      </div>
+
+                      {/* Số lượng tồn kho */}
+                      <div>
+                        <Label className='text-sm font-medium p-2'>
+                          Số lượng tồn kho <span className='text-red-500'>*</span>
+                        </Label>
+                        <Input
+                          type='number'
+                          placeholder='0'
+                          value={variant.stock || ''}
+                          onChange={(e) => handleVariantChange(variant.id, 'stock', parseInt(e.target.value) || 0)}
+                          className='mt-1'
+                          min='0'
+                        />
+                      </div>
+
+                      {/* Đơn vị */}
+                      <div>
+                        <Label className='text-sm font-medium p-2'>Đơn vị</Label>
+                        <Select
+                          value={variant.unit}
+                          onValueChange={(value) => handleVariantChange(variant.id, 'unit', value)}
+                        >
+                          <SelectTrigger className='mt-1'>
+                            <SelectValue placeholder='Chọn đơn vị' />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value='kg'>Kilogram (kg)</SelectItem>
+                            <SelectItem value='g'>Gram (g)</SelectItem>
+                            <SelectItem value='lít'>Lít</SelectItem>
+                            <SelectItem value='ml'>Mililít (ml)</SelectItem>
+                            <SelectItem value='cái'>Cái</SelectItem>
+                            <SelectItem value='hộp'>Hộp</SelectItem>
+                            <SelectItem value='túi'>Túi</SelectItem>
+                            <SelectItem value='thùng'>Thùng</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Trọng lượng */}
+                      <div>
+                        <Label className='text-sm font-medium p-2'>Trọng lượng</Label>
+                        <Input
+                          placeholder='VD: 5kg, 500g'
+                          value={variant.weight}
+                          onChange={(e) => handleVariantChange(variant.id, 'weight', e.target.value)}
+                          className='mt-1'
+                        />
+                      </div>
+
+                      {/* Kích thước */}
+                      <div>
+                        <Label className='text-sm font-medium p-2'>Kích thước</Label>
+                        <Input
+                          placeholder='VD: 30x20x10 cm'
+                          value={variant.dimensions}
+                          onChange={(e) => handleVariantChange(variant.id, 'dimensions', e.target.value)}
+                          className='mt-1'
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className='text-green-700'>Video sản phẩm</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label className='text-sm font-medium'>
-                    Video sản phẩm <span className='text-red-500'>*</span>
-                  </Label>
-                  <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                    <Video className='w-12 h-12 text-gray-400 mx-auto mb-4' />
-                    <p className='text-gray-600 mb-2'>Kéo thả hoặc click để tải video lên</p>
-                    <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
-                    <input
-                      type='file'
-                      accept='video/*'
-                      className='hidden'
-                      id='product-video'
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null
-                        handleMediaChange('productVideo', file)
-                      }}
-                    />
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      className='mt-4'
-                      onClick={() => document.getElementById('product-video')?.click()}
-                    >
-                      <Upload className='w-4 h-4 mr-2' />
-                      Chọn video
-                    </Button>
-                  </div>
-                  {mediaData.productVideo && (
-                    <div className='mt-4'>
-                      <p className='text-sm text-gray-600 mb-2'>Đã chọn video:</p>
-                      <div className='text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded inline-block'>
-                        {mediaData.productVideo.name}
+                    {/* Preview card cho variant */}
+                    <div className='mt-4 p-4 bg-white border border-gray-200 rounded-lg'>
+                      <h4 className='text-sm font-medium text-gray-700 mb-2'>Xem trước:</h4>
+                      <div className='flex items-center justify-between'>
+                        <div>
+                          <p className='font-medium text-gray-900'>{variant.name || 'Tên sản phẩm chưa nhập'}</p>
+                          <p className='text-sm text-gray-600'>
+                            {variant.weight && `${variant.weight} • `}
+                            {variant.unit && `Đơn vị: ${variant.unit} • `}
+                            Tồn kho: {variant.stock || 0}
+                          </p>
+                        </div>
+                        <div className='text-right'>
+                          <p className='text-lg font-bold text-green-600'>
+                            {variant.price ? `${variant.price.toLocaleString('vi-VN')} ₫` : '0 ₫'}
+                          </p>
+                          {variant.dimensions && <p className='text-xs text-gray-500'>{variant.dimensions}</p>}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Tab 3: Story */}
-        <TabsContent value='story'>
-          <div className='space-y-6'>
-            <Card>
-              <CardHeader>
-                <CardTitle className='text-green-700 flex items-center gap-2'>
-                  <BookOpen className='w-5 h-5 text-green-600' />
-                  Câu chuyện gắn kết
-                </CardTitle>
-              </CardHeader>
-              <CardContent className='space-y-4'>
-                <div className='flex items-start gap-2'>
-                  <Info className='w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0' />
-                  <p className='text-sm text-gray-600'>Câu chuyện giúp khách hàng hiểu rõ hơn về giá trị sản phẩm</p>
-                </div>
-
-                {/* Main Title */}
-                <div>
-                  <Label className='text-sm font-medium'>Tiêu đề chính</Label>
-                  <Input
-                    placeholder='Nông sản sạch Việt Nam'
-                    value={storyData.mainTitle}
-                    onChange={(e) => handleStoryInputChange('mainTitle', e.target.value)}
-                    className='mt-1'
-                  />
-                </div>
-
-                {/* Main Subtitle */}
-                <div>
-                  <Label className='text-sm font-medium'>Đoạn mô tả</Label>
-                  <Textarea
-                    placeholder='Câu chuyện bắt đầu từ đây, đất trời...'
-                    value={storyData.mainSubtitle}
-                    onChange={(e) => handleStoryInputChange('mainSubtitle', e.target.value)}
-                    className='mt-1 min-h-[80px]'
-                  />
-                </div>
-
-                {/* Video Upload */}
-                <div>
-                  <Label className='text-sm font-medium'>Video trung tâm</Label>
-                  <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                    <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                    <p className='text-sm text-gray-600 mb-2'>Tải lên video của bạn</p>
-                    <input
-                      type='file'
-                      accept='video/*'
-                      className='hidden'
-                      id='story-video'
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null
-                        handleStoryMediaChange('video', file)
-                      }}
-                    />
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      className='bg-gray-100'
-                      onClick={() => document.getElementById('story-video')?.click()}
-                    >
-                      <Upload className='w-4 h-4 mr-2' />
-                      Chọn tệp
-                    </Button>
                   </div>
-                  {storyData.video && (
-                    <div className='mt-2'>
-                      <p className='text-sm text-gray-600'>Đã chọn: {storyData.video.name}</p>
+                ))}
+
+                {/* Add new variant button */}
+                <div className='flex justify-center'>
+                  <Button
+                    variant='outline'
+                    onClick={addVariant}
+                    className='border-dashed border-2 border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-700'
+                  >
+                    <Plus className='w-4 h-4 mr-2' />
+                    Thêm loại sản phẩm mới
+                  </Button>
+                </div>
+
+                {/* Summary */}
+                <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
+                  <div className='flex items-start gap-3'>
+                    <Info className='w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0' />
+                    <div>
+                      <h4 className='font-medium text-blue-900 mb-1'>Tóm tắt loại sản phẩm</h4>
+                      <div className='text-sm text-blue-800 space-y-1'>
+                        <p>• Tổng số loại: {productVariants.length}</p>
+                        <p>• Tổng tồn kho: {productVariants.reduce((sum, v) => sum + (v.stock || 0), 0)} sản phẩm</p>
+                        <p>
+                          • Giá từ: {Math.min(...productVariants.map((v) => v.price || 0)).toLocaleString('vi-VN')} ₫
+                          đến {Math.max(...productVariants.map((v) => v.price || 0)).toLocaleString('vi-VN')} ₫
+                        </p>
+                      </div>
                     </div>
-                  )}
-                </div>
-
-                {/* Story Title */}
-                <div>
-                  <Label className='text-sm font-medium'>Tiêu đề câu chuyện</Label>
-                  <Input
-                    placeholder='Câu chuyện của chúng tôi'
-                    value={storyData.storyTitle}
-                    onChange={(e) => handleStoryInputChange('storyTitle', e.target.value)}
-                    className='mt-1'
-                  />
-                </div>
-
-                {/* Story Content */}
-                <div>
-                  <Label className='text-sm font-medium'>Nội dung câu chuyện</Label>
-                  <Textarea
-                    placeholder='Chúng tôi là một cửa hàng chuyên cung cấp...'
-                    value={storyData.storyContent1}
-                    onChange={(e) => handleStoryInputChange('storyContent1', e.target.value)}
-                    className='mt-1 min-h-[80px]'
-                  />
-                </div>
-
-                <div>
-                  <Textarea
-                    placeholder='Với hơn 10 năm kinh nghiệm...'
-                    value={storyData.storyContent2}
-                    onChange={(e) => handleStoryInputChange('storyContent2', e.target.value)}
-                    className='min-h-[80px]'
-                  />
-                </div>
-
-                {/* Story Image */}
-                <div>
-                  <Label className='text-sm font-medium'>Hình ảnh câu chuyện</Label>
-                  <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                    <ImageIcon className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                    <p className='text-sm text-gray-600 mb-2'>Tải lên hình ảnh minh họa</p>
-                    <input
-                      type='file'
-                      accept='image/*'
-                      className='hidden'
-                      id='story-image'
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null
-                        handleStoryMediaChange('storyImage', file)
-                      }}
-                    />
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      className='bg-gray-100'
-                      onClick={() => document.getElementById('story-image')?.click()}
-                    >
-                      <Upload className='w-4 h-4 mr-2' />
-                      Chọn ảnh
-                    </Button>
-                  </div>
-                  {storyData.storyImage && (
-                    <div className='mt-2'>
-                      <p className='text-sm text-gray-600'>Đã chọn: {storyData.storyImage.name}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Commitment */}
-                <div>
-                  <Label className='text-sm font-medium'>Cam kết của chúng tôi</Label>
-                  <div className='mt-2 p-4 rounded-lg border border-green-200'>
-                    <Textarea
-                      placeholder='Chúng tôi cam kết: Tất cả sản phẩm đều được kiểm tra...'
-                      value={storyData.commitmentContent}
-                      onChange={(e) => handleStoryInputChange('commitmentContent', e.target.value)}
-                      className='min-h-[80px] bg-transparent border-none resize-none'
-                    />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
       {/* Action Buttons */}
-      <div className='flex justify-center gap-4 mt-8'>
-        <Button variant='outline' size='lg' onClick={handleCancel}>
-          Hủy
+      <div className='flex justify-start gap-4 mt-8'>
+        <Button variant='outline' onClick={handleCancel} className='px-6' disabled={isSubmitting}>
+          Hủy bỏ
         </Button>
-        <Button className='bg-green-600 hover:bg-green-700' size='lg'>
-          Tạo sản phẩm
+        <Button
+          className='bg-green-600 hover:bg-green-700 text-white px-6'
+          onClick={handleCreateProduct}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+              Đang tạo...
+            </>
+          ) : (
+            'Tạo sản phẩm'
+          )}
         </Button>
       </div>
     </div>
