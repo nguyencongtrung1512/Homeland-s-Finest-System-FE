@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -8,6 +8,9 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { productApi, type ProductCreateFormData } from '../../../apis/product.api'
+import { storeApi } from '../../../apis/store.api'
+import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
+import { useAuth } from '../../../contexts/auth.context'
 import {
   Upload,
   BookOpen,
@@ -28,16 +31,19 @@ import {
 
 function CreateProduct() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('product-info')
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Hardcoded storeId as requested
-  const STORE_ID = 'bcea18d2-1ec0-41a4-b3fe-1d771ec48c82'
+  const [storeId, setStoreId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [categories, setCategories] = useState<ProductCategoryItem[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
 
   const [productData, setProductData] = useState({
     name: '',
     description: '',
-    category: '',
+    categories: [] as string[],
     region: '',
     story: ''
   })
@@ -88,11 +94,20 @@ function CreateProduct() {
     }))
   }
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleInputChange = (field: string, value: string | boolean | string[]) => {
     setProductData((prev) => ({
       ...prev,
       [field]: value
     }))
+  }
+
+  const handleCategoryToggle = (categoryId: string) => {
+    setProductData((prev) => {
+      const categories = prev.categories.includes(categoryId)
+        ? prev.categories.filter(id => id !== categoryId)
+        : [...prev.categories, categoryId]
+      return { ...prev, categories }
+    })
   }
 
   const handleStoryInputChange = (field: string, value: string) => {
@@ -172,9 +187,85 @@ function CreateProduct() {
     navigate('../product-management')
   }
 
+  // Fetch store ID from authenticated user
+  const fetchStoreId = async () => {
+    try {
+      if (!user?.userId) {
+        setError('Không tìm thấy thông tin người dùng')
+        return null
+      }
+
+      const response = await storeApi.getStoreBySellerId(user.userId)
+      console.log('response getStoreBySellerId', response)
+      if (response.status === 200 && response.data) {
+        setStoreId(response.data.id)
+        return response.data.id
+      } else {
+        setError('Không tìm thấy thông tin cửa hàng')
+        return null
+      }
+    } catch (err) {
+      console.error('Error fetching store ID:', err)
+      setError('Có lỗi xảy ra khi tải thông tin cửa hàng')
+      return null
+    }
+  }
+
+  // Fetch product categories
+  const fetchCategories = async () => {
+    try {
+      setCategoriesLoading(true)
+      console.log('🔍 DEBUG - Fetching product categories')
+      
+      const response = await getAllProductCategory({ pageSize: 100, pageNumber: 1 })
+      console.log('🔍 DEBUG - Categories response:', response)
+      
+      if (response.status === 200 && response.data) {
+        // Filter only active categories
+        const activeCategories = response.data.filter((category: ProductCategoryItem) => category.isActive)
+        setCategories(activeCategories)
+        console.log('🔍 DEBUG - Active categories loaded:', activeCategories.length)
+      } else {
+        console.warn('⚠️ DEBUG - No categories data received')
+        setCategories([])
+      }
+    } catch (err) {
+      console.error('❌ DEBUG - Error fetching categories:', err)
+      setCategories([])
+    } finally {
+      setCategoriesLoading(false)
+    }
+  }
+
+  // Load store ID and categories on component mount
+  useEffect(() => {
+    const initializeData = async () => {
+      setLoading(true)
+      
+      // Fetch store ID and categories in parallel
+      const [fetchedStoreId] = await Promise.all([
+        fetchStoreId(),
+        fetchCategories()
+      ])
+      
+      if (fetchedStoreId) {
+        setError(null)
+      }
+      setLoading(false)
+    }
+
+    initializeData()
+  }, [user?.userId])
+
   const handleCreateProduct = async () => {
     try {
       setIsSubmitting(true)
+
+      // Check if storeId is available
+      if (!storeId) {
+        alert('Không tìm thấy thông tin cửa hàng. Vui lòng thử lại.')
+        return
+      }
 
       // Validate required fields
       if (!productData.name.trim()) {
@@ -186,6 +277,18 @@ function CreateProduct() {
         alert('Vui lòng nhập mô tả sản phẩm')
         return
       }
+
+      // Thêm validation cho categories
+      if (productData.categories.length === 0) {
+        alert('Vui lòng chọn ít nhất một danh mục sản phẩm')
+        return
+      }
+
+      // 🔍 DEBUG: Log dữ liệu categories trước khi gửi
+      console.log('🔍 DEBUG - productData.categories:', productData.categories)
+      console.log('🔍 DEBUG - productData.categories type:', typeof productData.categories)
+      console.log('🔍 DEBUG - productData.categories length:', productData.categories.length)
+      console.log('🔍 DEBUG - productData.categories isArray:', Array.isArray(productData.categories))
 
       if (mediaData.productImages.length === 0) {
         alert('Vui lòng chọn ít nhất một hình ảnh sản phẩm')
@@ -205,11 +308,11 @@ function CreateProduct() {
 
       // Prepare form data theo cấu trúc mới
       const formData: ProductCreateFormData = {
-        storeId: STORE_ID,
+        storeId: storeId,
         provinceId: '1', // Default province ID, có thể làm dynamic
         name: productData.name,
         description: productData.description,
-        categoryId: productData.category,
+        categoryIds: productData.categories, // Sửa từ productData.category thành productData.categories
         madeBy: productData.region || 'Việt Nam',
         typeProduct: 'nông sản', // Default type, có thể làm dynamic
         note: productData.story,
@@ -222,7 +325,14 @@ function CreateProduct() {
         storyImages: storyImages.length > 0 ? storyImages : undefined
       }
 
+      // 🔍 DEBUG: Log formData trước khi gửi API
+      console.log('🔍 DEBUG - FormData object:', formData)
+      console.log('🔍 DEBUG - formData.categoryIds:', formData.categoryIds)
+      console.log('🔍 DEBUG - formData.categoryIds type:', typeof formData.categoryIds)
+      console.log('🔍 DEBUG - formData.categoryIds isArray:', Array.isArray(formData.categoryIds))
+
       console.log('Creating product with data:', formData)
+      console.log('Categories being sent:', productData.categories) // Thêm log để debug
 
       // Call API với FormData
       const response = await productApi.create(formData)
@@ -260,6 +370,28 @@ function CreateProduct() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // Show loading state while fetching store ID
+  if (loading) {
+    return (
+      <div className='p-6'>
+        <div className='flex justify-center items-center h-64'>
+          <div className='text-lg'>Đang tải thông tin cửa hàng...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if can't fetch store ID
+  if (error) {
+    return (
+      <div className='p-6'>
+        <div className='flex justify-center items-center h-64'>
+          <div className='text-red-600'>{error}</div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -728,20 +860,75 @@ function CreateProduct() {
                     <Label htmlFor='category' className='text-sm font-medium'>
                       Danh mục sản phẩm <span className='text-red-500'>*</span>
                     </Label>
-                    <Select
-                      value={productData.category}
-                      onValueChange={(value) => handleInputChange('category', value)}
-                    >
-                      <SelectTrigger className='mt-1'>
-                        <SelectValue placeholder='Chọn danh mục' />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value='13000000-0000-0000-0000-000000000005'>Thực phẩm</SelectItem>
-                        <SelectItem value='13000000-0000-0000-0000-000000000004'>Đồ uống</SelectItem>
-                        <SelectItem value='handicraft'>Thủ công mỹ nghệ</SelectItem>
-                        <SelectItem value='agriculture'>Nông sản</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    
+                    {categoriesLoading ? (
+                      <div className="flex items-center justify-center py-4 mt-1 border rounded-md">
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <span className="text-sm text-gray-500">Đang tải danh mục...</span>
+                      </div>
+                    ) : categories.length === 0 ? (
+                      <div className="flex items-center justify-center py-4 mt-1 border rounded-md">
+                        <span className="text-sm text-gray-500">Không có danh mục nào</span>
+                      </div>
+                    ) : (
+                      <div className="mt-1 space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                        {categories.map((category) => (
+                          <div
+                            key={category.id}
+                            className={`flex items-start space-x-3 p-2 rounded-md cursor-pointer transition-colors ${
+                              productData.categories.includes(category.id)
+                                ? 'bg-green-50 border border-green-200'
+                                : 'hover:bg-gray-50 border border-transparent'
+                            }`}
+                            onClick={() => handleCategoryToggle(category.id)}
+                          >
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={productData.categories.includes(category.id)}
+                                onChange={() => handleCategoryToggle(category.id)}
+                                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900">{category.name}</p>
+                              {category.description && (
+                                <p className="text-xs text-gray-500 mt-1">{category.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Show selected categories */}
+                    {productData.categories.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-sm font-medium text-gray-700 mb-2">
+                          Đã chọn {productData.categories.length} danh mục:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {productData.categories.map((categoryId) => {
+                            const category = categories.find(cat => cat.id === categoryId)
+                            return category ? (
+                              <div
+                                key={categoryId}
+                                className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-md"
+                              >
+                                <span>{category.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCategoryToggle(categoryId)}
+                                  className="ml-1 text-green-600 hover:text-green-800"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : null
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

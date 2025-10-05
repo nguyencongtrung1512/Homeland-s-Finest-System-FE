@@ -5,160 +5,207 @@ import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Badge } from '../../../components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import {
   Upload,
-  Sun,
   BookOpen,
   Shield,
-  Info,
   ChevronRight,
   Plus,
-  Trash2,
   Video,
-  Image as ImageIcon
+  Edit,
+  Eye,
+  Save,
+  X,
+  Package,
+  FileText,
+  Award,
+  Trash2,
+  Image,
+  Camera
 } from 'lucide-react'
+import { productApi } from '../../../apis/product.api'
+import type { Product } from '../../../types'
+
+interface ProductDetail extends Product {
+  variants?: any[]
+  productCategories?: any[]
+  productCertificateDTOs?: any[]
+  productStory?: any
+}
 
 function UpdateProduct() {
   const navigate = useNavigate()
   const { id } = useParams()
 
-  const [productData, setProductData] = useState({
-    name: '',
-    description: '',
-    category: '',
-    region: '',
-    story: '',
-    isVisible: true,
-    allowPreOrder: false
+  // Loading and error states
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Product data
+  const [productDetail, setProductDetail] = useState<ProductDetail | null>(null)
+
+  // Edit modes for different sections
+  const [editModes, setEditModes] = useState({
+    basicInfo: false,
+    variants: false,
+    story: false,
+    certificates: false
   })
 
-  const [storyData, setStoryData] = useState({
-    mainTitle: 'Nông sản sạch Việt Nam',
-    mainSubtitle:
-      'Câu chuyện bắt đầu từ đây, đất trời - nơi mà những giống đầu tiên được gieo trồng. Với niềm tin vào sức mạnh của thiên nhiên và tình yêu đối với đất nước, chúng tôi mang đến những sản phẩm nông nghiệp sạch, xanh và an toàn cho sức khỏe.',
-    video: null,
-    storyTitle: 'Câu chuyện của chúng tôi',
-    storyContent1:
-      'Chúng tôi là một cửa hàng chuyên cung cấp các sản phẩm nông sản sạch từ các vùng miền Việt Nam. Với hơn 10 năm kinh nghiệm trong ngành, chúng tôi cam kết mang đến cho khách hàng những sản phẩm tươi ngon, an toàn và chất lượng cao nhất.',
-    storyContent2:
-      'Với hơn 10 năm kinh nghiệm trong lĩnh vực nông nghiệp, chúng tôi hiểu rõ giá trị của từng sản phẩm và cam kết mang đến chất lượng tốt nhất cho khách hàng.',
-    storyImage: null,
-    galleryTitle: 'Hình ảnh hạt trưởng',
-    galleryImages: [null, null, null, null],
-    commitmentContent:
-      'Chúng tôi cam kết: Tất cả sản phẩm đều được kiểm tra chất lượng nghiêm ngặt trước khi đến tay khách hàng. Từ khâu gieo trồng, chăm sóc, thu hoạch đến bảo quản và vận chuyển, mọi quy trình đều được thực hiện theo tiêu chuẩn cao nhất để đảm bảo sản phẩm tươi ngon, an toàn và giữ trọn vẹn giá trị dinh dưỡng.'
+  // Form data for editing
+  const [editData, setEditData] = useState({
+    basicInfo: {
+      name: '',
+      description: '',
+      categoryId: [],
+      madeBy: '',
+      isActive: true,
+      productImages: [],
+      productVideo: ''
+    },
+    variants: [],
+    story: {
+      title: '',
+      content: '',
+      images: [],
+      video: ''
+    },
+    certificates: []
   })
 
-  const [productVariants, setProductVariants] = useState([
-    {
-      id: 1,
-      price: 0,
-      stock: 0,
-      unit: ''
-    }
-  ])
-
-  // Load product data when component mounts
+  // Fetch product details
   useEffect(() => {
-    // TODO: Replace with actual API call to fetch product data by ID
-    // For now, using mock data
-    const mockProductData = {
-      name: 'Mật ong rừng U Minh Hạ',
-      description:
-        'Mật ong rừng nguyên chất từ vùng U Minh Hạ, được thu hoạch từ những tổ ong tự nhiên trong rừng tràm.',
-      category: 'food',
-      region: 'U Minh Hạ, Cà Mau',
-      story: '',
-      isVisible: true,
-      allowPreOrder: false
-    }
+    const fetchProductDetail = async () => {
+      if (!id) return
 
-    const mockStoryData = {
-      mainTitle: 'Mật ong rừng U Minh Hạ',
-      mainSubtitle:
-        'Từ những cánh rừng tràm bạt ngàn, mật ong rừng U Minh Hạ được tạo ra một cách tự nhiên, mang hương vị đặc trưng của vùng đất phương Nam.',
-      video: null,
-      storyTitle: 'Câu chuyện về mật ong rừng',
-      storyContent1:
-        'U Minh Hạ là vùng đất nổi tiếng với những cánh rừng tràm bạt ngàn. Tại đây, những con ong rừng tự nhiên tạo ra loại mật ong có hương vị đặc biệt, không thể tìm thấy ở nơi nào khác.',
-      storyContent2:
-        'Chúng tôi đã gắn bó với nghề nuôi ong rừng tại U Minh Hạ hơn 20 năm, hiểu rõ từng đặc tính của loài ong và cách thu hoạch mật ong để giữ được chất lượng tốt nhất.',
-      storyImage: null,
-      galleryTitle: 'Quy trình thu hoạch mật ong',
-      galleryImages: [null, null, null, null],
-      commitmentContent:
-        'Chúng tôi cam kết: Mật ong rừng U Minh Hạ được thu hoạch hoàn toàn tự nhiên, không sử dụng hóa chất hay chất bảo quản. Mỗi lọ mật ong đều được kiểm tra chất lượng nghiêm ngặt trước khi đến tay khách hàng.'
-    }
+      try {
+        setLoading(true)
+        const response = await productApi.getById(id)
 
-    const mockVariants = [
-      {
-        id: 1,
-        price: 450000,
-        stock: 50,
-        unit: '500ml'
-      },
-      {
-        id: 2,
-        price: 850000,
-        stock: 30,
-        unit: '1L'
+        if (response.status === 200) {
+          setProductDetail(response.data)
+          // Initialize edit data with current product data
+          setEditData({
+            basicInfo: {
+              name: response.data.name || '',
+              description: response.data.description || '',
+              categoryId: response.data.categoryId || [],
+              madeBy: response.data.madeBy || '',
+              isActive: response.data.isActive || true,
+              productImages: response.data.productImages || [],
+              productVideo: response.data.productVideo || ''
+            },
+            variants: response.data.variants || [],
+            story: response.data.productStory || {
+              title: '',
+              content: '',
+              images: [],
+              video: ''
+            },
+            certificates: response.data.productCertificateDTOs || []
+          })
+        }
+      } catch (err) {
+        console.error('Error fetching product:', err)
+        setError('Không thể tải thông tin sản phẩm')
+      } finally {
+        setLoading(false)
       }
-    ]
+    }
 
-    setProductData(mockProductData)
-    setStoryData(mockStoryData)
-    setProductVariants(mockVariants)
+    fetchProductDetail()
   }, [id])
 
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setProductData((prev) => ({
+  // Toggle edit mode for sections
+  const toggleEditMode = (section: keyof typeof editModes) => {
+    setEditModes((prev) => ({
       ...prev,
-      [field]: value
+      [section]: !prev[section]
     }))
   }
 
-  const handleStoryInputChange = (field: string, value: string) => {
-    setStoryData((prev) => ({
-      ...prev,
-      [field]: value
-    }))
+  // Save changes for specific section
+  const saveSection = async (section: keyof typeof editModes) => {
+    try {
+      // TODO: Implement API calls for each section
+      switch (section) {
+        case 'basicInfo':
+          // PUT /api/Product/{id} for basic info, images, video
+          console.log('Saving basic info:', editData.basicInfo)
+          break
+        case 'variants':
+          // API call for product variants
+          console.log('Saving variants:', editData.variants)
+          break
+        case 'story':
+          // API call for product story
+          console.log('Saving story:', editData.story)
+          break
+        case 'certificates':
+          // API call for certificates
+          console.log('Saving certificates:', editData.certificates)
+          break
+      }
+
+      // Turn off edit mode after saving
+      toggleEditMode(section)
+
+      // Refresh product data
+      // await fetchProductDetail()
+    } catch (err) {
+      console.error(`Error saving ${section}:`, err)
+    }
   }
 
-  const handleVariantChange = (variantId: number, field: string, value: string | number) => {
-    setProductVariants((prev) =>
-      prev.map((variant) => (variant.id === variantId ? { ...variant, [field]: value } : variant))
+  // Cancel edit mode
+  const cancelEdit = (section: keyof typeof editModes) => {
+    // Reset edit data to original values
+    if (productDetail) {
+      setEditData((prev) => ({
+        ...prev,
+        [section]:
+          section === 'basicInfo'
+            ? {
+              name: productDetail.name || '',
+              description: productDetail.description || '',
+              categoryId: productDetail.categoryId || [],
+              madeBy: productDetail.madeBy || '',
+              isActive: productDetail.isActive || true,
+              productImages: productDetail.productImages || [],
+              productVideo: productDetail.productVideo || ''
+            }
+            : prev[section]
+      }))
+    }
+    toggleEditMode(section)
+  }
+
+  if (loading) {
+    return (
+      <div className='p-6 bg-gray-50 min-h-screen'>
+        <div className='flex items-center justify-center h-64'>
+          <div className='text-center'>
+            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4'></div>
+            <p className='text-gray-600'>Đang tải thông tin sản phẩm...</p>
+          </div>
+        </div>
+      </div>
     )
   }
 
-  const addVariant = () => {
-    const newId = Math.max(...productVariants.map((v) => v.id)) + 1
-    setProductVariants((prev) => [
-      ...prev,
-      {
-        id: newId,
-        price: 0,
-        stock: 0,
-        unit: ''
-      }
-    ])
-  }
-
-  const removeVariant = (variantId: number) => {
-    if (productVariants.length > 1) {
-      setProductVariants((prev) => prev.filter((variant) => variant.id !== variantId))
-    }
-  }
-
-  const handleCancel = () => {
-    navigate('../product-management')
-  }
-
-  const handleUpdate = () => {
-    // TODO: Implement update product API call
-    console.log('Updating product:', { productData, storyData, productVariants })
-    // After successful update, navigate back to products list
-    navigate('../product-management')
+  if (error || !productDetail) {
+    return (
+      <div className='p-6 bg-gray-50 min-h-screen'>
+        <div className='flex items-center justify-center h-64'>
+          <div className='text-center'>
+            <p className='text-red-600 mb-4'>{error || 'Không tìm thấy sản phẩm'}</p>
+            <Button onClick={() => navigate('../product-management')}>Quay lại danh sách sản phẩm</Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -178,357 +225,641 @@ function UpdateProduct() {
       {/* Header */}
       <div className='mb-6'>
         <h1 className='text-2xl font-semibold text-gray-900'>Chỉnh sửa sản phẩm</h1>
-        <p className='text-gray-600 mt-1'>Cập nhật thông tin sản phẩm trong cửa hàng của bạn</p>
+        <p className='text-gray-600 mt-1'>Xem và cập nhật thông tin sản phẩm: {productDetail.name}</p>
       </div>
 
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-        {/* Left Column - Main Content */}
-        <div className='lg:col-span-2 space-y-6'>
-          {/* Basic Information */}
+      {/* Product Status Badge */}
+      <div className='mb-6'>
+        <Badge
+          variant={productDetail.isActive ? 'default' : 'secondary'}
+          className={productDetail.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+        >
+          {productDetail.isActive ? 'Đang hoạt động' : 'Tạm dừng'}
+        </Badge>
+        <Badge variant='outline' className='ml-2'>
+          Trạng thái: {productDetail.status}
+        </Badge>
+      </div>
+
+      {/* Tabs for different sections */}
+      <Tabs defaultValue='basic-info' className='w-full'>
+        <TabsList className='grid w-full grid-cols-4'>
+          <TabsTrigger value='basic-info' className='flex items-center gap-2'>
+            <Package className='w-4 h-4' />
+            Thông tin cơ bản
+          </TabsTrigger>
+          <TabsTrigger value='variants' className='flex items-center gap-2'>
+            <FileText className='w-4 h-4' />
+            Loại sản phẩm
+          </TabsTrigger>
+          <TabsTrigger value='story' className='flex items-center gap-2'>
+            <BookOpen className='w-4 h-4' />
+            Câu chuyện
+          </TabsTrigger>
+          <TabsTrigger value='certificates' className='flex items-center gap-2'>
+            <Award className='w-4 h-4' />
+            Chứng nhận
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Basic Information Tab */}
+        <TabsContent value='basic-info' className='space-y-6'>
           <Card>
-            <CardHeader>
+            <CardHeader className='flex flex-row items-center justify-between'>
               <CardTitle className='text-green-700'>Thông tin cơ bản</CardTitle>
+              <div className='flex gap-2'>
+                {editModes.basicInfo ? (
+                  <>
+                    <Button size='sm' variant='outline' onClick={() => cancelEdit('basicInfo')}>
+                      <X className='w-4 h-4 mr-2' />
+                      Hủy
+                    </Button>
+                    <Button
+                      size='sm'
+                      onClick={() => saveSection('basicInfo')}
+                      className='bg-green-600 hover:bg-green-700'
+                    >
+                      <Save className='w-4 h-4 mr-2' />
+                      Lưu
+                    </Button>
+                  </>
+                ) : (
+                  <Button size='sm' variant='outline' onClick={() => toggleEditMode('basicInfo')}>
+                    <Edit className='w-4 h-4 mr-2' />
+                    Chỉnh sửa
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className='space-y-4'>
-              <div>
-                <Label htmlFor='name' className='text-sm font-medium'>
-                  Tên sản phẩm <span className='text-red-500'>*</span>
-                </Label>
-                <Input
-                  id='name'
-                  placeholder='Nhập tên sản phẩm...'
-                  value={productData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  className='mt-1'
-                />
-              </div>
+              {editModes.basicInfo ? (
+                // Edit mode
+                <>
+                  <div>
+                    <Label htmlFor='name' className='text-sm font-medium'>
+                      Tên sản phẩm <span className='text-red-500'>*</span>
+                    </Label>
+                    <Input
+                      id='name'
+                      value={editData.basicInfo.name}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          basicInfo: { ...prev.basicInfo, name: e.target.value }
+                        }))
+                      }
+                      className='mt-1'
+                    />
+                  </div>
 
-              <div>
-                <Label htmlFor='description' className='text-sm font-medium'>
-                  Mô tả chi tiết
-                </Label>
-                <Textarea
-                  id='description'
-                  placeholder='Mô tả chi tiết về sản phẩm của bạn...'
-                  value={productData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  className='mt-1 min-h-[120px]'
-                />
-                {/* Formatting toolbar */}
-                <div className='flex gap-2 mt-2'>
-                  <Button variant='outline' size='sm' className='h-8 w-8 p-0'>
-                    <span className='font-bold'>B</span>
-                  </Button>
-                  <Button variant='outline' size='sm' className='h-8 w-8 p-0'>
-                    <span className='italic'>I</span>
-                  </Button>
-                  <Button variant='outline' size='sm' className='h-8 w-8 p-0'>
-                    •
-                  </Button>
-                </div>
-              </div>
+                  <div>
+                    <Label htmlFor='description' className='text-sm font-medium'>
+                      Mô tả chi tiết
+                    </Label>
+                    <Textarea
+                      id='description'
+                      value={editData.basicInfo.description}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          basicInfo: { ...prev.basicInfo, description: e.target.value }
+                        }))
+                      }
+                      className='mt-1 min-h-[120px]'
+                    />
+                  </div>
 
-              {/* Product Variants */}
-              <div>
-                <div className='flex items-center justify-between mb-4'>
-                  <Label className='text-sm font-medium'>Loại sản phẩm</Label>
-                  <Button
-                    type='button'
-                    variant='outline'
-                    size='sm'
-                    onClick={addVariant}
-                    className='text-green-600 border-green-600 hover:bg-green-50'
-                  >
-                    <Plus className='w-4 h-4 mr-2' />
-                    Thêm loại khác
-                  </Button>
-                </div>
+                  <div>
+                    <Label htmlFor='madeBy' className='text-sm font-medium'>
+                      Nhà sản xuất
+                    </Label>
+                    <Input
+                      id='madeBy'
+                      value={editData.basicInfo.madeBy}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          basicInfo: { ...prev.basicInfo, madeBy: e.target.value }
+                        }))
+                      }
+                      className='mt-1'
+                    />
+                  </div>
 
-                <div className='space-y-4'>
-                  {productVariants.map((variant, index) => (
-                    <div key={variant.id} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
-                      <div className='flex items-center justify-between mb-3'>
-                        <h4 className='text-sm font-medium text-gray-700'>Loại {index + 1}</h4>
-                        {productVariants.length > 1 && (
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => removeVariant(variant.id)}
-                            className='text-red-600 hover:text-red-700 hover:bg-red-50'
-                          >
-                            <Trash2 className='w-4 h-4' />
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className='grid grid-cols-2 gap-4'>
+                  {/* Image Upload */}
+                  <div>
+                    <Label className='text-sm font-medium'>Hình ảnh sản phẩm</Label>
+                    <div className='mt-2 space-y-4'>
+                      {/* Current Images */}
+                      {editData.basicInfo.productImages && editData.basicInfo.productImages.length > 0 && (
                         <div>
-                          <Label className='text-sm font-medium'>
-                            Giá bán (VNĐ) <span className='text-red-500'>*</span>
-                          </Label>
-                          <Input
-                            type='number'
-                            value={variant.price}
-                            onChange={(e) => handleVariantChange(variant.id, 'price', parseInt(e.target.value) || 0)}
-                            className='mt-1'
-                          />
+                          <p className='text-sm text-gray-600 mb-2'>Hình ảnh hiện tại:</p>
+                          <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+                            {editData.basicInfo.productImages.map((image, index) => (
+                              <div key={index} className='relative group'>
+                                <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200'>
+                                  <img 
+                                    src={image} 
+                                    alt={`Product ${index + 1}`} 
+                                    className='w-full h-full object-cover' 
+                                  />
+                                </div>
+                                <div className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity'>
+                                  <Button
+                                    size='sm'
+                                    variant='destructive'
+                                    className='h-8 w-8 p-0'
+                                    onClick={() => {
+                                      const newImages = editData.basicInfo.productImages.filter((_, i) => i !== index)
+                                      setEditData(prev => ({
+                                        ...prev,
+                                        basicInfo: { ...prev.basicInfo, productImages: newImages }
+                                      }))
+                                    }}
+                                  >
+                                    <Trash2 className='w-4 h-4' />
+                                  </Button>
+                                </div>
+                                {index === 0 && (
+                                  <div className='absolute bottom-2 left-2'>
+                                    <Badge className='bg-green-600 text-white text-xs'>
+                                      Ảnh chính
+                                    </Badge>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div>
-                          <Label className='text-sm font-medium'>
-                            Số lượng tồn kho <span className='text-red-500'>*</span>
-                          </Label>
-                          <Input
-                            type='number'
-                            value={variant.stock}
-                            onChange={(e) => handleVariantChange(variant.id, 'stock', parseInt(e.target.value) || 0)}
-                            className='mt-1'
-                          />
-                        </div>
-                      </div>
-
-                      <div className='mt-4'>
-                        <Label className='text-sm font-medium'>
-                          Loại <span className='text-red-500'>*</span>
-                        </Label>
-                        <Input
-                          placeholder='ml, kg...'
-                          value={variant.unit}
-                          onChange={(e) => handleVariantChange(variant.id, 'unit', e.target.value)}
-                          className='mt-1'
-                        />
+                      )}
+                      
+                      {/* Upload New Images */}
+                      <div className='border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer'>
+                        <Upload className='w-12 h-12 text-gray-400 mx-auto mb-4' />
+                        <p className='text-gray-600 mb-2'>Kéo thả hoặc click để tải ảnh lên</p>
+                        <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
+                        <p className='text-xs text-gray-400 mt-1'>Ảnh đầu tiên sẽ là ảnh chính của sản phẩm</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+
+                  {/* Video Upload */}
+                  <div>
+                    <Label className='text-sm font-medium'>Video sản phẩm</Label>
+                    <div className='mt-2 space-y-4'>
+                      {editData.basicInfo.productVideo && (
+                        <div>
+                          <p className='text-sm text-gray-600 mb-2'>Video hiện tại:</p>
+                          <div className='relative'>
+                            <video src={editData.basicInfo.productVideo} controls className='w-full max-w-md rounded-lg' />
+                            <Button
+                              size='sm'
+                              variant='destructive'
+                              className='absolute top-2 right-2'
+                              onClick={() => {
+                                setEditData(prev => ({
+                                  ...prev,
+                                  basicInfo: { ...prev.basicInfo, productVideo: '' }
+                                }))
+                              }}
+                            >
+                              <Trash2 className='w-4 h-4' />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className='border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer'>
+                        <Video className='w-12 h-12 text-gray-400 mx-auto mb-4' />
+                        <p className='text-gray-600 mb-2'>Kéo thả hoặc click để tải video lên</p>
+                        <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                // View mode
+                <>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                    <div>
+                      <Label className='text-sm font-medium text-gray-600'>Tên sản phẩm</Label>
+                      <p className='mt-1 text-gray-900 font-medium'>{productDetail.name}</p>
+                    </div>
+                    <div>
+                      <Label className='text-sm font-medium text-gray-600'>Nhà sản xuất</Label>
+                      <p className='mt-1 text-gray-900'>{productDetail.madeBy || 'Chưa cập nhật'}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className='text-sm font-medium text-gray-600'>Mô tả chi tiết</Label>
+                    <p className='mt-1 text-gray-900 whitespace-pre-wrap'>{productDetail.description}</p>
+                  </div>
+
+                  {/* Display current images */}
+                  {productDetail.productImages && productDetail.productImages.length > 0 && (
+                    <div>
+                      <Label className='text-sm font-medium text-gray-600'>Hình ảnh sản phẩm</Label>
+                      <div className='mt-2 grid grid-cols-2 md:grid-cols-4 gap-4'>
+                        {productDetail.productImages.map((image, index) => (
+                          <div key={index} className='aspect-square bg-gray-100 rounded-lg overflow-hidden'>
+                            <img src={image} alt={`Product ${index + 1}`} className='w-full h-full object-cover' />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Display current video */}
+                  {productDetail.productVideo && (
+                    <div>
+                      <Label className='text-sm font-medium text-gray-600'>Video sản phẩm</Label>
+                      <div className='mt-2'>
+                        <video src={productDetail.productVideo} controls className='w-full max-w-md rounded-lg' />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Images & Video */}
+        {/* Product Variants Tab */}
+        <TabsContent value='variants' className='space-y-6'>
           <Card>
-            <CardHeader>
-              <CardTitle className='text-green-700'>Hình ảnh & Video</CardTitle>
+            <CardHeader className='flex flex-row items-center justify-between'>
+              <CardTitle className='text-green-700'>Loại sản phẩm</CardTitle>
+              <div className='flex gap-2'>
+                {editModes.variants ? (
+                  <>
+                    <Button size='sm' variant='outline' onClick={() => cancelEdit('variants')}>
+                      <X className='w-4 h-4 mr-2' />
+                      Hủy
+                    </Button>
+                    <Button
+                      size='sm'
+                      onClick={() => saveSection('variants')}
+                      className='bg-green-600 hover:bg-green-700'
+                    >
+                      <Save className='w-4 h-4 mr-2' />
+                      Lưu
+                    </Button>
+                  </>
+                ) : (
+                  <Button size='sm' variant='outline' onClick={() => toggleEditMode('variants')}>
+                    <Edit className='w-4 h-4 mr-2' />
+                    Chỉnh sửa
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              <div>
-                <Label className='text-sm font-medium'>
-                  Hình ảnh sản phẩm <span className='text-red-500'>*</span>
-                </Label>
-                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                  <Upload className='w-12 h-12 text-gray-400 mx-auto mb-4' />
-                  <p className='text-gray-600 mb-2'>Kéo thả hoặc click để tải ảnh lên</p>
-                  <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB</p>
+              {editModes.variants ? (
+                // Edit mode for variants
+                <div className='space-y-4'>
+                  <div className='flex justify-between items-center'>
+                    <p className='text-sm text-gray-600'>Quản lý các loại sản phẩm khác nhau</p>
+                    <Button size='sm' variant='outline' className='text-green-600 border-green-600 hover:bg-green-50'>
+                      <Plus className='w-4 h-4 mr-2' />
+                      Thêm loại mới
+                    </Button>
+                  </div>
+                  {/* Add variant editing form here */}
+                  <p className='text-gray-500 italic'>Chức năng chỉnh sửa loại sản phẩm sẽ được cập nhật...</p>
                 </div>
-              </div>
-            </CardContent>
-            <CardContent>
-              <div>
-                <Label className='text-sm font-medium'>
-                  Video sản phẩm <span className='text-red-500'>*</span>
-                </Label>
-                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                  <Upload className='w-12 h-12 text-gray-400 mx-auto mb-4' />
-                  <p className='text-gray-600 mb-2'>Kéo thả hoặc click để tải video lên</p>
-                  <p className='text-sm text-gray-500'>MP4, MOV tối đa 5MB</p>
+              ) : (
+                // View mode for variants
+                <div className='space-y-4'>
+                  {productDetail.variants && productDetail.variants.length > 0 ? (
+                    <div className='grid gap-4'>
+                      {productDetail.variants.map((variant: any, index: number) => (
+                        <div key={index} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
+                          <div className='grid grid-cols-3 gap-4'>
+                            <div>
+                              <Label className='text-sm font-medium text-gray-600'>Tên loại</Label>
+                              <p className='mt-1 text-gray-900'>{variant.variantName || `Loại ${index + 1}`}</p>
+                            </div>
+                            <div>
+                              <Label className='text-sm font-medium text-gray-600'>Giá bán</Label>
+                              <p className='mt-1 text-gray-900 font-medium'>
+                                {variant.price?.toLocaleString('vi-VN')} VNĐ
+                              </p>
+                            </div>
+                            <div>
+                              <Label className='text-sm font-medium text-gray-600'>Trạng thái</Label>
+                              <Badge
+                                variant={variant.isActive ? 'default' : 'secondary'}
+                                className={
+                                  variant.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                }
+                              >
+                                {variant.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className='text-center py-12'>
+                      <Package className='w-16 h-16 text-gray-400 mx-auto mb-4' />
+                      <h3 className='text-lg font-medium text-gray-900 mb-2'>Chưa có loại sản phẩm nào</h3>
+                      <p className='text-gray-500 mb-6'>Thêm các loại sản phẩm khác nhau để khách hàng có thể lựa chọn</p>
+                      <Button 
+                        className='bg-green-600 hover:bg-green-700 text-white'
+                        onClick={() => {
+                          // TODO: Handle add product variant
+                          console.log('Add product variant')
+                        }}
+                      >
+                        <Plus className='w-4 h-4 mr-2' />
+                        Thêm loại sản phẩm
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
-          {/* Story Connection */}
+        </TabsContent>
+
+        {/* Product Story Tab */}
+        <TabsContent value='story' className='space-y-6'>
           <Card>
-            <CardHeader>
+            <CardHeader className='flex flex-row items-center justify-between'>
               <CardTitle className='text-green-700 flex items-center gap-2'>
                 <BookOpen className='w-5 h-5 text-green-600' />
-                Câu chuyện gắn kết
+                Câu chuyện sản phẩm
               </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='flex items-start gap-2'>
-                <Info className='w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0' />
-                <p className='text-sm text-gray-600'>Câu chuyện giúp khách hàng hiểu rõ hơn về giá trị sản phẩm</p>
-              </div>
-
-              {/* Main Title */}
-              <div>
-                <Label className='text-sm font-medium'>Tiêu đề chính</Label>
-                <Input
-                  placeholder='Nông sản sạch Việt Nam'
-                  value={storyData.mainTitle}
-                  onChange={(e) => handleStoryInputChange('mainTitle', e.target.value)}
-                  className='mt-1'
-                />
-              </div>
-
-              {/* Main Subtitle */}
-              <div>
-                <Label className='text-sm font-medium'>Đoạn mô tả</Label>
-                <Textarea
-                  placeholder='Câu chuyện bắt đầu từ đây, đất trời...'
-                  value={storyData.mainSubtitle}
-                  onChange={(e) => handleStoryInputChange('mainSubtitle', e.target.value)}
-                  className='mt-1 min-h-[80px]'
-                />
-              </div>
-
-              {/* Video Upload */}
-              <div>
-                <Label className='text-sm font-medium'>Video trung tâm</Label>
-                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                  <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                  <p className='text-sm text-gray-600 mb-2'>Tải lên video của bạn</p>
-                  <Button variant='outline' size='sm' className='bg-gray-100'>
-                    <Upload className='w-4 h-4 mr-2' />
-                    Chọn tệp
+              <div className='flex gap-2'>
+                {editModes.story ? (
+                  <>
+                    <Button size='sm' variant='outline' onClick={() => cancelEdit('story')}>
+                      <X className='w-4 h-4 mr-2' />
+                      Hủy
+                    </Button>
+                    <Button size='sm' onClick={() => saveSection('story')} className='bg-green-600 hover:bg-green-700'>
+                      <Save className='w-4 h-4 mr-2' />
+                      Lưu
+                    </Button>
+                  </>
+                ) : (
+                  <Button size='sm' variant='outline' onClick={() => toggleEditMode('story')}>
+                    <Edit className='w-4 h-4 mr-2' />
+                    Chỉnh sửa
                   </Button>
-                </div>
+                )}
               </div>
-
-              {/* Story Title */}
-              <div>
-                <Label className='text-sm font-medium'>Tiêu đề câu chuyện</Label>
-                <Input
-                  placeholder='Câu chuyện của chúng tôi'
-                  value={storyData.storyTitle}
-                  onChange={(e) => handleStoryInputChange('storyTitle', e.target.value)}
-                  className='mt-1'
-                />
-              </div>
-
-              {/* Story Content */}
-              <div>
-                <Label className='text-sm font-medium'>Nội dung câu chuyện</Label>
-                <Textarea
-                  placeholder='Chúng tôi là một cửa hàng chuyên cung cấp...'
-                  value={storyData.storyContent1}
-                  onChange={(e) => handleStoryInputChange('storyContent1', e.target.value)}
-                  className='mt-1 min-h-[80px]'
-                />
-              </div>
-
-              <div>
-                <Textarea
-                  placeholder='Với hơn 10 năm kinh nghiệm...'
-                  value={storyData.storyContent2}
-                  onChange={(e) => handleStoryInputChange('storyContent2', e.target.value)}
-                  className='min-h-[80px]'
-                />
-              </div>
-
-              {/* Story Image */}
-              <div>
-                <Label className='text-sm font-medium'>Hình ảnh câu chuyện</Label>
-                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                  <ImageIcon className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                  <p className='text-sm text-gray-600 mb-2'>Tải lên hình ảnh minh họa</p>
-                  <Button variant='outline' size='sm' className='bg-gray-100'>
-                    <Upload className='w-4 h-4 mr-2' />
-                    Chọn ảnh
-                  </Button>
-                </div>
-              </div>
-
-              {/* Gallery Title */}
-              <div>
-                <Label className='text-sm font-medium'>Tiêu đề gallery</Label>
-                <Input
-                  placeholder='Hình ảnh hạt trưởng'
-                  value={storyData.galleryTitle}
-                  onChange={(e) => handleStoryInputChange('galleryTitle', e.target.value)}
-                  className='mt-1'
-                />
-              </div>
-
-              {/* Commitment */}
-              <div>
-                <Label className='text-sm font-medium'>Cam kết của chúng tôi</Label>
-                <div className='mt-2 bg-green-50 p-4 rounded-lg border border-green-200'>
-                  <Textarea
-                    placeholder='Chúng tôi cam kết: Tất cả sản phẩm đều được kiểm tra...'
-                    value={storyData.commitmentContent}
-                    onChange={(e) => handleStoryInputChange('commitmentContent', e.target.value)}
-                    className='min-h-[80px] bg-transparent border-none resize-none'
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column - Sidebar */}
-        <div className='space-y-6'>
-          {/* Category */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-green-700'>Phân loại</CardTitle>
             </CardHeader>
             <CardContent>
-              <div>
-                <Label htmlFor='category' className='text-sm font-medium'>
-                  Danh mục sản phẩm <span className='text-red-500'>*</span>
-                </Label>
-                <Select value={productData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                  <SelectTrigger className='mt-1'>
-                    <SelectValue placeholder='Chọn danh mục' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='food'>Thực phẩm</SelectItem>
-                    <SelectItem value='beverage'>Đồ uống</SelectItem>
-                    <SelectItem value='handicraft'>Thủ công mỹ nghệ</SelectItem>
-                    <SelectItem value='agriculture'>Nông sản</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+              {editModes.story ? (
+                // Edit mode for story
+                <div className='space-y-6'>
+                  <div>
+                    <Label htmlFor='storyTitle' className='text-sm font-medium'>
+                      Tiêu đề câu chuyện
+                    </Label>
+                    <Input
+                      id='storyTitle'
+                      value={editData.story.title}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          story: { ...prev.story, title: e.target.value }
+                        }))
+                      }
+                      placeholder='Nhập tiêu đề cho câu chuyện sản phẩm'
+                      className='mt-1'
+                    />
+                  </div>
 
-          {/* Origin & Certification */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-green-700 flex items-center gap-2'>
-                <Sun className='w-5 h-5 text-yellow-500' />
-                Nguồn gốc & Chứng nhận
-              </CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div>
-                <Label htmlFor='region' className='text-sm font-medium'>
-                  Vùng miền/Làng nghề
-                </Label>
-                <Input
-                  id='region'
-                  placeholder='VD: Làng gốm Bát Tràng, Hà Nội'
-                  value={productData.region}
-                  onChange={(e) => handleInputChange('region', e.target.value)}
-                  className='mt-1'
-                />
-              </div>
+                  <div>
+                    <Label htmlFor='storyContent' className='text-sm font-medium'>
+                      Nội dung câu chuyện
+                    </Label>
+                    <Textarea
+                      id='storyContent'
+                      value={editData.story.content}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          story: { ...prev.story, content: e.target.value }
+                        }))
+                      }
+                      placeholder='Kể câu chuyện về sản phẩm, nguồn gốc, quy trình sản xuất...'
+                      className='mt-1 min-h-[150px]'
+                    />
+                  </div>
 
-              <div>
-                <Label className='text-sm font-medium'>Tải lên chứng nhận</Label>
-                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                  <Shield className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                  <p className='text-sm text-gray-600 mb-3'>VietGAP, OCOP, hoặc chứng nhận khác</p>
-                  <Button variant='outline' size='sm' className='bg-gray-100'>
-                    <Upload className='w-4 h-4 mr-2' />
-                    Tải file lên
-                  </Button>
+                  {/* Story Images */}
+                  <div>
+                    <Label className='text-sm font-medium'>Hình ảnh minh họa</Label>
+                    <div className='mt-2 space-y-4'>
+                      {/* Current Story Images */}
+                      {editData.story.images && editData.story.images.length > 0 && (
+                        <div>
+                          <p className='text-sm text-gray-600 mb-2'>Hình ảnh hiện tại:</p>
+                          <div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
+                            {editData.story.images.map((image, index) => (
+                              <div key={index} className='relative group'>
+                                <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200'>
+                                  <img 
+                                    src={image} 
+                                    alt={`Story ${index + 1}`} 
+                                    className='w-full h-full object-cover' 
+                                  />
+                                </div>
+                                <div className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity'>
+                                  <Button
+                                    size='sm'
+                                    variant='destructive'
+                                    className='h-8 w-8 p-0'
+                                    onClick={() => {
+                                      const newImages = editData.story.images.filter((_, i) => i !== index)
+                                      setEditData(prev => ({
+                                        ...prev,
+                                        story: { ...prev.story, images: newImages }
+                                      }))
+                                    }}
+                                  >
+                                    <Trash2 className='w-4 h-4' />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Upload New Story Images */}
+                      <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
+                        <Image className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                        <p className='text-gray-600 mb-1'>Thêm hình ảnh cho câu chuyện</p>
+                        <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Story Video */}
+                  <div>
+                    <Label className='text-sm font-medium'>Video câu chuyện</Label>
+                    <div className='mt-2 space-y-4'>
+                      {editData.story.video && (
+                        <div>
+                          <p className='text-sm text-gray-600 mb-2'>Video hiện tại:</p>
+                          <div className='relative'>
+                            <video src={editData.story.video} controls className='w-full max-w-md rounded-lg' />
+                            <Button
+                              size='sm'
+                              variant='destructive'
+                              className='absolute top-2 right-2'
+                              onClick={() => {
+                                setEditData(prev => ({
+                                  ...prev,
+                                  story: { ...prev.story, video: '' }
+                                }))
+                              }}
+                            >
+                              <Trash2 className='w-4 h-4' />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
+                        <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                        <p className='text-gray-600 mb-1'>Thêm video cho câu chuyện</p>
+                        <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                // View mode for story
+                <div className='space-y-6'>
+                  {productDetail.productStory ? (
+                    <>
+                      <div>
+                        <h3 className='text-xl font-semibold text-gray-900 mb-3'>{productDetail.productStory.title}</h3>
+                        <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>{productDetail.productStory.content}</p>
+                      </div>
+                      
+                      {/* Story Images */}
+                      {productDetail.productStory.images && productDetail.productStory.images.length > 0 && (
+                        <div>
+                          <h4 className='text-lg font-medium text-gray-900 mb-3'>Hình ảnh minh họa</h4>
+                          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                            {productDetail.productStory.images.map((image, index) => (
+                              <div key={index} className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
+                                <img 
+                                  src={image} 
+                                  alt={`Story ${index + 1}`} 
+                                  className='w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer' 
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Story Video */}
+                      {productDetail.productStory.video && (
+                        <div>
+                          <h4 className='text-lg font-medium text-gray-900 mb-3'>Video câu chuyện</h4>
+                          <video src={productDetail.productStory.video} controls className='w-full max-w-2xl rounded-lg' />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className='text-center py-12'>
+                      <BookOpen className='w-16 h-16 text-gray-400 mx-auto mb-4' />
+                      <h3 className='text-lg font-medium text-gray-900 mb-2'>Chưa có câu chuyện</h3>
+                      <p className='text-gray-500 mb-6'>Thêm câu chuyện để khách hàng hiểu rõ hơn về sản phẩm</p>
+                      <Button 
+                        variant='outline'
+                        onClick={() => toggleEditMode('story')}
+                      >
+                        <Edit className='w-4 h-4 mr-2' />
+                        Thêm câu chuyện
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
 
-      {/* Action Buttons */}
-      <div className='flex justify-center gap-4 mt-8'>
-        <Button variant='outline' size='lg' onClick={handleCancel}>
-          Hủy
-        </Button>
-        <Button className='bg-green-600 hover:bg-green-700' size='lg' onClick={handleUpdate}>
-          Cập nhật sản phẩm
-        </Button>
-      </div>
+        {/* Certificates Tab */}
+        <TabsContent value='certificates' className='space-y-6'>
+          <Card>
+            <CardHeader className='flex flex-row items-center justify-between'>
+              <CardTitle className='text-green-700 flex items-center gap-2'>
+                <Shield className='w-5 h-5 text-green-600' />
+                Chứng nhận sản phẩm
+              </CardTitle>
+              <div className='flex gap-2'>
+                {editModes.certificates ? (
+                  <>
+                    <Button size='sm' variant='outline' onClick={() => cancelEdit('certificates')}>
+                      <X className='w-4 h-4 mr-2' />
+                      Hủy
+                    </Button>
+                    <Button
+                      size='sm'
+                      onClick={() => saveSection('certificates')}
+                      className='bg-green-600 hover:bg-green-700'
+                    >
+                      <Save className='w-4 h-4 mr-2' />
+                      Lưu
+                    </Button>
+                  </>
+                ) : (
+                  <Button size='sm' variant='outline' onClick={() => toggleEditMode('certificates')}>
+                    <Edit className='w-4 h-4 mr-2' />
+                    Chỉnh sửa
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {editModes.certificates ? (
+                // Edit mode for certificates
+                <div className='space-y-4'>
+                  <p className='text-sm text-gray-600'>Quản lý chứng nhận chất lượng sản phẩm</p>
+                  {/* Add certificate editing form here */}
+                  <p className='text-gray-500 italic'>Chức năng chỉnh sửa chứng nhận sẽ được cập nhật...</p>
+                </div>
+              ) : (
+                // View mode for certificates
+                <div className='space-y-4'>
+                  {productDetail.productCertificateDTOs && productDetail.productCertificateDTOs.length > 0 ? (
+                    <div className='grid gap-4'>
+                      {productDetail.productCertificateDTOs.map((cert: any, index: number) => (
+                        <div key={index} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
+                          <div className='flex items-center gap-4'>
+                            <Shield className='w-8 h-8 text-green-600' />
+                            <div>
+                              <h4 className='font-medium text-gray-900'>{cert.name}</h4>
+                              <p className='text-sm text-gray-600'>{cert.description}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className='text-center py-8'>
+                      <Shield className='w-12 h-12 text-gray-400 mx-auto mb-4' />
+                      <p className='text-gray-500'>Chưa có chứng nhận nào cho sản phẩm này</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

@@ -32,13 +32,13 @@ export interface ProductResponse {
 
 // Form Data interface for creating product with files
 export interface ProductCreateFormData {
- storeId: string
+  storeId: string
   provinceId: string
   name: string
   description: string
-  categoryId: string[]
-  productImages?: string[]
-  productVideo?: string
+  categoryIds: string[] // Đảm bảo đây là string array
+  productImages?: File[] // Thay đổi từ string[] thành File[]
+  productVideo?: File // Thay đổi từ string thành File
   madeBy?: string
   saleCount?: number
   rating?: number
@@ -49,25 +49,9 @@ export interface ProductCreateFormData {
   note?: string
   storyTitle?: string
   storyDetail?: string
-  certificateImages?: string[]
-  storyVideo?: string
-  storyImages?: string[]
-}
-
-// Query Parameters
-export interface ProductQueryParams {
-  page?: number
-  pageNumber?: number // Swagger UI dùng pageNumber
-  pageSize?: number
-  search?: string
-  categoryId?: string
-  provinceId?: string
-  storeId?: string
-  typeProduct?: string
-  status?: string
-  isActive?: boolean
-  sortBy?: 'name' | 'createdAt' | 'updatedAt' | 'saleCount' | 'rating'
-  sortOrder?: 'asc' | 'desc'
+  certificateImages?: File[] // Thay đổi từ string[] thành File[]
+  storyVideo?: File // Thay đổi từ string thành File
+  storyImages?: File[] // Thay đổi từ string[] thành File[]
 }
 
 // Product API Functions
@@ -88,6 +72,13 @@ export const productApi = {
 
   // Create new product with FormData (for file uploads)
   create: async (data: ProductCreateFormData): Promise<ProductResponse> => {
+    // 🔍 DEBUG: Log dữ liệu nhận được từ component
+    console.log('🔍 DEBUG - API received data:', data)
+    console.log('🔍 DEBUG - API data.categoryIds:', data.categoryIds)
+    console.log('🔍 DEBUG - API data.categoryIds type:', typeof data.categoryIds)
+    console.log('🔍 DEBUG - API data.categoryIds isArray:', Array.isArray(data.categoryIds))
+    console.log('🔍 DEBUG - API data.categoryIds length:', data.categoryIds?.length)
+
     const formData = new FormData()
     
     // Add basic product info
@@ -96,10 +87,22 @@ export const productApi = {
     formData.append('Name', data.name)
     formData.append('Description', data.description)
     
-    if (data.categoryId && data.categoryId.length > 0) {
-      data.categoryId.forEach((categoryId, index) => {
-        formData.append(`CategoryId[${index}]`, categoryId)
+    // Fix: Properly handle categoryIds array
+    console.log('🔍 DEBUG - Before processing categoryIds:', data.categoryIds)
+    if (data.categoryIds && data.categoryIds.length > 0) {
+      console.log('🔍 DEBUG - Processing categoryIds array...')
+      data.categoryIds.forEach((categoryId, index) => {
+        console.log(`🔍 DEBUG - Adding CategoryIds[${index}]: ${categoryId}`)
+        formData.append(`CategoryIds[${index}]`, categoryId)
       })
+    } else {
+      console.log('🔍 DEBUG - No categoryIds to process or empty array')
+    }
+    
+    // 🔍 DEBUG: Log FormData contents
+    console.log('🔍 DEBUG - FormData entries:')
+    for (let [key, value] of formData.entries()) {
+      console.log(`🔍 DEBUG - FormData[${key}]:`, value)
     }
     
     if (data.madeBy) formData.append('MadeBy', data.madeBy)

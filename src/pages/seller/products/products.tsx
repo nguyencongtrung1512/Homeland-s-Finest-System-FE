@@ -102,7 +102,11 @@ function ProductsSeller() {
   }
 
   const handleEditProduct = (productId: string) => {
-    navigate(`../${path.updateProduct.replace(':id', productId)}`)
+    navigate(`../${path.updateProductSeller.replace(':id', productId)}`)
+  }
+
+  const handleViewProduct = (productId: string) => {
+    navigate(`../${path.detailProductSeller.replace(':id', productId)}`)
   }
 
   const handlePageChange = (newPage: number) => {
@@ -214,10 +218,20 @@ function ProductsSeller() {
                       </td>
                       <td className='py-3 px-4'>
                         <div className='flex space-x-2'>
-                          <Button title='Xem chi tiết' variant='ghost' size='sm'>
+                          <Button
+                            title='Xem chi tiết'
+                            variant='ghost'
+                            size='sm'
+                            onClick={() => handleViewProduct(product.id)}
+                          >
                             <Eye className='w-4 h-4' />
                           </Button>
-                          <Button variant='ghost' size='sm' onClick={() => handleEditProduct(product.id)}>
+                          <Button
+                            title='Chỉnh sửa'
+                            variant='ghost'
+                            size='sm'
+                            onClick={() => handleEditProduct(product.id)}
+                          >
                             <Edit className='w-4 h-4' />
                           </Button>
                           <Button variant='ghost' size='sm' className='text-red-600 hover:text-red-700'>

@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Check, XCircle, User, Home, Clock } from 'lucide-react'
+import { ArrowLeft, Check, XCircle, Package, FileText, Award, Video, ImageIcon } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { message } from 'antd'
 import { Button } from '../../../components/ui/button'
-import { Card } from '../../../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,10 +19,18 @@ import { productApi, type ProductResponse } from '../../../apis/product.api'
 import { staffApi } from '../../../apis/staff.api'
 import type { Product } from '../../../types'
 
+// Extended interface to match API response
+interface ProductDetail extends Product {
+  variants?: any[]
+  productCategories?: any[]
+  productCertificateDTOs?: any[]
+  editedById?: string | null
+}
+
 function DetailProductStaff() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const [product, setProduct] = useState<Product | null>(null)
+  const [product, setProduct] = useState<ProductDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
 
@@ -50,7 +57,7 @@ function DetailProductStaff() {
         console.log('🔍 DEBUG - Product detail response:', response)
         
         if (response.status === 200 && response.data) {
-          setProduct(response.data)
+          setProduct(response.data as ProductDetail)
         } else {
           message.error('Không thể tải thông tin sản phẩm')
         }
@@ -99,7 +106,7 @@ function DetailProductStaff() {
         note: approveNote.trim()
       })
       
-      if (response.status === 200) {
+      if (response.status === 202) {
         message.success('Sản phẩm đã được duyệt thành công')
         setShowApproveDialog(false)
         setApproveNote('')
@@ -107,7 +114,7 @@ function DetailProductStaff() {
         // Refresh product data
         const updatedProduct = await productApi.getById(product.id)
         if (updatedProduct.status === 200) {
-          setProduct(updatedProduct.data)
+          setProduct(updatedProduct.data as ProductDetail)
         }
       } else {
         message.error('Có lỗi xảy ra khi duyệt sản phẩm')
@@ -146,7 +153,7 @@ function DetailProductStaff() {
         // Refresh product data
         const updatedProduct = await productApi.getById(product.id)
         if (updatedProduct.status === 200) {
-          setProduct(updatedProduct.data)
+          setProduct(updatedProduct.data as ProductDetail)
         }
       } else {
         message.error('Có lỗi xảy ra khi từ chối sản phẩm')
@@ -162,7 +169,13 @@ function DetailProductStaff() {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString)
-      return date.toLocaleDateString('vi-VN')
+      return date.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
     } catch {
       return dateString
     }
@@ -172,6 +185,19 @@ function DetailProductStaff() {
     switch (status?.toLowerCase()) {
       case 'pending':
         return <Badge className='bg-orange-100 text-orange-800'>Chờ duyệt</Badge>
+      case 'approved':
+        return <Badge className='bg-green-100 text-green-800'>Đã duyệt</Badge>
+      case 'rejected':
+        return <Badge className='bg-red-100 text-red-800'>Từ chối</Badge>
+      default:
+        return <Badge className='bg-gray-100 text-gray-800'>{status}</Badge>
+    }
+  }
+
+  const getCertificateStatusTag = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return <Badge className='bg-yellow-100 text-yellow-800'>Chờ xử lý</Badge>
       case 'approved':
         return <Badge className='bg-green-100 text-green-800'>Đã duyệt</Badge>
       case 'rejected':
@@ -251,174 +277,284 @@ function DetailProductStaff() {
         <div></div>
       </div>
 
-      {/* Main Content */}
-      <Card className='shadow-lg p-5'>
-        {/* Product Review Section */}
-        <div className='mb-8'>
-          <div className='flex items-center justify-between mb-6'>
-            <div className='flex items-center gap-2'>
-              <div className='w-3 h-3 bg-orange-500 rounded-full'></div>
-              <h2 className='text-xl font-bold text-gray-900'>Đánh giá sản phẩm</h2>
+      {/* Product Status and Actions */}
+      <Card className='shadow-lg'>
+        <CardHeader>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-4'>
+              <h2 className='text-xl font-bold text-gray-900'>{product.name}</h2>
+              {getStatusTag(product.status)}
+              <Badge variant={product.isActive ? 'default' : 'secondary'}>
+                {product.isActive ? 'Hoạt động' : 'Tạm dừng'}
+              </Badge>
             </div>
+            
+            {/* Staff Actions */}
+            {product.status === 'Pending' && (
+              <div className='flex gap-3'>
+                <Button 
+                  onClick={openApproveDialog} 
+                  disabled={updating}
+                  className='bg-green-600 hover:bg-green-700 text-white'
+                >
+                  <Check size={16} className='mr-2' />
+                  Duyệt sản phẩm
+                </Button>
+                <Button 
+                  onClick={openRejectDialog} 
+                  disabled={updating}
+                  className='bg-red-600 hover:bg-red-700 text-white'
+                >
+                  <XCircle size={16} className='mr-2' />
+                  Từ chối
+                </Button>
+              </div>
+            )}
           </div>
-
-          <div className='flex gap-6'>
-            {/* Product Image */}
-            <div className='w-64 h-64 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden'>
-              {product.productImages && product.productImages.length > 0 ? (
-                <img
-                  src={product.productImages[0]}
-                  alt={product.name}
-                  className='w-full h-full object-cover'
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.style.display = 'none'
-                    target.nextElementSibling!.style.display = 'flex'
-                  }}
-                />
-              ) : null}
-              <div className='text-center'>
-                <span className='text-gray-500 text-sm'>Không có hình ảnh</span>
-              </div>
-            </div>
-
-            {/* Product Details */}
-            <div className='flex-1'>
-              <h3 className='text-2xl font-bold text-gray-900 mb-4'>{product.name}</h3>
-
-              <p className='text-gray-700 mb-4 leading-relaxed'>
-                {product.description}
-              </p>
-
-              <div className='mb-4'>
-                <span className='text-sm text-gray-600 mr-2'>Loại sản phẩm:</span>
-                <span className='font-medium'>{product.typeProduct || 'Chưa xác định'}</span>
-              </div>
-
-              <div className='mb-4'>
-                <span className='text-sm text-gray-600 mr-2'>Xuất xứ:</span>
-                <span className='font-medium'>{product.madeBy || 'Chưa xác định'}</span>
-              </div>
-
-              <div className='mb-6'>
-                <span className='text-sm text-gray-600 mr-2'>Trạng thái:</span>
-                {getStatusTag(product.status)}
-              </div>
-
-              {/* Staff Actions */}
-              <div className='mb-4'>
-                <div className='flex items-center gap-2 mb-3'>
-                  <User size={16} className='text-green-600' />
-                  <span className='font-semibold text-gray-900'>Hành động của Staff</span>
-                </div>
-
-                {product.status === 'Pending' && (
-                  <div className='flex gap-3 mb-3'>
-                    <Button 
-                      onClick={openApproveDialog} 
-                      disabled={updating}
-                      className='bg-green-600 hover:bg-green-700 text-white'
-                    >
-                      <Check size={16} className='mr-2' />
-                      Duyệt sản phẩm
-                    </Button>
-                    <Button 
-                      onClick={openRejectDialog} 
-                      disabled={updating}
-                      className='bg-red-600 hover:bg-red-700 text-white'
-                    >
-                      <XCircle size={16} className='mr-2' />
-                      Từ chối
-                    </Button>
-                  </div>
-                )}
-
-                {product.status !== 'Pending' && (
-                  <div className='text-sm text-gray-600 mb-3'>
-                    Sản phẩm đã được xử lý: {getStatusTag(product.status)}
-                  </div>
-                )}
-
-                {product.note && (
-                  <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
-                    <span className='font-medium text-gray-700'>Ghi chú từ Staff:</span>
-                    <p className='text-gray-600 mt-1'>{product.note}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Store Information and Product History - Side by Side */}
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
-          {/* Store Information Section */}
-          <div className='bg-gray-50 rounded-lg p-6 border border-gray-200'>
-            <div className='flex items-center gap-2 mb-6'>
-              <div className='w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center'>
-                <Home size={18} className='text-blue-600' />
-              </div>
-              <h2 className='text-xl font-bold text-gray-900'>Thông tin cửa hàng</h2>
-            </div>
-
-            <div className='flex items-start gap-4'>
-              <Avatar className='w-16 h-16 shadow-md'>
-                <AvatarFallback className='bg-green-600 text-white'>
-                  <Home size={24} />
-                </AvatarFallback>
-              </Avatar>
-              <div className='flex-1'>
-                <h3 className='text-lg font-bold text-gray-900 mb-2'>ID: {product.storeId}</h3>
-                <p className='text-gray-600 mb-4 text-sm'>Thông tin cửa hàng</p>
-
-                <div className='space-y-3'>
-                  <div className='flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100'>
-                    <div className='w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center'>
-                      <User size={14} className='text-gray-500' />
-                    </div>
-                    <span className='text-gray-700 font-medium'>Store ID: {product.storeId}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Product History Section */}
-          <div className='bg-gray-50 rounded-lg p-6 border border-gray-200'>
-            <div className='flex items-center gap-2 mb-6'>
-              <div className='w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center'>
-                <Clock size={18} className='text-orange-600' />
-              </div>
-              <h2 className='text-xl font-bold text-gray-900'>Thông tin sản phẩm</h2>
-            </div>
-
-            <div className='space-y-4'>
-              <div className='bg-white rounded-lg p-4 border border-gray-100'>
-                <div className='flex items-center justify-between mb-2'>
-                  <span className='text-sm font-medium text-gray-600'>Ngày tạo</span>
-                </div>
-                <span className='text-gray-900 font-semibold'>{formatDate(product.createdAt)}</span>
-              </div>
-
-              <div className='bg-white rounded-lg p-4 border border-gray-100'>
-                <div className='flex items-center justify-between mb-2'>
-                  <span className='text-sm font-medium text-gray-600'>Đánh giá</span>
-                </div>
-                <span className='text-gray-900 font-semibold'>
-                  {product.rating?.toFixed(1) || '0.0'} ⭐ ({product.reviewCount || 0} đánh giá)
-                </span>
-              </div>
-
-              <div className='bg-white rounded-lg p-4 border border-gray-100'>
-                <div className='flex items-center justify-between mb-2'>
-                  <span className='text-sm font-medium text-gray-600'>Lượt bán</span>
-                </div>
-                <span className='text-gray-900 font-semibold'>{product.saleCount || 0}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        </CardHeader>
       </Card>
+
+      {/* Product Information */}
+      <div className="space-y-6">
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-blue-600" />
+              Thông tin sản phẩm
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-600">Tên sản phẩm</label>
+              <p className="mt-1 text-gray-900 font-medium">{product.name}</p>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-600">Mô tả</label>
+              <p className="mt-1 text-gray-900 whitespace-pre-wrap">{product.description}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Nhà sản xuất</label>
+                <p className="mt-1 text-gray-900">{product.madeBy || 'Chưa cập nhật'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Loại sản phẩm</label>
+                <p className="mt-1 text-gray-900">{product.typeProduct || 'Chưa xác định'}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Province ID</label>
+                <p className="mt-1 text-gray-900">{product.provinceId}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Store ID</label>
+                <p className="mt-1 text-gray-900 font-mono text-xs">{product.storeId}</p>
+              </div>
+            </div>
+
+            {product.editedById && (
+              <div>
+                <label className="text-sm font-medium text-gray-600">Được chỉnh sửa bởi</label>
+                <p className="mt-1 text-gray-900 font-mono text-xs">{product.editedById}</p>
+              </div>
+            )}
+
+            {product.note && (
+              <div>
+                <label className="text-sm font-medium text-gray-600">Ghi chú từ Staff</label>
+                <div className="mt-1 bg-gray-50 rounded-lg p-3 border">
+                  <p className="text-gray-900">{product.note}</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Media Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Product Images */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-purple-600" />
+                Hình ảnh sản phẩm
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {product.productImages && product.productImages.length > 0 ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {product.productImages.map((image, index) => (
+                    <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                      <img 
+                        src={image} 
+                        alt={`Product ${index + 1}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                        onClick={() => window.open(image, '_blank')}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Không có hình ảnh</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Product Video */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Video className="w-5 h-5 text-red-600" />
+                Video sản phẩm
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {product.productVideo ? (
+                <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                  <video 
+                    src={product.productVideo} 
+                    controls 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Video className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Không có video</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Categories */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-indigo-600" />
+              Danh mục sản phẩm
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {product.productCategories && product.productCategories.length > 0 ? (
+              <div className="grid gap-4">
+                {product.productCategories.map((category: any, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-gray-900">{category.name}</h3>
+                      <Badge variant={category.isActive ? 'default' : 'secondary'}>
+                        {category.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">{category.description}</p>
+                    <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
+                      <div>
+                        <span className="font-medium">Ngày tạo:</span> {formatDate(category.createdAt)}
+                      </div>
+                      <div>
+                        <span className="font-medium">Cập nhật:</span> {formatDate(category.updatedAt)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Chưa có danh mục nào</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Certificates */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-yellow-600" />
+              Chứng nhận sản phẩm
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {product.productCertificateDTOs && product.productCertificateDTOs.length > 0 ? (
+              <div className="grid gap-4">
+                {product.productCertificateDTOs.map((cert: any, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-medium text-gray-900 mb-2">Chứng nhận #{index + 1}</h3>
+                        {getCertificateStatusTag(cert.status)}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <label className="font-medium text-gray-600">Ngày nộp:</label>
+                        <p className="text-gray-900">{formatDate(cert.submittedDate)}</p>
+                      </div>
+                      
+                      {cert.decisionDate && (
+                        <div>
+                          <label className="font-medium text-gray-600">Ngày quyết định:</label>
+                          <p className="text-gray-900">{formatDate(cert.decisionDate)}</p>
+                        </div>
+                      )}
+
+                      {cert.reviewedByStaffId && (
+                        <div>
+                          <label className="font-medium text-gray-600">Staff xử lý:</label>
+                          <p className="text-gray-900 font-mono text-xs">{cert.reviewedByStaffId}</p>
+                        </div>
+                      )}
+
+                      {cert.updatedAt && (
+                        <div>
+                          <label className="font-medium text-gray-600">Cập nhật lần cuối:</label>
+                          <p className="text-gray-900">{formatDate(cert.updatedAt)}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {cert.staffNotes && (
+                      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <label className="font-medium text-blue-800">Ghi chú từ Staff:</label>
+                        <p className="text-blue-700 mt-1">{cert.staffNotes}</p>
+                      </div>
+                    )}
+
+                    {cert.imageUrl && (
+                      <div className="mt-4">
+                        <label className="font-medium text-gray-600">Hình ảnh chứng nhận:</label>
+                        <div className="mt-2 w-32 h-32 bg-gray-100 rounded-lg overflow-hidden">
+                          <img 
+                            src={cert.imageUrl} 
+                            alt={`Certificate ${index + 1}`}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                            onClick={() => window.open(cert.imageUrl, '_blank')}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Award className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Chưa có chứng nhận nào</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Dialog Xác nhận Duyệt */}
       <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>

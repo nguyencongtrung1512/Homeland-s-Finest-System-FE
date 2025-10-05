@@ -172,11 +172,11 @@ export default function useRouteElements() {
               element: <CreateProduct />
             },
             {
-              path: path.updateProduct,
+              path: path.updateProductSeller,
               element: <UpdateProduct />
             },
             {
-              path: path.detailProduct,
+              path: path.detailProductSeller,
               element: <DetailProductSeller />
             },
             {
