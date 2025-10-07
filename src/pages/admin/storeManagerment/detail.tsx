@@ -33,6 +33,7 @@ function StoreDetailAdmin() {
   const [store, setStore] = useState<StoreResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [detailedError, setDetailedError] = useState<any>(null)
 
   // Staff assignment states
   const [staffList, setStaffList] = useState<Staff[]>([])
@@ -47,6 +48,63 @@ function StoreDetailAdmin() {
   const [statusLoading, setStatusLoading] = useState(false)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
 
+  // Helper function để xử lý lỗi từ backend
+  const handleApiError = (error: any, defaultMessage: string) => {
+    console.error('API Error:', error)
+    
+    // Kiểm tra nếu error có response từ axios
+    if (error?.response?.data) {
+      const backendError = error.response.data
+      
+      // Xử lý validation errors (cấu trúc như trong hình)
+      if (backendError.errors && typeof backendError.errors === 'object') {
+        const errorMessages: string[] = []
+        
+        // Duyệt qua tất cả các field có lỗi
+        Object.keys(backendError.errors).forEach(field => {
+          const fieldErrors = backendError.errors[field]
+          if (Array.isArray(fieldErrors)) {
+            errorMessages.push(...fieldErrors)
+          } else if (typeof fieldErrors === 'string') {
+            errorMessages.push(fieldErrors)
+          }
+        })
+        
+        if (errorMessages.length > 0) {
+          return errorMessages.join(', ')
+        }
+      }
+      
+      // Nếu có title (như trong hình)
+      if (backendError.title) {
+        return backendError.title
+      }
+      
+      // Ưu tiên hiển thị message từ backend
+      if (backendError.message) {
+        return backendError.message
+      }
+      
+      // Nếu có errors array (validation errors cũ)
+      if (backendError.errors && Array.isArray(backendError.errors)) {
+        return backendError.errors.join(', ')
+      }
+      
+      // Nếu có error string
+      if (typeof backendError.error === 'string') {
+        return backendError.error
+      }
+    }
+    
+    // Nếu error có message
+    if (error?.message) {
+      return error.message
+    }
+    
+    // Fallback về message mặc định
+    return defaultMessage
+  }
+
   const fetchStoreDetail = async () => {
     if (!storeId) return
 
@@ -57,22 +115,15 @@ function StoreDetailAdmin() {
       const response = await storeApi.getStoreById(storeId)
       console.log('API Response:', response) // Debug log
 
-      // Xử lý response có thể có nhiều format khác nhau
       let storeData = null
 
       if (response) {
-        // Trường hợp 1: response trực tiếp là StoreResponse
         if (response.id || response.storeName) {
           storeData = response
         }
-        // Trường hợp 2: response có cấu trúc { data: StoreResponse }
         else if ((response as any).data && ((response as any).data.id || (response as any).data.storeName)) {
           storeData = (response as any).data
         }
-        // Trường hợp 3: response có cấu trúc { status: 200, data: StoreResponse }
-        // else if ((response as any).status && (response as any).data && ((response as any).data.id || (response as any).data.storeName)) {
-        //   storeData = (response as any).data
-        // }
       }
 
       if (storeData) {
@@ -91,10 +142,10 @@ function StoreDetailAdmin() {
           setError('Không tìm thấy thông tin cửa hàng')
         }
       }
-    } catch (err: unknown) {
-      console.error('API Error:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải thông tin cửa hàng'
+    } catch (err: any) {
+      const errorMessage = handleApiError(err, 'Có lỗi xảy ra khi tải thông tin cửa hàng')
       setError(errorMessage)
+      setDetailedError(err)
     } finally {
       setLoading(false)
     }
@@ -106,8 +157,9 @@ function StoreDetailAdmin() {
       if (Array.isArray(response)) setStaffList(response)
       else if (response && response.data && Array.isArray(response.data)) setStaffList(response.data)
       else toast.error('Định dạng dữ liệu nhân viên không đúng')
-    } catch {
-      toast.error('Có lỗi xảy ra khi tải danh sách nhân viên')
+    } catch (error: any) {
+      const errorMessage = handleApiError(error, 'Có lỗi xảy ra khi tải danh sách nhân viên')
+      toast.error(errorMessage)
     }
   }
 
@@ -122,7 +174,9 @@ function StoreDetailAdmin() {
       Pending: { text: 'Chờ duyệt', color: 'bg-yellow-500', textColor: 'text-yellow-700' },
       Rejected: { text: 'Từ chối', color: 'bg-red-500', textColor: 'text-red-700' },
       Processing: { text: 'Nhân viên xử lí', color: 'bg-indigo-500', textColor: 'text-indigo-700' },
-      ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', color: 'bg-purple-500', textColor: 'text-purple-700' }
+     ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', color: 'bg-purple-500', textColor: 'text-purple-700' },
+      Inactive: { text: 'Bị khóa', color: 'bg-red-500', textColor: 'text-red-700' },
+      Active: { text: 'Hoạt động trở lại', color: 'bg-green-500', textColor: 'text-green-700' }
     }
     return configs[status as keyof typeof configs] || configs.Pending
   }
@@ -155,10 +209,23 @@ function StoreDetailAdmin() {
   }
 
   const handleSaveReason = () => {
-    if (!reason.trim()) {
+    const trimmedReason = reason.trim()
+    
+    if (!trimmedReason) {
       toast.error('Vui lòng nhập lý do')
       return
     }
+    
+    if (trimmedReason.length < 10) {
+      toast.error('Lý do phải có ít nhất 10 ký tự')
+      return
+    }
+    
+    if (trimmedReason.length > 200) {
+      toast.error('Lý do không được vượt quá 200 ký tự')
+      return
+    }
+    
     setStatusDialogOpen(false)
     setConfirmDialogOpen(true)
   }
@@ -175,7 +242,7 @@ function StoreDetailAdmin() {
 
       const response = await adminApi.statusStore(store.id, statusData)
 
-      if (response.status === 200 || response.status === 202) {
+      if (response) {
         const actionText = {
           'Approve': 'duyệt',
           'Reject': 'từ chối',
@@ -188,9 +255,9 @@ function StoreDetailAdmin() {
       } else {
         toast.error('Có lỗi xảy ra khi cập nhật trạng thái')
       }
-    } catch (error) {
-      console.error('Status store error:', error)
-      toast.error('Có lỗi xảy ra khi cập nhật trạng thái')
+    } catch (error: any) {
+      const errorMessage = handleApiError(error, 'Có lỗi xảy ra khi cập nhật trạng thái')
+      toast.error(errorMessage)
     } finally {
       setStatusLoading(false)
       setConfirmDialogOpen(false)
@@ -225,8 +292,9 @@ function StoreDetailAdmin() {
       } else {
         toast.error('Có lỗi xảy ra khi gán nhân viên')
       }
-    } catch {
-      toast.error('Có lỗi xảy ra khi gán nhân viên')
+    } catch (error: any) {
+      const errorMessage = handleApiError(error, 'Có lỗi xảy ra khi gán nhân viên')
+      toast.error(errorMessage)
     } finally {
       setAssignLoading(false)
     }
@@ -246,8 +314,33 @@ function StoreDetailAdmin() {
   if (error || !store) {
     return (
       <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
-        <div className='text-center'>
+        <div className='text-center max-w-md'>
           <p className='text-red-500 mb-4'>{error || 'Không tìm thấy thông tin cửa hàng'}</p>
+          
+          {/* Hiển thị thông tin lỗi chi tiết từ backend */}
+          {detailedError && (
+            <div className='mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-left'>
+              <h4 className='text-sm font-medium text-red-800 mb-2'>Chi tiết lỗi:</h4>
+              <div className='text-xs text-red-700 space-y-1'>
+                {detailedError?.response?.data?.message && (
+                  <p><strong>Message:</strong> {detailedError.response.data.message}</p>
+                )}
+                {detailedError?.response?.data?.errors && Array.isArray(detailedError.response.data.errors) && (
+                  <p><strong>Validation Errors:</strong> {detailedError.response.data.errors.join(', ')}</p>
+                )}
+                {detailedError?.response?.status && (
+                  <p><strong>Status Code:</strong> {detailedError.response.status}</p>
+                )}
+                {detailedError?.response?.statusText && (
+                  <p><strong>Status Text:</strong> {detailedError.response.statusText}</p>
+                )}
+                {detailedError?.message && (
+                  <p><strong>Error Message:</strong> {detailedError.message}</p>
+                )}
+              </div>
+            </div>
+          )}
+          
           <Button onClick={() => navigate('/admin/storeManagement')} variant='outline'>
             <ArrowLeft className='w-4 h-4 mr-2' />
             Quay lại danh sách
@@ -462,6 +555,37 @@ function StoreDetailAdmin() {
               </CardContent>
             </Card>
 
+            {/* Ghi chú của Admin */}
+            <Card className='border-0 shadow-sm'>
+              <CardContent className='p-6'>
+                <div className='flex items-start gap-4'>
+                  <div className='w-12 h-12 bg-red-100 rounded-full flex items-center justify-center'>
+                    <User className='w-6 h-6 text-red-600' />
+                  </div>
+                  <div className='flex-1'>
+                    <h3 className='text-lg font-semibold text-gray-900 mb-4'>Ghi chú của Admin</h3>
+
+                    <div className='space-y-4'>
+                      {/* Ghi chú của Admin */}
+                      {store.adminNote ? (
+                        <div>
+                          <span className='text-sm text-gray-500'>Ghi chú:</span>
+                          <p className='text-sm font-medium text-gray-900 bg-red-50 p-3 rounded-lg mt-1 border-l-4 border-red-200'>
+                            {store.adminNote}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className='text-center py-8 text-gray-500'>
+                          <User className='w-12 h-12 mx-auto mb-2 text-gray-300' />
+                          <p>Chưa có ghi chú từ Admin</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Ghi chú của nhân viên */}
             <Card className='border-0 shadow-sm'>
               <CardContent className='p-6'>
@@ -585,7 +709,7 @@ function StoreDetailAdmin() {
                   )}
 
                   {/* Banned: Unban (Mở khóa cửa hàng) */}
-                  {store.status === 'Banned' && (
+                  {store.status === 'Inactive' && (
                     <Button
                       onClick={() => handleStatusAction('Unban')}
                       className='w-full bg-blue-500 hover:bg-blue-600 text-white'
@@ -596,7 +720,7 @@ function StoreDetailAdmin() {
                   )}
 
                   {/* Các trạng thái khác: Yêu cầu chỉnh sửa */}
-                  {store.status !== 'Pending' && store.status !== 'ReviewedByStaff' && store.status !== 'Approved' && store.status !== 'Banned' && (
+                  {store.status !== 'Pending' && store.status !== 'ReviewedByStaff' && store.status !== 'Approved' && store.status !== 'Inactive' && (
                     <Button
                       onClick={handleRequestEdit}
                       className='w-full bg-yellow-500 hover:bg-yellow-600 text-white'
@@ -724,7 +848,7 @@ function StoreDetailAdmin() {
                 </div>
               </div>
 
-              <div className='space-y-2'>
+              <div className='space-y-3'>
                 <Label htmlFor='reason' className='text-sm font-medium text-gray-700'>
                   Lý do {selectedAction === 'Approve' ? 'duyệt' : selectedAction === 'Reject' ? 'từ chối' : selectedAction === 'Ban' ? 'khóa' : 'mở khóa'} *
                 </Label>
@@ -734,8 +858,15 @@ function StoreDetailAdmin() {
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   className='min-h-[100px] resize-none'
+                  maxLength={200}
                 />
-                <p className='text-xs text-gray-500'>Lý do này sẽ được gửi đến chủ cửa hàng</p>
+                <div className='flex pt-3 justify-between items-center'>
+                  <p className='text-xs text-gray-500'>Lý do này sẽ được gửi đến chủ cửa hàng</p>
+                  <p className={`text-xs ${reason.length < 10 ? 'text-red-500' : reason.length > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                    {reason.length}/200 ký tự
+                    {reason.length < 10 && reason.length > 0 && ' (tối thiểu 10 ký tự)'}
+                  </p>
+                </div>
               </div>
 
               <div className='flex justify-end gap-3 pt-2'>
@@ -744,7 +875,7 @@ function StoreDetailAdmin() {
                 </Button>
                 <Button
                   onClick={handleSaveReason}
-                  disabled={!reason.trim()}
+                  disabled={!reason.trim() || reason.trim().length < 10 || reason.trim().length > 200}
                   className={
                     selectedAction === 'Approve' ? 'bg-green-500 hover:bg-green-600 text-white' :
                       selectedAction === 'Reject' || selectedAction === 'Ban' ? 'bg-red-500 hover:bg-red-600 text-white' :

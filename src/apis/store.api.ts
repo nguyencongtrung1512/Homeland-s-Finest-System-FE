@@ -15,7 +15,7 @@ export interface StoreResponse {
   address: string;
   logoUrl: string | null;
   coverImageUrl: string | null;
-  status: 'ReviewedByStaff' | 'Approved' | 'Pending' | 'Rejected' | 'Active' | 'Blocked';
+  status: 'ReviewedByStaff' | 'Approved' | 'Pending' | 'Rejected' | 'Active'  | 'Inactive';
   adminNote: string | null;
   reviewedBy: string | null; // ID của nhân viên đã đánh giá
   approvedBy: string | null; // ID của nhân viên đã duyệt/chấp thuận

@@ -3,9 +3,20 @@ import type { ProductVariant, ProductVariantInput } from '../types/productVarian
 
 const API_URL = `/Product`
 
+// Type for creating single variant
+interface CreateVariantRequest {
+  variantName: string
+  quantity: number
+  price: number
+  length?: number
+  width?: number
+  height?: number
+  weight?: number
+}
+
 export const productVariantApi = {
-  // Create product variant
-  create: async (productId: string, data: ProductVariantInput) => {
+  // Create single product variant
+  create: async (productId: string, data: CreateVariantRequest) => {
     return await axiosInstance.post<ProductVariant>(`${API_URL}/${productId}/variants`, data)
   },
   // Update variant

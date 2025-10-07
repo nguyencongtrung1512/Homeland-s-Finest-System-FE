@@ -73,6 +73,18 @@ function CreateProduct() {
     }
   ])
 
+  // State for managing variant form visibility
+  const [showVariantForm, setShowVariantForm] = useState(false)
+  const [editingVariant, setEditingVariant] = useState<number | null>(null)
+  const [newVariant, setNewVariant] = useState({
+    name: '',
+    price: 0,
+    stock: 0,
+    unit: '',
+    weight: '',
+    dimensions: ''
+  })
+
   // Helper function to create preview URL
   const createPreviewUrl = (file: File): string => {
     return URL.createObjectURL(file)
@@ -181,6 +193,91 @@ function CreateProduct() {
     if (productVariants.length > 1) {
       setProductVariants((prev) => prev.filter((variant) => variant.id !== variantId))
     }
+  }
+
+  // New functions for variant form management
+  const handleAddVariantClick = () => {
+    setNewVariant({
+      name: '',
+      price: 0,
+      stock: 0,
+      unit: '',
+      weight: '',
+      dimensions: ''
+    })
+    setEditingVariant(null)
+    setShowVariantForm(true)
+  }
+
+  const handleEditVariant = (variantId: number) => {
+    const variant = productVariants.find(v => v.id === variantId)
+    if (variant) {
+      setNewVariant({
+        name: variant.name,
+        price: variant.price,
+        stock: variant.stock,
+        unit: variant.unit,
+        weight: variant.weight,
+        dimensions: variant.dimensions
+      })
+      setEditingVariant(variantId)
+      setShowVariantForm(true)
+    }
+  }
+
+  const handleSaveVariant = () => {
+    if (!newVariant.name.trim()) {
+      alert('Vui lòng nhập tên loại sản phẩm')
+      return
+    }
+    if (newVariant.price <= 0) {
+      alert('Vui lòng nhập giá bán hợp lệ')
+      return
+    }
+    if (newVariant.stock < 0) {
+      alert('Vui lòng nhập số lượng tồn kho hợp lệ')
+      return
+    }
+
+    if (editingVariant) {
+      // Update existing variant
+      setProductVariants(prev => 
+        prev.map(v => v.id === editingVariant ? { ...v, ...newVariant } : v)
+      )
+    } else {
+      // Add new variant
+      const newId = Math.max(...productVariants.map((v) => v.id)) + 1
+      setProductVariants(prev => [...prev, { id: newId, ...newVariant }])
+    }
+
+    // Reset form
+    setNewVariant({
+      name: '',
+      price: 0,
+      stock: 0,
+      unit: '',
+      weight: '',
+      dimensions: ''
+    })
+    setEditingVariant(null)
+    setShowVariantForm(false)
+  }
+
+  const handleCancelVariant = () => {
+    setNewVariant({
+      name: '',
+      price: 0,
+      stock: 0,
+      unit: '',
+      weight: '',
+      dimensions: ''
+    })
+    setEditingVariant(null)
+    setShowVariantForm(false)
+  }
+
+  const handleNewVariantChange = (field: string, value: string | number) => {
+    setNewVariant(prev => ({ ...prev, [field]: value }))
   }
 
   const handleCancel = () => {

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -8,10 +9,10 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Badge } from '../../../components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { Checkbox } from '../../../components/ui/checkbox'
+import { Switch } from '../../../components/ui/switch'
 import {
   Upload,
   BookOpen,
-  Shield,
   ChevronRight,
   Plus,
   Video,
@@ -22,11 +23,15 @@ import {
   FileText,
   Award,
   Trash2,
-  Image
+  Image,
+  DollarSign,
+  Info
 } from 'lucide-react'
 import { productApi } from '../../../apis/product.api'
+import { productVariantApi } from '../../../apis/productVariant.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import type { Product } from '../../../types'
+import ProductCertificate from './poductCertificate'
 
 interface ProductDetail extends Product {
   variants?: any[]
@@ -58,6 +63,20 @@ function UpdateProduct() {
     certificates: false
   })
 
+  // State for managing variant form visibility
+  const [showVariantForm, setShowVariantForm] = useState(false)
+  const [editingVariant, setEditingVariant] = useState<string | null>(null)
+  const [newVariant, setNewVariant] = useState({
+    variantName: '',
+    quantity: 0,
+    price: 0,
+    isActive: true,
+    length: 0,
+    width: 0,
+    height: 0,
+    weight: 0
+  })
+
   // Form data for editing
   const [editData, setEditData] = useState({
     basicInfo: {
@@ -69,16 +88,16 @@ function UpdateProduct() {
       isActive: true,
       existingImages: [] as string[], // URLs của ảnh cũ được giữ lại
       newImageFiles: [] as File[], // File objects của ảnh mới
-      productVideo: ''
+      productVideo: '' as string | File
     },
-    variants: [],
+    variants: [] as any[],
     story: {
       title: '',
       content: '',
-      images: [],
+      images: [] as string[],
       video: ''
     },
-    certificates: []
+    certificates: [] as any[]
   })
 
   // Fetch all categories
@@ -131,16 +150,6 @@ function UpdateProduct() {
     }))
   }
 
-  // Get all images for display (existing + new)
-  const getAllImages = () => {
-    const existingImages = editData.basicInfo.existingImages.map(url => ({ type: 'existing', url, file: null }))
-    const newImages = editData.basicInfo.newImageFiles.map(file => ({
-      type: 'new',
-      url: URL.createObjectURL(file),
-      file
-    }))
-    return [...existingImages, ...newImages]
-  }
 
   // Handle category selection
   const handleCategoryChange = (categoryId: string, checked: boolean) => {
@@ -153,6 +162,203 @@ function UpdateProduct() {
           : prev.basicInfo.categoryIds.filter((id) => id !== categoryId)
       }
     }))
+  }
+
+  // New functions for variant form management
+  const handleAddVariantClick = () => {
+    setNewVariant({
+      variantName: '',
+      quantity: 0,
+      price: 0,
+      isActive: true,
+      length: 0,
+      width: 0,
+      height: 0,
+      weight: 0
+    })
+    setEditingVariant(null)
+    setShowVariantForm(true)
+  }
+
+  const handleEditVariant = (variantId: string) => {
+    const variant = editData.variants.find((v: any) => v.id === variantId)
+    if (variant) {
+      setNewVariant({
+        variantName: variant.variantName || '',
+        quantity: variant.quantity || 0,
+        price: variant.price || 0,
+        isActive: variant.isActive || true,
+        length: variant.length || 0,
+        width: variant.width || 0,
+        height: variant.height || 0,
+        weight: variant.weight || 0
+      })
+      setEditingVariant(variantId)
+      setShowVariantForm(true)
+    }
+  }
+
+  const handleSaveVariant = async () => {
+    if (!newVariant.variantName.trim()) {
+      toast.error('Vui lòng nhập tên loại sản phẩm')
+      return
+    }
+    if (newVariant.price <= 0) {
+      toast.error('Vui lòng nhập giá bán hợp lệ')
+      return
+    }
+    if (newVariant.quantity < 0) {
+      toast.error('Vui lòng nhập số lượng tồn kho hợp lệ')
+      return
+    }
+
+    try {
+      if (editingVariant) {
+        // Update existing variant - gọi API để cập nhật
+        console.log('🔄 Updating variant:', editingVariant, 'with data:', newVariant)
+        
+        // Chuẩn bị data để cập nhật
+        const updateData = {
+          productId: id!,
+          variantName: newVariant.variantName,
+          quantity: newVariant.quantity,
+          price: newVariant.price,
+          length: newVariant.length,
+          width: newVariant.width,
+          height: newVariant.height,
+          weight: newVariant.weight
+        }
+
+        // Cập nhật thông tin variant
+        const response = await productVariantApi.update(id!, editingVariant, updateData)
+        console.log('🔄 Update response:', response)
+        
+        if (response.status === 200) {
+          console.log('✅ Variant updated successfully:', newVariant.variantName)
+          
+          // Cập nhật trạng thái isActive riêng biệt
+          if (newVariant.isActive) {
+            console.log('🔄 Activating variant:', newVariant.variantName)
+            await productVariantApi.activate(editingVariant)
+            console.log('✅ Variant activated:', newVariant.variantName)
+          } else {
+            console.log('🔄 Deactivating variant:', newVariant.variantName)
+            await productVariantApi.deactivate(editingVariant)
+            console.log('✅ Variant deactivated:', newVariant.variantName)
+          }
+
+          // Cập nhật local state sau khi API thành công
+          setEditData(prev => ({
+            ...prev,
+            variants: prev.variants.map((v: any) => v.id === editingVariant ? { ...v, ...newVariant } : v)
+          }))
+          
+          toast.success('Cập nhật loại sản phẩm thành công!')
+        } else {
+          toast.error('Có lỗi xảy ra khi cập nhật loại sản phẩm')
+        }
+      } else {
+        // Add new variant - gọi API để tạo variant mới
+        if (!id) {
+          toast.error('Không tìm thấy ID sản phẩm')
+          return
+        }
+
+        // Chuẩn bị data để gửi API - thử format array như backend mong đợi
+        const variantData = {
+          variants: [{
+            variantName: newVariant.variantName,
+            quantity: newVariant.quantity,
+            price: newVariant.price,
+            length: newVariant.length,
+            width: newVariant.width,
+            height: newVariant.height,
+            weight: newVariant.weight
+          }]
+        }
+
+        console.log('🚀 Creating variant with data:', variantData)
+        console.log('🚀 Product ID:', id)
+
+        // Gọi API từ productVariant.api.ts
+        const response = await productVariantApi.create(id, variantData)
+        console.log('🚀 API Response:', response)
+
+        if (response.status === 200) {
+          // API trả về ProductVariant object trực tiếp
+          const createdVariant = response.data
+          
+          if (createdVariant && createdVariant.id) {
+            const newVariantWithId = {
+              id: createdVariant.id,
+              productId: id,
+              ...newVariant,
+              isActive: true // Backend tự động set isActive = true
+            }
+
+            setEditData(prev => ({
+              ...prev,
+              variants: [...prev.variants, newVariantWithId]
+            }))
+
+            toast.success('Tạo loại sản phẩm thành công!')
+          } else {
+            console.error('❌ Unexpected response format:', createdVariant)
+            toast.error('Không nhận được dữ liệu variant từ server')
+          }
+        } else {
+          toast.error('Có lỗi xảy ra khi tạo loại sản phẩm')
+        }
+      }
+
+      // Reset form
+      setNewVariant({
+        variantName: '',
+        quantity: 0,
+        price: 0,
+        isActive: true,
+        length: 0,
+        width: 0,
+        height: 0,
+        weight: 0
+      })
+      setEditingVariant(null)
+      setShowVariantForm(false)
+    } catch (error: any) {
+      console.error('Error saving variant:', error)
+      
+      // Lấy thông báo lỗi chi tiết từ backend
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi lưu loại sản phẩm'
+      toast.error(`Lỗi: ${errorMessage}`)
+    }
+  }
+
+  const handleCancelVariant = () => {
+    setNewVariant({
+      variantName: '',
+      quantity: 0,
+      price: 0,
+      isActive: true,
+      length: 0,
+      width: 0,
+      height: 0,
+      weight: 0
+    })
+    setEditingVariant(null)
+    setShowVariantForm(false)
+  }
+
+  const handleNewVariantChange = (field: string, value: string | number | boolean) => {
+    setNewVariant(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleRemoveVariant = (variantId: string) => {
+    if (editData.variants.length > 1) {
+      setEditData(prev => ({
+        ...prev,
+        variants: prev.variants.filter((v: any) => v.id !== variantId)
+      }))
+    }
   }
   // Fetch product details
   useEffect(() => {
@@ -170,22 +376,22 @@ function UpdateProduct() {
             basicInfo: {
               name: response.data.name || '',
               description: response.data.description || '',
-              categoryIds: response.data.productCategories?.map((cat: any) => cat.id) || [],
+              categoryIds: (response.data as any).productCategories?.map((cat: any) => cat.id) || [],
               madeBy: response.data.madeBy || '',
               typeProduct: response.data.typeProduct || '',
               isActive: response.data.isActive || true,
-              existingImages: response.data.productImages || [],
+              existingImages: (response.data as any).productImages || [],
               newImageFiles: [],
-              productVideo: response.data.productVideo || ''
+              productVideo: (response.data as any).productVideo || ''
             },
-            variants: response.data.variants || [],
-            story: response.data.productStory || {
+            variants: (response.data as any).variants || [],
+            story: (response.data as any).productStory || {
               title: '',
               content: '',
               images: [],
               video: ''
             },
-            certificates: response.data.productCertificateDTOs || []
+            certificates: (response.data as any).productCertificateDTOs || []
           })
         }
       } catch (err) {
@@ -216,13 +422,13 @@ function UpdateProduct() {
           basicInfo: {
             name: productDetail.name || '',
             description: productDetail.description || '',
-            categoryIds: productDetail.productCategories?.map((cat: any) => cat.id) || [],
+            categoryIds: (productDetail as any).productCategories?.map((cat: any) => cat.id) || [],
             madeBy: productDetail.madeBy || '',
             typeProduct: productDetail.typeProduct || '',
             isActive: productDetail.isActive || true,
-            existingImages: productDetail.productImages || [],
+            existingImages: (productDetail as any).productImages || [],
             newImageFiles: [],
-            productVideo: productDetail.productVideo || ''
+            productVideo: (productDetail as any).productVideo || ''
           }
         }))
       }
@@ -293,21 +499,22 @@ function UpdateProduct() {
               basicInfo: {
                 name: response.data.name || '',
                 description: response.data.description || '',
-                categoryIds: response.data.productCategories?.map((cat: any) => cat.id) || [],
+                categoryIds: (response.data as any).productCategories?.map((cat: any) => cat.id) || [],
                 madeBy: response.data.madeBy || '',
                 typeProduct: response.data.typeProduct || '',
                 isActive: response.data.isActive || true,
-                existingImages: response.data.productImages || [],
+                existingImages: (response.data as any).productImages || [],
                 newImageFiles: [],
-                productVideo: response.data.productVideo || ''
+                productVideo: (response.data as any).productVideo || ''
               }
             }))
           }
           break
         }
         case 'variants': {
-          // API call for product variants
-          console.log('Saving variants:', editData.variants)
+          // Variants are now handled individually in handleSaveVariant
+          // No bulk update needed
+          console.log('🔄 Variants are handled individually')
           break
         }
         case 'story': {
@@ -324,9 +531,12 @@ function UpdateProduct() {
 
       // Turn off edit mode after saving
       toggleEditMode(section)
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Error saving ${section}:`, err)
-      // TODO: Show error toast
+      
+      // Lấy thông báo lỗi chi tiết từ backend
+      const errorMessage = err.response?.data?.message || err.message || `Có lỗi xảy ra khi lưu ${section}`
+      toast.error(`Lỗi: ${errorMessage}`)
     }
   }
 
@@ -341,13 +551,13 @@ function UpdateProduct() {
             ? {
               name: productDetail.name || '',
               description: productDetail.description || '',
-              categoryIds: productDetail.productCategories?.map((cat: any) => cat.id) || [],
+              categoryIds: (productDetail as any).productCategories?.map((cat: any) => cat.id) || [],
               madeBy: productDetail.madeBy || '',
               typeProduct: productDetail.typeProduct || '',
               isActive: productDetail.isActive || true,
-              existingImages: productDetail.productImages || [],
+              existingImages: (productDetail as any).productImages || [],
               newImageFiles: [],
-              productVideo: productDetail.productVideo || ''
+              productVideo: (productDetail as any).productVideo || ''
             }
             : prev[section]
       }))
@@ -774,9 +984,9 @@ function UpdateProduct() {
                   <div>
                     <Label className='text-sm font-medium text-gray-600'>Danh mục sản phẩm</Label>
                     <div className='mt-2'>
-                      {productDetail.productCategories && productDetail.productCategories.length > 0 ? (
+                      {(productDetail as any).productCategories && (productDetail as any).productCategories.length > 0 ? (
                         <div className='flex flex-wrap gap-2'>
-                          {productDetail.productCategories.map((category) => (
+                          {(productDetail as any).productCategories.map((category: any) => (
                             <Badge
                               key={category.id}
                               variant='secondary'
@@ -798,11 +1008,11 @@ function UpdateProduct() {
                   </div>
 
                   {/* Display current images */}
-                  {productDetail.productImages && productDetail.productImages.length > 0 && (
+                  {(productDetail as any).productImages && (productDetail as any).productImages.length > 0 && (
                     <div>
                       <Label className='text-sm font-medium text-gray-600'>Hình ảnh sản phẩm</Label>
                       <div className='mt-2 grid grid-cols-2 md:grid-cols-4 gap-4'>
-                        {productDetail.productImages.map((image, index) => (
+                        {(productDetail as any).productImages.map((image: any, index: number) => (
                           <div key={index} className='aspect-square bg-gray-100 rounded-lg overflow-hidden'>
                             <img src={image} alt={`Product ${index + 1}`} className='w-full h-full object-cover' />
                           </div>
@@ -812,11 +1022,11 @@ function UpdateProduct() {
                   )}
 
                   {/* Display current video */}
-                  {productDetail.productVideo && (
+                  {(productDetail as any).productVideo && (
                     <div>
                       <Label className='text-sm font-medium text-gray-600'>Video sản phẩm</Label>
                       <div className='mt-2'>
-                        <video src={productDetail.productVideo} controls className='w-full max-w-md rounded-lg' />
+                        <video src={(productDetail as any).productVideo} controls className='w-full max-w-md rounded-lg' />
                       </div>
                     </div>
                   )}
@@ -829,100 +1039,262 @@ function UpdateProduct() {
         {/* Product Variants Tab */}
         <TabsContent value='variants' className='space-y-6'>
           <Card>
-            <CardHeader className='flex flex-row items-center justify-between'>
+            <CardHeader>
               <CardTitle className='text-green-700'>Loại sản phẩm</CardTitle>
-              <div className='flex gap-2'>
-                {editModes.variants ? (
-                  <>
-                    <Button size='sm' variant='outline' onClick={() => cancelEdit('variants')}>
-                      <X className='w-4 h-4 mr-2' />
-                      Hủy
-                    </Button>
-                    <Button
-                      size='sm'
-                      onClick={() => saveSection('variants')}
-                      className='bg-green-600 hover:bg-green-700'
-                    >
-                      <Save className='w-4 h-4 mr-2' />
-                      Lưu
-                    </Button>
-                  </>
-                ) : (
-                  <Button size='sm' variant='outline' onClick={() => toggleEditMode('variants')}>
-                    <Edit className='w-4 h-4 mr-2' />
-                    Chỉnh sửa
-                  </Button>
-                )}
-              </div>
             </CardHeader>
             <CardContent>
-              {editModes.variants ? (
-                // Edit mode for variants
-                <div className='space-y-4'>
-                  <div className='flex justify-between items-center'>
-                    <p className='text-sm text-gray-600'>Quản lý các loại sản phẩm khác nhau</p>
-                    <Button size='sm' variant='outline' className='text-green-600 border-green-600 hover:bg-green-50'>
-                      <Plus className='w-4 h-4 mr-2' />
-                      Thêm loại mới
-                    </Button>
-                  </div>
-                  {/* Add variant editing form here */}
-                  <p className='text-gray-500 italic'>Chức năng chỉnh sửa loại sản phẩm sẽ được cập nhật...</p>
-                </div>
-              ) : (
-                // View mode for variants
-                <div className='space-y-4'>
-                  {productDetail.variants && productDetail.variants.length > 0 ? (
-                    <div className='grid gap-4'>
-                      {productDetail.variants.map((variant: any, index: number) => (
-                        <div key={index} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
-                          <div className='grid grid-cols-3 gap-4'>
+              <div className='space-y-6'>
+                {/* Existing Variants List */}
+                {editData.variants && editData.variants.length > 0 && (
+                  <div className='space-y-4'>
+                    {editData.variants.map((variant: any, index: number) => (
+                      <div key={variant.id || index} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
+                        <div className='flex items-center justify-between mb-4'>
+                          <h3 className='text-lg font-medium text-gray-900'>Loại sản phẩm {index + 1}</h3>
+                          <div className='flex gap-2'>
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              onClick={() => handleEditVariant(variant.id)}
+                              className='text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                            >
+                              <Edit className='w-4 h-4 mr-1' />
+                              Sửa
+                            </Button>
+                            {editData.variants.length > 1 && (
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                onClick={() => handleRemoveVariant(variant.id)}
+                                className='text-red-600 hover:text-red-700 hover:bg-red-50'
+                              >
+                                <Trash2 className='w-4 h-4 mr-1' />
+                                Xóa
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Variant Preview */}
+                        <div className='bg-white border border-gray-200 rounded-lg p-4'>
+                          <div className='flex items-center justify-between'>
                             <div>
-                              <Label className='text-sm font-medium text-gray-600'>Tên loại</Label>
-                              <p className='mt-1 text-gray-900'>{variant.variantName || `Loại ${index + 1}`}</p>
-                            </div>
-                            <div>
-                              <Label className='text-sm font-medium text-gray-600'>Giá bán</Label>
-                              <p className='mt-1 text-gray-900 font-medium'>
-                                {variant.price?.toLocaleString('vi-VN')} VNĐ
+                              <p className='font-medium text-gray-900'>{variant.variantName || 'Tên sản phẩm chưa nhập'}</p>
+                              <p className='text-sm text-gray-600'>
+                                {variant.weight > 0 && `Trọng lượng: ${variant.weight}g • `}
+                                {variant.length > 0 && variant.width > 0 && variant.height > 0 && 
+                                  `Kích thước: ${variant.length}x${variant.width}x${variant.height}cm • `}
+                                Tồn kho: {variant.quantity || 0}
                               </p>
                             </div>
-                            <div>
-                              <Label className='text-sm font-medium text-gray-600'>Trạng thái</Label>
-                              <Badge
-                                variant={variant.isActive ? 'default' : 'secondary'}
-                                className={
-                                  variant.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                }
-                              >
-                                {variant.isActive ? 'Hoạt động' : 'Tạm dừng'}
-                              </Badge>
+                            <div className='text-right'>
+                              <p className='text-lg font-bold text-green-600'>
+                                {variant.price ? `${variant.price.toLocaleString('vi-VN')} ₫` : '0 ₫'}
+                              </p>
+                              <div className='flex items-center gap-2 mt-1'>
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  variant.isActive 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {variant.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className='text-center py-12'>
-                      <Package className='w-16 h-16 text-gray-400 mx-auto mb-4' />
-                      <h3 className='text-lg font-medium text-gray-900 mb-2'>Chưa có loại sản phẩm nào</h3>
-                      <p className='text-gray-500 mb-6'>
-                        Thêm các loại sản phẩm khác nhau để khách hàng có thể lựa chọn
-                      </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add/Edit Variant Form */}
+                {showVariantForm && (
+                  <div className='border-2 border-dashed border-green-300 rounded-lg p-6 bg-green-50'>
+                    <div className='flex items-center justify-between mb-4'>
+                      <h3 className='text-lg font-medium text-green-800'>
+                        {editingVariant ? 'Chỉnh sửa loại sản phẩm' : 'Thêm loại sản phẩm mới'}
+                      </h3>
                       <Button
-                        className='bg-green-600 hover:bg-green-700 text-white'
-                        onClick={() => {
-                          // TODO: Handle add product variant
-                          console.log('Add product variant')
-                        }}
+                        variant='outline'
+                        size='sm'
+                        onClick={handleCancelVariant}
+                        className='text-gray-600 hover:text-gray-700'
                       >
-                        <Plus className='w-4 h-4 mr-2' />
-                        Thêm loại sản phẩm
+                        <X className='w-4 h-4 mr-1' />
+                        Hủy
                       </Button>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                      {/* Tên loại sản phẩm */}
+                      <div>
+                        <Label className='text-sm font-medium'>
+                          Tên loại <span className='text-red-500'>*</span>
+                        </Label>
+                        <Input
+                          placeholder='VD: Gạo tám xoan 5kg'
+                          value={newVariant.variantName}
+                          onChange={(e) => handleNewVariantChange('variantName', e.target.value)}
+                          className='mt-1'
+                        />
+                      </div>
+
+                      {/* Giá */}
+                      <div>
+                        <Label className='text-sm font-medium'>
+                          Giá bán <span className='text-red-500'>*</span>
+                        </Label>
+                        <div className='relative'>
+                          <DollarSign className='absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400' />
+                          <Input
+                            type='number'
+                            placeholder='0'
+                            value={newVariant.price || ''}
+                            onChange={(e) => handleNewVariantChange('price', parseFloat(e.target.value) || 0)}
+                            className='pl-10 mt-1'
+                            min='0'
+                            step='1000'
+                          />
+                        </div>
+                      </div>
+
+                      {/* Số lượng tồn kho */}
+                      <div>
+                        <Label className='text-sm font-medium'>
+                          Số lượng tồn kho <span className='text-red-500'>*</span>
+                        </Label>
+                        <Input
+                          type='number'
+                          placeholder='0'
+                          value={newVariant.quantity || ''}
+                          onChange={(e) => handleNewVariantChange('quantity', parseInt(e.target.value) || 0)}
+                          className='mt-1'
+                          min='0'
+                        />
+                      </div>
+
+                      {/* Trọng lượng */}
+                      <div>
+                        <Label className='text-sm font-medium'>Trọng lượng (gram)</Label>
+                        <Input
+                          type='number'
+                          placeholder='0'
+                          value={newVariant.weight || ''}
+                          onChange={(e) => handleNewVariantChange('weight', parseInt(e.target.value) || 0)}
+                          className='mt-1'
+                          min='0'
+                        />
+                      </div>
+
+                      {/* Chiều dài */}
+                      <div>
+                        <Label className='text-sm font-medium'>Chiều dài (cm)</Label>
+                        <Input
+                          type='number'
+                          placeholder='0'
+                          value={newVariant.length || ''}
+                          onChange={(e) => handleNewVariantChange('length', parseInt(e.target.value) || 0)}
+                          className='mt-1'
+                          min='0'
+                        />
+                      </div>
+
+                      {/* Chiều rộng */}
+                      <div>
+                        <Label className='text-sm font-medium'>Chiều rộng (cm)</Label>
+                        <Input
+                          type='number'
+                          placeholder='0'
+                          value={newVariant.width || ''}
+                          onChange={(e) => handleNewVariantChange('width', parseInt(e.target.value) || 0)}
+                          className='mt-1'
+                          min='0'
+                        />
+                      </div>
+
+                      {/* Chiều cao */}
+                      <div>
+                        <Label className='text-sm font-medium'>Chiều cao (cm)</Label>
+                        <Input
+                          type='number'
+                          placeholder='0'
+                          value={newVariant.height || ''}
+                          onChange={(e) => handleNewVariantChange('height', parseInt(e.target.value) || 0)}
+                          className='mt-1'
+                          min='0'
+                        />
+                      </div>
+
+                      {/* Trạng thái - chỉ hiển thị khi cập nhật variant */}
+                      {editingVariant && (
+                        <div className='flex items-center space-x-3  pt-5'>
+                          <Switch
+                            id='isActive'
+                            className='data-[state=checked]:bg-green-600 '
+                            checked={newVariant.isActive}
+                            onCheckedChange={(checked) => handleNewVariantChange('isActive', checked)}
+                          />
+                          <Label htmlFor='isActive' className={`text-sm font-medium pl-1 ${newVariant.isActive ? 'text-green-600' : 'text-gray-500'}`}>
+                            {newVariant.isActive ? 'Đang hoạt động' : 'Tạm dừng'}
+                          </Label>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Form Actions */}
+                    <div className='flex justify-end gap-3 mt-6'>
+                      <Button
+                        variant='outline'
+                        onClick={handleCancelVariant}
+                        className='px-6'
+                      >
+                        Hủy
+                      </Button>
+                      <Button
+                        onClick={handleSaveVariant}
+                        className='bg-green-600 hover:bg-green-700 text-white px-6'
+                      >
+                        {editingVariant ? 'Cập nhật' : 'Thêm loại'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Add new variant button */}
+                {!showVariantForm && (
+                  <div className='flex justify-center'>
+                    <Button
+                      variant='outline'
+                      onClick={handleAddVariantClick}
+                      className='border-dashed border-2 border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-700'
+                    >
+                      <Plus className='w-4 h-4 mr-2' />
+                      {editData.variants.length === 0 ? 'Thêm loại sản phẩm' : 'Thêm loại sản phẩm mới'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Summary */}
+                {editData.variants.length > 0 && (
+                  <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
+                    <div className='flex items-start gap-3'>
+                      <Info className='w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0' />
+                      <div>
+                        <h4 className='font-medium text-blue-900 mb-1'>Tóm tắt loại sản phẩm</h4>
+                        <div className='text-sm text-blue-800 space-y-1'>
+                          <p>• Tổng số loại: {editData.variants.length}</p>
+                          <p>• Tổng tồn kho: {editData.variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0)} sản phẩm</p>
+                          <p>
+                            • Giá từ: {Math.min(...editData.variants.map((v: any) => v.price || 0)).toLocaleString('vi-VN')} ₫
+                            đến {Math.max(...editData.variants.map((v: any) => v.price || 0)).toLocaleString('vi-VN')} ₫
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1077,21 +1449,21 @@ function UpdateProduct() {
               ) : (
                 // View mode for story
                 <div className='space-y-6'>
-                  {productDetail.productStory ? (
+                  {(productDetail as any).productStory ? (
                     <>
                       <div>
-                        <h3 className='text-xl font-semibold text-gray-900 mb-3'>{productDetail.productStory.title}</h3>
+                        <h3 className='text-xl font-semibold text-gray-900 mb-3'>{(productDetail as any).productStory.title}</h3>
                         <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>
-                          {productDetail.productStory.content}
+                          {(productDetail as any).productStory.content}
                         </p>
                       </div>
 
                       {/* Story Images */}
-                      {productDetail.productStory.images && productDetail.productStory.images.length > 0 && (
+                      {(productDetail as any).productStory.images && (productDetail as any).productStory.images.length > 0 && (
                         <div>
                           <h4 className='text-lg font-medium text-gray-900 mb-3'>Hình ảnh minh họa</h4>
                           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                            {productDetail.productStory.images.map((image, index) => (
+                            {(productDetail as any).productStory.images.map((image: any, index: number) => (
                               <div key={index} className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
                                 <img
                                   src={image}
@@ -1105,11 +1477,11 @@ function UpdateProduct() {
                       )}
 
                       {/* Story Video */}
-                      {productDetail.productStory.video && (
+                      {(productDetail as any).productStory.video && (
                         <div>
                           <h4 className='text-lg font-medium text-gray-900 mb-3'>Video câu chuyện</h4>
                           <video
-                            src={productDetail.productStory.video}
+                            src={(productDetail as any).productStory.video}
                             controls
                             className='w-full max-w-2xl rounded-lg'
                           />
@@ -1135,71 +1507,15 @@ function UpdateProduct() {
 
         {/* Certificates Tab */}
         <TabsContent value='certificates' className='space-y-6'>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between'>
-              <CardTitle className='text-green-700 flex items-center gap-2'>
-                <Shield className='w-5 h-5 text-green-600' />
-                Chứng nhận sản phẩm
-              </CardTitle>
-              <div className='flex gap-2'>
-                {editModes.certificates ? (
-                  <>
-                    <Button size='sm' variant='outline' onClick={() => cancelEdit('certificates')}>
-                      <X className='w-4 h-4 mr-2' />
-                      Hủy
-                    </Button>
-                    <Button
-                      size='sm'
-                      onClick={() => saveSection('certificates')}
-                      className='bg-green-600 hover:bg-green-700'
-                    >
-                      <Save className='w-4 h-4 mr-2' />
-                      Lưu
-                    </Button>
-                  </>
-                ) : (
-                  <Button size='sm' variant='outline' onClick={() => toggleEditMode('certificates')}>
-                    <Edit className='w-4 h-4 mr-2' />
-                    Chỉnh sửa
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {editModes.certificates ? (
-                // Edit mode for certificates
-                <div className='space-y-4'>
-                  <p className='text-sm text-gray-600'>Quản lý chứng nhận chất lượng sản phẩm</p>
-                  {/* Add certificate editing form here */}
-                  <p className='text-gray-500 italic'>Chức năng chỉnh sửa chứng nhận sẽ được cập nhật...</p>
-                </div>
-              ) : (
-                // View mode for certificates
-                <div className='space-y-4'>
-                  {productDetail.productCertificateDTOs && productDetail.productCertificateDTOs.length > 0 ? (
-                    <div className='grid gap-4'>
-                      {productDetail.productCertificateDTOs.map((cert: any, index: number) => (
-                        <div key={index} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
-                          <div className='flex items-center gap-4'>
-                            <Shield className='w-8 h-8 text-green-600' />
-                            <div>
-                              <h4 className='font-medium text-gray-900'>{cert.name}</h4>
-                              <p className='text-sm text-gray-600'>{cert.description}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className='text-center py-8'>
-                      <Shield className='w-12 h-12 text-gray-400 mx-auto mb-4' />
-                      <p className='text-gray-500'>Chưa có chứng nhận nào cho sản phẩm này</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <Suspense fallback={<div>Đang tải...</div>}>
+            <ProductCertificate
+              productId={id || ''}
+              editModes={editModes}
+              onToggleEditMode={toggleEditMode}
+              onCancelEdit={cancelEdit}
+              onSaveSection={saveSection}
+            />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>
