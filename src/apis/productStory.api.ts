@@ -4,12 +4,10 @@ import type { ProductStoryUpdateInput, ProductStoryResponse, ProductStoryListRes
 const API_URL = `/ProductStory`
 
 export const productStoryApi = {
-  // Get all stories by product ID
   getByProductId: async (productId: string) => {
     return await axiosInstance.get<ProductStoryListResponse>(`${API_URL}/by-product/${productId}`)
   },
 
-  // Update story with multipart/form-data
   update: async (
     storyId: string,
     data: ProductStoryUpdateInput & {
@@ -20,8 +18,6 @@ export const productStoryApi = {
     }
   ) => {
     const formData = new FormData()
-
-    // Add basic fields if provided
     if (data.title) {
       formData.append('Title', data.title)
     }
@@ -34,7 +30,6 @@ export const productStoryApi = {
       formData.append('StoryDetail', data.storyDetail)
     }
 
-    // Add optional files
     if (data.thumbnail) {
       formData.append('Thumbnail', data.thumbnail)
     }
@@ -49,7 +44,7 @@ export const productStoryApi = {
       })
     }
 
-    return await axiosInstance.put<ProductStoryResponse>(`/api/ProductStory/${storyId}`, formData, {
+    return await axiosInstance.put<ProductStoryResponse>(`${API_URL}/${storyId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
