@@ -195,7 +195,6 @@ function ProductsSeller() {
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>ID</th>
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>Tên sản phẩm</th>
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>Loại sản phẩm</th>
-                  <th className='text-left py-3 px-4 font-medium text-gray-700'>Đánh giá</th>
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>Trạng thái</th>
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>Hành động</th>
                 </tr>
@@ -208,9 +207,6 @@ function ProductsSeller() {
                       <td className='py-3 px-4 text-gray-900 text-sm'>{product.id.slice(0, 8)}...</td>
                       <td className='py-3 px-4 text-gray-900'>{product.name}</td>
                       <td className='py-3 px-4 text-gray-900'>{product.typeProduct}</td>
-                      <td className='py-3 px-4 text-gray-900'>
-                        {product.rating.toFixed(1)} ⭐ ({product.reviewCount} đánh giá)
-                      </td>
                       <td className='py-3 px-4'>
                         <Badge variant={statusInfo.variant} className={statusInfo.className}>
                           {statusInfo.text}

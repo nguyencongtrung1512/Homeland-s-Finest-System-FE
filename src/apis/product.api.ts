@@ -72,13 +72,6 @@ export const productApi = {
 
   // Create new product with FormData (for file uploads)
   create: async (data: ProductCreateFormData): Promise<ProductResponse> => {
-    // 🔍 DEBUG: Log dữ liệu nhận được từ component
-    console.log('🔍 DEBUG - API received data:', data)
-    console.log('🔍 DEBUG - API data.categoryIds:', data.categoryIds)
-    console.log('🔍 DEBUG - API data.categoryIds type:', typeof data.categoryIds)
-    console.log('🔍 DEBUG - API data.categoryIds isArray:', Array.isArray(data.categoryIds))
-    console.log('🔍 DEBUG - API data.categoryIds length:', data.categoryIds?.length)
-
     const formData = new FormData()
     
     // Add basic product info
@@ -153,6 +146,16 @@ export const productApi = {
   // Update product
   update: async (id: string, data: ProductUpdateInput): Promise<ProductResponse> => {
     const response = await axiosInstance.put(`${API_URL}/${id}`, data)
+    return response as unknown as ProductResponse
+  },
+
+  // Update product with FormData (for file uploads)
+  updateWithFormData: async (id: string, formData: FormData): Promise<ProductResponse> => {
+    const response = await axiosInstance.put(`${API_URL}/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
     return response as unknown as ProductResponse
   },
 

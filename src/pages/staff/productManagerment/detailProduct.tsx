@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft, Check, XCircle, Package, FileText, Award, Video, ImageIcon } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { message } from 'antd'
+import { toast } from 'react-toastify'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
@@ -13,7 +13,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle
 } from '../../../components/ui/alert-dialog'
 import { productApi, type ProductResponse } from '../../../apis/product.api'
 import { staffApi } from '../../../apis/staff.api'
@@ -44,7 +44,10 @@ function DetailProductStaff() {
   useEffect(() => {
     const fetchProductDetail = async () => {
       if (!id) {
-        message.error('Không tìm thấy ID sản phẩm')
+        toast.error('Không tìm thấy ID sản phẩm', {
+          position: 'top-right',
+          autoClose: 3000
+        })
         navigate(-1)
         return
       }
@@ -52,18 +55,24 @@ function DetailProductStaff() {
       try {
         setLoading(true)
         console.log('🔍 DEBUG - Fetching product detail for ID:', id)
-        
+
         const response: ProductResponse = await productApi.getById(id)
         console.log('🔍 DEBUG - Product detail response:', response)
-        
+
         if (response.status === 200 && response.data) {
           setProduct(response.data as ProductDetail)
         } else {
-          message.error('Không thể tải thông tin sản phẩm')
+          toast.error('Không thể tải thông tin sản phẩm', {
+            position: 'top-right',
+            autoClose: 3000
+          })
         }
       } catch (error) {
         console.error('❌ DEBUG - Error fetching product detail:', error)
-        message.error('Có lỗi xảy ra khi tải thông tin sản phẩm')
+        toast.error('Có lỗi xảy ra khi tải thông tin sản phẩm', {
+          position: 'top-right',
+          autoClose: 3000
+        })
       } finally {
         setLoading(false)
       }
@@ -91,37 +100,49 @@ function DetailProductStaff() {
   // Xác nhận approve
   const confirmApprove = async () => {
     if (!product?.id) return
-    
+
     if (!approveNote.trim()) {
-      message.warning('Vui lòng nhập ghi chú!')
+      toast.warning('Vui lòng nhập ghi chú!', {
+        position: 'top-right',
+        autoClose: 3000
+      })
       return
     }
-    
+
     try {
       setUpdating(true)
       console.log('🔍 DEBUG - Approving product:', product.id)
-      
-      const response = await staffApi.reviewProduct(product.id, { 
+
+      const response = await staffApi.reviewProduct(product.id, {
         newStatus: 'Approved',
         note: approveNote.trim()
       })
-      
-      if (response.status === 202) {
-        message.success('Sản phẩm đã được duyệt thành công')
+
+      if (response) {
+        toast.success('Sản phẩm đã được duyệt thành công', {
+          position: 'top-right',
+          autoClose: 3000
+        })
         setShowApproveDialog(false)
         setApproveNote('')
-        
+
         // Refresh product data
         const updatedProduct = await productApi.getById(product.id)
         if (updatedProduct.status === 200) {
           setProduct(updatedProduct.data as ProductDetail)
         }
       } else {
-        message.error('Có lỗi xảy ra khi duyệt sản phẩm')
+        toast.error('Có lỗi xảy ra khi duyệt sản phẩm', {
+          position: 'top-right',
+          autoClose: 3000
+        })
       }
     } catch (error) {
       console.error('❌ DEBUG - Error approving product:', error)
-      message.error('Có lỗi xảy ra khi duyệt sản phẩm')
+      toast.error('Có lỗi xảy ra khi duyệt sản phẩm', {
+        position: 'top-right',
+        autoClose: 3000
+      })
     } finally {
       setUpdating(false)
     }
@@ -130,37 +151,49 @@ function DetailProductStaff() {
   // Xác nhận reject
   const confirmReject = async () => {
     if (!product?.id) return
-    
+
     if (!rejectNote.trim()) {
-      message.warning('Vui lòng nhập lý do từ chối!')
+      toast.warning('Vui lòng nhập lý do từ chối!', {
+        position: 'top-right',
+        autoClose: 3000
+      })
       return
     }
-    
+
     try {
       setUpdating(true)
       console.log('🔍 DEBUG - Rejecting product:', product.id)
-      
-      const response = await staffApi.reviewProduct(product.id, { 
+
+      const response = await staffApi.reviewProduct(product.id, {
         newStatus: 'Rejected',
         note: rejectNote.trim()
       })
-      
-      if (response.status === 200) {
-        message.success('Sản phẩm đã được từ chối')
+
+      if (response) {
+        toast.success('Sản phẩm đã được từ chối', {
+          position: 'top-right',
+          autoClose: 3000
+        })
         setShowRejectDialog(false)
         setRejectNote('')
-        
+
         // Refresh product data
         const updatedProduct = await productApi.getById(product.id)
         if (updatedProduct.status === 200) {
           setProduct(updatedProduct.data as ProductDetail)
         }
       } else {
-        message.error('Có lỗi xảy ra khi từ chối sản phẩm')
+        toast.error('Có lỗi xảy ra khi từ chối sản phẩm', {
+          position: 'top-right',
+          autoClose: 3000
+        })
       }
     } catch (error) {
       console.error('❌ DEBUG - Error rejecting product:', error)
-      message.error('Có lỗi xảy ra khi từ chối sản phẩm')
+      toast.error('Có lỗi xảy ra khi từ chối sản phẩm', {
+        position: 'top-right',
+        autoClose: 3000
+      })
     } finally {
       setUpdating(false)
     }
@@ -288,20 +321,20 @@ function DetailProductStaff() {
                 {product.isActive ? 'Hoạt động' : 'Tạm dừng'}
               </Badge>
             </div>
-            
+
             {/* Staff Actions */}
             {product.status === 'Pending' && (
               <div className='flex gap-3'>
-                <Button 
-                  onClick={openApproveDialog} 
+                <Button
+                  onClick={openApproveDialog}
                   disabled={updating}
                   className='bg-green-600 hover:bg-green-700 text-white'
                 >
                   <Check size={16} className='mr-2' />
                   Duyệt sản phẩm
                 </Button>
-                <Button 
-                  onClick={openRejectDialog} 
+                <Button
+                  onClick={openRejectDialog}
                   disabled={updating}
                   className='bg-red-600 hover:bg-red-700 text-white'
                 >
@@ -315,60 +348,60 @@ function DetailProductStaff() {
       </Card>
 
       {/* Product Information */}
-      <div className="space-y-6">
+      <div className='space-y-6'>
         {/* Basic Information */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5 text-blue-600" />
+            <CardTitle className='flex items-center gap-2'>
+              <Package className='w-5 h-5 text-blue-600' />
               Thông tin sản phẩm
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className='space-y-4'>
             <div>
-              <label className="text-sm font-medium text-gray-600">Tên sản phẩm</label>
-              <p className="mt-1 text-gray-900 font-medium">{product.name}</p>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium text-gray-600">Mô tả</label>
-              <p className="mt-1 text-gray-900 whitespace-pre-wrap">{product.description}</p>
+              <label className='text-sm font-medium text-gray-600'>Tên sản phẩm</label>
+              <p className='mt-1 text-gray-900 font-medium'>{product.name}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className='text-sm font-medium text-gray-600'>Mô tả</label>
+              <p className='mt-1 text-gray-900 whitespace-pre-wrap'>{product.description}</p>
+            </div>
+
+            <div className='grid grid-cols-2 gap-4'>
               <div>
-                <label className="text-sm font-medium text-gray-600">Nhà sản xuất</label>
-                <p className="mt-1 text-gray-900">{product.madeBy || 'Chưa cập nhật'}</p>
+                <label className='text-sm font-medium text-gray-600'>Nhà sản xuất</label>
+                <p className='mt-1 text-gray-900'>{product.madeBy || 'Chưa cập nhật'}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600">Loại sản phẩm</label>
-                <p className="mt-1 text-gray-900">{product.typeProduct || 'Chưa xác định'}</p>
+                <label className='text-sm font-medium text-gray-600'>Loại sản phẩm</label>
+                <p className='mt-1 text-gray-900'>{product.typeProduct || 'Chưa xác định'}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className='grid grid-cols-2 gap-4'>
               <div>
-                <label className="text-sm font-medium text-gray-600">Province ID</label>
-                <p className="mt-1 text-gray-900">{product.provinceId}</p>
+                <label className='text-sm font-medium text-gray-600'>Province ID</label>
+                <p className='mt-1 text-gray-900'>{product.provinceId}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600">Store ID</label>
-                <p className="mt-1 text-gray-900 font-mono text-xs">{product.storeId}</p>
+                <label className='text-sm font-medium text-gray-600'>Store ID</label>
+                <p className='mt-1 text-gray-900 font-mono text-xs'>{product.storeId}</p>
               </div>
             </div>
 
             {product.editedById && (
               <div>
-                <label className="text-sm font-medium text-gray-600">Được chỉnh sửa bởi</label>
-                <p className="mt-1 text-gray-900 font-mono text-xs">{product.editedById}</p>
+                <label className='text-sm font-medium text-gray-600'>Được chỉnh sửa bởi</label>
+                <p className='mt-1 text-gray-900 font-mono text-xs'>{product.editedById}</p>
               </div>
             )}
 
             {product.note && (
               <div>
-                <label className="text-sm font-medium text-gray-600">Ghi chú từ Staff</label>
-                <div className="mt-1 bg-gray-50 rounded-lg p-3 border">
-                  <p className="text-gray-900">{product.note}</p>
+                <label className='text-sm font-medium text-gray-600'>Ghi chú từ Staff</label>
+                <div className='mt-1 bg-gray-50 rounded-lg p-3 border'>
+                  <p className='text-gray-900'>{product.note}</p>
                 </div>
               </div>
             )}
@@ -376,33 +409,33 @@ function DetailProductStaff() {
         </Card>
 
         {/* Media Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
           {/* Product Images */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-purple-600" />
+              <CardTitle className='flex items-center gap-2'>
+                <ImageIcon className='w-5 h-5 text-purple-600' />
                 Hình ảnh sản phẩm
               </CardTitle>
             </CardHeader>
             <CardContent>
               {product.productImages && product.productImages.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className='grid grid-cols-2 gap-4'>
                   {product.productImages.map((image, index) => (
-                    <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                      <img 
-                        src={image} 
+                    <div key={index} className='aspect-square bg-gray-100 rounded-lg overflow-hidden'>
+                      <img
+                        src={image}
                         alt={`Product ${index + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                        className='w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer'
                         onClick={() => window.open(image, '_blank')}
                       />
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Không có hình ảnh</p>
+                <div className='text-center py-8'>
+                  <ImageIcon className='w-12 h-12 text-gray-400 mx-auto mb-4' />
+                  <p className='text-gray-500'>Không có hình ảnh</p>
                 </div>
               )}
             </CardContent>
@@ -411,24 +444,20 @@ function DetailProductStaff() {
           {/* Product Video */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Video className="w-5 h-5 text-red-600" />
+              <CardTitle className='flex items-center gap-2'>
+                <Video className='w-5 h-5 text-red-600' />
                 Video sản phẩm
               </CardTitle>
             </CardHeader>
             <CardContent>
               {product.productVideo ? (
-                <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                  <video 
-                    src={product.productVideo} 
-                    controls 
-                    className="w-full h-full object-cover"
-                  />
+                <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
+                  <video src={product.productVideo} controls className='w-full h-full object-cover' />
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Video className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Không có video</p>
+                <div className='text-center py-8'>
+                  <Video className='w-12 h-12 text-gray-400 mx-auto mb-4' />
+                  <p className='text-gray-500'>Không có video</p>
                 </div>
               )}
             </CardContent>
@@ -438,38 +467,38 @@ function DetailProductStaff() {
         {/* Categories */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-indigo-600" />
+            <CardTitle className='flex items-center gap-2'>
+              <FileText className='w-5 h-5 text-indigo-600' />
               Danh mục sản phẩm
             </CardTitle>
           </CardHeader>
           <CardContent>
             {product.productCategories && product.productCategories.length > 0 ? (
-              <div className="grid gap-4">
+              <div className='grid gap-4'>
                 {product.productCategories.map((category: any, index: number) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-gray-900">{category.name}</h3>
+                  <div key={index} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
+                    <div className='flex items-center justify-between mb-2'>
+                      <h3 className='font-medium text-gray-900'>{category.name}</h3>
                       <Badge variant={category.isActive ? 'default' : 'secondary'}>
                         {category.isActive ? 'Hoạt động' : 'Tạm dừng'}
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-600 mb-3">{category.description}</p>
-                    <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
+                    <p className='text-sm text-gray-600 mb-3'>{category.description}</p>
+                    <div className='grid grid-cols-2 gap-4 text-xs text-gray-500'>
                       <div>
-                        <span className="font-medium">Ngày tạo:</span> {formatDate(category.createdAt)}
+                        <span className='font-medium'>Ngày tạo:</span> {formatDate(category.createdAt)}
                       </div>
                       <div>
-                        <span className="font-medium">Cập nhật:</span> {formatDate(category.updatedAt)}
+                        <span className='font-medium'>Cập nhật:</span> {formatDate(category.updatedAt)}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Chưa có danh mục nào</p>
+              <div className='text-center py-8'>
+                <FileText className='w-12 h-12 text-gray-400 mx-auto mb-4' />
+                <p className='text-gray-500'>Chưa có danh mục nào</p>
               </div>
             )}
           </CardContent>
@@ -478,66 +507,66 @@ function DetailProductStaff() {
         {/* Certificates */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-yellow-600" />
+            <CardTitle className='flex items-center gap-2'>
+              <Award className='w-5 h-5 text-yellow-600' />
               Chứng nhận sản phẩm
             </CardTitle>
           </CardHeader>
           <CardContent>
             {product.productCertificateDTOs && product.productCertificateDTOs.length > 0 ? (
-              <div className="grid gap-4">
+              <div className='grid gap-4'>
                 {product.productCertificateDTOs.map((cert: any, index: number) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-start justify-between mb-4">
+                  <div key={index} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
+                    <div className='flex items-start justify-between mb-4'>
                       <div>
-                        <h3 className="font-medium text-gray-900 mb-2">Chứng nhận #{index + 1}</h3>
+                        <h3 className='font-medium text-gray-900 mb-2'>Chứng nhận #{index + 1}</h3>
                         {getCertificateStatusTag(cert.status)}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-sm'>
                       <div>
-                        <label className="font-medium text-gray-600">Ngày nộp:</label>
-                        <p className="text-gray-900">{formatDate(cert.submittedDate)}</p>
+                        <label className='font-medium text-gray-600'>Ngày nộp:</label>
+                        <p className='text-gray-900'>{formatDate(cert.submittedDate)}</p>
                       </div>
-                      
+
                       {cert.decisionDate && (
                         <div>
-                          <label className="font-medium text-gray-600">Ngày quyết định:</label>
-                          <p className="text-gray-900">{formatDate(cert.decisionDate)}</p>
+                          <label className='font-medium text-gray-600'>Ngày quyết định:</label>
+                          <p className='text-gray-900'>{formatDate(cert.decisionDate)}</p>
                         </div>
                       )}
 
                       {cert.reviewedByStaffId && (
                         <div>
-                          <label className="font-medium text-gray-600">Staff xử lý:</label>
-                          <p className="text-gray-900 font-mono text-xs">{cert.reviewedByStaffId}</p>
+                          <label className='font-medium text-gray-600'>Staff xử lý:</label>
+                          <p className='text-gray-900 font-mono text-xs'>{cert.reviewedByStaffId}</p>
                         </div>
                       )}
 
                       {cert.updatedAt && (
                         <div>
-                          <label className="font-medium text-gray-600">Cập nhật lần cuối:</label>
-                          <p className="text-gray-900">{formatDate(cert.updatedAt)}</p>
+                          <label className='font-medium text-gray-600'>Cập nhật lần cuối:</label>
+                          <p className='text-gray-900'>{formatDate(cert.updatedAt)}</p>
                         </div>
                       )}
                     </div>
 
                     {cert.staffNotes && (
-                      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <label className="font-medium text-blue-800">Ghi chú từ Staff:</label>
-                        <p className="text-blue-700 mt-1">{cert.staffNotes}</p>
+                      <div className='mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200'>
+                        <label className='font-medium text-blue-800'>Ghi chú từ Staff:</label>
+                        <p className='text-blue-700 mt-1'>{cert.staffNotes}</p>
                       </div>
                     )}
 
                     {cert.imageUrl && (
-                      <div className="mt-4">
-                        <label className="font-medium text-gray-600">Hình ảnh chứng nhận:</label>
-                        <div className="mt-2 w-32 h-32 bg-gray-100 rounded-lg overflow-hidden">
-                          <img 
-                            src={cert.imageUrl} 
+                      <div className='mt-4'>
+                        <label className='font-medium text-gray-600'>Hình ảnh chứng nhận:</label>
+                        <div className='mt-2 w-32 h-32 bg-gray-100 rounded-lg overflow-hidden'>
+                          <img
+                            src={cert.imageUrl}
                             alt={`Certificate ${index + 1}`}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                            className='w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer'
                             onClick={() => window.open(cert.imageUrl, '_blank')}
                           />
                         </div>
@@ -547,9 +576,9 @@ function DetailProductStaff() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <Award className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Chưa có chứng nhận nào</p>
+              <div className='text-center py-8'>
+                <Award className='w-12 h-12 text-gray-400 mx-auto mb-4' />
+                <p className='text-gray-500'>Chưa có chứng nhận nào</p>
               </div>
             )}
           </CardContent>
@@ -566,8 +595,10 @@ function DetailProductStaff() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               <div className='space-y-4 mt-4'>
-                <p>Bạn có chắc chắn muốn duyệt sản phẩm <strong>{product.name}</strong>?</p>
-                
+                <p>
+                  Bạn có chắc chắn muốn duyệt sản phẩm <strong>{product.name}</strong>?
+                </p>
+
                 <div className='space-y-2'>
                   <label className='text-sm font-medium text-gray-700'>
                     Ghi chú <span className='text-red-500'>*</span>
@@ -578,16 +609,13 @@ function DetailProductStaff() {
                     placeholder='Nhập ghi chú về việc duyệt sản phẩm này...'
                     className='w-full min-h-24 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none'
                   />
-                  {!approveNote.trim() && (
-                    <p className='text-xs text-red-500'>Vui lòng nhập ghi chú trước khi duyệt</p>
-                  )}
                 </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={updating}>Hủy</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmApprove}
               disabled={updating || !approveNote.trim()}
               className='bg-green-600 hover:bg-green-700'
@@ -608,8 +636,10 @@ function DetailProductStaff() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               <div className='space-y-4 mt-4'>
-                <p>Bạn có chắc chắn muốn từ chối sản phẩm <strong>{product.name}</strong>?</p>
-                
+                <p>
+                  Bạn có chắc chắn muốn từ chối sản phẩm <strong>{product.name}</strong>?
+                </p>
+
                 <div className='space-y-2'>
                   <label className='text-sm font-medium text-gray-700'>
                     Lý do từ chối <span className='text-red-500'>*</span>
@@ -620,16 +650,14 @@ function DetailProductStaff() {
                     placeholder='Nhập lý do từ chối sản phẩm này...'
                     className='w-full min-h-24 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none'
                   />
-                  {!rejectNote.trim() && (
-                    <p className='text-xs text-red-500'>Vui lòng nhập lý do từ chối</p>
-                  )}
+                  {!rejectNote.trim() && <p className='text-xs text-red-500'>Vui lòng nhập lý do từ chối</p>}
                 </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={updating}>Hủy</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmReject}
               disabled={updating || !rejectNote.trim()}
               className='bg-red-600 hover:bg-red-700'
