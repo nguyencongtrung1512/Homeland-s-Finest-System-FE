@@ -49,29 +49,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const logout = async () => {
-    try {
-      // Xóa dữ liệu local trước khi gọi API
-      clearAuth()
-      
-      // Gọi API logout để thông báo server
-      await logoutAPI()
+    // Xóa dữ liệu local trước khi gọi API
+    clearAuth()
 
-      // Hiển thị thông báo thành công
-      toast.success('Đăng xuất thành công!', {
-        position: 'top-right',
-        autoClose: 2000
-      })
-    } catch (error) {
-      // Nếu API logout thất bại, vẫn logout local
-      console.error('Logout API failed:', error)
-      toast.warning('Đăng xuất khỏi thiết bị này', {
-        position: 'top-right',
-        autoClose: 2000
-      })
-    }
+    // Gọi API logout để thông báo server
+    await logoutAPI()
+
+    // Hiển thị thông báo thành công
+    toast.success('Đăng xuất thành công!', {
+      position: 'top-right',
+      autoClose: 2000
+    })
   }
 
-  return <AuthContext.Provider value={{ user, isAuthenticated, login, logout, clearAuth }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, clearAuth }}>{children}</AuthContext.Provider>
+  )
 }
 
 export const useAuth = () => useContext(AuthContext)

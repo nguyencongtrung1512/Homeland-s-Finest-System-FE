@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Shield, Edit, Save, X, Trash2, Plus } from 'lucide-react'
+import { toast } from 'react-toastify'
 import { productCertificateApi } from '../../../apis/productCertificate.api'
 import type { ProductCertificate } from '../../../types/productCertificateType'
 
@@ -17,12 +18,12 @@ interface ProductCertificateProps {
   onSaveSection: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => Promise<void>
 }
 
-function ProductCertificate({ 
-  productId, 
-  editModes, 
-  onToggleEditMode, 
-  onCancelEdit, 
-  onSaveSection 
+function ProductCertificate({
+  productId,
+  editModes,
+  onToggleEditMode,
+  onCancelEdit,
+  onSaveSection
 }: ProductCertificateProps) {
   const [certificates, setCertificates] = useState<ProductCertificate[]>([])
   const [loading, setLoading] = useState(false)
@@ -39,10 +40,12 @@ function ProductCertificate({
     try {
       setLoading(true)
       const response = await productCertificateApi.getByProductId(productId)
-      setCertificates(response.data.data || [])
+
+      // Thử cả hai cách để xem cái nào work
+      const certificatesData = response.data.data || response.data || []
+      setCertificates(certificatesData)
     } catch (error) {
-      console.error('Error fetching certificates:', error)
-      alert('Không thể tải danh sách chứng nhận')
+      toast.error('Không thể tải danh sách chứng nhận')
     } finally {
       setLoading(false)
     }
@@ -57,7 +60,7 @@ function ProductCertificate({
 
   const handleAddCertificate = async () => {
     if (!selectedFile) {
-      alert('Vui lòng chọn file ảnh chứng nhận')
+      toast.error('Vui lòng chọn file ảnh chứng nhận')
       return
     }
 
@@ -67,13 +70,12 @@ function ProductCertificate({
         productId,
         certificateImage: selectedFile
       })
-      
-      alert('Thêm chứng nhận thành công')
+
+      toast.success('Thêm chứng nhận thành công')
       setSelectedFile(null)
       fetchCertificates() // Reload danh sách
     } catch (error) {
-      console.error('Error creating certificate:', error)
-      alert('Không thể thêm chứng nhận')
+      toast.error('Không thể thêm chứng nhận')
     } finally {
       setLoading(false)
     }
@@ -87,11 +89,10 @@ function ProductCertificate({
     try {
       setLoading(true)
       await productCertificateApi.delete(certificateId)
-      alert('Xóa chứng nhận thành công')
+      toast.success('Ẩn chứng nhận thành công')
       fetchCertificates() // Reload danh sách
     } catch (error) {
-      console.error('Error deleting certificate:', error)
-      alert('Không thể xóa chứng nhận')
+      toast.error('Không thể xóa chứng nhận')
     } finally {
       setLoading(false)
     }
@@ -191,9 +192,9 @@ function ProductCertificate({
                       </div>
                       {cert.imageUrl && (
                         <div className='mt-3'>
-                          <img 
-                            src={cert.imageUrl} 
-                            alt='Certificate' 
+                          <img
+                            src={cert.imageUrl}
+                            alt='Certificate'
                             className='w-full max-w-xs h-32 object-cover rounded border'
                           />
                         </div>
@@ -233,9 +234,9 @@ function ProductCertificate({
                     </div>
                     {cert.imageUrl && (
                       <div className='mt-3'>
-                        <img 
-                          src={cert.imageUrl} 
-                          alt='Certificate' 
+                        <img
+                          src={cert.imageUrl}
+                          alt='Certificate'
                           className='w-full max-w-xs h-32 object-cover rounded border'
                         />
                       </div>

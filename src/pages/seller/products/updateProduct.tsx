@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -23,7 +23,6 @@ import {
   FileText,
   Award,
   Trash2,
-  Image,
   DollarSign,
   Info
 } from 'lucide-react'
@@ -31,7 +30,9 @@ import { productApi } from '../../../apis/product.api'
 import { productVariantApi } from '../../../apis/productVariant.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import type { Product } from '../../../types'
-import ProductCertificate from './poductCertificate'
+
+import ProductStory from './productStory'
+import ProductCertificate from './porductCertificate'
 
 interface ProductDetail extends Product {
   variants?: any[]
@@ -134,7 +135,7 @@ function UpdateProduct() {
       ...prev,
       basicInfo: {
         ...prev.basicInfo,
-        existingImages: prev.basicInfo.existingImages.filter(url => url !== imageUrl)
+        existingImages: prev.basicInfo.existingImages.filter((url) => url !== imageUrl)
       }
     }))
   }
@@ -149,7 +150,6 @@ function UpdateProduct() {
       }
     }))
   }
-
 
   // Handle category selection
   const handleCategoryChange = (categoryId: string, checked: boolean) => {
@@ -216,43 +216,37 @@ function UpdateProduct() {
       if (editingVariant) {
         // Update existing variant - gọi API để cập nhật
         console.log('🔄 Updating variant:', editingVariant, 'with data:', newVariant)
-        
+
         // Chuẩn bị data để cập nhật
         const updateData = {
-          productId: id!,
-          variantName: newVariant.variantName,
-          quantity: newVariant.quantity,
-          price: newVariant.price,
-          length: newVariant.length,
-          width: newVariant.width,
-          height: newVariant.height,
-          weight: newVariant.weight
+          variants: [
+            {
+              id: editingVariant, // variantId
+              variantName: newVariant.variantName,
+              quantity: newVariant.quantity,
+              price: newVariant.price,
+              isActive: newVariant.isActive,
+              length: newVariant.length,
+              width: newVariant.width,
+              height: newVariant.height,
+              weight: newVariant.weight
+            }
+          ]
         }
 
         // Cập nhật thông tin variant
-        const response = await productVariantApi.update(id!, editingVariant, updateData)
+        const response = await productVariantApi.update(id!, updateData)
         console.log('🔄 Update response:', response)
-        
-        if (response.status === 200) {
-          console.log('✅ Variant updated successfully:', newVariant.variantName)
-          
-          // Cập nhật trạng thái isActive riêng biệt
-          if (newVariant.isActive) {
-            console.log('🔄 Activating variant:', newVariant.variantName)
-            await productVariantApi.activate(editingVariant)
-            console.log('✅ Variant activated:', newVariant.variantName)
-          } else {
-            console.log('🔄 Deactivating variant:', newVariant.variantName)
-            await productVariantApi.deactivate(editingVariant)
-            console.log('✅ Variant deactivated:', newVariant.variantName)
-          }
+
+        if (response.status === 202) {
+
 
           // Cập nhật local state sau khi API thành công
-          setEditData(prev => ({
+          setEditData((prev) => ({
             ...prev,
-            variants: prev.variants.map((v: any) => v.id === editingVariant ? { ...v, ...newVariant } : v)
+            variants: prev.variants.map((v: any) => (v.id === editingVariant ? { ...v, ...newVariant } : v))
           }))
-          
+
           toast.success('Cập nhật loại sản phẩm thành công!')
         } else {
           toast.error('Có lỗi xảy ra khi cập nhật loại sản phẩm')
@@ -266,15 +260,17 @@ function UpdateProduct() {
 
         // Chuẩn bị data để gửi API - thử format array như backend mong đợi
         const variantData = {
-          variants: [{
-            variantName: newVariant.variantName,
-            quantity: newVariant.quantity,
-            price: newVariant.price,
-            length: newVariant.length,
-            width: newVariant.width,
-            height: newVariant.height,
-            weight: newVariant.weight
-          }]
+          variants: [
+            {
+              variantName: newVariant.variantName,
+              quantity: newVariant.quantity,
+              price: newVariant.price,
+              length: newVariant.length,
+              width: newVariant.width,
+              height: newVariant.height,
+              weight: newVariant.weight
+            }
+          ]
         }
 
         console.log('🚀 Creating variant with data:', variantData)
@@ -287,7 +283,7 @@ function UpdateProduct() {
         if (response.status === 200) {
           // API trả về ProductVariant object trực tiếp
           const createdVariant = response.data
-          
+
           if (createdVariant && createdVariant.id) {
             const newVariantWithId = {
               id: createdVariant.id,
@@ -296,7 +292,7 @@ function UpdateProduct() {
               isActive: true // Backend tự động set isActive = true
             }
 
-            setEditData(prev => ({
+            setEditData((prev) => ({
               ...prev,
               variants: [...prev.variants, newVariantWithId]
             }))
@@ -326,7 +322,7 @@ function UpdateProduct() {
       setShowVariantForm(false)
     } catch (error: any) {
       console.error('Error saving variant:', error)
-      
+
       // Lấy thông báo lỗi chi tiết từ backend
       const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi lưu loại sản phẩm'
       toast.error(`Lỗi: ${errorMessage}`)
@@ -349,17 +345,9 @@ function UpdateProduct() {
   }
 
   const handleNewVariantChange = (field: string, value: string | number | boolean) => {
-    setNewVariant(prev => ({ ...prev, [field]: value }))
+    setNewVariant((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleRemoveVariant = (variantId: string) => {
-    if (editData.variants.length > 1) {
-      setEditData(prev => ({
-        ...prev,
-        variants: prev.variants.filter((v: any) => v.id !== variantId)
-      }))
-    }
-  }
   // Fetch product details
   useEffect(() => {
     const fetchProductDetail = async () => {
@@ -449,7 +437,10 @@ function UpdateProduct() {
           // PUT /api/Product/{id} for basic info, images, video
           console.log('Saving basic info:', editData.basicInfo)
           console.log('🖼️ Existing images to keep:', editData.basicInfo.existingImages)
-          console.log('📁 New image files to upload:', editData.basicInfo.newImageFiles.map(f => f.name))
+          console.log(
+            '📁 New image files to upload:',
+            editData.basicInfo.newImageFiles.map((f) => f.name)
+          )
 
           const formData = new FormData()
           formData.append('Name', editData.basicInfo.name)
@@ -533,7 +524,7 @@ function UpdateProduct() {
       toggleEditMode(section)
     } catch (err: any) {
       console.error(`Error saving ${section}:`, err)
-      
+
       // Lấy thông báo lỗi chi tiết từ backend
       const errorMessage = err.response?.data?.message || err.message || `Có lỗi xảy ra khi lưu ${section}`
       toast.error(`Lỗi: ${errorMessage}`)
@@ -895,9 +886,10 @@ function UpdateProduct() {
                       {/* Image Summary */}
                       <div className='bg-gray-50 rounded-lg p-3'>
                         <p className='text-sm text-gray-600'>
-                          <strong>Tổng kết:</strong> {editData.basicInfo.existingImages.length} ảnh cũ được giữ lại, {editData.basicInfo.newImageFiles.length} ảnh mới sẽ được thêm
+                          <strong>Tổng kết:</strong> {editData.basicInfo.existingImages.length} ảnh cũ được giữ lại,{' '}
+                          {editData.basicInfo.newImageFiles.length} ảnh mới sẽ được thêm
                         </p>
-                        {(editData.basicInfo.existingImages.length + editData.basicInfo.newImageFiles.length) === 0 && (
+                        {editData.basicInfo.existingImages.length + editData.basicInfo.newImageFiles.length === 0 && (
                           <p className='text-sm text-orange-600 mt-1'>⚠️ Sản phẩm chưa có ảnh nào</p>
                         )}
                       </div>
@@ -913,7 +905,11 @@ function UpdateProduct() {
                           <p className='text-sm text-gray-600 mb-2'>Video hiện tại:</p>
                           <div className='relative'>
                             <video
-                              src={typeof editData.basicInfo.productVideo === 'string' ? editData.basicInfo.productVideo : URL.createObjectURL(editData.basicInfo.productVideo)}
+                              src={
+                                typeof editData.basicInfo.productVideo === 'string'
+                                  ? editData.basicInfo.productVideo
+                                  : URL.createObjectURL(editData.basicInfo.productVideo)
+                              }
                               controls
                               className='w-full max-w-md rounded-lg'
                             />
@@ -984,7 +980,8 @@ function UpdateProduct() {
                   <div>
                     <Label className='text-sm font-medium text-gray-600'>Danh mục sản phẩm</Label>
                     <div className='mt-2'>
-                      {(productDetail as any).productCategories && (productDetail as any).productCategories.length > 0 ? (
+                      {(productDetail as any).productCategories &&
+                        (productDetail as any).productCategories.length > 0 ? (
                         <div className='flex flex-wrap gap-2'>
                           {(productDetail as any).productCategories.map((category: any) => (
                             <Badge
@@ -1026,7 +1023,11 @@ function UpdateProduct() {
                     <div>
                       <Label className='text-sm font-medium text-gray-600'>Video sản phẩm</Label>
                       <div className='mt-2'>
-                        <video src={(productDetail as any).productVideo} controls className='w-full max-w-md rounded-lg' />
+                        <video
+                          src={(productDetail as any).productVideo}
+                          controls
+                          className='w-full max-w-md rounded-lg'
+                        />
                       </div>
                     </div>
                   )}
@@ -1061,17 +1062,6 @@ function UpdateProduct() {
                               <Edit className='w-4 h-4 mr-1' />
                               Sửa
                             </Button>
-                            {editData.variants.length > 1 && (
-                              <Button
-                                variant='outline'
-                                size='sm'
-                                onClick={() => handleRemoveVariant(variant.id)}
-                                className='text-red-600 hover:text-red-700 hover:bg-red-50'
-                              >
-                                <Trash2 className='w-4 h-4 mr-1' />
-                                Xóa
-                              </Button>
-                            )}
                           </div>
                         </div>
 
@@ -1079,10 +1069,14 @@ function UpdateProduct() {
                         <div className='bg-white border border-gray-200 rounded-lg p-4'>
                           <div className='flex items-center justify-between'>
                             <div>
-                              <p className='font-medium text-gray-900'>{variant.variantName || 'Tên sản phẩm chưa nhập'}</p>
+                              <p className='font-medium text-gray-900'>
+                                {variant.variantName || 'Tên sản phẩm chưa nhập'}
+                              </p>
                               <p className='text-sm text-gray-600'>
                                 {variant.weight > 0 && `Trọng lượng: ${variant.weight}g • `}
-                                {variant.length > 0 && variant.width > 0 && variant.height > 0 && 
+                                {variant.length > 0 &&
+                                  variant.width > 0 &&
+                                  variant.height > 0 &&
                                   `Kích thước: ${variant.length}x${variant.width}x${variant.height}cm • `}
                                 Tồn kho: {variant.quantity || 0}
                               </p>
@@ -1092,11 +1086,10 @@ function UpdateProduct() {
                                 {variant.price ? `${variant.price.toLocaleString('vi-VN')} ₫` : '0 ₫'}
                               </p>
                               <div className='flex items-center gap-2 mt-1'>
-                                <span className={`text-xs px-2 py-1 rounded ${
-                                  variant.isActive 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}>
+                                <span
+                                  className={`text-xs px-2 py-1 rounded ${variant.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                    }`}
+                                >
                                   {variant.isActive ? 'Hoạt động' : 'Tạm dừng'}
                                 </span>
                               </div>
@@ -1235,7 +1228,10 @@ function UpdateProduct() {
                             checked={newVariant.isActive}
                             onCheckedChange={(checked) => handleNewVariantChange('isActive', checked)}
                           />
-                          <Label htmlFor='isActive' className={`text-sm font-medium pl-1 ${newVariant.isActive ? 'text-green-600' : 'text-gray-500'}`}>
+                          <Label
+                            htmlFor='isActive'
+                            className={`text-sm font-medium pl-1 ${newVariant.isActive ? 'text-green-600' : 'text-gray-500'}`}
+                          >
                             {newVariant.isActive ? 'Đang hoạt động' : 'Tạm dừng'}
                           </Label>
                         </div>
@@ -1244,17 +1240,10 @@ function UpdateProduct() {
 
                     {/* Form Actions */}
                     <div className='flex justify-end gap-3 mt-6'>
-                      <Button
-                        variant='outline'
-                        onClick={handleCancelVariant}
-                        className='px-6'
-                      >
+                      <Button variant='outline' onClick={handleCancelVariant} className='px-6'>
                         Hủy
                       </Button>
-                      <Button
-                        onClick={handleSaveVariant}
-                        className='bg-green-600 hover:bg-green-700 text-white px-6'
-                      >
+                      <Button onClick={handleSaveVariant} className='bg-green-600 hover:bg-green-700 text-white px-6'>
                         {editingVariant ? 'Cập nhật' : 'Thêm loại'}
                       </Button>
                     </div>
@@ -1284,10 +1273,14 @@ function UpdateProduct() {
                         <h4 className='font-medium text-blue-900 mb-1'>Tóm tắt loại sản phẩm</h4>
                         <div className='text-sm text-blue-800 space-y-1'>
                           <p>• Tổng số loại: {editData.variants.length}</p>
-                          <p>• Tổng tồn kho: {editData.variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0)} sản phẩm</p>
                           <p>
-                            • Giá từ: {Math.min(...editData.variants.map((v: any) => v.price || 0)).toLocaleString('vi-VN')} ₫
-                            đến {Math.max(...editData.variants.map((v: any) => v.price || 0)).toLocaleString('vi-VN')} ₫
+                            • Tổng tồn kho:{' '}
+                            {editData.variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0)} sản phẩm
+                          </p>
+                          <p>
+                            • Giá từ:{' '}
+                            {Math.min(...editData.variants.map((v: any) => v.price || 0)).toLocaleString('vi-VN')} ₫ đến{' '}
+                            {Math.max(...editData.variants.map((v: any) => v.price || 0)).toLocaleString('vi-VN')} ₫
                           </p>
                         </div>
                       </div>
@@ -1301,208 +1294,16 @@ function UpdateProduct() {
 
         {/* Product Story Tab */}
         <TabsContent value='story' className='space-y-6'>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between'>
-              <CardTitle className='text-green-700 flex items-center gap-2'>
-                <BookOpen className='w-5 h-5 text-green-600' />
-                Câu chuyện sản phẩm
-              </CardTitle>
-              <div className='flex gap-2'>
-                {editModes.story ? (
-                  <>
-                    <Button size='sm' variant='outline' onClick={() => cancelEdit('story')}>
-                      <X className='w-4 h-4 mr-2' />
-                      Hủy
-                    </Button>
-                    <Button size='sm' onClick={() => saveSection('story')} className='bg-green-600 hover:bg-green-700'>
-                      <Save className='w-4 h-4 mr-2' />
-                      Lưu
-                    </Button>
-                  </>
-                ) : (
-                  <Button size='sm' variant='outline' onClick={() => toggleEditMode('story')}>
-                    <Edit className='w-4 h-4 mr-2' />
-                    Chỉnh sửa
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {editModes.story ? (
-                // Edit mode for story
-                <div className='space-y-6'>
-                  <div>
-                    <Label htmlFor='storyTitle' className='text-sm font-medium'>
-                      Tiêu đề câu chuyện
-                    </Label>
-                    <Input
-                      id='storyTitle'
-                      value={editData.story.title}
-                      onChange={(e) =>
-                        setEditData((prev) => ({
-                          ...prev,
-                          story: { ...prev.story, title: e.target.value }
-                        }))
-                      }
-                      placeholder='Nhập tiêu đề cho câu chuyện sản phẩm'
-                      className='mt-1'
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor='storyContent' className='text-sm font-medium'>
-                      Nội dung câu chuyện
-                    </Label>
-                    <Textarea
-                      id='storyContent'
-                      value={editData.story.content}
-                      onChange={(e) =>
-                        setEditData((prev) => ({
-                          ...prev,
-                          story: { ...prev.story, content: e.target.value }
-                        }))
-                      }
-                      placeholder='Kể câu chuyện về sản phẩm, nguồn gốc, quy trình sản xuất...'
-                      className='mt-1 min-h-[150px]'
-                    />
-                  </div>
-
-                  {/* Story Images */}
-                  <div>
-                    <Label className='text-sm font-medium'>Hình ảnh minh họa</Label>
-                    <div className='mt-2 space-y-4'>
-                      {/* Current Story Images */}
-                      {editData.story.images && editData.story.images.length > 0 && (
-                        <div>
-                          <p className='text-sm text-gray-600 mb-2'>Hình ảnh hiện tại:</p>
-                          <div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
-                            {editData.story.images.map((image, index) => (
-                              <div key={index} className='relative group'>
-                                <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200'>
-                                  <img src={image} alt={`Story ${index + 1}`} className='w-full h-full object-cover' />
-                                </div>
-                                <div className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity'>
-                                  <Button
-                                    size='sm'
-                                    variant='destructive'
-                                    className='h-8 w-8 p-0'
-                                    onClick={() => {
-                                      const newImages = editData.story.images.filter((_, i) => i !== index)
-                                      setEditData((prev) => ({
-                                        ...prev,
-                                        story: { ...prev.story, images: newImages }
-                                      }))
-                                    }}
-                                  >
-                                    <Trash2 className='w-4 h-4' />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Upload New Story Images */}
-                      <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                        <Image className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                        <p className='text-gray-600 mb-1'>Thêm hình ảnh cho câu chuyện</p>
-                        <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Story Video */}
-                  <div>
-                    <Label className='text-sm font-medium'>Video câu chuyện</Label>
-                    <div className='mt-2 space-y-4'>
-                      {editData.story.video && (
-                        <div>
-                          <p className='text-sm text-gray-600 mb-2'>Video hiện tại:</p>
-                          <div className='relative'>
-                            <video src={editData.story.video} controls className='w-full max-w-md rounded-lg' />
-                            <Button
-                              size='sm'
-                              variant='destructive'
-                              className='absolute top-2 right-2'
-                              onClick={() => {
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  story: { ...prev.story, video: '' }
-                                }))
-                              }}
-                            >
-                              <Trash2 className='w-4 h-4' />
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                        <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                        <p className='text-gray-600 mb-1'>Thêm video cho câu chuyện</p>
-                        <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                // View mode for story
-                <div className='space-y-6'>
-                  {(productDetail as any).productStory ? (
-                    <>
-                      <div>
-                        <h3 className='text-xl font-semibold text-gray-900 mb-3'>{(productDetail as any).productStory.title}</h3>
-                        <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>
-                          {(productDetail as any).productStory.content}
-                        </p>
-                      </div>
-
-                      {/* Story Images */}
-                      {(productDetail as any).productStory.images && (productDetail as any).productStory.images.length > 0 && (
-                        <div>
-                          <h4 className='text-lg font-medium text-gray-900 mb-3'>Hình ảnh minh họa</h4>
-                          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                            {(productDetail as any).productStory.images.map((image: any, index: number) => (
-                              <div key={index} className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
-                                <img
-                                  src={image}
-                                  alt={`Story ${index + 1}`}
-                                  className='w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer'
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Story Video */}
-                      {(productDetail as any).productStory.video && (
-                        <div>
-                          <h4 className='text-lg font-medium text-gray-900 mb-3'>Video câu chuyện</h4>
-                          <video
-                            src={(productDetail as any).productStory.video}
-                            controls
-                            className='w-full max-w-2xl rounded-lg'
-                          />
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className='text-center py-12'>
-                      <BookOpen className='w-16 h-16 text-gray-400 mx-auto mb-4' />
-                      <h3 className='text-lg font-medium text-gray-900 mb-2'>Chưa có câu chuyện</h3>
-                      <p className='text-gray-500 mb-6'>Thêm câu chuyện để khách hàng hiểu rõ hơn về sản phẩm</p>
-                      <Button variant='outline' onClick={() => toggleEditMode('story')}>
-                        <Edit className='w-4 h-4 mr-2' />
-                        Thêm câu chuyện
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <Suspense fallback={<div>Đang tải...</div>}>
+            <ProductStory
+              productId={id || ''}
+              productStory={productDetail?.productStory}
+              isEditMode={editModes.story}
+              onToggleEditMode={toggleEditMode}
+              onCancelEdit={cancelEdit}
+              onSaveSection={saveSection}
+            />
+          </Suspense>
         </TabsContent>
 
         {/* Certificates Tab */}

@@ -116,7 +116,7 @@ function CreateProduct() {
   const handleCategoryToggle = (categoryId: string) => {
     setProductData((prev) => {
       const categories = prev.categories.includes(categoryId)
-        ? prev.categories.filter(id => id !== categoryId)
+        ? prev.categories.filter((id) => id !== categoryId)
         : [...prev.categories, categoryId]
       return { ...prev, categories }
     })
@@ -210,7 +210,7 @@ function CreateProduct() {
   }
 
   const handleEditVariant = (variantId: number) => {
-    const variant = productVariants.find(v => v.id === variantId)
+    const variant = productVariants.find((v) => v.id === variantId)
     if (variant) {
       setNewVariant({
         name: variant.name,
@@ -241,13 +241,11 @@ function CreateProduct() {
 
     if (editingVariant) {
       // Update existing variant
-      setProductVariants(prev => 
-        prev.map(v => v.id === editingVariant ? { ...v, ...newVariant } : v)
-      )
+      setProductVariants((prev) => prev.map((v) => (v.id === editingVariant ? { ...v, ...newVariant } : v)))
     } else {
       // Add new variant
       const newId = Math.max(...productVariants.map((v) => v.id)) + 1
-      setProductVariants(prev => [...prev, { id: newId, ...newVariant }])
+      setProductVariants((prev) => [...prev, { id: newId, ...newVariant }])
     }
 
     // Reset form
@@ -277,7 +275,7 @@ function CreateProduct() {
   }
 
   const handleNewVariantChange = (field: string, value: string | number) => {
-    setNewVariant(prev => ({ ...prev, [field]: value }))
+    setNewVariant((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleCancel = () => {
@@ -313,10 +311,10 @@ function CreateProduct() {
     try {
       setCategoriesLoading(true)
       console.log('🔍 DEBUG - Fetching product categories')
-      
+
       const response = await getAllProductCategory({ pageSize: 100, pageNumber: 1 })
       console.log('🔍 DEBUG - Categories response:', response)
-      
+
       if (response.status === 200 && response.data) {
         // Filter only active categories
         const activeCategories = response.data.filter((category: ProductCategoryItem) => category.isActive)
@@ -338,13 +336,10 @@ function CreateProduct() {
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true)
-      
+
       // Fetch store ID and categories in parallel
-      const [fetchedStoreId] = await Promise.all([
-        fetchStoreId(),
-        fetchCategories()
-      ])
-      
+      const [fetchedStoreId] = await Promise.all([fetchStoreId(), fetchCategories()])
+
       if (fetchedStoreId) {
         setError(null)
       }
@@ -577,9 +572,9 @@ function CreateProduct() {
                     <Label className='text-sm font-medium'>
                       Hình ảnh sản phẩm <span className='text-red-500'>*</span>
                     </Label>
-                    
+
                     {/* Upload Area */}
-                    <div 
+                    <div
                       className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
                       onClick={() => document.getElementById('product-images')?.click()}
                       onDragOver={(e) => {
@@ -593,7 +588,7 @@ function CreateProduct() {
                       onDrop={(e) => {
                         e.preventDefault()
                         e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                        const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'))
+                        const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'))
                         if (files.length > 0) {
                           addProductImages(files)
                         }
@@ -645,14 +640,14 @@ function CreateProduct() {
                             type='button'
                             variant='outline'
                             size='sm'
-                            onClick={() => setMediaData(prev => ({ ...prev, productImages: [] }))}
+                            onClick={() => setMediaData((prev) => ({ ...prev, productImages: [] }))}
                             className='text-red-600 hover:text-red-700 hover:bg-red-50'
                           >
                             <Trash2 className='w-4 h-4 mr-1' />
                             Xóa tất cả
                           </Button>
                         </div>
-                        
+
                         <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'>
                           {mediaData.productImages.map((file, index) => (
                             <div key={`${file.name}-${index}`} className='relative group'>
@@ -677,7 +672,7 @@ function CreateProduct() {
                                   }}
                                 />
                               </div>
-                              
+
                               {/* Remove button */}
                               <button
                                 type='button'
@@ -687,21 +682,19 @@ function CreateProduct() {
                               >
                                 <X className='w-3 h-3' />
                               </button>
-                              
+
                               {/* Image index */}
                               <div className='absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity'>
                                 {index + 1}
                               </div>
-                              
+
                               {/* File name */}
                               <p className='text-xs text-gray-500 mt-2 truncate' title={file.name}>
                                 {file.name}
                               </p>
-                              
+
                               {/* File size */}
-                              <p className='text-xs text-gray-400'>
-                                {(file.size / (1024 * 1024)).toFixed(1)} MB
-                              </p>
+                              <p className='text-xs text-gray-400'>{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
                             </div>
                           ))}
                         </div>
@@ -714,7 +707,7 @@ function CreateProduct() {
                     <Label className='text-sm font-medium'>
                       Video sản phẩm <span className='text-red-500'>*</span>
                     </Label>
-                    <div 
+                    <div
                       className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
                       onClick={() => document.getElementById('product-video')?.click()}
                       onDragOver={(e) => {
@@ -728,7 +721,7 @@ function CreateProduct() {
                       onDrop={(e) => {
                         e.preventDefault()
                         e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                        const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('video/'))
+                        const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('video/'))
                         if (files.length > 0) {
                           handleMediaChange('productVideo', files[0])
                         }
@@ -764,7 +757,7 @@ function CreateProduct() {
                         {mediaData.productVideo ? 'Thay đổi video' : 'Chọn video'}
                       </Button>
                     </div>
-                    
+
                     {mediaData.productVideo && (
                       <div className='mt-6'>
                         <div className='flex items-center justify-between mb-4'>
@@ -780,7 +773,7 @@ function CreateProduct() {
                             Xóa video
                           </Button>
                         </div>
-                        
+
                         <div className='relative group max-w-2xl'>
                           <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200 bg-black'>
                             <video
@@ -790,9 +783,12 @@ function CreateProduct() {
                               preload='metadata'
                             />
                           </div>
-                          
+
                           <div className='mt-3 p-3 bg-gray-50 rounded-lg'>
-                            <p className='text-sm font-medium text-gray-700 truncate' title={mediaData.productVideo.name}>
+                            <p
+                              className='text-sm font-medium text-gray-700 truncate'
+                              title={mediaData.productVideo.name}
+                            >
                               📹 {mediaData.productVideo.name}
                             </p>
                             <p className='text-xs text-gray-500 mt-1'>
@@ -957,18 +953,18 @@ function CreateProduct() {
                     <Label htmlFor='category' className='text-sm font-medium'>
                       Danh mục sản phẩm <span className='text-red-500'>*</span>
                     </Label>
-                    
+
                     {categoriesLoading ? (
-                      <div className="flex items-center justify-center py-4 mt-1 border rounded-md">
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        <span className="text-sm text-gray-500">Đang tải danh mục...</span>
+                      <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
+                        <Loader2 className='w-4 h-4 animate-spin mr-2' />
+                        <span className='text-sm text-gray-500'>Đang tải danh mục...</span>
                       </div>
                     ) : categories.length === 0 ? (
-                      <div className="flex items-center justify-center py-4 mt-1 border rounded-md">
-                        <span className="text-sm text-gray-500">Không có danh mục nào</span>
+                      <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
+                        <span className='text-sm text-gray-500'>Không có danh mục nào</span>
                       </div>
                     ) : (
-                      <div className="mt-1 space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                      <div className='mt-1 space-y-2 max-h-60 overflow-y-auto border rounded-md p-3'>
                         {categories.map((category) => (
                           <div
                             key={category.id}
@@ -979,46 +975,46 @@ function CreateProduct() {
                             }`}
                             onClick={() => handleCategoryToggle(category.id)}
                           >
-                            <div className="flex items-center">
+                            <div className='flex items-center'>
                               <input
-                                type="checkbox"
+                                type='checkbox'
                                 checked={productData.categories.includes(category.id)}
                                 onChange={() => handleCategoryToggle(category.id)}
-                                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                className='w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500'
                               />
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900">{category.name}</p>
+                            <div className='flex-1 min-w-0'>
+                              <p className='text-sm font-medium text-gray-900'>{category.name}</p>
                               {category.description && (
-                                <p className="text-xs text-gray-500 mt-1">{category.description}</p>
+                                <p className='text-xs text-gray-500 mt-1'>{category.description}</p>
                               )}
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
-                    
+
                     {/* Show selected categories */}
                     {productData.categories.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-sm font-medium text-gray-700 mb-2">
+                      <div className='mt-3'>
+                        <p className='text-sm font-medium text-gray-700 mb-2'>
                           Đã chọn {productData.categories.length} danh mục:
                         </p>
-                        <div className="flex flex-wrap gap-2">
+                        <div className='flex flex-wrap gap-2'>
                           {productData.categories.map((categoryId) => {
-                            const category = categories.find(cat => cat.id === categoryId)
+                            const category = categories.find((cat) => cat.id === categoryId)
                             return category ? (
                               <div
                                 key={categoryId}
-                                className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-md"
+                                className='inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-md'
                               >
                                 <span>{category.name}</span>
                                 <button
-                                  type="button"
+                                  type='button'
                                   onClick={() => handleCategoryToggle(categoryId)}
-                                  className="ml-1 text-green-600 hover:text-green-800"
+                                  className='ml-1 text-green-600 hover:text-green-800'
                                 >
-                                  <X className="w-3 h-3" />
+                                  <X className='w-3 h-3' />
                                 </button>
                               </div>
                             ) : null
@@ -1103,9 +1099,7 @@ function CreateProduct() {
                                 {index + 1}
                               </div>
                               <p className='text-xs text-gray-500 mt-1 truncate'>{file.name}</p>
-                              <p className='text-xs text-gray-400'>
-                                {(file.size / (1024 * 1024)).toFixed(1)} MB
-                              </p>
+                              <p className='text-xs text-gray-400'>{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
                             </div>
                           ))}
                         </div>

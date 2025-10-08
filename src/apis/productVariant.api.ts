@@ -13,15 +13,28 @@ interface CreateVariantRequest {
   height?: number
   weight?: number
 }
+interface UpdateVariantRequest {
+  variants: Array<{
+    id?: string // Only for update
+    variantName: string
+    quantity: number
+    price: number
+    isActive?: boolean
+    length?: number
+    width?: number
+    height?: number
+    weight?: number
+  }>
+}
 
 export const productVariantApi = {
   // Create single product variant
   create: async (productId: string, data: CreateVariantRequest) => {
     return await axiosInstance.post<ProductVariant>(`${API_URL}/${productId}/variants`, data)
   },
-  // Update variant
-  update: async (productId: string, variantId: string, data: ProductVariantInput) => {
-    return await axiosInstance.put<ProductVariant>(`${API_URL}/${productId}/variants/${variantId}`, data)
+  // Update variant - không cần variantId, chỉ cần productId
+  update: async (productId: string, data: UpdateVariantRequest) => {
+    return await axiosInstance.put<ProductVariant>(`${API_URL}/${productId}/variants`, data)
   },
 
   // Activate variant
