@@ -95,7 +95,8 @@ function Login() {
           token: response.token,
           expiresAt: response.expiresAt,
           userId: response.userId,
-          email: response.email
+          email: response.email,
+          isPermission: response.isPermission
         }
 
         // Kiểm tra xem authLogin có tồn tại không

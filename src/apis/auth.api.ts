@@ -36,6 +36,7 @@ export interface LoginResponseData {
   role: string
   userId: string
   email: string
+  isPermission: boolean
 }
 
 export const registerCustomer = async (data: RegisterCustomerData) => {

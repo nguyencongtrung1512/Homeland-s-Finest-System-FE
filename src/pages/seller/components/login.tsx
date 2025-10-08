@@ -8,9 +8,11 @@ import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { loginSeller } from '../../../apis/auth.api'
 import Loading from '../../../components/Loading/loading'
+import { useAuth } from '../../../contexts/auth.context'
 
 function SellerLogin() {
   const navigate = useNavigate()
+  const { login: authLogin } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -57,10 +59,18 @@ function SellerLogin() {
       })
 
       if (response.token) {
-        // Store token and user info
-        localStorage.setItem('token', response.token)
-        localStorage.setItem('userRole', response.role)
-        localStorage.setItem('userEmail', formData.email)
+        // Tạo userData object cho Auth Context
+        const userData = {
+          roleName: response.role,
+          token: response.token,
+          expiresAt: response.expiresAt,
+          userId: response.userId,
+          email: response.email,
+          isPermission: response.isPermission
+        }
+
+        // Cập nhật Auth Context (sẽ tự động lưu vào localStorage)
+        authLogin(userData)
 
         // toast.success('Đăng nhập thành công!')
 

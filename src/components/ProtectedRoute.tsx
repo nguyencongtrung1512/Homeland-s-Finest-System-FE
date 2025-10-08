@@ -19,7 +19,7 @@ export default function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
       case 'Customer':
         return <Navigate to={path.product} replace />
       case 'Seller':
-        return <Navigate to={path.sellerPage} replace />
+        return <Navigate to={path.BASE_SELLER} replace />
       case 'Staff':
         return <Navigate to={path.BASE_STAFF} replace />
       case 'Admin':

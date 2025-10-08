@@ -2,28 +2,34 @@ import { type ReactNode, createContext, useContext, useState } from 'react'
 import { logout as logoutAPI } from '../apis/auth.api'
 import { toast } from 'react-toastify'
 
+// kiểm tra quyền của user và ẩn/hiện các chức năng tương ứng dựa trên trạng thái isPermission
 interface User {
   roleName: string
   token: string
   expiresAt: string
   userId: string
   email: string
+  isPermission: boolean
 }
 
 interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
+  hasPermission: boolean
   logout: () => Promise<void>
   login: (userData: User) => void
   clearAuth: () => void
+  checkPermission: () => boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
+  hasPermission: false,
   logout: async () => {},
   login: () => {},
-  clearAuth: () => {}
+  clearAuth: () => {},
+  checkPermission: () => false
 })
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -33,29 +39,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   })
 
   const isAuthenticated = !!user
+  const hasPermission = user?.isPermission ?? false
 
   const login = (userData: User) => {
     setUser(userData)
     localStorage.setItem('user', JSON.stringify(userData))
     localStorage.setItem('token', userData.token)
+    localStorage.setItem('userPermission', userData.isPermission.toString())
   }
 
   const clearAuth = () => {
     setUser(null)
     localStorage.removeItem('user')
     localStorage.removeItem('token')
-    // Xóa tất cả dữ liệu liên quan đến auth
+    localStorage.removeItem('userPermission')
     localStorage.removeItem('chatbot_msg')
   }
 
+  const checkPermission = (): boolean => {
+    if (!user) return false
+    return user.isPermission
+  }
+
   const logout = async () => {
-    // Xóa dữ liệu local trước khi gọi API
     clearAuth()
-
-    // Gọi API logout để thông báo server
     await logoutAPI()
-
-    // Hiển thị thông báo thành công
     toast.success('Đăng xuất thành công!', {
       position: 'top-right',
       autoClose: 2000
@@ -63,7 +71,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, clearAuth }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        hasPermission,
+        login,
+        logout,
+        clearAuth,
+        checkPermission
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   )
 }
 

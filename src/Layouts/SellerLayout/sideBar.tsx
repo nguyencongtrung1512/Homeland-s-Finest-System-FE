@@ -12,6 +12,7 @@ import {
   Component
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useStore } from '../../contexts/store.context'
 import path from '../../constants/path'
 
 const { Sider } = Layout
@@ -19,8 +20,29 @@ const { Sider } = Layout
 function SideBar() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { store, isStoreApproved } = useStore()
 
-  const menuItems = [
+  // Menu items cho seller chưa được duyệt (chỉ các chức năng cơ bản)
+  const pendingMenuItems = [
+    {
+      key: path.BASE_SELLER,
+      label: 'Trang tổng quan',
+      icon: <Home size={18} />
+    },
+    {
+      key: path.setupStoreSeller,
+      label: 'Cửa hàng',
+      icon: <Store size={18} />
+    },
+    {
+      key: path.helpSeller,
+      label: 'Trung tâm trợ giúp',
+      icon: <HelpCircle size={18} />
+    }
+  ]
+
+  // Menu items đầy đủ cho seller đã được duyệt
+  const approvedMenuItems = [
     {
       key: path.BASE_SELLER,
       label: 'Trang tổng quan',
@@ -67,6 +89,9 @@ function SideBar() {
       icon: <HelpCircle size={18} />
     }
   ]
+
+  // Chọn menu items dựa trên trạng thái store
+  const menuItems = isStoreApproved ? approvedMenuItems : pendingMenuItems
 
   const handleMenuClick = ({ key }: { key: string }) => {
     // Nếu key là relative path, cần kết hợp với base path
@@ -115,6 +140,22 @@ function SideBar() {
           Tinh Hoa Quê Nhà
         </span>
       </div>
+
+      {/* Store Status Indicator */}
+      {store && !isStoreApproved && (
+        <div
+          style={{
+            padding: '12px 24px',
+            background: '#fff7e6',
+            borderBottom: '1px solid #ffd591',
+            fontSize: '12px',
+            color: '#d46b08'
+          }}
+        >
+          <div style={{ fontWeight: '500', marginBottom: '4px' }}>⚠️ Chế độ hạn chế</div>
+          <div>Cửa hàng chưa được phê duyệt</div>
+        </div>
+      )}
 
       {/* Navigation Menu */}
       <Menu
