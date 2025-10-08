@@ -32,7 +32,8 @@ import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/p
 import type { Product } from '../../../types'
 
 import ProductStory from './productStory'
-import ProductCertificate from './porductCertificate'
+import ProductCertificate from './productCertificate'
+
 
 interface ProductDetail extends Product {
   variants?: any[]

@@ -28,6 +28,7 @@ import {
   Loader2,
   X
 } from 'lucide-react'
+import { toast } from 'react-toastify'
 
 function CreateProduct() {
   const navigate = useNavigate()
@@ -310,22 +311,16 @@ function CreateProduct() {
   const fetchCategories = async () => {
     try {
       setCategoriesLoading(true)
-      console.log('🔍 DEBUG - Fetching product categories')
 
       const response = await getAllProductCategory({ pageSize: 100, pageNumber: 1 })
-      console.log('🔍 DEBUG - Categories response:', response)
-
       if (response.status === 200 && response.data) {
         // Filter only active categories
         const activeCategories = response.data.filter((category: ProductCategoryItem) => category.isActive)
         setCategories(activeCategories)
-        console.log('🔍 DEBUG - Active categories loaded:', activeCategories.length)
       } else {
-        console.warn('⚠️ DEBUG - No categories data received')
         setCategories([])
       }
     } catch (err) {
-      console.error('❌ DEBUG - Error fetching categories:', err)
       setCategories([])
     } finally {
       setCategoriesLoading(false)
@@ -355,40 +350,35 @@ function CreateProduct() {
 
       // Check if storeId is available
       if (!storeId) {
-        alert('Không tìm thấy thông tin cửa hàng. Vui lòng thử lại.')
+        toast.error('Không tìm thấy thông tin cửa hàng. Vui lòng thử lại.')
         return
       }
 
       // Validate required fields
       if (!productData.name.trim()) {
-        alert('Vui lòng nhập tên sản phẩm')
+        toast.error('Vui lòng nhập tên sản phẩm')
         return
       }
 
       if (!productData.description.trim()) {
-        alert('Vui lòng nhập mô tả sản phẩm')
+        toast.error('Vui lòng nhập mô tả sản phẩm')
         return
       }
 
       // Thêm validation cho categories
       if (productData.categories.length === 0) {
-        alert('Vui lòng chọn ít nhất một danh mục sản phẩm')
+        toast.error('Vui lòng chọn ít nhất một danh mục sản phẩm')
         return
       }
 
-      // 🔍 DEBUG: Log dữ liệu categories trước khi gửi
-      console.log('🔍 DEBUG - productData.categories:', productData.categories)
-      console.log('🔍 DEBUG - productData.categories type:', typeof productData.categories)
-      console.log('🔍 DEBUG - productData.categories length:', productData.categories.length)
-      console.log('🔍 DEBUG - productData.categories isArray:', Array.isArray(productData.categories))
-
+  
       if (mediaData.productImages.length === 0) {
-        alert('Vui lòng chọn ít nhất một hình ảnh sản phẩm')
+        toast.error('Vui lòng chọn ít nhất một hình ảnh sản phẩm')
         return
       }
 
       if (!mediaData.productVideo) {
-        alert('Vui lòng chọn video sản phẩm')
+        toast.error('Vui lòng chọn video sản phẩm')
         return
       }
 
@@ -416,20 +406,9 @@ function CreateProduct() {
         storyVideo: storyData.storyVideo || undefined,
         storyImages: storyImages.length > 0 ? storyImages : undefined
       }
-
-      // 🔍 DEBUG: Log formData trước khi gửi API
-      console.log('🔍 DEBUG - FormData object:', formData)
-      console.log('🔍 DEBUG - formData.categoryIds:', formData.categoryIds)
-      console.log('🔍 DEBUG - formData.categoryIds type:', typeof formData.categoryIds)
-      console.log('🔍 DEBUG - formData.categoryIds isArray:', Array.isArray(formData.categoryIds))
-
-      console.log('Creating product with data:', formData)
-      console.log('Categories being sent:', productData.categories) // Thêm log để debug
-
       // Call API với FormData
       const response = await productApi.create(formData)
 
-      console.log('Product created successfully:', response)
 
       // Hiển thị thông tin response theo format mẫu
       if (response.data) {
@@ -449,7 +428,7 @@ function CreateProduct() {
       }
 
       // Show success message
-      alert('Tạo sản phẩm thành công!')
+      toast.success('Tạo sản phẩm thành công!')
 
       // Navigate back to product management
       navigate('../product-management')
@@ -968,11 +947,10 @@ function CreateProduct() {
                         {categories.map((category) => (
                           <div
                             key={category.id}
-                            className={`flex items-start space-x-3 p-2 rounded-md cursor-pointer transition-colors ${
-                              productData.categories.includes(category.id)
+                            className={`flex items-start space-x-3 p-2 rounded-md cursor-pointer transition-colors ${productData.categories.includes(category.id)
                                 ? 'bg-green-50 border border-green-200'
                                 : 'hover:bg-gray-50 border border-transparent'
-                            }`}
+                              }`}
                             onClick={() => handleCategoryToggle(category.id)}
                           >
                             <div className='flex items-center'>
@@ -1105,19 +1083,6 @@ function CreateProduct() {
                         </div>
                       </div>
                     )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor='story' className='text-sm font-medium'>
-                      Ghi chú thêm
-                    </Label>
-                    <Textarea
-                      id='story'
-                      placeholder='Thông tin bổ sung về sản phẩm...'
-                      value={productData.story}
-                      onChange={(e) => handleInputChange('story', e.target.value)}
-                      className='mt-1 min-h-[80px]'
-                    />
                   </div>
                 </CardContent>
               </Card>

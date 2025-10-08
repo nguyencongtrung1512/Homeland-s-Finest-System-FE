@@ -14,7 +14,8 @@ import {
   Check,
   X,
   Ban,
-  Unlock
+  Unlock,
+  Package
 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -26,6 +27,7 @@ import { Label } from '../../../components/ui/label'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { adminApi, type Staff, type StatusStoreRequest } from '../../../apis/admin.api'
 import { toast } from 'react-toastify'
+import ProductModal from './modalProduct'
 
 function StoreDetailAdmin() {
   const { storeId } = useParams<{ storeId: string }>()
@@ -48,20 +50,21 @@ function StoreDetailAdmin() {
   const [statusLoading, setStatusLoading] = useState(false)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
 
+  const [productModalOpen, setProductModalOpen] = useState(false)
   // Helper function để xử lý lỗi từ backend
   const handleApiError = (error: any, defaultMessage: string) => {
     console.error('API Error:', error)
-    
+
     // Kiểm tra nếu error có response từ axios
     if (error?.response?.data) {
       const backendError = error.response.data
-      
+
       // Xử lý validation errors (cấu trúc như trong hình)
       if (backendError.errors && typeof backendError.errors === 'object') {
         const errorMessages: string[] = []
-        
+
         // Duyệt qua tất cả các field có lỗi
-        Object.keys(backendError.errors).forEach(field => {
+        Object.keys(backendError.errors).forEach((field) => {
           const fieldErrors = backendError.errors[field]
           if (Array.isArray(fieldErrors)) {
             errorMessages.push(...fieldErrors)
@@ -69,38 +72,38 @@ function StoreDetailAdmin() {
             errorMessages.push(fieldErrors)
           }
         })
-        
+
         if (errorMessages.length > 0) {
           return errorMessages.join(', ')
         }
       }
-      
+
       // Nếu có title (như trong hình)
       if (backendError.title) {
         return backendError.title
       }
-      
+
       // Ưu tiên hiển thị message từ backend
       if (backendError.message) {
         return backendError.message
       }
-      
+
       // Nếu có errors array (validation errors cũ)
       if (backendError.errors && Array.isArray(backendError.errors)) {
         return backendError.errors.join(', ')
       }
-      
+
       // Nếu có error string
       if (typeof backendError.error === 'string') {
         return backendError.error
       }
     }
-    
+
     // Nếu error có message
     if (error?.message) {
       return error.message
     }
-    
+
     // Fallback về message mặc định
     return defaultMessage
   }
@@ -120,21 +123,15 @@ function StoreDetailAdmin() {
       if (response) {
         if (response.id || response.storeName) {
           storeData = response
-        }
-        else if ((response as any).data && ((response as any).data.id || (response as any).data.storeName)) {
+        } else if ((response as any).data && ((response as any).data.id || (response as any).data.storeName)) {
           storeData = (response as any).data
         }
       }
 
       if (storeData) {
-        console.log('Setting store data:', storeData) // Debug log
+        console.log('Setting store data:', storeData.products)
         setStore(storeData)
       } else {
-        console.log('No valid data found in response:', response) // Debug log
-        console.log('Response type:', typeof response) // Debug log
-        console.log('Response keys:', Object.keys(response || {})) // Debug log
-
-        // Fallback: thử set response trực tiếp nếu có vẻ hợp lệ
         if (response && typeof response === 'object' && response !== null) {
           console.log('Trying to use response directly as fallback') // Debug log
           setStore(response as StoreResponse)
@@ -174,7 +171,7 @@ function StoreDetailAdmin() {
       Pending: { text: 'Chờ duyệt', color: 'bg-yellow-500', textColor: 'text-yellow-700' },
       Rejected: { text: 'Từ chối', color: 'bg-red-500', textColor: 'text-red-700' },
       Processing: { text: 'Nhân viên xử lí', color: 'bg-indigo-500', textColor: 'text-indigo-700' },
-     ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', color: 'bg-purple-500', textColor: 'text-purple-700' },
+      ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', color: 'bg-purple-500', textColor: 'text-purple-700' },
       Inactive: { text: 'Bị khóa', color: 'bg-red-500', textColor: 'text-red-700' },
       Active: { text: 'Hoạt động trở lại', color: 'bg-green-500', textColor: 'text-green-700' }
     }
@@ -210,22 +207,22 @@ function StoreDetailAdmin() {
 
   const handleSaveReason = () => {
     const trimmedReason = reason.trim()
-    
+
     if (!trimmedReason) {
       toast.error('Vui lòng nhập lý do')
       return
     }
-    
+
     if (trimmedReason.length < 10) {
       toast.error('Lý do phải có ít nhất 10 ký tự')
       return
     }
-    
+
     if (trimmedReason.length > 200) {
       toast.error('Lý do không được vượt quá 200 ký tự')
       return
     }
-    
+
     setStatusDialogOpen(false)
     setConfirmDialogOpen(true)
   }
@@ -244,10 +241,10 @@ function StoreDetailAdmin() {
 
       if (response) {
         const actionText = {
-          'Approve': 'duyệt',
-          'Reject': 'từ chối',
-          'Ban': 'khóa',
-          'Unban': 'mở khóa'
+          Approve: 'duyệt',
+          Reject: 'từ chối',
+          Ban: 'khóa',
+          Unban: 'mở khóa'
         }
         toast.success(`Cửa hàng đã được ${actionText[selectedAction]} thành công!`)
         // Refresh store data
@@ -316,31 +313,41 @@ function StoreDetailAdmin() {
       <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
         <div className='text-center max-w-md'>
           <p className='text-red-500 mb-4'>{error || 'Không tìm thấy thông tin cửa hàng'}</p>
-          
+
           {/* Hiển thị thông tin lỗi chi tiết từ backend */}
           {detailedError && (
             <div className='mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-left'>
               <h4 className='text-sm font-medium text-red-800 mb-2'>Chi tiết lỗi:</h4>
               <div className='text-xs text-red-700 space-y-1'>
                 {detailedError?.response?.data?.message && (
-                  <p><strong>Message:</strong> {detailedError.response.data.message}</p>
+                  <p>
+                    <strong>Message:</strong> {detailedError.response.data.message}
+                  </p>
                 )}
                 {detailedError?.response?.data?.errors && Array.isArray(detailedError.response.data.errors) && (
-                  <p><strong>Validation Errors:</strong> {detailedError.response.data.errors.join(', ')}</p>
+                  <p>
+                    <strong>Validation Errors:</strong> {detailedError.response.data.errors.join(', ')}
+                  </p>
                 )}
                 {detailedError?.response?.status && (
-                  <p><strong>Status Code:</strong> {detailedError.response.status}</p>
+                  <p>
+                    <strong>Status Code:</strong> {detailedError.response.status}
+                  </p>
                 )}
                 {detailedError?.response?.statusText && (
-                  <p><strong>Status Text:</strong> {detailedError.response.statusText}</p>
+                  <p>
+                    <strong>Status Text:</strong> {detailedError.response.statusText}
+                  </p>
                 )}
                 {detailedError?.message && (
-                  <p><strong>Error Message:</strong> {detailedError.message}</p>
+                  <p>
+                    <strong>Error Message:</strong> {detailedError.message}
+                  </p>
                 )}
               </div>
             </div>
           )}
-          
+
           <Button onClick={() => navigate('/admin/storeManagement')} variant='outline'>
             <ArrowLeft className='w-4 h-4 mr-2' />
             Quay lại danh sách
@@ -430,6 +437,16 @@ function StoreDetailAdmin() {
                       </div>
                     </div>
                   </div>
+                </div>
+                <div>
+                  <Button
+                    onClick={() => setProductModalOpen(true)}
+                    variant='outline'
+                    className='w-full border-blue-200 text-blue-600 hover:bg-blue-50'
+                  >
+                    <Package className='w-4 h-4 mr-2' />
+                    Xem sản phẩm ({store?.products?.length || 0})
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -685,11 +702,7 @@ function StoreDetailAdmin() {
                         <Check className='w-4 h-4 mr-2' />
                         Duyệt cửa hàng
                       </Button>
-                      <Button
-                        onClick={() => handleStatusAction('Reject')}
-                        variant='destructive'
-                        className='w-full'
-                      >
+                      <Button onClick={() => handleStatusAction('Reject')} variant='destructive' className='w-full'>
                         <X className='w-4 h-4 mr-2' />
                         Từ chối cửa hàng
                       </Button>
@@ -698,11 +711,7 @@ function StoreDetailAdmin() {
 
                   {/* Approved: Ban (Khóa cửa hàng) */}
                   {store.status === 'Approved' && (
-                    <Button
-                      onClick={() => handleStatusAction('Ban')}
-                      variant='destructive'
-                      className='w-full'
-                    >
+                    <Button onClick={() => handleStatusAction('Ban')} variant='destructive' className='w-full'>
                       <Ban className='w-4 h-4 mr-2' />
                       Khóa cửa hàng
                     </Button>
@@ -720,21 +729,30 @@ function StoreDetailAdmin() {
                   )}
 
                   {/* Các trạng thái khác: Yêu cầu chỉnh sửa */}
-                  {store.status !== 'Pending' && store.status !== 'ReviewedByStaff' && store.status !== 'Approved' && store.status !== 'Inactive' && (
-                    <Button
-                      onClick={handleRequestEdit}
-                      className='w-full bg-yellow-500 hover:bg-yellow-600 text-white'
-                    >
-                      <Edit className='w-4 h-4 mr-2' />
-                      Yêu cầu chỉnh sửa
-                    </Button>
-                  )}
+                  {store.status !== 'Pending' &&
+                    store.status !== 'ReviewedByStaff' &&
+                    store.status !== 'Approved' &&
+                    store.status !== 'Inactive' && (
+                      <Button
+                        onClick={handleRequestEdit}
+                        className='w-full bg-yellow-500 hover:bg-yellow-600 text-white'
+                      >
+                        <Edit className='w-4 h-4 mr-2' />
+                        Yêu cầu chỉnh sửa
+                      </Button>
+                    )}
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+      <ProductModal
+        isOpen={productModalOpen}
+        onClose={() => setProductModalOpen(false)}
+        products={store?.products || []}
+        storeName={store?.storeName || ''}
+      />
 
       {/* Assign Staff Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
@@ -850,7 +868,15 @@ function StoreDetailAdmin() {
 
               <div className='space-y-3'>
                 <Label htmlFor='reason' className='text-sm font-medium text-gray-700'>
-                  Lý do {selectedAction === 'Approve' ? 'duyệt' : selectedAction === 'Reject' ? 'từ chối' : selectedAction === 'Ban' ? 'khóa' : 'mở khóa'} *
+                  Lý do{' '}
+                  {selectedAction === 'Approve'
+                    ? 'duyệt'
+                    : selectedAction === 'Reject'
+                      ? 'từ chối'
+                      : selectedAction === 'Ban'
+                        ? 'khóa'
+                        : 'mở khóa'}{' '}
+                  *
                 </Label>
                 <Textarea
                   id='reason'
@@ -862,7 +888,9 @@ function StoreDetailAdmin() {
                 />
                 <div className='flex pt-3 justify-between items-center'>
                   <p className='text-xs text-gray-500'>Lý do này sẽ được gửi đến chủ cửa hàng</p>
-                  <p className={`text-xs ${reason.length < 10 ? 'text-red-500' : reason.length > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                  <p
+                    className={`text-xs ${reason.length < 10 ? 'text-red-500' : reason.length > 200 ? 'text-red-500' : 'text-gray-500'}`}
+                  >
                     {reason.length}/200 ký tự
                     {reason.length < 10 && reason.length > 0 && ' (tối thiểu 10 ký tự)'}
                   </p>
@@ -877,9 +905,11 @@ function StoreDetailAdmin() {
                   onClick={handleSaveReason}
                   disabled={!reason.trim() || reason.trim().length < 10 || reason.trim().length > 200}
                   className={
-                    selectedAction === 'Approve' ? 'bg-green-500 hover:bg-green-600 text-white' :
-                      selectedAction === 'Reject' || selectedAction === 'Ban' ? 'bg-red-500 hover:bg-red-600 text-white' :
-                        'bg-blue-500 hover:bg-blue-600 text-white'
+                    selectedAction === 'Approve'
+                      ? 'bg-green-500 hover:bg-green-600 text-white'
+                      : selectedAction === 'Reject' || selectedAction === 'Ban'
+                        ? 'bg-red-500 hover:bg-red-600 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
                   }
                 >
                   Lưu và tiếp tục
@@ -906,11 +936,17 @@ function StoreDetailAdmin() {
             <div className='space-y-4 mt-4'>
               <div className='p-4 bg-gray-50 border rounded-lg'>
                 <p className='text-sm text-gray-700 mb-2'>
-                  Bạn có chắc chắn muốn <strong>
-                    {selectedAction === 'Approve' ? 'duyệt' :
-                      selectedAction === 'Reject' ? 'từ chối' :
-                        selectedAction === 'Ban' ? 'khóa' : 'mở khóa'}
-                  </strong> cửa hàng <strong>{store.storeName}</strong>?
+                  Bạn có chắc chắn muốn{' '}
+                  <strong>
+                    {selectedAction === 'Approve'
+                      ? 'duyệt'
+                      : selectedAction === 'Reject'
+                        ? 'từ chối'
+                        : selectedAction === 'Ban'
+                          ? 'khóa'
+                          : 'mở khóa'}
+                  </strong>{' '}
+                  cửa hàng <strong>{store.storeName}</strong>?
                 </p>
                 <div className='mt-3 p-3 bg-white border rounded'>
                   <p className='text-xs text-gray-500 mb-1'>Lý do:</p>
@@ -926,9 +962,11 @@ function StoreDetailAdmin() {
                   onClick={handleConfirmStatusUpdate}
                   disabled={statusLoading}
                   className={
-                    selectedAction === 'Approve' ? 'bg-green-500 hover:bg-green-600 text-white' :
-                      selectedAction === 'Reject' || selectedAction === 'Ban' ? 'bg-red-500 hover:bg-red-600 text-white' :
-                        'bg-blue-500 hover:bg-blue-600 text-white'
+                    selectedAction === 'Approve'
+                      ? 'bg-green-500 hover:bg-green-600 text-white'
+                      : selectedAction === 'Reject' || selectedAction === 'Ban'
+                        ? 'bg-red-500 hover:bg-red-600 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
                   }
                 >
                   {statusLoading ? (
