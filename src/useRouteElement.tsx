@@ -35,7 +35,6 @@ import ProfileLayout from './Layouts/CustomerLayout/ProfileLayout'
 import ListStore from './pages/staff/storeManagerment/listStore'
 import ApproveStores from './pages/staff/storeManagerment/approveStores'
 import LockedStores from './pages/staff/storeManagerment/lockedStores'
-import StoreDetail from './pages/staff/storeManagerment/storeDetail'
 import ManagerProduct from './pages/staff/productManagerment/managerProduct'
 import TransactionManagement from './pages/staff/transactions/transactions'
 import ReportManagement from './pages/staff/reports/reports'
@@ -63,6 +62,7 @@ import UpdateBlogByCategory from './pages/admin/blogManagerment/updateBlog'
 import StoreDetailAdmin from './pages/admin/storeManagerment/detail'
 import DetailProductSeller from './pages/seller/products/detailProduct'
 import DetailProductStaff from './pages/staff/productManagerment/detailProduct'
+import StaffStoreDetail from './pages/staff/storeManagerment/storeDetail'
 
 // import ProtectedRoute from './components/ProtectedRoute'
 
@@ -242,7 +242,7 @@ export default function useRouteElements() {
             },
             {
               path: path.storeDetailStaff,
-              element: <StoreDetail />
+              element: <StaffStoreDetail />
             },
             {
               path: path.approveStoresStaff,

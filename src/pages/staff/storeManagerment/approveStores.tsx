@@ -14,7 +14,7 @@ import {
   Form,
   Upload
 } from 'antd'
-import { Search, Filter, Eye, Check, X, RefreshCw, Upload as UploadIcon } from 'lucide-react'
+import { Search, Filter, Eye, RefreshCw, Upload as UploadIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
 import { staffApi, type AssignedStore, type ReviewStoreRequest } from '../../../apis/staff.api'
@@ -83,11 +83,11 @@ function ApproveStores() {
         id: apiStore.id
       },
       owner: {
-        name: 'Chủ cửa hàng', // API không có thông tin owner name
-        email: 'N/A' // API không có thông tin owner email
+        name: 'Chủ cửa hàng',
+        email: 'N/A'
       },
       createdDate: formatDate(apiStore.createdAt),
-      products: 0, // API không có thông tin product count
+      products: 0, 
       status: apiStore.status
     }
   }
@@ -162,19 +162,6 @@ function ApproveStores() {
       setReviewModalOpen(true)
       reviewForm.setFieldsValue({
         NewStatus: 'ReviewedByStaff',
-        StaffNotes: '',
-        StaffFeedback: ''
-      })
-    }
-  }
-
-  const handleReject = (storeId: string) => {
-    const store = storeData.find((s) => s.store.id === storeId)
-    if (store) {
-      setSelectedStore(store)
-      setReviewModalOpen(true)
-      reviewForm.setFieldsValue({
-        NewStatus: 'ReviewedByStaff', // Chỉ có thể set ReviewedByStaff
         StaffNotes: '',
         StaffFeedback: ''
       })
@@ -314,20 +301,9 @@ function ApproveStores() {
           <Button
             type='text'
             icon={<Eye size={16} />}
-            onClick={() => navigate(`/storeDetail/${record.store.id}`)}
+            onClick={() => navigate(`/staff/store-detail/${record.store.id}`)}
             className='flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
-          />
-          <Button
-            type='text'
-            icon={<Check size={16} />}
-            onClick={() => handleApprove(record.store.id)}
-            className='flex items-center justify-center w-8 h-8 rounded-full bg-green-50 text-green-600 hover:bg-green-100'
-          />
-          <Button
-            type='text'
-            icon={<X size={16} />}
-            onClick={() => handleReject(record.store.id)}
-            className='flex items-center justify-center w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100'
+            title='Xem chi tiết'
           />
         </div>
       )

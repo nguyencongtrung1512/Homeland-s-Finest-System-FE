@@ -51,6 +51,10 @@ function StoreDetailAdmin() {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
 
   const [productModalOpen, setProductModalOpen] = useState(false)
+   // Image preview states
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+  const [previewImageUrl, setPreviewImageUrl] = useState<string>('')
+
   // Helper function để xử lý lỗi từ backend
   const handleApiError = (error: any, defaultMessage: string) => {
     console.error('API Error:', error)
@@ -106,6 +110,16 @@ function StoreDetailAdmin() {
 
     // Fallback về message mặc định
     return defaultMessage
+  }
+
+    const handleImagePreview = (imageUrl: string) => {
+    setPreviewImageUrl(imageUrl)
+    setImagePreviewOpen(true)
+  }
+
+  const handleCloseImagePreview = () => {
+    setImagePreviewOpen(false)
+    setPreviewImageUrl('')
   }
 
   const fetchStoreDetail = async () => {
@@ -416,8 +430,7 @@ function StoreDetailAdmin() {
                         <div>
                           <span className='text-sm text-gray-500'>Địa chỉ:</span>
                           <p className='text-sm font-medium text-gray-900'>
-                            {[store.address, store.ward, store.district, store.province].filter(Boolean).join(', ') ||
-                              'Chưa có thông tin địa chỉ'}
+                            {store.address || 'Chưa có thông tin địa chỉ'}
                           </p>
                         </div>
                       </div>
@@ -495,7 +508,8 @@ function StoreDetailAdmin() {
                                   <img
                                     src={store.sellerInfo.identifyFrontImage}
                                     alt='Mặt trước CMND'
-                                    className='w-full h-full object-cover rounded'
+                                    className='w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity'
+                                    onClick={() => handleImagePreview(store.sellerInfo.identifyFrontImage)}
                                   />
                                 ) : (
                                   <FileText className='w-6 h-6 text-gray-400' />
@@ -506,10 +520,11 @@ function StoreDetailAdmin() {
                             <div className='text-center'>
                               <div className='w-24 h-16 bg-gray-100 border rounded-lg flex items-center justify-center mb-1'>
                                 {store.sellerInfo.identifyBackImage ? (
-                                  <img
+                                   <img
                                     src={store.sellerInfo.identifyBackImage}
                                     alt='Mặt sau CMND'
-                                    className='w-full h-full object-cover rounded'
+                                    className='w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity'
+                                    onClick={() => handleImagePreview(store.sellerInfo.identifyBackImage)}
                                   />
                                 ) : (
                                   <FileText className='w-6 h-6 text-gray-400' />
@@ -656,9 +671,8 @@ function StoreDetailAdmin() {
                             <img
                               src={store.staffImage}
                               alt='Ảnh chứng minh của nhân viên'
-                              className='w-32 h-32 object-cover rounded-lg border'
-                              onClick={() => store.staffImage && window.open(store.staffImage, '_blank')}
-                              style={{ cursor: 'pointer' }}
+                              className='w-32 h-32 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity'
+                              onClick={() => handleImagePreview(store.staffImage)}
                             />
                           </div>
                         </div>
@@ -989,6 +1003,28 @@ function StoreDetailAdmin() {
           )}
         </DialogContent>
       </Dialog>
+        {/* Image Preview Modal */}
+      {imagePreviewOpen && (
+        <div 
+          className='fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50'
+          onClick={handleCloseImagePreview}
+        >
+          <div className='relative max-w-4xl max-h-[90vh] p-4'>
+            <button
+              onClick={handleCloseImagePreview}
+              className='absolute top-2 right-2 text-white hover:text-gray-300 z-10'
+            >
+              <X className='w-8 h-8' />
+            </button>
+            <img
+              src={previewImageUrl}
+              alt='Preview'
+              className='max-w-full max-h-full object-contain rounded-lg'
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

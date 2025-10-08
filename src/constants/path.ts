@@ -41,7 +41,7 @@ export const path = {
   BASE_STAFF: '/staff',
   // Staff nested routes (relative paths)
   storesStaff: 'stores',
-  storeDetailStaff: 'store-detail/:storeId',
+  storeDetailStaff: '/staff/store-detail/:storeId',
   approveStoresStaff: 'approve-stores',
   lockedStoresStaff: 'locked-stores',
   approveProductsStaff: 'approve-products',
