@@ -8,7 +8,7 @@ import { Checkbox } from '../../../components/ui/checkbox'
 import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-import { ChevronDownIcon, Eye, EyeOff } from 'lucide-react'
+import { ChevronDownIcon, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { Upload as AntUpload, message } from 'antd'
@@ -19,8 +19,8 @@ import { path } from '../../../constants/path'
 import { registerSeller } from '../../../apis/auth.api'
 import type { GHNProvince, GHNDistrict, GHNWard } from '../../../apis/address.api'
 import Loading from '../../../components/Loading/loading'
+import { extractCCCDInfo, type ExtractedCCCDInfo } from '../../../apis/fptai.api'
 
-// Custom CSS for checkbox styling
 const checkboxStyles = `
   .custom-checkbox {
     appearance: none;
@@ -61,9 +61,7 @@ const checkboxStyles = `
   }
 `
 
-// Types
 interface FormData {
-  // Thông tin tài khoản (userInfo)
   firstName: string
   lastName: string
   email: string
@@ -72,8 +70,6 @@ interface FormData {
   confirmPassword: string
   gender: string
   dateOfBirth: string
-
-  // Thông tin seller (sellerInfo)
   businessName: string
   taxCode: string
   bankAccount: string
@@ -81,12 +77,8 @@ interface FormData {
   identifyFrontImage: File[]
   identifyBackImage: File[]
   vendorApplicationImageUrl: File[]
-
-  // Thông tin cửa hàng (storeInfo)
   storeName: string
   address: string
-
-  // Cam kết
   agreements: {
     terms: boolean
     policy: boolean
@@ -99,7 +91,150 @@ interface FormErrors {
   [key: string]: string
 }
 
-// Ant Design Upload Component
+const FileUploadFieldWithOCR = ({
+  label,
+  onChange,
+  onOCRData,
+  accept = 'image/*',
+  required = false,
+  multiple = false,
+  description,
+  maxCount = 1,
+  enableOCR = false
+}: {
+  label: string
+  onChange: (files: File[]) => void
+  onOCRData?: (data: ExtractedCCCDInfo) => void
+  accept?: string
+  required?: boolean
+  multiple?: boolean
+  description?: string
+  maxCount?: number
+  enableOCR?: boolean
+}) => {
+  const [fileList, setFileList] = useState<UploadFile[]>([])
+  const [previewImage, setPreviewImage] = useState<string>('')
+  const [showPreview, setShowPreview] = useState(false)
+  const [isProcessingOCR, setIsProcessingOCR] = useState(false)
+
+  const handleChange: UploadProps['onChange'] = async ({ fileList: newFileList }) => {
+    setFileList(newFileList)
+    const newFiles = newFileList.filter((file) => file.originFileObj).map((file) => file.originFileObj as File)
+    onChange(newFiles)
+
+    if (enableOCR && newFiles.length > 0 && onOCRData) {
+      const file = newFiles[0]
+      setIsProcessingOCR(true)
+      
+      try {
+        toast.info('Đang đọc thông tin từ CCCD...', { autoClose: 2000 })
+        const ocrResult = await extractCCCDInfo(file)
+        
+        if (ocrResult) {
+          onOCRData(ocrResult)
+          toast.success('Đã đọc thông tin từ CCCD thành công!')
+        } else {
+          toast.warning('Không thể đọc thông tin từ ảnh. Vui lòng nhập thủ công.')
+        }
+      } catch (error) {
+        console.error('OCR Error:', error)
+        toast.error('Lỗi khi đọc thông tin từ CCCD. Vui lòng thử lại hoặc nhập thủ công.')
+      } finally {
+        setIsProcessingOCR(false)
+      }
+    }
+  }
+
+  const beforeUpload = (file: File) => {
+    const isImage = file.type.startsWith('image/')
+    if (!isImage) {
+      message.error('Chỉ được upload file ảnh!')
+      return false
+    }
+
+    const isLt10M = file.size / 1024 / 1024 < 10
+    if (!isLt10M) {
+      message.error('Kích thước file phải nhỏ hơn 10MB!')
+      return false
+    }
+
+    return false
+  }
+
+  const handlePreview = async (file: UploadFile) => {
+    if (!file.url && !file.preview) {
+      file.preview = await getBase64(file.originFileObj as File)
+    }
+    setPreviewImage(file.url || file.preview || '')
+    setShowPreview(true)
+  }
+
+  const getBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = (error) => reject(error)
+    })
+  }
+
+  const uploadButton = (
+    <div className='flex w-full h-full flex-col items-center justify-center space-y-2 p-4 cursor-pointer hover:bg-gray-100 rounded-lg'>
+      {isProcessingOCR ? (
+        <>
+          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+          <div className='text-sm text-blue-600'>Đang xử lý OCR...</div>
+        </>
+      ) : (
+        <>
+          <div className='text-sm text-gray-600'>Nhấp để chọn file</div>
+          <div className='text-xs text-gray-500'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ chọn 1 file'}</div>
+        </>
+      )}
+    </div>
+  )
+
+  return (
+    <div className='space-y-2'>
+      <Label className='text-sm font-medium'>
+        {label} {required && <span className='text-red-500'>*</span>}
+      </Label>
+      {description && <p className='text-xs text-gray-500'>{description}</p>}
+
+      <AntUpload
+        listType='picture-card'
+        fileList={fileList}
+        onChange={handleChange}
+        beforeUpload={beforeUpload}
+        onPreview={handlePreview}
+        multiple={multiple}
+        maxCount={maxCount}
+        accept={accept}
+        disabled={isProcessingOCR}
+        showUploadList={{
+          showPreviewIcon: true,
+          showRemoveIcon: !isProcessingOCR,
+          showDownloadIcon: false
+        }}
+        className='w-full'
+      >
+        {fileList.length >= maxCount ? null : uploadButton}
+      </AntUpload>
+
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className='max-w-4xl max-h-4xl'>
+          <DialogHeader>
+            <DialogTitle>Preview ảnh</DialogTitle>
+          </DialogHeader>
+          <div className='flex justify-center'>
+            <img src={previewImage} alt='Preview' className='max-w-full max-h-96 object-contain rounded-lg' />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 const FileUploadField = ({
   label,
   onChange,
@@ -107,7 +242,7 @@ const FileUploadField = ({
   required = false,
   multiple = false,
   description,
-  maxCount = 1
+  maxCount = 1,
 }: {
   label: string
   onChange: (files: File[]) => void
@@ -123,10 +258,7 @@ const FileUploadField = ({
 
   const handleChange: UploadProps['onChange'] = ({ fileList: newFileList }) => {
     setFileList(newFileList)
-
-    // Convert UploadFile[] to File[]
     const newFiles = newFileList.filter((file) => file.originFileObj).map((file) => file.originFileObj as File)
-
     onChange(newFiles)
   }
 
@@ -143,14 +275,13 @@ const FileUploadField = ({
       return false
     }
 
-    return false // Prevent auto upload
+    return false
   }
 
   const handlePreview = async (file: UploadFile) => {
     if (!file.url && !file.preview) {
       file.preview = await getBase64(file.originFileObj as File)
     }
-
     setPreviewImage(file.url || file.preview || '')
     setShowPreview(true)
   }
@@ -165,9 +296,9 @@ const FileUploadField = ({
   }
 
   const uploadButton = (
-    <div className='flex w-full h-full flex-col items-center justify-center space-y-2 p-4 cursor-pointer hover:bg-gray-100 rounded-lg '>
+    <div className='flex w-full h-full flex-col items-center justify-center space-y-2 p-4 cursor-pointer hover:bg-gray-100 rounded-lg'>
       <div className='text-sm text-gray-600'>Nhấp để chọn file</div>
-      <div className='text-xs text-gray-500'>{multiple ? 'Có thể chọn nhiều file' : 'Chỉ chọn 1 file'}</div>
+      <div className='text-xs text-gray-500'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ chọn 1 file'}</div>
     </div>
   )
 
@@ -197,7 +328,6 @@ const FileUploadField = ({
         {fileList.length >= maxCount ? null : uploadButton}
       </AntUpload>
 
-      {/* Preview Dialog using shadcn/ui */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className='max-w-4xl max-h-4xl'>
           <DialogHeader>
@@ -215,7 +345,6 @@ const FileUploadField = ({
 function SellerRegistrationForm() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState<FormData>({
-    // userInfo
     firstName: '',
     lastName: '',
     email: '',
@@ -224,8 +353,6 @@ function SellerRegistrationForm() {
     confirmPassword: '',
     gender: '',
     dateOfBirth: '',
-
-    // sellerInfo
     businessName: '',
     taxCode: '',
     bankAccount: '',
@@ -233,12 +360,8 @@ function SellerRegistrationForm() {
     identifyFrontImage: [],
     identifyBackImage: [],
     vendorApplicationImageUrl: [],
-
-    // storeInfo
     storeName: '',
     address: '',
-
-    // agreements
     agreements: {
       terms: false,
       policy: false,
@@ -253,7 +376,6 @@ function SellerRegistrationForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  // Address states
   const [provinces, setProvinces] = useState<GHNProvince[]>([])
   const [districts, setDistricts] = useState<GHNDistrict[]>([])
   const [wards, setWards] = useState<GHNWard[]>([])
@@ -265,14 +387,161 @@ function SellerRegistrationForm() {
   const [isLoadingDistricts, setIsLoadingDistricts] = useState(false)
   const [isLoadingWards, setIsLoadingWards] = useState(false)
 
-  // Handle input changes
+  // ===== Xử lý dữ liệu từ OCR =====
+  const handleOCRData = async (ocrData: ExtractedCCCDInfo) => {
+    // Helper function: Format tên từ IN HOA sang Title Case
+    const formatVietnameseName = (name: string) => {
+      return name
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ')
+    }
+
+    // Parse và format tên (FPT AI trả về IN HOA: "NGUYỄN HỒNG THỊNH" → "Nguyễn Hồng Thịnh")
+    const formattedFullName = formatVietnameseName(ocrData.name.trim())
+    const nameParts = formattedFullName.split(' ')
+    const lastName = nameParts[0] || ''
+    const firstName = nameParts.slice(1).join(' ') || ''
+
+    console.log('OCR Data received:', { 
+      originalName: ocrData.name, 
+      formattedName: formattedFullName,
+      firstName, 
+      lastName,
+      gender: ocrData.sex,
+      dob: ocrData.dob,
+      province: ocrData.province,
+      district: ocrData.district,
+      ward: ocrData.ward,
+      street: ocrData.street
+    })
+
+    // Set form data trước
+    setFormData(prev => ({
+      ...prev,
+      firstName,
+      lastName,
+      identifyCard: ocrData.id,
+      gender: ocrData.sex,
+      dateOfBirth: ocrData.dob,
+      address: ocrData.address
+    }))
+
+    setSpecificAddress(ocrData.street || '')
+
+    // Auto-fill địa chỉ: Province → District → Ward
+    if (ocrData.province && provinces.length > 0) {
+      // Tìm province
+      const foundProvince = provinces.find(p => 
+        p.ProvinceName.toLowerCase().includes(ocrData.province.toLowerCase()) ||
+        ocrData.province.toLowerCase().includes(p.ProvinceName.toLowerCase())
+      )
+      
+      if (foundProvince) {
+        setSelectedProvince(foundProvince)
+        
+        // Load districts và tìm district
+        if (ocrData.district) {
+          try {
+            setIsLoadingDistricts(true)
+            const response = await fetch(
+              `${import.meta.env.VITE_GHN_API_URL}/master-data/district?province_id=${foundProvince.ProvinceID}`,
+              {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Token: import.meta.env.VITE_GHN_TOKEN
+                }
+              }
+            )
+            
+            if (response.ok) {
+              const data = await response.json()
+              const districtList = data.data
+              setDistricts(districtList)
+              
+              // Tìm district
+              const foundDistrict = districtList.find((d: GHNDistrict) => 
+                d.DistrictName.toLowerCase().includes(ocrData.district.toLowerCase()) ||
+                ocrData.district.toLowerCase().includes(d.DistrictName.toLowerCase())
+              )
+              
+              if (foundDistrict) {
+                setSelectedDistrict(foundDistrict)
+                
+                // Load wards và tìm ward
+                if (ocrData.ward) {
+                  try {
+                    setIsLoadingWards(true)
+                    const wardResponse = await fetch(
+                      `${import.meta.env.VITE_GHN_API_URL}/master-data/ward?district_id=${foundDistrict.DistrictID}`,
+                      {
+                        method: 'GET',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Token: import.meta.env.VITE_GHN_TOKEN
+                        }
+                      }
+                    )
+                    
+                    if (wardResponse.ok) {
+                      const wardData = await wardResponse.json()
+                      const wardList = wardData.data
+                      setWards(wardList)
+                      
+                      // Tìm ward
+                      const foundWard = wardList.find((w: GHNWard) => 
+                        w.WardName.toLowerCase().includes(ocrData.ward.toLowerCase()) ||
+                        ocrData.ward.toLowerCase().includes(w.WardName.toLowerCase())
+                      )
+                      
+                      if (foundWard) {
+                        setSelectedWard(foundWard)
+                        console.log('Auto-filled address:', { 
+                          province: foundProvince.ProvinceName,
+                          district: foundDistrict.DistrictName,
+                          ward: foundWard.WardName,
+                          street: ocrData.street
+                        })
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error loading wards:', error)
+                  } finally {
+                    setIsLoadingWards(false)
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error loading districts:', error)
+          } finally {
+            setIsLoadingDistricts(false)
+          }
+        }
+      }
+    }
+
+    // Clear errors
+    setErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors.firstName
+      delete newErrors.lastName
+      delete newErrors.identifyCard
+      delete newErrors.gender
+      delete newErrors.dateOfBirth
+      delete newErrors.address
+      return newErrors
+    })
+  }
+  // ===== HẾT PHẦN SỬA =====
+
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value
     }))
 
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => {
         const newErrors = { ...prev }
@@ -282,7 +551,6 @@ function SellerRegistrationForm() {
     }
   }
 
-  // Handle agreement changes
   const handleAgreementChange = (field: keyof FormData['agreements'], value: boolean) => {
     setFormData((prev) => ({
       ...prev,
@@ -291,17 +559,31 @@ function SellerRegistrationForm() {
         [field]: value
       }
     }))
+    
+    if (errors.agreements) {
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors.agreements
+        return newErrors
+      })
+    }
   }
 
-  // Handle file uploads
   const handleFileChange = (field: string, files: File[]) => {
     setFormData((prev) => ({
       ...prev,
       [field]: files
     }))
+    
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[field]
+        return newErrors
+      })
+    }
   }
 
-  // Load provinces from GHN API
   const loadProvinces = async () => {
     setIsLoadingProvinces(true)
     try {
@@ -327,7 +609,6 @@ function SellerRegistrationForm() {
     }
   }
 
-  // Load districts by province from GHN API
   const loadDistricts = async (provinceId: number) => {
     setIsLoadingDistricts(true)
     setDistricts([])
@@ -360,7 +641,6 @@ function SellerRegistrationForm() {
     }
   }
 
-  // Load wards by district from GHN API
   const loadWards = async (districtId: number) => {
     setIsLoadingWards(true)
     setWards([])
@@ -388,7 +668,6 @@ function SellerRegistrationForm() {
     }
   }
 
-  // Handle province change
   const handleProvinceChange = (provinceId: string) => {
     const province = provinces.find((p) => p.ProvinceID.toString() === provinceId)
     if (province) {
@@ -397,7 +676,6 @@ function SellerRegistrationForm() {
     }
   }
 
-  // Handle district change
   const handleDistrictChange = (districtId: string) => {
     const district = districts.find((d) => d.DistrictID.toString() === districtId)
     if (district) {
@@ -406,7 +684,6 @@ function SellerRegistrationForm() {
     }
   }
 
-  // Handle ward change
   const handleWardChange = (wardCode: string) => {
     const ward = wards.find((w) => w.WardCode === wardCode)
     if (ward) {
@@ -414,9 +691,8 @@ function SellerRegistrationForm() {
     }
   }
 
-  // Update full address when components change
   React.useEffect(() => {
-    if (selectedProvince && selectedDistrict && selectedWard && specificAddress) {
+    if (selectedProvince && selectedDistrict && selectedWard && specificAddress.trim()) {
       const fullAddress = `${specificAddress}, ${selectedWard.WardName}, ${selectedDistrict.DistrictName}, ${selectedProvince.ProvinceName}`
       setFormData((prev) => ({
         ...prev,
@@ -425,51 +701,40 @@ function SellerRegistrationForm() {
     }
   }, [selectedProvince, selectedDistrict, selectedWard, specificAddress])
 
-  // Load provinces on mount
   React.useEffect(() => {
     loadProvinces()
   }, [])
 
-  // Form validation
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
 
-    // Required fields validation
-    const requiredFields = [
-      'firstName',
-      'lastName',
-      'email',
-      'phoneNumber',
-      'password',
-      'confirmPassword',
-      'gender',
-      'dateOfBirth',
-      'businessName',
-      'taxCode',
-      'bankAccount',
-      'identifyCard',
-      'storeName',
-      'address',
-      'vendorApplicationImageUrl'
+    const requiredTextFields: (keyof FormData)[] = [
+      'firstName', 'lastName', 'email', 'phoneNumber', 'password', 'confirmPassword',
+      'gender', 'dateOfBirth', 'businessName', 'taxCode', 'bankAccount', 
+      'identifyCard', 'storeName'
     ]
 
-    requiredFields.forEach((field) => {
-      if (!formData[field as keyof FormData]) {
+    requiredTextFields.forEach((field) => {
+      const value = formData[field]
+      if (!value || (typeof value === 'string' && !value.trim())) {
         newErrors[field] = 'Trường này là bắt buộc'
       }
     })
 
-    // Email validation (more comprehensive)
-    if (formData.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
-      newErrors.email = 'Email không hợp lệ'
+    if (formData.email) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = 'Email không hợp lệ'
+      }
     }
 
-    // Phone validation (10-12 digits)
-    if (formData.phoneNumber && !/^[0-9]{10,12}$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Số điện thoại phải có 10-12 chữ số'
+    if (formData.phoneNumber) {
+      const phoneRegex = /^[0-9]{10,12}$/
+      if (!phoneRegex.test(formData.phoneNumber)) {
+        newErrors.phoneNumber = 'Số điện thoại phải có 10-12 chữ số'
+      }
     }
 
-    // Password validation (8+ chars, uppercase, lowercase, number, special char)
     if (formData.password) {
       const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
       if (!passwordRegex.test(formData.password)) {
@@ -477,35 +742,31 @@ function SellerRegistrationForm() {
       }
     }
 
-    // Date of birth validation
-    if (formData.dateOfBirth) {
-      const birthDate = new Date(formData.dateOfBirth)
-      const today = new Date()
-      const age = today.getFullYear() - birthDate.getFullYear()
-      const monthDiff = today.getMonth() - birthDate.getMonth()
-
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        // Haven't had birthday this year yet
-        if (age - 1 < 18) {
-          newErrors.dateOfBirth = 'Bạn phải ít nhất 18 tuổi để đăng ký'
-        }
-      } else {
-        if (age < 18) {
-          newErrors.dateOfBirth = 'Bạn phải ít nhất 18 tuổi để đăng ký'
-        }
-      }
-
-      if (age > 100) {
-        newErrors.dateOfBirth = 'Ngày sinh không hợp lệ'
-      }
-    }
-
-    // Password confirmation
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp'
     }
 
-    // Address validation
+    if (formData.dateOfBirth) {
+      try {
+        const birthDate = new Date(formData.dateOfBirth)
+        const today = new Date()
+        let age = today.getFullYear() - birthDate.getFullYear()
+        const monthDiff = today.getMonth() - birthDate.getMonth()
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--
+        }
+
+        if (age < 18) {
+          newErrors.dateOfBirth = 'Bạn phải ít nhất 18 tuổi để đăng ký'
+        } else if (age > 100) {
+          newErrors.dateOfBirth = 'Ngày sinh không hợp lệ'
+        }
+      } catch {
+        newErrors.dateOfBirth = 'Ngày sinh không hợp lệ'
+      }
+    }
+
     if (!selectedProvince) {
       newErrors.address = 'Vui lòng chọn tỉnh/thành phố'
     } else if (!selectedDistrict) {
@@ -516,24 +777,18 @@ function SellerRegistrationForm() {
       newErrors.address = 'Vui lòng nhập địa chỉ cụ thể'
     }
 
-    // File validation
-    if (formData.identifyFrontImage.length === 0) {
+    if (!formData.identifyFrontImage || formData.identifyFrontImage.length === 0) {
       newErrors.identifyFrontImage = 'Vui lòng tải lên mặt trước CCCD'
     }
-    if (formData.identifyBackImage.length === 0) {
+    if (!formData.identifyBackImage || formData.identifyBackImage.length === 0) {
       newErrors.identifyBackImage = 'Vui lòng tải lên mặt sau CCCD'
     }
-    if (formData.vendorApplicationImageUrl.length === 0) {
+    if (!formData.vendorApplicationImageUrl || formData.vendorApplicationImageUrl.length === 0) {
       newErrors.vendorApplicationImageUrl = 'Vui lòng tải lên giấy phép kinh doanh'
     }
 
-    // Agreements validation
-    const requiredAgreements = ['terms', 'policy', 'commission', 'productQuality']
-    const missingAgreements = requiredAgreements.filter(
-      (agreement) => !formData.agreements[agreement as keyof FormData['agreements']]
-    )
-
-    if (missingAgreements.length > 0) {
+    const allAgreed = Object.values(formData.agreements).every(value => value === true)
+    if (!allAgreed) {
       newErrors.agreements = 'Vui lòng đồng ý với tất cả các điều khoản bắt buộc'
     }
 
@@ -541,18 +796,19 @@ function SellerRegistrationForm() {
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateForm()) {
-      toast.error('Vui lòng kiểm tra lại thông tin đã kí!')
+      toast.error('Vui lòng kiểm tra lại thông tin đã điền!')
+      const firstErrorField = Object.keys(errors)[0]
+      const errorElement = document.getElementById(firstErrorField)
+      errorElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
 
     setIsLoading(true)
     try {
-      // Prepare data for API
       const apiData = {
         userInfo: {
           email: formData.email,
@@ -569,8 +825,8 @@ function SellerRegistrationForm() {
           taxCode: formData.taxCode,
           bankAccount: formData.bankAccount,
           identifyCard: formData.identifyCard,
-          identifyFrontImage: formData.identifyFrontImage[0] || null, // Take first file
-          identifyBackImage: formData.identifyBackImage[0] || null // Take first file
+          identifyFrontImage: formData.identifyFrontImage[0] || null,
+          identifyBackImage: formData.identifyBackImage[0] || null
         },
         storeInfo: {
           storeName: formData.storeName,
@@ -585,7 +841,6 @@ function SellerRegistrationForm() {
         }
       }
 
-      // Call API
       const response = await registerSeller(apiData)
 
       if (response) {
@@ -597,11 +852,9 @@ function SellerRegistrationForm() {
     } catch (error: unknown) {
       console.error('Registration error:', error)
 
-      // Handle different types of errors
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string } } }
         if (axiosError.response?.data?.message) {
-          // Backend error message
           toast.error(axiosError.response.data.message)
         } else {
           toast.error('Có lỗi xảy ra khi đăng ký. Vui lòng thử lại sau.')
@@ -610,7 +863,6 @@ function SellerRegistrationForm() {
         const errorWithMessage = error as { message: string }
         toast.error(errorWithMessage.message)
       } else {
-        // Generic error
         toast.error('Có lỗi xảy ra khi đăng ký. Vui lòng thử lại sau.')
       }
     } finally {
@@ -620,10 +872,8 @@ function SellerRegistrationForm() {
 
   return (
     <div className='max-w-4xl mx-auto'>
-      {/* Custom CSS for checkbox */}
       <style>{checkboxStyles}</style>
 
-      {/* Header */}
       <div className='text-center mb-8'>
         <h1 className='text-3xl font-bold text-gray-900 mb-2'>Đăng ký trở thành đối tác bán hàng</h1>
         <p className='text-gray-600'>
@@ -631,7 +881,6 @@ function SellerRegistrationForm() {
         </p>
       </div>
 
-      {/* Loading overlay */}
       {isLoading && (
         <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
           <div className='bg-white rounded-xl p-8 shadow-xl'>
@@ -654,31 +903,72 @@ function SellerRegistrationForm() {
               </div>
             </div>
 
+            {/* Giấy tờ cá nhân */}
+            <div className='rounded-xl p-6 border border-blue-200'>
+              <div className='flex items-center gap-3 mb-6'>
+                <div className='w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center'>
+                  <svg className='w-5 h-5 text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className='text-lg font-semibold text-gray-900'>Giấy tờ cá nhân</h3>
+                  <p className='text-sm text-gray-600'>CCCD/CMND mặt trước và mặt sau</p>
+                </div>
+              </div>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                <FileUploadFieldWithOCR
+                  label='Mặt trước CCCD/CMND'
+                  onChange={(files) => handleFileChange('identifyFrontImage', files)}
+                  onOCRData={handleOCRData}
+                  enableOCR={true}
+                  required
+                  description='File ảnh rõ nét, đầy đủ 4 góc, định dạng JPG/PNG'
+                  maxCount={1}
+                />
+
+                <FileUploadField
+                  label='Mặt sau CCCD/CMND'
+                  onChange={(files) => handleFileChange('identifyBackImage', files)}
+                  required
+                  description='File ảnh rõ nét, đầy đủ 4 góc, định dạng JPG/PNG'
+                  maxCount={1}
+                />
+              </div>
+              {errors.identifyFrontImage && <p className='text-sm text-red-500 mt-2'>{errors.identifyFrontImage}</p>}
+              {errors.identifyBackImage && <p className='text-sm text-red-500 mt-2'>{errors.identifyBackImage}</p>}
+            </div>
+
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
               <div className='space-y-2'>
-                <Label htmlFor='firstName'>
-                  Họ <span className='text-red-500'>*</span>
-                </Label>
-                <Input
-                  id='firstName'
-                  value={formData.firstName}
-                  onChange={(e) => handleInputChange('firstName', e.target.value)}
-                  placeholder='Nhập họ'
-                />
-                {errors.firstName && <p className='text-sm text-red-500'>{errors.firstName}</p>}
-              </div>
-
-              <div className='space-y-2'>
                 <Label htmlFor='lastName'>
-                  Tên <span className='text-red-500'>*</span>
+                  Họ <span className='text-red-500'>*</span>
                 </Label>
                 <Input
                   id='lastName'
                   value={formData.lastName}
                   onChange={(e) => handleInputChange('lastName', e.target.value)}
-                  placeholder='Nhập tên'
+                  placeholder='Nhập họ (VD: Nguyễn)'
                 />
                 {errors.lastName && <p className='text-sm text-red-500'>{errors.lastName}</p>}
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='firstName'>
+                  Tên <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  id='firstName'
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  placeholder='Nhập tên (VD: Công Trung)'
+                />
+                {errors.firstName && <p className='text-sm text-red-500'>{errors.firstName}</p>}
               </div>
 
               <div className='space-y-2'>
@@ -756,22 +1046,23 @@ function SellerRegistrationForm() {
                 {errors.confirmPassword && <p className='text-sm text-red-500'>{errors.confirmPassword}</p>}
               </div>
 
+              {/* ===== ĐÂY LÀ PHẦN ĐÃ SỬA: CHỈ CÓ 2 GIỚI TÍNH ===== */}
               <div className='space-y-2'>
                 <Label htmlFor='gender'>
                   Giới tính <span className='text-red-500'>*</span>
                 </Label>
-                <Select onValueChange={(value) => handleInputChange('gender', value)}>
-                  <SelectTrigger>
+                <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
+                  <SelectTrigger id='gender'>
                     <SelectValue placeholder='Chọn giới tính' />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='Male'>Nam</SelectItem>
                     <SelectItem value='Female'>Nữ</SelectItem>
-                    <SelectItem value='Other'>Khác</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.gender && <p className='text-sm text-red-500'>{errors.gender}</p>}
               </div>
+              {/* ===== HẾT PHẦN SỬA ===== */}
 
               <div className='space-y-2'>
                 <Label htmlFor='dateOfBirth' className='px-1'>
@@ -804,10 +1095,11 @@ function SellerRegistrationForm() {
                         return date > eighteenYearsAgo || date < hundredYearsAgo
                       }}
                       locale={vi}
-                      defaultMonth={new Date()}
+                      defaultMonth={new Date(new Date().getFullYear() - 18, new Date().getMonth())}
                     />
                   </PopoverContent>
                 </Popover>
+                {errors.dateOfBirth && <p className='text-sm text-red-500'>{errors.dateOfBirth}</p>}
               </div>
             </div>
           </div>
@@ -843,9 +1135,7 @@ function SellerRegistrationForm() {
                 Địa chỉ cửa hàng <span className='text-red-500'>*</span>
               </Label>
 
-              {/* Address Selection - Horizontal Layout */}
               <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                {/* Province Selection */}
                 <div className='space-y-2'>
                   <Label htmlFor='province' className='text-sm text-gray-600'>
                     Tỉnh/Thành phố <span className='text-red-500'>*</span>
@@ -855,7 +1145,7 @@ function SellerRegistrationForm() {
                     onValueChange={handleProvinceChange}
                     disabled={isLoadingProvinces}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id='province'>
                       <SelectValue placeholder={isLoadingProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -868,7 +1158,6 @@ function SellerRegistrationForm() {
                   </Select>
                 </div>
 
-                {/* District Selection */}
                 <div className='space-y-2'>
                   <Label htmlFor='district' className='text-sm text-gray-600'>
                     Quận/Huyện <span className='text-red-500'>*</span>
@@ -878,7 +1167,7 @@ function SellerRegistrationForm() {
                     onValueChange={handleDistrictChange}
                     disabled={!selectedProvince || isLoadingDistricts}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id='district'>
                       <SelectValue
                         placeholder={
                           !selectedProvince
@@ -899,7 +1188,6 @@ function SellerRegistrationForm() {
                   </Select>
                 </div>
 
-                {/* Ward Selection */}
                 <div className='space-y-2'>
                   <Label htmlFor='ward' className='text-sm text-gray-600'>
                     Phường/Xã <span className='text-red-500'>*</span>
@@ -909,7 +1197,7 @@ function SellerRegistrationForm() {
                     onValueChange={handleWardChange}
                     disabled={!selectedDistrict || isLoadingWards}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id='ward'>
                       <SelectValue
                         placeholder={
                           !selectedDistrict
@@ -931,7 +1219,6 @@ function SellerRegistrationForm() {
                 </div>
               </div>
 
-              {/* Specific Address - Full Width */}
               <div className='space-y-2'>
                 <Label htmlFor='specificAddress' className='text-sm text-gray-600'>
                   Địa chỉ cụ thể (số nhà, tên đường) <span className='text-red-500'>*</span>
@@ -945,7 +1232,6 @@ function SellerRegistrationForm() {
                 />
               </div>
 
-              {/* Full Address Preview */}
               {formData.address && (
                 <div className='p-3 bg-gray-50 rounded-lg border'>
                   <Label className='text-sm text-gray-600'>Địa chỉ hoàn chỉnh:</Label>
@@ -1037,47 +1323,7 @@ function SellerRegistrationForm() {
             </div>
 
             <div className='space-y-8'>
-              {/* Giấy tờ cá nhân */}
-              <div className=' rounded-xl p-6 border border-blue-200'>
-                <div className='flex items-center gap-3 mb-6'>
-                  <div className='w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center'>
-                    <svg className='w-5 h-5 text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className='text-lg font-semibold text-gray-900'>Giấy tờ cá nhân</h3>
-                    <p className='text-sm text-gray-600'>CCCD/CMND mặt trước và mặt sau</p>
-                  </div>
-                </div>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                  <FileUploadField
-                    label='Mặt trước CCCD/CMND'
-                    onChange={(files) => handleFileChange('identifyFrontImage', files)}
-                    required
-                    description='File ảnh rõ nét, đầy đủ 4 góc, định dạng JPG/PNG'
-                    maxCount={1}
-                  />
-
-                  <FileUploadField
-                    label='Mặt sau CCCD/CMND'
-                    onChange={(files) => handleFileChange('identifyBackImage', files)}
-                    required
-                    description='File ảnh rõ nét, đầy đủ 4 góc, định dạng JPG/PNG'
-                    maxCount={1}
-                  />
-                </div>
-                {errors.identifyFrontImage && <p className='text-sm text-red-500 mt-2'>{errors.identifyFrontImage}</p>}
-                {errors.identifyBackImage && <p className='text-sm text-red-500 mt-2'>{errors.identifyBackImage}</p>}
-              </div>
-
-              {/* Giấy tờ đăng ký bán hàng */}
-              <div className=' rounded-xl p-6 border border-green-200'>
+              <div className='rounded-xl p-6 border border-green-200'>
                 <div className='flex items-center gap-3 mb-6'>
                   <div className='w-10 h-10 bg-green-100 rounded-full flex items-center justify-center'>
                     <svg className='w-5 h-5 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -1104,7 +1350,6 @@ function SellerRegistrationForm() {
                     maxCount={5}
                   />
 
-                  {/* Hướng dẫn các loại giấy tờ */}
                   <div className='bg-white/60 rounded-lg p-4 border border-green-200'>
                     <h4 className='font-medium text-gray-900 mb-3'>Các loại giấy tờ có thể upload:</h4>
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600'>
@@ -1126,6 +1371,7 @@ function SellerRegistrationForm() {
                       </div>
                     </div>
                   </div>
+                  {errors.vendorApplicationImageUrl && <p className='text-sm text-red-500'>{errors.vendorApplicationImageUrl}</p>}
                 </div>
               </div>
             </div>
@@ -1133,7 +1379,6 @@ function SellerRegistrationForm() {
 
           {/* Cam kết và thỏa thuận */}
           <div className='space-y-6'>
-            {/* Header */}
             <div className='flex items-center space-x-3 border-b border-gray-200 pb-4'>
               <div className='w-9 h-9 bg-red-100 rounded-full flex items-center justify-center shadow-sm'>
                 <span className='text-red-600 font-semibold'>5</span>
@@ -1144,7 +1389,6 @@ function SellerRegistrationForm() {
               </div>
             </div>
 
-            {/* Agreement Items */}
             <div className='space-y-5'>
               <div className='flex items-start gap-3'>
                 <Checkbox
@@ -1154,7 +1398,7 @@ function SellerRegistrationForm() {
                   onCheckedChange={(checked) => handleAgreementChange('terms', checked as boolean)}
                 />
                 <Label htmlFor='terms' className='text-sm font-medium leading-5 cursor-pointer'>
-                  Tôi đồng ý với Điều khoản dịch vụ và Quy chế hoạt động của
+                  Tôi đồng ý với Điều khoản dịch vụ và Quy chế hoạt động
                   <span className='ml-1 text-red-500'>*</span>
                 </Label>
               </div>
@@ -1204,7 +1448,6 @@ function SellerRegistrationForm() {
               </div>
             </div>
 
-            {/* Error */}
             {errors.agreements && <p className='text-sm text-red-500 font-medium'>{errors.agreements}</p>}
           </div>
 
