@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Card, Input, Select, DatePicker, Button, Table, Tag, Pagination, message } from 'antd'
-import { Search, Filter, Eye, CheckCircle, XCircle } from 'lucide-react'
+import { Search, Filter, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
 import { staffApi, type ProductForReview } from '../../../apis/staff.api'
@@ -34,8 +34,6 @@ function ManagerProduct() {
         return
       }
 
-      console.log('🔍 DEBUG - Fetching products for staff:', user.userId)
-
       const params = {
         pageNumber: page,
         pageSize: pageSize,
@@ -45,19 +43,26 @@ function ManagerProduct() {
 
       const response = await staffApi.getProductsForReview(user.userId, params)
 
-
       if (response) {
-        setProducts(response)
+        setProducts(response.data)
         if (response.pagination) {
           setTotalItems(response.pagination.totalItems)
           setTotalPages(response.pagination.totalPages)
+        } else {
+          setTotalItems(0)
+          setTotalPages(0)
         }
       } else {
         message.error('Không thể tải danh sách sản phẩm')
+        setProducts([])
+        setTotalItems(0)
+        setTotalPages(0)
       }
     } catch (error) {
-      console.error('❌ DEBUG - Error fetching products:', error)
       message.error('Có lỗi xảy ra khi tải dữ liệu')
+      setProducts([])
+      setTotalItems(0)
+      setTotalPages(0)
     } finally {
       setLoading(false)
     }
@@ -69,26 +74,6 @@ function ManagerProduct() {
       fetchProductsForReview(currentPage, searchText, statusFilter)
     }
   }, [user?.userId, currentPage])
-
-  // Handle product review
-  const handleReviewProduct = async (productId: string, status: 'Approved' | 'Rejected', note?: string) => {
-    try {
-      console.log('🔍 DEBUG - Reviewing product:', { productId, status, note })
-
-      const response = await staffApi.reviewProduct(productId, { status, note })
-
-      if (response.status === 200) {
-        message.success(`Sản phẩm đã được ${status === 'Approved' ? 'duyệt' : 'từ chối'}`)
-        // Refresh the list
-        fetchProductsForReview(currentPage, searchText, statusFilter)
-      } else {
-        message.error('Có lỗi xảy ra khi review sản phẩm')
-      }
-    } catch (error) {
-      console.error('❌ DEBUG - Error reviewing product:', error)
-      message.error('Có lỗi xảy ra khi review sản phẩm')
-    }
-  }
 
   const getStatusTag = (status: string) => {
     switch (status.toLowerCase()) {
@@ -103,13 +88,8 @@ function ManagerProduct() {
     }
   }
 
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + '₫'
-  }
-
   const formatDate = (dateString: string) => {
     try {
-      // Handle format "08:04:28 04-10-2025"
       const [time, date] = dateString.split(' ')
       const [day, month, year] = date.split('-')
       return `${day}/${month}/${year}`
@@ -190,9 +170,7 @@ function ManagerProduct() {
             type='text'
             icon={<Eye size={16} />}
             onClick={() => {
-              // Tạo đường dẫn tuyệt đối
               const detailPath = `${path.detailProductStaff.replace(':id', record.id)}`
-              console.log('Navigating to:', detailPath)
               navigate(detailPath)
             }}
             className='flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
@@ -204,7 +182,6 @@ function ManagerProduct() {
   ]
 
   const handleFilter = () => {
-    console.log('🔍 DEBUG - Filtering with:', { searchText, statusFilter, categoryFilter, dateFilter })
     setCurrentPage(1)
     fetchProductsForReview(1, searchText, statusFilter)
   }
@@ -227,16 +204,6 @@ function ManagerProduct() {
         <h1 className='text-2xl font-bold text-gray-900'>Quản lý sản phẩm</h1>
         <p className='text-gray-600 mt-1'>Duyệt và quản lý tất cả sản phẩm được phân công</p>
       </div>
-
-      {/* Debug Info - Remove in production */}
-      <Card className='bg-gray-50'>
-        <h3 className='font-bold mb-2'>Debug Info:</h3>
-        <p>Staff ID: {user?.userId || 'Not found'}</p>
-        <p>Products Count: {products.length}</p>
-        <p>Total Items: {totalItems}</p>
-        <p>Current Page: {currentPage}</p>
-        <p>Loading: {loading.toString()}</p>
-      </Card>
 
       {/* Search and Filters */}
       <Card>
@@ -302,7 +269,9 @@ function ManagerProduct() {
             pageSize={pageSize}
             onChange={handlePageChange}
             showSizeChanger={false}
-            className='flex items-center gap-2'
+            showQuickJumper={false}
+            disabled={loading}
+            hideOnSinglePage={false}
           />
         </div>
       </Card>

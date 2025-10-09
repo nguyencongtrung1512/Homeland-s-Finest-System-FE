@@ -28,16 +28,6 @@ function SideBar() {
       key: path.BASE_SELLER,
       label: 'Trang tổng quan',
       icon: <Home size={18} />
-    },
-    {
-      key: path.setupStoreSeller,
-      label: 'Cửa hàng',
-      icon: <Store size={18} />
-    },
-    {
-      key: path.helpSeller,
-      label: 'Trung tâm trợ giúp',
-      icon: <HelpCircle size={18} />
     }
   ]
 

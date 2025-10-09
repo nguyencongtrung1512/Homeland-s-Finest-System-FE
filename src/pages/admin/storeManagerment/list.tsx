@@ -19,7 +19,16 @@ interface Store {
   ownerAvatar: string
   createDate: string
   productCount: number
-  status: 'Approved' | 'Pending' | 'Rejected' | 'Processing' |'ApprovedByStaff'|'RejectedByStaff'| 'ReviewedByStaff' | 'Inactive' | 'Active' 
+  status:
+    | 'Approved'
+    | 'Pending'
+    | 'Rejected'
+    | 'Processing'
+    | 'ApprovedByStaff'
+    | 'RejectedByStaff'
+    | 'ReviewedByStaff'
+    | 'Inactive'
+    | 'Active'
 }
 
 function StoreManagement() {
@@ -60,7 +69,14 @@ function StoreManagement() {
       ownerAvatar: avatarText,
       createDate: formatDate(apiStore.createdAt),
       productCount: 0,
-      status: apiStore.status as 'Approved' | 'Pending' | 'Rejected' | 'Processing' | 'ReviewedByStaff' | 'Inactive' | 'Active' 
+      status: apiStore.status as
+        | 'Approved'
+        | 'Pending'
+        | 'Rejected'
+        | 'Processing'
+        | 'ReviewedByStaff'
+        | 'Inactive'
+        | 'Active'
     }
   }
 
@@ -108,10 +124,9 @@ function StoreManagement() {
       Processing: { text: 'Nhân viên xử lí', dotColor: 'bg-indigo-500' },
       ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', dotColor: 'bg-purple-500' },
       Inactive: { text: 'Bị khóa', dotColor: 'bg-red-500' },
-      Active: { text: 'Hoạt động trở lại', dotColor: 'bg-green-500' },
-     
+      Active: { text: 'Hoạt động trở lại', dotColor: 'bg-green-500' }
     }
-    
+
     return configs[status as keyof typeof configs] || configs.Pending
   }
 
@@ -205,7 +220,7 @@ function StoreManagement() {
               <SelectItem value='Pending'>Chờ duyệt</SelectItem>
               <SelectItem value='Rejected'>Từ chối</SelectItem>
               <SelectItem value='Processing'>Xử lý</SelectItem>
-            <SelectItem value='ReviewedByStaff'>Đã duyệt bởi nhân viên</SelectItem>
+              <SelectItem value='ReviewedByStaff'>Đã duyệt bởi nhân viên</SelectItem>
               <SelectItem value='Inactive'>Bị khóa</SelectItem>
             </SelectContent>
           </Select>

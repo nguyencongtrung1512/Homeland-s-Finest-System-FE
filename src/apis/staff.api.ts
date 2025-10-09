@@ -159,7 +159,7 @@ export const staffApi = {
     console.log('🔍 DEBUG - Axios response.data:', response.data)
     console.log('🔍 DEBUG - Axios response.status:', response.status)
 
-    return response.data
+    return response
   },
 
   reviewStore: async (
