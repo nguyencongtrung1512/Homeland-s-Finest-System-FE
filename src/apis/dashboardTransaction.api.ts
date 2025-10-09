@@ -1,8 +1,7 @@
 import axiosInstance from '../service/axiosInstance'
 import type {
   TransactionDashboardParams,
-  TransactionDashboardData,
-  MonthlyStatsData
+  TransactionDashboardData
 } from '../types/transactionDashboardType'
 
 /**
@@ -48,7 +47,7 @@ export const getAvailableYears = async (): Promise<number[]> => {
  * @param year - Năm cần lấy dữ liệu
  * @returns Promise<MonthlyStatsData>
  */
-export const getTransactionMonthlyStats = async (year: number): Promise<MonthlyStatsData> => {
+export const getTransactionMonthlyStats = async (year: number): Promise<any> => {
   const response = await axiosInstance.get(`/transaction-dashboard/monthly-stats`, {
     params: {
       year

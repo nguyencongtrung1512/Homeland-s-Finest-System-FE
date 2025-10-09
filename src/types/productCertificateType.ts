@@ -1,4 +1,4 @@
-export interface ProductCertificate {
+export interface ProductCertificateType {
   id: string // UUID
   productId: string // UUID - Foreign key to Product
   reviewedByStaffId: string // UUID - Foreign key to Staff
@@ -28,7 +28,7 @@ export interface ProductCertificateUpdateInput {
 export interface ProductCertificateListResponse {
   status: number
   message: string
-  data: ProductCertificate[]
+  data: ProductCertificateType[]
   pagination?: {
     pageSize: number
     pageNumber: number
@@ -41,5 +41,5 @@ export interface ProductCertificateListResponse {
 export interface ProductCertificateResponse {
   status: number
   message: string
-  data: ProductCertificate
+  data: ProductCertificateType
 }

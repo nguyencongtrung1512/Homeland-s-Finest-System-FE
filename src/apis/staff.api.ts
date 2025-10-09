@@ -132,7 +132,7 @@ export const staffApi = {
   getProductsForReview: async (
     staffId: string,
     params?: ProductsForReviewParams
-  ): Promise<ProductsForReviewResponse> => {
+  ): Promise<any> => {
     const queryParams = new URLSearchParams()
 
     if (params?.pageSize) {

@@ -4,7 +4,7 @@ import { useStore } from '../../contexts/store.context'
 import { useNavigate } from 'react-router-dom'
 import path from '../../constants/path'
 
-const { Step } = Steps
+// const { Step } = Steps
 
 function StoreStatusNotice() {
   const { store } = useStore()

@@ -1,5 +1,5 @@
 import axiosInstance from '../service/axiosInstance'
-import type { ProductVariant, ProductVariantInput } from '../types/productVariantType'
+import type { ProductVariant, CreateVariantResponse } from '../types/productVariantType'
 
 const API_URL = `/Product`
 
@@ -30,7 +30,7 @@ interface UpdateVariantRequest {
 export const productVariantApi = {
   // Create single product variant
   create: async (productId: string, data: CreateVariantRequest) => {
-    return await axiosInstance.post<ProductVariant>(`${API_URL}/${productId}/variants`, data)
+    return await axiosInstance.post<CreateVariantResponse>(`${API_URL}/${productId}/variants`, data)
   },
   // Update variant - không cần variantId, chỉ cần productId
   update: async (productId: string, data: UpdateVariantRequest) => {

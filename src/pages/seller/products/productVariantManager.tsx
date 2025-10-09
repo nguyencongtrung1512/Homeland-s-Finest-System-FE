@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
-import { Badge } from '../../../components/ui/badge'
 import { Switch } from '../../../components/ui/switch'
 import { Edit, Plus, X, Info, DollarSign } from 'lucide-react'
 import { productVariantApi } from '../../../apis/productVariant.api'
@@ -139,45 +138,35 @@ export default function ProductVariantManager({
         }
 
         const variantData = {
-          variants: [
-            {
-              variantName: newVariant.variantName,
-              quantity: newVariant.quantity,
-              price: newVariant.price,
-              length: newVariant.length,
-              width: newVariant.width,
-              height: newVariant.height,
-              weight: newVariant.weight
-            }
-          ]
+          variantName: newVariant.variantName,
+          quantity: newVariant.quantity,
+          price: newVariant.price,
+          length: newVariant.length,
+          width: newVariant.width,
+          height: newVariant.height,
+          weight: newVariant.weight
         }
 
         const response = await productVariantApi.create(productId, variantData)
 
         // Check for both 201 (Created) and 200 (OK)
         if (response.status === 201 || response.status === 200) {
-          // Extract variant from response - handle different response structures
-          let createdVariant = null
+          // Extract variant from response - handle the new response structure
+          const responseData = response.data
 
-          if (response.data.createdVariants && response.data.createdVariants.length > 0) {
-            // Case 1: Response has createdVariants array
-            createdVariant = response.data.createdVariants[0]
-          } else if (response.data.id) {
-            // Case 2: Response data has id directly
-            createdVariant = response.data
-          }
+          if (responseData.createdVariants && responseData.createdVariants.length > 0) {
+            const createdVariant = responseData.createdVariants[0]
 
-          if (createdVariant && createdVariant.id) {
             const newVariantWithId: Variant = {
               id: createdVariant.id,
-              variantName: createdVariant.variantName || newVariant.variantName,
-              quantity: createdVariant.quantity || newVariant.quantity,
-              price: createdVariant.price || newVariant.price,
-              isActive: createdVariant.isActive !== undefined ? createdVariant.isActive : true,
-              length: createdVariant.length || newVariant.length,
-              width: createdVariant.width || newVariant.width,
-              height: createdVariant.height || newVariant.height,
-              weight: createdVariant.weight || newVariant.weight
+              variantName: createdVariant.variantName,
+              quantity: createdVariant.quantity,
+              price: createdVariant.price,
+              isActive: createdVariant.isActive,
+              length: createdVariant.length,
+              width: createdVariant.width,
+              height: createdVariant.height,
+              weight: createdVariant.weight
             }
 
             const updatedVariants = [...variants, newVariantWithId]

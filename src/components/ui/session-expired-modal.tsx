@@ -66,31 +66,31 @@ export const SessionExpiredModal = ({ isOpen, onConfirm }: SessionExpiredModalPr
 }
 
 // Thêm custom styles vào global CSS nếu cần
-const styles = `
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
+// const styles = `
+// @keyframes pulse {
+//   0%, 100% {
+//     opacity: 1;
+//   }
+//   50% {
+//     opacity: 0.7;
+//   }
+// }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
+// @keyframes fade-in {
+//   from {
+//     opacity: 0;
+//   }
+//   to {
+//     opacity: 1;
+//   }
+// }
 
-@keyframes zoom-in {
-  from {
-    transform: scale(0.95);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-`
+// @keyframes zoom-in {
+//   from {
+//     transform: scale(0.95);
+//   }
+//   to {
+//     transform: scale(1);
+//   }
+// }
+// `

@@ -5,7 +5,6 @@ import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { productApi, type ProductCreateFormData } from '../../../apis/product.api'
 import { storeApi } from '../../../apis/store.api'
@@ -17,14 +16,11 @@ import {
   Shield,
   Info,
   ChevronRight,
-  Plus,
   Trash2,
   Video,
   Image as ImageIcon,
   Package,
   FileImage,
-  DollarSign,
-  Archive,
   Loader2,
   X
 } from 'lucide-react'
@@ -62,29 +58,29 @@ function CreateProduct() {
     storyVideo: null as File | null
   })
 
-  const [productVariants, setProductVariants] = useState([
-    {
-      id: 1,
-      name: '',
-      price: 0,
-      stock: 0,
-      unit: '',
-      weight: '',
-      dimensions: ''
-    }
-  ])
+  // const [productVariants, setProductVariants] = useState([
+  //   {
+  //     id: 1,
+  //     name: '',
+  //     price: 0,
+  //     stock: 0,
+  //     unit: '',
+  //     weight: '',
+  //     dimensions: ''
+  //   }
+  // ])
 
   // State for managing variant form visibility
-  const [showVariantForm, setShowVariantForm] = useState(false)
-  const [editingVariant, setEditingVariant] = useState<number | null>(null)
-  const [newVariant, setNewVariant] = useState({
-    name: '',
-    price: 0,
-    stock: 0,
-    unit: '',
-    weight: '',
-    dimensions: ''
-  })
+  // const [showVariantForm, setShowVariantForm] = useState(false)
+  // const [editingVariant, setEditingVariant] = useState<number | null>(null)
+  // const [newVariant, setNewVariant] = useState({
+  //   name: '',
+  //   price: 0,
+  //   stock: 0,
+  //   unit: '',
+  //   weight: '',
+  //   dimensions: ''
+  // })
 
   // Helper function to create preview URL
   const createPreviewUrl = (file: File): string => {

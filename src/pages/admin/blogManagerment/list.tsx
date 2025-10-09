@@ -29,7 +29,6 @@ import {
   type UpdateBlogCategoryInput
 } from '../../../apis/categoryBlog.api'
 import { Switch } from '../../../components/ui/switch'
-import path from '../../../constants/path'
 
 
 function BlogCategoryList() {

@@ -9,29 +9,14 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Badge } from '../../../components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { Checkbox } from '../../../components/ui/checkbox'
-import {
-  Upload,
-  BookOpen,
-  ChevronRight,
-  Plus,
-  Video,
-  Edit,
-  Save,
-  X,
-  Package,
-  FileText,
-  Award,
-  Trash2
-} from 'lucide-react'
+import { Upload, BookOpen, ChevronRight, Video, Edit, Save, X, Package, FileText, Award, Trash2 } from 'lucide-react'
 import { productApi } from '../../../apis/product.api'
-import { productVariantApi } from '../../../apis/productVariant.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import type { Product } from '../../../types'
 
 import ProductStory from './productStory'
 import ProductCertificate from './productCertificate'
 import ProductVariantManager from './productVariantManager'
-
 
 interface ProductDetail extends Product {
   variants?: any[]
@@ -64,18 +49,18 @@ function UpdateProduct() {
   })
 
   // State for managing variant form visibility
-  const [showVariantForm, setShowVariantForm] = useState(false)
-  const [editingVariant, setEditingVariant] = useState<string | null>(null)
-  const [newVariant, setNewVariant] = useState({
-    variantName: '',
-    quantity: 0,
-    price: 0,
-    isActive: true,
-    length: 0,
-    width: 0,
-    height: 0,
-    weight: 0
-  })
+  // const [showVariantForm, setShowVariantForm] = useState(false)
+  // const [editingVariant, setEditingVariant] = useState<string | null>(null)
+  // const [newVariant, setNewVariant] = useState({
+  //   variantName: '',
+  //   quantity: 0,
+  //   price: 0,
+  //   isActive: true,
+  //   length: 0,
+  //   width: 0,
+  //   height: 0,
+  //   weight: 0
+  // })
 
   // Form data for editing
   const [editData, setEditData] = useState({
@@ -170,188 +155,187 @@ function UpdateProduct() {
   }
 
   // New functions for variant form management
-  const handleAddVariantClick = () => {
-    setNewVariant({
-      variantName: '',
-      quantity: 0,
-      price: 0,
-      isActive: true,
-      length: 0,
-      width: 0,
-      height: 0,
-      weight: 0
-    })
-    setEditingVariant(null)
-    setShowVariantForm(true)
-  }
+  // const handleAddVariantClick = () => {
+  //   setNewVariant({
+  //     variantName: '',
+  //     quantity: 0,
+  //     price: 0,
+  //     isActive: true,
+  //     length: 0,
+  //     width: 0,
+  //     height: 0,
+  //     weight: 0
+  //   })
+  //   setEditingVariant(null)
+  //   setShowVariantForm(true)
+  // }
 
-  const handleEditVariant = (variantId: string) => {
-    const variant = editData.variants.find((v: any) => v.id === variantId)
-    if (variant) {
-      setNewVariant({
-        variantName: variant.variantName || '',
-        quantity: variant.quantity || 0,
-        price: variant.price || 0,
-        isActive: variant.isActive || true,
-        length: variant.length || 0,
-        width: variant.width || 0,
-        height: variant.height || 0,
-        weight: variant.weight || 0
-      })
-      setEditingVariant(variantId)
-      setShowVariantForm(true)
-    }
-  }
+  // const handleEditVariant = (variantId: string) => {
+  //   const variant = editData.variants.find((v: any) => v.id === variantId)
+  //   if (variant) {
+  //     setNewVariant({
+  //       variantName: variant.variantName || '',
+  //       quantity: variant.quantity || 0,
+  //       price: variant.price || 0,
+  //       isActive: variant.isActive || true,
+  //       length: variant.length || 0,
+  //       width: variant.width || 0,
+  //       height: variant.height || 0,
+  //       weight: variant.weight || 0
+  //     })
+  //     setEditingVariant(variantId)
+  //     setShowVariantForm(true)
+  //   }
+  // }
 
-  const handleSaveVariant = async () => {
-    if (!newVariant.variantName.trim()) {
-      toast.error('Vui lòng nhập tên loại sản phẩm')
-      return
-    }
-    if (newVariant.price <= 0) {
-      toast.error('Vui lòng nhập giá bán hợp lệ')
-      return
-    }
-    if (newVariant.quantity < 0) {
-      toast.error('Vui lòng nhập số lượng tồn kho hợp lệ')
-      return
-    }
+  // const handleSaveVariant = async () => {
+  //   if (!newVariant.variantName.trim()) {
+  //     toast.error('Vui lòng nhập tên loại sản phẩm')
+  //     return
+  //   }
+  //   if (newVariant.price <= 0) {
+  //     toast.error('Vui lòng nhập giá bán hợp lệ')
+  //     return
+  //   }
+  //   if (newVariant.quantity < 0) {
+  //     toast.error('Vui lòng nhập số lượng tồn kho hợp lệ')
+  //     return
+  //   }
 
-    try {
-      if (editingVariant) {
-        // Update existing variant - gọi API để cập nhật
-        console.log('🔄 Updating variant:', editingVariant, 'with data:', newVariant)
+  //   try {
+  //     if (editingVariant) {
+  //       // Update existing variant - gọi API để cập nhật
+  //       console.log('🔄 Updating variant:', editingVariant, 'with data:', newVariant)
 
-        // Chuẩn bị data để cập nhật
-        const updateData = {
-          variants: [
-            {
-              id: editingVariant,
-              variantName: newVariant.variantName,
-              quantity: newVariant.quantity,
-              price: newVariant.price,
-              isActive: newVariant.isActive,
-              length: newVariant.length,
-              width: newVariant.width,
-              height: newVariant.height,
-              weight: newVariant.weight
-            }
-          ]
-        }
+  //       // Chuẩn bị data để cập nhật
+  //       const updateData = {
+  //         variants: [
+  //           {
+  //             id: editingVariant,
+  //             variantName: newVariant.variantName,
+  //             quantity: newVariant.quantity,
+  //             price: newVariant.price,
+  //             isActive: newVariant.isActive,
+  //             length: newVariant.length,
+  //             width: newVariant.width,
+  //             height: newVariant.height,
+  //             weight: newVariant.weight
+  //           }
+  //         ]
+  //       }
 
-        // Cập nhật thông tin variant
-        const response = await productVariantApi.update(id!, updateData)
-        console.log('🔄 Update response:', response)
+  //       // Cập nhật thông tin variant
+  //       const response = await productVariantApi.update(id!, updateData)
+  //       console.log('🔄 Update response:', response)
 
-        if (response.status === 202) {
+  //       if (response.status === 202) {
 
+  //         // Cập nhật local state sau khi API thành công
+  //         setEditData((prev) => ({
+  //           ...prev,
+  //           variants: prev.variants.map((v: any) => (v.id === editingVariant ? { ...v, ...newVariant } : v))
+  //         }))
 
-          // Cập nhật local state sau khi API thành công
-          setEditData((prev) => ({
-            ...prev,
-            variants: prev.variants.map((v: any) => (v.id === editingVariant ? { ...v, ...newVariant } : v))
-          }))
+  //         toast.success('Cập nhật loại sản phẩm thành công!')
+  //       } else {
+  //         toast.error('Có lỗi xảy ra khi cập nhật loại sản phẩm')
+  //       }
+  //     } else {
+  //       // Add new variant - gọi API để tạo variant mới
+  //       if (!id) {
+  //         toast.error('Không tìm thấy ID sản phẩm')
+  //         return
+  //       }
 
-          toast.success('Cập nhật loại sản phẩm thành công!')
-        } else {
-          toast.error('Có lỗi xảy ra khi cập nhật loại sản phẩm')
-        }
-      } else {
-        // Add new variant - gọi API để tạo variant mới
-        if (!id) {
-          toast.error('Không tìm thấy ID sản phẩm')
-          return
-        }
+  //       // Chuẩn bị data để gửi API - thử format array như backend mong đợi
+  //       const variantData = {
+  //         variants: [
+  //           {
+  //             variantName: newVariant.variantName,
+  //             quantity: newVariant.quantity,
+  //             price: newVariant.price,
+  //             length: newVariant.length,
+  //             width: newVariant.width,
+  //             height: newVariant.height,
+  //             weight: newVariant.weight
+  //           }
+  //         ]
+  //       }
 
-        // Chuẩn bị data để gửi API - thử format array như backend mong đợi
-        const variantData = {
-          variants: [
-            {
-              variantName: newVariant.variantName,
-              quantity: newVariant.quantity,
-              price: newVariant.price,
-              length: newVariant.length,
-              width: newVariant.width,
-              height: newVariant.height,
-              weight: newVariant.weight
-            }
-          ]
-        }
+  //       console.log('🚀 Creating variant with data:', variantData)
+  //       console.log('🚀 Product ID:', id)
 
-        console.log('🚀 Creating variant with data:', variantData)
-        console.log('🚀 Product ID:', id)
+  //       // Gọi API từ productVariant.api.ts
+  //       const response = await productVariantApi.create(id, variantData)
+  //       console.log('🚀 API Response:', response)
 
-        // Gọi API từ productVariant.api.ts
-        const response = await productVariantApi.create(id, variantData)
-        console.log('🚀 API Response:', response)
+  //       if (response.status === 200) {
+  //         // API trả về ProductVariant object trực tiếp
+  //         const createdVariant = response.data
 
-        if (response.status === 200) {
-          // API trả về ProductVariant object trực tiếp
-          const createdVariant = response.data
+  //         if (createdVariant && createdVariant.id) {
+  //           const newVariantWithId = {
+  //             id: createdVariant.id,
+  //             productId: id,
+  //             ...newVariant,
+  //             isActive: true // Backend tự động set isActive = true
+  //           }
 
-          if (createdVariant && createdVariant.id) {
-            const newVariantWithId = {
-              id: createdVariant.id,
-              productId: id,
-              ...newVariant,
-              isActive: true // Backend tự động set isActive = true
-            }
+  //           setEditData((prev) => ({
+  //             ...prev,
+  //             variants: [...prev.variants, newVariantWithId]
+  //           }))
 
-            setEditData((prev) => ({
-              ...prev,
-              variants: [...prev.variants, newVariantWithId]
-            }))
+  //           toast.success('Tạo loại sản phẩm thành công!')
+  //         } else {
+  //           console.error('❌ Unexpected response format:', createdVariant)
+  //           toast.error('Không nhận được dữ liệu variant từ server')
+  //         }
+  //       } else {
+  //         toast.error('Có lỗi xảy ra khi tạo loại sản phẩm')
+  //       }
+  //     }
 
-            toast.success('Tạo loại sản phẩm thành công!')
-          } else {
-            console.error('❌ Unexpected response format:', createdVariant)
-            toast.error('Không nhận được dữ liệu variant từ server')
-          }
-        } else {
-          toast.error('Có lỗi xảy ra khi tạo loại sản phẩm')
-        }
-      }
+  //     // Reset form
+  //     setNewVariant({
+  //       variantName: '',
+  //       quantity: 0,
+  //       price: 0,
+  //       isActive: true,
+  //       length: 0,
+  //       width: 0,
+  //       height: 0,
+  //       weight: 0
+  //     })
+  //     setEditingVariant(null)
+  //     setShowVariantForm(false)
+  //   } catch (error: any) {
+  //     console.error('Error saving variant:', error)
 
-      // Reset form
-      setNewVariant({
-        variantName: '',
-        quantity: 0,
-        price: 0,
-        isActive: true,
-        length: 0,
-        width: 0,
-        height: 0,
-        weight: 0
-      })
-      setEditingVariant(null)
-      setShowVariantForm(false)
-    } catch (error: any) {
-      console.error('Error saving variant:', error)
+  //     // Lấy thông báo lỗi chi tiết từ backend
+  //     const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi lưu loại sản phẩm'
+  //     toast.error(`Lỗi: ${errorMessage}`)
+  //   }
+  // }
 
-      // Lấy thông báo lỗi chi tiết từ backend
-      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi lưu loại sản phẩm'
-      toast.error(`Lỗi: ${errorMessage}`)
-    }
-  }
+  // const handleCancelVariant = () => {
+  //   setNewVariant({
+  //     variantName: '',
+  //     quantity: 0,
+  //     price: 0,
+  //     isActive: true,
+  //     length: 0,
+  //     width: 0,
+  //     height: 0,
+  //     weight: 0
+  //   })
+  //   setEditingVariant(null)
+  //   setShowVariantForm(false)
+  // }
 
-  const handleCancelVariant = () => {
-    setNewVariant({
-      variantName: '',
-      quantity: 0,
-      price: 0,
-      isActive: true,
-      length: 0,
-      width: 0,
-      height: 0,
-      weight: 0
-    })
-    setEditingVariant(null)
-    setShowVariantForm(false)
-  }
-
-  const handleNewVariantChange = (field: string, value: string | number | boolean) => {
-    setNewVariant((prev) => ({ ...prev, [field]: value }))
-  }
+  // const handleNewVariantChange = (field: string, value: string | number | boolean) => {
+  //   setNewVariant((prev) => ({ ...prev, [field]: value }))
+  // }
 
   // Fetch product details
   useEffect(() => {
@@ -545,16 +529,16 @@ function UpdateProduct() {
         [section]:
           section === 'basicInfo'
             ? {
-              name: productDetail.name || '',
-              description: productDetail.description || '',
-              categoryIds: (productDetail as any).productCategories?.map((cat: any) => cat.id) || [],
-              madeBy: productDetail.madeBy || '',
-              typeProduct: productDetail.typeProduct || '',
-              isActive: productDetail.isActive || true,
-              existingImages: (productDetail as any).productImages || [],
-              newImageFiles: [],
-              productVideo: (productDetail as any).productVideo || ''
-            }
+                name: productDetail.name || '',
+                description: productDetail.description || '',
+                categoryIds: (productDetail as any).productCategories?.map((cat: any) => cat.id) || [],
+                madeBy: productDetail.madeBy || '',
+                typeProduct: productDetail.typeProduct || '',
+                isActive: productDetail.isActive || true,
+                existingImages: (productDetail as any).productImages || [],
+                newImageFiles: [],
+                productVideo: (productDetail as any).productVideo || ''
+              }
             : prev[section]
       }))
     }
@@ -986,7 +970,7 @@ function UpdateProduct() {
                     <Label className='text-sm font-medium text-gray-600'>Danh mục sản phẩm</Label>
                     <div className='mt-2'>
                       {(productDetail as any).productCategories &&
-                        (productDetail as any).productCategories.length > 0 ? (
+                      (productDetail as any).productCategories.length > 0 ? (
                         <div className='flex flex-wrap gap-2'>
                           {(productDetail as any).productCategories.map((category: any) => (
                             <Badge

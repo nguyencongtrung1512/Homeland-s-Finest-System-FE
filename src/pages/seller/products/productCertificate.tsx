@@ -6,7 +6,7 @@ import { Label } from '../../../components/ui/label'
 import { Shield, Edit, Save, X, Trash2, Plus } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { productCertificateApi } from '../../../apis/productCertificate.api'
-import type { ProductCertificate } from '../../../types/productCertificateType'
+import type { ProductCertificateType } from '../../../types/productCertificateType'
 
 interface ProductCertificateProps {
   productId: string
@@ -25,7 +25,7 @@ function ProductCertificate({
   onCancelEdit,
   onSaveSection
 }: ProductCertificateProps) {
-  const [certificates, setCertificates] = useState<ProductCertificate[]>([])
+  const [certificates, setCertificates] = useState<ProductCertificateType[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 

@@ -53,7 +53,7 @@ function ApproveStores() {
 
   // Review modal states
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
-  const [selectedStore, setSelectedStore] = useState<StoreData | null>(null)
+  const [selectedStore] = useState<StoreData | null>(null)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [reviewForm] = Form.useForm()
   const [selectedImages, setSelectedImages] = useState<File[]>([])

@@ -9,7 +9,6 @@ import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Badge } from '../../../components/ui/badge'
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import type { Product } from '../../../types'
 
 // Interface for query parameters
@@ -54,7 +53,7 @@ function ListProductByStoreStaff() {
   const [totalProducts, setTotalProducts] = useState(0)
   const [productCategories, setProductCategories] = useState<ProductCategoryItem[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
-  const [storeName, setStoreName] = useState('')
+  const [storeName] = useState('')
   const pageSize = 12
 
   // Convert API Product to ProductData

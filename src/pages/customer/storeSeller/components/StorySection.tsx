@@ -6,7 +6,7 @@ interface StorySectionProps {
   story: string
 }
 
-const StorySection: FC<StorySectionProps> = ({ storeName, story }) => {
+const StorySection: FC<StorySectionProps> = ({ story }) => {
   return (
     <div className='space-y-8'>
       {/* Hero Story Section with Video */}

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from 'react'
 import { Search, Filter, RefreshCw, Store, Package, ExternalLink, Calendar, User } from 'lucide-react'
 import { staffApi, type AssignedStore } from '../../../apis/staff.api'
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../../../components/ui/badge'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../../contexts/auth.context'
 
 interface StoreData {
   key: string
@@ -29,6 +31,7 @@ interface StoreData {
 
 function ListStore() {
   const navigate = useNavigate()
+  const { user } = useAuth() // ✅ Sử dụng useAuth context
   const [searchText, setSearchText] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
@@ -36,7 +39,7 @@ function ListStore() {
   const [storeData, setStoreData] = useState<StoreData[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [totalStores, setTotalStores] = useState(0)
+  const [totalStores, setTotalStores] = useState(0) // ✅ Sửa cú pháp useState
   const [productCategories, setProductCategories] = useState<ProductCategoryItem[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
   const pageSize = 3
@@ -102,25 +105,13 @@ function ListStore() {
       setLoading(true)
       setError(null)
 
-      const userString = localStorage.getItem('user')
-      let staffId = null
-
-      if (userString) {
-        try {
-          const user = JSON.parse(userString)
-          staffId = user.userId || user.id
-        } catch (parseError) {
-          setError('Lỗi khi phân tích thông tin người dùng. Vui lòng đăng nhập lại.')
-          return
-        }
-      }
-
-      if (!staffId) {
+      // ✅ Sử dụng user từ auth context thay vì localStorage
+      if (!user?.userId) {
         setError('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.')
         return
       }
 
-      const response = await staffApi.getAssignedStores(staffId, {
+      const response = await staffApi.getAssignedStores(user.userId, {
         pageSize: 0,
         pageNumber: 1
       })
@@ -146,9 +137,12 @@ function ListStore() {
   }
 
   useEffect(() => {
-    fetchAssignedStores()
-    fetchProductCategories()
-  }, [])
+    // ✅ Chỉ fetch khi có user
+    if (user?.userId) {
+      fetchAssignedStores()
+      fetchProductCategories()
+    }
+  }, [user?.userId]) // ✅ Thêm dependency
 
   // Reset về trang 1 khi search text thay đổi
   useEffect(() => {
@@ -288,7 +282,9 @@ function ListStore() {
       <div className='flex items-center justify-between'>
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Quản lí cửa hàng</h1>
-          <p className='text-gray-600 mt-1'>Xem xét và phê duyệt các cửa hàng được phân công</p>
+          <p className='text-gray-600 mt-1'>
+            Xem xét và phê duyệt các cửa hàng được phân công ({totalStores} cửa hàng)
+          </p>
         </div>
         <Button
           onClick={fetchAssignedStores}

@@ -26,7 +26,6 @@ import {
 
 function MyStory() {
   const [isEditing, setIsEditing] = useState(false)
-  const [isPublished, setIsPublished] = useState(true)
 
   // Mock data - trong thực tế sẽ fetch từ API
   const [storyData, setStoryData] = useState({

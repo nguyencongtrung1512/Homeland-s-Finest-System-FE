@@ -22,7 +22,7 @@ function ManagerProduct() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(10)
   const [totalItems, setTotalItems] = useState(0)
-  const [totalPages, setTotalPages] = useState(0)
+
 
   // Fetch products for review
   const fetchProductsForReview = async (page: number = 1, search: string = '', status: string = 'all') => {
@@ -47,22 +47,22 @@ function ManagerProduct() {
         setProducts(response.data)
         if (response.pagination) {
           setTotalItems(response.pagination.totalItems)
-          setTotalPages(response.pagination.totalPages)
+
         } else {
           setTotalItems(0)
-          setTotalPages(0)
+  
         }
       } else {
         message.error('Không thể tải danh sách sản phẩm')
         setProducts([])
         setTotalItems(0)
-        setTotalPages(0)
+
       }
     } catch (error) {
       message.error('Có lỗi xảy ra khi tải dữ liệu')
       setProducts([])
       setTotalItems(0)
-      setTotalPages(0)
+     
     } finally {
       setLoading(false)
     }
@@ -90,7 +90,7 @@ function ManagerProduct() {
 
   const formatDate = (dateString: string) => {
     try {
-      const [time, date] = dateString.split(' ')
+      const [date] = dateString.split(' ')
       const [day, month, year] = date.split('-')
       return `${day}/${month}/${year}`
     } catch {
@@ -114,7 +114,10 @@ function ManagerProduct() {
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
                   target.style.display = 'none'
-                  target.nextElementSibling!.style.display = 'flex'
+                  const nextElement = target.nextElementSibling as HTMLElement
+                  if (nextElement) {
+                    nextElement.style.display = 'flex'
+                  }
                 }}
               />
             ) : null}
