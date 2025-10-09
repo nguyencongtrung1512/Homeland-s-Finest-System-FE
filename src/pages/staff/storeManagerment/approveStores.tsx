@@ -87,7 +87,7 @@ function ApproveStores() {
         email: 'N/A'
       },
       createdDate: formatDate(apiStore.createdAt),
-      products: 0, 
+      products: 0,
       status: apiStore.status
     }
   }
@@ -154,19 +154,6 @@ function ApproveStores() {
   useEffect(() => {
     fetchAssignedStores()
   }, [])
-
-  const handleApprove = (storeId: string) => {
-    const store = storeData.find((s) => s.store.id === storeId)
-    if (store) {
-      setSelectedStore(store)
-      setReviewModalOpen(true)
-      reviewForm.setFieldsValue({
-        NewStatus: 'ReviewedByStaff',
-        StaffNotes: '',
-        StaffFeedback: ''
-      })
-    }
-  }
 
   // Handle image selection and preview
   const handleImageChange = (info: any) => {

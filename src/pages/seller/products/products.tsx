@@ -192,7 +192,6 @@ function ProductsSeller() {
             <table className='w-full'>
               <thead>
                 <tr className='border-b'>
-                  <th className='text-left py-3 px-4 font-medium text-gray-700'>ID</th>
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>Tên sản phẩm</th>
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>Loại sản phẩm</th>
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>Trạng thái</th>
@@ -204,7 +203,6 @@ function ProductsSeller() {
                   const statusInfo = getStatusBadge(product.status, product.isActive)
                   return (
                     <tr key={product.id} className='border-b hover:bg-gray-50'>
-                      <td className='py-3 px-4 text-gray-900 text-sm'>{product.id.slice(0, 8)}...</td>
                       <td className='py-3 px-4 text-gray-900'>{product.name}</td>
                       <td className='py-3 px-4 text-gray-900'>{product.typeProduct}</td>
                       <td className='py-3 px-4'>

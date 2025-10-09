@@ -63,6 +63,7 @@ import StoreDetailAdmin from './pages/admin/storeManagerment/detail'
 import DetailProductSeller from './pages/seller/products/detailProduct'
 import DetailProductStaff from './pages/staff/productManagerment/detailProduct'
 import StaffStoreDetail from './pages/staff/storeManagerment/storeDetail'
+import ListProductByStoreStaff from './pages/staff/storeManagerment/listProductByStore'
 
 // import ProtectedRoute from './components/ProtectedRoute'
 
@@ -239,6 +240,10 @@ export default function useRouteElements() {
             {
               path: path.storesStaff,
               element: <ListStore />
+            },
+            {
+              path: path.listProductByStoreStaff,
+              element: <ListProductByStoreStaff />
             },
             {
               path: path.storeDetailStaff,

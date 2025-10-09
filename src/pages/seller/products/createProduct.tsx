@@ -167,118 +167,6 @@ function CreateProduct() {
       }))
     }
   }
-
-  const handleVariantChange = (variantId: number, field: string, value: string | number) => {
-    setProductVariants((prev) =>
-      prev.map((variant) => (variant.id === variantId ? { ...variant, [field]: value } : variant))
-    )
-  }
-
-  const addVariant = () => {
-    const newId = Math.max(...productVariants.map((v) => v.id)) + 1
-    setProductVariants((prev) => [
-      ...prev,
-      {
-        id: newId,
-        name: '',
-        price: 0,
-        stock: 0,
-        unit: '',
-        weight: '',
-        dimensions: ''
-      }
-    ])
-  }
-
-  const removeVariant = (variantId: number) => {
-    if (productVariants.length > 1) {
-      setProductVariants((prev) => prev.filter((variant) => variant.id !== variantId))
-    }
-  }
-
-  // New functions for variant form management
-  const handleAddVariantClick = () => {
-    setNewVariant({
-      name: '',
-      price: 0,
-      stock: 0,
-      unit: '',
-      weight: '',
-      dimensions: ''
-    })
-    setEditingVariant(null)
-    setShowVariantForm(true)
-  }
-
-  const handleEditVariant = (variantId: number) => {
-    const variant = productVariants.find((v) => v.id === variantId)
-    if (variant) {
-      setNewVariant({
-        name: variant.name,
-        price: variant.price,
-        stock: variant.stock,
-        unit: variant.unit,
-        weight: variant.weight,
-        dimensions: variant.dimensions
-      })
-      setEditingVariant(variantId)
-      setShowVariantForm(true)
-    }
-  }
-
-  const handleSaveVariant = () => {
-    if (!newVariant.name.trim()) {
-      alert('Vui lòng nhập tên loại sản phẩm')
-      return
-    }
-    if (newVariant.price <= 0) {
-      alert('Vui lòng nhập giá bán hợp lệ')
-      return
-    }
-    if (newVariant.stock < 0) {
-      alert('Vui lòng nhập số lượng tồn kho hợp lệ')
-      return
-    }
-
-    if (editingVariant) {
-      // Update existing variant
-      setProductVariants((prev) => prev.map((v) => (v.id === editingVariant ? { ...v, ...newVariant } : v)))
-    } else {
-      // Add new variant
-      const newId = Math.max(...productVariants.map((v) => v.id)) + 1
-      setProductVariants((prev) => [...prev, { id: newId, ...newVariant }])
-    }
-
-    // Reset form
-    setNewVariant({
-      name: '',
-      price: 0,
-      stock: 0,
-      unit: '',
-      weight: '',
-      dimensions: ''
-    })
-    setEditingVariant(null)
-    setShowVariantForm(false)
-  }
-
-  const handleCancelVariant = () => {
-    setNewVariant({
-      name: '',
-      price: 0,
-      stock: 0,
-      unit: '',
-      weight: '',
-      dimensions: ''
-    })
-    setEditingVariant(null)
-    setShowVariantForm(false)
-  }
-
-  const handleNewVariantChange = (field: string, value: string | number) => {
-    setNewVariant((prev) => ({ ...prev, [field]: value }))
-  }
-
   const handleCancel = () => {
     navigate('../product-management')
   }
@@ -371,7 +259,7 @@ function CreateProduct() {
         return
       }
 
-  
+
       if (mediaData.productImages.length === 0) {
         toast.error('Vui lòng chọn ít nhất một hình ảnh sản phẩm')
         return
@@ -491,10 +379,6 @@ function CreateProduct() {
           <TabsTrigger value='product-info' className='flex items-center gap-2'>
             <Package className='w-4 h-4' />
             Thông tin sản phẩm
-          </TabsTrigger>
-          <TabsTrigger value='variants' className='flex items-center gap-2'>
-            <Archive className='w-4 h-4' />
-            Loại sản phẩm
           </TabsTrigger>
         </TabsList>
 
@@ -948,8 +832,8 @@ function CreateProduct() {
                           <div
                             key={category.id}
                             className={`flex items-start space-x-3 p-2 rounded-md cursor-pointer transition-colors ${productData.categories.includes(category.id)
-                                ? 'bg-green-50 border border-green-200'
-                                : 'hover:bg-gray-50 border border-transparent'
+                              ? 'bg-green-50 border border-green-200'
+                              : 'hover:bg-gray-50 border border-transparent'
                               }`}
                             onClick={() => handleCategoryToggle(category.id)}
                           >
@@ -1088,186 +972,6 @@ function CreateProduct() {
               </Card>
             </div>
           </div>
-        </TabsContent>
-
-        {/* Tab 2: Product Variants */}
-        <TabsContent value='variants'>
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-green-700 flex items-center gap-2'>
-                <Archive className='w-5 h-5' />
-                Loại sản phẩm
-              </CardTitle>
-              <p className='text-sm text-gray-600'>Thêm các loại sản phẩm khác nhau với giá và thông tin riêng biệt</p>
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-6'>
-                {productVariants.map((variant, index) => (
-                  <div key={variant.id} className='border border-gray-200 rounded-lg p-6 bg-gray-50'>
-                    <div className='flex items-center justify-between mb-4'>
-                      <h3 className='text-lg font-medium text-gray-900'>Loại sản phẩm {index + 1}</h3>
-                      {productVariants.length > 1 && (
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => removeVariant(variant.id)}
-                          className='text-red-600 hover:text-red-700 hover:bg-red-50'
-                        >
-                          <Trash2 className='w-4 h-4 mr-1' />
-                          Xóa
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                      {/* Tên loại sản phẩm */}
-                      <div>
-                        <Label className='text-sm font-medium p-2'>
-                          Tên loại <span className='text-red-500'>*</span>
-                        </Label>
-                        <Input
-                          placeholder='VD: Gạo tám xoan 5kg'
-                          value={variant.name}
-                          onChange={(e) => handleVariantChange(variant.id, 'name', e.target.value)}
-                          className='mt-1'
-                        />
-                      </div>
-
-                      {/* Giá */}
-                      <div>
-                        <Label className='text-sm font-medium p-2'>
-                          Giá bán <span className='text-red-500'>*</span>
-                        </Label>
-                        <div className='relative '>
-                          <DollarSign className='absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400' />
-                          <Input
-                            type='number'
-                            placeholder='0'
-                            value={variant.price || ''}
-                            onChange={(e) => handleVariantChange(variant.id, 'price', parseFloat(e.target.value) || 0)}
-                            className='pl-10 mt-3'
-                            min='0'
-                            step='1000'
-                          />
-                        </div>
-                      </div>
-
-                      {/* Số lượng tồn kho */}
-                      <div>
-                        <Label className='text-sm font-medium p-2'>
-                          Số lượng tồn kho <span className='text-red-500'>*</span>
-                        </Label>
-                        <Input
-                          type='number'
-                          placeholder='0'
-                          value={variant.stock || ''}
-                          onChange={(e) => handleVariantChange(variant.id, 'stock', parseInt(e.target.value) || 0)}
-                          className='mt-1'
-                          min='0'
-                        />
-                      </div>
-
-                      {/* Đơn vị */}
-                      <div>
-                        <Label className='text-sm font-medium p-2'>Đơn vị</Label>
-                        <Select
-                          value={variant.unit}
-                          onValueChange={(value) => handleVariantChange(variant.id, 'unit', value)}
-                        >
-                          <SelectTrigger className='mt-1'>
-                            <SelectValue placeholder='Chọn đơn vị' />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value='kg'>Kilogram (kg)</SelectItem>
-                            <SelectItem value='g'>Gram (g)</SelectItem>
-                            <SelectItem value='lít'>Lít</SelectItem>
-                            <SelectItem value='ml'>Mililít (ml)</SelectItem>
-                            <SelectItem value='cái'>Cái</SelectItem>
-                            <SelectItem value='hộp'>Hộp</SelectItem>
-                            <SelectItem value='túi'>Túi</SelectItem>
-                            <SelectItem value='thùng'>Thùng</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Trọng lượng */}
-                      <div>
-                        <Label className='text-sm font-medium p-2'>Trọng lượng</Label>
-                        <Input
-                          placeholder='VD: 5kg, 500g'
-                          value={variant.weight}
-                          onChange={(e) => handleVariantChange(variant.id, 'weight', e.target.value)}
-                          className='mt-1'
-                        />
-                      </div>
-
-                      {/* Kích thước */}
-                      <div>
-                        <Label className='text-sm font-medium p-2'>Kích thước</Label>
-                        <Input
-                          placeholder='VD: 30x20x10 cm'
-                          value={variant.dimensions}
-                          onChange={(e) => handleVariantChange(variant.id, 'dimensions', e.target.value)}
-                          className='mt-1'
-                        />
-                      </div>
-                    </div>
-
-                    {/* Preview card cho variant */}
-                    <div className='mt-4 p-4 bg-white border border-gray-200 rounded-lg'>
-                      <h4 className='text-sm font-medium text-gray-700 mb-2'>Xem trước:</h4>
-                      <div className='flex items-center justify-between'>
-                        <div>
-                          <p className='font-medium text-gray-900'>{variant.name || 'Tên sản phẩm chưa nhập'}</p>
-                          <p className='text-sm text-gray-600'>
-                            {variant.weight && `${variant.weight} • `}
-                            {variant.unit && `Đơn vị: ${variant.unit} • `}
-                            Tồn kho: {variant.stock || 0}
-                          </p>
-                        </div>
-                        <div className='text-right'>
-                          <p className='text-lg font-bold text-green-600'>
-                            {variant.price ? `${variant.price.toLocaleString('vi-VN')} ₫` : '0 ₫'}
-                          </p>
-                          {variant.dimensions && <p className='text-xs text-gray-500'>{variant.dimensions}</p>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Add new variant button */}
-                <div className='flex justify-center'>
-                  <Button
-                    variant='outline'
-                    onClick={addVariant}
-                    className='border-dashed border-2 border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-700'
-                  >
-                    <Plus className='w-4 h-4 mr-2' />
-                    Thêm loại sản phẩm mới
-                  </Button>
-                </div>
-
-                {/* Summary */}
-                <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
-                  <div className='flex items-start gap-3'>
-                    <Info className='w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0' />
-                    <div>
-                      <h4 className='font-medium text-blue-900 mb-1'>Tóm tắt loại sản phẩm</h4>
-                      <div className='text-sm text-blue-800 space-y-1'>
-                        <p>• Tổng số loại: {productVariants.length}</p>
-                        <p>• Tổng tồn kho: {productVariants.reduce((sum, v) => sum + (v.stock || 0), 0)} sản phẩm</p>
-                        <p>
-                          • Giá từ: {Math.min(...productVariants.map((v) => v.price || 0)).toLocaleString('vi-VN')} ₫
-                          đến {Math.max(...productVariants.map((v) => v.price || 0)).toLocaleString('vi-VN')} ₫
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 

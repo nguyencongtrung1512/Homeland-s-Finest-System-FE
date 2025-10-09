@@ -420,26 +420,24 @@ function StaffStoreDetail() {
                       <FileText size={16} className='text-gray-400' />
                       <span className='text-gray-700'>Giấy phép kinh doanh</span>
                     </div>
-                    {store.vendorApplicationImageUrl.length > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-700">
+                    {store.vendorApplicationImageUrl && store.vendorApplicationImageUrl.length > 0 ? (
+                      <div className='space-y-2'>
+                        <p className='text-sm font-medium text-gray-700'>
                           Ảnh giấy phép ({store.vendorApplicationImageUrl.length} ảnh)
                         </p>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
                           {store.vendorApplicationImageUrl.map((imageUrl, index) => (
                             <div
                               key={index}
-                              className="cursor-pointer hover:opacity-80 transition-opacity"
+                              className='cursor-pointer hover:opacity-80 transition-opacity'
                               onClick={() => handleImagePreview(imageUrl)}
                             >
                               <img
                                 src={imageUrl}
                                 alt={`Giấy phép ${index + 1}`}
-                                className="w-full h-24 object-cover rounded-lg border shadow-sm hover:shadow-md transition-shadow"
+                                className='w-full h-24 object-cover rounded-lg border shadow-sm hover:shadow-md transition-shadow'
                               />
-                              <p className="text-xs text-center text-gray-500 mt-1">
-                                Ảnh {index + 1}
-                              </p>
+                              <p className='text-xs text-center text-gray-500 mt-1'>Ảnh {index + 1}</p>
                             </div>
                           ))}
                         </div>
