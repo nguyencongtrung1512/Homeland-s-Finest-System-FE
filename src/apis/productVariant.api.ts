@@ -15,7 +15,7 @@ interface CreateVariantRequest {
 }
 interface UpdateVariantRequest {
   variants: Array<{
-    id?: string // Only for update
+    id?: string 
     variantName: string
     quantity: number
     price: number

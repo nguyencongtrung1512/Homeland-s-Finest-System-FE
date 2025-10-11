@@ -27,12 +27,11 @@ interface StoreData {
   key: string
   store: {
     avatar: string
-    name: string
+    storeName: string
     id: string
   }
   owner: {
-    name: string
-    email: string
+    sellerName: string
   }
   createdDate: string
   products: number
@@ -79,12 +78,11 @@ function ApproveStores() {
       key: apiStore.id,
       store: {
         avatar: avatarText,
-        name: apiStore.storeName,
+        storeName: apiStore.storeName,
         id: apiStore.id
       },
       owner: {
-        name: 'Chủ cửa hàng',
-        email: 'N/A'
+        sellerName: apiStore.sellerName
       },
       createdDate: formatDate(apiStore.createdAt),
       products: 0,
@@ -121,8 +119,7 @@ function ApproveStores() {
         pageNumber: 1
       })
 
-      // axiosInstance trả về response.data, không phải full response
-      // Nên response chính là data từ API
+      // axiosInstance trả về response, lấy data từ response
       if (response && Array.isArray(response)) {
         // Trường hợp API trả về array trực tiếp
         const convertedStores = response.map(convertAssignedStore)
@@ -239,7 +236,6 @@ function ApproveStores() {
           <Avatar src={store.avatar} size={40} />
           <div>
             <div className='font-medium text-gray-900'>{store.name}</div>
-            <div className='text-sm text-gray-500'>#{store.id}</div>
           </div>
         </div>
       )
@@ -250,8 +246,7 @@ function ApproveStores() {
       key: 'owner',
       render: (owner) => (
         <div>
-          <div className='font-medium text-gray-900'>{owner.name}</div>
-          <div className='text-sm text-gray-500'>{owner.email}</div>
+          <div className='font-medium text-gray-900'>{owner.sellerName}</div>
         </div>
       )
     },
@@ -428,14 +423,6 @@ function ApproveStores() {
             rules={[{ required: true, message: 'Vui lòng nhập ghi chú' }]}
           >
             <Input.TextArea rows={4} placeholder='Nhập ghi chú về cửa hàng...' />
-          </Form.Item>
-
-          <Form.Item
-            name='StaffFeedback'
-            label='Phản hồi của nhân viên'
-            rules={[{ required: true, message: 'Vui lòng nhập phản hồi' }]}
-          >
-            <Input.TextArea rows={4} placeholder='Nhập phản hồi về cửa hàng...' />
           </Form.Item>
 
           <Form.Item

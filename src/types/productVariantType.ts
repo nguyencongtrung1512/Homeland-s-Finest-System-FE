@@ -27,19 +27,13 @@ export interface ProductVariantInput {
 
 // New interface for create variant response
 export interface CreateVariantResponse {
-  productId: string
-  productName: string
-  totalVariantsCreated: number
-  createdVariants: Array<{
-    id: string
-    variantName: string
-    price: number
-    quantity: number
-    isActive: boolean
-    length: number
-    width: number
-    height: number
-    weight: number
-  }>
-  createdAt: string
+  id: string
+  variantName: string
+  price: number
+  quantity: number
+  isActive: boolean
+  length: number
+  width: number
+  height: number
+  weight: number
 }

@@ -17,14 +17,14 @@ export interface StoreResponse {
   coverImageUrl: string | null
   status: 'ReviewedByStaff' | 'Approved' | 'Pending' | 'Rejected' | 'Active' | 'Inactive' | 'Processing'
   adminNote: string | null
-  reviewedBy: string | null 
+  reviewedBy: string | null
   approvedBy: string | null
   vendorApplicationImageUrl: string[]
   staffNotes: string | null
-  staffFeedback: string | null
-  staffImage: string | null 
-  submittedDate: string 
-  decisionDate: string | null 
+  staffImage: string | null
+  staffName: string | null
+  submittedDate: string
+  decisionDate: string | null
   createdAt: string
   updatedAt: string
   sellerInfo: {

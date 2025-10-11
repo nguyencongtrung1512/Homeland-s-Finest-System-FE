@@ -29,7 +29,7 @@ interface ProductDetail {
   description: string
   productImages: string[]
   productVideo: string | null
-  madeBy: string
+  material: string
   saleCount: number
   rating: number
   reviewCount: number
@@ -332,7 +332,7 @@ function DetailProductSeller() {
                       <div className='flex items-center gap-2'>
                         <MapPin size={16} className='text-green-600' />
                         <span className='text-sm font-medium text-gray-700'>Xuất xứ:</span>
-                        <span className='text-gray-900'>{product?.madeBy}</span>
+                        <span className='text-gray-900'>{product?.material}</span>
                       </div>
                     </div>
                     <div className='space-y-3'>

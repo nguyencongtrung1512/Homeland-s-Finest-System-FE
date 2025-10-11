@@ -7,7 +7,7 @@ export interface Product {
   productImages: string[] // JSONB - Array of image URLs
   productVideo: string // varchar(500) - Video URL
   categoryId: string[] // JSONB - Array of category IDs
-  madeBy: string // varchar(255) - Brand/Manufacturer
+  material: string // varchar(255) - Brand/Manufacturer
   saleCount: number // integer
   rating: number // numeric(3,2) - Average rating
   reviewCount: number // integer
@@ -28,7 +28,7 @@ export interface ProductCreateInput {
   categoryId: string[]
   productImages?: string[]
   productVideo?: string
-  madeBy?: string
+  material?: string
   saleCount?: number
   rating?: number
   reviewCount?: number
@@ -49,7 +49,7 @@ export interface ProductUpdateInput {
   productImages?: string[]
   productVideo?: string
   categoryId?: string[]
-  madeBy?: string
+  material?: string
   saleCount?: number
   rating?: number
   reviewCount?: number

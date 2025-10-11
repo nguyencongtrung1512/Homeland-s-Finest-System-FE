@@ -1551,7 +1551,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Ba Ria - Vung Tau",
+        "Name": "Bà Rịa - Vũng Tàu",
         "Note": null
       },
       "geometry": {
@@ -8071,7 +8071,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Bac Giang",
+        "Name": "Bắc Giang",
         "Note": null
       },
       "geometry": {
@@ -14603,7 +14603,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Bac Kan",
+        "Name": "Bắc Kạn",
         "Note": null
       },
       "geometry": {
@@ -19919,7 +19919,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Bac Lieu",
+        "Name": "Bạc Liêu",
         "Note": null
       },
       "geometry": {
@@ -23135,7 +23135,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Bac Ninh",
+        "Name": "Bắc Ninh",
         "Note": null
       },
       "geometry": {
@@ -25107,7 +25107,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Ben Tre",
+        "Name": "Bếnến Tre",
         "Note": null
       },
       "geometry": {
@@ -26347,7 +26347,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Binh Dinh",
+        "Name": "Bình Định",
         "Note": null
       },
       "geometry": {
@@ -33379,7 +33379,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Binh Duong",
+        "Name": "Bình Dương",
         "Note": null
       },
       "geometry": {
@@ -36427,7 +36427,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Binh Phuoc",
+        "Name": "Bình Phước",
         "Note": null
       },
       "geometry": {
@@ -39863,7 +39863,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Binh Thuan",
+        "Name": "Bình Thuận",
         "Note": null
       },
       "geometry": {
@@ -47255,7 +47255,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Ca Mau",
+        "Name": "Cà Mau",
         "Note": null
       },
       "geometry": {
@@ -52187,7 +52187,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Can Tho city",
+        "Name": "Cần Thơ",
         "Note": null
       },
       "geometry": {
@@ -53355,7 +53355,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Cao Bang",
+        "Name": "Cao Bằng",
         "Note": null
       },
       "geometry": {
@@ -61879,7 +61879,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Dak Lak",
+        "Name": "Đắk Lắk",
         "Note": null
       },
       "geometry": {
@@ -66083,7 +66083,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Dak Nong",
+        "Name": "Đắk Nông",
         "Note": null
       },
       "geometry": {
@@ -70435,7 +70435,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Dien Bien",
+        "Name": "Điện Biên",
         "Note": null
       },
       "geometry": {
@@ -78299,7 +78299,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Dong Nai",
+        "Name": "Đồng Nai",
         "Note": null
       },
       "geometry": {
@@ -82699,7 +82699,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Dong Thap",
+        "Name": "Đồng Tháp",
         "Note": null
       },
       "geometry": {
@@ -90335,7 +90335,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Ha Giang",
+        "Name": "Hà Giang",
         "Note": null
       },
       "geometry": {
@@ -98523,7 +98523,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Ha Nam",
+        "Name": "Hà Nam",
         "Note": null
       },
       "geometry": {
@@ -105370,7 +105370,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Ha Tinh",
+        "Name": "Hà Tĩnh",
         "Note": null
       },
       "geometry": {
@@ -110922,7 +110922,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Hai Duong",
+        "Name": "Hải Dương",
         "Note": null
       },
       "geometry": {
@@ -114678,7 +114678,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Hai Phong city",
+        "Name": "Hải Phòng",
         "Note": null
       },
       "geometry": {
@@ -124502,7 +124502,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Hau Giang",
+        "Name": "Hậu Giang",
         "Note": null
       },
       "geometry": {
@@ -127066,7 +127066,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Hoa Binh",
+        "Name": "Hòa Bình",
         "Note": null
       },
       "geometry": {
@@ -133058,7 +133058,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Hung Yen",
+        "Name": "Hưng Yên",
         "Note": null
       },
       "geometry": {
@@ -135054,7 +135054,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Kien Giang",
+        "Name": "Kiên Giang",
         "Note": null
       },
       "geometry": {
@@ -157826,7 +157826,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Lai Chau",
+        "Name": "Lai Châu",
         "Note": null
       },
       "geometry": {
@@ -167678,7 +167678,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Lam Dong",
+        "Name": "Lâm Đồng",
         "Note": null
       },
       "geometry": {
@@ -173442,7 +173442,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Lang Son",
+        "Name": "Lạng Sơn",
         "Note": null
       },
       "geometry": {
@@ -182358,7 +182358,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Lao Cai",
+        "Name": "Lào Cai",
         "Note": null
       },
       "geometry": {
@@ -189974,7 +189974,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Nam Dinh",
+        "Name": "Nam Định",
         "Note": null
       },
       "geometry": {
@@ -193578,7 +193578,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Nghe An",
+        "Name": "Nghệ An",
         "Note": null
       },
       "geometry": {
@@ -203350,7 +203350,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Ninh Binh",
+        "Name": "Ninh Bình",
         "Note": null
       },
       "geometry": {
@@ -205986,7 +205986,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Ninh Thuan",
+        "Name": "Ninh Thuận",
         "Note": null
       },
       "geometry": {
@@ -210002,7 +210002,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Phu Tho",
+        "Name": "Phú Thọ",
         "Note": null
       },
       "geometry": {
@@ -213554,7 +213554,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Phu Yen",
+        "Name": "Phú Yên",
         "Note": null
       },
       "geometry": {
@@ -221234,7 +221234,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Quang Binh",
+        "Name": "Quảng Bình",
         "Note": null
       },
       "geometry": {
@@ -227282,7 +227282,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Quang Nam",
+        "Name": "Quảng Nam",
         "Note": null
       },
       "geometry": {
@@ -233258,7 +233258,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Quang Ngai",
+        "Name": "Quảng Ngãi",
         "Note": null
       },
       "geometry": {
@@ -236838,7 +236838,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Quang Ninh",
+        "Name": "Quảng Ninh",
         "Note": null
       },
       "geometry": {
@@ -282042,7 +282042,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Quang Tri",
+        "Name": "Quảng Trị",
         "Note": null
       },
       "geometry": {
@@ -288266,7 +288266,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Soc Trang",
+        "Name": "Sóc Trăng",
         "Note": null
       },
       "geometry": {
@@ -290650,7 +290650,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Son La",
+        "Name": "Sơn La",
         "Note": null
       },
       "geometry": {
@@ -301134,7 +301134,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Tay Ninh",
+        "Name": "Tây Ninh",
         "Note": null
       },
       "geometry": {
@@ -303162,7 +303162,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Thai Binh",
+        "Name": "Thái Bình",
         "Note": null
       },
       "geometry": {
@@ -306402,7 +306402,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Thai Nguyen",
+        "Name": "Thái Nguyên",
         "Note": null
       },
       "geometry": {
@@ -311338,7 +311338,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Thanh Hoa",
+        "Name": "Thanh Hóa",
         "Note": null
       },
       "geometry": {
@@ -321486,7 +321486,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Thua Thien - Hue",
+        "Name": "Thừa Thiên Huế",
         "Note": null
       },
       "geometry": {
@@ -326690,7 +326690,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Tien Giang",
+        "Name": "Tiền Giang",
         "Note": null
       },
       "geometry": {
@@ -331154,7 +331154,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Tra Vinh",
+        "Name": "Trà Vinh",
         "Note": null
       },
       "geometry": {
@@ -332330,7 +332330,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Tuyen Quang",
+        "Name": "Tuyên Quang",
         "Note": null
       },
       "geometry": {
@@ -339214,7 +339214,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Vinh Long",
+        "Name": "Vĩnh Long",
         "Note": null
       },
       "geometry": {
@@ -340742,7 +340742,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Vinh Phuc",
+        "Name": "Vĩnh Phúc",
         "Note": null
       },
       "geometry": {
@@ -343362,7 +343362,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Yen Bai",
+        "Name": "Yến Bái",
         "Note": null
       },
       "geometry": {
@@ -349882,7 +349882,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Khanh Hoa",
+        "Name": "Khánh Hòa",
         "Note": null
       },
       "geometry": {
@@ -364450,7 +364450,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Name": "Da Nang city",
+        "Name": "Đà Nẵng",
         "Note": null
       },
       "geometry": {

@@ -6,11 +6,12 @@ export interface AssignedStore {
   id: string
   sellerId: string
   storeName: string
+  sellerName: string
   address: string
   logoUrl: string | null
   coverImageUrl: string | null
   status: 'ReviewedByStaff' | 'Processing'
-  note: string | null
+  staffNote: string | null
   history: string | null
   createdAt: string
   updatedAt: string
@@ -38,14 +39,14 @@ export interface ProductForReview {
   productImages: string[]
   productVideo: string | null
   categoryIds: string[]
-  madeBy: string
+  material: string
   saleCount: number
   rating: number
   reviewCount: number
   isActive: boolean
   typeProduct: string
   status: 'Pending' | 'Approved' | 'Rejected'
-  note: string | null
+  staffNote: string | null
   comboItems: any | null
   createdAt: string
   updatedAt: string | null
@@ -73,7 +74,6 @@ export interface ProductsForReviewParams {
 export interface ReviewStoreRequest {
   NewStatus: 'ReviewedByStaff'
   StaffNotes: string
-  StaffFeedback: string
   StaffImages?: string[]
 }
 
@@ -88,7 +88,6 @@ export interface ReviewStoreResponse {
     storeId: string
     newStatus: string
     staffNotes: string
-    staffFeedback: string
     reviewedAt: string
   }
 }
@@ -96,7 +95,7 @@ export interface ReviewStoreResponse {
 // Interface cho review sản phẩm
 export interface ReviewProductRequest {
   newStatus: 'Approved' | 'Rejected' | 'Pending'
-  note?: string
+  staffNote?: string
 }
 
 export interface ReviewProductResponse {
@@ -129,10 +128,7 @@ export const staffApi = {
   },
 
   // Lấy danh sách sản phẩm cần review của staff
-  getProductsForReview: async (
-    staffId: string,
-    params?: ProductsForReviewParams
-  ): Promise<any> => {
+  getProductsForReview: async (staffId: string, params?: ProductsForReviewParams): Promise<any> => {
     const queryParams = new URLSearchParams()
 
     if (params?.pageSize) {
@@ -153,11 +149,7 @@ export const staffApi = {
 
     const url = `${API_URL}/${staffId}/products-for-review${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
 
-    console.log('🔍 DEBUG - API URL:', url)
     const response = await axiosInstance.get(url)
-    console.log('🔍 DEBUG - Raw axios response:', response)
-    console.log('🔍 DEBUG - Axios response.data:', response.data)
-    console.log('🔍 DEBUG - Axios response.status:', response.status)
 
     return response
   },
@@ -170,7 +162,6 @@ export const staffApi = {
 
     formData.append('NewStatus', reviewData.NewStatus)
     formData.append('StaffNotes', reviewData.StaffNotes)
-    formData.append('StaffFeedback', reviewData.StaffFeedback)
 
     if (reviewData.selectedImages && reviewData.selectedImages.length > 0) {
       reviewData.selectedImages.forEach((image) => {
@@ -192,10 +183,7 @@ export const staffApi = {
     const formData = new FormData()
 
     formData.append('newStatus', reviewData.newStatus)
-
-    if (reviewData.note) {
-      formData.append('note', reviewData.note)
-    }
+    formData.append('staffNote', reviewData.staffNote || '')
 
     const response = await axiosInstance.put(`${API_URL}/Product/${productId}/review`, formData, {
       headers: {

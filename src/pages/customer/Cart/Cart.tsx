@@ -40,7 +40,7 @@ type ComboItem = {
       name: string
       description: string
       productImages: string[]
-      madeBy: string
+      material: string
     }
   }
 }
@@ -137,7 +137,7 @@ export default function Cart() {
               name: 'Nước mắm Phú Quốc truyền thống',
               description: 'Nước mắm Phú Quốc truyền thống độ đạm 30°N',
               productImages: ['/src/assets/BannerWelcome.png'],
-              madeBy: 'Nhà sản xuất Phú Quốc'
+              material: 'Nhà sản xuất Phú Quốc'
             }
           }
         },
@@ -159,7 +159,7 @@ export default function Cart() {
               name: 'Mắm tôm chua Cần Thơ',
               description: 'Mắm tôm chua Cần Thơ đặc sản truyền thống',
               productImages: ['/src/assets/BannerWelcome.png'],
-              madeBy: 'Nhà sản xuất Cần Thơ'
+              material: 'Nhà sản xuất Cần Thơ'
             }
           }
         }
@@ -194,7 +194,7 @@ export default function Cart() {
               name: 'Bánh tráng nướng Tây Ninh',
               description: 'Bánh tráng nướng Tây Ninh vị tôm cay',
               productImages: ['/src/assets/BannerWelcome.png'],
-              madeBy: 'Nhà sản xuất Tây Ninh'
+              material: 'Nhà sản xuất Tây Ninh'
             }
           }
         }
@@ -589,7 +589,7 @@ export default function Cart() {
                                       {comboItem.productVariant.product.name}
                                     </h4>
                                     <p className='text-xs text-gray-500'>
-                                      {comboItem.productVariant.variantName} - {comboItem.productVariant.product.madeBy}
+                                      {comboItem.productVariant.variantName} - {comboItem.productVariant.product.material}
                                     </p>
                                   </div>
                                   <div className='text-right'>
@@ -724,11 +724,10 @@ export default function Cart() {
                   {savedAddresses.map((address) => (
                     <div
                       key={address.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                        selectedAddressId === address.id
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedAddressId === address.id
                           ? 'border-orange-500 bg-orange-50'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                       onClick={() => setSelectedAddressId(address.id)}
                     >
                       <div className='flex items-start justify-between'>

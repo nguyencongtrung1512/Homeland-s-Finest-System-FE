@@ -50,7 +50,7 @@ function ManagerProduct() {
 
         } else {
           setTotalItems(0)
-  
+
         }
       } else {
         message.error('Không thể tải danh sách sản phẩm')
@@ -62,7 +62,7 @@ function ManagerProduct() {
       message.error('Có lỗi xảy ra khi tải dữ liệu')
       setProducts([])
       setTotalItems(0)
-     
+
     } finally {
       setLoading(false)
     }
@@ -138,9 +138,9 @@ function ManagerProduct() {
     },
     {
       title: 'Xuất xứ',
-      dataIndex: 'madeBy',
-      key: 'madeBy',
-      render: (madeBy) => <span className='text-gray-700'>{madeBy}</span>
+      dataIndex: 'material',
+      key: 'material',
+      render: (material) => <span className='text-gray-700'>{material}</span>
     },
     {
       title: 'Ngày tạo',

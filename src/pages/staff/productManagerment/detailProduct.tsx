@@ -115,7 +115,7 @@ function DetailProductStaff() {
 
       const response = await staffApi.reviewProduct(product.id, {
         newStatus: 'Approved',
-        note: approveNote.trim()
+        staffNote: approveNote.trim()
       })
 
       if (response) {
@@ -371,7 +371,7 @@ function DetailProductStaff() {
             <div className='grid grid-cols-2 gap-4'>
               <div>
                 <label className='text-sm font-medium text-gray-600'>Nhà sản xuất</label>
-                <p className='mt-1 text-gray-900'>{product.madeBy || 'Chưa cập nhật'}</p>
+                <p className='mt-1 text-gray-900'>{product.material || 'Chưa cập nhật'}</p>
               </div>
               <div>
                 <label className='text-sm font-medium text-gray-600'>Loại sản phẩm</label>
@@ -552,10 +552,10 @@ function DetailProductStaff() {
                       )}
                     </div>
 
-                    {cert.staffNotes && (
+                    {cert.staffNote && (
                       <div className='mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200'>
                         <label className='font-medium text-blue-800'>Ghi chú từ Staff:</label>
-                        <p className='text-blue-700 mt-1'>{cert.staffNotes}</p>
+                        <p className='text-blue-700 mt-1'>{cert.staffNote}</p>
                       </div>
                     )}
 

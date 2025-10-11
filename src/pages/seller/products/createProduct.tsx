@@ -275,11 +275,11 @@ function CreateProduct() {
       // Prepare form data theo cấu trúc mới
       const formData: ProductCreateFormData = {
         storeId: storeId,
-        provinceId: '1', // Default province ID, có thể làm dynamic
+        provinceId: '269', // Default province ID, có thể làm dynamic
         name: productData.name,
         description: productData.description,
         categoryIds: productData.categories, // Sửa từ productData.category thành productData.categories
-        madeBy: productData.region || 'Việt Nam',
+        material: productData.region || 'Việt Nam',
         typeProduct: 'nông sản', // Default type, có thể làm dynamic
         note: productData.story,
         storyTitle: storyData.mainTitle,

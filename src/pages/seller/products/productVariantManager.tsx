@@ -12,7 +12,7 @@ interface Variant {
   id?: string
   variantName: string
   quantity: number
-  price: number
+  basePrice: number
   isActive: boolean
   length: number
   width: number
@@ -29,7 +29,7 @@ interface ProductVariantManagerProps {
 const EMPTY_VARIANT: Variant = {
   variantName: '',
   quantity: 0,
-  price: 0,
+  basePrice: 0,
   isActive: true,
   length: 0,
   width: 0,
@@ -60,7 +60,7 @@ export default function ProductVariantManager({
       setNewVariant({
         variantName: variant.variantName || '',
         quantity: variant.quantity || 0,
-        price: variant.price || 0,
+        basePrice: variant.basePrice || 0,
         isActive: variant.isActive !== undefined ? variant.isActive : true,
         length: variant.length || 0,
         width: variant.width || 0,
@@ -87,7 +87,7 @@ export default function ProductVariantManager({
       toast.error('Vui lòng nhập tên loại sản phẩm')
       return false
     }
-    if (newVariant.price <= 0) {
+    if (newVariant.basePrice <= 0) {
       toast.error('Vui lòng nhập giá bán hợp lệ')
       return false
     }
@@ -103,14 +103,13 @@ export default function ProductVariantManager({
 
     try {
       if (editingVariant) {
-        // Update existing variant
         const updateData = {
           variants: [
             {
               id: editingVariant,
               variantName: newVariant.variantName,
               quantity: newVariant.quantity,
-              price: newVariant.price,
+              basePrice: newVariant.basePrice,
               isActive: newVariant.isActive,
               length: newVariant.length,
               width: newVariant.width,
@@ -140,7 +139,7 @@ export default function ProductVariantManager({
         const variantData = {
           variantName: newVariant.variantName,
           quantity: newVariant.quantity,
-          price: newVariant.price,
+          basePrice: newVariant.basePrice,
           length: newVariant.length,
           width: newVariant.width,
           height: newVariant.height,
@@ -149,24 +148,20 @@ export default function ProductVariantManager({
 
         const response = await productVariantApi.create(productId, variantData)
 
-        // Check for both 201 (Created) and 200 (OK)
-        if (response.status === 201 || response.status === 200) {
-          // Extract variant from response - handle the new response structure
+        if (response) {
           const responseData = response.data
 
-          if (responseData.createdVariants && responseData.createdVariants.length > 0) {
-            const createdVariant = responseData.createdVariants[0]
-
+          if (responseData && responseData.id) {
             const newVariantWithId: Variant = {
-              id: createdVariant.id,
-              variantName: createdVariant.variantName,
-              quantity: createdVariant.quantity,
-              price: createdVariant.price,
-              isActive: createdVariant.isActive,
-              length: createdVariant.length,
-              width: createdVariant.width,
-              height: createdVariant.height,
-              weight: createdVariant.weight
+              id: responseData.id,
+              variantName: responseData.variantName,
+              quantity: responseData.quantity,
+              basePrice: responseData.basePrice,
+              isActive: responseData.isActive,
+              length: responseData.length || 0,
+              width: responseData.width || 0,
+              height: responseData.height || 0,
+              weight: responseData.weight || 0
             }
 
             const updatedVariants = [...variants, newVariantWithId]
@@ -182,7 +177,6 @@ export default function ProductVariantManager({
         }
       }
 
-      // Reset form
       handleCancelVariant()
     } catch (error: any) {
       console.error('Error saving variant:', error)
@@ -198,7 +192,6 @@ export default function ProductVariantManager({
       </CardHeader>
       <CardContent>
         <div className='space-y-6'>
-          {/* Existing Variants List */}
           {variants.length > 0 && (
             <div className='space-y-4'>
               {variants.map((variant, index) => (
@@ -217,8 +210,6 @@ export default function ProductVariantManager({
                       </Button>
                     </div>
                   </div>
-
-                  {/* Variant Preview */}
                   <div className='bg-white border border-gray-200 rounded-lg p-4'>
                     <div className='flex items-center justify-between'>
                       <div>
@@ -234,13 +225,12 @@ export default function ProductVariantManager({
                       </div>
                       <div className='text-right'>
                         <p className='text-lg font-bold text-green-600'>
-                          {variant.price ? `${variant.price.toLocaleString('vi-VN')} ₫` : '0 ₫'}
+                          {variant.basePrice ? `${variant.basePrice.toLocaleString('vi-VN')} ₫` : '0 ₫'}
                         </p>
                         <div className='flex items-center gap-2 mt-1'>
                           <span
-                            className={`text-xs px-2 py-1 rounded ${
-                              variant.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            }`}
+                            className={`text-xs px-2 py-1 rounded ${variant.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}
                           >
                             {variant.isActive ? 'Hoạt động' : 'Tạm dừng'}
                           </span>
@@ -295,8 +285,8 @@ export default function ProductVariantManager({
                     <Input
                       type='number'
                       placeholder='0'
-                      value={newVariant.price || ''}
-                      onChange={(e) => handleNewVariantChange('price', parseFloat(e.target.value) || 0)}
+                      value={newVariant.basePrice || ''}
+                      onChange={(e) => handleNewVariantChange('basePrice', parseFloat(e.target.value) || 0)}
                       className='pl-10 mt-1'
                       min='0'
                       step='1000'
@@ -427,8 +417,8 @@ export default function ProductVariantManager({
                     <p>• Tổng số loại: {variants.length}</p>
                     <p>• Tổng tồn kho: {variants.reduce((sum, v) => sum + (v.quantity || 0), 0)} sản phẩm</p>
                     <p>
-                      • Giá từ: {Math.min(...variants.map((v) => v.price || 0)).toLocaleString('vi-VN')} ₫ đến{' '}
-                      {Math.max(...variants.map((v) => v.price || 0)).toLocaleString('vi-VN')} ₫
+                      • Giá từ: {Math.min(...variants.map((v) => v.basePrice || 0)).toLocaleString('vi-VN')} ₫ đến{' '}
+                      {Math.max(...variants.map((v) => v.basePrice || 0)).toLocaleString('vi-VN')} ₫
                     </p>
                   </div>
                 </div>

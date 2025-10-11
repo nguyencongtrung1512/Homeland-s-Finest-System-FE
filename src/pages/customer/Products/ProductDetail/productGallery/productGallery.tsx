@@ -39,7 +39,7 @@ function ProductGallery() {
         ],
         productVideo: '',
         categoryId: ['cat-1'],
-        madeBy: 'U Minh Hạ, Cà Mau',
+        material: 'U Minh Hạ, Cà Mau',
         saleCount: 1000,
         rating: 4.9,
         reviewCount: 47,
@@ -68,7 +68,7 @@ function ProductGallery() {
         productImages: ['https://images.unsplash.com/photo-1550581190-9c1c48d21d6c?q=80&w=800&auto=format&fit=crop'],
         productVideo: '',
         categoryId: ['cat-2'],
-        madeBy: 'TH True Milk, Hà Nội',
+        material: 'TH True Milk, Hà Nội',
         saleCount: 1200,
         rating: 4.5,
         reviewCount: 456,
@@ -244,11 +244,10 @@ function ProductGallery() {
                   <button
                     key={index}
                     onClick={() => setSelectedWeight(index)}
-                    className={`px-4 py-2 border-2 rounded-lg font-medium transition-colors ${
-                      selectedWeight === index
+                    className={`px-4 py-2 border-2 rounded-lg font-medium transition-colors ${selectedWeight === index
                         ? 'border-green-500 bg-green-50 text-green-700'
                         : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                      }`}
                   >
                     {option.value}
                   </button>

@@ -32,7 +32,7 @@ const ProductCard: React.FC<{ product: ProductCardData }> = ({ product }) => {
 
       {/* Nội dung */}
       <h3 className='font-semibold text-gray-800 text-lg mb-1'>{product.name}</h3>
-      <p className='text-sm text-gray-500 mb-2'>{product.madeBy}</p>
+      <p className='text-sm text-gray-500 mb-2'>{product.material}</p>
 
       {/* Giá + Rating */}
       <div className='flex items-center justify-between mt-auto'>

@@ -39,7 +39,7 @@ export interface ProductCreateFormData {
   categoryIds: string[] // Đảm bảo đây là string array
   productImages?: File[] // Thay đổi từ string[] thành File[]
   productVideo?: File // Thay đổi từ string thành File
-  madeBy?: string
+  material?: string
   saleCount?: number
   rating?: number
   reviewCount?: number
@@ -73,13 +73,13 @@ export const productApi = {
   // Create new product with FormData (for file uploads)
   create: async (data: ProductCreateFormData): Promise<ProductResponse> => {
     const formData = new FormData()
-    
+
     // Add basic product info
     formData.append('StoreId', data.storeId)
     formData.append('ProvinceId', data.provinceId)
     formData.append('Name', data.name)
     formData.append('Description', data.description)
-    
+
     // Fix: Properly handle categoryIds array
     console.log('🔍 DEBUG - Before processing categoryIds:', data.categoryIds)
     if (data.categoryIds && data.categoryIds.length > 0) {
@@ -91,43 +91,43 @@ export const productApi = {
     } else {
       console.log('🔍 DEBUG - No categoryIds to process or empty array')
     }
-    
+
     // 🔍 DEBUG: Log FormData contents
     console.log('🔍 DEBUG - FormData entries:')
     for (let [key, value] of formData.entries()) {
       console.log(`🔍 DEBUG - FormData[${key}]:`, value)
     }
-    
-    if (data.madeBy) formData.append('MadeBy', data.madeBy)
+
+    if (data.material) formData.append('material', data.material)
     if (data.typeProduct) formData.append('TypeProduct', data.typeProduct)
     if (data.note) formData.append('Note', data.note)
     if (data.storyTitle) formData.append('StoryTitle', data.storyTitle)
     if (data.storyDetail) formData.append('StoryDetail', data.storyDetail)
-    
+
     // Add product images
     if (data.productImages && data.productImages.length > 0) {
       data.productImages.forEach((file) => {
         formData.append('ProductImages', file)
       })
     }
-    
+
     // Add product video
     if (data.productVideo) {
       formData.append('ProductVideo', data.productVideo)
     }
-    
+
     // Add certificate images
     if (data.certificateImages && data.certificateImages.length > 0) {
       data.certificateImages.forEach((file) => {
         formData.append('CertificateImages', file)
       })
     }
-    
+
     // Add story video
     if (data.storyVideo) {
       formData.append('StoryVideo', data.storyVideo)
     }
-    
+
     // Add story images
     if (data.storyImages && data.storyImages.length > 0) {
       data.storyImages.forEach((file) => {

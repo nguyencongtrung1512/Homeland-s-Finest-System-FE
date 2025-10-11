@@ -68,7 +68,7 @@ function UpdateProduct() {
       name: '',
       description: '',
       categoryIds: [] as string[], // Changed from categoryId to categoryIds
-      madeBy: '',
+      material: '',
       typeProduct: '', // Added typeProduct
       isActive: true,
       existingImages: [] as string[], // URLs của ảnh cũ được giữ lại
@@ -354,7 +354,7 @@ function UpdateProduct() {
               name: response.data.name || '',
               description: response.data.description || '',
               categoryIds: (response.data as any).productCategories?.map((cat: any) => cat.id) || [],
-              madeBy: response.data.madeBy || '',
+              material: response.data.material || '',
               typeProduct: response.data.typeProduct || '',
               isActive: response.data.isActive || true,
               existingImages: (response.data as any).productImages || [],
@@ -400,7 +400,7 @@ function UpdateProduct() {
             name: productDetail.name || '',
             description: productDetail.description || '',
             categoryIds: (productDetail as any).productCategories?.map((cat: any) => cat.id) || [],
-            madeBy: productDetail.madeBy || '',
+            material: productDetail.material || '',
             typeProduct: productDetail.typeProduct || '',
             isActive: productDetail.isActive || true,
             existingImages: (productDetail as any).productImages || [],
@@ -434,7 +434,7 @@ function UpdateProduct() {
           const formData = new FormData()
           formData.append('Name', editData.basicInfo.name)
           formData.append('Description', editData.basicInfo.description)
-          formData.append('MadeBy', editData.basicInfo.madeBy)
+          formData.append('material', editData.basicInfo.material)
           formData.append('TypeProduct', editData.basicInfo.typeProduct)
           formData.append('IsActive', editData.basicInfo.isActive.toString())
 
@@ -480,7 +480,7 @@ function UpdateProduct() {
                 name: response.data.name || '',
                 description: response.data.description || '',
                 categoryIds: (response.data as any).productCategories?.map((cat: any) => cat.id) || [],
-                madeBy: response.data.madeBy || '',
+                material: response.data.material || '',
                 typeProduct: response.data.typeProduct || '',
                 isActive: response.data.isActive || true,
                 existingImages: (response.data as any).productImages || [],
@@ -529,16 +529,16 @@ function UpdateProduct() {
         [section]:
           section === 'basicInfo'
             ? {
-                name: productDetail.name || '',
-                description: productDetail.description || '',
-                categoryIds: (productDetail as any).productCategories?.map((cat: any) => cat.id) || [],
-                madeBy: productDetail.madeBy || '',
-                typeProduct: productDetail.typeProduct || '',
-                isActive: productDetail.isActive || true,
-                existingImages: (productDetail as any).productImages || [],
-                newImageFiles: [],
-                productVideo: (productDetail as any).productVideo || ''
-              }
+              name: productDetail.name || '',
+              description: productDetail.description || '',
+              categoryIds: (productDetail as any).productCategories?.map((cat: any) => cat.id) || [],
+              material: productDetail.material || '',
+              typeProduct: productDetail.typeProduct || '',
+              isActive: productDetail.isActive || true,
+              existingImages: (productDetail as any).productImages || [],
+              newImageFiles: [],
+              productVideo: (productDetail as any).productVideo || ''
+            }
             : prev[section]
       }))
     }
@@ -693,16 +693,16 @@ function UpdateProduct() {
                   </div>
 
                   <div>
-                    <Label htmlFor='madeBy' className='text-sm font-medium'>
+                    <Label htmlFor='material' className='text-sm font-medium'>
                       Nhà sản xuất
                     </Label>
                     <Input
-                      id='madeBy'
-                      value={editData.basicInfo.madeBy}
+                      id='material'
+                      value={editData.basicInfo.material}
                       onChange={(e) =>
                         setEditData((prev) => ({
                           ...prev,
-                          basicInfo: { ...prev.basicInfo, madeBy: e.target.value }
+                          basicInfo: { ...prev.basicInfo, material: e.target.value }
                         }))
                       }
                       className='mt-1'
@@ -957,7 +957,7 @@ function UpdateProduct() {
                     </div>
                     <div>
                       <Label className='text-sm font-medium text-gray-600'>Nhà sản xuất</Label>
-                      <p className='mt-1 text-gray-900'>{productDetail.madeBy || 'Chưa cập nhật'}</p>
+                      <p className='mt-1 text-gray-900'>{productDetail.material || 'Chưa cập nhật'}</p>
                     </div>
                     <div>
                       <Label className='text-sm font-medium text-gray-600'>Loại sản phẩm</Label>
@@ -970,7 +970,7 @@ function UpdateProduct() {
                     <Label className='text-sm font-medium text-gray-600'>Danh mục sản phẩm</Label>
                     <div className='mt-2'>
                       {(productDetail as any).productCategories &&
-                      (productDetail as any).productCategories.length > 0 ? (
+                        (productDetail as any).productCategories.length > 0 ? (
                         <div className='flex flex-wrap gap-2'>
                           {(productDetail as any).productCategories.map((category: any) => (
                             <Badge

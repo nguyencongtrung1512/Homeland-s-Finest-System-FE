@@ -125,11 +125,10 @@ const FileUploadFieldWithOCR = ({
     if (enableOCR && newFiles.length > 0 && onOCRData) {
       const file = newFiles[0]
       setIsProcessingOCR(true)
-      
+
       try {
-        toast.info('Đang đọc thông tin từ CCCD...', { autoClose: 2000 })
         const ocrResult = await extractCCCDInfo(file)
-        
+
         if (ocrResult) {
           onOCRData(ocrResult)
           toast.success('Đã đọc thông tin từ CCCD thành công!')
@@ -182,7 +181,7 @@ const FileUploadFieldWithOCR = ({
     <div className='flex w-full h-full flex-col items-center justify-center space-y-2 p-4 cursor-pointer hover:bg-gray-100 rounded-lg'>
       {isProcessingOCR ? (
         <>
-          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+          <Loader2 className='h-6 w-6 animate-spin text-blue-500' />
           <div className='text-sm text-blue-600'>Đang xử lý OCR...</div>
         </>
       ) : (
@@ -242,7 +241,7 @@ const FileUploadField = ({
   required = false,
   multiple = false,
   description,
-  maxCount = 1,
+  maxCount = 1
 }: {
   label: string
   onChange: (files: File[]) => void
@@ -393,7 +392,7 @@ function SellerRegistrationForm() {
     const formatVietnameseName = (name: string) => {
       return name
         .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ')
     }
 
@@ -403,10 +402,10 @@ function SellerRegistrationForm() {
     const lastName = nameParts[0] || ''
     const firstName = nameParts.slice(1).join(' ') || ''
 
-    console.log('OCR Data received:', { 
-      originalName: ocrData.name, 
+    console.log('OCR Data received:', {
+      originalName: ocrData.name,
       formattedName: formattedFullName,
-      firstName, 
+      firstName,
       lastName,
       gender: ocrData.sex,
       dob: ocrData.dob,
@@ -417,7 +416,7 @@ function SellerRegistrationForm() {
     })
 
     // Set form data trước
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       firstName,
       lastName,
@@ -432,14 +431,15 @@ function SellerRegistrationForm() {
     // Auto-fill địa chỉ: Province → District → Ward
     if (ocrData.province && provinces.length > 0) {
       // Tìm province
-      const foundProvince = provinces.find(p => 
-        p.ProvinceName.toLowerCase().includes(ocrData.province.toLowerCase()) ||
-        ocrData.province.toLowerCase().includes(p.ProvinceName.toLowerCase())
+      const foundProvince = provinces.find(
+        (p) =>
+          p.ProvinceName.toLowerCase().includes(ocrData.province.toLowerCase()) ||
+          ocrData.province.toLowerCase().includes(p.ProvinceName.toLowerCase())
       )
-      
+
       if (foundProvince) {
         setSelectedProvince(foundProvince)
-        
+
         // Load districts và tìm district
         if (ocrData.district) {
           try {
@@ -454,21 +454,22 @@ function SellerRegistrationForm() {
                 }
               }
             )
-            
+
             if (response.ok) {
               const data = await response.json()
               const districtList = data.data
               setDistricts(districtList)
-              
+
               // Tìm district
-              const foundDistrict = districtList.find((d: GHNDistrict) => 
-                d.DistrictName.toLowerCase().includes(ocrData.district.toLowerCase()) ||
-                ocrData.district.toLowerCase().includes(d.DistrictName.toLowerCase())
+              const foundDistrict = districtList.find(
+                (d: GHNDistrict) =>
+                  d.DistrictName.toLowerCase().includes(ocrData.district.toLowerCase()) ||
+                  ocrData.district.toLowerCase().includes(d.DistrictName.toLowerCase())
               )
-              
+
               if (foundDistrict) {
                 setSelectedDistrict(foundDistrict)
-                
+
                 // Load wards và tìm ward
                 if (ocrData.ward) {
                   try {
@@ -483,21 +484,22 @@ function SellerRegistrationForm() {
                         }
                       }
                     )
-                    
+
                     if (wardResponse.ok) {
                       const wardData = await wardResponse.json()
                       const wardList = wardData.data
                       setWards(wardList)
-                      
+
                       // Tìm ward
-                      const foundWard = wardList.find((w: GHNWard) => 
-                        w.WardName.toLowerCase().includes(ocrData.ward.toLowerCase()) ||
-                        ocrData.ward.toLowerCase().includes(w.WardName.toLowerCase())
+                      const foundWard = wardList.find(
+                        (w: GHNWard) =>
+                          w.WardName.toLowerCase().includes(ocrData.ward.toLowerCase()) ||
+                          ocrData.ward.toLowerCase().includes(w.WardName.toLowerCase())
                       )
-                      
+
                       if (foundWard) {
                         setSelectedWard(foundWard)
-                        console.log('Auto-filled address:', { 
+                        console.log('Auto-filled address:', {
                           province: foundProvince.ProvinceName,
                           district: foundDistrict.DistrictName,
                           ward: foundWard.WardName,
@@ -523,7 +525,7 @@ function SellerRegistrationForm() {
     }
 
     // Clear errors
-    setErrors(prev => {
+    setErrors((prev) => {
       const newErrors = { ...prev }
       delete newErrors.firstName
       delete newErrors.lastName
@@ -559,7 +561,7 @@ function SellerRegistrationForm() {
         [field]: value
       }
     }))
-    
+
     if (errors.agreements) {
       setErrors((prev) => {
         const newErrors = { ...prev }
@@ -574,7 +576,7 @@ function SellerRegistrationForm() {
       ...prev,
       [field]: files
     }))
-    
+
     if (errors[field]) {
       setErrors((prev) => {
         const newErrors = { ...prev }
@@ -709,9 +711,19 @@ function SellerRegistrationForm() {
     const newErrors: FormErrors = {}
 
     const requiredTextFields: (keyof FormData)[] = [
-      'firstName', 'lastName', 'email', 'phoneNumber', 'password', 'confirmPassword',
-      'gender', 'dateOfBirth', 'businessName', 'taxCode', 'bankAccount', 
-      'identifyCard', 'storeName'
+      'firstName',
+      'lastName',
+      'email',
+      'phoneNumber',
+      'password',
+      'confirmPassword',
+      'gender',
+      'dateOfBirth',
+      'businessName',
+      'taxCode',
+      'bankAccount',
+      'identifyCard',
+      'storeName'
     ]
 
     requiredTextFields.forEach((field) => {
@@ -752,7 +764,7 @@ function SellerRegistrationForm() {
         const today = new Date()
         let age = today.getFullYear() - birthDate.getFullYear()
         const monthDiff = today.getMonth() - birthDate.getMonth()
-        
+
         if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
           age--
         }
@@ -787,7 +799,7 @@ function SellerRegistrationForm() {
       newErrors.vendorApplicationImageUrl = 'Vui lòng tải lên giấy phép kinh doanh'
     }
 
-    const allAgreed = Object.values(formData.agreements).every(value => value === true)
+    const allAgreed = Object.values(formData.agreements).every((value) => value === true)
     if (!allAgreed) {
       newErrors.agreements = 'Vui lòng đồng ý với tất cả các điều khoản bắt buộc'
     }
@@ -1371,7 +1383,9 @@ function SellerRegistrationForm() {
                       </div>
                     </div>
                   </div>
-                  {errors.vendorApplicationImageUrl && <p className='text-sm text-red-500'>{errors.vendorApplicationImageUrl}</p>}
+                  {errors.vendorApplicationImageUrl && (
+                    <p className='text-sm text-red-500'>{errors.vendorApplicationImageUrl}</p>
+                  )}
                 </div>
               </div>
             </div>

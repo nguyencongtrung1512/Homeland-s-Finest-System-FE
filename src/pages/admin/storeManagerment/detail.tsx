@@ -632,7 +632,7 @@ function StoreDetailAdmin() {
                       {/* Thông tin nhân viên đã review */}
                       <div>
                         <span className='text-sm text-gray-500'>Nhân viên đã đánh giá:</span>
-                        <p className='text-sm font-medium text-gray-900'>{store.reviewedBy || 'Chưa có'}</p>
+                        <p className='text-sm font-medium text-gray-900'>{store.staffName || 'Chưa có'}</p>
                       </div>
 
                       {/* Ngày quyết định */}
@@ -653,16 +653,6 @@ function StoreDetailAdmin() {
                         </div>
                       )}
 
-                      {/* Phản hồi của nhân viên */}
-                      {store.staffFeedback && (
-                        <div>
-                          <span className='text-sm text-gray-500'>Phản hồi:</span>
-                          <p className='text-sm font-medium text-gray-900 bg-gray-50 p-3 rounded-lg mt-1'>
-                            {store.staffFeedback}
-                          </p>
-                        </div>
-                      )}
-
                       {/* Ảnh của nhân viên */}
                       {store.staffImage && (
                         <div>
@@ -679,7 +669,7 @@ function StoreDetailAdmin() {
                       )}
 
                       {/* Trạng thái khi chưa có thông tin */}
-                      {!store.reviewedBy && !store.staffNotes && !store.staffFeedback && !store.staffImage && (
+                      {!store.reviewedBy && !store.staffNotes && !store.staffImage && (
                         <div className='text-center py-8 text-gray-500'>
                           <User className='w-12 h-12 mx-auto mb-2 text-gray-300' />
                           <p>Chưa có ghi chú từ nhân viên</p>

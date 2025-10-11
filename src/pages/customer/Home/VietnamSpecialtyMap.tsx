@@ -16,7 +16,7 @@ interface Specialty {
   productImages: string[]
   productVideo: string
   categoryId: string[]
-  madeBy: string
+  material: string
   isActive: boolean
   typeProduct: string
   status: string
@@ -48,7 +48,7 @@ const provinceSpecialties: Record<string, ProvinceSpecialties> = {
         ],
         productVideo: '',
         categoryId: ['cat-food'],
-        madeBy: 'Quán bánh cuốn Hà Nội',
+        material: 'Quán bánh cuốn Hà Nội',
         isActive: true,
         typeProduct: 'Food',
         status: 'active',
@@ -72,7 +72,7 @@ const provinceSpecialties: Record<string, ProvinceSpecialties> = {
         ],
         productVideo: '',
         categoryId: ['cat-food'],
-        madeBy: 'Nhà hàng Lã Vọng',
+        material: 'Nhà hàng Lã Vọng',
         isActive: true,
         typeProduct: 'Food',
         status: 'active',
@@ -96,7 +96,7 @@ const provinceSpecialties: Record<string, ProvinceSpecialties> = {
         ],
         productVideo: '',
         categoryId: ['cat-food'],
-        madeBy: 'Quán bún chả Hà Nội',
+        material: 'Quán bún chả Hà Nội',
         isActive: true,
         typeProduct: 'Food',
         status: 'active',
@@ -120,7 +120,7 @@ const provinceSpecialties: Record<string, ProvinceSpecialties> = {
         ],
         productVideo: '',
         categoryId: ['cat-food'],
-        madeBy: 'Quán phở Hà Nội',
+        material: 'Quán phở Hà Nội',
         isActive: true,
         typeProduct: 'Food',
         status: 'active',
@@ -146,7 +146,7 @@ const provinceSpecialties: Record<string, ProvinceSpecialties> = {
         productImages: ['/images/banh-mi.jpg'],
         productVideo: '',
         categoryId: ['cat-food'],
-        madeBy: 'Quán bánh mì Sài Gòn',
+        material: 'Quán bánh mì Sài Gòn',
         isActive: true,
         typeProduct: 'Food',
         status: 'active',
@@ -168,7 +168,7 @@ const provinceSpecialties: Record<string, ProvinceSpecialties> = {
         productImages: ['/images/hu-tieu.jpg'],
         productVideo: '',
         categoryId: ['cat-food'],
-        madeBy: 'Quán hủ tiếu Nam Vang',
+        material: 'Quán hủ tiếu Nam Vang',
         isActive: true,
         typeProduct: 'Food',
         status: 'active',
@@ -190,7 +190,7 @@ const provinceSpecialties: Record<string, ProvinceSpecialties> = {
         productImages: ['/images/com-tam.jpg'],
         productVideo: '',
         categoryId: ['cat-food'],
-        madeBy: 'Quán cơm tấm Sài Gòn',
+        material: 'Quán cơm tấm Sài Gòn',
         isActive: true,
         typeProduct: 'Food',
         status: 'active',
@@ -216,7 +216,7 @@ const provinceSpecialties: Record<string, ProvinceSpecialties> = {
         productImages: ['/images/mi-quang.jpg'],
         productVideo: '',
         categoryId: ['cat-food'],
-        madeBy: 'Quán mì Quảng Đà Nẵng',
+        material: 'Quán mì Quảng Đà Nẵng',
         isActive: true,
         typeProduct: 'Food',
         status: 'active',
@@ -238,7 +238,7 @@ const provinceSpecialties: Record<string, ProvinceSpecialties> = {
         productImages: ['/images/banh-xeo.jpg'],
         productVideo: '',
         categoryId: ['cat-food'],
-        madeBy: 'Quán bánh xèo Đà Nẵng',
+        material: 'Quán bánh xèo Đà Nẵng',
         isActive: true,
         typeProduct: 'Food',
         status: 'active',
@@ -260,7 +260,7 @@ const provinceSpecialties: Record<string, ProvinceSpecialties> = {
         productImages: ['/images/nem-lui.jpg'],
         productVideo: '',
         categoryId: ['cat-food'],
-        madeBy: 'Quán nem lụi Đà Nẵng',
+        material: 'Quán nem lụi Đà Nẵng',
         isActive: true,
         typeProduct: 'Food',
         status: 'active',

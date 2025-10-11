@@ -27,22 +27,19 @@ function StaffStoreDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Review modal states
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [reviewForm] = Form.useForm()
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
 
-  // Image preview states
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('')
 
   const handleBack = () => {
-    navigate(-1) // Go back to previous page
+    navigate(-1)
   }
 
-  // Fetch store details
   const fetchStoreDetail = async () => {
     if (!storeId) {
       setError('Không tìm thấy ID cửa hàng')
@@ -84,14 +81,12 @@ function StaffStoreDetail() {
     fetchStoreDetail()
   }, [storeId])
 
-  // Handle approve action
   const handleApprove = () => {
     if (store) {
       setReviewModalOpen(true)
       reviewForm.setFieldsValue({
         NewStatus: 'ReviewedByStaff',
         StaffNotes: '',
-        StaffFeedback: ''
       })
     }
   }
@@ -144,27 +139,13 @@ function StaffStoreDetail() {
       })
 
       // Check success conditions
-      if (response && response.storeId && response.newStatus && response.reviewedByStaffId && response.decisionDate) {
+      if (response) {
         toast.success('Đánh giá cửa hàng thành công!')
         setReviewModalOpen(false)
         reviewForm.resetFields()
         setSelectedImages([])
         setImagePreviews([])
         fetchStoreDetail() // Refresh store data
-      } else if (response && response.status === 202) {
-        toast.success('Đánh giá cửa hàng thành công!')
-        setReviewModalOpen(false)
-        reviewForm.resetFields()
-        setSelectedImages([])
-        setImagePreviews([])
-        fetchStoreDetail()
-      } else if (response && response.message && response.message.includes('thành công')) {
-        toast.success('Đánh giá cửa hàng thành công!')
-        setReviewModalOpen(false)
-        reviewForm.resetFields()
-        setSelectedImages([])
-        setImagePreviews([])
-        fetchStoreDetail()
       } else {
         console.error('❌ Unexpected response format:', response)
         toast.error(`Lỗi: ${response?.message || 'Không thể đánh giá cửa hàng'}`)
@@ -523,12 +504,12 @@ function StaffStoreDetail() {
           </Card>
 
           {/* Staff Notes & Feedback */}
-          {(store.staffNotes || store.staffFeedback) && (
+          {(store.staffNotes) && (
             <Card
               title={
                 <div className='flex items-center gap-2 text-indigo-600'>
                   <FileText size={18} />
-                  <span>Ghi chú và phản hồi của nhân viên</span>
+                  <span>Ghi chú của nhân viên</span>
                 </div>
               }
               className='border-l-4 border-l-indigo-500'
@@ -538,12 +519,6 @@ function StaffStoreDetail() {
                   <div>
                     <h4 className='font-semibold text-gray-900 mb-2'>Ghi chú của nhân viên</h4>
                     <p className='text-gray-700 bg-gray-50 p-3 rounded-lg'>{store.staffNotes}</p>
-                  </div>
-                )}
-                {store.staffFeedback && (
-                  <div>
-                    <h4 className='font-semibold text-gray-900 mb-2'>Phản hồi của nhân viên</h4>
-                    <p className='text-gray-700 bg-gray-50 p-3 rounded-lg'>{store.staffFeedback}</p>
                   </div>
                 )}
                 {store.staffImage && (
@@ -638,14 +613,6 @@ function StaffStoreDetail() {
             rules={[{ required: true, message: 'Vui lòng nhập ghi chú' }]}
           >
             <Input.TextArea rows={4} placeholder='Nhập ghi chú về cửa hàng...' />
-          </Form.Item>
-
-          <Form.Item
-            name='StaffFeedback'
-            label='Phản hồi của nhân viên'
-            rules={[{ required: true, message: 'Vui lòng nhập phản hồi' }]}
-          >
-            <Input.TextArea rows={4} placeholder='Nhập phản hồi về cửa hàng...' />
           </Form.Item>
 
           <Form.Item
