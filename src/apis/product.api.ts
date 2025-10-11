@@ -36,9 +36,9 @@ export interface ProductCreateFormData {
   provinceId: string
   name: string
   description: string
-  categoryIds: string[] // Đảm bảo đây là string array
-  productImages?: File[] // Thay đổi từ string[] thành File[]
-  productVideo?: File // Thay đổi từ string thành File
+  categoryIds: string[]
+  productImages?: File[]
+  productVideo?: File
   material?: string
   saleCount?: number
   rating?: number
@@ -49,15 +49,15 @@ export interface ProductCreateFormData {
   note?: string
   storyTitle?: string
   storyDetail?: string
-  certificateImages?: File[] // Thay đổi từ string[] thành File[]
-  storyVideo?: File // Thay đổi từ string thành File
-  storyImages?: File[] // Thay đổi từ string[] thành File[]
+  certificateImages?: File[]
+  storyVideo?: File
+  storyImages?: File[]
 }
 
 // Product API Functions
 export const productApi = {
   // Get all products with pagination and filters
-  getAll: async (params?: ProductQueryParams): Promise<ProductListResponse> => {
+  getAll: async (params?: any): Promise<ProductListResponse> => {
     console.log('API Request params:', params)
     const response = await axiosInstance.get(API_URL, { params })
     console.log('API Response:', response)
@@ -94,7 +94,7 @@ export const productApi = {
 
     // 🔍 DEBUG: Log FormData contents
     console.log('🔍 DEBUG - FormData entries:')
-    for (let [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries()) {
       console.log(`🔍 DEBUG - FormData[${key}]:`, value)
     }
 
@@ -166,31 +166,25 @@ export const productApi = {
   },
 
   // Get products by store
-  getByStore: async (storeId: string, params?: Omit<ProductQueryParams, 'storeId'>): Promise<ProductListResponse> => {
+  getByStore: async (storeId: string, params?: Omit<any, 'storeId'>): Promise<ProductListResponse> => {
     const response = await axiosInstance.get(`${API_URL}/by-store/${storeId}`, { params })
     return response as unknown as ProductListResponse
   },
 
   // Get products by category
-  getByCategory: async (
-    categoryId: string,
-    params?: Omit<ProductQueryParams, 'categoryId'>
-  ): Promise<ProductListResponse> => {
+  getByCategory: async (categoryId: string, params?: Omit<any, 'categoryId'>): Promise<ProductListResponse> => {
     const response = await axiosInstance.get(`${API_URL}/category/${categoryId}`, { params })
     return response as unknown as ProductListResponse
   },
 
   // Get products by province
-  getByProvince: async (
-    provinceId: string,
-    params?: Omit<ProductQueryParams, 'provinceId'>
-  ): Promise<ProductListResponse> => {
+  getByProvince: async (provinceId: string, params?: Omit<any, 'provinceId'>): Promise<ProductListResponse> => {
     const response = await axiosInstance.get(`${API_URL}/province/${provinceId}`, { params })
     return response as unknown as ProductListResponse
   },
 
   // Search products
-  search: async (query: string, params?: Omit<ProductQueryParams, 'search'>): Promise<ProductListResponse> => {
+  search: async (query: string, params?: Omit<any, 'search'>): Promise<ProductListResponse> => {
     const response = await axiosInstance.get(`${API_URL}/search`, {
       params: { ...params, search: query }
     })
@@ -223,6 +217,11 @@ export const productApi = {
   updateActiveStatus: async (id: string, isActive: boolean): Promise<ProductResponse> => {
     const response = await axiosInstance.patch(`${API_URL}/${id}/active`, { isActive })
     return response as unknown as ProductResponse
+  },
+
+   getByProvinceName: async (provinceName: string, params?: { pageSize?: number; pageNumber?: number }): Promise<ProductListResponse> => {
+    const response = await axiosInstance.get(`${API_URL}/province/name/${encodeURIComponent(provinceName)}`, { params })
+    return response as unknown as ProductListResponse
   }
 }
 

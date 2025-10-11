@@ -4,7 +4,7 @@ import { Button } from '../ui/button'
 import { Package, ShoppingCart, FileText, Users, Store, Search, RefreshCw, Plus } from 'lucide-react'
 
 interface EmptyStateProps {
-  type?: 'products' | 'orders' | 'stores' | 'users' | 'blogs' | 'transactions' | 'search' | 'general'
+  type?: 'products' | 'orders' | 'stores' | 'users' | 'blogs' | 'transactions' | 'search' | 'general' | 'error'
   title?: string
   description?: string
   actionLabel?: string
@@ -73,6 +73,14 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           iconBg: 'bg-emerald-50 dark:bg-emerald-900/20'
         }
       case 'search':
+        return {
+          icon: <Search className='w-16 h-16 text-muted-foreground' />,
+          title: title || 'Không tìm thấy kết quả',
+          description: description || 'Hãy thử tìm kiếm với từ khóa khác',
+          actionLabel: actionLabel || 'Thử lại',
+          iconBg: 'bg-gray-50 dark:bg-gray-900/20'
+        }
+       case 'error':
         return {
           icon: <Search className='w-16 h-16 text-muted-foreground' />,
           title: title || 'Không tìm thấy kết quả',

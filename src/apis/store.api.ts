@@ -57,6 +57,13 @@ export interface StoreResponse {
   products: any[]
 }
 
+// Interface cho API response wrapper
+export interface StoreApiResponse {
+  status: number
+  message: string
+  data: StoreResponse
+}
+
 export interface StoreListResponse {
   status: number
   message: string
@@ -71,14 +78,13 @@ export interface StoreListParams {
 
 // API function để lấy danh sách store
 export const storeApi = {
-  // Lấy danh sách tất cả store
+  // Lấy danh sách tất cả stores
   getAllStores: async (params?: StoreListParams): Promise<StoreListResponse> => {
     const queryParams = new URLSearchParams()
 
     if (params?.pageSize) {
       queryParams.append('pageSize', params.pageSize.toString())
     }
-
     if (params?.pageNumber) {
       queryParams.append('pageNumber', params.pageNumber.toString())
     }
@@ -89,7 +95,7 @@ export const storeApi = {
   },
 
   // Lấy thông tin chi tiết một store
-  getStoreById: async (storeId: string): Promise<StoreResponse> => {
+  getStoreById: async (storeId: string): Promise<StoreApiResponse | StoreResponse> => {
     return await axiosInstance.get(`/Store/${storeId}`)
   },
 
