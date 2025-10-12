@@ -44,8 +44,8 @@ export interface ExtractedCCCDInfo {
   street: string
 }
 
-const FPT_AI_API_KEY = '9cPO3K8SWLqumi8L33K9Nd4Snuz45cAg'
-const FPT_AI_OCR_URL = 'https://api.fpt.ai/vision/idr/vnm'
+const FPT_AI_API_KEY = import.meta.env.VITE_FPT_AI_API_KEY
+const FPT_AI_OCR_URL = import.meta.env.VITE_FPT_AI_OCR_URL
 
 export const extractCCCDInfo = async (imageFile: File): Promise<ExtractedCCCDInfo | null> => {
   try {

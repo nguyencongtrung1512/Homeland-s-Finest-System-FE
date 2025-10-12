@@ -12,6 +12,7 @@ export const path = {
   forgotPassword: '/forgot-password/verify-email',
   verifyOTP: '/forgot-password/verify-otp',
   resetPassword: '/forgot-password/reset-password',
+  cartOrderCreate: '/cart/create-order',
   // ============ Customer ===========
   cart: '/cart',
   cartOrderConfirm: '/cart/confirm',

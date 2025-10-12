@@ -5,8 +5,8 @@ import Products from './pages/customer/Products/products'
 import path from './constants/path'
 import ProductsDetail from './pages/customer/Products/ProductDetail/productsDetail'
 import Cart from './pages/customer/Cart/Cart'
-import OrderConfirm from './pages/customer/Cart/OrderConfirm'
-import Invoice from './pages/customer/Cart/Invoice'
+import OrderConfirm from './pages/customer/Order/OrderCreate'
+import Invoice from './pages/customer/Order/Invoice'
 import Login from './pages/authentication/Login'
 import Register from './pages/authentication/Register'
 import IntroPage from './pages/seller/IntroPage/introPage'
@@ -64,6 +64,7 @@ import DetailProductSeller from './pages/seller/products/detailProduct'
 import DetailProductStaff from './pages/staff/productManagerment/detailProduct'
 import StaffStoreDetail from './pages/staff/storeManagerment/storeDetail'
 import ListProductByStoreStaff from './pages/staff/storeManagerment/listProductByStore'
+import OrderCreate from './pages/customer/Order/OrderCreate'
 
 // import ProtectedRoute from './components/ProtectedRoute'
 
@@ -91,8 +92,8 @@ export default function useRouteElements() {
           element: <Cart />
         },
         {
-          path: path.cartOrderConfirm,
-          element: <OrderConfirm />
+          path: path.cartOrderCreate,
+          element: <OrderCreate />
         },
         {
           path: path.cartInvoice,

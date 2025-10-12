@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../../../contexts/cart.context'
 import { useProductDetailContext } from '../productsDetail'
 
 function ProductGallery() {
   const { product } = useProductDetailContext()
+  const navigate = useNavigate()
   const [selectedImage, setSelectedImage] = useState(0)
   const [selectedVariant, setSelectedVariant] = useState(0)
   const [quantity, setQuantity] = useState(1)
@@ -27,6 +29,30 @@ function ProductGallery() {
         image: product.productImages[0] || '',
         variant: currentVariant.variantName,
         storeId: product.storeId
+      })
+    }
+  }
+
+  const handleBuyNow = () => {
+    if (currentVariant) {
+      // Chuẩn bị dữ liệu sản phẩm để truyền sang trang order
+      const productData = {
+        id: product.id,
+        productVariantId: currentVariant.id,
+        name: product.name,
+        description: product.description,
+        price: currentPrice,
+        quantity: quantity,
+        image: product.productImages[0] || 'https://via.placeholder.com/400x400?text=No+Image',
+        variant: currentVariant.variantName,
+        storeId: product.storeId
+      }
+
+      // Navigate đến trang order với dữ liệu sản phẩm
+      navigate('/cart/createOrder', {
+        state: {
+          product: productData
+        }
       })
     }
   }
@@ -203,8 +229,12 @@ function ProductGallery() {
                 {!product.isActive || currentStock === 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
               </button>
 
-              <button className='w-full border border-green-600 text-green-600 py-3 px-6 rounded-lg font-semibold hover:bg-green-50 transition-colors'>
-                Mua ngay
+              <button 
+                onClick={handleBuyNow}
+                disabled={!product.isActive || currentStock === 0 || !currentVariant}
+                className='w-full border border-green-600 text-green-600 py-3 px-6 rounded-lg font-semibold hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              >
+                {!product.isActive || currentStock === 0 ? 'Hết hàng' : 'Mua ngay'}
               </button>
             </div>
 
