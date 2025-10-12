@@ -65,6 +65,7 @@ import DetailProductStaff from './pages/staff/productManagerment/detailProduct'
 import StaffStoreDetail from './pages/staff/storeManagerment/storeDetail'
 import ListProductByStoreStaff from './pages/staff/storeManagerment/listProductByStore'
 import OrderCreate from './pages/customer/Order/OrderCreate'
+import BuyNowCart from './pages/customer/Cart/BuyNowCart'
 
 // import ProtectedRoute from './components/ProtectedRoute'
 
@@ -94,6 +95,10 @@ export default function useRouteElements() {
         {
           path: path.cartOrderCreate,
           element: <OrderCreate />
+        },
+        {
+          path: path.cartBuyNow,
+          element: <BuyNowCart />
         },
         {
           path: path.cartInvoice,

@@ -35,7 +35,7 @@ function ProductGallery() {
 
   const handleBuyNow = () => {
     if (currentVariant) {
-      // Chuẩn bị dữ liệu sản phẩm để truyền sang trang order
+      // Chuẩn bị dữ liệu sản phẩm để truyền sang trang BuyNowCart
       const productData = {
         id: product.id,
         productVariantId: currentVariant.id,
@@ -48,8 +48,8 @@ function ProductGallery() {
         storeId: product.storeId
       }
 
-      // Navigate đến trang order với dữ liệu sản phẩm
-      navigate('/cart/createOrder', {
+      // Navigate đến trang BuyNowCart với dữ liệu sản phẩm
+      navigate('/cart/buy-now', {
         state: {
           product: productData
         }

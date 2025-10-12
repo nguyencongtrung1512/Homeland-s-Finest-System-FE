@@ -3,9 +3,11 @@ import { Button } from '../../../components/ui/button'
 import { CheckCircle, Truck, ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 // import { useAuth } from '../../../contexts/auth.context'
-import { createOrder } from '../../../apis/order.api'
-import type { CreateOrderInput, PaymentMethod } from '../../../types/orderType'
+import { createOrder, cancelOrder } from '../../../apis/order.api'
+import { purchaseOrder } from '../../../apis/transaction.api'
+import type { CreateOrderInput, PaymentMethod, Order } from '../../../types/orderType'
 import { toast } from 'react-toastify'
+import CancelOrderDialog from '../../../components/CancelOrderDialog/CancelOrderDialog'
 
 interface CartItem {
   id: string
@@ -23,14 +25,25 @@ function OrderCreate() {
   // const { user } = useAuth()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>()
 
   // Set cứng userId và userAddressId
   const hardcodedUserId = '30000000-0000-0000-0000-000000000003'
   const hardcodedAddressId = '11000000-0000-0000-0000-000000000001'
 
-  // Lấy dữ liệu sản phẩm từ navigation state (từ "Mua ngay")
+  // Lấy dữ liệu từ navigation state
   const buyNowProduct = location.state?.product
+  const existingOrder: Order = location.state?.order
+  const existingPaymentMethod: PaymentMethod = location.state?.paymentMethod
+
+  // Debug logs
+  console.log('=== DEBUG ORDERCREATE STATE ===')
+  console.log('location.state:', location.state)
+  console.log('buyNowProduct:', buyNowProduct)
+  console.log('existingOrder:', existingOrder)
+  console.log('existingPaymentMethod:', existingPaymentMethod)
 
   // Giả lập dữ liệu đơn hàng - Thực tế sẽ lấy từ context/cart hoặc từ "Mua ngay"
   const cartItems: CartItem[] = buyNowProduct
@@ -72,20 +85,37 @@ function OrderCreate() {
 
   const handlePayment = async () => {
     try {
-      // Validate cart
-      if (cartItems.length === 0) {
-        toast.error('Giỏ hàng trống')
+      // Nếu đã có order từ BuyNowCart, thực hiện thanh toán
+      if (existingOrder) {
+        await handlePurchasePayment()
         return
       }
 
-      // Validate payment method
-      if (!selectedPaymentMethod) {
-        toast.error('Vui lòng chọn phương thức thanh toán')
-        return
-      }
+      // Nếu chưa có order, tạo order mới (flow cũ)
+      await handleCreateNewOrder()
+    } catch (error: any) {
+      console.error('Error in payment process:', error)
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi xử lý thanh toán'
+      toast.error(errorMessage)
+    }
+  }
 
-      setIsSubmitting(true)
+  const handleCreateNewOrder = async () => {
+    // Validate cart
+    if (cartItems.length === 0) {
+      toast.error('Giỏ hàng trống')
+      return
+    }
 
+    // Validate payment method
+    if (!selectedPaymentMethod) {
+      toast.error('Vui lòng chọn phương thức thanh toán')
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
       // Chuẩn bị dữ liệu order theo format API với userId và addressId cứng
       const orderData: CreateOrderInput = {
         userId: hardcodedUserId,
@@ -107,18 +137,98 @@ function OrderCreate() {
       // Hiển thị thông báo thành công
       toast.success('Đặt hàng thành công!')
 
-      // Xóa cart (nếu có)
-      // clearCart()
-
       // Chuyển đến trang hóa đơn/chi tiết đơn hàng
       navigate(`/cart/invoice?orderId=${createdOrder.id}&status=success`)
-    } catch (error: any) {
-      console.error('Error creating order:', error)
-
-      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi đặt hàng'
-      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handlePurchasePayment = async () => {
+    if (!existingOrder) {
+      toast.error('Không tìm thấy thông tin đơn hàng')
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      console.log('=== DEBUG PURCHASE PAYMENT ===')
+      console.log('existingOrder:', existingOrder)
+      console.log('existingOrder.id:', existingOrder.id)
+      console.log('existingOrder type:', typeof existingOrder.id)
+      console.log('orderIds array:', [existingOrder.id])
+
+      // Validate orderId
+      if (!existingOrder.id) {
+        toast.error('Order ID không hợp lệ')
+        return
+      }
+
+      // Gọi API thanh toán với orderId
+      const transactions = await purchaseOrder({
+        orderIds: [existingOrder.id]
+      })
+
+      console.log('Payment processed successfully:', transactions)
+
+      const transaction = transactions[0]
+
+      // Xử lý theo phương thức thanh toán
+      if (transaction.paymentMethod === 'COD') {
+        toast.success('Đơn hàng COD đã được xác nhận! Chờ giao hàng.')
+        navigate(`/cart/invoice?orderId=${existingOrder.id}&status=success&type=cod`)
+      } else if (transaction.paymentMethod === 'Banking') {
+        toast.success('Đang chuyển đến trang thanh toán...')
+        // Redirect đến PayOS
+        if (transaction.checkoutUrl) {
+          window.location.href = transaction.checkoutUrl
+        } else {
+          navigate(`/cart/invoice?orderId=${existingOrder.id}&status=pending&type=banking`)
+        }
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCancelOrder = () => {
+    if (!existingOrder) {
+      toast.error('Không tìm thấy thông tin đơn hàng để hủy')
+      return
+    }
+
+    setShowCancelDialog(true)
+  }
+
+  const handleConfirmCancel = async (reason: string) => {
+    if (!existingOrder) return
+
+    setIsCancelling(true)
+
+    try {
+      console.log('=== DEBUG CANCEL ORDER ===')
+      console.log('Cancelling order:', existingOrder.id)
+      console.log('Reason:', reason)
+
+      // Gọi API hủy đơn hàng với reason được chọn
+      const cancelledOrders = await cancelOrder(existingOrder.id, reason)
+
+      console.log('Order cancelled successfully:', cancelledOrders)
+
+      // Hiển thị thông báo thành công
+      toast.success(`Đã hủy ${cancelledOrders.length} đơn hàng thành công!`)
+
+      // Đóng dialog và chuyển về trang sản phẩm
+      setShowCancelDialog(false)
+      navigate('/products')
+    } catch (error: any) {
+      console.error('Error cancelling order:', error)
+
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi hủy đơn hàng'
+      toast.error(errorMessage)
+    } finally {
+      setIsCancelling(false)
     }
   }
 
@@ -133,7 +243,14 @@ function OrderCreate() {
         <div className='mb-8'>
           <h1 className='text-2xl font-bold text-gray-900 mb-2'>Xác nhận đơn hàng</h1>
           <p className='text-gray-600'>Vui lòng kiểm tra lại thông tin đơn hàng trước khi thanh toán</p>
-          {buyNowProduct && (
+          {existingOrder && (
+            <div className='mt-2 p-3 bg-green-100 rounded-lg border border-green-200'>
+              <p className='text-sm text-green-800 font-medium'>✅ Đơn hàng đã được tạo thành công</p>
+              <p className='text-xs text-green-700 mt-1'>Order ID: {existingOrder.id}</p>
+              <p className='text-xs text-green-700'>Phương thức: {existingPaymentMethod}</p>
+            </div>
+          )}
+          {buyNowProduct && !existingOrder && (
             <div className='mt-2 p-2 bg-blue-100 rounded-lg'>
               <p className='text-sm text-blue-800'>🛒 Đơn hàng từ "Mua ngay"</p>
             </div>
@@ -191,70 +308,71 @@ function OrderCreate() {
             {/* Payment Method Selection */}
             <div className='bg-white rounded-lg shadow-sm border p-6'>
               <h2 className='text-xl font-semibold mb-4'>Phương thức thanh toán</h2>
-              <div className='space-y-3'>
-                <label
-                  className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    selectedPaymentMethod === 'COD'
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <input
-                    type='radio'
-                    name='paymentMethod'
-                    value='COD'
-                    checked={selectedPaymentMethod === 'COD'}
-                    onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
-                    className='w-4 h-4 text-green-600'
-                  />
-                  <div className='flex-1'>
-                    <p className='font-medium text-gray-900'>💵 Thanh toán khi nhận hàng (COD)</p>
-                    <p className='text-sm text-gray-500'>Thanh toán bằng tiền mặt khi nhận hàng</p>
+              {existingOrder ? (
+                <div className='p-4 bg-blue-50 rounded-lg border border-blue-200'>
+                  <p className='text-sm text-blue-800 font-medium mb-2'>Phương thức đã chọn:</p>
+                  <div className='flex items-center gap-3'>
+                    <div className='w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center'>
+                      {existingPaymentMethod === 'COD' ? '💵' : '💳'}
+                    </div>
+                    <div>
+                      <p className='font-medium text-gray-900'>
+                        {existingPaymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' : 'Chuyển khoản ngân hàng'}
+                      </p>
+                      <p className='text-sm text-gray-500'>
+                        {existingPaymentMethod === 'COD' 
+                          ? 'Thanh toán bằng tiền mặt khi nhận hàng' 
+                          : 'Thanh toán qua chuyển khoản ngân hàng'
+                        }
+                      </p>
+                    </div>
                   </div>
-                </label>
+                </div>
+              ) : (
+                <div className='space-y-3'>
+                  <label
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'COD'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type='radio'
+                      name='paymentMethod'
+                      value='COD'
+                      checked={selectedPaymentMethod === 'COD'}
+                      onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
+                      className='w-4 h-4 text-green-600'
+                    />
+                    <div className='flex-1'>
+                      <p className='font-medium text-gray-900'>💵 Thanh toán khi nhận hàng (COD)</p>
+                      <p className='text-sm text-gray-500'>Thanh toán bằng tiền mặt khi nhận hàng</p>
+                    </div>
+                  </label>
 
-                <label
-                  className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    selectedPaymentMethod === 'VNPay'
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <input
-                    type='radio'
-                    name='paymentMethod'
-                    value='VNPay'
-                    checked={selectedPaymentMethod === 'VNPay'}
-                    onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
-                    className='w-4 h-4 text-green-600'
-                  />
-                  <div className='flex-1'>
-                    <p className='font-medium text-gray-900'>💳 VNPay</p>
-                    <p className='text-sm text-gray-500'>Thanh toán qua cổng VNPay</p>
-                  </div>
-                </label>
-
-                <label
-                  className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    selectedPaymentMethod === 'Momo'
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <input
-                    type='radio'
-                    name='paymentMethod'
-                    value='Momo'
-                    checked={selectedPaymentMethod === 'Momo'}
-                    onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
-                    className='w-4 h-4 text-green-600'
-                  />
-                  <div className='flex-1'>
-                    <p className='font-medium text-gray-900'>📱 Ví Momo</p>
-                    <p className='text-sm text-gray-500'>Thanh toán qua ví điện tử Momo</p>
-                  </div>
-                </label>
-              </div>
+                  <label
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'Banking'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type='radio'
+                      name='paymentMethod'
+                      value='Banking'
+                      checked={selectedPaymentMethod === 'Banking'}
+                      onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
+                      className='w-4 h-4 text-green-600'
+                    />
+                    <div className='flex-1'>
+                      <p className='font-medium text-gray-900'>💳 Chuyển khoản ngân hàng</p>
+                      <p className='text-sm text-gray-500'>Thanh toán qua chuyển khoản ngân hàng</p>
+                    </div>
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Shipping Address Info */}
@@ -307,10 +425,13 @@ function OrderCreate() {
                 <div className='mb-4 p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200'>
                   <p className='text-xs text-gray-600 mb-1'>Phương thức thanh toán:</p>
                   <p className='text-sm font-semibold text-gray-900'>
-                    {selectedPaymentMethod === 'COD' && '💵 Thanh toán khi nhận hàng'}
-                    {selectedPaymentMethod === 'VNPay' && '💳 VNPay'}
-                    {selectedPaymentMethod === 'Momo' && '📱 Ví Momo'}
-                    {!selectedPaymentMethod && '⚠️ Chưa chọn phương thức'}
+                    {existingOrder ? (
+                      existingPaymentMethod === 'COD' ? '💵 Thanh toán khi nhận hàng' : '💳 Chuyển khoản ngân hàng'
+                    ) : (
+                      selectedPaymentMethod === 'COD' ? '💵 Thanh toán khi nhận hàng' :
+                      selectedPaymentMethod === 'Banking' ? '💳 Chuyển khoản ngân hàng' :
+                      '⚠️ Chưa chọn phương thức'
+                    )}
                   </p>
                 </div>
 
@@ -318,7 +439,7 @@ function OrderCreate() {
                 <div className='space-y-3'>
                   <Button
                     onClick={handlePayment}
-                    disabled={isSubmitting || !selectedPaymentMethod}
+                    disabled={isSubmitting || (!existingOrder && !selectedPaymentMethod)}
                     className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all'
                   >
                     {isSubmitting ? (
@@ -329,17 +450,24 @@ function OrderCreate() {
                     ) : (
                       <>
                         <CheckCircle className='w-4 h-4 mr-2' />
-                        Đặt hàng ngay
+                        {existingOrder ? 'Thanh toán ngay' : 'Đặt hàng ngay'}
                       </>
                     )}
                   </Button>
                   <Button
-                    onClick={handleContinueShopping}
+                    onClick={existingOrder ? handleCancelOrder : handleContinueShopping}
                     variant='outline'
-                    disabled={isSubmitting}
-                    className='w-full border-green-600 text-green-600 hover:bg-green-50 transition-all'
+                    disabled={isSubmitting || isCancelling}
+                    className='w-full border-red-600 text-red-600 hover:bg-red-50 transition-all'
                   >
-                    Tiếp tục mua sắm
+                    {isCancelling ? (
+                      <>
+                        <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                        Đang hủy...
+                      </>
+                    ) : (
+                      existingOrder ? 'Hủy đặt hàng' : 'Hủy đặt hàng'
+                    )}
                   </Button>
                 </div>
               </div>
@@ -380,6 +508,18 @@ function OrderCreate() {
           </div>
         </div>
       </div>
+
+      {/* Cancel Order Dialog */}
+      <CancelOrderDialog
+        isOpen={showCancelDialog}
+        onClose={() => setShowCancelDialog(false)}
+        onConfirm={handleConfirmCancel}
+        orderInfo={existingOrder ? {
+          orderId: existingOrder.id,
+          totalAmount: subtotal + shipping
+        } : undefined}
+        isLoading={isCancelling}
+      />
     </div>
   )
 }

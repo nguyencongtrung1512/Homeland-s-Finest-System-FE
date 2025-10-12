@@ -7,6 +7,8 @@ export interface CartItem {
   image: string
   quantity: number
   weight?: string
+  variant?: string
+  storeId?: string
 }
 
 interface CartContextProps {

@@ -93,29 +93,16 @@ export interface OrderQueryParams {
   sortOrder?: 'asc' | 'desc'
 }
 
-// Create Order Input
+// Create Order Input theo API documentation
 export interface CreateOrderInput {
-  storeId: string
-  fromName: string
-  fromPhone: string
-  fromAddress: string
-  paymentType: string
-  toAddressId: string
-  toName: string
-  toAddress: string
-  totalLength: number
-  totalWidth: number
-  totalHeight: number
-  totalWeight: number
-  shipPrice: number
-  totalOrder: number
-  totalPrice: number
-  note?: string
-  orderItems: {
-    orderItemName: string
-    orderItemImageUrl: string
+  userId: string
+  userAddressId: string
+  paymentMethod: PaymentMethod
+  orderItemCreates: {
+    productVariantId: string
+    comboId?: string | null
     quantity: number
-    totalPrice: number
+    promotionIds?: string[]
   }[]
 }
 
@@ -125,7 +112,4 @@ export interface UpdateOrderStatusInput {
   note?: string
 }
 
-export interface PaymentMethod {
-  COD: string
-  Banking: string
-}
+export type PaymentMethod = 'COD' | 'Banking'

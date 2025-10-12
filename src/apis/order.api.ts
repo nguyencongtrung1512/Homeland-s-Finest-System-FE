@@ -37,8 +37,8 @@ export const getOrderDetail = async (orderId: string): Promise<Order> => {
 
 // POST /api/Order/create-order - Tạo order mới
 export const createOrder = async (orderData: CreateOrderInput): Promise<Order> => {
-  const response: OrderResponse = await axiosInstance.post(`${API_URL}/create-order`, orderData)
-  return response.data
+  const response: OrderListResponse = await axiosInstance.post(`${API_URL}/create-order`, orderData)
+  return response.data[0] // API trả về array, lấy phần tử đầu tiên
 }
 
 // PUT /api/Order/confirm/{orderId} - Xác nhận order (chuyển sang Processing)
@@ -48,9 +48,14 @@ export const confirmOrder = async (orderId: string): Promise<Order> => {
 }
 
 // PUT /api/Order/cancel/{orderId} - Hủy order
-export const cancelOrder = async (orderId: string, note?: string): Promise<Order> => {
-  const response: OrderResponse = await axiosInstance.put(`${API_URL}/cancel/${orderId}`, {
-    note
+export const cancelOrder = async (orderId: string, reason: string): Promise<Order[]> => {
+  const formData = new FormData()
+  formData.append('reason', reason)
+  
+  const response: OrderListResponse = await axiosInstance.put(`${API_URL}/cancel/${orderId}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
   })
   return response.data
 }
