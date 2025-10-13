@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { Button } from '../../../components/ui/button'
 import { CheckCircle, Truck, ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-// import { useAuth } from '../../../contexts/auth.context'
-import { createOrder, cancelOrder } from '../../../apis/order.api'
+import { useAuth } from '../../../contexts/auth.context'
+import { createOrder, cancelOrder, getOrderDetail } from '../../../apis/order.api'
 import { purchaseOrder } from '../../../apis/transaction.api'
 import type { CreateOrderInput, PaymentMethod, Order } from '../../../types/orderType'
 import { toast } from 'react-toastify'
@@ -21,19 +21,16 @@ interface CartItem {
 
 // import & setup
 
-
 function OrderCreate() {
   const navigate = useNavigate()
   const location = useLocation()
-  // const { user } = useAuth()
+  const { user } = useAuth()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>()
 
-  // Set cứng userId và userAddressId
-  const hardcodedUserId = '30000000-0000-0000-0000-000000000003'
   const hardcodedAddressId = '11000000-0000-0000-0000-000000000001'
 
   // Lấy dữ liệu từ navigation state
@@ -41,7 +38,6 @@ function OrderCreate() {
   const existingOrder: Order = location.state?.order
   const existingPaymentMethod: PaymentMethod = location.state?.paymentMethod
 
-  // NEW: Lấy orderId từ query và resolve order từ Backend nếu chưa có trong state
   const params = new URLSearchParams(location.search)
   const orderId = params.get('orderId')
   const [order, setOrder] = useState<Order | null>(existingOrder ?? null)
@@ -60,34 +56,36 @@ function OrderCreate() {
   // Giữ fallback cho "Mua ngay" nhưng ưu tiên dữ liệu Backend từ order
   const cartItems: CartItem[] = buyNowProduct
     ? [
-      {
-        id: buyNowProduct.id,
-        productVariantId: buyNowProduct.productVariantId,
-        name: buyNowProduct.name,
-        desc: buyNowProduct.desc || buyNowProduct.description,
-        price: buyNowProduct.price,
-        quantity: buyNowProduct.quantity,
-        image: buyNowProduct.image
-      }
-    ]
+        {
+          id: buyNowProduct.id,
+          productVariantId: buyNowProduct.productVariantId,
+          name: buyNowProduct.name,
+          desc: buyNowProduct.desc || buyNowProduct.description,
+          price: buyNowProduct.price,
+          quantity: buyNowProduct.quantity,
+          image: buyNowProduct.image
+        }
+      ]
     : []
 
   // NEW: Dùng dữ liệu động để hiển thị sản phẩm
   const displayItems: CartItem[] = order
     ? order.orderItems.map((it) => ({
-      id: it.id,
-      productVariantId: it.productInventoryId,
-      name: it.orderItemName,
-      desc: '',
-      price: it.finalPrice,
-      quantity: it.quantity,
-      image: it.orderItemImageUrl
-    }))
+        id: it.id,
+        productVariantId: it.productInventoryId,
+        name: it.orderItemName,
+        desc: '',
+        price: it.finalPrice,
+        quantity: it.quantity,
+        image: it.orderItemImageUrl
+      }))
     : cartItems
 
   // NEW: Tổng tiền/ship đọc từ order nếu có
   const shipping = order ? order.shipPrice : 30000
-  const subtotal = order ? Math.max(0, order.totalPrice - order.shipPrice) : displayItems.reduce((s, i) => s + i.price * i.quantity, 0)
+  const subtotal = order
+    ? Math.max(0, order.totalPrice - order.shipPrice)
+    : displayItems.reduce((s, i) => s + i.price * i.quantity, 0)
   const total = order ? order.totalPrice : subtotal + shipping
 
   // NEW: Text phương thức thanh toán
@@ -123,12 +121,18 @@ function OrderCreate() {
       return
     }
 
+    // NEW: Validate user from auth
+    if (!user?.userId) {
+      toast.error('Vui lòng đăng nhập trước khi đặt hàng')
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      // Chuẩn bị dữ liệu order theo format API với userId và addressId cứng
+      // Chuẩn bị dữ liệu order theo format API với userId từ auth và addressId cứng
       const orderData: CreateOrderInput = {
-        userId: hardcodedUserId,
+        userId: user.userId,
         userAddressId: hardcodedAddressId,
         paymentMethod: selectedPaymentMethod,
         orderItemCreates: cartItems.map((item) => ({
@@ -297,8 +301,7 @@ function OrderCreate() {
                       <p className='text-sm text-gray-500'>
                         {existingPaymentMethod === 'COD'
                           ? 'Thanh toán bằng tiền mặt khi nhận hàng'
-                          : 'Thanh toán qua chuyển khoản ngân hàng'
-                        }
+                          : 'Thanh toán qua chuyển khoản ngân hàng'}
                       </p>
                     </div>
                   </div>
@@ -306,10 +309,11 @@ function OrderCreate() {
               ) : (
                 <div className='space-y-3'>
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'COD'
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'COD'
                         ? 'border-green-500 bg-green-50'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
+                    }`}
                   >
                     <input
                       type='radio'
@@ -326,10 +330,11 @@ function OrderCreate() {
                   </label>
 
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'Banking'
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'Banking'
                         ? 'border-green-500 bg-green-50'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
+                    }`}
                   >
                     <input
                       type='radio'
@@ -358,9 +363,6 @@ function OrderCreate() {
                 <AlertCircle className='w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5' />
                 <div className='flex-1'>
                   <p className='text-sm text-gray-700 font-medium mb-1'>Địa chỉ đã chọn (Cứng)</p>
-                  <p className='text-sm text-gray-600'>
-                    User ID: <span className='font-mono text-xs'>{hardcodedUserId}</span>
-                  </p>
                   <p className='text-sm text-gray-600'>
                     Address ID: <span className='font-mono text-xs'>{hardcodedAddressId}</span>
                   </p>
@@ -398,13 +400,15 @@ function OrderCreate() {
                 <div className='mb-4 p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200'>
                   <p className='text-xs text-gray-600 mb-1'>Phương thức thanh toán:</p>
                   <p className='text-sm font-semibold text-gray-900'>
-                    {existingOrder ? (
-                      existingPaymentMethod === 'COD' ? '💵 Thanh toán khi nhận hàng' : '💳 Chuyển khoản ngân hàng'
-                    ) : (
-                      selectedPaymentMethod === 'COD' ? '💵 Thanh toán khi nhận hàng' :
-                        selectedPaymentMethod === 'Banking' ? '💳 Chuyển khoản ngân hàng' :
-                          '⚠️ Chưa chọn phương thức'
-                    )}
+                    {existingOrder
+                      ? existingPaymentMethod === 'COD'
+                        ? '💵 Thanh toán khi nhận hàng'
+                        : '💳 Chuyển khoản ngân hàng'
+                      : selectedPaymentMethod === 'COD'
+                        ? '💵 Thanh toán khi nhận hàng'
+                        : selectedPaymentMethod === 'Banking'
+                          ? '💳 Chuyển khoản ngân hàng'
+                          : '⚠️ Chưa chọn phương thức'}
                   </p>
                 </div>
 
@@ -427,7 +431,9 @@ function OrderCreate() {
                           ? 'Đặt hàng ngay'
                           : paymentDisplay === 'Banking'
                             ? 'Thanh toán ngay'
-                            : (order || existingOrder) ? 'Thanh toán' : 'Đặt hàng'}
+                            : order || existingOrder
+                              ? 'Thanh toán'
+                              : 'Đặt hàng'}
                       </>
                     )}
                   </Button>
@@ -442,8 +448,10 @@ function OrderCreate() {
                         <Loader2 className='w-4 h-4 mr-2 animate-spin' />
                         Đang hủy...
                       </>
+                    ) : existingOrder ? (
+                      'Hủy đặt hàng'
                     ) : (
-                      existingOrder ? 'Hủy đặt hàng' : 'Hủy đặt hàng'
+                      'Hủy đặt hàng'
                     )}
                   </Button>
                 </div>
@@ -475,7 +483,7 @@ function OrderCreate() {
                   Dữ liệu Test
                 </h4>
                 <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border mb-1'>
-                  User: {hardcodedUserId}
+                  User: {user?.userId || 'Chưa đăng nhập'}
                 </p>
                 <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border'>
                   Address: {hardcodedAddressId}
