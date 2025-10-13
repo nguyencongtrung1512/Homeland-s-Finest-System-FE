@@ -8,10 +8,14 @@ export interface ProductCardData extends Product {
 }
 
 // Card hiển thị sản phẩm
-const ProductCard: React.FC<{ product: ProductCardData }> = ({ product }) => {
+const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> = ({ product, onClick }) => {
   const navigate = useNavigate()
 
   const handleProductClick = () => {
+    if (onClick) {
+      onClick()
+      return
+    }
     navigate(path.productDetail.replace(':id', product.id))
   }
 
