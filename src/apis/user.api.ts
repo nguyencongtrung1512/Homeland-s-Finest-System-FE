@@ -25,6 +25,12 @@ export interface GetUsersResponse {
   data: User[]
 }
 
+export interface GetUserByIdResponse {
+  status: number
+  message: string
+  data: User
+}
+
 export interface GetUsersParams {
   pageSize?: number
   pageNumber?: number
@@ -59,6 +65,11 @@ export const getUsers = async (params?: GetUsersParams): Promise<User[]> => {
   const url = queryParams.toString() ? `${API_URL}?${queryParams.toString()}` : API_URL
 
   const response = await axiosInstance.get(url)
+  return response.data
+}
+
+export const getUserById = async (userId: string): Promise<User> => {
+  const response = await axiosInstance.get(`${API_URL}/${userId}`)
   return response.data
 }
 

@@ -5,7 +5,11 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Settings, FileText, MapPin } from 'lucide-react'
 import type { Address, AddressCreateInput } from '../../../types/addressType'
+import type { Order } from '../../../types/orderType'
 import { addressApi } from '../../../apis/address.api'
+import { getCustomerOrders } from '../../../apis/order.api'
+import { useAuth } from '../../../contexts/auth.context'
+import { getUserById, type User } from '../../../apis/user.api'
 import ProfileContent from './components/ProfileContent'
 import OrdersContent from './components/OrdersContent'
 import AddressContent from './components/AddressContent'
@@ -13,10 +17,11 @@ import AddressModal from './components/AddressModal'
 
 export default function Profile() {
   const location = useLocation()
+  const { user: authUser } = useAuth()
   const [activeTab, setActiveTab] = useState('profile')
-
-  // Fixed UserId for testing
-  const USER_ID = 'e6c5717f-d4da-4bea-8836-f16712bf6c8f'
+  const [user, setUser] = useState<User | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
 
   // Khi vào trang, nếu có query tab=orders thì active tab đơn hàng
   useEffect(() => {
@@ -31,14 +36,59 @@ export default function Profile() {
     }
   }, [location.search])
 
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!authUser?.userId) return
+
+      try {
+        const userData = await getUserById(authUser.userId)
+        setUser(userData)
+      } catch (error) {
+        console.error('Error loading user data:', error)
+      }
+    }
+
+    loadUserData()
+  }, [authUser?.userId])
+
+  // Load customer orders
+  const loadCustomerOrders = async () => {
+    if (!authUser?.userId) return
+
+    try {
+      setOrdersLoading(true)
+      const customerOrders = await getCustomerOrders(authUser.userId, {
+        pageSize: 0, // Load more orders for better UX
+        pageNumber: 1,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      })
+      setOrders(customerOrders)
+    } catch (error) {
+      console.error('Error loading customer orders:', error)
+    } finally {
+      setOrdersLoading(false)
+    }
+  }
+
+  // Load orders when component mounts or when switching to orders tab
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      loadCustomerOrders()
+    }
+  }, [activeTab, authUser?.userId])
+
   const [addresses, setAddresses] = useState<Address[]>([])
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
 
   // Load addresses from API
   const loadAddresses = async () => {
+    if (!authUser?.userId) return
+
     try {
-      const response = await addressApi.getByUser(USER_ID)
+      const response = await addressApi.getByUser(authUser.userId)
       setAddresses(response.data)
     } catch (error) {
       console.error('Error loading addresses:', error)
@@ -48,7 +98,7 @@ export default function Profile() {
   // Load addresses when component mounts
   useEffect(() => {
     loadAddresses()
-  }, [])
+  }, [authUser?.userId])
 
   // Address handlers
   const handleAddAddress = () => {
@@ -93,6 +143,8 @@ export default function Profile() {
   }
 
   const handleSaveAddress = async (formData: AddressCreateInput) => {
+    if (!authUser?.userId) return
+
     try {
       if (editingAddress) {
         // Call API to update address
@@ -103,17 +155,17 @@ export default function Profile() {
           addresses.map((addr) =>
             addr.id === editingAddress.id
               ? {
-                  ...addr,
-                  ...formData,
-                  updatedAt: new Date().toISOString()
-                }
+                ...addr,
+                ...formData,
+                updatedAt: new Date().toISOString()
+              }
               : addr
           )
         )
       } else {
         const addressDataWithUserId = {
           ...formData,
-          userId: USER_ID
+          userId: authUser.userId
         }
 
         // Call API to create address
@@ -123,7 +175,7 @@ export default function Profile() {
         const newAddress: Address = {
           id: response.data.id,
           ...formData,
-          userId: USER_ID,
+          userId: authUser.userId,
           isDefault: formData.isDefault || false,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -139,6 +191,8 @@ export default function Profile() {
     }
   }
 
+  const displayName = user ? `${user.firstName} ${user.lastName}` : 'Người dùng'
+
   return (
     <div className='min-h-screen bg-[#f8f9f5]'>
       {/* Profile Header */}
@@ -146,11 +200,17 @@ export default function Profile() {
         <CardContent className='p-6'>
           <div className='flex items-center gap-4'>
             <Avatar className='w-20 h-20'>
-              <img src='/src/assets/react.svg' alt='Profile' className='w-full h-full object-cover rounded-full' />
+              <img 
+                src={user?.avatar || '/src/assets/react.svg'} 
+                alt='Profile' 
+                className='w-full h-full object-cover rounded-full' 
+              />
             </Avatar>
             <div>
-              <h2 className='text-xl font-bold text-gray-900'>Chào mừng trở lại, Minh Anh</h2>
-              <p className='text-sm text-gray-500'>Thành viên từ Tháng 1 năm 2024</p>
+              <h2 className='text-xl font-bold text-gray-900'>Chào mừng trở lại, {displayName}</h2>
+              <p className='text-sm text-gray-500'>
+                Thành viên từ {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' }) : 'N/A'}
+              </p>
             </div>
           </div>
         </CardContent>
@@ -197,10 +257,16 @@ export default function Profile() {
           <Card className='h-full'>
             <CardContent className='p-6'>
               {activeTab === 'profile' && <ProfileContent />}
-              {activeTab === 'orders' && <OrdersContent />}
-              {activeTab === 'addresses' && (
+              {activeTab === 'orders' && (
+                <OrdersContent 
+                  orders={orders} 
+                  loading={ordersLoading}
+                  onRefreshOrders={loadCustomerOrders}
+                />
+              )}
+              {activeTab === 'addresses' && authUser?.userId && (
                 <AddressContent
-                  userId={USER_ID}
+                  userId={authUser.userId}
                   onAddAddress={handleAddAddress}
                   onEditAddress={handleEditAddress}
                   onDeleteAddress={handleDeleteAddress}

@@ -1,5 +1,18 @@
 import { useState } from 'react'
 import { Button } from '../../../../components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../../../components/ui/dialog'
+import { Alert, AlertDescription } from '../../../../components/ui/alert'
+import { Label } from '../../../../components/ui/label'
+import { cancelOrder } from '../../../../apis/order.api'
+import { toast } from 'react-toastify'
+import { AlertTriangle, Loader2 } from 'lucide-react'
 
 interface CancelOrderModalProps {
   isOpen: boolean
@@ -9,32 +22,55 @@ interface CancelOrderModalProps {
 
 export default function CancelOrderModal({ isOpen, onClose, orderId }: CancelOrderModalProps) {
   const [selectedReason, setSelectedReason] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
   const cancelReasons = [
     'Muốn thay đổi địa chỉ giao hàng',
     'Muốn thay đổi sản phẩm trong đơn hàng (size, màu sắc, số lượng...)',
     'Thủ tục thanh toán quá rắc rối',
     'Tìm thấy giá rẻ hơn ở chỗ khác',
-    'Đặt nhầy, không muốn mua nữa',
+    'Đặt nhầm, không muốn mua nữa',
     'Khác'
   ]
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedReason) {
-      alert('Vui lòng chọn lý do hủy đơn hàng')
+      toast.error('Vui lòng chọn lý do hủy đơn hàng')
       return
     }
 
-    // Handle cancel order submission
-    console.log('Cancel order:', {
-      orderId,
-      reason: selectedReason
-    })
+    setIsLoading(true)
+    try {
+      await cancelOrder(orderId, selectedReason)
+      
+      toast.success('Hủy đơn hàng thành công!', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
 
-    // Reset and close
-    setSelectedReason('')
-    onClose()
+      // Reset and close
+      setSelectedReason('')
+      onClose()
+    } catch (error) {
+      console.error('Error canceling order:', error)
+      toast.error('Không thể hủy đơn hàng. Vui lòng thử lại!', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleCancel = () => {
@@ -42,63 +78,91 @@ export default function CancelOrderModal({ isOpen, onClose, orderId }: CancelOrd
     onClose()
   }
 
-  if (!isOpen) return null
+  const handleOpenChange = (open: boolean) => {
+    if (!open && !isLoading) {
+      handleCancel()
+    }
+  }
 
   return (
-    <div
-      className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]'
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-    >
-      <div className='bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl'>
-        {/* Header */}
-        <div className='flex justify-between items-center p-6 border-b'>
-          <h3 className='text-lg font-semibold text-gray-900'>Hủy đơn hàng</h3>
-          <button onClick={onClose} className='text-gray-500 hover:text-gray-700 text-xl font-bold'>
-            ×
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            Hủy đơn hàng
+          </DialogTitle>
+          <DialogDescription>
+            Vui lòng chọn lý do hủy đơn hàng. Thao tác này không thể hoàn tác.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className='p-6 max-h-[60vh] overflow-y-auto'>
-          <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="max-h-[50vh] overflow-y-auto pr-2">
+            {/* Warning Alert */}
+            <Alert variant="destructive" className="mb-6">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Lưu ý:</strong> Thao tác này sẽ hủy tất cả các sản phẩm có trong đơn hàng và không thể hoàn tác.
+              </AlertDescription>
+            </Alert>
+
             {/* Reason Selection */}
-            <div className='mb-6'>
-              <h4 className='font-medium text-gray-900 mb-4'>Chọn Lý Do Hủy</h4>
-              <div className='space-y-3'>
-                <div className='p-3 bg-yellow-50 border border-yellow-200 rounded-xl'>
-                  <p className='text-sm text-yellow-800'>
-                    <span className='font-medium'>⚠️</span> Vui lòng chọn 1 lý do hủy đơn hàng. Lưu ý: Thao tác này sẽ
-                    hủy tất cả các sản phẩm có trong đơn hàng và không thể hoàn tác.
-                  </p>
-                </div>
-
+            <div className="space-y-4">
+              <Label className="text-base font-medium">Chọn lý do hủy đơn hàng</Label>
+              <div className="space-y-3">
                 {cancelReasons.map((reason, index) => (
-                  <label key={index} className='flex items-start space-x-3 cursor-pointer'>
+                  <div key={index} className="flex items-start space-x-3">
                     <input
-                      type='radio'
-                      name='cancelReason'
+                      type="radio"
+                      id={`reason-${index}`}
+                      name="cancelReason"
                       value={reason}
                       checked={selectedReason === reason}
                       onChange={(e) => setSelectedReason(e.target.value)}
-                      className='mt-1 w-4 h-4 text-green-600 border-gray-300 focus:ring-green-600'
+                      className="mt-1 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500 focus:ring-2"
+                      disabled={isLoading}
                     />
-                    <span className='text-sm text-gray-700 leading-5'>{reason}</span>
-                  </label>
+                    <Label 
+                      htmlFor={`reason-${index}`} 
+                      className="text-sm leading-5 cursor-pointer font-normal"
+                    >
+                      {reason}
+                    </Label>
+                  </div>
                 ))}
               </div>
             </div>
+          </div>
 
-            {/* Action Buttons */}
-            <div className='flex space-x-3'>
-              <Button type='button' variant='outline' onClick={handleCancel} className='flex-1 rounded-xl'>
-                KHÔNG PHẢI BÂY GIỜ
-              </Button>
-              <Button type='submit' className='flex-1 bg-[#ff6b6b] hover:bg-[#ff5252] text-white rounded-xl'>
-                ĐỒNG Ý HỦY
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
+              Không phải bây giờ
+            </Button>
+            <Button
+              type="submit"
+              variant="destructive"
+              disabled={isLoading || !selectedReason}
+              className="w-full sm:w-auto"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang hủy...
+                </>
+              ) : (
+                'Đồng ý hủy'
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

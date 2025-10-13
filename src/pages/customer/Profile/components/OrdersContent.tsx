@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../../components/ui/button'
 import { Badge } from '../../../../components/ui/badge'
 import ReportModal from './ReportModal'
 import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
 import ReviewModal from './ReviewModal'
+import { confirmOrderReceived } from '../../../../apis/order.api'
+import { path } from '../../../../constants/path'
+import type { Order as APIOrder } from '../../../../types/orderType'
 
 interface Order {
   id: string
@@ -15,6 +19,7 @@ interface Order {
   statusText: string
   products: {
     id?: string
+    productInventoryId?: string // Add this field for navigation
     name: string
     image: string
     description?: string
@@ -55,9 +60,147 @@ interface Order {
   }[]
 }
 
-export default function OrdersContent() {
+interface OrdersContentProps {
+  orders: APIOrder[]
+  loading: boolean
+  onRefreshOrders: () => void
+}
+
+// Utility function to transform API order to UI order format
+const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
+  // Map API status to UI status
+  const getUIStatus = (apiStatus: string) => {
+    switch (apiStatus) {
+      case 'NotYet':
+        return {
+          status: 'Chờ xác nhận' as const,
+          statusColor: 'text-yellow-700',
+          statusBgColor: 'bg-yellow-50',
+          statusText: 'Đang chờ xác nhận đơn hàng'
+        }
+      case 'Processing':
+        return {
+          status: 'Đã xác nhận' as const,
+          statusColor: 'text-blue-700',
+          statusBgColor: 'bg-blue-50',
+          statusText: 'Đơn hàng đã được xác nhận'
+        }
+      case 'Shipping':
+        return {
+          status: 'Đang giao' as const,
+          statusColor: 'text-blue-700',
+          statusBgColor: 'bg-blue-50',
+          statusText: 'Đang trên đường đến với bạn'
+        }
+      case 'Delivered':
+        return {
+          status: 'Đã giao' as const,
+          statusColor: 'text-green-700',
+          statusBgColor: 'bg-green-50',
+          statusText: 'Đã về đến nhà bạn rồi'
+        }
+      case 'Cancel':
+        return {
+          status: 'Đã hủy' as const,
+          statusColor: 'text-red-700',
+          statusBgColor: 'bg-red-50',
+          statusText: 'Đơn hàng đã bị hủy'
+        }
+      case 'Returned':
+        return {
+          status: 'Đã hủy' as const,
+          statusColor: 'text-red-700',
+          statusBgColor: 'bg-red-50',
+          statusText: 'Đơn hàng đã được trả lại'
+        }
+      default:
+        return {
+          status: 'Chờ xác nhận' as const,
+          statusColor: 'text-gray-700',
+          statusBgColor: 'bg-gray-50',
+          statusText: 'Trạng thái không xác định'
+        }
+    }
+  }
+
+  const statusInfo = getUIStatus(apiOrder?.status || '')
+
+  // Transform order items to products - add safety checks
+  const products = (apiOrder?.orderItems || []).map((item) => ({
+    id: item?.id || '',
+    productInventoryId: item?.productInventoryId || '', // Add this mapping
+    name: item?.orderItemName || 'Sản phẩm không xác định',
+    image: item?.orderItemImageUrl || '/src/assets/react.svg',
+    quantity: (item?.quantity || 0).toString(),
+    price: item?.finalPrice || 0,
+    variant:
+      item?.length && item?.width && item?.height && item?.weight
+        ? `${item.length}x${item.width}x${item.height}cm, ${item.weight}kg`
+        : 'Thông tin kích thước không có'
+  }))
+
+  // Format date - add safety check
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return `Ngày đặt: ${new Date().toLocaleDateString('vi-VN')}`
+    try {
+      const date = new Date(dateString)
+      return `Ngày đặt: ${date.toLocaleDateString('vi-VN')}`
+    } catch {
+      return `Ngày đặt: ${new Date().toLocaleDateString('vi-VN')}`
+    }
+  }
+
+  // Format total price - add safety check
+  const formatPrice = (price?: number) => {
+    if (typeof price !== 'number' || isNaN(price)) {
+      return '0đ'
+    }
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    })
+      .format(price)
+      .replace('₫', 'đ')
+  }
+
+  // Get order history safely
+  const orderHistories = apiOrder?.orderHistories || []
+  const firstHistory = orderHistories[0]
+
+  return {
+    id: apiOrder?.id || '',
+    date: formatDate(firstHistory?.time),
+    ...statusInfo,
+    products,
+    total: formatPrice(apiOrder?.totalPrice),
+    totalAmount: apiOrder?.totalPrice || 0,
+    note: apiOrder?.note || '',
+    canConfirmReceived: apiOrder?.status === 'Delivered',
+    canReturn: apiOrder?.status === 'Delivered',
+    shippingInfo: {
+      recipientName: apiOrder?.toName || '',
+      phone: '', // API doesn't provide phone in order
+      address: apiOrder?.toAddress || '',
+      note: apiOrder?.note || undefined
+    },
+    transactionInfo: {
+      orderId: apiOrder?.id || '',
+      paymentDate: formatDate(firstHistory?.time),
+      paymentMethod: apiOrder?.paymentType === 'COD' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản ngân hàng'
+    },
+    timeline: orderHistories.map((history, index) => ({
+      status: history?.description || 'Không có mô tả',
+      date: history?.time ? new Date(history.time).toLocaleDateString('vi-VN') : '',
+      isCompleted: true,
+      isCurrent: index === orderHistories.length - 1
+    }))
+  }
+}
+
+export default function OrdersContent({ orders: apiOrders, loading, onRefreshOrders }: OrdersContentProps) {
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedFilter, setSelectedFilter] = useState<string>('all') // 'all', 'Đang giao', 'Đã giao', 'Chờ xử lý', 'Đã hủy'
+  const navigate = useNavigate()
+  const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [showReportModal, setShowReportModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false)
@@ -66,191 +209,64 @@ export default function OrdersContent() {
     null
   )
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string>('') // Thêm state để track loading
   const ordersPerPage = 3
 
-  const orders: Order[] = [
-    // TH1: Đã giao hàng thành công - Khách đã nhận được hàng
-    {
-      id: 'DH001234',
-      date: 'Ngày đặt: 15/01/2024',
-      status: 'Đã giao',
-      statusColor: 'text-green-700',
-      statusBgColor: 'bg-green-50',
-      statusText: 'Đã về đến nhà bạn rồi',
-      products: [
-        {
-          id: '1',
-          name: 'Báo chì hiệu cư babi',
-          image: '/src/assets/luachin2-7984.webp',
-          quantity: '2',
-          price: 450000,
-          variant: 'Combo báo chì nướng lửa'
-        }
-      ],
-      total: '450.000đ',
-      totalAmount: 450000,
-      canConfirmReceived: true,
-      autoConfirmDays: 7,
-      shippingInfo: {
-        recipientName: 'Nguyễn Văn An',
-        phone: '0987 654 321',
-        address: '123 Đường Lê Lợi, Phường 1, Quận 1, TP.HCM',
-        note: 'Giao hàng vào buổi sáng, gọi trước 15 phút'
-      },
-      transactionInfo: {
-        orderId: '430324731',
-        paymentDate: 'Ngày hôm nay',
-        paymentMethod: '10:00 AM'
-      },
-      timeline: [
-        {
-          status: 'Đặt hàng',
-          date: '15/01/2024',
-          isCompleted: true,
-          isCurrent: false
-        },
-        {
-          status: 'Đã giao',
-          date: 'Hôm nay, image 8 đầy đã xác hoàn thành',
-          isCompleted: true,
-          isCurrent: false
-        },
-        {
-          status: 'Tài nhà',
-          date: '',
-          isCompleted: true,
-          isCurrent: false
-        }
-      ]
-    },
-
-    // TH2: Đang giao - Shipper đang giao hàng
-    {
-      id: 'ORD-2024-004',
-      date: 'Ngày đặt: 10/01/2024',
-      status: 'Đang giao',
-      statusColor: 'text-blue-700',
-      statusBgColor: 'bg-blue-50',
-      statusText: 'Đang trên đường đến với bạn',
-      products: [
-        {
-          name: 'Apple Watch Series 9',
-          image: '/src/assets/react.svg',
-          quantity: 'và 3 sản phẩm khác'
-        }
-      ],
-      total: '15.490.000đ'
-    },
-
-    // TH3: Đã hủy - TH1 Bom hàng (Shipper giao mà khách không nhận)
-    {
-      id: 'ORD-2024-003',
-      date: 'Ngày đặt: 10/01/2024',
-      status: 'Đã hủy',
-      statusColor: 'text-red-700',
-      statusBgColor: 'bg-red-50',
-      statusText: 'Đã hủy, hẹn bạn lần sau',
-      products: [
-        {
-          name: 'Apple Watch Series 9',
-          image: '/src/assets/react.svg',
-          hasRefund: true,
-          quantity: 'và 3 sản phẩm khác'
-        }
-      ],
-      total: '15.490.000đ',
-      showRefundRequest: true
-    },
-
-    // TH4: Đã hủy - TH2 Tự động hoàn tiền (Cửa hàng chưa xác nhận)
-    {
-      id: 'ORD-2024-002',
-      date: 'Ngày đặt: 08/01/2024',
-      status: 'Đã hủy',
-      statusColor: 'text-red-700',
-      statusBgColor: 'bg-red-50',
-      statusText: 'Đã hủy, hẹn bạn lần sau',
-      products: [
-        {
-          name: 'Apple Watch Series 9',
-          image: '/src/assets/react.svg',
-          hasRefund: true,
-          quantity: 'và 3 sản phẩm khác'
-        }
-      ],
-      total: '15.490.000đ',
-      autoRefund: true
-    },
-
-    // TH5: Chờ xử lý - Order mới chưa được xác nhận
-    {
-      id: 'ORD-2024-005',
-      date: 'Ngày đặt: 12/01/2024',
-      status: 'Chờ xác nhận',
-      statusColor: 'text-yellow-700',
-      statusBgColor: 'bg-yellow-50',
-      statusText: 'Chờ xử lý',
-      products: [
-        {
-          name: 'Gạo hữu cơ cao cấp',
-          image: '/src/assets/hinh-anh-canh-dong-lua-que-huong-viet-nam_082308136.jpg',
-          quantity: 'Túi 5kg'
-        }
-      ],
-      total: '800.000đ'
+  // Transform API orders to UI orders - add safety check
+  const orders: Order[] = useMemo(() => {
+    if (!apiOrders || !Array.isArray(apiOrders)) {
+      return []
     }
-  ]
-
-  // Filter logic
-  const filteredOrders =
-    selectedFilter === 'all'
-      ? orders
-      : orders.filter((order) => {
-          if (selectedFilter === 'Chờ xử lý') {
-            return order.status === 'Chờ xác nhận'
-          }
-          return order.status === selectedFilter
-        })
-
-  // Count orders by status for tabs
-  const getOrderCount = (status: string) => {
-    if (status === 'all') return orders.length
-    if (status === 'Chờ xử lý') {
-      return orders.filter((order) => order.status === 'Chờ xác nhận').length
+    try {
+      return apiOrders.map(transformAPIOrderToUIOrder)
+    } catch (error) {
+      console.error('Error transforming orders:', error)
+      return []
     }
-    return orders.filter((order) => order.status === status).length
-  }
+  }, [apiOrders])
+
+  // Filter orders based on selected filter
+  const filteredOrders = useMemo(() => {
+    if (selectedFilter === 'all') return orders
+    return orders.filter((order) => order.status === selectedFilter)
+  }, [orders, selectedFilter])
 
   // Pagination logic
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage)
   const startIndex = (currentPage - 1) * ordersPerPage
-  const currentOrders = filteredOrders.slice(startIndex, startIndex + ordersPerPage)
+  const endIndex = startIndex + ordersPerPage
+  const currentOrders = filteredOrders.slice(startIndex, endIndex)
 
   const goToPage = (page: number) => {
     setCurrentPage(page)
   }
-
-  const handleFilterChange = (filter: string) => {
-    setSelectedFilter(filter)
-    setCurrentPage(1) // Reset to first page when filter changes
+  const handleConfirmReceived = async (orderId: string) => {
+    try {
+      setConfirmingOrderId(orderId) // Bắt đầu loading
+      await confirmOrderReceived(orderId)
+      // Refresh orders sau khi xác nhận thành công
+      onRefreshOrders()
+    } catch (error) {
+      console.error('Lỗi khi xác nhận đã nhận hàng:', error)
+      // Có thể thêm toast notification ở đây
+      alert('Có lỗi xảy ra khi xác nhận đã nhận hàng. Vui lòng thử lại.')
+    } finally {
+      setConfirmingOrderId('') // Kết thúc loading
+    }
   }
 
-  const handleReportProduct = (product: { name: string; image: string }) => {
-    setSelectedProduct({
-      name: product.name,
-      image: product.image,
-      category: 'Gốm sứ truyền thống - Màu xanh lá'
-    })
-    setShowReportModal(true)
-  }
+  // Modal handlers
+  // const handleOpenReportModal = (product: { name: string; image: string; category?: string }) => {
+  //   setSelectedProduct(product)
+  //   setShowReportModal(true)
+  // }
 
   const handleCloseReportModal = () => {
     setShowReportModal(false)
     setSelectedProduct(null)
   }
 
-  const handleCancelOrder = (orderId: string) => {
+  const handleOpenCancelModal = (orderId: string) => {
     setSelectedOrderId(orderId)
     setShowCancelModal(true)
   }
@@ -258,24 +274,22 @@ export default function OrdersContent() {
   const handleCloseCancelModal = () => {
     setShowCancelModal(false)
     setSelectedOrderId('')
+    // Refresh orders after cancellation
+    onRefreshOrders()
   }
 
-  const handleViewOrderDetail = (order: Order) => {
-    setSelectedOrder(order)
+  const handleOpenOrderDetailModal = (orderId: string) => {
+    setSelectedOrderId(orderId)
     setShowOrderDetailModal(true)
   }
 
   const handleCloseOrderDetailModal = () => {
     setShowOrderDetailModal(false)
-    setSelectedOrder(null)
+    setSelectedOrderId('')
   }
 
-  const handleReviewProduct = (product: { name: string; image: string }) => {
-    setSelectedProduct({
-      name: product.name,
-      image: product.image,
-      category: 'Gốm sứ truyền thống - Màu xanh lá'
-    })
+  const handleOpenReviewModal = (product: { name: string; image: string; category?: string }) => {
+    setSelectedProduct(product)
     setShowReviewModal(true)
   }
 
@@ -284,390 +298,260 @@ export default function OrdersContent() {
     setSelectedProduct(null)
   }
 
+  // Handle buy again functionality - Sửa hàm này
+  const handleBuyAgain = (order: Order) => {
+    console.log('=== DEBUG BUY AGAIN ===')
+    console.log('Order object:', order)
+    console.log('Order products:', order.products)
+
+    // Navigate to the first product in the order
+    const firstProduct = order.products[0]
+    console.log('First product:', firstProduct)
+
+    if (firstProduct?.productInventoryId) {
+      // Log the path template and productInventoryId
+      console.log('Path template:', path.productDetail)
+      console.log('Product Inventory ID:', firstProduct.productInventoryId)
+
+      // Create the final navigation path
+      const navigationPath = path.productDetail.replace(':id', firstProduct.productInventoryId)
+      console.log('Final navigation path:', navigationPath)
+      console.log('Full URL would be:', window.location.origin + navigationPath)
+
+      // Navigate to the product detail page
+      navigate(navigationPath)
+      console.log('Navigation executed!')
+    } else {
+      console.log('No productInventoryId found in first product')
+      console.log('Available product fields:', Object.keys(firstProduct || {}))
+      alert('Không thể tìm thấy thông tin sản phẩm để mua lại.')
+    }
+    console.log('=== END DEBUG ===')
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className='flex justify-center items-center h-64'>
+        <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-600'></div>
+        <span className='ml-2 text-gray-600'>Đang tải đơn hàng...</span>
+      </div>
+    )
+  }
+
   return (
-    <div className='bg-gradient-to-br from-[#f8f9f5] to-[#f0f2ec] min-h-screen'>
-      {/* Header with enhanced styling */}
-      <div className='bg-white/80 backdrop-blur-sm p-6 border-b border-gray-200/50 shadow-sm'>
-        <div className='flex items-center justify-between'>
-          <div>
-            <h2 className='text-2xl font-bold text-gray-900 mb-1'>Lịch sử đơn hàng</h2>
-            <p className='text-sm text-gray-600'>Theo dõi tình trạng các đơn hàng bạn đặt đây</p>
-          </div>
-        </div>
-
-        {/* Enhanced Status tabs with improved styling */}
-        <div className='mt-8'>
-          <div className='flex items-center space-x-2 bg-gray-50/70 p-1.5 rounded-xl border border-gray-200/50 backdrop-blur-sm overflow-x-auto'>
-            {/* All orders */}
-            <button
-              onClick={() => handleFilterChange('all')}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 whitespace-nowrap ${
-                selectedFilter === 'all'
-                  ? 'bg-white text-gray-900 font-semibold shadow-md border border-gray-200'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-white/60'
-              }`}
-            >
-              <span className='text-sm font-medium'>Tất cả</span>
-              <span
-                className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                  selectedFilter === 'all' ? 'bg-gray-100 text-gray-800' : 'bg-gray-200/70 text-gray-600'
-                }`}
-              >
-                {getOrderCount('all')}
-              </span>
-            </button>
-
-            {/* Đang giao */}
-            <button
-              onClick={() => handleFilterChange('Đang giao')}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 whitespace-nowrap ${
-                selectedFilter === 'Đang giao'
-                  ? 'bg-blue-50 text-blue-900 font-semibold shadow-md border border-blue-200'
-                  : 'text-gray-600 hover:text-blue-700 hover:bg-blue-50/60'
-              }`}
-            >
-              <span className='text-sm font-medium'>Đang giao</span>
-              <span
-                className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                  selectedFilter === 'Đang giao' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200/70 text-gray-600'
-                }`}
-              >
-                {getOrderCount('Đang giao')}
-              </span>
-            </button>
-
-            {/* Đã giao */}
-            <button
-              onClick={() => handleFilterChange('Đã giao')}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 whitespace-nowrap ${
-                selectedFilter === 'Đã giao'
-                  ? 'bg-green-50 text-green-900 font-semibold shadow-md border border-green-200'
-                  : 'text-gray-600 hover:text-green-700 hover:bg-green-50/60'
-              }`}
-            >
-              <span className='text-sm font-medium'>Đã giao</span>
-              <span
-                className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                  selectedFilter === 'Đã giao' ? 'bg-green-100 text-green-800' : 'bg-gray-200/70 text-gray-600'
-                }`}
-              >
-                {getOrderCount('Đã giao')}
-              </span>
-            </button>
-
-            {/* Chờ xử lý */}
-            <button
-              onClick={() => handleFilterChange('Chờ xử lý')}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 whitespace-nowrap ${
-                selectedFilter === 'Chờ xử lý'
-                  ? 'bg-yellow-50 text-yellow-900 font-semibold shadow-md border border-yellow-200'
-                  : 'text-gray-600 hover:text-yellow-700 hover:bg-yellow-50/60'
-              }`}
-            >
-              <span className='text-sm font-medium'>Chờ xử lý</span>
-              <span
-                className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                  selectedFilter === 'Chờ xử lý' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-200/70 text-gray-600'
-                }`}
-              >
-                {getOrderCount('Chờ xử lý')}
-              </span>
-            </button>
-
-            {/* Đã hủy */}
-            <button
-              onClick={() => handleFilterChange('Đã hủy')}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 whitespace-nowrap ${
-                selectedFilter === 'Đã hủy'
-                  ? 'bg-red-50 text-red-900 font-semibold shadow-md border border-red-200'
-                  : 'text-gray-600 hover:text-red-700 hover:bg-red-50/60'
-              }`}
-            >
-              <span className='text-sm font-medium'>Đã hủy</span>
-              <span
-                className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                  selectedFilter === 'Đã hủy' ? 'bg-red-100 text-red-800' : 'bg-gray-200/70 text-gray-600'
-                }`}
-              >
-                {getOrderCount('Đã hủy')}
-              </span>
-            </button>
-          </div>
-        </div>
+    <div className='max-w-4xl'>
+      <div className='flex justify-between items-center mb-6'>
+        <h2 className='text-lg font-semibold text-gray-900'>Đơn hàng của tôi</h2>
+        <Button
+          variant='outline'
+          onClick={onRefreshOrders}
+          className='text-green-600 border-green-600 hover:bg-green-50'
+        >
+          Làm mới
+        </Button>
       </div>
 
-      {/* Enhanced Orders list with animations */}
-      <div className='p-6 space-y-4'>
+      {/* Filter Tabs */}
+      <div className='flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg'>
+        {[
+          { key: 'all', label: 'Tất cả' },
+          { key: 'Chờ xác nhận', label: 'Chờ xác nhận' },
+          { key: 'Đã xác nhận', label: 'Đã xác nhận' },
+          { key: 'Đang giao', label: 'Đang giao' },
+          { key: 'Đã giao', label: 'Đã giao' },
+          { key: 'Đã hủy', label: 'Đã hủy' }
+        ].map((filter) => (
+          <button
+            key={filter.key}
+            onClick={() => {
+              setSelectedFilter(filter.key)
+              setCurrentPage(1) // Reset to first page when filter changes
+            }}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Orders List */}
+      <div className='space-y-4'>
         {currentOrders.length > 0 ? (
-          <div className='space-y-4'>
-            {currentOrders.map((order, orderIndex) => (
-              <div
-                key={order.id}
-                className='bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-1 hover:border-gray-300/50'
-                style={{ animationDelay: `${orderIndex * 100}ms` }}
-              >
-                {/* Enhanced Order header */}
-                <div className='bg-gradient-to-r from-gray-50/70 to-gray-100/30 px-6 py-4 border-b border-gray-200/50 flex items-center justify-between'>
-                  <div className='flex items-center space-x-4'>
-                    <span className='font-semibold text-gray-900 bg-white/50 px-3 py-1 rounded-lg'>#{order.id}</span>
-                    <span className='text-sm text-gray-600 font-medium'>{order.date}</span>
-                    <span className='text-xs text-gray-500 bg-gray-200/50 px-2 py-1 rounded-full'>
-                      Có thể đổi mới trong vòng 7 ngày
-                    </span>
+          currentOrders.map((order) => (
+            <div key={order.id} className='bg-white border rounded-lg p-6'>
+              {/* Order Header */}
+              <div className='flex justify-between items-start mb-4'>
+                <div>
+                  <div className='flex items-center gap-3 mb-2'>
+                    <span className='font-medium text-gray-900'>Mã đơn hàng: {order.id}</span>
+                    <Badge className={`${order.statusBgColor} ${order.statusColor} border-0`}>{order.status}</Badge>
                   </div>
-                  <div className='flex items-center space-x-2'>
-                    <Badge
-                      className={`${order.statusBgColor} ${order.statusColor} border-0 font-medium px-3 py-1.5 text-xs shadow-sm`}
-                    >
-                      {order.statusText || order.status}
-                    </Badge>
-                  </div>
+                  <p className='text-sm text-gray-600'>{order.date}</p>
+                  <p className={`text-sm ${order.statusColor} mt-1`}>{order.statusText}</p>
                 </div>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handleOpenOrderDetailModal(order.id)}
+                  className='text-green-600 border-green-600 hover:bg-green-50'
+                >
+                  Xem chi tiết
+                </Button>
+              </div>
 
-                {/* Enhanced Product info */}
-                <div className='p-6'>
-                  {order.products.map((product, index) => (
-                    <div
-                      key={index}
-                      className='flex items-start space-x-4 group hover:bg-gray-50/50 p-4 rounded-xl transition-all duration-200'
-                    >
-                      <div className='relative'>
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className='w-20 h-20 rounded-xl border-2 border-gray-200/50 object-cover shadow-sm group-hover:shadow-md transition-all duration-200'
-                        />
-                        <div className='absolute inset-0 bg-black/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
-                      </div>
-                      <div className='flex-1'>
-                        <h3 className='font-semibold text-gray-900 mb-2 leading-snug'>
-                          {product.name}
-                          {product.quantity && (
-                            <span className='text-sm text-gray-500 ml-2 bg-gray-100 px-2 py-0.5 rounded-full'>
-                              {product.quantity}
-                            </span>
-                          )}
-                        </h3>
-
-                        {product.description && (
-                          <p className='text-sm text-gray-600 mb-3 leading-relaxed bg-gray-50/50 p-3 rounded-lg'>
-                            {product.description}
-                          </p>
-                        )}
-
-                        {product.hasRefund && product.refundNote && (
-                          <div className='bg-gradient-to-r from-green-50 to-green-100/50 p-4 rounded-xl border border-green-200/50 shadow-sm'>
-                            <p className='text-sm text-green-800 font-semibold mb-2 flex items-center'>
-                              <span className='w-2 h-2 bg-green-500 rounded-full mr-2'></span>
-                              Thông tin hoàn tiền:
-                            </p>
-                            <div className='text-sm text-green-700 space-y-1'>
-                              {product.refundNote.split('\n').map((line, i) => (
-                                <div key={i} className='flex items-start'>
-                                  <span className='w-1 h-1 bg-green-400 rounded-full mt-2 mr-2 flex-shrink-0'></span>
-                                  {line}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className='text-right'>
-                        <div className='font-bold text-lg text-gray-900 bg-gray-50/70 px-3 py-1 rounded-lg'>
-                          {order.total}
-                        </div>
-                        {order.note && (
-                          <p className='text-xs text-gray-500 mt-2 max-w-32 bg-gray-100/50 p-2 rounded-lg'>
-                            {order.note}
-                          </p>
-                        )}
-                      </div>
+              {/* Products */}
+              <div className='space-y-3 mb-4'>
+                {order.products.map((product, index) => (
+                  <div key={index} className='flex items-center gap-4'>
+                    <img src={product.image} alt={product.name} className='w-16 h-16 object-cover rounded-lg border' />
+                    <div className='flex-1'>
+                      <h4 className='font-medium text-gray-900'>{product.name}</h4>
+                      {product.variant && <p className='text-sm text-gray-600'>{product.variant}</p>}
+                      <p className='text-sm text-gray-600'>Số lượng: {product.quantity}</p>
                     </div>
-                  ))}
-
-                  {/* Enhanced Action buttons */}
-                  <div className='flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200/50'>
-                    {/* Common buttons for all orders */}
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      className='text-gray-600 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 font-medium'
-                      onClick={() => handleViewOrderDetail(order)}
-                    >
-                      Xem chi tiết
-                    </Button>
-
-                    {/* Conditional buttons based on order status and conditions */}
-                    {order.status === 'Đã giao' && order.canConfirmReceived && (
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        className='text-gray-600 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 font-medium'
-                      >
-                        đã nhận được hàng
-                      </Button>
-                    )}
-
-                    {order.status === 'Đã giao' && (
-                      <>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='text-gray-600 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 font-medium'
-                          onClick={() => handleReportProduct(order.products[0])}
-                        >
-                          Báo Cáo
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='text-gray-600 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 font-medium'
-                          onClick={() => handleReviewProduct(order.products[0])}
-                        >
-                          Đánh Giá
-                        </Button>
-                      </>
-                    )}
-
-                    {order.status === 'Đang giao' && (
-                      <div className='flex gap-2'>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          className='text-gray-600 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 font-medium'
-                        >
-                          Liên hệ với người bán
-                        </Button>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          onClick={() => handleCancelOrder(order.id)}
-                          className='text-red-600 border-red-600 hover:bg-red-600 hover:text-white transition-all duration-200 font-medium shadow-sm hover:shadow-md'
-                        >
-                          Hủy đơn hàng
-                        </Button>
+                    {product.price && (
+                      <div className='text-right'>
+                        <p className='font-medium text-gray-900'>
+                          {new Intl.NumberFormat('vi-VN', {
+                            style: 'currency',
+                            currency: 'VND'
+                          })
+                            .format(product.price)
+                            .replace('₫', 'đ')}
+                        </p>
                       </div>
                     )}
-
-                    {order.status === 'Chờ xác nhận' && (
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        onClick={() => handleCancelOrder(order.id)}
-                        className='text-red-600 border-red-600 hover:bg-red-600 hover:text-white transition-all duration-200 font-medium shadow-sm hover:shadow-md'
-                      >
-                        Hủy đơn hàng
-                      </Button>
-                    )}
-
-                    {/* TH1: Bom hàng - Show "Yêu cầu hoàn tiền" button */}
-                    {order.showRefundRequest && (
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        className='text-gray-600 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 font-medium'
-                      >
-                        Yêu cầu hoàn tiền
-                      </Button>
-                    )}
-
-                    {/* For all cancelled/completed orders */}
-                    {(order.status === 'Đã hủy' || order.status === 'Đã giao') && (
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        className='text-gray-600 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 font-medium'
-                      >
-                        Mua lại
-                      </Button>
-                    )}
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          /* Empty state with beautiful design */
-          <div className='text-center py-16'>
-            <div className='bg-white/60 backdrop-blur-sm rounded-2xl p-12 border border-gray-200/50 shadow-sm'>
-              <div className='w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6'>
-                <svg className='w-12 h-12 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={1.5}
-                    d='M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'
-                  />
-                </svg>
+
+              {/* Order Total */}
+              <div className='flex justify-between items-center pt-4 border-t'>
+                <span className='text-gray-600'>Tổng tiền:</span>
+                <span className='text-lg font-semibold text-gray-900'>{order.total}</span>
               </div>
-              <h3 className='text-lg font-semibold text-gray-900 mb-2'>
-                {selectedFilter === 'all'
-                  ? 'Chưa có đơn hàng nào'
-                  : `Không có đơn hàng ${selectedFilter.toLowerCase()}`}
-              </h3>
-              <p className='text-gray-600 max-w-md mx-auto'>
-                {selectedFilter === 'all'
-                  ? 'Bạn chưa có đơn hàng nào. Hãy khám phá sản phẩm và đặt hàng ngay!'
-                  : `Hiện tại không có đơn hàng nào trong trạng thái ${selectedFilter.toLowerCase()}.`}
-              </p>
+
+              {/* Action Buttons */}
+              <div className='flex gap-2 pt-4'>
+                {order.status === 'Chờ xác nhận' && (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleOpenCancelModal(order.id)}
+                    className='text-red-600 border-red-600 hover:bg-red-50'
+                  >
+                    Hủy đơn hàng
+                  </Button>
+                )}
+                {order.canConfirmReceived && (
+                  <Button
+                    size='sm'
+                    onClick={() => handleConfirmReceived(order.id)}
+                    disabled={confirmingOrderId === order.id}
+                    className='bg-green-600 hover:bg-green-700 text-white disabled:opacity-50'
+                  >
+                    {confirmingOrderId === order.id ? (
+                      <>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      'Đã nhận được hàng'
+                    )}
+                  </Button>
+                )}
+                {order.status === 'Đã giao' && (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() =>
+                      handleOpenReviewModal({
+                        name: order.products[0]?.name || '',
+                        image: order.products[0]?.image || ''
+                      })
+                    }
+                    className='text-green-600 border-green-600 hover:bg-green-50'
+                  >
+                    Đánh giá
+                  </Button>
+                )}
+                {order.status === 'Đã hủy' && (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleBuyAgain(order)}
+                    className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                  >
+                    Mua lại
+                  </Button>
+                )}
+              </div>
             </div>
+          ))
+        ) : (
+          <div className='text-center py-12'>
+            <div className='w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center'>
+              <svg className='w-12 h-12 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z'
+                />
+              </svg>
+            </div>
+            <h3 className='text-lg font-semibold text-gray-900 mb-2'>
+              {selectedFilter === 'all' ? 'Chưa có đơn hàng nào' : `Không có đơn hàng ${selectedFilter.toLowerCase()}`}
+            </h3>
+            <p className='text-gray-600 max-w-md mx-auto'>
+              {selectedFilter === 'all'
+                ? 'Bạn chưa có đơn hàng nào. Hãy khám phá sản phẩm và đặt hàng ngay!'
+                : `Hiện tại không có đơn hàng nào trong trạng thái ${selectedFilter.toLowerCase()}.`}
+            </p>
           </div>
         )}
       </div>
 
       {/* Pagination */}
-      <div className='flex justify-center items-center space-x-2 py-6'>
-        <button
-          onClick={() => goToPage(1)}
-          disabled={currentPage === 1}
-          className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${
-            currentPage === 1
-              ? 'bg-green-600 text-white'
-              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          1
-        </button>
+      {totalPages > 1 && (
+        <div className='flex justify-center items-center space-x-2 py-6'>
+          <button
+            onClick={() => goToPage(Math.max(currentPage - 1, 1))}
+            disabled={currentPage === 1}
+            className='w-8 h-8 rounded flex items-center justify-center text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
+          >
+            &lt;
+          </button>
 
-        {totalPages > 1 && (
-          <>
-            <button
-              onClick={() => goToPage(2)}
-              disabled={currentPage === 2}
-              className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${
-                currentPage === 2
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              2
-            </button>
-
-            {totalPages > 2 && (
+          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+            const page = i + 1
+            return (
               <button
-                onClick={() => goToPage(3)}
-                disabled={currentPage === 3}
+                key={page}
+                onClick={() => goToPage(page)}
                 className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${
-                  currentPage === 3
+                  currentPage === page
                     ? 'bg-green-600 text-white'
                     : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                3
+                {page}
               </button>
-            )}
+            )
+          })}
 
-            <button
-              onClick={() => goToPage(Math.min(currentPage + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className='w-8 h-8 rounded flex items-center justify-center text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
-            >
-              &gt;
-            </button>
-          </>
-        )}
-      </div>
+          <button
+            onClick={() => goToPage(Math.min(currentPage + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className='w-8 h-8 rounded flex items-center justify-center text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
+          >
+            &gt;
+          </button>
+        </div>
+      )}
 
       {/* Report Modal */}
       {selectedProduct && (
@@ -678,7 +562,7 @@ export default function OrdersContent() {
       <CancelOrderModal isOpen={showCancelModal} onClose={handleCloseCancelModal} orderId={selectedOrderId} />
 
       {/* Order Detail Modal */}
-      <OrderDetailModal isOpen={showOrderDetailModal} onClose={handleCloseOrderDetailModal} order={selectedOrder} />
+      <OrderDetailModal isOpen={showOrderDetailModal} onClose={handleCloseOrderDetailModal} orderId={selectedOrderId} />
 
       {/* Review Modal */}
       <ReviewModal isOpen={showReviewModal} onClose={handleCloseReviewModal} product={selectedProduct} />

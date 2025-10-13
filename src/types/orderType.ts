@@ -1,11 +1,11 @@
 // Order Status Enum
 export type OrderStatus =
-  | 'NotYet'      // Chờ xử lý (vừa tạo)
-  | 'Processing'  // Sau khi thanh toán/reserve xong
-  | 'Shipping'    // Seller đã confirm, đang giao
-  | 'Delivered'   // Đã giao hàng thành công
-  | 'Cancel'
-  | 'Returned'    // Customer đã trả hàng
+  | 'NotYet' // Chờ xử lý (vừa tạo)
+  | 'Processing' // Sau khi thanh toán/reserve xong
+  | 'Shipping' // Seller đã confirm, đang giao
+  | 'Delivered' // Đã giao hàng thành công
+  | 'Canceled' // hủy
+  | 'Returned' // Customer đã trả hàng
 
 // Promotion interface
 export interface OrderPromotion {
@@ -22,11 +22,27 @@ export interface OrderPromotion {
 // Order Item interface
 export interface OrderItem {
   id: string
+  orderId: string
+  productInventoryId: string
+  length: number
+  width: number
+  height: number
+  weight: number
   orderItemName: string
   orderItemImageUrl: string
+  basePrice: number
+  commission: number
+  finalPrice: number
   quantity: number
   totalPrice: number
   promotions: OrderPromotion[]
+}
+
+// Order History interface
+export interface OrderHistory {
+  id: string
+  description: string
+  time: string
 }
 
 // Order interface
@@ -39,7 +55,7 @@ export interface Order {
   fromAddress: string
   paymentType: string
   userId: string
-  toAddressId: string
+  toAddressId?: string
   toName: string
   toAddress: string
   totalLength: number
@@ -51,10 +67,12 @@ export interface Order {
   shipPrice: number
   totalOrder: number
   totalPrice: number
-  note: string
-  payoutDate: string
-  cancelDate: string
+  note: string | null
+  payoutDate: string | null
+  cancelDate: string | null
   orderItems: OrderItem[]
+  orderItemsWithCombo: any[]
+  orderHistories: OrderHistory[]
 }
 
 // Pagination interface

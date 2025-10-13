@@ -1,12 +1,5 @@
 import axiosInstance from '../service/axiosInstance'
-import type { 
-  OrderListResponse, 
-  OrderResponse, 
-  OrderQueryParams, 
-  CreateOrderInput, 
-  
-  Order
-} from '../types/orderType'
+import type { OrderListResponse, OrderResponse, OrderQueryParams, CreateOrderInput, Order } from '../types/orderType'
 const API_URL = `/Order`
 
 // GET /api/Order/get-all - Lấy danh sách tất cả orders với pagination
@@ -18,14 +11,8 @@ export const getAllOrders = async (params?: OrderQueryParams): Promise<Order[]> 
 }
 
 // GET /api/Order/customer-order/{customerId} - Lấy orders của customer cụ thể
-export const getCustomerOrders = async (
-  customerId: string, 
-  params?: OrderQueryParams
-): Promise<Order[]> => {
-  const response: OrderListResponse = await axiosInstance.get(
-    `${API_URL}/customer-order/${customerId}`,
-    { params }
-  )
+export const getCustomerOrders = async (customerId: string, params?: OrderQueryParams): Promise<Order[]> => {
+  const response: OrderListResponse = await axiosInstance.get(`${API_URL}/customer-order/${customerId}`, { params })
   return response.data
 }
 
@@ -51,7 +38,7 @@ export const confirmOrder = async (orderId: string): Promise<Order> => {
 export const cancelOrder = async (orderId: string, reason: string): Promise<Order[]> => {
   const formData = new FormData()
   formData.append('reason', reason)
-  
+
   const response: OrderListResponse = await axiosInstance.put(`${API_URL}/cancel/${orderId}`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
@@ -90,17 +77,14 @@ export const refundOrder = async (orderId: string, note?: string): Promise<Order
 
 // Utility function để lấy orders theo status
 export const getOrdersByStatus = async (
-  status: string, 
+  status: string,
   params?: Omit<OrderQueryParams, 'status'>
 ): Promise<Order[]> => {
   return getAllOrders({ ...params, status: status as any })
 }
 
 // Utility function để lấy orders của store
-export const getStoreOrders = async (
-  storeId: string, 
-  params?: Omit<OrderQueryParams, 'storeId'>
-): Promise<Order[]> => {
+export const getStoreOrders = async (storeId: string, params?: Omit<OrderQueryParams, 'storeId'>): Promise<Order[]> => {
   return getAllOrders({ ...params, storeId })
 }
 
@@ -118,4 +102,3 @@ export default {
   getOrdersByStatus,
   getStoreOrders
 }
-
