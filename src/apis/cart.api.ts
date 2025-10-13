@@ -29,19 +29,24 @@ export const addToCart = async (
 }
 
 // Update cart item quantity
-export const updateCartItem = async (userId: string, itemId: string, quantity: number): Promise<CartData> => {
+export const updateCartItem = async (cartItemId: string, quantity: number): Promise<any> => {
   const response = await axiosInstance.put<CartResponse>(`${API_URL}/update-item`, {
-    userId,
-    itemId,
+    cartItemId,
     quantity
   })
-  return response.data.data
+  return response.data
 }
 
-// Remove item from cart
-export const removeCartItem = async (userId: string, itemId: string): Promise<CartData> => {
+// Remove item from cart (path param + body userId)
+export const removeCartItem = async (userId: string, itemId: string): Promise<any> => {
   const response = await axiosInstance.put<CartResponse>(`${API_URL}/remove-item/${itemId}`, { userId })
-  return response.data.data
+  return response.data
+}
+
+// Optional: remove by only cartItemId (nếu backend hỗ trợ)
+export const removeCartItemDirect = async (cartItemId: string): Promise<any> => {
+  const response = await axiosInstance.put<CartResponse>(`${API_URL}/remove-item/${cartItemId}`)
+  return response.data
 }
 
 // Update combo in cart

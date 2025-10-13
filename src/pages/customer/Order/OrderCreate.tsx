@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '../../../components/ui/button'
 import { CheckCircle, Truck, ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -19,6 +19,9 @@ interface CartItem {
   image: string
 }
 
+// import & setup
+
+
 function OrderCreate() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -38,60 +41,67 @@ function OrderCreate() {
   const existingOrder: Order = location.state?.order
   const existingPaymentMethod: PaymentMethod = location.state?.paymentMethod
 
-  // Debug logs
-  console.log('=== DEBUG ORDERCREATE STATE ===')
-  console.log('location.state:', location.state)
-  console.log('buyNowProduct:', buyNowProduct)
-  console.log('existingOrder:', existingOrder)
-  console.log('existingPaymentMethod:', existingPaymentMethod)
+  // NEW: Lấy orderId từ query và resolve order từ Backend nếu chưa có trong state
+  const params = new URLSearchParams(location.search)
+  const orderId = params.get('orderId')
+  const [order, setOrder] = useState<Order | null>(existingOrder ?? null)
 
-  // Giả lập dữ liệu đơn hàng - Thực tế sẽ lấy từ context/cart hoặc từ "Mua ngay"
+  useEffect(() => {
+    if (!existingOrder && orderId) {
+      getOrderDetail(orderId)
+        .then(setOrder)
+        .catch((err) => {
+          console.error('Error fetching order detail:', err)
+          toast.error('Không thể tải thông tin đơn hàng')
+        })
+    }
+  }, [existingOrder, orderId])
+
+  // Giữ fallback cho "Mua ngay" nhưng ưu tiên dữ liệu Backend từ order
   const cartItems: CartItem[] = buyNowProduct
     ? [
-        {
-          id: buyNowProduct.id,
-          productVariantId: buyNowProduct.productVariantId,
-          name: buyNowProduct.name,
-          desc: buyNowProduct.desc || buyNowProduct.description,
-          price: buyNowProduct.price,
-          quantity: buyNowProduct.quantity,
-          image: buyNowProduct.image
-        }
-      ]
-    : [
-        {
-          id: '1',
-          productVariantId: '15000000-0000-0000-0000-000000000004',
-          name: 'Nước mắm Phú Linh',
-          desc: 'Nước mắm cá cơm\nChai 500ml - Độ đạm 30°N',
-          price: 180000,
-          quantity: 1,
-          image: 'https://images.unsplash.com/photo-1519864600265-abb23847ef2c?q=80&w=400&auto=format&fit=crop'
-        },
-        {
-          id: '2',
-          productVariantId: '15000000-0000-0000-0000-000000000005',
-          name: 'Mắm tôm chua Cần Thơ',
-          desc: 'Mắm tôm truyền thống\nHũ 250g',
-          price: 120000,
-          quantity: 2,
-          image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=400&auto=format&fit=crop'
-        }
-      ]
+      {
+        id: buyNowProduct.id,
+        productVariantId: buyNowProduct.productVariantId,
+        name: buyNowProduct.name,
+        desc: buyNowProduct.desc || buyNowProduct.description,
+        price: buyNowProduct.price,
+        quantity: buyNowProduct.quantity,
+        image: buyNowProduct.image
+      }
+    ]
+    : []
 
-  const shipping = 30000
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const total = subtotal + shipping
+  // NEW: Dùng dữ liệu động để hiển thị sản phẩm
+  const displayItems: CartItem[] = order
+    ? order.orderItems.map((it) => ({
+      id: it.id,
+      productVariantId: it.productInventoryId,
+      name: it.orderItemName,
+      desc: '',
+      price: it.finalPrice,
+      quantity: it.quantity,
+      image: it.orderItemImageUrl
+    }))
+    : cartItems
 
+  // NEW: Tổng tiền/ship đọc từ order nếu có
+  const shipping = order ? order.shipPrice : 30000
+  const subtotal = order ? Math.max(0, order.totalPrice - order.shipPrice) : displayItems.reduce((s, i) => s + i.price * i.quantity, 0)
+  const total = order ? order.totalPrice : subtotal + shipping
+
+  // NEW: Text phương thức thanh toán
+  const paymentDisplay: PaymentMethod | undefined = order
+    ? (existingPaymentMethod ?? (order.paymentType as PaymentMethod))
+    : selectedPaymentMethod
+
+  // Sửa flow thanh toán để dùng order.id
   const handlePayment = async () => {
     try {
-      // Nếu đã có order từ BuyNowCart, thực hiện thanh toán
-      if (existingOrder) {
+      if (order) {
         await handlePurchasePayment()
         return
       }
-
-      // Nếu chưa có order, tạo order mới (flow cũ)
       await handleCreateNewOrder()
     } catch (error: any) {
       console.error('Error in payment process:', error)
@@ -145,7 +155,7 @@ function OrderCreate() {
   }
 
   const handlePurchasePayment = async () => {
-    if (!existingOrder) {
+    if (!order) {
       toast.error('Không tìm thấy thông tin đơn hàng')
       return
     }
@@ -153,38 +163,18 @@ function OrderCreate() {
     setIsSubmitting(true)
 
     try {
-      console.log('=== DEBUG PURCHASE PAYMENT ===')
-      console.log('existingOrder:', existingOrder)
-      console.log('existingOrder.id:', existingOrder.id)
-      console.log('existingOrder type:', typeof existingOrder.id)
-      console.log('orderIds array:', [existingOrder.id])
-
-      // Validate orderId
-      if (!existingOrder.id) {
-        toast.error('Order ID không hợp lệ')
-        return
-      }
-
-      // Gọi API thanh toán với orderId
-      const transactions = await purchaseOrder({
-        orderIds: [existingOrder.id]
-      })
-
-      console.log('Payment processed successfully:', transactions)
-
+      const transactions = await purchaseOrder({ orderIds: [order.id] })
       const transaction = transactions[0]
 
-      // Xử lý theo phương thức thanh toán
       if (transaction.paymentMethod === 'COD') {
         toast.success('Đơn hàng COD đã được xác nhận! Chờ giao hàng.')
-        navigate(`/cart/invoice?orderId=${existingOrder.id}&status=success&type=cod`)
+        navigate(`/cart/invoice?orderId=${order.id}&status=success&type=cod`)
       } else if (transaction.paymentMethod === 'Banking') {
         toast.success('Đang chuyển đến trang thanh toán...')
-        // Redirect đến PayOS
         if (transaction.checkoutUrl) {
           window.location.href = transaction.checkoutUrl
         } else {
-          navigate(`/cart/invoice?orderId=${existingOrder.id}&status=pending&type=banking`)
+          navigate(`/cart/invoice?orderId=${order.id}&status=pending&type=banking`)
         }
       }
     } finally {
@@ -193,38 +183,23 @@ function OrderCreate() {
   }
 
   const handleCancelOrder = () => {
-    if (!existingOrder) {
+    if (!order) {
       toast.error('Không tìm thấy thông tin đơn hàng để hủy')
       return
     }
-
     setShowCancelDialog(true)
   }
 
   const handleConfirmCancel = async (reason: string) => {
-    if (!existingOrder) return
+    if (!order) return
 
     setIsCancelling(true)
-
     try {
-      console.log('=== DEBUG CANCEL ORDER ===')
-      console.log('Cancelling order:', existingOrder.id)
-      console.log('Reason:', reason)
-
-      // Gọi API hủy đơn hàng với reason được chọn
-      const cancelledOrders = await cancelOrder(existingOrder.id, reason)
-
-      console.log('Order cancelled successfully:', cancelledOrders)
-
-      // Hiển thị thông báo thành công
+      const cancelledOrders = await cancelOrder(order.id, reason)
       toast.success(`Đã hủy ${cancelledOrders.length} đơn hàng thành công!`)
-
-      // Đóng dialog và chuyển về trang sản phẩm
       setShowCancelDialog(false)
       navigate('/products')
     } catch (error: any) {
-      console.error('Error cancelling order:', error)
-
       const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi hủy đơn hàng'
       toast.error(errorMessage)
     } finally {
@@ -320,8 +295,8 @@ function OrderCreate() {
                         {existingPaymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' : 'Chuyển khoản ngân hàng'}
                       </p>
                       <p className='text-sm text-gray-500'>
-                        {existingPaymentMethod === 'COD' 
-                          ? 'Thanh toán bằng tiền mặt khi nhận hàng' 
+                        {existingPaymentMethod === 'COD'
+                          ? 'Thanh toán bằng tiền mặt khi nhận hàng'
                           : 'Thanh toán qua chuyển khoản ngân hàng'
                         }
                       </p>
@@ -331,11 +306,10 @@ function OrderCreate() {
               ) : (
                 <div className='space-y-3'>
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'COD'
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'COD'
                         ? 'border-green-500 bg-green-50'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     <input
                       type='radio'
@@ -352,11 +326,10 @@ function OrderCreate() {
                   </label>
 
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'Banking'
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'Banking'
                         ? 'border-green-500 bg-green-50'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     <input
                       type='radio'
@@ -429,8 +402,8 @@ function OrderCreate() {
                       existingPaymentMethod === 'COD' ? '💵 Thanh toán khi nhận hàng' : '💳 Chuyển khoản ngân hàng'
                     ) : (
                       selectedPaymentMethod === 'COD' ? '💵 Thanh toán khi nhận hàng' :
-                      selectedPaymentMethod === 'Banking' ? '💳 Chuyển khoản ngân hàng' :
-                      '⚠️ Chưa chọn phương thức'
+                        selectedPaymentMethod === 'Banking' ? '💳 Chuyển khoản ngân hàng' :
+                          '⚠️ Chưa chọn phương thức'
                     )}
                   </p>
                 </div>
@@ -439,7 +412,7 @@ function OrderCreate() {
                 <div className='space-y-3'>
                   <Button
                     onClick={handlePayment}
-                    disabled={isSubmitting || (!existingOrder && !selectedPaymentMethod)}
+                    disabled={isSubmitting || (!order && !selectedPaymentMethod)}
                     className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all'
                   >
                     {isSubmitting ? (
@@ -450,7 +423,11 @@ function OrderCreate() {
                     ) : (
                       <>
                         <CheckCircle className='w-4 h-4 mr-2' />
-                        {existingOrder ? 'Thanh toán ngay' : 'Đặt hàng ngay'}
+                        {paymentDisplay === 'COD'
+                          ? 'Đặt hàng ngay'
+                          : paymentDisplay === 'Banking'
+                            ? 'Thanh toán ngay'
+                            : (order || existingOrder) ? 'Thanh toán' : 'Đặt hàng'}
                       </>
                     )}
                   </Button>
@@ -514,10 +491,7 @@ function OrderCreate() {
         isOpen={showCancelDialog}
         onClose={() => setShowCancelDialog(false)}
         onConfirm={handleConfirmCancel}
-        orderInfo={existingOrder ? {
-          orderId: existingOrder.id,
-          totalAmount: subtotal + shipping
-        } : undefined}
+        orderInfo={order ? { orderId: order.id, totalAmount: order.totalPrice } : undefined}
         isLoading={isCancelling}
       />
     </div>
