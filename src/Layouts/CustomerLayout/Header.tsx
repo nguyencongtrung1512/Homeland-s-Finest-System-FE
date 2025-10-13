@@ -8,9 +8,8 @@ import { useState, useRef, useEffect } from 'react'
 
 function Header() {
   const navigate = useNavigate()
-  const { cart } = useCart()
+  const { cart, cartCount } = useCart()
   const { user, isAuthenticated, logout } = useAuth()
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const [showDropdown, setShowDropdown] = useState(false)
   const [isHoveringIcon, setIsHoveringIcon] = useState(false)
   const [isHoveringPopup, setIsHoveringPopup] = useState(false)
@@ -19,6 +18,7 @@ function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const cartContainerRef = useRef<HTMLDivElement>(null)
   const userDropdownRef = useRef<HTMLDivElement>(null)
+  const displayCount = cartCount || cart.reduce((sum, item) => sum + item.quantity, 0)
 
   // Xử lý click outside để đóng dropdown
   useEffect(() => {
@@ -119,9 +119,9 @@ function Header() {
               aria-label='Xem giỏ hàng'
             >
               <ShoppingCart size={25} />
-              {cartCount > 0 && (
+              {displayCount > 0 && (
                 <span className='absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center pointer-events-auto'>
-                  {cartCount}
+                  {displayCount}
                 </span>
               )}
             </button>
@@ -162,6 +162,9 @@ function Header() {
                         <div className='flex-1 min-w-0'>
                           <div className='truncate font-medium text-gray-900 text-base'>{item.name}</div>
                           <div className='text-xs text-gray-500'>Số lượng: {item.quantity}</div>
+                          {item.variant && (
+                            <div className='text-xs text-gray-500'>Phân loại: {item.variant}</div>
+                          )}
                         </div>
                         <div className='text-orange-600 font-semibold text-base whitespace-nowrap'>
                           {item.price.toLocaleString('vi-VN')}₫

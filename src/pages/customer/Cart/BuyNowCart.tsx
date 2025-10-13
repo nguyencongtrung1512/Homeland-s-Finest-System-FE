@@ -4,7 +4,18 @@ import { Input } from '../../../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Checkbox } from '../../../components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../../components/ui/dialog'
-import { MapPin, Plus, ShoppingCart, Truck, Shield, Edit, CheckCircle, Loader2, AlertCircle, Trash2 } from 'lucide-react'
+import {
+  MapPin,
+  Plus,
+  ShoppingCart,
+  Truck,
+  Shield,
+  Edit,
+  CheckCircle,
+  Loader2,
+  AlertCircle,
+  Trash2
+} from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { CheckedState } from '@radix-ui/react-checkbox'
@@ -36,18 +47,18 @@ type Address = {
 export default function BuyNowCart() {
   const navigate = useNavigate()
   const location = useLocation()
-  
+
   const [selectedAddressId, setSelectedAddressId] = useState<number>(1)
   const [isAddingAddress, setIsAddingAddress] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
-  
+
   // Set cứng userId và userAddressId
   const hardcodedUserId = '30000000-0000-0000-0000-000000000003'
   const hardcodedAddressId = '11000000-0000-0000-0000-000000000001'
-  
+
   // Lấy dữ liệu sản phẩm từ navigation state
   const buyNowProduct: BuyNowProduct = location.state?.product
 
@@ -67,7 +78,7 @@ export default function BuyNowCart() {
       isDefault: false
     }
   ])
-  
+
   const [newAddress, setNewAddress] = useState<{
     name: string
     phone: string
@@ -203,7 +214,7 @@ export default function BuyNowCart() {
 
       // Chỉ cần chuyển về trang sản phẩm vì chưa tạo order
       toast.success('Đã hủy đặt hàng!')
-      
+
       setShowCancelDialog(false)
       navigate('/products')
     } catch (error: any) {
@@ -254,7 +265,9 @@ export default function BuyNowCart() {
                     <div className='text-xl font-bold text-orange-600'>
                       ₫{(buyNowProduct.price * buyNowProduct.quantity).toLocaleString('vi-VN')}
                     </div>
-                    <div className='text-sm text-gray-500'>₫{buyNowProduct.price.toLocaleString('vi-VN')} × {buyNowProduct.quantity}</div>
+                    <div className='text-sm text-gray-500'>
+                      ₫{buyNowProduct.price.toLocaleString('vi-VN')} × {buyNowProduct.quantity}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -523,8 +536,8 @@ export default function BuyNowCart() {
                         </>
                       )}
                     </Button>
-                    <Button 
-                      variant='outline' 
+                    <Button
+                      variant='outline'
                       className='w-full border-red-600 text-red-600 hover:bg-red-50'
                       onClick={handleCancelOrder}
                       disabled={isSubmitting || isCancelling}

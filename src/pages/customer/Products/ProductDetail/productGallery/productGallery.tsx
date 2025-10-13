@@ -9,6 +9,7 @@ function ProductGallery() {
   const [selectedImage, setSelectedImage] = useState(0)
   const [selectedVariant, setSelectedVariant] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
   const { addToCart } = useCart()
 
   if (!product) {
@@ -19,17 +20,18 @@ function ProductGallery() {
   const currentPrice = currentVariant?.price || 0
   const currentStock = currentVariant?.availableQuantity || 0
 
-  const handleAddToCart = () => {
-    if (currentVariant) {
-      addToCart({
-        id: product.id,
-        name: product.name,
-        price: currentPrice,
-        quantity: quantity,
-        image: product.productImages[0] || '',
-        variant: currentVariant.variantName,
-        storeId: product.storeId
-      })
+  const handleAddToCart = async () => {
+    if (!currentVariant) {
+      return
+    }
+
+    try {
+      setIsAddingToCart(true)
+      await addToCart(currentVariant.id, quantity)
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+    } finally {
+      setIsAddingToCart(false)
     }
   }
 
@@ -223,10 +225,19 @@ function ProductGallery() {
             <div className='space-y-4'>
               <button
                 onClick={handleAddToCart}
-                disabled={!product.isActive || currentStock === 0 || !currentVariant}
-                className='w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                disabled={!product.isActive || currentStock === 0 || !currentVariant || isAddingToCart}
+                className='w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2'
               >
-                {!product.isActive || currentStock === 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
+                {isAddingToCart ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Đang thêm...
+                  </>
+                ) : (
+                  <>
+                    {!product.isActive || currentStock === 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
+                  </>
+                )}
               </button>
 
               <button 
