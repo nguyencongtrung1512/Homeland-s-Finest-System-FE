@@ -1,5 +1,5 @@
 import axiosInstance from '../service/axiosInstance'
-import type { CartData, CartResponse } from '../types/cartType'
+import type { CartResponse } from '../types/cartType'
 
 const API_URL = '/Cart'
 // Get cart data for a specific user

@@ -175,7 +175,8 @@ export default function BuyNowCart() {
 
       console.log('=== DEBUG ORDER CREATION ===')
       console.log('createdOrder:', createdOrder)
-      console.log('createdOrder.id:', createdOrder.id)
+      console.log('createdOrder[0]:', createdOrder[0])
+      console.log('createdOrder[0].id:', createdOrder[0].id)
       console.log('createdOrder type:', typeof createdOrder)
       console.log('selectedPaymentMethod:', selectedPaymentMethod)
 
@@ -185,15 +186,16 @@ export default function BuyNowCart() {
       // Chuyển đến trang xác nhận đơn hàng với thông tin order
       navigate('/cart/create-order', {
         state: {
-          order: createdOrder,
+          order: createdOrder[0], // Lấy order đầu tiên từ array
           paymentMethod: selectedPaymentMethod,
           product: buyNowProduct
         }
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating order:', error)
 
-      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi đặt hàng'
+      const errorMessage =
+        (error as any)?.response?.data?.message || (error as Error).message || 'Có lỗi xảy ra khi đặt hàng'
       toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
@@ -217,7 +219,7 @@ export default function BuyNowCart() {
 
       setShowCancelDialog(false)
       navigate('/products')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cancelling order:', error)
       toast.error('Có lỗi xảy ra khi hủy đặt hàng')
     } finally {
@@ -387,11 +389,10 @@ export default function BuyNowCart() {
                   {savedAddresses.map((address) => (
                     <div
                       key={address.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                        selectedAddressId === address.id
-                          ? 'border-orange-500 bg-orange-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedAddressId === address.id
+                        ? 'border-orange-500 bg-orange-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
                       onClick={() => setSelectedAddressId(address.id)}
                     >
                       <div className='flex items-start justify-between'>
@@ -449,11 +450,10 @@ export default function BuyNowCart() {
                 <h2 className='text-xl font-semibold mb-4'>Phương thức thanh toán</h2>
                 <div className='space-y-3'>
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'COD'
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'COD'
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
                   >
                     <input
                       type='radio'
@@ -470,11 +470,10 @@ export default function BuyNowCart() {
                   </label>
 
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'Banking'
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'Banking'
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
                   >
                     <input
                       type='radio'

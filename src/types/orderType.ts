@@ -9,6 +9,7 @@ export type OrderStatus =
 
 // Promotion interface
 export interface OrderPromotion {
+  orderId: string
   promotionId: string
   promotionType: string
   title: string
@@ -19,23 +20,65 @@ export interface OrderPromotion {
   createdAt: string
 }
 
-// Order Item interface
+// Transaction interface
+export interface Transaction {
+  id: string
+  userId: string
+  orderId: string
+  paymentMethod: string
+  payosOrderCode: string
+  checkoutUrl: string
+  description: string
+  amount: number
+  status: string
+  createdAt: string
+  updatedAt: string
+  userEmail: string
+  userFullName: string
+  orderStatus: string
+}
+
+// Order Item interface (simplified for actual API response)
 export interface OrderItem {
   id: string
+  orderItemName: string
+  orderItemImageUrl: string
+  quantity: number
+  totalPrice: number
+  // Optional fields that may not be present in all responses
+  orderId?: string
+  productId?: string
+  productVariantId?: string
+  length?: number
+  width?: number
+  height?: number
+  weight?: number
+  basePrice?: number
+  commission?: number
+  finalPrice?: number
+  promotions?: OrderPromotion[]
+}
+
+// Order Item with Combo interface
+export interface OrderItemWithCombo {
+  id: string
   orderId: string
-  productInventoryId: string
+  productId: string
+  productVariantId: string
+  comboId: string
+  comboName: string
+  orderItemName: string
+  orderItemImageUrl: string
   length: number
   width: number
   height: number
   weight: number
-  orderItemName: string
-  orderItemImageUrl: string
   basePrice: number
   commission: number
   finalPrice: number
-  quantity: number
   totalPrice: number
-  promotions: OrderPromotion[]
+  quantity: number
+  isActive: boolean
 }
 
 // Order History interface
@@ -66,13 +109,18 @@ export interface Order {
   isPayOut: boolean
   shipPrice: number
   totalOrder: number
-  totalPrice: number
-  note: string | null
+  totalDiscount: number
+  finalPrice: number
   payoutDate: string | null
   cancelDate: string | null
+  createdAt: string
+  updatedAt: string
+  note: string | null
   orderItems: OrderItem[]
-  orderItemsWithCombo: any[]
+  orderItemsWithCombo: OrderItemWithCombo[]
   orderHistories: OrderHistory[]
+  orderPromotions: OrderPromotion[]
+  transactions: Transaction[]
 }
 
 // Pagination interface
@@ -116,6 +164,10 @@ export interface CreateOrderInput {
   userId: string
   userAddressId: string
   paymentMethod: PaymentMethod
+  storePromotions?: {
+    storeId: string
+    promotionIds: string[]
+  }[]
   orderItemCreates: {
     productVariantId: string
     comboId?: string | null

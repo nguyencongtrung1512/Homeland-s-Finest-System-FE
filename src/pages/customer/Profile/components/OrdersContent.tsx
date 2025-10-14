@@ -27,7 +27,9 @@ interface Order {
     refundNote?: string
     quantity?: string
     price?: number
+    finalPrice?: number
     variant?: string
+    isCombo?: boolean
   }[]
   total: string
   totalAmount?: number
@@ -64,6 +66,7 @@ interface OrdersContentProps {
   orders: APIOrder[]
   loading: boolean
   onRefreshOrders: () => void
+  onFilterByStatus?: (status: string) => void
 }
 
 // Utility function to transform API order to UI order format
@@ -126,29 +129,38 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   const statusInfo = getUIStatus(apiOrder?.status || '')
 
   // Transform order items to products - add safety checks
-  const products = (apiOrder?.orderItems || []).map((item) => ({
-    id: item?.id || '',
-    productInventoryId: item?.productInventoryId || '', // Add this mapping
-    name: item?.orderItemName || 'Sản phẩm không xác định',
-    image: item?.orderItemImageUrl || '/src/assets/react.svg',
-    quantity: (item?.quantity || 0).toString(),
-    price: item?.finalPrice || 0,
-    variant:
-      item?.length && item?.width && item?.height && item?.weight
-        ? `${item.length}x${item.width}x${item.height}cm, ${item.weight}kg`
-        : 'Thông tin kích thước không có'
-  }))
-
-  // Format date - add safety check
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return `Ngày đặt: ${new Date().toLocaleDateString('vi-VN')}`
-    try {
-      const date = new Date(dateString)
-      return `Ngày đặt: ${date.toLocaleDateString('vi-VN')}`
-    } catch {
-      return `Ngày đặt: ${new Date().toLocaleDateString('vi-VN')}`
-    }
-  }
+  const products = [
+    // Regular order items
+    ...(apiOrder?.orderItems || []).map((item) => ({
+      id: item?.id || '',
+      productInventoryId: item?.productVariantId || '', // Use productVariantId instead
+      name: item?.orderItemName || 'Sản phẩm không xác định',
+      image: item?.orderItemImageUrl || '/src/assets/react.svg',
+      quantity: (item?.quantity || 0).toString(),
+      price: item?.totalPrice || 0,
+      finalPrice: item?.totalPrice || 0,
+      variant:
+        item?.length && item?.width && item?.height && item?.weight
+          ? `${item.length}x${item.width}x${item.height}cm, ${item.weight}g`
+          : 'Thông tin kích thước không có',
+      isCombo: false
+    })),
+    // Combo order items
+    ...(apiOrder?.orderItemsWithCombo || []).map((item) => ({
+      id: item?.id || '',
+      productInventoryId: item?.productVariantId || '',
+      name: `${item?.comboName || 'Combo'} - ${item?.orderItemName || 'Sản phẩm không xác định'}`,
+      image: item?.orderItemImageUrl || '/src/assets/react.svg',
+      quantity: (item?.quantity || 0).toString(),
+      price: item?.finalPrice || 0,
+      finalPrice: item?.finalPrice || 0,
+      variant:
+        item?.length > 0 && item?.width > 0 && item?.height > 0 && item?.weight > 0
+          ? `${item.length}x${item.width}x${item.height}cm, ${item.weight}g`
+          : 'Thông tin kích thước không có',
+      isCombo: true
+    }))
+  ]
 
   // Format total price - add safety check
   const formatPrice = (price?: number) => {
@@ -165,15 +177,14 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
 
   // Get order history safely
   const orderHistories = apiOrder?.orderHistories || []
-  const firstHistory = orderHistories[0]
 
   return {
     id: apiOrder?.id || '',
-    date: formatDate(firstHistory?.time),
+    date: apiOrder?.createdAt,
     ...statusInfo,
     products,
-    total: formatPrice(apiOrder?.totalPrice),
-    totalAmount: apiOrder?.totalPrice || 0,
+    total: formatPrice(apiOrder?.finalPrice),
+    totalAmount: apiOrder?.finalPrice || 0,
     note: apiOrder?.note || '',
     canConfirmReceived: apiOrder?.status === 'Delivered',
     canReturn: apiOrder?.status === 'Delivered',
@@ -185,7 +196,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     },
     transactionInfo: {
       orderId: apiOrder?.id || '',
-      paymentDate: formatDate(firstHistory?.time),
+      paymentDate: (apiOrder?.createdAt),
       paymentMethod: apiOrder?.paymentType === 'COD' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản ngân hàng'
     },
     timeline: orderHistories.map((history, index) => ({
@@ -197,7 +208,12 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   }
 }
 
-export default function OrdersContent({ orders: apiOrders, loading, onRefreshOrders }: OrdersContentProps) {
+export default function OrdersContent({
+  orders: apiOrders,
+  loading,
+  onRefreshOrders,
+  onFilterByStatus
+}: OrdersContentProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
@@ -230,6 +246,27 @@ export default function OrdersContent({ orders: apiOrders, loading, onRefreshOrd
     if (selectedFilter === 'all') return orders
     return orders.filter((order) => order.status === selectedFilter)
   }, [orders, selectedFilter])
+
+  // Handle filter change - call API with new status
+  const handleFilterChange = (filterKey: string) => {
+    setSelectedFilter(filterKey)
+    setCurrentPage(1) // Reset to first page when filter changes
+
+    // Map UI filter to API status
+    const apiStatusMap: { [key: string]: string | undefined } = {
+      all: undefined,
+      'Chờ xác nhận': 'NotYet',
+      'Đã xác nhận': 'Processing',
+      'Đang giao': 'Shipping',
+      'Đã giao': 'Delivered',
+      'Đã hủy': 'Cancel'
+    }
+
+    const apiStatus = apiStatusMap[filterKey]
+    if (onFilterByStatus) {
+      onFilterByStatus(apiStatus || '')
+    }
+  }
 
   // Pagination logic
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage)
@@ -364,13 +401,9 @@ export default function OrdersContent({ orders: apiOrders, loading, onRefreshOrd
         ].map((filter) => (
           <button
             key={filter.key}
-            onClick={() => {
-              setSelectedFilter(filter.key)
-              setCurrentPage(1) // Reset to first page when filter changes
-            }}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-            }`}
+            onClick={() => handleFilterChange(filter.key)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
             {filter.label}
           </button>
@@ -408,18 +441,23 @@ export default function OrdersContent({ orders: apiOrders, loading, onRefreshOrd
                   <div key={index} className='flex items-center gap-4'>
                     <img src={product.image} alt={product.name} className='w-16 h-16 object-cover rounded-lg border' />
                     <div className='flex-1'>
-                      <h4 className='font-medium text-gray-900'>{product.name}</h4>
+                      <div className='flex items-center gap-2 mb-1'>
+                        <h4 className='font-medium text-gray-900'>{product.name}</h4>
+                        {product.isCombo && (
+                          <Badge className='bg-purple-100 text-purple-700 border-0 text-xs'>Combo</Badge>
+                        )}
+                      </div>
                       {product.variant && <p className='text-sm text-gray-600'>{product.variant}</p>}
                       <p className='text-sm text-gray-600'>Số lượng: {product.quantity}</p>
                     </div>
-                    {product.price && (
+                    {product.finalPrice && (
                       <div className='text-right'>
                         <p className='font-medium text-gray-900'>
                           {new Intl.NumberFormat('vi-VN', {
                             style: 'currency',
                             currency: 'VND'
                           })
-                            .format(product.price)
+                            .format(product.finalPrice)
                             .replace('₫', 'đ')}
                         </p>
                       </div>
@@ -532,11 +570,10 @@ export default function OrdersContent({ orders: apiOrders, loading, onRefreshOrd
               <button
                 key={page}
                 onClick={() => goToPage(page)}
-                className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${
-                  currentPage === page
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${currentPage === page
+                  ? 'bg-green-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 {page}
               </button>

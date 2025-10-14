@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Button } from '../../../components/ui/button'
 import { CheckCircle, Truck, ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../contexts/auth.context'
+import { useCart } from '../../../contexts/cart.context'
 import { createOrder, cancelOrder, getOrderDetail } from '../../../apis/order.api'
 import { purchaseOrder } from '../../../apis/transaction.api'
+import { removeCartItem } from '../../../apis/cart.api'
 import type { CreateOrderInput, PaymentMethod, Order } from '../../../types/orderType'
 import { toast } from 'react-toastify'
 import CancelOrderDialog from '../../../components/CancelOrderDialog/CancelOrderDialog'
@@ -17,6 +19,8 @@ interface CartItem {
   price: number
   quantity: number
   image: string
+  isCombo?: boolean
+  comboId?: string
 }
 
 // import & setup
@@ -25,6 +29,7 @@ function OrderCreate() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
+  const { refreshCart } = useCart()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
@@ -37,6 +42,36 @@ function OrderCreate() {
   const buyNowProduct = location.state?.product
   const existingOrder: Order = location.state?.order
   const existingPaymentMethod: PaymentMethod = location.state?.paymentMethod
+  const selectedItemIds: string[] = useMemo(
+    () => location.state?.selectedItemIds || [],
+    [location.state?.selectedItemIds]
+  )
+
+  // Helper function to clear cart after successful payment
+  const clearCartAfterPayment = useCallback(async () => {
+    if (!user?.userId || selectedItemIds.length === 0) return
+
+    try {
+      // Remove each selected item from cart
+      for (const itemId of selectedItemIds) {
+        await removeCartItem(user.userId, itemId)
+      }
+
+      // Refresh cart data
+      await refreshCart()
+
+      console.log('Cart cleared after successful payment')
+    } catch (error) {
+      console.error('Error clearing cart after payment:', error)
+      // Don't show error to user as payment was already successful
+    }
+  }, [user?.userId, selectedItemIds, refreshCart])
+
+  // Debug logging
+  console.log('OrderCreate - Navigation state:', location.state)
+  console.log('OrderCreate - existingOrder:', existingOrder)
+  console.log('OrderCreate - existingPaymentMethod:', existingPaymentMethod)
+  console.log('OrderCreate - selectedItemIds:', selectedItemIds)
 
   const params = new URLSearchParams(location.search)
   const orderId = params.get('orderId')
@@ -56,37 +91,44 @@ function OrderCreate() {
   // Giữ fallback cho "Mua ngay" nhưng ưu tiên dữ liệu Backend từ order
   const cartItems: CartItem[] = buyNowProduct
     ? [
-        {
-          id: buyNowProduct.id,
-          productVariantId: buyNowProduct.productVariantId,
-          name: buyNowProduct.name,
-          desc: buyNowProduct.desc || buyNowProduct.description,
-          price: buyNowProduct.price,
-          quantity: buyNowProduct.quantity,
-          image: buyNowProduct.image
-        }
-      ]
+      {
+        id: buyNowProduct.id,
+        productVariantId: buyNowProduct.productVariantId,
+        name: buyNowProduct.name,
+        desc: buyNowProduct.desc || buyNowProduct.description,
+        price: buyNowProduct.price,
+        quantity: buyNowProduct.quantity,
+        image: buyNowProduct.image
+      }
+    ]
     : []
 
   // NEW: Dùng dữ liệu động để hiển thị sản phẩm
-  const displayItems: CartItem[] = order
-    ? order.orderItems.map((it) => ({
+  const displayItems: CartItem[] =
+    order && order.orderItems
+      ? order.orderItems.map((it) => ({
         id: it.id,
-        productVariantId: it.productInventoryId,
+        productVariantId: it.productVariantId || it.id,
         name: it.orderItemName,
         desc: '',
-        price: it.finalPrice,
+        price: it.finalPrice || it.totalPrice || 0,
         quantity: it.quantity,
         image: it.orderItemImageUrl
       }))
-    : cartItems
+      : cartItems
 
-  // NEW: Tổng tiền/ship đọc từ order nếu có
-  const shipping = order ? order.shipPrice : 30000
+  // Debug logging
+  console.log('OrderCreate - order:', order)
+  console.log('OrderCreate - order.orderItems:', order?.orderItems)
+  console.log('OrderCreate - displayItems:', displayItems)
+
+  // Backend sẽ tính tiền ship, frontend chỉ hiển thị dữ liệu từ API
+  const shipping = order ? order.shipPrice || 0 : 0
   const subtotal = order
-    ? Math.max(0, order.totalPrice - order.shipPrice)
+    ? order.totalOrder || 0 // Tổng giá trị hàng (chưa trừ promotion)
     : displayItems.reduce((s, i) => s + i.price * i.quantity, 0)
-  const total = order ? order.totalPrice : subtotal + shipping
+  const totalDiscount = order ? order.totalDiscount || 0 : 0
+  const total = order ? order.finalPrice || 0 : subtotal + shipping
 
   // NEW: Text phương thức thanh toán
   const paymentDisplay: PaymentMethod | undefined = order
@@ -101,9 +143,12 @@ function OrderCreate() {
         return
       }
       await handleCreateNewOrder()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error in payment process:', error)
-      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi xử lý thanh toán'
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error).message ||
+        'Có lỗi xảy ra khi xử lý thanh toán'
       toast.error(errorMessage)
     }
   }
@@ -135,9 +180,11 @@ function OrderCreate() {
         userId: user.userId,
         userAddressId: hardcodedAddressId,
         paymentMethod: selectedPaymentMethod,
+        // storePromotions: [], // Tạm thời để trống, có thể thêm sau
         orderItemCreates: cartItems.map((item) => ({
           productVariantId: item.productVariantId,
-          quantity: item.quantity
+          quantity: item.quantity,
+          comboId: item.isCombo ? item.comboId : null
         }))
       }
 
@@ -151,8 +198,13 @@ function OrderCreate() {
       // Hiển thị thông báo thành công
       toast.success('Đặt hàng thành công!')
 
+      // Clear cart after successful order creation (only for buy now, not cart items)
+      if (selectedItemIds.length > 0) {
+        await clearCartAfterPayment()
+      }
+
       // Chuyển đến trang hóa đơn/chi tiết đơn hàng
-      navigate(`/cart/invoice?orderId=${createdOrder.id}&status=success`)
+      navigate(`/cart/invoice?orderId=${createdOrder[0].id}&status=success`)
     } finally {
       setIsSubmitting(false)
     }
@@ -172,9 +224,11 @@ function OrderCreate() {
 
       if (transaction.paymentMethod === 'COD') {
         toast.success('Đơn hàng COD đã được xác nhận! Chờ giao hàng.')
+        await clearCartAfterPayment() // Clear cart after successful COD payment
         navigate(`/cart/invoice?orderId=${order.id}&status=success&type=cod`)
       } else if (transaction.paymentMethod === 'Banking') {
         toast.success('Đang chuyển đến trang thanh toán...')
+        await clearCartAfterPayment() // Clear cart before redirecting to payment
         if (transaction.checkoutUrl) {
           window.location.href = transaction.checkoutUrl
         } else {
@@ -203,8 +257,11 @@ function OrderCreate() {
       toast.success(`Đã hủy ${cancelledOrders.length} đơn hàng thành công!`)
       setShowCancelDialog(false)
       navigate('/products')
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi hủy đơn hàng'
+    } catch (error: unknown) {
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error).message ||
+        'Có lỗi xảy ra khi hủy đơn hàng'
       toast.error(errorMessage)
     } finally {
       setIsCancelling(false)
@@ -214,6 +271,7 @@ function OrderCreate() {
   const handleContinueShopping = () => {
     navigate('/products')
   }
+
 
   return (
     <div className='min-h-screen bg-gray-50 py-8'>
@@ -248,7 +306,7 @@ function OrderCreate() {
               </h2>
 
               <div className='space-y-4'>
-                {cartItems.map((item) => (
+                {displayItems.map((item) => (
                   <div
                     key={item.id}
                     className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
@@ -279,8 +337,15 @@ function OrderCreate() {
                     <Truck className='w-4 h-4' />
                     <span>Phí vận chuyển</span>
                   </div>
-                  <span className='font-medium'>{shipping.toLocaleString('vi-VN')}₫</span>
+                  <span className='font-medium'>
+                    {order ? `${shipping.toLocaleString('vi-VN')}₫` : 'Sẽ được tính bởi hệ thống'}
+                  </span>
                 </div>
+                {order && (
+                  <div className='mt-2 text-xs text-gray-500'>
+                    💡 Phí ship được tính tự động bởi GHN dựa trên địa chỉ giao hàng
+                  </div>
+                )}
               </div>
             </div>
 
@@ -309,11 +374,10 @@ function OrderCreate() {
               ) : (
                 <div className='space-y-3'>
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'COD'
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'COD'
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
                   >
                     <input
                       type='radio'
@@ -330,11 +394,10 @@ function OrderCreate() {
                   </label>
 
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'Banking'
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'Banking'
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
                   >
                     <input
                       type='radio'
@@ -381,9 +444,15 @@ function OrderCreate() {
 
                 <div className='space-y-3 mb-4'>
                   <div className='flex justify-between text-sm'>
-                    <span className='text-gray-600'>Tạm tính ({cartItems.length} sản phẩm)</span>
+                    <span className='text-gray-600'>Tạm tính ({displayItems.length} sản phẩm)</span>
                     <span className='font-medium'>{subtotal.toLocaleString('vi-VN')}₫</span>
                   </div>
+                  {totalDiscount > 0 && (
+                    <div className='flex justify-between text-sm text-green-600'>
+                      <span>Giảm giá</span>
+                      <span className='font-medium'>-{totalDiscount.toLocaleString('vi-VN')}₫</span>
+                    </div>
+                  )}
                   <div className='flex justify-between text-sm'>
                     <span className='text-gray-600'>Phí vận chuyển</span>
                     <span className='font-medium'>{shipping.toLocaleString('vi-VN')}₫</span>
@@ -480,14 +549,27 @@ function OrderCreate() {
               <div className='bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg shadow-sm border border-yellow-200 p-4'>
                 <h4 className='font-semibold text-sm mb-2 text-gray-700 flex items-center gap-2'>
                   <AlertCircle className='w-4 h-4 text-yellow-600' />
-                  Dữ liệu Test
+                  Thông tin đơn hàng
                 </h4>
                 <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border mb-1'>
                   User: {user?.userId || 'Chưa đăng nhập'}
                 </p>
-                <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border'>
+                <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border mb-1'>
                   Address: {hardcodedAddressId}
                 </p>
+                {order && (
+                  <>
+                    <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border mb-1'>
+                      Order ID: {order.id}
+                    </p>
+                    <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border mb-1'>
+                      GHN Code: {order.ghnorderCode}
+                    </p>
+                    <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border'>
+                      Status: {order.status}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -499,7 +581,7 @@ function OrderCreate() {
         isOpen={showCancelDialog}
         onClose={() => setShowCancelDialog(false)}
         onConfirm={handleConfirmCancel}
-        orderInfo={order ? { orderId: order.id, totalAmount: order.totalPrice } : undefined}
+        orderInfo={order ? { orderId: order.id, totalAmount: order.finalPrice } : undefined}
         isLoading={isCancelling}
       />
     </div>

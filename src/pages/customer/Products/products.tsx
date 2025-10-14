@@ -37,17 +37,18 @@ function Products() {
         setCombosError(null)
         const data = await getAllCombos({ pageNumber: currentPage + 1, pageSize: 10 })
         const combosArray = Array.isArray(data) ? data : (data as any)?.data || []
-        const mapped = combosArray.map((combo: any) =>
-          ({
-            id: combo.id,
-            name: combo.name,
-            productImages: [combo.image || '/src/assets/react.svg'],
-            material: 'Combo',
-            rating: 0,
-            reviewCount: 0,
-            price: combo.price,
-            badge: { text: 'Combo', color: 'bg-amber-500' }
-          } as unknown as ProductCardData)
+        const mapped = combosArray.map(
+          (combo: any) =>
+            ({
+              id: combo.id,
+              name: combo.name,
+              productImages: [combo.image || '/src/assets/react.svg'],
+              material: 'Combo',
+              rating: 0,
+              reviewCount: 0,
+              price: combo.price,
+              badge: { text: 'Combo', color: 'bg-amber-500' }
+            }) as unknown as ProductCardData
         )
         setComboCardData(mapped)
       } catch (err) {
@@ -193,9 +194,7 @@ function Products() {
             <>
               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
                 {activeTab === 'product'
-                  ? productCardData.map((product) => (
-                      <ProductCard key={product.id} product={product} />
-                    ))
+                  ? productCardData.map((product) => <ProductCard key={product.id} product={product} />)
                   : comboCardData.map((combo) => (
                       <ProductCard
                         key={combo.id}
@@ -206,41 +205,39 @@ function Products() {
               </div>
 
               {/* Empty state */}
-              {activeTab === 'product' ? (
-                productCardData.length === 0 && (
-                  <div className='text-center py-12'>
-                    <div className='text-gray-400 mb-4'>
-                      <svg className='mx-auto h-12 w-12' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth='2'
-                          d='M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'
-                        />
-                      </svg>
+              {activeTab === 'product'
+                ? productCardData.length === 0 && (
+                    <div className='text-center py-12'>
+                      <div className='text-gray-400 mb-4'>
+                        <svg className='mx-auto h-12 w-12' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth='2'
+                            d='M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'
+                          />
+                        </svg>
+                      </div>
+                      <h3 className='text-lg font-medium text-gray-900 mb-2'>Không tìm thấy sản phẩm</h3>
+                      <p className='text-gray-600'>Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc</p>
                     </div>
-                    <h3 className='text-lg font-medium text-gray-900 mb-2'>Không tìm thấy sản phẩm</h3>
-                    <p className='text-gray-600'>Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc</p>
-                  </div>
-                )
-              ) : (
-                comboCardData.length === 0 && (
-                  <div className='text-center py-12'>
-                    <div className='text-gray-400 mb-4'>
-                      <svg className='mx-auto h-12 w-12' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth='2'
-                          d='M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'
-                        />
-                      </svg>
+                  )
+                : comboCardData.length === 0 && (
+                    <div className='text-center py-12'>
+                      <div className='text-gray-400 mb-4'>
+                        <svg className='mx-auto h-12 w-12' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth='2'
+                            d='M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'
+                          />
+                        </svg>
+                      </div>
+                      <h3 className='text-lg font-medium text-gray-900 mb-2'>Không tìm thấy combo</h3>
+                      <p className='text-gray-600'>Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc</p>
                     </div>
-                    <h3 className='text-lg font-medium text-gray-900 mb-2'>Không tìm thấy combo</h3>
-                    <p className='text-gray-600'>Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc</p>
-                  </div>
-                )
-              )}
+                  )}
 
               {/* Pagination */}
               <Pagination

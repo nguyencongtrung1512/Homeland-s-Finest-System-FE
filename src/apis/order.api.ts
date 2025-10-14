@@ -1,5 +1,5 @@
 import axiosInstance from '../service/axiosInstance'
-import type { OrderListResponse, OrderResponse, OrderQueryParams, CreateOrderInput, Order } from '../types/orderType'
+import type { OrderListResponse, OrderResponse, OrderQueryParams, CreateOrderInput, Order, OrderStatus } from '../types/orderType'
 const API_URL = `/Order`
 
 // GET /api/Order/get-all - Lấy danh sách tất cả orders với pagination
@@ -10,9 +10,16 @@ export const getAllOrders = async (params?: OrderQueryParams): Promise<Order[]> 
   return response.data
 }
 
-// GET /api/Order/customer-order/{customerId} - Lấy orders của customer cụ thể
-export const getCustomerOrders = async (customerId: string, params?: OrderQueryParams): Promise<Order[]> => {
-  const response: OrderListResponse = await axiosInstance.get(`${API_URL}/customer-order/${customerId}`, { params })
+// GET /api/Order/user-order - Lấy orders của customer cụ thể
+export const getCustomerOrders = async (userId: string, params?: OrderQueryParams): Promise<Order[]> => {
+  const response: OrderListResponse = await axiosInstance.get(`${API_URL}/user-order`, {
+    params: {
+      userId,
+      Status: params?.status,
+      PageSize: params?.pageSize || 0,
+      PageNumber: params?.pageNumber || 1
+    }
+  })
   return response.data
 }
 
@@ -23,9 +30,9 @@ export const getOrderDetail = async (orderId: string): Promise<Order> => {
 }
 
 // POST /api/Order/create-order - Tạo order mới
-export const createOrder = async (orderData: CreateOrderInput): Promise<Order> => {
+export const createOrder = async (orderData: CreateOrderInput): Promise<Order[]> => {
   const response: OrderListResponse = await axiosInstance.post(`${API_URL}/create-order`, orderData)
-  return response.data[0] // API trả về array, lấy phần tử đầu tiên
+  return response.data // API trả về array theo documentation
 }
 
 // PUT /api/Order/confirm/{orderId} - Xác nhận order (chuyển sang Processing)
@@ -80,7 +87,7 @@ export const getOrdersByStatus = async (
   status: string,
   params?: Omit<OrderQueryParams, 'status'>
 ): Promise<Order[]> => {
-  return getAllOrders({ ...params, status: status as any })
+  return getAllOrders({ ...params, status: status as OrderStatus })
 }
 
 // Utility function để lấy orders của store

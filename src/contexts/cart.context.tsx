@@ -74,7 +74,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const transformedCart = transformCartData(cartResponse?.data)
       const countFromSummary =
         cartResponse?.data?.summary?.totalItems ?? transformedCart.reduce((sum, i) => sum + i.quantity, 0)
-
+      console.log('[LoadCart] countFromSummary:', cartResponse)
       setCart(transformedCart)
       setCartCount(countFromSummary)
     } catch (error) {
@@ -135,14 +135,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }, [user?.userId, isAuthenticated])
 
   return (
-    <CartContext.Provider 
-      value={{ 
-        cart, 
-        cartCount, 
-        loading, 
-        addToCart, 
-        refreshCart, 
-        clearCart 
+    <CartContext.Provider
+      value={{
+        cart,
+        cartCount,
+        loading,
+        addToCart,
+        refreshCart,
+        clearCart
       }}
     >
       {children}

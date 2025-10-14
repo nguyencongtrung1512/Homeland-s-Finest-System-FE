@@ -3,17 +3,17 @@ import { CheckCircle, XCircle, CreditCard, BadgeCheck, Loader2 } from 'lucide-re
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { getOrderDetail } from '../../../apis/order.api'
-import { Order } from '../../../types/orderType'
+import type { Order } from '../../../types/orderType'
 import { toast } from 'react-toastify'
 
 function Invoice() {
   const location = useLocation()
   const navigate = useNavigate()
-  
+
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   // Lấy trạng thái thanh toán và orderId từ query string
   const params = new URLSearchParams(location.search)
   const status = params.get('status') === 'fail' ? 'fail' : 'success'
@@ -48,7 +48,7 @@ function Invoice() {
     if (!dateString) return 'N/A'
     try {
       // Handle the format "01:29:03 13-10-2025"
-      const [time, date] = dateString.split(' ')
+      const [, date] = dateString.split(' ')
       const [day, month, year] = date.split('-')
       return `${day}/${month}/${year}`
     } catch {
@@ -139,77 +139,77 @@ function Invoice() {
           </>
         )}
       </div>
-      
+
       {/* Invoice info (only show if success) */}
       {status === 'success' && (
         <div className='bg-white rounded-lg shadow p-6 mx-auto max-w-xl'>
           <div className='flex justify-between mb-2 text-sm'>
             <div>
-              Mã đơn hàng <span className='font-semibold'>#{order.ghnorderCode}</span>
+              Mã đơn hàng <span className='font-semibold'>#{order.ghnorderCode || 'N/A'}</span>
             </div>
             <div>
-              Ngày đặt hàng <span className='font-semibold'>{formatDate(order.orderHistories[0]?.time)}</span>
+              Ngày đặt hàng <span className='font-semibold'>{formatDate(order.orderHistories?.[0]?.time)}</span>
             </div>
           </div>
           <div className='flex items-center gap-2 mb-2 text-sm'>
             <CreditCard className='w-4 h-4 text-green-600' />
             <span>
-              Phương thức thanh toán: <span className='font-semibold'>{getPaymentMethodText(order.paymentType)}</span>
+              Phương thức thanh toán: <span className='font-semibold'>{getPaymentMethodText(order.paymentType || '')}</span>
             </span>
           </div>
           <div className='flex items-center gap-2 mb-4 text-sm'>
             <CheckCircle className='w-4 h-4 text-green-600' />
             <span>
-              Trạng thái: <span className='font-semibold text-green-700'>{getStatusText(order.status)}</span>
+              Trạng thái: <span className='font-semibold text-green-700'>{getStatusText(order.status || '')}</span>
             </span>
           </div>
-          
+
           {/* Shipping Information */}
           <div className='border-t pt-4 mb-4'>
             <div className='font-semibold mb-2'>Thông tin giao hàng</div>
             <div className='text-sm text-gray-600'>
-              <div>Người nhận: <span className='font-medium'>{order.toName}</span></div>
-              <div>Địa chỉ: <span className='font-medium'>{order.toAddress}</span></div>
-              <div>Cửa hàng: <span className='font-medium'>{order.fromName}</span></div>
+              <div>Người nhận: <span className='font-medium'>{order.toName || 'N/A'}</span></div>
+              <div>Địa chỉ: <span className='font-medium'>{order.toAddress || 'N/A'}</span></div>
+              <div>Cửa hàng: <span className='font-medium'>{order.fromName || 'N/A'}</span></div>
             </div>
           </div>
-          
+
           <div className='border-t pt-4 mb-2'>
             <div className='font-semibold mb-2'>Sản phẩm đã đặt</div>
             {order.orderItems.map((item, idx) => (
               <div key={idx} className='flex items-center gap-4 mb-2'>
-                <img 
-                  src={item.orderItemImageUrl} 
-                  alt={item.orderItemName} 
-                  className='w-14 h-14 rounded object-cover border' 
+                <img
+                  src={item.orderItemImageUrl}
+                  alt={item.orderItemName}
+                  className='w-14 h-14 rounded object-cover border'
                 />
                 <div className='flex-1'>
                   <div className='font-medium'>{item.orderItemName}</div>
                   <div className='text-xs text-gray-500'>Số lượng: {item.quantity}</div>
-                  {item.basePrice !== item.finalPrice && (
+                  {item.basePrice && item.finalPrice && item.basePrice !== item.finalPrice && (
                     <div className='text-xs text-gray-500'>
                       Giá gốc: {item.basePrice.toLocaleString('vi-VN')}₫
                     </div>
                   )}
                 </div>
-                <div className='font-semibold'>{item.totalPrice.toLocaleString('vi-VN')}₫</div>
+                <div className='font-semibold'>{(item.totalPrice || 0).toLocaleString('vi-VN')}₫</div>
               </div>
             ))}
           </div>
-          
+
           <div className='flex justify-between text-sm'>
             <span>Tạm tính</span>
-            <span>{order.totalOrder.toLocaleString('vi-VN')}₫</span>
+            <span>{(order.totalOrder || 0).toLocaleString('vi-VN')}₫</span>
           </div>
           <div className='flex justify-between text-sm'>
             <span>Phí vận chuyển</span>
-            <span>{order.shipPrice.toLocaleString('vi-VN')}₫</span>
+            <span>{(order.shipPrice || 0).toLocaleString('vi-VN')}₫</span>
           </div>
           <div className='flex justify-between font-bold text-lg mt-2'>
             <span>Tổng cộng</span>
-            <span>{order.totalPrice.toLocaleString('vi-VN')}₫</span>
+            <span>{(order.finalPrice || 0).toLocaleString('vi-VN')}₫</span>
           </div>
-          
+
           {/* Order History */}
           {order.orderHistories && order.orderHistories.length > 0 && (
             <div className='border-t pt-4 mt-4'>
@@ -221,7 +221,7 @@ function Invoice() {
               ))}
             </div>
           )}
-          
+
           <Button
             className='w-full mt-6 bg-orange-400 hover:bg-orange-500'
             onClick={() => navigate('/profile?tab=orders')}

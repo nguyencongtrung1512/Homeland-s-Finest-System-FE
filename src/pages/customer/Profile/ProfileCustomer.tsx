@@ -53,14 +53,15 @@ export default function Profile() {
   }, [authUser?.userId])
 
   // Load customer orders
-  const loadCustomerOrders = async () => {
+  const loadCustomerOrders = async (status?: string) => {
     if (!authUser?.userId) return
 
     try {
       setOrdersLoading(true)
       const customerOrders = await getCustomerOrders(authUser.userId, {
-        pageSize: 0, // Load more orders for better UX
+        pageSize: 0, // Load all orders for better UX
         pageNumber: 1,
+        status: status as any, // Filter by status if provided
         sortBy: 'createdAt',
         sortOrder: 'desc'
       })
@@ -200,10 +201,10 @@ export default function Profile() {
         <CardContent className='p-6'>
           <div className='flex items-center gap-4'>
             <Avatar className='w-20 h-20'>
-              <img 
-                src={user?.avatar || '/src/assets/react.svg'} 
-                alt='Profile' 
-                className='w-full h-full object-cover rounded-full' 
+              <img
+                src={user?.avatar || '/src/assets/react.svg'}
+                alt='Profile'
+                className='w-full h-full object-cover rounded-full'
               />
             </Avatar>
             <div>
@@ -258,10 +259,11 @@ export default function Profile() {
             <CardContent className='p-6'>
               {activeTab === 'profile' && <ProfileContent />}
               {activeTab === 'orders' && (
-                <OrdersContent 
-                  orders={orders} 
+                <OrdersContent
+                  orders={orders}
                   loading={ordersLoading}
-                  onRefreshOrders={loadCustomerOrders}
+                  onRefreshOrders={() => loadCustomerOrders()}
+                  onFilterByStatus={(status) => loadCustomerOrders(status)}
                 />
               )}
               {activeTab === 'addresses' && authUser?.userId && (

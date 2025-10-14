@@ -1,84 +1,83 @@
 // Cart component
-import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
-import { Input } from '../../../components/ui/input'
-import { Checkbox } from '../../../components/ui/checkbox'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../../components/ui/dialog'
-import { MapPin, Trash2, Plus, Minus, ShoppingCart, Truck, Shield, Edit } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Plus, Minus, ShoppingCart, Trash2, Store } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
 import { useAuth } from '../../../contexts/auth.context'
-import { updateCartItem, removeCartItem } from '../../../apis/cart.api'
+import { updateCartItem, removeCartItem, getCartByUserId } from '../../../apis/cart.api'
 import { toast } from 'react-toastify'
 import { createOrder } from '../../../apis/order.api'
-import type { CheckedState } from '@radix-ui/react-checkbox'
+import type { CartData, CartItem as APICartItem } from '../../../types/cartType'
 
-type CartItem = {
-  id: string
-  name: string
-  price: number
-  quantity: number
-  image: string
-  storeId?: string
-  productVariantId?: string
-  comboId?: string
-  isCombo?: boolean
-  selected: boolean
-  inStock: boolean
-}
-
-type Address = {
-  id: number
-  name: string
-  phone: string
-  address: string
-  isDefault: boolean
-}
 type PaymentMethod = 'COD' | 'Banking'
+
+interface ComboGroup {
+  comboId: string
+  comboName: string
+  items: APICartItem[]
+  quantity: number
+  totalPrice: number
+}
+
+type GroupedItem = APICartItem | ComboGroup
 
 export default function Cart() {
   const navigate = useNavigate()
-  const { cart, refreshCart, loading } = useCart()
+  const { refreshCart, loading } = useCart()
   const { user } = useAuth()
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [cartData, setCartData] = useState<CartData | null>(null)
+  const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({})
+  const [selectAll, setSelectAll] = useState(false)
   const hardcodedAddressId = '11000000-0000-0000-0000-000000000001'
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: 2,
-      name: 'Nguyễn Văn A',
-      phone: '0123456789',
-      address: '456 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
-      isDefault: false
+
+  // Helper function to reload cart data
+  const reloadCartData = useCallback(async () => {
+    if (!user?.userId) return
+
+    try {
+      const response = await getCartByUserId(user.userId)
+      console.log('[ReloadCartData] response:', response)
+      if (response?.status === 200) {
+        setCartData(response.data)
+      }
+    } catch (error) {
+      console.error('Error reloading cart data:', error)
     }
-  ])
-  const [selectedAddress, setSelectedAddress] = useState<Address>(addresses[0])
-  const [newAddress, setNewAddress] = useState({
-    name: '',
-    phone: '',
-    address: ''
-  })
-  const [isAddingAddress, setIsAddingAddress] = useState(false)
+  }, [user?.userId])
 
-  // Transform cart data from context to local state
+  // Load cart data from API
   useEffect(() => {
-    const transformedItems = cart.map((item) => ({
-      ...item,
-      selected: true,
-      inStock: true
-    }))
-    setCartItems(transformedItems)
-  }, [cart])
+    reloadCartData()
+  }, [reloadCartData])
 
-  const updateQuantity = async (id: string, newQuantity: number) => {
+  // Transform cart data to local state
+  useEffect(() => {
+    if (cartData) {
+      const initialSelectedItems: Record<string, boolean> = {}
+      cartData.carts.forEach((store) => {
+        store.items.forEach((item) => {
+          initialSelectedItems[item.id] = true
+        })
+      })
+      setSelectedItems(initialSelectedItems)
+      setSelectAll(true)
+    }
+  }, [cartData])
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN').format(price)
+  }
+
+  const updateQuantity = async (itemId: string, newQuantity: number) => {
     if (!user?.userId || newQuantity < 1) return
 
     try {
-      // gọi API với (cartItemId, quantity)
-      await updateCartItem(id, newQuantity)
+      await updateCartItem(itemId, newQuantity)
       await refreshCart()
+      await reloadCartData()
       toast.success('Cập nhật số lượng thành công')
     } catch (error) {
       console.error('Error updating quantity:', error)
@@ -86,12 +85,13 @@ export default function Cart() {
     }
   }
 
-  const removeItem = async (id: string) => {
+  const removeItem = async (itemId: string) => {
     if (!user?.userId) return
 
     try {
-      await removeCartItem(user.userId, id)
+      await removeCartItem(user.userId, itemId)
       await refreshCart()
+      await reloadCartData()
       toast.success('Đã xóa sản phẩm khỏi giỏ hàng')
     } catch (error) {
       console.error('Error removing item:', error)
@@ -99,34 +99,78 @@ export default function Cart() {
     }
   }
 
-  const toggleItemSelection = (id: string) => {
-    setCartItems((prev) => prev.map((item) => (item.id === id ? { ...item, selected: !item.selected } : item)))
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItems((prev) => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }))
   }
 
-  const toggleAllSelection = (checked: CheckedState) => {
-    setCartItems((prev) => prev.map((item) => ({ ...item, selected: checked === true })))
+  const toggleSelectAll = () => {
+    const newSelectAll = !selectAll
+    setSelectAll(newSelectAll)
+    const newSelectedItems: Record<string, boolean> = {}
+    if (cartData) {
+      cartData.carts.forEach((store) => {
+        store.items.forEach((item) => {
+          newSelectedItems[item.id] = newSelectAll
+        })
+      })
+    }
+    setSelectedItems(newSelectedItems)
   }
 
-  const selectedItems = cartItems.filter((item) => item.selected)
-  const totalPrice = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const allSelected = cartItems.length > 0 && cartItems.every((item) => item.selected)
+  const getTotalItems = () => {
+    return cartData ? cartData.carts.reduce((sum, store) => sum + store.items.length, 0) : 0
+  }
 
-  const handleAddAddress = () => {
-    if (!newAddress.name || !newAddress.phone || !newAddress.address) {
-      toast.error('Vui lòng điền đầy đủ thông tin')
-      return
+  const getSelectedTotal = () => {
+    let total = 0
+    if (cartData) {
+      cartData.carts.forEach((store) => {
+        store.items.forEach((item) => {
+          if (selectedItems[item.id]) {
+            total += item.totalPrice
+          }
+        })
+      })
     }
+    return total
+  }
 
-    const address: Address = {
-      id: Date.now(),
-      ...newAddress,
-      isDefault: addresses.length === 0
-    }
+  const getSelectedCount = () => {
+    return Object.values(selectedItems).filter(Boolean).length
+  }
 
-    setAddresses((prev) => [...prev, address])
-    setNewAddress({ name: '', phone: '', address: '' })
-    setIsAddingAddress(false)
-    toast.success('Thêm địa chỉ thành công')
+  // Group combo items
+  const groupComboItems = (items: APICartItem[]): GroupedItem[] => {
+    const grouped: GroupedItem[] = []
+    const comboMap = new Map<string, ComboGroup>()
+
+    items.forEach((item) => {
+      if (item.isCombo) {
+        if (!comboMap.has(item.comboId)) {
+          comboMap.set(item.comboId, {
+            comboId: item.comboId,
+            comboName: 'Combo', // You might want to get this from API
+            items: [],
+            quantity: item.quantity,
+            totalPrice: 0
+          })
+        }
+        const combo = comboMap.get(item.comboId)!
+        combo.items.push(item)
+        combo.totalPrice += item.totalPrice
+      } else {
+        grouped.push(item)
+      }
+    })
+
+    comboMap.forEach((combo) => {
+      grouped.push(combo)
+    })
+
+    return grouped
   }
 
   const handleCreateOrder = async () => {
@@ -135,7 +179,12 @@ export default function Cart() {
         toast.error('Vui lòng đăng nhập trước khi đặt hàng')
         return
       }
-      if (selectedItems.length === 0) {
+
+      const selectedItemsList = cartData
+        ? cartData.carts.flatMap((store) => store.items.filter((item) => selectedItems[item.id]))
+        : []
+
+      if (selectedItemsList.length === 0) {
         toast.error('Vui lòng chọn ít nhất một sản phẩm')
         return
       }
@@ -150,8 +199,8 @@ export default function Cart() {
         userId: user.userId,
         userAddressId: hardcodedAddressId,
         paymentMethod: selectedPaymentMethod,
-        orderItemCreates: selectedItems.map((item) => ({
-          productVariantId: item.productVariantId as string,
+        orderItemCreates: selectedItemsList.map((item) => ({
+          productVariantId: item.productVariantId,
           quantity: item.quantity,
           ...(item.isCombo && item.comboId ? { comboId: item.comboId } : {})
         }))
@@ -160,14 +209,21 @@ export default function Cart() {
       const createdOrder = await createOrder(orderData)
       toast.success('Đơn hàng đã được tạo! Đang chuyển đến trang thanh toán...')
 
+      // Store selected item IDs for later clearing after successful payment
+      const selectedItemIds = selectedItemsList.map((item) => item.id)
+
       navigate('/cart/create-order', {
         state: {
-          order: createdOrder,
-          paymentMethod: selectedPaymentMethod
+          order: createdOrder[0], // Lấy order đầu tiên từ array
+          paymentMethod: selectedPaymentMethod,
+          selectedItemIds: selectedItemIds // Pass item IDs to clear later
         }
       })
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error.message || 'Có lỗi xảy ra khi đặt hàng'
+    } catch (error: unknown) {
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error).message ||
+        'Có lỗi xảy ra khi đặt hàng'
       toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
@@ -185,7 +241,7 @@ export default function Cart() {
     )
   }
 
-  if (cartItems.length === 0) {
+  if (!cartData || cartData.carts.length === 0) {
     return (
       <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
         <div className='text-center'>
@@ -200,195 +256,230 @@ export default function Cart() {
     )
   }
 
+  const shippingFee = 30000
+
   return (
     <div className='min-h-screen bg-gray-50 py-8'>
       <div className='max-w-7xl mx-auto px-4'>
-        <h1 className='text-3xl font-bold text-gray-900 mb-8'>Giỏ hàng của bạn</h1>
+        <div className='flex items-center gap-3 mb-6'>
+          <ShoppingCart className='w-8 h-8 text-orange-600' />
+          <h1 className='text-3xl font-bold text-gray-800'>Giỏ hàng ({getTotalItems()} sản phẩm)</h1>
+        </div>
 
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
           {/* Cart Items */}
-          <div className='lg:col-span-2 space-y-6'>
+          <div className='lg:col-span-2 space-y-4'>
             {/* Select All */}
-            <Card>
-              <CardContent className='p-4'>
-                <div className='flex items-center gap-3'>
-                  <Checkbox checked={allSelected} onCheckedChange={toggleAllSelection} id='select-all' />
-                  <label htmlFor='select-all' className='text-sm font-medium cursor-pointer'>
-                    Chọn tất cả ({cartItems.length} sản phẩm)
-                  </label>
+            <div className='bg-white rounded-lg shadow-sm p-4'>
+              <label className='flex items-center gap-2 cursor-pointer'>
+                <input
+                  type='checkbox'
+                  checked={selectAll}
+                  onChange={toggleSelectAll}
+                  className='w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500'
+                />
+                <span className='text-gray-700'>Chọn tất cả ({getTotalItems()} sản phẩm)</span>
+              </label>
+            </div>
+
+            {/* Store Items */}
+            {cartData.carts.map((store) => (
+              <div key={store.cartId} className='bg-white rounded-lg shadow-sm overflow-hidden'>
+                {/* Store Header */}
+                <div className='bg-orange-50 px-4 py-3 flex items-center justify-between border-b border-orange-100'>
+                  <div className='flex items-center gap-2'>
+                    <Store className='w-5 h-5 text-orange-600' />
+                    <span className='font-semibold text-gray-800'>{store.storeName}</span>
+                  </div>
+                  <button className='text-sm text-orange-600 hover:text-orange-700 font-medium'>Xem shop</button>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Cart Items List */}
-            {cartItems.map((item) => (
-              <Card key={item.id}>
-                <CardContent className='p-6'>
-                  <div className='flex items-start gap-4'>
-                    <Checkbox checked={item.selected} onCheckedChange={() => toggleItemSelection(item.id)} />
+                {/* Items */}
+                <div className='divide-y divide-gray-100'>
+                  {groupComboItems(store.items).map((item) => {
+                    // Check if it's a combo group
+                    if ('comboId' in item && 'items' in item) {
+                      const comboItem = item as ComboGroup
+                      return (
+                        <div key={comboItem.comboId} className='p-4 bg-purple-50'>
+                          <div className='flex items-start gap-4'>
+                            <input
+                              type='checkbox'
+                              checked={comboItem.items.every((i: APICartItem) => selectedItems[i.id])}
+                              onChange={() => {
+                                comboItem.items.forEach((i: APICartItem) => toggleItemSelection(i.id))
+                              }}
+                              className='w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 mt-1'
+                            />
 
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className='w-20 h-20 object-cover rounded-lg'
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = 'https://via.placeholder.com/80x80?text=No+Image'
-                      }}
-                    />
+                            <div className='flex-1'>
+                              <div className='flex items-center gap-2 mb-3'>
+                                <span className='bg-purple-600 text-white text-xs px-2 py-1 rounded'>
+                                  Sản phẩm combo
+                                </span>
+                                <span className='text-purple-600 font-medium text-sm'>COMBO</span>
+                              </div>
 
-                    <div className='flex-1'>
-                      <h3 className='font-semibold text-lg text-gray-900'>{item.name}</h3>
-                      <p className='text-gray-600 text-sm mt-1'>
-                        {item.isCombo ? 'Combo sản phẩm' : 'Sản phẩm đơn lẻ'}
-                      </p>
+                              <div className='bg-white rounded-lg p-3 mb-2'>
+                                <div className='flex justify-between items-start mb-2'>
+                                  <h3 className='font-semibold text-gray-800'>{comboItem.comboName}</h3>
+                                  <button
+                                    onClick={() => removeItem(comboItem.items[0].id)}
+                                    className='text-gray-400 hover:text-red-500'
+                                  >
+                                    <Trash2 className='w-4 h-4' />
+                                  </button>
+                                </div>
+                                <p className='text-sm text-gray-600 mb-3'>
+                                  {comboItem.items.length} sản phẩm trong combo
+                                </p>
+                                <div className='flex items-center justify-between'>
+                                  <div className='flex items-center gap-3'>
+                                    <button
+                                      onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity - 1)}
+                                      className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
+                                    >
+                                      <Minus className='w-4 h-4' />
+                                    </button>
+                                    <span className='w-12 text-center font-medium'>{comboItem.quantity}</span>
+                                    <button
+                                      onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity + 1)}
+                                      className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
+                                    >
+                                      <Plus className='w-4 h-4' />
+                                    </button>
+                                  </div>
+                                  <div className='text-right'>
+                                    <p className='text-purple-600 font-bold text-lg'>
+                                      ₫{formatPrice(comboItem.totalPrice)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
 
-                      <div className='flex items-center justify-between mt-4'>
-                        <div className='flex items-center gap-3'>
-                          <span className='text-xl font-bold text-red-600'>{item.price.toLocaleString('vi-VN')}₫</span>
+                              {/* Combo Items */}
+                              <div className='space-y-2'>
+                                {comboItem.items.map((comboItem: APICartItem) => (
+                                  <div key={comboItem.id} className='flex items-center gap-3 bg-white rounded p-2'>
+                                    <div className='w-12 h-12 bg-gray-100 rounded flex items-center justify-center'>
+                                      <img
+                                        src={comboItem.imageUrl || '/api/placeholder/48/48'}
+                                        alt={comboItem.name}
+                                        className='w-10 h-10 object-cover rounded'
+                                      />
+                                    </div>
+                                    <div className='flex-1'>
+                                      <p className='text-sm font-medium text-gray-800'>{comboItem.name}</p>
+                                      <p className='text-xs text-gray-500'>
+                                        ₫{formatPrice(comboItem.unitPrice)} x {comboItem.quantity}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
                         </div>
+                      )
+                    }
 
-                        <div className='flex items-center gap-3'>
-                          {/* Quantity Controls */}
-                          <div className='flex items-center border border-gray-300 rounded-lg'>
-                            <button
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              disabled={item.quantity <= 1}
-                              className='px-3 py-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed'
-                            >
-                              <Minus size={16} />
-                            </button>
-                            <span className='px-4 py-1 border-l border-r border-gray-300'>{item.quantity}</span>
-                            <button
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              className='px-3 py-1 hover:bg-gray-100'
-                            >
-                              <Plus size={16} />
-                            </button>
+                    // Regular item
+                    const regularItem = item as APICartItem
+                    return (
+                      <div key={regularItem.id} className='p-4'>
+                        <div className='flex items-start gap-4'>
+                          <input
+                            type='checkbox'
+                            checked={selectedItems[regularItem.id] || false}
+                            onChange={() => toggleItemSelection(regularItem.id)}
+                            className='w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 mt-1'
+                          />
+
+                          <div className='w-20 h-20 bg-gray-100 rounded overflow-hidden flex-shrink-0'>
+                            <img
+                              src={regularItem.imageUrl || '/api/placeholder/80/80'}
+                              alt={regularItem.name}
+                              className='w-full h-full object-cover'
+                            />
                           </div>
 
-                          {/* Remove Button */}
+                          <div className='flex-1 min-w-0'>
+                            <h3 className='font-semibold text-gray-800 mb-1'>{regularItem.name}</h3>
+
+                            <div className='flex items-center justify-between mt-3'>
+                              <div className='flex items-center gap-3'>
+                                <button
+                                  onClick={() => updateQuantity(regularItem.id, regularItem.quantity - 1)}
+                                  className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
+                                  disabled={regularItem.quantity <= 1}
+                                >
+                                  <Minus className='w-4 h-4' />
+                                </button>
+                                <span className='w-12 text-center font-medium'>{regularItem.quantity}</span>
+                                <button
+                                  onClick={() => updateQuantity(regularItem.id, regularItem.quantity + 1)}
+                                  className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
+                                >
+                                  <Plus className='w-4 h-4' />
+                                </button>
+                              </div>
+
+                              <div className='text-right'>
+                                <p className='text-orange-600 font-bold text-lg'>
+                                  ₫{formatPrice(regularItem.totalPrice)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
                           <button
-                            onClick={() => removeItem(item.id)}
-                            className='p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors'
+                            onClick={() => removeItem(regularItem.id)}
+                            className='text-gray-400 hover:text-red-500 flex-shrink-0'
                           >
-                            <Trash2 size={16} />
+                            <Trash2 className='w-5 h-5' />
                           </button>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    )
+                  })}
+                </div>
+              </div>
             ))}
           </div>
 
           {/* Order Summary */}
-          <div className='space-y-6'>
-            {/* Delivery Address */}
-            <Card>
-              <CardContent className='p-6'>
-                <div className='flex items-center justify-between mb-4'>
-                  <h3 className='font-semibold text-lg'>Địa chỉ giao hàng</h3>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant='outline' size='sm'>
-                        <Edit size={16} className='mr-2' />
-                        Thay đổi
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className='max-w-md'>
-                      <DialogHeader>
-                        <DialogTitle>Chọn địa chỉ giao hàng</DialogTitle>
-                      </DialogHeader>
-                      <div className='space-y-4'>
-                        {addresses.map((address) => (
-                          <div
-                            key={address.id}
-                            className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedAddress.id === address.id
-                                ? 'border-green-500 bg-green-50'
-                                : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                            onClick={() => setSelectedAddress(address)}
-                          >
-                            <div className='flex items-start justify-between'>
-                              <div>
-                                <p className='font-medium'>{address.name}</p>
-                                <p className='text-sm text-gray-600'>{address.phone}</p>
-                                <p className='text-sm text-gray-600 mt-1'>{address.address}</p>
-                              </div>
-                              {address.isDefault && (
-                                <span className='text-xs bg-green-100 text-green-800 px-2 py-1 rounded'>Mặc định</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+          <div className='lg:col-span-1'>
+            <div className='bg-white rounded-lg shadow-sm p-6 sticky top-8'>
+              <h2 className='text-lg font-bold text-gray-800 mb-4'>Tóm tắt đơn hàng</h2>
 
-                        {!isAddingAddress ? (
-                          <Button variant='outline' className='w-full' onClick={() => setIsAddingAddress(true)}>
-                            <Plus size={16} className='mr-2' />
-                            Thêm địa chỉ mới
-                          </Button>
-                        ) : (
-                          <div className='space-y-3 p-4 border border-gray-200 rounded-lg'>
-                            <Input
-                              placeholder='Họ và tên'
-                              value={newAddress.name}
-                              onChange={(e) => setNewAddress((prev) => ({ ...prev, name: e.target.value }))}
-                            />
-                            <Input
-                              placeholder='Số điện thoại'
-                              value={newAddress.phone}
-                              onChange={(e) => setNewAddress((prev) => ({ ...prev, phone: e.target.value }))}
-                            />
-                            <Input
-                              placeholder='Địa chỉ chi tiết'
-                              value={newAddress.address}
-                              onChange={(e) => setNewAddress((prev) => ({ ...prev, address: e.target.value }))}
-                            />
-                            <div className='flex gap-2'>
-                              <Button size='sm' onClick={handleAddAddress}>
-                                Thêm
-                              </Button>
-                              <Button
-                                variant='outline'
-                                size='sm'
-                                onClick={() => {
-                                  setIsAddingAddress(false)
-                                  setNewAddress({ name: '', phone: '', address: '' })
-                                }}
-                              >
-                                Hủy
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+              <div className='space-y-3 mb-4 pb-4 border-b border-gray-200'>
+                <div className='flex justify-between text-sm'>
+                  <span className='text-gray-600'>Sản phẩm ({getSelectedCount()} món)</span>
+                  <span className='font-medium'>₫{formatPrice(getSelectedTotal())}</span>
                 </div>
-
-                <div className='flex items-start gap-3'>
-                  <MapPin size={20} className='text-green-600 mt-1 flex-shrink-0' />
-                  <div>
-                    <p className='font-medium'>{selectedAddress.name}</p>
-                    <p className='text-sm text-gray-600'>{selectedAddress.phone}</p>
-                    <p className='text-sm text-gray-600 mt-1'>{selectedAddress.address}</p>
-                  </div>
+                <div className='flex justify-between text-sm'>
+                  <span className='text-gray-600'>Phí vận chuyển</span>
+                  <span className='font-medium'>₫{formatPrice(shippingFee)}</span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Payment Method Selection */}
-            <Card className='bg-white shadow-sm'>
-              <CardContent className='p-6'>
-                <h2 className='text-xl font-semibold mb-4'>Phương thức thanh toán</h2>
-                <div className='space-y-3'>
+              <div className='flex justify-between items-center mb-6'>
+                <span className='text-lg font-bold text-gray-800'>Tổng cộng</span>
+                <span className='text-2xl font-bold text-orange-600'>
+                  ₫{formatPrice(getSelectedTotal() + shippingFee)}
+                </span>
+              </div>
+
+              {/* Payment Method Selection */}
+              <div className='mb-4'>
+                <h3 className='text-sm font-semibold text-gray-700 mb-3'>Phương thức thanh toán</h3>
+                <div className='space-y-2'>
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'COD'
+                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'COD'
                         ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
                   >
                     <input
                       type='radio'
@@ -399,16 +490,17 @@ export default function Cart() {
                       className='w-4 h-4 text-green-600'
                     />
                     <div className='flex-1'>
-                      <p className='font-medium text-gray-900'>💵 Thanh toán khi nhận hàng (COD)</p>
-                      <p className='text-sm text-gray-500'>Thanh toán bằng tiền mặt khi nhận hàng</p>
+                      <p className='font-medium text-gray-900'>💵 COD</p>
+                      <p className='text-xs text-gray-500'>Thanh toán khi nhận hàng</p>
                     </div>
                   </label>
 
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'Banking'
+                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'Banking'
                         ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
                   >
                     <input
                       type='radio'
@@ -419,62 +511,42 @@ export default function Cart() {
                       className='w-4 h-4 text-green-600'
                     />
                     <div className='flex-1'>
-                      <p className='font-medium text-gray-900'>💳 Chuyển khoản ngân hàng</p>
-                      <p className='text-sm text-gray-500'>Thanh toán qua chuyển khoản ngân hàng</p>
+                      <p className='font-medium text-gray-900'>💳 Banking</p>
+                      <p className='text-xs text-gray-500'>Chuyển khoản ngân hàng</p>
                     </div>
                   </label>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Order Summary */}
-            <Card>
-              <CardContent className='p-6'>
-                <h3 className='font-semibold text-lg mb-4'>Tóm tắt đơn hàng</h3>
+              <button
+                onClick={handleCreateOrder}
+                className='w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                disabled={getSelectedCount() === 0 || !selectedPaymentMethod || isSubmitting}
+              >
+                {isSubmitting ? 'Đang tạo đơn hàng...' : `Mua hàng (${getSelectedCount()})`}
+              </button>
 
-                <div className='space-y-3'>
-                  <div className='flex justify-between'>
-                    <span>Tạm tính ({selectedItems.length} sản phẩm)</span>
-                    <span>{totalPrice.toLocaleString('vi-VN')}₫</span>
-                  </div>
-                  <div className='flex justify-between'>
-                    <span>Phí vận chuyển</span>
-                    <span className='text-green-600'>Miễn phí</span>
-                  </div>
-                  <div className='border-t pt-3'>
-                    <div className='flex justify-between text-lg font-semibold'>
-                      <span>Tổng cộng</span>
-                      <span className='text-red-600'>{totalPrice.toLocaleString('vi-VN')}₫</span>
-                    </div>
-                  </div>
+              <button
+                onClick={() => navigate('/products')}
+                className='w-full border border-gray-300 text-gray-700 font-medium py-3 rounded-lg hover:bg-gray-50 transition-colors'
+              >
+                Tiếp tục mua sắm
+              </button>
+
+              <div className='mt-4 pt-4 border-t border-gray-200 space-y-2 text-xs text-gray-600'>
+                <div className='flex items-center gap-2'>
+                  <div className='w-1 h-1 rounded-full bg-green-500'></div>
+                  <span>Thanh toán an toàn & bảo mật</span>
                 </div>
-
-                <Button
-                  className='w-full mt-6 bg-green-600 hover:bg-green-700'
-                  onClick={handleCreateOrder}
-                  disabled={selectedItems.length === 0 || !selectedPaymentMethod || isSubmitting}
-                >
-                  {isSubmitting ? 'Đang tạo đơn hàng...' : 'Đặt hàng'}
-                </Button>
-
-                {/* Trust Badges */}
-                <div className='mt-6 space-y-3'>
-                  <div className='flex items-center gap-3 text-sm text-gray-600'>
-                    <Truck size={16} className='text-green-600' />
-                    <span>Giao hàng miễn phí toàn quốc</span>
-                  </div>
-                  <div className='flex items-center gap-3 text-sm text-gray-600'>
-                    <Shield size={16} className='text-green-600' />
-                    <span>Đảm bảo chất lượng 100%</span>
-                  </div>
+                <div className='flex items-center gap-2'>
+                  <div className='w-1 h-1 rounded-full bg-green-500'></div>
+                  <span>Giao hàng nhanh toàn quốc</span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   )
 }
-
-
