@@ -10,7 +10,6 @@ import {
   Mail,
   Phone,
   CreditCard,
-  Check,
   Upload as UploadIcon
 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -56,19 +55,19 @@ function StaffStoreDetail() {
       // Handle different response formats
       let storeData = null
       if (response) {
-        if (response.id || response.storeName) {
+        if ('id' in response || 'storeName' in response) {
           storeData = response
-        } else if ((response as any).data && ((response as any).data.id || (response as any).data.storeName)) {
-          storeData = (response as any).data
+        } else if ('data' in response && response.data && ('id' in response.data || 'storeName' in response.data)) {
+          storeData = response.data
         }
       }
 
       if (storeData) {
-        setStore(storeData)
+        setStore(storeData as StoreResponse)
       } else {
         setError('Không tìm thấy thông tin cửa hàng')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải thông tin cửa hàng'
       setError(errorMessage)
       toast.error(errorMessage)
@@ -79,22 +78,19 @@ function StaffStoreDetail() {
 
   useEffect(() => {
     fetchStoreDetail()
-  }, [storeId])
+  }, [storeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleApprove = () => {
+  const handleReview = () => {
     if (store) {
       setReviewModalOpen(true)
-      reviewForm.setFieldsValue({
-        NewStatus: 'ReviewedByStaff',
-        StaffNotes: '',
-      })
+      reviewForm.resetFields()
     }
   }
 
   // Handle image selection and preview
-  const handleImageChange = (info: any) => {
+  const handleImageChange = (info: { fileList: Array<{ originFileObj?: File }> }) => {
     const fileList = info.fileList
-    const files = fileList.map((file: any) => file.originFileObj).filter(Boolean)
+    const files = fileList.map((file) => file.originFileObj).filter(Boolean) as File[]
 
     setSelectedImages(files)
 
@@ -148,9 +144,9 @@ function StaffStoreDetail() {
         fetchStoreDetail() // Refresh store data
       } else {
         console.error('❌ Unexpected response format:', response)
-        toast.error(`Lỗi: ${response?.message || 'Không thể đánh giá cửa hàng'}`)
+        toast.error('Không thể đánh giá cửa hàng')
       }
-    } catch (err: any) {
+    } catch {
       toast.error('Có lỗi xảy ra khi đánh giá cửa hàng')
     } finally {
       setReviewLoading(false)
@@ -172,7 +168,8 @@ function StaffStoreDetail() {
   const getStatusDisplay = (status: string) => {
     const statusMap = {
       Processing: { text: 'Đang xử lý', color: 'blue' },
-      ReviewedByStaff: { text: 'Đã xem xét', color: 'blue' },
+      ApprovedByStaff: { text: 'Đã chấp nhận', color: 'green' },
+      RejectedByStaff: { text: 'Đã từ chối', color: 'red' },
       Approved: { text: 'Đã duyệt', color: 'green' },
       Rejected: { text: 'Từ chối', color: 'red' },
       Active: { text: 'Hoạt động', color: 'green' },
@@ -194,7 +191,7 @@ function StaffStoreDetail() {
     return `${store.address}, ${store.ward}, ${store.district}, ${store.province}`
   }
 
-  const getFullName = (userInfo: any) => {
+  const getFullName = (userInfo: { firstName?: string | null; lastName?: string | null }) => {
     const firstName = userInfo.firstName || ''
     const lastName = userInfo.lastName || ''
     return `${firstName} ${lastName}`.trim() || 'Chưa cập nhật'
@@ -504,7 +501,7 @@ function StaffStoreDetail() {
           </Card>
 
           {/* Staff Notes & Feedback */}
-          {(store.staffNotes) && (
+          {store.staffNotes && (
             <Card
               title={
                 <div className='flex items-center gap-2 text-indigo-600'>
@@ -553,16 +550,16 @@ function StaffStoreDetail() {
             className='border-l-4 border-l-gray-400'
           >
             <div className='space-y-3'>
-              {/* Add Approve button if store status allows it */}
+              {/* Add Review button if store status allows it */}
               {store && store.status === 'Processing' && (
                 <Button
                   type='primary'
-                  icon={<Check size={16} />}
-                  onClick={handleApprove}
-                  className='w-full bg-green-500 hover:bg-green-600 border-green-500 hover:border-green-600'
+                  icon={<FileText size={16} />}
+                  onClick={handleReview}
+                  className='w-full bg-orange-500 hover:bg-orange-600 border-orange-500 hover:border-orange-600'
                   size='large'
                 >
-                  Duyệt cửa hàng
+                  Đánh giá cửa hàng
                 </Button>
               )}
             </div>
@@ -599,11 +596,12 @@ function StaffStoreDetail() {
         <Form form={reviewForm} layout='vertical' onFinish={handleReviewSubmit}>
           <Form.Item
             name='NewStatus'
-            label='Trạng thái'
-            rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+            label='Quyết định'
+            rules={[{ required: true, message: 'Vui lòng chọn quyết định' }]}
           >
-            <Select disabled>
-              <Option value='ReviewedByStaff'>Đã xem xét</Option>
+            <Select placeholder='Chọn quyết định đánh giá'>
+              <Option value='ApprovedByStaff'>Chấp nhận cửa hàng</Option>
+              <Option value='RejectedByStaff'>Từ chối cửa hàng</Option>
             </Select>
           </Form.Item>
 

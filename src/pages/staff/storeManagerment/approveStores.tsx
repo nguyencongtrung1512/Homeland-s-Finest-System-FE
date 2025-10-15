@@ -14,7 +14,7 @@ import {
   Form,
   Upload
 } from 'antd'
-import { Search, Filter, Eye, RefreshCw, Upload as UploadIcon } from 'lucide-react'
+import { Search, Filter, Eye, RefreshCw, Upload as UploadIcon, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
 import { staffApi, type AssignedStore, type ReviewStoreRequest } from '../../../apis/staff.api'
@@ -35,7 +35,7 @@ interface StoreData {
   }
   createdDate: string
   products: number
-  status: 'Processing' | 'ReviewedByStaff'
+  status: 'Processing' | 'ApprovedByStaff' | 'RejectedByStaff'
 }
 
 function ApproveStores() {
@@ -52,7 +52,7 @@ function ApproveStores() {
 
   // Review modal states
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
-  const [selectedStore] = useState<StoreData | null>(null)
+  const [selectedStore, setSelectedStore] = useState<StoreData | null>(null)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [reviewForm] = Form.useForm()
   const [selectedImages, setSelectedImages] = useState<File[]>([])
@@ -86,7 +86,7 @@ function ApproveStores() {
       },
       createdDate: formatDate(apiStore.createdAt),
       products: 0,
-      status: apiStore.status
+      status: apiStore.status as 'Processing' | 'ApprovedByStaff' | 'RejectedByStaff'
     }
   }
 
@@ -104,7 +104,7 @@ function ApproveStores() {
         try {
           const user = JSON.parse(userString)
           staffId = user.userId || user.id
-        } catch (parseError) {
+        } catch {
           // Silent error handling
         }
       }
@@ -130,15 +130,10 @@ function ApproveStores() {
         const convertedStores = response.data.map(convertAssignedStore)
         setStoreData(convertedStores)
         setTotalStores(convertedStores.length)
-      } else if (response && response.status === 200 && response.data && Array.isArray(response.data)) {
-        // Trường hợp API trả về full response object
-        const convertedStores = response.data.map(convertAssignedStore)
-        setStoreData(convertedStores)
-        setTotalStores(convertedStores.length)
       } else {
         setError('Định dạng dữ liệu không đúng')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải danh sách cửa hàng'
       setError(errorMessage)
       toast.error(errorMessage)
@@ -150,12 +145,12 @@ function ApproveStores() {
   // Load stores khi component mount
   useEffect(() => {
     fetchAssignedStores()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle image selection and preview
-  const handleImageChange = (info: any) => {
+  const handleImageChange = (info: { fileList: Array<{ originFileObj?: File }> }) => {
     const fileList = info.fileList
-    const files = fileList.map((file: any) => file.originFileObj).filter(Boolean)
+    const files = fileList.map((file) => file.originFileObj).filter(Boolean) as File[]
 
     setSelectedImages(files)
 
@@ -171,6 +166,13 @@ function ApproveStores() {
 
     setSelectedImages(newImages)
     setImagePreviews(newPreviews)
+  }
+
+  // Handle review store
+  const handleReviewStore = (store: StoreData) => {
+    setSelectedStore(store)
+    reviewForm.resetFields()
+    setReviewModalOpen(true)
   }
 
   const handleReviewSubmit = async (values: ReviewStoreRequest) => {
@@ -198,6 +200,7 @@ function ApproveStores() {
         reviewForm.resetFields()
         setSelectedImages([])
         setImagePreviews([])
+        setSelectedStore(null)
         fetchAssignedStores() // Refresh data
       } else if (response && response.status === 202) {
         // Fallback: check status if available
@@ -206,6 +209,7 @@ function ApproveStores() {
         reviewForm.resetFields()
         setSelectedImages([])
         setImagePreviews([])
+        setSelectedStore(null)
         fetchAssignedStores() // Refresh data
       } else if (response && response.message && response.message.includes('thành công')) {
         // Fallback: check if message contains success keywords
@@ -214,12 +218,13 @@ function ApproveStores() {
         reviewForm.resetFields()
         setSelectedImages([])
         setImagePreviews([])
+        setSelectedStore(null)
         fetchAssignedStores() // Refresh data
       } else {
         console.error('❌ Unexpected response format:', response)
         toast.error(`Lỗi: ${response?.message || 'Không thể đánh giá cửa hàng'}`)
       }
-    } catch (err: any) {
+    } catch {
       toast.error('Có lỗi xảy ra khi đánh giá cửa hàng')
     } finally {
       setReviewLoading(false)
@@ -241,7 +246,7 @@ function ApproveStores() {
       )
     },
     {
-      title: 'Chủ sở hữu',
+      title: 'Tên Doanh Nghiệp',
       dataIndex: 'owner',
       key: 'owner',
       render: (owner) => (
@@ -269,7 +274,8 @@ function ApproveStores() {
       render: (status) => {
         const statusConfig = {
           Processing: { color: 'blue', text: 'Đang xử lý' },
-          ReviewedByStaff: { color: 'green', text: 'Đã xem xét' }
+          ApprovedByStaff: { color: 'green', text: 'Đã chấp nhận' },
+          RejectedByStaff: { color: 'red', text: 'Đã từ chối' }
         }
         const config = statusConfig[status as keyof typeof statusConfig] || { color: 'default', text: status }
         return <Tag color={config.color}>{config.text}</Tag>
@@ -287,6 +293,15 @@ function ApproveStores() {
             className='flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
             title='Xem chi tiết'
           />
+          {record.status === 'Processing' && (
+            <Button
+              type='text'
+              icon={<FileText size={16} />}
+              onClick={() => handleReviewStore(record)}
+              className='flex items-center justify-center w-8 h-8 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100'
+              title='Đánh giá'
+            />
+          )}
         </div>
       )
     }
@@ -395,13 +410,14 @@ function ApproveStores() {
 
       {/* Review Modal */}
       <Modal
-        title={`Đánh giá cửa hàng: ${selectedStore?.store.name}`}
+        title={`Đánh giá cửa hàng hhhh: ${selectedStore?.store.storeName}`}
         open={reviewModalOpen}
         onCancel={() => {
           setReviewModalOpen(false)
           reviewForm.resetFields()
           setSelectedImages([])
           setImagePreviews([])
+          setSelectedStore(null)
         }}
         footer={null}
         width={600}
@@ -409,11 +425,12 @@ function ApproveStores() {
         <Form form={reviewForm} layout='vertical' onFinish={handleReviewSubmit}>
           <Form.Item
             name='NewStatus'
-            label='Trạng thái'
-            rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+            label='Quyết định'
+            rules={[{ required: true, message: 'Vui lòng chọn quyết định' }]}
           >
-            <Select disabled>
-              <Option value='ReviewedByStaff'>Đã xem xét</Option>
+            <Select placeholder='Chọn quyết định đánh giá'>
+              <Option value='ApprovedByStaff'>Chấp nhận cửa hàng</Option>
+              <Option value='RejectedByStaff'>Từ chối cửa hàng</Option>
             </Select>
           </Form.Item>
 
@@ -469,6 +486,7 @@ function ApproveStores() {
                 reviewForm.resetFields()
                 setSelectedImages([])
                 setImagePreviews([])
+                setSelectedStore(null)
               }}
             >
               Hủy
