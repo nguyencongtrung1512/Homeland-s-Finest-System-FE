@@ -171,8 +171,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
 
   const getStatusText = (status: string) => {
     const statusTextMap: Record<string, string> = {
-      NotYet: 'Chờ xác nhận',
-      Processing: 'Đã xác nhận',
+      NotYet: 'Chưa xác nhận',
+      Processing: 'Chờ xác nhận',
       Shipping: 'Đang giao',
       Delivered: 'Đã giao',
       Cancel: 'Đã hủy',

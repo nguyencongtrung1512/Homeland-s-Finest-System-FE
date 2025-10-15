@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowUpDown, ChevronDown, Eye, Loader2 } from 'lucide-react'
+import { ArrowUpDown, ChevronDown, Eye, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Button } from '../../../components/ui/button'
-import { Checkbox } from '../../../components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -28,9 +27,9 @@ function OrderManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortField, setSortField] = useState<keyof Order | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
-    select: true,
     ghnorderCode: true,
     createdAt: true,
     toName: true,
@@ -53,13 +52,8 @@ function OrderManagement() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A'
-    try {
-      const [, date] = dateString.split(' ')
-      const [day, month, year] = date.split('-')
-      return `${day}/${month}/${year}`
-    } catch {
-      return dateString
-    }
+    // Backend đã trả về định dạng "10:03:51 14/10/2025" nên chỉ cần hiển thị
+    return dateString
   }
 
   const getStatusBadge = (status: string) => {
@@ -91,9 +85,9 @@ function OrderManagement() {
     return matchesSearch
   })
 
-  // Sort orders
+  // Sort orders (excluding ghnorderCode)
   const sortedOrders = [...filteredOrders].sort((a, b) => {
-    if (!sortField) return 0
+    if (!sortField || sortField === 'ghnorderCode') return 0
 
     const aValue = a[sortField]
     const bValue = b[sortField]
@@ -112,8 +106,15 @@ function OrderManagement() {
     return 0
   })
 
-  // Handle column sorting
+  // Pagination logic
+  const totalPages = Math.ceil(sortedOrders.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedOrders = sortedOrders.slice(startIndex, endIndex)
+
+  // Handle column sorting (excluding ghnorderCode)
   const handleSort = (field: keyof Order) => {
+    if (field === 'ghnorderCode') return // Disable sorting for order code
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
     } else {
@@ -122,23 +123,9 @@ function OrderManagement() {
     }
   }
 
-  // Handle row selection
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedRows(new Set(sortedOrders.map((order) => order.id)))
-    } else {
-      setSelectedRows(new Set())
-    }
-  }
-
-  const handleSelectRow = (orderId: string, checked: boolean) => {
-    const newSelected = new Set(selectedRows)
-    if (checked) {
-      newSelected.add(orderId)
-    } else {
-      newSelected.delete(orderId)
-    }
-    setSelectedRows(newSelected)
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
   }
 
   // Handle order detail modal
@@ -159,6 +146,19 @@ function OrderManagement() {
       <ArrowUpDown className='ml-2 h-4 w-4' />
     </Button>
   )
+
+  // Column header component (without sort for ghnorderCode)
+  const ColumnHeader = ({ field, children }: { field: keyof Order; children: React.ReactNode }) => {
+    if (field === 'ghnorderCode') {
+      return <span className='font-medium'>{children}</span>
+    }
+    return (
+      <Button variant='ghost' size='sm' className='h-8 px-2 lg:px-3' onClick={() => handleSort(field)}>
+        {children}
+        <ArrowUpDown className='ml-2 h-4 w-4' />
+      </Button>
+    )
+  }
 
   // Column visibility options
   const columnOptions = [
@@ -198,6 +198,7 @@ function OrderManagement() {
   useEffect(() => {
     const status = activeTab === 'all' ? undefined : (activeTab as OrderStatus)
     fetchOrders(status)
+    setCurrentPage(1) // Reset to first page when tab changes
   }, [activeTab, fetchOrders])
 
   return (
@@ -268,18 +269,9 @@ function OrderManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {columnVisibility.select && (
-                        <TableHead>
-                          <Checkbox
-                            checked={selectedRows.size === sortedOrders.length && sortedOrders.length > 0}
-                            onCheckedChange={handleSelectAll}
-                            aria-label='Select all'
-                          />
-                        </TableHead>
-                      )}
                       {columnVisibility.ghnorderCode && (
                         <TableHead>
-                          <SortButton field='ghnorderCode'>Mã đơn hàng</SortButton>
+                          <ColumnHeader field='ghnorderCode'>Mã đơn hàng</ColumnHeader>
                         </TableHead>
                       )}
                       {columnVisibility.createdAt && (
@@ -306,18 +298,9 @@ function OrderManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedOrders.length ? (
-                      sortedOrders.map((order) => (
-                        <TableRow key={order.id} data-state={selectedRows.has(order.id) && 'selected'}>
-                          {columnVisibility.select && (
-                            <TableCell>
-                              <Checkbox
-                                checked={selectedRows.has(order.id)}
-                                onCheckedChange={(checked) => handleSelectRow(order.id, !!checked)}
-                                aria-label='Select row'
-                              />
-                            </TableCell>
-                          )}
+                    {paginatedOrders.length ? (
+                      paginatedOrders.map((order) => (
+                        <TableRow key={order.id}>
                           {columnVisibility.ghnorderCode && (
                             <TableCell className='font-medium'>#{order.ghnorderCode || order.id}</TableCell>
                           )}
@@ -334,11 +317,12 @@ function OrderManagement() {
                               <Button
                                 variant='ghost'
                                 size='sm'
+                                title='Xem chi tiết'
                                 className='text-green-600 hover:text-green-700 hover:bg-green-50'
                                 onClick={() => handleViewOrderDetail(order.id)}
                               >
                                 <Eye className='w-4 h-4 mr-1' />
-                                Xem
+
                               </Button>
                             </TableCell>
                           )}
@@ -357,9 +341,59 @@ function OrderManagement() {
                   </TableBody>
                 </Table>
               </div>
-              <div className='flex items-center justify-end space-x-2 py-4'>
+              <div className='flex items-center justify-between space-x-2 py-4'>
                 <div className='flex-1 text-sm text-muted-foreground'>
-                  {selectedRows.size} trong {sortedOrders.length} hàng được chọn.
+                  Hiển thị {startIndex + 1}-{Math.min(endIndex, sortedOrders.length)} trong {sortedOrders.length} đơn hàng
+                </div>
+
+                {/* Pagination Controls */}
+                <div className='flex items-center space-x-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className='h-4 w-4' />
+                    Trước
+                  </Button>
+
+                  <div className='flex items-center space-x-1'>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNumber
+                      if (totalPages <= 5) {
+                        pageNumber = i + 1
+                      } else if (currentPage <= 3) {
+                        pageNumber = i + 1
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNumber = totalPages - 4 + i
+                      } else {
+                        pageNumber = currentPage - 2 + i
+                      }
+
+                      return (
+                        <Button
+                          key={pageNumber}
+                          variant={currentPage === pageNumber ? 'default' : 'outline'}
+                          size='sm'
+                          onClick={() => handlePageChange(pageNumber)}
+                          className='w-8 h-8 p-0'
+                        >
+                          {pageNumber}
+                        </Button>
+                      )
+                    })}
+                  </div>
+
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Sau
+                    <ChevronRight className='h-4 w-4' />
+                  </Button>
                 </div>
               </div>
             </div>
