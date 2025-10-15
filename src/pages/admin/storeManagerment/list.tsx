@@ -26,9 +26,10 @@ interface Store {
     | 'Processing'
     | 'ApprovedByStaff'
     | 'RejectedByStaff'
-    | 'ReviewedByStaff'
+    | 'Approve'
+    | 'Ban'
+    | 'Unban'
     | 'Inactive'
-    | 'Active'
 }
 
 function StoreManagement() {
@@ -74,9 +75,9 @@ function StoreManagement() {
         | 'Pending'
         | 'Rejected'
         | 'Processing'
-        | 'ReviewedByStaff'
+        | 'ApprovedByStaff'
+        | 'RejectedByStaff'
         | 'Inactive'
-        | 'Active'
     }
   }
 
@@ -122,9 +123,9 @@ function StoreManagement() {
       Pending: { text: 'Chờ duyệt', dotColor: 'bg-yellow-500' },
       Rejected: { text: 'Từ chối', dotColor: 'bg-red-500' },
       Processing: { text: 'Nhân viên xử lí', dotColor: 'bg-indigo-500' },
-      ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', dotColor: 'bg-purple-500' },
+      ApprovedByStaff: { text: 'Đã duyệt bởi nhân viên', dotColor: 'bg-purple-500' },
+      RejectedByStaff: { text: 'Đã từ chối bởi nhân viên', dotColor: 'bg-red-500' },
       Inactive: { text: 'Bị khóa', dotColor: 'bg-red-500' },
-      Active: { text: 'Hoạt động trở lại', dotColor: 'bg-green-500' }
     }
 
     return configs[status as keyof typeof configs] || configs.Pending
@@ -220,7 +221,8 @@ function StoreManagement() {
               <SelectItem value='Pending'>Chờ duyệt</SelectItem>
               <SelectItem value='Rejected'>Từ chối</SelectItem>
               <SelectItem value='Processing'>Xử lý</SelectItem>
-              <SelectItem value='ReviewedByStaff'>Đã duyệt bởi nhân viên</SelectItem>
+              <SelectItem value='ApprovedByStaff'>Đã duyệt bởi nhân viên</SelectItem>
+              <SelectItem value='RejectedByStaff'>Đã từ chối bởi nhân viên</SelectItem>
               <SelectItem value='Inactive'>Bị khóa</SelectItem>
             </SelectContent>
           </Select>

@@ -195,7 +195,7 @@ function ApproveStores() {
       // Check success conditions - axiosInstance returns response.data (data payload only)
       // Success indicators: có storeId, newStatus, reviewedByStaffId, decisionDate
       if (response && response.storeId && response.newStatus && response.reviewedByStaffId && response.decisionDate) {
-        toast.success('Đánh giá cửa hàng thành công!')
+        toast.success('Thẩm định cửa hàng thành công!')
         setReviewModalOpen(false)
         reviewForm.resetFields()
         setSelectedImages([])
@@ -204,7 +204,7 @@ function ApproveStores() {
         fetchAssignedStores() // Refresh data
       } else if (response && response.status === 202) {
         // Fallback: check status if available
-        toast.success('Đánh giá cửa hàng thành công!')
+        toast.success('Thẩm định cửa hàng thành công!')
         setReviewModalOpen(false)
         reviewForm.resetFields()
         setSelectedImages([])
@@ -213,7 +213,7 @@ function ApproveStores() {
         fetchAssignedStores() // Refresh data
       } else if (response && response.message && response.message.includes('thành công')) {
         // Fallback: check if message contains success keywords
-        toast.success('Đánh giá cửa hàng thành công!')
+        toast.success('Thẩm định cửa hàng thành công!')
         setReviewModalOpen(false)
         reviewForm.resetFields()
         setSelectedImages([])
@@ -222,10 +222,10 @@ function ApproveStores() {
         fetchAssignedStores() // Refresh data
       } else {
         console.error('❌ Unexpected response format:', response)
-        toast.error(`Lỗi: ${response?.message || 'Không thể đánh giá cửa hàng'}`)
+        toast.error(`Lỗi: ${response?.message || 'Không thể Thẩm định cửa hàng'}`)
       }
     } catch {
-      toast.error('Có lỗi xảy ra khi đánh giá cửa hàng')
+      toast.error('Có lỗi xảy ra khi Thẩm định cửa hàng')
     } finally {
       setReviewLoading(false)
     }
@@ -299,7 +299,7 @@ function ApproveStores() {
               icon={<FileText size={16} />}
               onClick={() => handleReviewStore(record)}
               className='flex items-center justify-center w-8 h-8 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100'
-              title='Đánh giá'
+              title='Thẩm định'
             />
           )}
         </div>
@@ -410,7 +410,7 @@ function ApproveStores() {
 
       {/* Review Modal */}
       <Modal
-        title={`Đánh giá cửa hàng hhhh: ${selectedStore?.store.storeName}`}
+        title={`Thẩm định cửa hàng: ${selectedStore?.store.storeName}`}
         open={reviewModalOpen}
         onCancel={() => {
           setReviewModalOpen(false)
@@ -428,7 +428,7 @@ function ApproveStores() {
             label='Quyết định'
             rules={[{ required: true, message: 'Vui lòng chọn quyết định' }]}
           >
-            <Select placeholder='Chọn quyết định đánh giá'>
+            <Select placeholder='Chọn quyết định Thẩm định'>
               <Option value='ApprovedByStaff'>Chấp nhận cửa hàng</Option>
               <Option value='RejectedByStaff'>Từ chối cửa hàng</Option>
             </Select>
@@ -492,7 +492,7 @@ function ApproveStores() {
               Hủy
             </Button>
             <Button type='primary' htmlType='submit' loading={reviewLoading}>
-              Xác nhận đánh giá
+              Xác nhận Thẩm định
             </Button>
           </div>
         </Form>

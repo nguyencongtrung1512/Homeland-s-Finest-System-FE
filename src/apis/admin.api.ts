@@ -36,7 +36,7 @@ export interface AssignStaffResponse {
 
 // Interface cho review store request
 export interface ReviewStoreRequest {
-  newStatus: 'Approved' | 'Rejected' | 'Blocked'
+  newStatus: 'Approved' | 'Rejected'
   adminFeedback?: string
 }
 

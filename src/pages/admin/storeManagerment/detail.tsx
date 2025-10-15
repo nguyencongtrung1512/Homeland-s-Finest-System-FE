@@ -8,7 +8,6 @@ import {
   Mail,
   Phone,
   CreditCard as IdCard,
-  Edit,
   Loader2,
   UserPlus,
   Check,
@@ -51,7 +50,7 @@ function StoreDetailAdmin() {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
 
   const [productModalOpen, setProductModalOpen] = useState(false)
-   // Image preview states
+  // Image preview states
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('')
 
@@ -112,7 +111,7 @@ function StoreDetailAdmin() {
     return defaultMessage
   }
 
-    const handleImagePreview = (imageUrl: string) => {
+  const handleImagePreview = (imageUrl: string) => {
     setPreviewImageUrl(imageUrl)
     setImagePreviewOpen(true)
   }
@@ -186,8 +185,7 @@ function StoreDetailAdmin() {
       Rejected: { text: 'Từ chối', color: 'bg-red-500', textColor: 'text-red-700' },
       Processing: { text: 'Nhân viên xử lí', color: 'bg-indigo-500', textColor: 'text-indigo-700' },
       ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', color: 'bg-purple-500', textColor: 'text-purple-700' },
-      Inactive: { text: 'Bị khóa', color: 'bg-red-500', textColor: 'text-red-700' },
-      Active: { text: 'Hoạt động trở lại', color: 'bg-green-500', textColor: 'text-green-700' }
+      Inactive: { text: 'Bị khóa', color: 'bg-red-500', textColor: 'text-red-700' }
     }
     return configs[status as keyof typeof configs] || configs.Pending
   }
@@ -209,9 +207,6 @@ function StoreDetailAdmin() {
     }
   }
 
-  const handleRequestEdit = () => {
-    toast.info('Tính năng yêu cầu chỉnh sửa đang được phát triển')
-  }
 
   const handleStatusAction = (action: 'Approve' | 'Reject' | 'Ban' | 'Unban') => {
     setSelectedAction(action)
@@ -509,7 +504,7 @@ function StoreDetailAdmin() {
                                     src={store.sellerInfo.identifyFrontImage}
                                     alt='Mặt trước CMND'
                                     className='w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity'
-                                    onClick={() => handleImagePreview(store.sellerInfo.identifyFrontImage)}
+                                    onClick={() => store.sellerInfo.identifyFrontImage && handleImagePreview(store.sellerInfo.identifyFrontImage)}
                                   />
                                 ) : (
                                   <FileText className='w-6 h-6 text-gray-400' />
@@ -520,11 +515,11 @@ function StoreDetailAdmin() {
                             <div className='text-center'>
                               <div className='w-24 h-16 bg-gray-100 border rounded-lg flex items-center justify-center mb-1'>
                                 {store.sellerInfo.identifyBackImage ? (
-                                   <img
+                                  <img
                                     src={store.sellerInfo.identifyBackImage}
                                     alt='Mặt sau CMND'
                                     className='w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity'
-                                    onClick={() => handleImagePreview(store.sellerInfo.identifyBackImage)}
+                                    onClick={() => store.sellerInfo.identifyBackImage && handleImagePreview(store.sellerInfo.identifyBackImage)}
                                   />
                                 ) : (
                                   <FileText className='w-6 h-6 text-gray-400' />
@@ -662,7 +657,7 @@ function StoreDetailAdmin() {
                               src={store.staffImage}
                               alt='Ảnh chứng minh của nhân viên'
                               className='w-32 h-32 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity'
-                              onClick={() => handleImagePreview(store.staffImage)}
+                              onClick={() => store.staffImage && handleImagePreview(store.staffImage)}
                             />
                           </div>
                         </div>
@@ -688,12 +683,18 @@ function StoreDetailAdmin() {
               <CardContent className='p-6'>
                 <h3 className='text-lg font-semibold text-gray-900 mb-4'>Hành động</h3>
                 <div className='space-y-3'>
-                  {/* Pending: Giao cho nhân viên */}
+                  {/* Pending: Giao cho nhân viên và có thể khóa cửa hàng */}
                   {store.status === 'Pending' && (
-                    <Button onClick={handleAssignStaff} className='w-full bg-purple-500 hover:bg-purple-600 text-white'>
-                      <UserPlus className='w-4 h-4 mr-2' />
-                      Giao cho nhân viên
-                    </Button>
+                    <>
+                      <Button onClick={handleAssignStaff} className='w-full bg-purple-500 hover:bg-purple-600 text-white'>
+                        <UserPlus className='w-4 h-4 mr-2' />
+                        Giao cho nhân viên
+                      </Button>
+                      <Button onClick={() => handleStatusAction('Ban')} variant='destructive' className='w-full'>
+                        <Ban className='w-4 h-4 mr-2' />
+                        Khóa cửa hàng
+                      </Button>
+                    </>
                   )}
 
                   {/* ReviewedByStaff: Approve hoặc Reject */}
@@ -721,7 +722,7 @@ function StoreDetailAdmin() {
                     </Button>
                   )}
 
-                  {/* Banned: Unban (Mở khóa cửa hàng) */}
+                  {/* Inactive: Unban (Mở khóa cửa hàng) */}
                   {store.status === 'Inactive' && (
                     <Button
                       onClick={() => handleStatusAction('Unban')}
@@ -731,20 +732,6 @@ function StoreDetailAdmin() {
                       Mở khóa cửa hàng
                     </Button>
                   )}
-
-                  {/* Các trạng thái khác: Yêu cầu chỉnh sửa */}
-                  {store.status !== 'Pending' &&
-                    store.status !== 'ReviewedByStaff' &&
-                    store.status !== 'Approved' &&
-                    store.status !== 'Inactive' && (
-                      <Button
-                        onClick={handleRequestEdit}
-                        className='w-full bg-yellow-500 hover:bg-yellow-600 text-white'
-                      >
-                        <Edit className='w-4 h-4 mr-2' />
-                        Yêu cầu chỉnh sửa
-                      </Button>
-                    )}
                 </div>
               </CardContent>
             </Card>
@@ -951,6 +938,11 @@ function StoreDetailAdmin() {
                           : 'mở khóa'}
                   </strong>{' '}
                   cửa hàng <strong>{store.storeName}</strong>?
+                  {selectedAction === 'Unban' && (
+                    <span className='block text-xs text-blue-600 mt-1'>
+                      Cửa hàng sẽ chuyển về trạng thái "Chờ duyệt"
+                    </span>
+                  )}
                 </p>
                 <div className='mt-3 p-3 bg-white border rounded'>
                   <p className='text-xs text-gray-500 mb-1'>Lý do:</p>
@@ -993,9 +985,9 @@ function StoreDetailAdmin() {
           )}
         </DialogContent>
       </Dialog>
-        {/* Image Preview Modal */}
+      {/* Image Preview Modal */}
       {imagePreviewOpen && (
-        <div 
+        <div
           className='fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50'
           onClick={handleCloseImagePreview}
         >

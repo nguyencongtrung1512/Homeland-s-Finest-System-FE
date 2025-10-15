@@ -10,7 +10,7 @@ export interface AssignedStore {
   address: string
   logoUrl: string | null
   coverImageUrl: string | null
-  status: 'ReviewedByStaff' | 'Processing'
+  status: 'ApprovedByStaff' | 'RejectedByStaff' | 'Processing'
   staffNote: string | null
   history: string | null
   createdAt: string
@@ -72,7 +72,7 @@ export interface ProductsForReviewParams {
 }
 
 export interface ReviewStoreRequest {
-  NewStatus: 'ReviewedByStaff'
+  NewStatus: 'ApprovedByStaff' | 'RejectedByStaff'
   StaffNotes: string
   StaffImages?: string[]
 }
