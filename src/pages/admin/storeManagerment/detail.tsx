@@ -14,7 +14,8 @@ import {
   X,
   Ban,
   Unlock,
-  Package
+  Package,
+  Download
 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -27,6 +28,7 @@ import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { adminApi, type Staff, type StatusStoreRequest } from '../../../apis/admin.api'
 import { toast } from 'react-toastify'
 import ProductModal from './modalProduct'
+import { exportStoreToExcel } from './excelExport'
 
 function StoreDetailAdmin() {
   const { storeId } = useParams<{ storeId: string }>()
@@ -35,38 +37,28 @@ function StoreDetailAdmin() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [detailedError, setDetailedError] = useState<any>(null)
-
-  // Staff assignment states
   const [staffList, setStaffList] = useState<Staff[]>([])
   const [selectedStaffId, setSelectedStaffId] = useState('')
   const [assignLoading, setAssignLoading] = useState(false)
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
-
-  // Status update states
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<'Approve' | 'Reject' | 'Ban' | 'Unban' | null>(null)
   const [reason, setReason] = useState('')
   const [statusLoading, setStatusLoading] = useState(false)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
-
   const [productModalOpen, setProductModalOpen] = useState(false)
-  // Image preview states
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('')
 
-  // Helper function để xử lý lỗi từ backend
   const handleApiError = (error: any, defaultMessage: string) => {
     console.error('API Error:', error)
 
-    // Kiểm tra nếu error có response từ axios
     if (error?.response?.data) {
       const backendError = error.response.data
 
-      // Xử lý validation errors (cấu trúc như trong hình)
       if (backendError.errors && typeof backendError.errors === 'object') {
         const errorMessages: string[] = []
 
-        // Duyệt qua tất cả các field có lỗi
         Object.keys(backendError.errors).forEach((field) => {
           const fieldErrors = backendError.errors[field]
           if (Array.isArray(fieldErrors)) {
@@ -81,33 +73,27 @@ function StoreDetailAdmin() {
         }
       }
 
-      // Nếu có title (như trong hình)
       if (backendError.title) {
         return backendError.title
       }
 
-      // Ưu tiên hiển thị message từ backend
       if (backendError.message) {
         return backendError.message
       }
 
-      // Nếu có errors array (validation errors cũ)
       if (backendError.errors && Array.isArray(backendError.errors)) {
         return backendError.errors.join(', ')
       }
 
-      // Nếu có error string
       if (typeof backendError.error === 'string') {
         return backendError.error
       }
     }
 
-    // Nếu error có message
     if (error?.message) {
       return error.message
     }
 
-    // Fallback về message mặc định
     return defaultMessage
   }
 
@@ -121,6 +107,21 @@ function StoreDetailAdmin() {
     setPreviewImageUrl('')
   }
 
+  const handleExportToExcel = () => {
+    if (!store) {
+      toast.error('Không có dữ liệu để xuất')
+      return
+    }
+
+    const result = exportStoreToExcel(store)
+    
+    if (result.success) {
+      console.log('Xuất Excel thành công! File: ', result.fileName)
+    } else {
+      toast.error('Có lỗi xảy ra khi xuất Excel')
+    }
+  }
+
   const fetchStoreDetail = async () => {
     if (!storeId) return
 
@@ -129,7 +130,7 @@ function StoreDetailAdmin() {
       setError(null)
 
       const response = await storeApi.getStoreById(storeId)
-      console.log('API Response:', response) // Debug log
+      console.log('API Response:', response)
 
       let storeData = null
 
@@ -146,7 +147,7 @@ function StoreDetailAdmin() {
         setStore(storeData)
       } else {
         if (response && typeof response === 'object' && response !== null) {
-          console.log('Trying to use response directly as fallback') // Debug log
+          console.log('Trying to use response directly as fallback')
           setStore(response as StoreResponse)
         } else {
           setError('Không tìm thấy thông tin cửa hàng')
@@ -207,7 +208,6 @@ function StoreDetailAdmin() {
     }
   }
 
-
   const handleStatusAction = (action: 'Approve' | 'Reject' | 'Ban' | 'Unban') => {
     setSelectedAction(action)
     setReason('')
@@ -256,7 +256,6 @@ function StoreDetailAdmin() {
           Unban: 'mở khóa'
         }
         toast.success(`Cửa hàng đã được ${actionText[selectedAction]} thành công!`)
-        // Refresh store data
         fetchStoreDetail()
       } else {
         toast.error('Có lỗi xảy ra khi cập nhật trạng thái')
@@ -293,7 +292,6 @@ function StoreDetailAdmin() {
       if (response) {
         toast.success('Gán nhân viên thành công!')
         setAssignDialogOpen(false)
-        // Refresh store data
         fetchStoreDetail()
       } else {
         toast.error('Có lỗi xảy ra khi gán nhân viên')
@@ -323,7 +321,6 @@ function StoreDetailAdmin() {
         <div className='text-center max-w-md'>
           <p className='text-red-500 mb-4'>{error || 'Không tìm thấy thông tin cửa hàng'}</p>
 
-          {/* Hiển thị thông tin lỗi chi tiết từ backend */}
           {detailedError && (
             <div className='mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-left'>
               <h4 className='text-sm font-medium text-red-800 mb-2'>Chi tiết lỗi:</h4>
@@ -366,7 +363,6 @@ function StoreDetailAdmin() {
     )
   }
 
-  // Safety check: đảm bảo store có đủ thông tin cần thiết
   if (!store.id && !store.storeName) {
     return (
       <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
@@ -396,7 +392,16 @@ function StoreDetailAdmin() {
             <ArrowLeft className='w-4 h-4 mr-2' />
             Trở về danh sách cửa hàng
           </Button>
-          <h1 className='text-2xl font-semibold text-gray-900'>Chi tiết cửa hàng</h1>
+          <div className='flex items-center justify-between'>
+            <h1 className='text-2xl font-semibold text-gray-900'>Chi tiết cửa hàng</h1>
+            <Button
+              onClick={handleExportToExcel}
+              className='bg-green-600 hover:bg-green-700 text-white'
+            >
+              <Download className='w-4 h-4 mr-2' />
+              Xuất Excel
+            </Button>
+          </div>
         </div>
 
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
@@ -504,7 +509,10 @@ function StoreDetailAdmin() {
                                     src={store.sellerInfo.identifyFrontImage}
                                     alt='Mặt trước CMND'
                                     className='w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity'
-                                    onClick={() => store.sellerInfo.identifyFrontImage && handleImagePreview(store.sellerInfo.identifyFrontImage)}
+                                    onClick={() =>
+                                      store.sellerInfo.identifyFrontImage &&
+                                      handleImagePreview(store.sellerInfo.identifyFrontImage)
+                                    }
                                   />
                                 ) : (
                                   <FileText className='w-6 h-6 text-gray-400' />
@@ -519,7 +527,10 @@ function StoreDetailAdmin() {
                                     src={store.sellerInfo.identifyBackImage}
                                     alt='Mặt sau CMND'
                                     className='w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity'
-                                    onClick={() => store.sellerInfo.identifyBackImage && handleImagePreview(store.sellerInfo.identifyBackImage)}
+                                    onClick={() =>
+                                      store.sellerInfo.identifyBackImage &&
+                                      handleImagePreview(store.sellerInfo.identifyBackImage)
+                                    }
                                   />
                                 ) : (
                                   <FileText className='w-6 h-6 text-gray-400' />
@@ -593,7 +604,6 @@ function StoreDetailAdmin() {
                     <h3 className='text-lg font-semibold text-gray-900 mb-4'>Ghi chú của Admin</h3>
 
                     <div className='space-y-4'>
-                      {/* Ghi chú của Admin */}
                       {store.adminNote ? (
                         <div>
                           <span className='text-sm text-gray-500'>Ghi chú:</span>
@@ -624,13 +634,11 @@ function StoreDetailAdmin() {
                     <h3 className='text-lg font-semibold text-gray-900 mb-4'>Ghi chú của nhân viên</h3>
 
                     <div className='space-y-4'>
-                      {/* Thông tin nhân viên đã review */}
                       <div>
                         <span className='text-sm text-gray-500'>Nhân viên đã đánh giá:</span>
                         <p className='text-sm font-medium text-gray-900'>{store.staffName || 'Chưa có'}</p>
                       </div>
 
-                      {/* Ngày quyết định */}
                       <div>
                         <span className='text-sm text-gray-500'>Ngày duyệt:</span>
                         <p className='text-sm font-medium text-gray-900'>
@@ -638,7 +646,6 @@ function StoreDetailAdmin() {
                         </p>
                       </div>
 
-                      {/* Ghi chú của nhân viên */}
                       {store.staffNotes && (
                         <div>
                           <span className='text-sm text-gray-500'>Ghi chú:</span>
@@ -648,7 +655,6 @@ function StoreDetailAdmin() {
                         </div>
                       )}
 
-                      {/* Ảnh của nhân viên */}
                       {store.staffImage && (
                         <div>
                           <span className='text-sm text-gray-500'>Ảnh chứng minh:</span>
@@ -663,7 +669,6 @@ function StoreDetailAdmin() {
                         </div>
                       )}
 
-                      {/* Trạng thái khi chưa có thông tin */}
                       {!store.reviewedBy && !store.staffNotes && !store.staffImage && (
                         <div className='text-center py-8 text-gray-500'>
                           <User className='w-12 h-12 mx-auto mb-2 text-gray-300' />
@@ -683,10 +688,12 @@ function StoreDetailAdmin() {
               <CardContent className='p-6'>
                 <h3 className='text-lg font-semibold text-gray-900 mb-4'>Hành động</h3>
                 <div className='space-y-3'>
-                  {/* Pending: Giao cho nhân viên và có thể khóa cửa hàng */}
                   {store.status === 'Pending' && (
                     <>
-                      <Button onClick={handleAssignStaff} className='w-full bg-purple-500 hover:bg-purple-600 text-white'>
+                      <Button
+                        onClick={handleAssignStaff}
+                        className='w-full bg-purple-500 hover:bg-purple-600 text-white'
+                      >
                         <UserPlus className='w-4 h-4 mr-2' />
                         Giao cho nhân viên
                       </Button>
@@ -697,7 +704,6 @@ function StoreDetailAdmin() {
                     </>
                   )}
 
-                  {/* ReviewedByStaff: Approve hoặc Reject */}
                   {store.status === 'ReviewedByStaff' && (
                     <>
                       <Button
@@ -714,7 +720,6 @@ function StoreDetailAdmin() {
                     </>
                   )}
 
-                  {/* Approved: Ban (Khóa cửa hàng) */}
                   {store.status === 'Approved' && (
                     <Button onClick={() => handleStatusAction('Ban')} variant='destructive' className='w-full'>
                       <Ban className='w-4 h-4 mr-2' />
@@ -722,7 +727,6 @@ function StoreDetailAdmin() {
                     </Button>
                   )}
 
-                  {/* Inactive: Unban (Mở khóa cửa hàng) */}
                   {store.status === 'Inactive' && (
                     <Button
                       onClick={() => handleStatusAction('Unban')}
@@ -738,6 +742,7 @@ function StoreDetailAdmin() {
           </div>
         </div>
       </div>
+
       <ProductModal
         isOpen={productModalOpen}
         onClose={() => setProductModalOpen(false)}
@@ -784,14 +789,12 @@ function StoreDetailAdmin() {
                           className='hover:bg-gray-100 focus:bg-gray-100 px-2 py-2 rounded-md cursor-pointer'
                         >
                           <div className='flex items-center gap-3 w-full h-[64px]'>
-                            {/* Avatar tròn */}
                             <div className='w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center'>
                               <span className='text-sm font-semibold text-purple-600'>
                                 {staff.staffName?.charAt(0)?.toUpperCase() || 'S'}
                               </span>
                             </div>
 
-                            {/* Thông tin nhân viên */}
                             <div className='flex items-center gap-3 mt-3'>
                               <p className='text-sm font-medium text-gray-900'>{staff.staffName}</p>
                               <p className='text-xs text-gray-500'>{staff.email}</p>
@@ -830,7 +833,7 @@ function StoreDetailAdmin() {
         </DialogContent>
       </Dialog>
 
-      {/* Status Action Dialog - Nhập lý do */}
+      {/* Status Action Dialog */}
       <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
@@ -985,6 +988,7 @@ function StoreDetailAdmin() {
           )}
         </DialogContent>
       </Dialog>
+
       {/* Image Preview Modal */}
       {imagePreviewOpen && (
         <div

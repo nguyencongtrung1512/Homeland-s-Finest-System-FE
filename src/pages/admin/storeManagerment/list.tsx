@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Eye, ChevronLeft, ChevronRight, Loader2, UserPlus, Users, RefreshCw } from 'lucide-react'
+import { Search, Eye, ChevronLeft, ChevronRight, Loader2, UserPlus, Users, RefreshCw, ArrowUpDown } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -18,6 +18,7 @@ interface Store {
   ownerEmail: string
   ownerAvatar: string
   createDate: string
+  createDateTimestamp: number // THÊM MỚI: Để sort theo ngày
   productCount: number
   status:
     | 'Approved'
@@ -37,6 +38,7 @@ function StoreManagement() {
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
+  const [sortBy, setSortBy] = useState('date-desc') // THÊM MỚI: State cho sort
   const [currentPage, setCurrentPage] = useState(1)
   const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(false)
@@ -69,15 +71,9 @@ function StoreManagement() {
       ownerEmail: 'N/A',
       ownerAvatar: avatarText,
       createDate: formatDate(apiStore.createdAt),
+      createDateTimestamp: new Date(apiStore.createdAt).getTime(), // THÊM MỚI
       productCount: 0,
-      status: apiStore.status as
-        | 'Approved'
-        | 'Pending'
-        | 'Rejected'
-        | 'Processing'
-        | 'ApprovedByStaff'
-        | 'RejectedByStaff'
-        | 'Inactive'
+      status: apiStore.status as Store['status']
     }
   }
 
@@ -117,6 +113,11 @@ function StoreManagement() {
     fetchStaffList()
   }, [])
 
+  // THÊM MỚI: Reset về trang 1 khi filter/sort thay đổi
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchText, statusFilter, dateFilter, sortBy])
+
   const getStatusConfig = (status: string) => {
     const configs = {
       Approved: { text: 'Hoạt động', dotColor: 'bg-green-500' },
@@ -131,20 +132,53 @@ function StoreManagement() {
     return configs[status as keyof typeof configs] || configs.Pending
   }
 
-  const filteredStores = stores.filter((store) => {
-    const matchesSearch =
-      searchText === '' ||
-      store.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      store.ownerName.toLowerCase().includes(searchText.toLowerCase())
+  // THAY ĐỔI: Logic filter và sort mới
+  const filteredAndSortedStores = (() => {
+    // Bước 1: FILTER
+    let result = stores.filter((store) => {
+      const matchesSearch =
+        searchText === '' ||
+        store.name.toLowerCase().includes(searchText.toLowerCase()) ||
+        store.ownerName.toLowerCase().includes(searchText.toLowerCase())
 
-    const matchesStatus = statusFilter === 'all' || store.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+      const matchesStatus = statusFilter === 'all' || store.status === statusFilter
 
-  const totalPages = Math.ceil((filteredStores?.length || 0) / pageSize)
+      // Filter theo ngày nếu có
+      let matchesDate = true
+      if (dateFilter) {
+        const filterDate = new Date(dateFilter).toLocaleDateString('vi-VN')
+        matchesDate = store.createDate === filterDate
+      }
+
+      return matchesSearch && matchesStatus && matchesDate
+    })
+
+    // Bước 2: SORT
+    result = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name, 'vi')
+        case 'name-desc':
+          return b.name.localeCompare(a.name, 'vi')
+        case 'date-asc':
+          return a.createDateTimestamp - b.createDateTimestamp
+        case 'date-desc':
+          return b.createDateTimestamp - a.createDateTimestamp
+        case 'status':
+          return a.status.localeCompare(b.status)
+        default:
+          return 0
+      }
+    })
+
+    return result
+  })()
+
+  // CẬP NHẬT: Dùng filteredAndSortedStores thay vì filteredStores
+  const totalPages = Math.ceil((filteredAndSortedStores?.length || 0) / pageSize)
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
-  const currentStores = (filteredStores || []).slice(startIndex, endIndex)
+  const currentStores = (filteredAndSortedStores || []).slice(startIndex, endIndex)
 
   const handleView = (store: Store) => {
     navigate(`/admin/storeManagement/store-detail/${store.id}`)
@@ -201,8 +235,8 @@ function StoreManagement() {
         </div>
 
         {/* Search and Filter */}
-        <div className='flex items-center gap-3 mb-6'>
-          <div className='flex-1 relative'>
+        <div className='flex items-center gap-3 mb-6 flex-wrap'>
+          <div className='flex-1 min-w-[250px] relative'>
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400' />
             <Input
               placeholder='Tìm kiếm cửa hàng...'
@@ -211,6 +245,7 @@ function StoreManagement() {
               className='pl-10 h-9'
             />
           </div>
+          
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className='w-[200px] h-9'>
               <SelectValue placeholder='Tất cả trạng thái' />
@@ -226,11 +261,28 @@ function StoreManagement() {
               <SelectItem value='Inactive'>Bị khóa</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* THÊM MỚI: Dropdown Sort */}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className='w-[200px] h-9'>
+              <ArrowUpDown className='w-4 h-4 mr-2' />
+              <SelectValue placeholder='Sắp xếp theo' />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='date-desc'>Ngày tạo: Mới nhất</SelectItem>
+              <SelectItem value='date-asc'>Ngày tạo: Cũ nhất</SelectItem>
+              <SelectItem value='name-asc'>Tên: A → Z</SelectItem>
+              <SelectItem value='name-desc'>Tên: Z → A</SelectItem>
+              <SelectItem value='status'>Theo trạng thái</SelectItem>
+            </SelectContent>
+          </Select>
+          
           <Input
             type='date'
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
             className='w-[160px] h-9'
+            placeholder='Lọc theo ngày'
           />
         </div>
 
@@ -253,6 +305,11 @@ function StoreManagement() {
               <div className='flex flex-col items-center justify-center py-20 text-gray-400'>
                 <span className='text-2xl'>📦</span>
                 <p className='text-sm mt-2'>Chưa có cửa hàng nào</p>
+              </div>
+            ) : filteredAndSortedStores.length === 0 ? (
+              <div className='flex flex-col items-center justify-center py-20 text-gray-400'>
+                <span className='text-2xl'>🔍</span>
+                <p className='text-sm mt-2'>Không tìm thấy kết quả phù hợp</p>
               </div>
             ) : (
               <>
@@ -317,8 +374,8 @@ function StoreManagement() {
                 {totalPages > 1 && (
                   <div className='flex items-center justify-between px-6 py-4 border-t text-xs text-gray-500'>
                     <p>
-                      Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredStores?.length || 0)} của{' '}
-                      {filteredStores?.length || 0} kết quả
+                      Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredAndSortedStores?.length || 0)} của{' '}
+                      {filteredAndSortedStores?.length || 0} kết quả
                     </p>
                     <div className='flex items-center gap-1'>
                       <Button
@@ -343,7 +400,7 @@ function StoreManagement() {
                             variant='ghost'
                             size='sm'
                             onClick={() => setCurrentPage(pageNum)}
-                            className={`${currentPage === pageNum ? 'bg-blue-500 text-white' : 'text-gray-600'}`}
+                            className={`${currentPage === pageNum ? 'bg-blue-500 text-white hover:bg-blue-600 hover:text-white' : 'text-gray-600'}`}
                           >
                             {pageNum}
                           </Button>
@@ -394,7 +451,7 @@ function StoreManagement() {
                   </div>
                 ) : (
                   <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                    <SelectTrigger className='w-full h-[480px] '>
+                    <SelectTrigger className='w-full'>
                       <SelectValue placeholder='Chọn nhân viên...' />
                     </SelectTrigger>
                     <SelectContent>
@@ -404,18 +461,14 @@ function StoreManagement() {
                           value={staff.staffId}
                           className='hover:bg-gray-100 focus:bg-gray-100 px-2 py-2 rounded-md cursor-pointer'
                         >
-                          <div className='flex items-center gap-3 w-full h-[64px]'>
-                            {/* Avatar tròn */}
-                            <div className='w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center'>
+                          <div className='flex items-center gap-3 w-full'>
+                            <div className='w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0'>
                               <span className='text-sm font-semibold text-blue-600'>
                                 {staff.staffName.charAt(0).toUpperCase()}
                               </span>
                             </div>
-
-                            {/* Thông tin nhân viên */}
-                            <div className='flex items-center gap-3 mt-3'>
-                              <p className='text-sm font-medium text-gray-900   '>{staff.staffName}</p>
-
+                            <div className='flex flex-col'>
+                              <p className='text-sm font-medium text-gray-900'>{staff.staffName}</p>
                               <p className='text-xs text-gray-500'>{staff.email}</p>
                             </div>
                           </div>
