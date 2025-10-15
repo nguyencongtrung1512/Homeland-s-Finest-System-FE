@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Avatar } from '../../../components/ui/avatar'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Settings, FileText, MapPin } from 'lucide-react'
 import type { Address, AddressCreateInput } from '../../../types/addressType'
-import type { Order } from '../../../types/orderType'
+import type { Order, OrderStatus } from '../../../types/orderType'
 import { addressApi } from '../../../apis/address.api'
 import { getCustomerOrders } from '../../../apis/order.api'
 import { useAuth } from '../../../contexts/auth.context'
@@ -53,53 +53,59 @@ export default function Profile() {
   }, [authUser?.userId])
 
   // Load customer orders
-  const loadCustomerOrders = async (status?: string) => {
-    if (!authUser?.userId) return
+  const loadCustomerOrders = useCallback(
+    async (status?: OrderStatus) => {
+      if (!authUser?.userId) return
 
-    try {
-      setOrdersLoading(true)
-      const customerOrders = await getCustomerOrders(authUser.userId, {
-        pageSize: 0, // Load all orders for better UX
-        pageNumber: 1,
-        status: status as any, // Filter by status if provided
-        sortBy: 'createdAt',
-        sortOrder: 'desc'
-      })
-      setOrders(customerOrders)
-    } catch (error) {
-      console.error('Error loading customer orders:', error)
-    } finally {
-      setOrdersLoading(false)
-    }
-  }
+      try {
+        setOrdersLoading(true)
+        const customerOrders = await getCustomerOrders(authUser.userId, {
+          pageSize: 0, // Load all orders for better UX
+          pageNumber: 1,
+          status: status, // Filter by status if provided
+          sortBy: 'createdAt',
+          sortOrder: 'desc'
+        })
+        setOrders(customerOrders)
+      } catch (error) {
+        console.error('Error loading customer orders:', error)
+      } finally {
+        setOrdersLoading(false)
+      }
+    },
+    [authUser?.userId]
+  )
 
   // Load orders when component mounts or when switching to orders tab
   useEffect(() => {
     if (activeTab === 'orders') {
       loadCustomerOrders()
     }
-  }, [activeTab, authUser?.userId])
+  }, [activeTab, authUser?.userId, loadCustomerOrders])
 
   const [addresses, setAddresses] = useState<Address[]>([])
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   // Load addresses from API
-  const loadAddresses = async () => {
+  const loadAddresses = useCallback(async () => {
     if (!authUser?.userId) return
 
     try {
-      const response = await addressApi.getByUser(authUser.userId)
-      setAddresses(response.data)
+      const response = await addressApi.getUserAddresses(authUser.userId)
+      // Handle both single address and array of addresses
+      const addressesData = Array.isArray(response.data) ? response.data : [response.data]
+      setAddresses(addressesData)
     } catch (error) {
       console.error('Error loading addresses:', error)
     }
-  }
+  }, [authUser?.userId])
 
   // Load addresses when component mounts
   useEffect(() => {
     loadAddresses()
-  }, [authUser?.userId])
+  }, [authUser?.userId, loadAddresses])
 
   // Address handlers
   const handleAddAddress = () => {
@@ -108,6 +114,7 @@ export default function Profile() {
   }
 
   const handleEditAddress = (address: Address) => {
+    console.log('📝 Editing address:', address)
     setEditingAddress(address)
     setShowAddressModal(true)
   }
@@ -148,8 +155,21 @@ export default function Profile() {
 
     try {
       if (editingAddress) {
+        // Convert AddressCreateInput to AddressUpdateInput for update
+        const updateData = {
+          userId: authUser.userId,
+          province: formData.province,
+          district: formData.district,
+          ward: formData.ward,
+          provinceId: formData.provinceId,
+          districtId: formData.districtId,
+          wardId: formData.wardId,
+          streetAddress: formData.streetAddress,
+          isDefault: formData.isDefault
+        }
+
         // Call API to update address
-        await addressApi.update(editingAddress.id, formData)
+        const response = await addressApi.update(editingAddress.id, updateData)
 
         // Update local state
         setAddresses(
@@ -157,12 +177,15 @@ export default function Profile() {
             addr.id === editingAddress.id
               ? {
                 ...addr,
-                ...formData,
+                ...updateData,
+                isDefault: updateData.isDefault || false,
                 updatedAt: new Date().toISOString()
               }
               : addr
           )
         )
+
+        console.log('Address updated successfully:', response)
       } else {
         const addressDataWithUserId = {
           ...formData,
@@ -183,9 +206,13 @@ export default function Profile() {
           isActive: true
         }
         setAddresses([...addresses, newAddress])
+
+        console.log('Address created successfully:', response)
       }
 
       setShowAddressModal(false)
+      // Trigger refresh of address list
+      setRefreshTrigger((prev) => prev + 1)
     } catch (error) {
       console.error('Error in address operation:', error)
       // You can add toast notification here if needed
@@ -210,7 +237,10 @@ export default function Profile() {
             <div>
               <h2 className='text-xl font-bold text-gray-900'>Chào mừng trở lại, {displayName}</h2>
               <p className='text-sm text-gray-500'>
-                Thành viên từ {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' }) : 'N/A'}
+                Thành viên từ{' '}
+                {user?.createdAt
+                  ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+                  : 'N/A'}
               </p>
             </div>
           </div>
@@ -263,7 +293,7 @@ export default function Profile() {
                   orders={orders}
                   loading={ordersLoading}
                   onRefreshOrders={() => loadCustomerOrders()}
-                  onFilterByStatus={(status) => loadCustomerOrders(status)}
+                  onFilterByStatus={(status) => loadCustomerOrders(status as OrderStatus)}
                 />
               )}
               {activeTab === 'addresses' && authUser?.userId && (
@@ -273,6 +303,7 @@ export default function Profile() {
                   onEditAddress={handleEditAddress}
                   onDeleteAddress={handleDeleteAddress}
                   onSetDefault={handleSetDefault}
+                  refreshTrigger={refreshTrigger}
                 />
               )}
             </CardContent>
@@ -286,6 +317,8 @@ export default function Profile() {
         onClose={() => setShowAddressModal(false)}
         address={editingAddress}
         onSave={handleSaveAddress}
+        existingAddresses={addresses}
+        userId={authUser?.userId}
       />
     </div>
   )

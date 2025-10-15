@@ -1,5 +1,5 @@
 import RegisterLayout from '../../Layouts/Authentication/registerLayout'
-import { Leaf, ThumbsUp, User, Mail, Phone, Lock, Loader2, ChevronDownIcon } from 'lucide-react'
+import { Leaf, ThumbsUp, User, Mail, Phone, Lock, Loader2, ChevronDownIcon, Eye, EyeOff } from 'lucide-react'
 import { useState } from 'react'
 import { registerCustomer } from '../../apis/auth.api'
 import { toast } from 'react-toastify'
@@ -43,6 +43,8 @@ function Register() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -412,13 +414,21 @@ function Register() {
                 <Lock className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
                 <Input
                   id='password'
-                  type='password'
+                  type={showPassword ? 'text' : 'password'}
                   name='password'
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder='Nhập mật khẩu'
-                  className='pl-10'
+                  className='pl-10 pr-10'
                 />
+                <button
+                  type='button'
+                  className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
             </div>
 
@@ -430,13 +440,21 @@ function Register() {
                 <Lock className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
                 <Input
                   id='confirmPassword'
-                  type='password'
+                  type={showConfirmPassword ? 'text' : 'password'}
                   name='confirmPassword'
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   placeholder='Nhập lại mật khẩu'
-                  className='pl-10'
+                  className='pl-10 pr-10'
                 />
+                <button
+                  type='button'
+                  className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
             </div>
 

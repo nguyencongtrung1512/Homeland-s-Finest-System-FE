@@ -67,7 +67,9 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
         setIsMapLoaded(true)
 
         // Lấy vị trí hiện tại khi map đã load xong
-        getCurrentLocation()
+        if (map.current) {
+          getCurrentLocation()
+        }
       })
 
       // Fallback: Set loaded state sau 2 giây nếu load event không fire
@@ -109,13 +111,18 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
 
   // Lấy vị trí hiện tại
   const getCurrentLocation = useCallback(() => {
-    if (!map.current) return
+    if (!map.current) {
+      console.error('❌ Map chưa được khởi tạo')
+      return
+    }
 
     setIsLoading(true)
+    console.log('🔄 Đang lấy vị trí hiện tại...')
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          console.log('✅ Đã lấy được vị trí hiện tại:', position.coords)
           const { longitude, latitude } = position.coords
           const newCoordinates: [number, number] = [longitude, latitude]
           setCoordinates(newCoordinates)
@@ -147,7 +154,7 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
             .addTo(map.current as mapboxgl.Map)
 
           // Fly to location
-          map.current.flyTo({
+          map.current?.flyTo({
             center: newCoordinates,
             zoom: 15,
             essential: true
@@ -170,9 +177,27 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
         },
         (error) => {
           console.error('❌ Lỗi khi lấy vị trí hiện tại:', error)
+
+          // Hiển thị thông báo lỗi cụ thể
+          let errorMessage = 'Không thể lấy vị trí hiện tại'
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage =
+                'Bạn đã từ chối quyền truy cập vị trí. Vui lòng cho phép truy cập vị trí trong cài đặt trình duyệt.'
+              break
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Thông tin vị trí không khả dụng.'
+              break
+            case error.TIMEOUT:
+              errorMessage = 'Yêu cầu lấy vị trí đã hết thời gian chờ.'
+              break
+          }
+
+          alert(errorMessage)
           setIsLoading(false)
 
           // Fallback: Sử dụng vị trí mặc định (HCM)
+          console.log('🔄 Sử dụng vị trí mặc định (HCM)')
           const defaultCoords: [number, number] = [106.6297, 10.8231]
           setCoordinates(defaultCoords)
 
@@ -208,10 +233,15 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
 
           reverseGeocode(defaultCoords)
         },
-        { enableHighAccuracy: true }
+        {
+          enableHighAccuracy: true,
+          timeout: 10000, // 10 giây timeout
+          maximumAge: 60000 // Cache trong 1 phút
+        }
       )
     } else {
       console.error('❌ Geolocation không được hỗ trợ bởi trình duyệt này')
+      alert('Trình duyệt của bạn không hỗ trợ tính năng lấy vị trí hiện tại.')
       setIsLoading(false)
     }
   }, [])
@@ -221,13 +251,19 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
     if (!coords) return
 
     try {
-      setIsLoading(true)
+      console.log('🔄 Đang lấy thông tin địa chỉ cho tọa độ:', coords)
 
       // Sử dụng Mapbox Geocoding API để lấy thông tin địa chỉ
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${coords[0]},${coords[1]}.json?access_token=${mapboxgl.accessToken}&country=vn&limit=1`
       )
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
       const data = await response.json()
+      console.log('📍 Mapbox Geocoding response:', data)
 
       if (data.features && data.features.length > 0) {
         const placeName = data.features[0].place_name
@@ -261,46 +297,286 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
           streetAddress = addressParts.slice(0, addressParts.length - 4).join(', ')
         }
 
+        console.log('📍 Phân tích địa chỉ:', { provinceName, districtName, wardName, streetAddress })
+
+        // Mapping tên tỉnh/thành phố từ Mapbox sang GHN API
+        const provinceMapping: { [key: string]: string } = {
+          'Ho Chi Minh City': 'Thành phố Hồ Chí Minh',
+          'Hồ Chí Minh': 'Thành phố Hồ Chí Minh',
+          'Ho Chi Minh': 'Thành phố Hồ Chí Minh',
+          'Hanoi': 'Hà Nội',
+          'Hà Nội': 'Hà Nội',
+          'Hanoi City': 'Hà Nội',
+          'Da Nang': 'Đà Nẵng',
+          'Đà Nẵng': 'Đà Nẵng',
+          'Can Tho': 'Cần Thơ',
+          'Cần Thơ': 'Cần Thơ',
+          'Hai Phong': 'Hải Phòng',
+          'Hải Phòng': 'Hải Phòng',
+          'An Giang': 'An Giang',
+          'Ba Ria - Vung Tau': 'Bà Rịa - Vũng Tàu',
+          'Bà Rịa - Vũng Tàu': 'Bà Rịa - Vũng Tàu',
+          'Bac Lieu': 'Bạc Liêu',
+          'Bạc Liêu': 'Bạc Liêu',
+          'Bac Kan': 'Bắc Kạn',
+          'Bắc Kạn': 'Bắc Kạn',
+          'Bac Giang': 'Bắc Giang',
+          'Bắc Giang': 'Bắc Giang',
+          'Bac Ninh': 'Bắc Ninh',
+          'Bắc Ninh': 'Bắc Ninh',
+          'Ben Tre': 'Bến Tre',
+          'Bến Tre': 'Bến Tre',
+          'Binh Dinh': 'Bình Định',
+          'Bình Định': 'Bình Định',
+          'Binh Duong': 'Bình Dương',
+          'Bình Dương': 'Bình Dương',
+          'Binh Phuoc': 'Bình Phước',
+          'Bình Phước': 'Bình Phước',
+          'Binh Thuan': 'Bình Thuận',
+          'Bình Thuận': 'Bình Thuận',
+          'Ca Mau': 'Cà Mau',
+          'Cà Mau': 'Cà Mau',
+          'Cao Bang': 'Cao Bằng',
+          'Cao Bằng': 'Cao Bằng',
+          'Dak Lak': 'Đắk Lắk',
+          'Đắk Lắk': 'Đắk Lắk',
+          'Dak Nong': 'Đắk Nông',
+          'Đắk Nông': 'Đắk Nông',
+          'Dien Bien': 'Điện Biên',
+          'Điện Biên': 'Điện Biên',
+          'Dong Nai': 'Đồng Nai',
+          'Đồng Nai': 'Đồng Nai',
+          'Dong Thap': 'Đồng Tháp',
+          'Đồng Tháp': 'Đồng Tháp',
+          'Gia Lai': 'Gia Lai',
+          'Ha Giang': 'Hà Giang',
+          'Hà Giang': 'Hà Giang',
+          'Ha Nam': 'Hà Nam',
+          'Hà Nam': 'Hà Nam',
+          'Ha Tinh': 'Hà Tĩnh',
+          'Hà Tĩnh': 'Hà Tĩnh',
+          'Hau Giang': 'Hậu Giang',
+          'Hậu Giang': 'Hậu Giang',
+          'Hoa Binh': 'Hòa Bình',
+          'Hòa Bình': 'Hòa Bình',
+          'Hung Yen': 'Hưng Yên',
+          'Hưng Yên': 'Hưng Yên',
+          'Khanh Hoa': 'Khánh Hòa',
+          'Khánh Hòa': 'Khánh Hòa',
+          'Kien Giang': 'Kiên Giang',
+          'Kiên Giang': 'Kiên Giang',
+          'Kon Tum': 'Kon Tum',
+          'Lai Chau': 'Lai Châu',
+          'Lai Châu': 'Lai Châu',
+          'Lam Dong': 'Lâm Đồng',
+          'Lâm Đồng': 'Lâm Đồng',
+          'Lang Son': 'Lạng Sơn',
+          'Lạng Sơn': 'Lạng Sơn',
+          'Lao Cai': 'Lào Cai',
+          'Lào Cai': 'Lào Cai',
+          'Long An': 'Long An',
+          'Nam Dinh': 'Nam Định',
+          'Nam Định': 'Nam Định',
+          'Nghe An': 'Nghệ An',
+          'Nghệ An': 'Nghệ An',
+          'Ninh Binh': 'Ninh Bình',
+          'Ninh Bình': 'Ninh Bình',
+          'Ninh Thuan': 'Ninh Thuận',
+          'Ninh Thuận': 'Ninh Thuận',
+          'Phu Tho': 'Phú Thọ',
+          'Phú Thọ': 'Phú Thọ',
+          'Phu Yen': 'Phú Yên',
+          'Phú Yên': 'Phú Yên',
+          'Quang Binh': 'Quảng Bình',
+          'Quảng Bình': 'Quảng Bình',
+          'Quang Nam': 'Quảng Nam',
+          'Quảng Nam': 'Quảng Nam',
+          'Quang Ngai': 'Quảng Ngãi',
+          'Quảng Ngãi': 'Quảng Ngãi',
+          'Quang Ninh': 'Quảng Ninh',
+          'Quảng Ninh': 'Quảng Ninh',
+          'Quang Tri': 'Quảng Trị',
+          'Quảng Trị': 'Quảng Trị',
+          'Soc Trang': 'Sóc Trăng',
+          'Sóc Trăng': 'Sóc Trăng',
+          'Son La': 'Sơn La',
+          'Sơn La': 'Sơn La',
+          'Tay Ninh': 'Tây Ninh',
+          'Tây Ninh': 'Tây Ninh',
+          'Thai Binh': 'Thái Bình',
+          'Thái Bình': 'Thái Bình',
+          'Thai Nguyen': 'Thái Nguyên',
+          'Thái Nguyên': 'Thái Nguyên',
+          'Thanh Hoa': 'Thanh Hóa',
+          'Thanh Hóa': 'Thanh Hóa',
+          'Thua Thien Hue': 'Thừa Thiên Huế',
+          'Thừa Thiên Huế': 'Thừa Thiên Huế',
+          'Tien Giang': 'Tiền Giang',
+          'Tiền Giang': 'Tiền Giang',
+          'Tra Vinh': 'Trà Vinh',
+          'Trà Vinh': 'Trà Vinh',
+          'Tuyen Quang': 'Tuyên Quang',
+          'Tuyên Quang': 'Tuyên Quang',
+          'Vinh Long': 'Vĩnh Long',
+          'Vĩnh Long': 'Vĩnh Long',
+          'Vinh Phuc': 'Vĩnh Phúc',
+          'Vĩnh Phúc': 'Vĩnh Phúc',
+          'Yen Bai': 'Yên Bái',
+          'Yên Bái': 'Yên Bái'
+        }
+
+        // Áp dụng mapping cho provinceName
+        const mappedProvinceName = provinceMapping[provinceName] || provinceName
+        console.log('🔄 Mapping province:', provinceName, '→', mappedProvinceName)
+
+        // Mapping tên quận/huyện từ Mapbox sang GHN API
+        const districtMapping: { [key: string]: string } = {
+          'Thu Duc': 'Thành phố Thủ Đức',
+          'Thủ Đức': 'Thành phố Thủ Đức',
+          'Thu Duc City': 'Thành phố Thủ Đức',
+          'District 1': 'Quận 1',
+          'Quận 1': 'Quận 1',
+          'District 2': 'Quận 2',
+          'Quận 2': 'Quận 2',
+          'District 3': 'Quận 3',
+          'Quận 3': 'Quận 3',
+          'District 4': 'Quận 4',
+          'Quận 4': 'Quận 4',
+          'District 5': 'Quận 5',
+          'Quận 5': 'Quận 5',
+          'District 6': 'Quận 6',
+          'Quận 6': 'Quận 6',
+          'District 7': 'Quận 7',
+          'Quận 7': 'Quận 7',
+          'District 8': 'Quận 8',
+          'Quận 8': 'Quận 8',
+          'District 9': 'Quận 9',
+          'Quận 9': 'Quận 9',
+          'District 10': 'Quận 10',
+          'Quận 10': 'Quận 10',
+          'District 11': 'Quận 11',
+          'Quận 11': 'Quận 11',
+          'District 12': 'Quận 12',
+          'Quận 12': 'Quận 12',
+          'Binh Thanh': 'Quận Bình Thạnh',
+          'Quận Bình Thạnh': 'Quận Bình Thạnh',
+          'Tan Binh': 'Quận Tân Bình',
+          'Quận Tân Bình': 'Quận Tân Bình',
+          'Tan Phu': 'Quận Tân Phú',
+          'Quận Tân Phú': 'Quận Tân Phú',
+          'Phu Nhuan': 'Quận Phú Nhuận',
+          'Quận Phú Nhuận': 'Quận Phú Nhuận',
+          'Go Vap': 'Quận Gò Vấp',
+          'Quận Gò Vấp': 'Quận Gò Vấp',
+          'Binh Tan': 'Quận Bình Tân',
+          'Quận Bình Tân': 'Quận Bình Tân',
+          'Hoc Mon': 'Huyện Hóc Môn',
+          'Huyện Hóc Môn': 'Huyện Hóc Môn',
+          'Cu Chi': 'Huyện Củ Chi',
+          'Huyện Củ Chi': 'Huyện Củ Chi',
+          'Nha Be': 'Huyện Nhà Bè',
+          'Huyện Nhà Bè': 'Huyện Nhà Bè',
+          'Can Gio': 'Huyện Cần Giờ',
+          'Huyện Cần Giờ': 'Huyện Cần Giờ'
+        }
+
+        // Áp dụng mapping cho districtName
+        const mappedDistrictName = districtMapping[districtName] || districtName
+        console.log('🔄 Mapping district:', districtName, '→', mappedDistrictName)
+
+        // Mapping tên phường/xã từ Mapbox sang GHN API
+        const wardMapping: { [key: string]: string } = {
+          'Linh Trung': 'Phường Linh Trung',
+          'Phường Linh Trung': 'Phường Linh Trung',
+          'Linh Chieu': 'Phường Linh Chiểu',
+          'Phường Linh Chiểu': 'Phường Linh Chiểu',
+          'Linh Dong': 'Phường Linh Đông',
+          'Phường Linh Đông': 'Phường Linh Đông',
+          'Linh Tay': 'Phường Linh Tây',
+          'Phường Linh Tây': 'Phường Linh Tây',
+          'Linh Xuan': 'Phường Linh Xuân',
+          'Phường Linh Xuân': 'Phường Linh Xuân',
+          'Tam Binh': 'Phường Tam Bình',
+          'Phường Tam Bình': 'Phường Tam Bình',
+          'Tam Phu': 'Phường Tam Phú',
+          'Phường Tam Phú': 'Phường Tam Phú',
+          'Hiep Binh Chanh': 'Phường Hiệp Bình Chánh',
+          'Phường Hiệp Bình Chánh': 'Phường Hiệp Bình Chánh',
+          'Hiep Binh Phuoc': 'Phường Hiệp Bình Phước',
+          'Phường Hiệp Bình Phước': 'Phường Hiệp Bình Phước',
+          'Thu Duc': 'Phường Thủ Đức',
+          'Phường Thủ Đức': 'Phường Thủ Đức',
+          'Binh Tho': 'Phường Bình Thọ',
+          'Phường Bình Thọ': 'Phường Bình Thọ',
+          'Binh Chieu': 'Phường Bình Chiểu',
+          'Phường Bình Chiểu': 'Phường Bình Chiểu',
+          'Binh An': 'Phường Bình An',
+          'Phường Bình An': 'Phường Bình An',
+          'Binh Duong': 'Phường Bình Dương',
+          'Phường Bình Dương': 'Phường Bình Dương',
+          'Binh Khanh': 'Phường Bình Khánh',
+          'Phường Bình Khánh': 'Phường Bình Khánh',
+          'Binh Minh': 'Phường Bình Minh',
+          'Phường Bình Minh': 'Phường Bình Minh',
+          'Binh Nghia': 'Phường Bình Nghĩa',
+          'Phường Bình Nghĩa': 'Phường Bình Nghĩa',
+          'Binh Phu': 'Phường Bình Phú',
+          'Phường Bình Phú': 'Phường Bình Phú',
+          'Binh Quoi': 'Phường Bình Quới',
+          'Phường Bình Quới': 'Phường Bình Quới',
+          'Binh Tho': 'Phường Bình Thọ',
+          'Phường Bình Thọ': 'Phường Bình Thọ',
+          'Binh Trung': 'Phường Bình Trung',
+          'Phường Bình Trung': 'Phường Bình Trung',
+          'Binh Yen': 'Phường Bình Yên',
+          'Phường Bình Yên': 'Phường Bình Yên'
+        }
+
+        // Áp dụng mapping cho wardName
+        const mappedWardName = wardMapping[wardName] || wardName
+        console.log('🔄 Mapping ward:', wardName, '→', mappedWardName)
+
         // Lấy thông tin provinceId, districtId, wardId từ GHN API
         try {
           // Lấy danh sách tỉnh/thành phố
           const provincesResponse = await addressApi.getProvinces()
-          const provinces = provincesResponse.data
+          const provinces = Array.isArray(provincesResponse) ? provincesResponse : provincesResponse.data
 
-          // Tìm provinceId dựa trên tên tỉnh/thành phố
-          const province = provinces.find(p =>
-            provinceName.includes(p.ProvinceName) || p.ProvinceName.includes(provinceName)
+          // Tìm provinceId dựa trên tên tỉnh/thành phố đã được mapping
+          const province = provinces.find(
+            (p) => mappedProvinceName.includes(p.ProvinceName) || p.ProvinceName.includes(mappedProvinceName)
           )
 
           if (province) {
+            console.log('✅ Tìm thấy tỉnh/thành phố:', province.ProvinceName)
             const provinceId = province.ProvinceID
 
             // Lấy danh sách quận/huyện dựa trên provinceId
             const districtsResponse = await addressApi.getDistricts(provinceId)
-            const districts = districtsResponse.data
+            const districts = Array.isArray(districtsResponse) ? districtsResponse : districtsResponse.data
 
-            // Tìm districtId dựa trên tên quận/huyện
-            const district = districts.find(d =>
-              districtName.includes(d.DistrictName) || d.DistrictName.includes(districtName)
+            // Tìm districtId dựa trên tên quận/huyện đã được mapping
+            const district = districts.find(
+              (d) => mappedDistrictName.includes(d.DistrictName) || d.DistrictName.includes(mappedDistrictName)
             )
 
             if (district) {
+              console.log('✅ Tìm thấy quận/huyện:', district.DistrictName)
               const districtId = district.DistrictID
 
               // Lấy danh sách phường/xã dựa trên districtId
               const wardsResponse = await addressApi.getWards(districtId)
-              const wards = wardsResponse.data
+              const wards = Array.isArray(wardsResponse) ? wardsResponse : wardsResponse.data
 
-              // Tìm wardId dựa trên tên phường/xã
-              const ward = wards.find(w =>
-                wardName.includes(w.WardName) || w.WardName.includes(wardName)
-              )
+              // Tìm wardId dựa trên tên phường/xã đã được mapping
+              const ward = wards.find((w) => mappedWardName.includes(w.WardName) || w.WardName.includes(mappedWardName))
 
               if (ward) {
+                console.log('✅ Tìm thấy phường/xã:', ward.WardName)
                 const wardId = parseInt(ward.WardCode)
 
                 // Cập nhật thông tin địa chỉ
-                setLocationInfo({
+                const locationData = {
                   province: province.ProvinceName,
                   provinceId: provinceId,
                   district: district.DistrictName,
@@ -308,36 +584,208 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
                   ward: ward.WardName,
                   wardId: wardId,
                   streetAddress: streetAddress
-                })
+                }
+
+                setLocationInfo(locationData)
+                console.log('✅ Đã cập nhật thông tin địa chỉ:', locationData)
               } else {
-                console.error('❌ Không tìm thấy phường/xã phù hợp')
+                console.warn('⚠️ Không tìm thấy phường/xã phù hợp:', mappedWardName)
+                // Thử tìm ward gần nhất hoặc ward đầu tiên trong district
+                const fallbackWard = wards.length > 0 ? wards[0] : null
+
+                if (fallbackWard) {
+                  console.log('🔄 Sử dụng ward fallback:', fallbackWard.WardName)
+                  setLocationInfo({
+                    province: province.ProvinceName,
+                    provinceId: provinceId,
+                    district: district.DistrictName,
+                    districtId: districtId,
+                    ward: fallbackWard.WardName,
+                    wardId: parseInt(fallbackWard.WardCode),
+                    streetAddress: streetAddress
+                  })
+                } else {
+                  // Vẫn set thông tin với wardId = 0
+                  setLocationInfo({
+                    province: province.ProvinceName,
+                    provinceId: provinceId,
+                    district: district.DistrictName,
+                    districtId: districtId,
+                    ward: mappedWardName || 'Không xác định',
+                    wardId: 0,
+                    streetAddress: streetAddress
+                  })
+                }
               }
             } else {
-              console.error('❌ Không tìm thấy quận/huyện phù hợp')
+              console.warn('⚠️ Không tìm thấy quận/huyện phù hợp:', mappedDistrictName)
+              // Thử tìm district gần nhất hoặc district đầu tiên trong province
+              const fallbackDistrict = districts.length > 0 ? districts[0] : null
+
+              if (fallbackDistrict) {
+                console.log('🔄 Sử dụng district fallback:', fallbackDistrict.DistrictName)
+                // Load wards cho district fallback
+                try {
+                  const wardsResponse = await addressApi.getWards(fallbackDistrict.DistrictID)
+                  const wards = Array.isArray(wardsResponse) ? wardsResponse : wardsResponse.data
+                  const fallbackWard = wards.length > 0 ? wards[0] : null
+
+                  setLocationInfo({
+                    province: province.ProvinceName,
+                    provinceId: provinceId,
+                    district: fallbackDistrict.DistrictName,
+                    districtId: fallbackDistrict.DistrictID,
+                    ward: fallbackWard ? fallbackWard.WardName : mappedWardName || 'Không xác định',
+                    wardId: fallbackWard ? parseInt(fallbackWard.WardCode) : 0,
+                    streetAddress: streetAddress
+                  })
+                } catch (error) {
+                  console.error('❌ Lỗi khi load wards cho district fallback:', error)
+                  setLocationInfo({
+                    province: province.ProvinceName,
+                    provinceId: provinceId,
+                    district: fallbackDistrict.DistrictName,
+                    districtId: fallbackDistrict.DistrictID,
+                    ward: mappedWardName || 'Không xác định',
+                    wardId: 0,
+                    streetAddress: streetAddress
+                  })
+                }
+              } else {
+                // Vẫn set thông tin với districtId = 0
+                setLocationInfo({
+                  province: province.ProvinceName,
+                  provinceId: provinceId,
+                  district: mappedDistrictName || 'Không xác định',
+                  districtId: 0,
+                  ward: mappedWardName || 'Không xác định',
+                  wardId: 0,
+                  streetAddress: streetAddress
+                })
+              }
             }
           } else {
-            console.error('❌ Không tìm thấy tỉnh/thành phố phù hợp')
+            console.warn('⚠️ Không tìm thấy tỉnh/thành phố phù hợp:', mappedProvinceName)
+            // Thử tìm province gần nhất hoặc province đầu tiên
+            const fallbackProvince = provinces.length > 0 ? provinces[0] : null
+
+            if (fallbackProvince) {
+              console.log('🔄 Sử dụng province fallback:', fallbackProvince.ProvinceName)
+              // Load districts cho province fallback
+              try {
+                const districtsResponse = await addressApi.getDistricts(fallbackProvince.ProvinceID)
+                const districts = Array.isArray(districtsResponse) ? districtsResponse : districtsResponse.data
+                const fallbackDistrict = districts.length > 0 ? districts[0] : null
+
+                if (fallbackDistrict) {
+                  // Load wards cho district fallback
+                  const wardsResponse = await addressApi.getWards(fallbackDistrict.DistrictID)
+                  const wards = Array.isArray(wardsResponse) ? wardsResponse : wardsResponse.data
+                  const fallbackWard = wards.length > 0 ? wards[0] : null
+
+                  setLocationInfo({
+                    province: fallbackProvince.ProvinceName,
+                    provinceId: fallbackProvince.ProvinceID,
+                    district: fallbackDistrict.DistrictName,
+                    districtId: fallbackDistrict.DistrictID,
+                    ward: fallbackWard ? fallbackWard.WardName : mappedWardName || 'Không xác định',
+                    wardId: fallbackWard ? parseInt(fallbackWard.WardCode) : 0,
+                    streetAddress: streetAddress
+                  })
+                } else {
+                  setLocationInfo({
+                    province: fallbackProvince.ProvinceName,
+                    provinceId: fallbackProvince.ProvinceID,
+                    district: mappedDistrictName || 'Không xác định',
+                    districtId: 0,
+                    ward: mappedWardName || 'Không xác định',
+                    wardId: 0,
+                    streetAddress: streetAddress
+                  })
+                }
+              } catch (error) {
+                console.error('❌ Lỗi khi load districts/wards cho province fallback:', error)
+                setLocationInfo({
+                  province: fallbackProvince.ProvinceName,
+                  provinceId: fallbackProvince.ProvinceID,
+                  district: mappedDistrictName || 'Không xác định',
+                  districtId: 0,
+                  ward: mappedWardName || 'Không xác định',
+                  wardId: 0,
+                  streetAddress: streetAddress
+                })
+              }
+            } else {
+              // Vẫn set thông tin với provinceId = 0
+              setLocationInfo({
+                province: mappedProvinceName || 'Không xác định',
+                provinceId: 0,
+                district: mappedDistrictName || 'Không xác định',
+                districtId: 0,
+                ward: mappedWardName || 'Không xác định',
+                wardId: 0,
+                streetAddress: streetAddress
+              })
+            }
           }
         } catch (error) {
           console.error('❌ Lỗi khi lấy thông tin địa chỉ từ GHN API:', error)
+          // Fallback: Set thông tin cơ bản
+          setLocationInfo({
+            province: mappedProvinceName || 'Không xác định',
+            provinceId: 0,
+            district: mappedDistrictName || 'Không xác định',
+            districtId: 0,
+            ward: mappedWardName || 'Không xác định',
+            wardId: 0,
+            streetAddress: streetAddress
+          })
         }
       } else {
         console.error('❌ Không tìm thấy địa chỉ cho tọa độ:', coords)
+        // Fallback: Sử dụng thông tin từ Mapbox nếu có
+        setLocationInfo({
+          province: 'Không xác định',
+          provinceId: 0,
+          district: 'Không xác định',
+          districtId: 0,
+          ward: 'Không xác định',
+          wardId: 0,
+          streetAddress: 'Địa chỉ không xác định'
+        })
       }
     } catch (error) {
       console.error('❌ Lỗi khi reverse geocoding:', error)
-    } finally {
-      setIsLoading(false)
+      // Fallback: Set thông tin cơ bản từ Mapbox
+      setLocationInfo({
+        province: 'Không xác định',
+        provinceId: 0,
+        district: 'Không xác định',
+        districtId: 0,
+        ward: 'Không xác định',
+        wardId: 0,
+        streetAddress: 'Địa chỉ không xác định'
+      })
     }
   }
 
   // Xác nhận vị trí
   const handleConfirmLocation = () => {
     if (coordinates && locationInfo) {
-      onLocationConfirm({
-        coordinates,
-        ...locationInfo
-      })
+      // Kiểm tra xem có đầy đủ ID không
+      if (locationInfo.provinceId > 0 && locationInfo.districtId > 0 && locationInfo.wardId > 0) {
+        console.log('✅ Đầy đủ thông tin địa chỉ với ID:', locationInfo)
+        onLocationConfirm({
+          coordinates,
+          ...locationInfo
+        })
+      } else {
+        console.warn('⚠️ Thiếu thông tin ID:', locationInfo)
+        alert('Thông tin địa chỉ chưa đầy đủ. Vui lòng thử lại hoặc chọn vị trí khác.')
+      }
+    } else {
+      console.warn('⚠️ Chưa có tọa độ hoặc thông tin địa chỉ')
+      alert('Vui lòng lấy vị trí hiện tại trước khi xác nhận.')
     }
   }
 
@@ -351,47 +799,80 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
 
       {isLoading && (
         <div className='text-center p-3 bg-blue-50 rounded-lg mb-4'>
-          <div className='animate-pulse text-blue-600'>Đang xử lý...</div>
+          <div className='animate-pulse text-blue-600'>
+            {coordinates ? 'Đang lấy thông tin địa chỉ...' : 'Đang lấy vị trí hiện tại...'}
+          </div>
         </div>
       )}
 
       <div className='w-full h-96 rounded-lg shadow-lg border border-gray-200 mb-4' ref={mapContainer}></div>
 
       {locationInfo && (
-        <div className='bg-gray-50 p-4 rounded-lg mb-4'>
-          <h3 className='font-semibold text-gray-900 mb-2'>Thông tin địa chỉ:</h3>
-          <p className='text-sm text-gray-600 mb-1'>
-            <span className='font-medium'>Tỉnh/Thành phố:</span> {locationInfo.province}
-          </p>
-          <p className='text-sm text-gray-600 mb-1'>
-            <span className='font-medium'>Quận/Huyện:</span> {locationInfo.district}
-          </p>
-          <p className='text-sm text-gray-600 mb-1'>
-            <span className='font-medium'>Phường/Xã:</span> {locationInfo.ward}
-          </p>
-          <p className='text-sm text-gray-600 mb-1'>
-            <span className='font-medium'>Địa chỉ:</span> {locationInfo.streetAddress}
-          </p>
-          <p className='text-sm text-gray-600 mb-1'>
-            <span className='font-medium'>Tọa độ:</span> {coordinates ? `${coordinates[0].toFixed(6)}, ${coordinates[1].toFixed(6)}` : 'N/A'}
+        <div className='bg-green-50 border border-green-200 p-4 rounded-lg mb-4'>
+          <h3 className='font-semibold text-green-900 mb-2 flex items-center'>
+            <span className='mr-2'>📍</span>
+            Thông tin địa chỉ đã lấy được:
+          </h3>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-2 text-sm'>
+            <p className='text-green-700'>
+              <span className='font-medium'>Tỉnh/Thành phố:</span> {locationInfo.province}
+            </p>
+            <p className='text-green-700'>
+              <span className='font-medium'>Quận/Huyện:</span> {locationInfo.district}
+            </p>
+            <p className='text-green-700'>
+              <span className='font-medium'>Phường/Xã:</span> {locationInfo.ward}
+            </p>
+            <p className='text-green-700'>
+              <span className='font-medium'>Địa chỉ:</span> {locationInfo.streetAddress}
+            </p>
+            <p className='text-green-700 col-span-2'>
+              <span className='font-medium'>Tọa độ:</span>{' '}
+              {coordinates ? `${coordinates[0].toFixed(6)}, ${coordinates[1].toFixed(6)}` : 'N/A'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {coordinates && !locationInfo && !isLoading && (
+        <div className='bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-4'>
+          <p className='text-yellow-700 text-sm'>
+            ⚠️ Đã lấy được tọa độ nhưng chưa lấy được thông tin địa chỉ. Vui lòng thử lại hoặc kéo thả marker đến vị trí
+            khác.
           </p>
         </div>
       )}
 
+      {locationInfo &&
+        (locationInfo.provinceId === 0 || locationInfo.districtId === 0 || locationInfo.wardId === 0) && (
+          <div className='bg-orange-50 border border-orange-200 p-4 rounded-lg mb-4'>
+            <p className='text-orange-700 text-sm'>
+              ⚠️ Đã lấy được thông tin địa chỉ nhưng thiếu một số ID. Vui lòng thử lại hoặc chọn vị trí khác để có đầy
+              đủ thông tin.
+            </p>
+            <div className='mt-2 text-xs text-orange-600'>
+              <p>
+                ProvinceId: {locationInfo.provinceId} | DistrictId: {locationInfo.districtId} | WardId:{' '}
+                {locationInfo.wardId}
+              </p>
+            </div>
+          </div>
+        )}
+
       <div className='flex gap-4'>
-        <Button
-          onClick={getCurrentLocation}
-          variant="outline"
-          className='flex-1'
-          disabled={isLoading}
-        >
+        <Button onClick={getCurrentLocation} variant='outline' className='flex-1' disabled={isLoading}>
           Lấy vị trí hiện tại
         </Button>
         <Button
           onClick={handleConfirmLocation}
-          variant="default"
+          variant='green'
           className='flex-1'
-          disabled={isLoading || !coordinates || !locationInfo}
+          disabled={
+            isLoading ||
+            !coordinates ||
+            !locationInfo ||
+            !(locationInfo.provinceId > 0 && locationInfo.districtId > 0 && locationInfo.wardId > 0)
+          }
         >
           Xác nhận vị trí
         </Button>

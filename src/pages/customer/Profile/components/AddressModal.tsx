@@ -279,42 +279,95 @@ export default function AddressModal({
   )
 
   // Xử lý khi xác nhận vị trí từ bản đồ
-  const handleLocationConfirm = useCallback((locationData: {
-    coordinates: [number, number]
-    province: string
-    provinceId: number
-    district: string
-    districtId: number
-    ward: string
-    wardId: number
-    streetAddress: string
-  }) => {
-    setFormData((prev) => ({
-      ...prev,
-      province: locationData.province,
-      provinceId: locationData.provinceId,
-      district: locationData.district,
-      districtId: locationData.districtId,
-      ward: locationData.ward,
-      wardId: locationData.wardId,
-      streetAddress: locationData.streetAddress
-    }))
-    
-    // Chuyển sang tab nhập tay để người dùng có thể chỉnh sửa thêm nếu cần
-    setActiveTab('manual')
-    
-    // Hiển thị thông báo thành công
-    toast.success('Đã lấy thông tin địa chỉ từ bản đồ thành công!', {
-      position: 'top-right',
-      autoClose: 2000
-    })
-  }, [])
+  const handleLocationConfirm = useCallback(
+    async (locationData: {
+      coordinates: [number, number]
+      province: string
+      provinceId: number
+      district: string
+      districtId: number
+      ward: string
+      wardId: number
+      streetAddress: string
+    }) => {
+      console.log('📍 Nhận dữ liệu từ bản đồ:', locationData)
+
+      // Cập nhật form data với thông tin từ bản đồ
+      setFormData((prev) => ({
+        ...prev,
+        province: locationData.province,
+        provinceId: locationData.provinceId,
+        district: locationData.district,
+        districtId: locationData.districtId,
+        ward: locationData.ward,
+        wardId: locationData.wardId,
+        streetAddress: locationData.streetAddress
+      }))
+
+      // Tự động load districts và wards nếu có provinceId và districtId
+      if (locationData.provinceId > 0) {
+        try {
+          console.log('🔄 Đang load districts cho provinceId:', locationData.provinceId)
+          await loadDistricts(locationData.provinceId)
+
+          if (locationData.districtId > 0) {
+            console.log('🔄 Đang load wards cho districtId:', locationData.districtId)
+            await loadWards(locationData.districtId)
+          }
+        } catch (error) {
+          console.error('❌ Lỗi khi load districts/wards:', error)
+        }
+      }
+
+      // Chuyển sang tab nhập tay để người dùng có thể chỉnh sửa thêm nếu cần
+      setActiveTab('manual')
+
+      // Hiển thị thông báo thành công
+      toast.success('Đã lấy thông tin địa chỉ từ bản đồ thành công!', {
+        position: 'top-right',
+        autoClose: 2000
+      })
+    },
+    [loadDistricts, loadWards]
+  )
 
   // Retry handler
   const retryHandler = useCallback(() => {
     setError(null)
     loadProvinces()
   }, [loadProvinces])
+
+  // Update formData when address prop changes
+  useEffect(() => {
+    if (address) {
+      console.log('🔄 Updating formData with address:', address)
+      setFormData({
+        userId: userId || '',
+        province: address.province || '',
+        district: address.district || '',
+        ward: address.ward || '',
+        provinceId: address.provinceId || 0,
+        districtId: address.districtId || 0,
+        wardId: address.wardId || 0,
+        streetAddress: address.streetAddress || '',
+        isDefault: address.isDefault || false
+      })
+    } else {
+      console.log('🔄 Resetting formData for new address')
+      // Reset form data for new address
+      setFormData({
+        userId: userId || '',
+        province: '',
+        district: '',
+        ward: '',
+        provinceId: 0,
+        districtId: 0,
+        wardId: 0,
+        streetAddress: '',
+        isDefault: false
+      })
+    }
+  }, [address, userId])
 
   // Load provinces on mount
   useEffect(() => {
@@ -337,6 +390,19 @@ export default function AddressModal({
     }
   }, [isOpen, formData.districtId, loadWards])
 
+  // Load districts and wards when address changes (for editing)
+  useEffect(() => {
+    if (address && isOpen) {
+      if (address.provinceId > 0) {
+        loadDistricts(address.provinceId).then(() => {
+          if (address.districtId > 0) {
+            loadWards(address.districtId)
+          }
+        })
+      }
+    }
+  }, [address, isOpen, loadDistricts, loadWards])
+
   // Check if there's another default address
   const hasOtherDefault = useMemo(() => {
     return existingAddresses.some((addr) => addr.isDefault && addr.id !== address?.id)
@@ -358,13 +424,13 @@ export default function AddressModal({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="manual">Nhập thủ công</TabsTrigger>
-            <TabsTrigger value="map">Chọn trên bản đồ</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
+          <TabsList className='grid w-full grid-cols-2'>
+            <TabsTrigger value='manual'>Nhập thủ công</TabsTrigger>
+            <TabsTrigger value='map'>Chọn trên bản đồ</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="manual">
+
+          <TabsContent value='manual'>
             <form onSubmit={handleSubmit} className='space-y-4'>
               {/* Error Message */}
               {error && (
@@ -489,17 +555,18 @@ export default function AddressModal({
               </DialogFooter>
             </form>
           </TabsContent>
-          
-          <TabsContent value="map">
+
+          <TabsContent value='map'>
             <div className='space-y-4'>
               <p className='text-sm text-gray-600'>
                 Sử dụng bản đồ để chọn vị trí chính xác của bạn. Bạn có thể kéo thả marker để điều chỉnh vị trí.
               </p>
-              
+
               <MapBoxGetLocation onLocationConfirm={handleLocationConfirm} />
-              
+
               <div className='text-xs text-blue-600 bg-blue-50 p-2 rounded'>
-                ℹ️ Sau khi xác nhận vị trí, bạn sẽ được chuyển sang tab nhập thủ công để kiểm tra và điều chỉnh thông tin nếu cần.
+                ℹ️ Sau khi xác nhận vị trí, bạn sẽ được chuyển sang tab nhập thủ công để kiểm tra và điều chỉnh thông
+                tin nếu cần.
               </div>
             </div>
           </TabsContent>

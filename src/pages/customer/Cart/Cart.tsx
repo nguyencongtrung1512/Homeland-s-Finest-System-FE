@@ -1,6 +1,6 @@
 // Cart component
 import { Button } from '../../../components/ui/button'
-import { Plus, Minus, ShoppingCart, Trash2, Store } from 'lucide-react'
+import { Plus, Minus, ShoppingCart, Trash2, Store, MapPin, Edit, Trash } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
@@ -8,7 +8,9 @@ import { useAuth } from '../../../contexts/auth.context'
 import { updateCartItem, removeCartItem, getCartByUserId } from '../../../apis/cart.api'
 import { toast } from 'react-toastify'
 import { createOrder } from '../../../apis/order.api'
+import { addressApi } from '../../../apis/address.api'
 import type { CartData, CartItem as APICartItem } from '../../../types/cartType'
+import type { Address } from '../../../types/addressType'
 
 type PaymentMethod = 'COD' | 'Banking'
 
@@ -29,7 +31,8 @@ export default function Cart() {
   const [cartData, setCartData] = useState<CartData | null>(null)
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({})
   const [selectAll, setSelectAll] = useState(false)
-  const hardcodedAddressId = '11000000-0000-0000-0000-000000000001'
+  const [addresses, setAddresses] = useState<Address[]>([])
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -48,10 +51,32 @@ export default function Cart() {
     }
   }, [user?.userId])
 
-  // Load cart data from API
+  // Helper function to load user addresses
+  const loadUserAddresses = useCallback(async () => {
+    if (!user?.userId) return
+
+    try {
+      const response = await addressApi.getUserAddresses(user.userId)
+      if (response?.status === 200) {
+        setAddresses(response.data)
+        // Set default address as selected
+        const defaultAddress = response.data.find((addr) => addr.isDefault)
+        if (defaultAddress) {
+          setSelectedAddress(defaultAddress)
+        } else if (response.data.length > 0) {
+          setSelectedAddress(response.data[0])
+        }
+      }
+    } catch (error) {
+      console.error('Error loading addresses:', error)
+    }
+  }, [user?.userId])
+
+  // Load cart data and addresses from API
   useEffect(() => {
     reloadCartData()
-  }, [reloadCartData])
+    loadUserAddresses()
+  }, [reloadCartData, loadUserAddresses])
 
   // Transform cart data to local state
   useEffect(() => {
@@ -195,9 +220,14 @@ export default function Cart() {
 
       setIsSubmitting(true)
 
+      if (!selectedAddress) {
+        toast.error('Vui lòng chọn địa chỉ giao hàng')
+        return
+      }
+
       const orderData = {
         userId: user.userId,
-        userAddressId: hardcodedAddressId,
+        userAddressId: selectedAddress.id,
         paymentMethod: selectedPaymentMethod,
         orderItemCreates: selectedItemsList.map((item) => ({
           productVariantId: item.productVariantId,
@@ -470,58 +500,10 @@ export default function Cart() {
                 </span>
               </div>
 
-              {/* Payment Method Selection */}
-              <div className='mb-4'>
-                <h3 className='text-sm font-semibold text-gray-700 mb-3'>Phương thức thanh toán</h3>
-                <div className='space-y-2'>
-                  <label
-                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'COD'
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <input
-                      type='radio'
-                      name='paymentMethod'
-                      value='COD'
-                      checked={selectedPaymentMethod === 'COD'}
-                      onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
-                      className='w-4 h-4 text-green-600'
-                    />
-                    <div className='flex-1'>
-                      <p className='font-medium text-gray-900'>💵 COD</p>
-                      <p className='text-xs text-gray-500'>Thanh toán khi nhận hàng</p>
-                    </div>
-                  </label>
-
-                  <label
-                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'Banking'
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <input
-                      type='radio'
-                      name='paymentMethod'
-                      value='Banking'
-                      checked={selectedPaymentMethod === 'Banking'}
-                      onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
-                      className='w-4 h-4 text-green-600'
-                    />
-                    <div className='flex-1'>
-                      <p className='font-medium text-gray-900'>💳 Banking</p>
-                      <p className='text-xs text-gray-500'>Chuyển khoản ngân hàng</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
               <button
                 onClick={handleCreateOrder}
                 className='w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                disabled={getSelectedCount() === 0 || !selectedPaymentMethod || isSubmitting}
+                disabled={getSelectedCount() === 0 || !selectedPaymentMethod || !selectedAddress || isSubmitting}
               >
                 {isSubmitting ? 'Đang tạo đơn hàng...' : `Mua hàng (${getSelectedCount()})`}
               </button>
@@ -543,6 +525,116 @@ export default function Cart() {
                   <span>Giao hàng nhanh toàn quốc</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Delivery Address Section */}
+        <div className='mt-6'>
+          <div className='bg-white rounded-lg shadow-sm p-6'>
+            <div className='flex items-center gap-3 mb-4'>
+              <MapPin className='w-6 h-6 text-orange-600' />
+              <h2 className='text-xl font-bold text-gray-800'>Địa chỉ giao hàng</h2>
+              <button className='ml-auto text-orange-600 hover:text-orange-700 font-medium text-sm'>
+                + Thêm địa chỉ mới
+              </button>
+            </div>
+
+            <div className='space-y-3'>
+              {addresses.map((address) => (
+                <div
+                  key={address.id}
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedAddress?.id === address.id
+                    ? 'border-orange-500 bg-orange-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  onClick={() => setSelectedAddress(address)}
+                >
+                  <div className='flex items-start justify-between'>
+                    <div className='flex items-start gap-3'>
+                      <input
+                        type='radio'
+                        checked={selectedAddress?.id === address.id}
+                        onChange={() => setSelectedAddress(address)}
+                        className='w-4 h-4 text-orange-600 mt-1'
+                      />
+                      <div className='flex-1'>
+                        <div className='flex items-center gap-2 mb-1'>
+                          <span className='font-medium text-gray-900'>
+                            {user?.email || 'user@example.com'} | 0123456789
+                          </span>
+                          {address.isDefault && (
+                            <span className='bg-orange-100 text-orange-600 text-xs px-2 py-1 rounded-full'>
+                              Mặc định
+                            </span>
+                          )}
+                        </div>
+                        <p className='text-gray-600 text-sm'>
+                          {address.streetAddress}, {address.ward}, {address.district}, {address.province}
+                        </p>
+                      </div>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      <button className='text-gray-400 hover:text-blue-500'>
+                        <Edit className='w-4 h-4' />
+                      </button>
+                      {!address.isDefault && (
+                        <button className='text-gray-400 hover:text-red-500'>
+                          <Trash className='w-4 h-4' />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Payment Method Section */}
+        <div className='mt-6'>
+          <div className='bg-white rounded-lg shadow-sm p-6'>
+            <h2 className='text-xl font-bold text-gray-800 mb-4'>Phương thức thanh toán</h2>
+            <div className='space-y-3'>
+              <label
+                className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'COD'
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-gray-200 hover:border-gray-300'
+                  }`}
+              >
+                <input
+                  type='radio'
+                  name='paymentMethod'
+                  value='COD'
+                  checked={selectedPaymentMethod === 'COD'}
+                  onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
+                  className='w-4 h-4 text-green-600'
+                />
+                <div className='flex-1'>
+                  <p className='font-medium text-gray-900'>💵 Thanh toán khi nhận hàng (COD)</p>
+                  <p className='text-sm text-gray-500'>Thanh toán bằng tiền mặt khi nhận hàng</p>
+                </div>
+              </label>
+
+              <label
+                className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'Banking'
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-gray-200 hover:border-gray-300'
+                  }`}
+              >
+                <input
+                  type='radio'
+                  name='paymentMethod'
+                  value='Banking'
+                  checked={selectedPaymentMethod === 'Banking'}
+                  onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
+                  className='w-4 h-4 text-green-600'
+                />
+                <div className='flex-1'>
+                  <p className='font-medium text-gray-900'>💳 Chuyển khoản ngân hàng</p>
+                  <p className='text-sm text-gray-500'>Thanh toán qua chuyển khoản ngân hàng</p>
+                </div>
+              </label>
             </div>
           </div>
         </div>

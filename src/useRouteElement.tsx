@@ -18,7 +18,6 @@ import ProductsSeller from './pages/seller/products/products'
 import CreateProduct from './pages/seller/products/createProduct'
 import UpdateProduct from './pages/seller/products/updateProduct'
 import OrderManagement from './pages/seller/order/order'
-import OrderDetail from './pages/seller/order/orderDetail'
 import CreateMyStory from './pages/seller/mystory/createMyStory'
 import ChatWithCustomer from './pages/seller/ChatWithCustomer/ChatWithCustomer'
 import FinanceManagement from './pages/seller/finance/finance'
@@ -190,10 +189,7 @@ export default function useRouteElements() {
               path: path.ordersSeller,
               element: <OrderManagement />
             },
-            {
-              path: path.orderDetailSeller,
-              element: <OrderDetail />
-            },
+           
             {
               path: path.myStorySeller,
               element: <MyStory />

@@ -160,20 +160,54 @@ export const addressApi = {
   },
 
   // Update address
-  update: async (id: string, data: AddressUpdateInput): Promise<AddressResponse> => {
-    const response = await axiosInstance.put(`${API_URL_ADDRESS}/${id}`, data)
-    return response as unknown as AddressResponse
+  update: async (id: string, data: AddressUpdateInput & { userId?: string }): Promise<AddressResponse> => {
+    try {
+      // Use multipart/form-data as required by backend
+      const formData = new FormData()
+
+      // Add UserId if provided (required by backend)
+      if (data.userId) {
+        formData.append('UserId', data.userId)
+      }
+
+      // Add all fields with capitalized names as required by backend
+      if (data.province !== undefined) formData.append('Province', data.province)
+      if (data.district !== undefined) formData.append('District', data.district)
+      if (data.ward !== undefined) formData.append('Ward', data.ward)
+      if (data.provinceId !== undefined) formData.append('ProvinceId', data.provinceId.toString())
+      if (data.districtId !== undefined) formData.append('DistrictId', data.districtId.toString())
+      if (data.wardId !== undefined) formData.append('WardId', data.wardId.toString())
+      if (data.streetAddress !== undefined) formData.append('StreetAddress', data.streetAddress)
+      if (data.isDefault !== undefined) formData.append('IsDefault', data.isDefault ? 'true' : 'false')
+      if (data.isActive !== undefined) formData.append('IsActive', data.isActive ? 'true' : 'false')
+
+      const response = await axiosInstance.put(`${API_URL_ADDRESS}/${id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      return response as unknown as AddressResponse
+    } catch (error: unknown) {
+      console.error('Error updating address:', error)
+      throw error
+    }
   },
 
   // Delete address
-  delete: async (id: string): Promise<ApiResponse<null>> => {
-    const response = await axiosInstance.delete(`${API_URL_ADDRESS}/${id}`)
-    return response as unknown as ApiResponse<null>
+  delete: async (id: string): Promise<AddressResponse> => {
+    const response = await axiosInstance.put(`/delete-address/${id}`)
+    return response as unknown as AddressResponse
   },
 
-  // Get addresses by user
-  getByUser: async (userId: string, params?: Omit<AddressQueryParams, 'userId'>): Promise<AddressListResponse> => {
-    const response = await axiosInstance.get(`${API_URL_ADDRESS}/user/${userId}`, { params })
+  // Set address as default
+  setAsDefault: async (id: string): Promise<AddressResponse> => {
+    const response = await axiosInstance.put(`${API_URL_ADDRESS}/${id}/set-default`)
+    return response as unknown as AddressResponse
+  },
+
+  // Get user addresses by direct endpoint (new API endpoint)
+  getUserAddresses: async (userId: string): Promise<AddressListResponse> => {
+    const response = await axiosInstance.get(`Adress/${userId}`)
     return response as unknown as AddressListResponse
   },
 
@@ -272,24 +306,6 @@ export const addressApi = {
   getByWard: async (wardId: number, params?: Omit<AddressQueryParams, 'wardId'>): Promise<AddressListResponse> => {
     const response = await axiosInstance.get(`${API_URL_ADDRESS}/ward/${wardId}`, { params })
     return response as unknown as AddressListResponse
-  },
-
-  // Get default address for user
-  getDefaultByUser: async (userId: string): Promise<AddressResponse> => {
-    const response = await axiosInstance.get(`${API_URL_ADDRESS}/user/${userId}/default`)
-    return response as unknown as AddressResponse
-  },
-
-  // Set address as default
-  setAsDefault: async (id: string): Promise<AddressResponse> => {
-    const response = await axiosInstance.patch(`${API_URL_ADDRESS}/${id}/default`)
-    return response as unknown as AddressResponse
-  },
-
-  // Update address active status
-  updateActiveStatus: async (id: string, isActive: boolean): Promise<AddressResponse> => {
-    const response = await axiosInstance.patch(`${API_URL_ADDRESS}/${id}/active`, { isActive })
-    return response as unknown as AddressResponse
   }
 }
 

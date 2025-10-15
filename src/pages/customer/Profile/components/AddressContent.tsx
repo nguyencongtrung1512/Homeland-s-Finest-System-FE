@@ -10,6 +10,7 @@ interface AddressContentProps {
   onEditAddress: (address: Address) => void
   onDeleteAddress: (addressId: string) => void
   onSetDefault: (addressId: string) => void
+  refreshTrigger?: number // Trigger để refresh danh sách
 }
 
 export default function AddressContent({
@@ -17,7 +18,8 @@ export default function AddressContent({
   onAddAddress,
   onEditAddress,
   onDeleteAddress,
-  onSetDefault
+  onSetDefault,
+  refreshTrigger
 }: AddressContentProps) {
   // State management
   const [addresses, setAddresses] = useState<Address[]>([])
@@ -32,14 +34,12 @@ export default function AddressContent({
     setError(null)
 
     try {
-      const response = await addressApi.getByUser(userId, {
-        pageSize: 50, // Lấy tối đa 50 địa chỉ
-        pageNumber: 1,
-        isActive: true // Chỉ lấy địa chỉ đang active
-      })
+      const response = await addressApi.getUserAddresses(userId)
 
       if (response.status === 200) {
-        setAddresses(response.data)
+        // Handle both single address and array of addresses
+        const addressesData = Array.isArray(response.data) ? response.data : [response.data]
+        setAddresses(addressesData)
       } else {
         setError(response.message || 'Có lỗi xảy ra khi tải địa chỉ')
       }
@@ -56,6 +56,13 @@ export default function AddressContent({
   useEffect(() => {
     fetchAddresses()
   }, [userId, fetchAddresses])
+
+  // Refresh addresses when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger) {
+      fetchAddresses()
+    }
+  }, [refreshTrigger, fetchAddresses])
 
   // Handle delete address
   const handleDeleteAddress = async (addressId: string) => {

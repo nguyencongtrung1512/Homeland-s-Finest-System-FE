@@ -1,23 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from '../../../../components/ui/button'
 import { Badge } from '../../../../components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ui/dialog'
+import { Card, CardContent } from '../../../../components/ui/card'
+import { Dialog, DialogContent } from '../../../../components/ui/dialog'
 import { getOrderDetail } from '../../../../apis/order.api'
 import type { Order as APIOrder } from '../../../../types/orderType'
-import {
-  Loader2,
-  Package,
-  MapPin,
-  CreditCard,
-  Clock,
-  RefreshCw,
-  AlertCircle,
-  Gift,
-  ShoppingBag,
-  Tag,
-  X
-} from 'lucide-react'
+import { Loader2, Package, MapPin, CreditCard, Clock, RefreshCw, AlertCircle, Gift } from 'lucide-react'
 import { toast } from 'react-toastify'
 
 interface OrderItemWithCombo {
@@ -180,18 +168,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       setError(null)
     }
   }, [isOpen])
-
-  const getStatusColor = (status: string) => {
-    const statusMap: Record<string, string> = {
-      NotYet: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      Processing: 'bg-blue-100 text-blue-800 border-blue-200',
-      Shipping: 'bg-orange-100 text-orange-800 border-orange-200',
-      Delivered: 'bg-green-100 text-green-800 border-green-200',
-      Cancel: 'bg-red-100 text-red-800 border-red-200',
-      Returned: 'bg-red-100 text-red-800 border-red-200'
-    }
-    return statusMap[status] || 'bg-gray-100 text-gray-800 border-gray-200'
-  }
 
   const getStatusText = (status: string) => {
     const statusTextMap: Record<string, string> = {
@@ -386,6 +362,64 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                   ))}
                 </div>
               </div>
+
+              {/* Promotions Section */}
+              {order.orderPromotions && order.orderPromotions.length > 0 && (
+                <div className='bg-white rounded-lg p-4 shadow-sm border border-gray-100'>
+                  <div className='flex items-center gap-2 mb-3'>
+                    <Gift className='h-4 w-4 text-green-600' />
+                    <h3 className='font-semibold text-gray-900'>Khuyến mãi đã áp dụng</h3>
+                  </div>
+
+                  <div className='space-y-3'>
+                    {order.orderPromotions.map((promotion, index) => (
+                      <div
+                        key={promotion.promotionType + index}
+                        className='flex items-center gap-4 p-4 border border-green-200 rounded-lg bg-green-50 shadow-sm'
+                      >
+                        {/* Logo Section */}
+                        <div className='w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                          <img src='/src/assets/tinhhoa.svg' alt='Tinh Hoa Logo' className='w-8 h-8' />
+                        </div>
+
+                        {/* Promotion Details Section */}
+                        <div className='flex-1 min-w-0'>
+                          <div className='flex items-center gap-2 mb-2'>
+                            <h4 className='font-semibold text-gray-900 text-sm'>{promotion.title}</h4>
+                            <Badge
+                              variant='outline'
+                              className={`text-xs ${promotion.promotionType === 'Product'
+                                ? 'border-blue-200 text-blue-700 bg-blue-50'
+                                : 'border-purple-200 text-purple-700 bg-purple-50'
+                                }`}
+                            >
+                              {promotion.promotionType === 'Product' ? 'Sản phẩm' : 'Toàn cửa hàng'}
+                            </Badge>
+                          </div>
+
+                          <p className='text-xs text-gray-600 mb-2'>{promotion.description}</p>
+
+                          <div className='space-y-1'>
+                            <div className='flex items-center gap-2 text-xs'>
+                              <span className='text-gray-600'>
+                                {promotion.discountType === 'percentage'
+                                  ? `Giảm ${promotion.discountValue}%`
+                                  : `Giảm ${formatPrice(promotion.discountValue)}`
+                                }
+                              </span>
+                              <span className='font-semibold text-green-600'>
+                                -{formatPrice(promotion.discountAmount)}
+                              </span>
+                            </div>
+
+
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Shipping Info */}
               <div className='grid grid-cols-2 gap-3'>

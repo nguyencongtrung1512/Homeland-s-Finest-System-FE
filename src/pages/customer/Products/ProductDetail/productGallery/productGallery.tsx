@@ -35,27 +35,20 @@ function ProductGallery() {
     }
   }
 
-  const handleBuyNow = () => {
-    if (currentVariant) {
-      // Chuẩn bị dữ liệu sản phẩm để truyền sang trang BuyNowCart
-      const productData = {
-        id: product.id,
-        productVariantId: currentVariant.id,
-        name: product.name,
-        description: product.description,
-        price: currentPrice,
-        quantity: quantity,
-        image: product.productImages[0] || 'https://via.placeholder.com/400x400?text=No+Image',
-        variant: currentVariant.variantName,
-        storeId: product.storeId
-      }
+  const handleBuyNow = async () => {
+    if (!currentVariant) {
+      return
+    }
 
-      // Navigate đến trang BuyNowCart với dữ liệu sản phẩm
-      navigate('/cart/buy-now', {
-        state: {
-          product: productData
-        }
-      })
+    try {
+      setIsAddingToCart(true)
+      await addToCart(currentVariant.id, quantity)
+      // Sau khi thêm vào giỏ hàng thành công, chuyển đến trang Cart
+      navigate('/cart')
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+    } finally {
+      setIsAddingToCart(false)
     }
   }
 
@@ -174,8 +167,8 @@ function ProductGallery() {
                       }}
                       disabled={!variant.isActive || variant.availableQuantity === 0}
                       className={`p-3 border rounded-lg text-left transition-colors ${selectedVariant === index
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-300 hover:border-gray-400'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-300 hover:border-gray-400'
                         } ${!variant.isActive || variant.availableQuantity === 0
                           ? 'opacity-50 cursor-not-allowed'
                           : ''
@@ -230,7 +223,7 @@ function ProductGallery() {
               >
                 {isAddingToCart ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
                     Đang thêm...
                   </>
                 ) : (
@@ -240,7 +233,7 @@ function ProductGallery() {
                 )}
               </button>
 
-              <button 
+              <button
                 onClick={handleBuyNow}
                 disabled={!product.isActive || currentStock === 0 || !currentVariant}
                 className='w-full border border-green-600 text-green-600 py-3 px-6 rounded-lg font-semibold hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
