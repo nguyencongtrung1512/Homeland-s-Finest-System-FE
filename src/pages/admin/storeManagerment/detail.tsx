@@ -114,7 +114,7 @@ function StoreDetailAdmin() {
     }
 
     const result = exportStoreToExcel(store)
-    
+
     if (result.success) {
       console.log('Xuất Excel thành công! File: ', result.fileName)
     } else {
@@ -186,6 +186,8 @@ function StoreDetailAdmin() {
       Rejected: { text: 'Từ chối', color: 'bg-red-500', textColor: 'text-red-700' },
       Processing: { text: 'Nhân viên xử lí', color: 'bg-indigo-500', textColor: 'text-indigo-700' },
       ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', color: 'bg-purple-500', textColor: 'text-purple-700' },
+      ApprovedByStaff: { text: 'Đã chấp nhận bởi nhân viên', color: 'bg-green-500', textColor: 'text-green-700' },
+      RejectedByStaff: { text: 'Đã từ chối bởi nhân viên', color: 'bg-red-500', textColor: 'text-red-700' },
       Inactive: { text: 'Bị khóa', color: 'bg-red-500', textColor: 'text-red-700' }
     }
     return configs[status as keyof typeof configs] || configs.Pending
@@ -689,19 +691,10 @@ function StoreDetailAdmin() {
                 <h3 className='text-lg font-semibold text-gray-900 mb-4'>Hành động</h3>
                 <div className='space-y-3'>
                   {store.status === 'Pending' && (
-                    <>
-                      <Button
-                        onClick={handleAssignStaff}
-                        className='w-full bg-purple-500 hover:bg-purple-600 text-white'
-                      >
-                        <UserPlus className='w-4 h-4 mr-2' />
-                        Giao cho nhân viên
-                      </Button>
-                      <Button onClick={() => handleStatusAction('Ban')} variant='destructive' className='w-full'>
-                        <Ban className='w-4 h-4 mr-2' />
-                        Khóa cửa hàng
-                      </Button>
-                    </>
+                    <Button onClick={() => handleStatusAction('Ban')} variant='destructive' className='w-full'>
+                      <Ban className='w-4 h-4 mr-2' />
+                      Khóa cửa hàng
+                    </Button>
                   )}
 
                   {store.status === 'ReviewedByStaff' && (
@@ -720,6 +713,29 @@ function StoreDetailAdmin() {
                     </>
                   )}
 
+                  {store.status === 'ApprovedByStaff' && (
+                    <>
+                      <Button
+                        onClick={() => handleStatusAction('Approve')}
+                        className='w-full bg-green-500 hover:bg-green-600 text-white'
+                      >
+                        <Check className='w-4 h-4 mr-2' />
+                        Duyệt cửa hàng
+                      </Button>
+                      <Button onClick={() => handleStatusAction('Reject')} variant='destructive' className='w-full'>
+                        <X className='w-4 h-4 mr-2' />
+                        Từ chối cửa hàng
+                      </Button>
+                    </>
+                  )}
+
+                  {store.status === 'RejectedByStaff' && (
+                    <div className='text-center py-4 text-gray-500'>
+                      <p className='text-sm'>Cửa hàng đã bị từ chối bởi nhân viên</p>
+                      <p className='text-xs mt-1'>Không có hành động khả dụng</p>
+                    </div>
+                  )}
+
                   {store.status === 'Approved' && (
                     <Button onClick={() => handleStatusAction('Ban')} variant='destructive' className='w-full'>
                       <Ban className='w-4 h-4 mr-2' />
@@ -736,6 +752,17 @@ function StoreDetailAdmin() {
                       Mở khóa cửa hàng
                     </Button>
                   )}
+
+                  {/* Nút giao cho nhân viên - hiển thị cho tất cả trạng thái */}
+                  <div className='pt-3 border-t border-gray-200'>
+                    <Button
+                      onClick={handleAssignStaff}
+                      className='w-full bg-purple-500 hover:bg-purple-600 text-white'
+                    >
+                      <UserPlus className='w-4 h-4 mr-2' />
+                      Giao cho nhân viên
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

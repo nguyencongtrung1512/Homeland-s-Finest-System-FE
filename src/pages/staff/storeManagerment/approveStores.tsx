@@ -240,7 +240,7 @@ function ApproveStores() {
         <div className='flex items-center gap-3'>
           <Avatar src={store.avatar} size={40} />
           <div>
-            <div className='font-medium text-gray-900'>{store.name}</div>
+            <div className='font-medium text-gray-900'>{store.storeName}</div>
           </div>
         </div>
       )

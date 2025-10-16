@@ -94,7 +94,7 @@ export interface ReviewStoreResponse {
 
 // Interface cho review sản phẩm
 export interface ReviewProductRequest {
-  newStatus: 'Approved' | 'Rejected' | 'Pending'
+  status: 'Approved' | 'Rejected' | 'Pending'
   staffNote?: string
 }
 
@@ -182,8 +182,8 @@ export const staffApi = {
   reviewProduct: async (productId: string, reviewData: ReviewProductRequest): Promise<ReviewProductResponse> => {
     const formData = new FormData()
 
-    formData.append('newStatus', reviewData.newStatus)
-    formData.append('staffNote', reviewData.staffNote || '')
+    formData.append('Status', reviewData.status)
+    formData.append('StaffNote', reviewData.staffNote || '')
 
     const response = await axiosInstance.put(`${API_URL}/Product/${productId}/review`, formData, {
       headers: {

@@ -114,7 +114,7 @@ function DetailProductStaff() {
       console.log('🔍 DEBUG - Approving product:', product.id)
 
       const response = await staffApi.reviewProduct(product.id, {
-        newStatus: 'Approved',
+        status: 'Approved',
         staffNote: approveNote.trim()
       })
 
@@ -165,8 +165,8 @@ function DetailProductStaff() {
       console.log('🔍 DEBUG - Rejecting product:', product.id)
 
       const response = await staffApi.reviewProduct(product.id, {
-        newStatus: 'Rejected',
-        note: rejectNote.trim()
+        status: 'Rejected',
+        staffNote: rejectNote.trim()
       })
 
       if (response) {
@@ -323,7 +323,7 @@ function DetailProductStaff() {
             </div>
 
             {/* Staff Actions */}
-            {product.status === 'Pending' && (
+            {(product.status === 'Pending' || product.status === 'Rejected') && (
               <div className='flex gap-3'>
                 <Button
                   onClick={openApproveDialog}
@@ -331,7 +331,7 @@ function DetailProductStaff() {
                   className='bg-green-600 hover:bg-green-700 text-white'
                 >
                   <Check size={16} className='mr-2' />
-                  Duyệt sản phẩm
+                  {product.status === 'Rejected' ? 'Duyệt lại' : 'Duyệt sản phẩm'}
                 </Button>
                 <Button
                   onClick={openRejectDialog}
@@ -339,7 +339,7 @@ function DetailProductStaff() {
                   className='bg-red-600 hover:bg-red-700 text-white'
                 >
                   <XCircle size={16} className='mr-2' />
-                  Từ chối
+                  {product.status === 'Rejected' ? 'Từ chối lại' : 'Từ chối'}
                 </Button>
               </div>
             )}
@@ -591,12 +591,13 @@ function DetailProductStaff() {
           <AlertDialogHeader>
             <AlertDialogTitle className='flex items-center gap-2'>
               <Check className='text-green-600' size={24} />
-              Xác nhận duyệt sản phẩm
+              {product.status === 'Rejected' ? 'Xác nhận duyệt lại sản phẩm' : 'Xác nhận duyệt sản phẩm'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               <div className='space-y-4 mt-4'>
                 <p>
-                  Bạn có chắc chắn muốn duyệt sản phẩm <strong>{product.name}</strong>?
+                  Bạn có chắc chắn muốn {product.status === 'Rejected' ? 'duyệt lại' : 'duyệt'} sản phẩm{' '}
+                  <strong>{product.name}</strong>?
                 </p>
 
                 <div className='space-y-2'>
@@ -606,7 +607,11 @@ function DetailProductStaff() {
                   <textarea
                     value={approveNote}
                     onChange={(e) => setApproveNote(e.target.value)}
-                    placeholder='Nhập ghi chú về việc duyệt sản phẩm này...'
+                    placeholder={
+                      product.status === 'Rejected'
+                        ? 'Nhập ghi chú về việc duyệt lại sản phẩm này...'
+                        : 'Nhập ghi chú về việc duyệt sản phẩm này...'
+                    }
                     className='w-full min-h-24 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none'
                   />
                 </div>
@@ -620,7 +625,7 @@ function DetailProductStaff() {
               disabled={updating || !approveNote.trim()}
               className='bg-green-600 hover:bg-green-700'
             >
-              {updating ? 'Đang xử lý...' : 'Xác nhận duyệt'}
+              {updating ? 'Đang xử lý...' : product.status === 'Rejected' ? 'Xác nhận duyệt lại' : 'Xác nhận duyệt'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -632,12 +637,13 @@ function DetailProductStaff() {
           <AlertDialogHeader>
             <AlertDialogTitle className='flex items-center gap-2'>
               <XCircle className='text-red-600' size={24} />
-              Xác nhận từ chối sản phẩm
+              {product.status === 'Rejected' ? 'Xác nhận từ chối lại sản phẩm' : 'Xác nhận từ chối sản phẩm'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               <div className='space-y-4 mt-4'>
                 <p>
-                  Bạn có chắc chắn muốn từ chối sản phẩm <strong>{product.name}</strong>?
+                  Bạn có chắc chắn muốn {product.status === 'Rejected' ? 'từ chối lại' : 'từ chối'} sản phẩm{' '}
+                  <strong>{product.name}</strong>?
                 </p>
 
                 <div className='space-y-2'>
@@ -647,7 +653,11 @@ function DetailProductStaff() {
                   <textarea
                     value={rejectNote}
                     onChange={(e) => setRejectNote(e.target.value)}
-                    placeholder='Nhập lý do từ chối sản phẩm này...'
+                    placeholder={
+                      product.status === 'Rejected'
+                        ? 'Nhập lý do từ chối lại sản phẩm này...'
+                        : 'Nhập lý do từ chối sản phẩm này...'
+                    }
                     className='w-full min-h-24 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none'
                   />
                   {!rejectNote.trim() && <p className='text-xs text-red-500'>Vui lòng nhập lý do từ chối</p>}
@@ -662,7 +672,7 @@ function DetailProductStaff() {
               disabled={updating || !rejectNote.trim()}
               className='bg-red-600 hover:bg-red-700'
             >
-              {updating ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+              {updating ? 'Đang xử lý...' : product.status === 'Rejected' ? 'Xác nhận từ chối lại' : 'Xác nhận từ chối'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

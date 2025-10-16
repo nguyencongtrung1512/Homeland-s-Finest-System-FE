@@ -12,7 +12,9 @@ interface Variant {
   id?: string
   variantName: string
   quantity: number
-  basePrice: number
+  price: number
+  basePrice?: number
+  finalPrice?: number
   isActive: boolean
   length: number
   width: number
@@ -29,7 +31,9 @@ interface ProductVariantManagerProps {
 const EMPTY_VARIANT: Variant = {
   variantName: '',
   quantity: 0,
+  price: 0,
   basePrice: 0,
+  finalPrice: 0,
   isActive: true,
   length: 0,
   width: 0,
@@ -60,7 +64,9 @@ export default function ProductVariantManager({
       setNewVariant({
         variantName: variant.variantName || '',
         quantity: variant.quantity || 0,
+        price: variant.price || 0,
         basePrice: variant.basePrice || 0,
+        finalPrice: variant.finalPrice || 0,
         isActive: variant.isActive !== undefined ? variant.isActive : true,
         length: variant.length || 0,
         width: variant.width || 0,
@@ -87,7 +93,7 @@ export default function ProductVariantManager({
       toast.error('Vui lòng nhập tên loại sản phẩm')
       return false
     }
-    if (newVariant.basePrice <= 0) {
+    if (newVariant.price <= 0) {
       toast.error('Vui lòng nhập giá bán hợp lệ')
       return false
     }
@@ -109,7 +115,7 @@ export default function ProductVariantManager({
               id: editingVariant,
               variantName: newVariant.variantName,
               quantity: newVariant.quantity,
-              basePrice: newVariant.basePrice,
+              price: newVariant.price,
               isActive: newVariant.isActive,
               length: newVariant.length,
               width: newVariant.width,
@@ -139,7 +145,7 @@ export default function ProductVariantManager({
         const variantData = {
           variantName: newVariant.variantName,
           quantity: newVariant.quantity,
-          basePrice: newVariant.basePrice,
+          price: newVariant.price,
           length: newVariant.length,
           width: newVariant.width,
           height: newVariant.height,
@@ -156,7 +162,9 @@ export default function ProductVariantManager({
               id: responseData.id,
               variantName: responseData.variantName,
               quantity: responseData.quantity,
-              basePrice: responseData.basePrice,
+              price: responseData.basePrice || responseData.price || 0,
+              basePrice: responseData.basePrice || 0,
+              finalPrice: responseData.finalPrice || 0,
               isActive: responseData.isActive,
               length: responseData.length || 0,
               width: responseData.width || 0,
@@ -224,10 +232,21 @@ export default function ProductVariantManager({
                         </p>
                       </div>
                       <div className='text-right'>
-                        <p className='text-lg font-bold text-green-600'>
-                          {variant.basePrice ? `${variant.basePrice.toLocaleString('vi-VN')} ₫` : '0 ₫'}
-                        </p>
-                        <div className='flex items-center gap-2 mt-1'>
+                        <div className='space-y-1'>
+                          <p className='text-sm text-gray-600'>Giá nhập:</p>
+                          <p className='text-lg font-bold text-blue-600'>
+                            {(variant.basePrice || variant.price) ? `${(variant.basePrice || variant.price).toLocaleString('vi-VN')} ₫` : '0 ₫'}
+                          </p>
+                          {variant.finalPrice && variant.finalPrice !== (variant.basePrice || variant.price) && (
+                            <>
+                              <p className='text-sm text-gray-600'>Giá ước tính:</p>
+                              <p className='text-lg font-bold text-green-600'>
+                                {variant.finalPrice.toLocaleString('vi-VN')} ₫
+                              </p>
+                            </>
+                          )}
+                        </div>
+                        <div className='flex items-center gap-2 mt-2'>
                           <span
                             className={`text-xs px-2 py-1 rounded ${variant.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                               }`}
@@ -285,8 +304,8 @@ export default function ProductVariantManager({
                     <Input
                       type='number'
                       placeholder='0'
-                      value={newVariant.basePrice || ''}
-                      onChange={(e) => handleNewVariantChange('basePrice', parseFloat(e.target.value) || 0)}
+                      value={newVariant.price || ''}
+                      onChange={(e) => handleNewVariantChange('price', parseFloat(e.target.value) || 0)}
                       className='pl-10 mt-1'
                       min='0'
                       step='1000'
@@ -417,9 +436,15 @@ export default function ProductVariantManager({
                     <p>• Tổng số loại: {variants.length}</p>
                     <p>• Tổng tồn kho: {variants.reduce((sum, v) => sum + (v.quantity || 0), 0)} sản phẩm</p>
                     <p>
-                      • Giá từ: {Math.min(...variants.map((v) => v.basePrice || 0)).toLocaleString('vi-VN')} ₫ đến{' '}
-                      {Math.max(...variants.map((v) => v.basePrice || 0)).toLocaleString('vi-VN')} ₫
+                      • Giá nhập từ: {Math.min(...variants.map((v) => v.basePrice || v.price || 0)).toLocaleString('vi-VN')} ₫ đến{' '}
+                      {Math.max(...variants.map((v) => v.basePrice || v.price || 0)).toLocaleString('vi-VN')} ₫
                     </p>
+                    {variants.some(v => v.finalPrice && v.finalPrice !== (v.basePrice || v.price)) && (
+                      <p>
+                        • Giá ước tính từ: {Math.min(...variants.filter(v => v.finalPrice).map((v) => v.finalPrice || 0)).toLocaleString('vi-VN')} ₫ đến{' '}
+                        {Math.max(...variants.filter(v => v.finalPrice).map((v) => v.finalPrice || 0)).toLocaleString('vi-VN')} ₫
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

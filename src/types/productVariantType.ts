@@ -29,7 +29,8 @@ export interface ProductVariantInput {
 export interface CreateVariantResponse {
   id: string
   variantName: string
-  price: number
+  basePrice: number
+  finalPrice: number
   quantity: number
   isActive: boolean
   length: number

@@ -15,7 +15,7 @@ export interface StoreResponse {
   address: string
   logoUrl: string | null
   coverImageUrl: string | null
-  status: 'ReviewedByStaff' | 'Approved' | 'Pending' | 'Rejected' | 'Active' | 'Inactive' | 'Processing'
+  status: 'ReviewedByStaff' | 'Approved' | 'Pending' | 'Rejected' | 'Active' | 'Inactive' | 'Processing' | 'ApprovedByStaff' | 'RejectedByStaff'
   adminNote: string | null
   reviewedBy: string | null
   approvedBy: string | null
