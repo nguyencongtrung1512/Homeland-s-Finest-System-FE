@@ -7,13 +7,15 @@ import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
 import ReviewModal from './ReviewModal'
 import { confirmOrderReceived } from '../../../../apis/order.api'
+import { purchaseOrder } from '../../../../apis/transaction.api'
 import { path } from '../../../../constants/path'
 import type { Order as APIOrder } from '../../../../types/orderType'
+import { toast } from 'react-toastify'
 
 interface Order {
   id: string
   date: string
-  status: 'Đang giao' | 'Đã giao' | 'Đã hủy' | 'Chờ xác nhận' | 'Đã xác nhận'
+  status: 'Chưa xác nhận' | 'Đang giao' | 'Đã giao' | 'Đã hủy' | 'Chờ xác nhận'
   statusColor: string
   statusBgColor: string
   statusText: string
@@ -76,17 +78,17 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     switch (apiStatus) {
       case 'NotYet':
         return {
-          status: 'Chờ xác nhận' as const,
+          status: 'Chưa xác nhận' as const,
           statusColor: 'text-yellow-700',
           statusBgColor: 'bg-yellow-50',
           statusText: 'Đang chờ xác nhận đơn hàng'
         }
       case 'Processing':
         return {
-          status: 'Đã xác nhận' as const,
+          status: 'Chờ xác nhận' as const,
           statusColor: 'text-blue-700',
           statusBgColor: 'bg-blue-50',
-          statusText: 'Đơn hàng đã được xác nhận'
+          statusText: 'Đang chờ xác nhận đơn hàng'
         }
       case 'Shipping':
         return {
@@ -196,7 +198,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     },
     transactionInfo: {
       orderId: apiOrder?.id || '',
-      paymentDate: (apiOrder?.createdAt),
+      paymentDate: apiOrder?.createdAt,
       paymentMethod: apiOrder?.paymentType === 'COD' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản ngân hàng'
     },
     timeline: orderHistories.map((history, index) => ({
@@ -226,6 +228,7 @@ export default function OrdersContent({
   )
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [confirmingOrderId, setConfirmingOrderId] = useState<string>('') // Thêm state để track loading
+  const [processingPaymentOrderId, setProcessingPaymentOrderId] = useState<string>('') // State để track payment loading
   const ordersPerPage = 3
 
   // Transform API orders to UI orders - add safety check
@@ -255,11 +258,12 @@ export default function OrdersContent({
     // Map UI filter to API status
     const apiStatusMap: { [key: string]: string | undefined } = {
       all: undefined,
-      'Chờ xác nhận': 'NotYet',
-      'Đã xác nhận': 'Processing',
+      'Chưa xác nhận': 'NotYet',
+      'Chờ xác nhận': 'Processing',
       'Đang giao': 'Shipping',
       'Đã giao': 'Delivered',
-      'Đã hủy': 'Cancel'
+      'Đã hủy': 'Cancel',
+      'Trả hàng': 'Returned'
     }
 
     const apiStatus = apiStatusMap[filterKey]
@@ -289,6 +293,40 @@ export default function OrdersContent({
       alert('Có lỗi xảy ra khi xác nhận đã nhận hàng. Vui lòng thử lại.')
     } finally {
       setConfirmingOrderId('') // Kết thúc loading
+    }
+  }
+
+  // Handle payment for unconfirmed orders
+  const handlePayment = async (orderId: string) => {
+    try {
+      setProcessingPaymentOrderId(orderId) // Bắt đầu loading
+
+      // Call purchase API to create transaction
+      const transactions = await purchaseOrder({ orderIds: [orderId] })
+      const transaction = transactions[0]
+
+      if (transaction.paymentMethod === 'COD') {
+        toast.success('Đơn hàng COD đã được xác nhận! Chờ giao hàng.')
+        // Refresh orders to show updated status
+        onRefreshOrders()
+      } else if (transaction.paymentMethod === 'Banking') {
+        toast.success('Đang chuyển đến trang thanh toán...')
+        // Redirect to payment URL
+        if (transaction.checkoutUrl) {
+          window.location.href = transaction.checkoutUrl
+        } else {
+          toast.error('Không tìm thấy URL thanh toán')
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi khi xử lý thanh toán:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error).message ||
+        'Có lỗi xảy ra khi xử lý thanh toán'
+      toast.error(errorMessage)
+    } finally {
+      setProcessingPaymentOrderId('') // Kết thúc loading
     }
   }
 
@@ -393,11 +431,12 @@ export default function OrdersContent({
       <div className='flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg'>
         {[
           { key: 'all', label: 'Tất cả' },
+          { key: 'Chưa xác nhận', label: 'Chưa xác nhận' },
           { key: 'Chờ xác nhận', label: 'Chờ xác nhận' },
-          { key: 'Đã xác nhận', label: 'Đã xác nhận' },
           { key: 'Đang giao', label: 'Đang giao' },
           { key: 'Đã giao', label: 'Đã giao' },
-          { key: 'Đã hủy', label: 'Đã hủy' }
+          { key: 'Đã hủy', label: 'Đã hủy' },
+          { key: 'Trả hàng', label: 'Trả hàng' }
         ].map((filter) => (
           <button
             key={filter.key}
@@ -474,6 +513,23 @@ export default function OrdersContent({
 
               {/* Action Buttons */}
               <div className='flex gap-2 pt-4'>
+                {order.status === 'Chưa xác nhận' && (
+                  <Button
+                    size='sm'
+                    onClick={() => handlePayment(order.id)}
+                    disabled={processingPaymentOrderId === order.id}
+                    className='bg-green-600 hover:bg-green-700 text-white disabled:opacity-50'
+                  >
+                    {processingPaymentOrderId === order.id ? (
+                      <>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      'Thanh toán'
+                    )}
+                  </Button>
+                )}
                 {order.status === 'Chờ xác nhận' && (
                   <Button
                     variant='outline'

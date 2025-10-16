@@ -6,7 +6,18 @@ import { Dialog, DialogContent } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
 import { getOrderDetail, confirmOrder, cancelOrder } from '../../../apis/order.api'
 import type { Order as APIOrder } from '../../../types/orderType'
-import { Loader2, Package, MapPin, CreditCard, Clock, RefreshCw, AlertCircle, Gift, CheckCircle, XCircle } from 'lucide-react'
+import {
+  Loader2,
+  Package,
+  MapPin,
+  CreditCard,
+  Clock,
+  RefreshCw,
+  AlertCircle,
+  Gift,
+  CheckCircle,
+  XCircle
+} from 'lucide-react'
 import { toast } from 'react-toastify'
 
 interface OrderItemWithCombo {
@@ -218,8 +229,8 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
 
   const getStatusText = (status: string) => {
     const statusTextMap: Record<string, string> = {
-      NotYet: 'Chờ xác nhận',
-      Processing: 'Đã xác nhận',
+      NotYet: 'Chưa xử lí',
+      Processing: 'Chờ xác nhận',
       Shipping: 'Đang giao',
       Delivered: 'Đã giao',
       Cancel: 'Đã hủy',
@@ -275,7 +286,6 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
             <Package className='h-5 w-5' />
             <span className='font-semibold'>Chi tiết đơn hàng</span>
           </div>
-
         </div>
 
         <div className='flex-1 overflow-y-auto bg-gray-50'>
@@ -372,9 +382,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                             />
                             <div className='flex-1 min-w-0'>
                               <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
-                              {group.comboName && (
-                                <p className='text-xs text-amber-600'>Combo Sạch bà nông trại</p>
-                              )}
+                              {group.comboName && <p className='text-xs text-amber-600'>Combo Sạch bà nông trại</p>}
                               <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
                             </div>
                             <div className='text-right'>
@@ -396,9 +404,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                       <div className='flex-1 min-w-0'>
                         <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
                         {item.length && item.width && (
-                          <p className='text-xs text-gray-600'>
-                            Túi {item.length}kg từ nông quê
-                          </p>
+                          <p className='text-xs text-gray-600'>Túi {item.length}kg từ nông quê</p>
                         )}
                         <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
                       </div>
@@ -451,15 +457,12 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                               <span className='text-gray-600'>
                                 {promotion.discountType === 'percentage'
                                   ? `Giảm ${promotion.discountValue}%`
-                                  : `Giảm ${formatPrice(promotion.discountValue)}`
-                                }
+                                  : `Giảm ${formatPrice(promotion.discountValue)}`}
                               </span>
                               <span className='font-semibold text-green-600'>
                                 -{formatPrice(promotion.discountAmount)}
                               </span>
                             </div>
-
-
                           </div>
                         </div>
                       </div>
@@ -545,9 +548,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                               )}
                             </div>
                             <div className='flex-1 pt-1'>
-                              <p
-                                className={`font-medium text-sm ${isCurrent ? 'text-gray-900' : 'text-gray-600'}`}
-                              >
+                              <p className={`font-medium text-sm ${isCurrent ? 'text-gray-900' : 'text-gray-600'}`}>
                                 {history.description}
                               </p>
                               <p className='text-xs text-gray-500'>{formatDateTime(history.time)}</p>
@@ -558,15 +559,13 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                     </div>
                   </div>
 
-                  <p className='text-center text-xs text-gray-500 mt-4 italic'>
-                    hiện order image ở đây lúc hoàn thành
-                  </p>
+                  <p className='text-center text-xs text-gray-500 mt-4 italic'>hiện order image ở đây lúc hoàn thành</p>
                 </div>
               )}
 
               {/* Seller Action Buttons */}
               <div className='flex gap-3 pt-2'>
-                {order.status === 'NotYet' && (
+                {order.status === 'Processing' && (
                   <>
                     <Button
                       onClick={handleAcceptOrder}
@@ -595,17 +594,6 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                       Từ chối đơn hàng
                     </Button>
                   </>
-                )}
-                {order.status === 'Processing' && (
-                  <Button
-                    onClick={() => setShowCancelDialog(true)}
-                    disabled={actionLoading}
-                    variant='outline'
-                    className='flex-1 border-red-600 text-red-600 hover:bg-red-50'
-                  >
-                    <XCircle className='w-4 h-4 mr-2' />
-                    từ chối đơn hàng
-                  </Button>
                 )}
                 {(order.status === 'Shipping' || order.status === 'Delivered') && (
                   <Button className='flex-1 bg-gray-600 hover:bg-gray-700 text-white' disabled>
@@ -643,9 +631,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                 className='min-h-[100px]'
                 maxLength={200}
               />
-              <p className='text-xs text-gray-500 mt-1'>
-                {cancelReason.length}/200 ký tự
-              </p>
+              <p className='text-xs text-gray-500 mt-1'>{cancelReason.length}/200 ký tự</p>
             </div>
 
             <div className='flex gap-3 pt-2'>

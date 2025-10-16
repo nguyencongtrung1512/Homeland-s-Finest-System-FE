@@ -1,10 +1,11 @@
 // Order Status Enum
 export type OrderStatus =
-  | 'NotYet' // Chờ xử lý (vừa tạo)
-  | 'Processing' // Sau khi thanh toán/reserve xong
-  | 'Shipping' // Seller đã confirm, đang giao
+  | 'NotYet' // Chưa xác nhận
+  | 'Processing' // Chờ xác nhận
+  | 'Confirmed' // Đã xác nhận
+  | 'Shipping' // Đang giao
   | 'Delivered' // Đã giao hàng thành công
-  | 'Canceled' // hủy
+  | 'Canceled' // Đã hủy
   | 'Returned' // Customer đã trả hàng
 
 // Promotion interface

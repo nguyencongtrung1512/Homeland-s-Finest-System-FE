@@ -1,27 +1,29 @@
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { Star, MapPin, Flag } from 'lucide-react'
+import { Star, MapPin, Flag, AlertCircle } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-
-// Import components
 import StorySection from './components/StorySection'
-
 import MapComponent from '../../../components/Mapbox/mapBox'
-
-// Import hooks and types
 import { useStore } from '../../../hooks/useStore'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
-import ProductsSection from './components/ProductsSection'
 import CertificatesSection from './components/CertificatesSection'
 import ReportModal from './components/ReportModal'
+import ProductCard from '../Products/Product/productCard'
+import { productApi } from '../../../apis/product.api'
+import type { Product } from '../../../types'
 
 const StorePage = () => {
   const { storeId } = useParams<{ storeId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
+
+  // Products state
+  const [products, setProducts] = useState<Product[]>([])
+  const [productsLoading, setProductsLoading] = useState(false)
+  const [productsError, setProductsError] = useState<string | null>(null)
 
   // Use custom hook to fetch store data
   const { store, loading, error, refetch } = useStore(storeId)
@@ -51,6 +53,34 @@ const StorePage = () => {
   const handleRetry = () => {
     refetch()
   }
+
+  // Fetch products by store
+  const fetchProductsByStore = async (storeId: string) => {
+    if (!storeId) return
+
+    setProductsLoading(true)
+    setProductsError(null)
+
+    try {
+      const response = await productApi.getByStore(storeId, {
+        pageSize: 50, // Get more products to display
+        pageNumber: 1
+      })
+      setProducts(response.data)
+    } catch (err) {
+      console.error('Error fetching products by store:', err)
+      setProductsError('Không thể tải danh sách sản phẩm')
+    } finally {
+      setProductsLoading(false)
+    }
+  }
+
+  // Fetch products when store is loaded
+  useEffect(() => {
+    if (store?.id) {
+      fetchProductsByStore(store.id)
+    }
+  }, [store?.id])
 
   if (loading) {
     return (
@@ -89,18 +119,17 @@ const StorePage = () => {
       'https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?w=800&h=300&fit=crop&crop=center',
     story:
       store.storeStories?.[0]?.title || 'Chúng tôi cam kết mang đến những sản phẩm chất lượng cao nhất cho khách hàng.',
-    products:
-      store.products?.map((product) => ({
-        id: product.id,
-        name: product.name,
-        price: 'lấy từ variant', // TODO: Get from product variants when available
-        image:
-          product.productImages?.[0] ||
-          'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&h=200&fit=crop',
-        rating: product.rating || 0,
-        ratingCount: product.reviewCount || 0,
+    products: products.map((product) => {
+      // Try to get price from variants if available, otherwise show placeholder
+      const variantPrice = (product as Product & { variants?: Array<{ price: number }> }).variants?.[0]?.price
+      const price = variantPrice || 0 // Default to 0 if no price available
+
+      return {
+        ...product, // Spread all product properties
+        price: price, // Add price for ProductCard
         badge: product.status === 'active' ? { text: 'Đang bán', color: 'bg-green-500' } : undefined
-      })) || [],
+      }
+    }),
     certificates: [] // TODO: Add certificates when available in API
   }
 
@@ -153,13 +182,12 @@ const StorePage = () => {
                         </div>
                         <div className='flex items-center gap-1'>
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              store.status === 'Approved'
-                                ? 'bg-green-100 text-green-800'
-                                : store.status === 'Pending'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
-                            }`}
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${store.status === 'Approved'
+                              ? 'bg-green-100 text-green-800'
+                              : store.status === 'Pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                              }`}
                           >
                             {store.status === 'Approved'
                               ? 'Đã duyệt'
@@ -202,7 +230,40 @@ const StorePage = () => {
 
         {/* Sản Phẩm Tab */}
         <TabsContent value='products'>
-          <ProductsSection storeId={storeId || ''} products={storeData.products} />
+          {productsLoading ? (
+            <div className='flex items-center justify-center py-16'>
+              <Loading />
+              <span className='ml-2 text-gray-600'>Đang tải sản phẩm...</span>
+            </div>
+          ) : productsError ? (
+            <div className='bg-white rounded-lg p-12 text-center shadow-sm'>
+              <div className='text-red-500 mb-4'>
+                <AlertCircle className='w-12 h-12 mx-auto' />
+              </div>
+              <h3 className='text-lg font-semibold text-gray-900 mb-2'>Không thể tải sản phẩm</h3>
+              <p className='text-gray-600 mb-4'>{productsError}</p>
+              <button
+                onClick={() => store?.id && fetchProductsByStore(store.id)}
+                className='px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors'
+              >
+                Thử lại
+              </button>
+            </div>
+          ) : storeData.products.length > 0 ? (
+            <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
+              {storeData.products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className='bg-white rounded-lg p-12 text-center shadow-sm'>
+              <div className='text-gray-400 mb-4'>
+                <Star className='w-12 h-12 mx-auto' />
+              </div>
+              <h3 className='text-lg font-semibold text-gray-900 mb-2'>Chưa có sản phẩm</h3>
+              <p className='text-gray-600'>Cửa hàng này chưa có sản phẩm nào.</p>
+            </div>
+          )}
         </TabsContent>
 
         {/* Giấy chứng nhận Tab */}

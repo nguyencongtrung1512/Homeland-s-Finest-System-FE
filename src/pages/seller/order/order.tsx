@@ -42,8 +42,8 @@ function OrderManagement() {
 
   const tabs = [
     { key: 'all', label: 'Tất cả' },
-    { key: 'NotYet', label: 'Chờ xác nhận' },
-    { key: 'Processing', label: 'Đang xử lý' },
+    { key: 'NotYet', label: 'Chưa xác nhận' },
+    { key: 'Processing', label: 'Chờ xác nhận' },
     { key: 'Shipping', label: 'Đang giao' },
     { key: 'Delivered', label: 'Đã giao' },
     { key: 'Cancel', label: 'Đã hủy' },
@@ -59,9 +59,9 @@ function OrderManagement() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'NotYet':
-        return <Badge className='bg-orange-100 text-orange-800 hover:bg-orange-100'>Chờ xác nhận</Badge>
+        return <Badge className='bg-orange-100 text-orange-800 hover:bg-orange-100'>Chưa xử lí</Badge>
       case 'Processing':
-        return <Badge className='bg-blue-100 text-blue-800 hover:bg-blue-100'>Đang xử lý</Badge>
+        return <Badge className='bg-blue-100 text-blue-800 hover:bg-blue-100'>Chờ xác nhận</Badge>
       case 'Shipping':
         return <Badge className='bg-purple-100 text-purple-800 hover:bg-purple-100'>Đang giao</Badge>
       case 'Delivered':

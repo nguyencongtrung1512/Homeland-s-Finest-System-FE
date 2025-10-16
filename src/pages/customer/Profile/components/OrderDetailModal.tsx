@@ -4,9 +4,13 @@ import { Badge } from '../../../../components/ui/badge'
 import { Card, CardContent } from '../../../../components/ui/card'
 import { Dialog, DialogContent } from '../../../../components/ui/dialog'
 import { getOrderDetail } from '../../../../apis/order.api'
+import { storeApi } from '../../../../apis/store.api'
 import type { Order as APIOrder } from '../../../../types/orderType'
-import { Loader2, Package, MapPin, CreditCard, Clock, RefreshCw, AlertCircle, Gift } from 'lucide-react'
+import type { StoreResponse } from '../../../../apis/store.api'
+import { Loader2, Package, MapPin, CreditCard, Clock, RefreshCw, AlertCircle, Gift, Store } from 'lucide-react'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router-dom'
+import { path } from '../../../../constants/path'
 
 interface OrderItemWithCombo {
   id: string
@@ -76,9 +80,13 @@ interface OrderDetailModalProps {
 }
 
 const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId }) => {
+  const navigate = useNavigate()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [store, setStore] = useState<StoreResponse | null>(null)
+  const [storeLoading, setStoreLoading] = useState(false)
+  const [storeError, setStoreError] = useState<string | null>(null)
 
   // Transform API order to UI order format
   const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
@@ -134,6 +142,25 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
     }
   }
 
+  // Fetch store details
+  const fetchStoreDetail = useCallback(async (storeId: string) => {
+    if (!storeId) return
+
+    setStoreLoading(true)
+    setStoreError(null)
+
+    try {
+      const storeResponse = await storeApi.getStoreById(storeId)
+      setStore(storeResponse.data)
+    } catch (err) {
+      console.error('Error fetching store detail:', err)
+      setStoreError('Không thể tải thông tin cửa hàng')
+      // Don't show toast error for store as it's not critical
+    } finally {
+      setStoreLoading(false)
+    }
+  }, [])
+
   // Fetch order details
   const fetchOrderDetail = useCallback(async () => {
     if (!orderId) return
@@ -145,6 +172,11 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       const apiOrder = await getOrderDetail(orderId)
       const transformedOrder = transformAPIOrderToUIOrder(apiOrder)
       setOrder(transformedOrder)
+
+      // Fetch store details if storeId is available
+      if (apiOrder?.storeId) {
+        await fetchStoreDetail(apiOrder.storeId)
+      }
     } catch (err) {
       console.error('Error fetching order detail:', err)
       setError('Không thể tải chi tiết đơn hàng')
@@ -152,7 +184,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
     } finally {
       setLoading(false)
     }
-  }, [orderId])
+  }, [orderId, fetchStoreDetail])
 
   // Fetch data when modal opens or orderId changes
   useEffect(() => {
@@ -166,6 +198,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
     if (!isOpen) {
       setOrder(null)
       setError(null)
+      setStore(null)
+      setStoreError(null)
     }
   }, [isOpen])
 
@@ -203,6 +237,13 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
     })
   }
 
+  // Handle navigation to store detail page
+  const handleStoreClick = (storeId: string) => {
+    const storeDetailPath = path.store.replace(':storeId', storeId)
+    navigate(storeDetailPath)
+    onClose() // Close the modal after navigation
+  }
+
   // Group combo items
   const comboGroups = order?.orderItemsWithCombo.reduce(
     (acc, item) => {
@@ -228,7 +269,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
             <Package className='h-5 w-5' />
             <span className='font-semibold'>Chi tiết đơn hàng</span>
           </div>
-
         </div>
 
         <div className='flex-1 overflow-y-auto bg-gray-50'>
@@ -265,6 +305,29 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                   <div>
                     <p className='text-xs text-gray-600'>Mã đơn hàng</p>
                     <p className='font-bold text-gray-900'>#{order.id}</p>
+                    {/* Store Name */}
+                    <div className='mt-2'>
+                      <p className='text-xs text-gray-600'>Cửa hàng</p>
+                      {storeLoading ? (
+                        <div className='flex items-center gap-2'>
+                          <Loader2 className='h-3 w-3 animate-spin text-gray-400' />
+                          <p className='text-sm text-gray-500'>Đang tải...</p>
+                        </div>
+                      ) : storeError ? (
+                        <p className='text-sm text-gray-500'>Không tải được thông tin cửa hàng</p>
+                      ) : store ? (
+                        <button
+                          onClick={() => handleStoreClick(store.id)}
+                          className='flex items-center gap-1 font-medium text-green-600 hover:text-green-700 text-sm cursor-pointer transition-colors duration-200 hover:underline'
+                          title='Xem chi tiết cửa hàng'
+                        >
+                          <Store className='h-3 w-3' />
+                          {store.storeName}
+                        </button>
+                      ) : (
+                        <p className='text-sm text-gray-500'>Không có thông tin cửa hàng</p>
+                      )}
+                    </div>
                   </div>
                   <div className='text-right'>
                     <p className='text-xs text-gray-600'>Ngày đặt</p>
@@ -325,9 +388,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                             />
                             <div className='flex-1 min-w-0'>
                               <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
-                              {group.comboName && (
-                                <p className='text-xs text-amber-600'>Combo Sạch bà nông trại</p>
-                              )}
+                              {group.comboName && <p className='text-xs text-amber-600'>Combo Sạch bà nông trại</p>}
                               <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
                             </div>
                             <div className='text-right'>
@@ -349,9 +410,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                       <div className='flex-1 min-w-0'>
                         <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
                         {item.length && item.width && (
-                          <p className='text-xs text-gray-600'>
-                            Túi {item.length}kg từ nông quê
-                          </p>
+                          <p className='text-xs text-gray-600'>Túi {item.length}kg từ nông quê</p>
                         )}
                         <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
                       </div>
@@ -404,15 +463,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                               <span className='text-gray-600'>
                                 {promotion.discountType === 'percentage'
                                   ? `Giảm ${promotion.discountValue}%`
-                                  : `Giảm ${formatPrice(promotion.discountValue)}`
-                                }
+                                  : `Giảm ${formatPrice(promotion.discountValue)}`}
                               </span>
                               <span className='font-semibold text-green-600'>
                                 -{formatPrice(promotion.discountAmount)}
                               </span>
                             </div>
-
-
                           </div>
                         </div>
                       </div>
@@ -498,9 +554,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                               )}
                             </div>
                             <div className='flex-1 pt-1'>
-                              <p
-                                className={`font-medium text-sm ${isCurrent ? 'text-gray-900' : 'text-gray-600'}`}
-                              >
+                              <p className={`font-medium text-sm ${isCurrent ? 'text-gray-900' : 'text-gray-600'}`}>
                                 {history.description}
                               </p>
                               <p className='text-xs text-gray-500'>{formatDateTime(history.time)}</p>
@@ -510,10 +564,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                       })}
                     </div>
                   </div>
-
-                  <p className='text-center text-xs text-gray-500 mt-4 italic'>
-                    hiện order image ở đây lúc hoàn thành
-                  </p>
                 </div>
               )}
 
