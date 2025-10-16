@@ -1,53 +1,31 @@
 // combo.api.ts
 import axiosInstance from '../service/axiosInstance'
+import type {
+  CreateComboRequest,
+  ComboResponse,
+  ComboListResponse,
+  ComboParams,
+  Combo
+} from '../types/combo.type'
 
 const API_URL = `/Combo`
 
-// Response item types for Combo
-export interface ComboItem {
-  id: string
-  productVariantId: string
-  comboItemName: string
-  comboItemImageUrl: string
-  price: number
-  quantity: number
-  productName: string
-  variantName: string
-  storeName: string
-}
+// POST /api/Combo - Create new combo
+export const createCombo = async (comboData: CreateComboRequest): Promise<ComboResponse> => {
+  const formData = new FormData()
 
-export interface Combo {
-  id: string
-  name: string
-  provinceId: number
-  provinceName: string
-  description: string
-  isActive: boolean
-  thumbnailUrl: string
-  staffNote: string | null
-  comboItems: ComboItem[]
-}
+  formData.append('Name', comboData.name)
+  formData.append('ProvinceId', comboData.provinceId.toString())
+  formData.append('Description', comboData.description)
+  formData.append('ThumbnailFile', comboData.thumbnailFile)
 
-export interface ComboPagination {
-  pageSize: number
-  pageNumber: number
-  totalItems: number
-  totalPages: number
-}
+  const response = await axiosInstance.post<ComboResponse>(API_URL, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
 
-export interface ComboListResponse {
-  status: number
-  message: string
-  data: Combo[]
-  pagination: ComboPagination
-}
-
-export interface ComboParams {
-  pageSize?: number
-  pageNumber?: number
-  search?: string
-  provinceId?: number
-  isActive?: boolean
+  return response.data
 }
 
 // GET /api/Combo - Get all combos

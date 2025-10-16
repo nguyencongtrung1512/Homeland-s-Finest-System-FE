@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -32,6 +32,7 @@ function CreateProduct() {
   const [activeTab, setActiveTab] = useState('product-info')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [storeId, setStoreId] = useState<string | null>(null)
+  const [provinceId, setProvinceId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<ProductCategoryItem[]>([])
@@ -168,7 +169,7 @@ function CreateProduct() {
   }
 
   // Fetch store ID from authenticated user
-  const fetchStoreId = async () => {
+  const fetchStoreId = useCallback(async () => {
     try {
       if (!user?.userId) {
         setError('Không tìm thấy thông tin người dùng')
@@ -179,6 +180,7 @@ function CreateProduct() {
       console.log('response getStoreBySellerId', response)
       if (response.status === 200 && response.data) {
         setStoreId(response.data.id)
+        setProvinceId(response.data.provinceId.toString())
         return response.data.id
       } else {
         setError('Không tìm thấy thông tin cửa hàng')
@@ -189,7 +191,7 @@ function CreateProduct() {
       setError('Có lỗi xảy ra khi tải thông tin cửa hàng')
       return null
     }
-  }
+  }, [user?.userId])
 
   // Fetch product categories
   const fetchCategories = async () => {
@@ -204,7 +206,7 @@ function CreateProduct() {
       } else {
         setCategories([])
       }
-    } catch (err) {
+    } catch {
       setCategories([])
     } finally {
       setCategoriesLoading(false)
@@ -226,14 +228,14 @@ function CreateProduct() {
     }
 
     initializeData()
-  }, [user?.userId])
+  }, [user?.userId, fetchStoreId])
 
   const handleCreateProduct = async () => {
     try {
       setIsSubmitting(true)
 
-      // Check if storeId is available
-      if (!storeId) {
+      // Check if storeId and provinceId are available
+      if (!storeId || !provinceId) {
         toast.error('Không tìm thấy thông tin cửa hàng. Vui lòng thử lại.')
         return
       }
@@ -255,7 +257,6 @@ function CreateProduct() {
         return
       }
 
-
       if (mediaData.productImages.length === 0) {
         toast.error('Vui lòng chọn ít nhất một hình ảnh sản phẩm')
         return
@@ -275,7 +276,7 @@ function CreateProduct() {
       // Prepare form data theo cấu trúc mới
       const formData: ProductCreateFormData = {
         storeId: storeId,
-        provinceId: '269', // Default province ID, có thể làm dynamic
+        provinceId: provinceId,
         name: productData.name,
         description: productData.description,
         categoryIds: productData.categories, // Sửa từ productData.category thành productData.categories
@@ -293,7 +294,6 @@ function CreateProduct() {
       // Call API với FormData
       const response = await productApi.create(formData)
 
-
       // Hiển thị thông tin response theo format mẫu
       if (response.data) {
         const productData = response.data
@@ -303,11 +303,7 @@ function CreateProduct() {
           status: productData.status,
           createdAt: productData.createdAt,
           productImages: productData.productImages,
-          productVideo: productData.productVideo,
-          certificates: productData.certificates || [],
-          storyId: productData.storyId,
-          storyTitle: productData.storyTitle,
-          contentCount: productData.contentCount || 0
+          productVideo: productData.productVideo
         })
       }
 
@@ -316,12 +312,15 @@ function CreateProduct() {
 
       // Navigate back to product management
       navigate('../product-management')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating product:', error)
 
       // Show error message
-      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi tạo sản phẩm'
-      alert(`Lỗi: ${errorMessage}`)
+      const errorMessage =
+        error instanceof Error && 'response' in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || error.message
+          : 'Có lỗi xảy ra khi tạo sản phẩm'
+      toast.error(`Lỗi: ${errorMessage}`)
     } finally {
       setIsSubmitting(false)
     }

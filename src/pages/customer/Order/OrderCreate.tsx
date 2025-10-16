@@ -175,12 +175,10 @@ function OrderCreate() {
     setIsSubmitting(true)
 
     try {
-      // Chuẩn bị dữ liệu order theo format API với userId từ auth và addressId cứng
       const orderData: CreateOrderInput = {
         userId: user.userId,
         userAddressId: hardcodedAddressId,
         paymentMethod: selectedPaymentMethod,
-        // storePromotions: [], // Tạm thời để trống, có thể thêm sau
         orderItemCreates: cartItems.map((item) => ({
           productVariantId: item.productVariantId,
           quantity: item.quantity,
@@ -189,21 +187,16 @@ function OrderCreate() {
       }
 
       console.log('Creating order with data:', orderData)
-
-      // Gọi API tạo order
       const createdOrder = await createOrder(orderData)
 
       console.log('Order created successfully:', createdOrder)
 
-      // Hiển thị thông báo thành công
       toast.success('Đặt hàng thành công!')
 
-      // Clear cart after successful order creation (only for buy now, not cart items)
       if (selectedItemIds.length > 0) {
         await clearCartAfterPayment()
       }
 
-      // Chuyển đến trang hóa đơn/chi tiết đơn hàng
       navigate(`/cart/invoice?orderId=${createdOrder[0].id}&status=success`)
     } finally {
       setIsSubmitting(false)
@@ -224,7 +217,7 @@ function OrderCreate() {
 
       if (transaction.paymentMethod === 'COD') {
         toast.success('Đơn hàng COD đã được xác nhận! Chờ giao hàng.')
-        await clearCartAfterPayment() // Clear cart after successful COD payment
+        await clearCartAfterPayment()
         navigate(`/cart/invoice?orderId=${order.id}&status=success&type=cod`)
       } else if (transaction.paymentMethod === 'Banking') {
         toast.success('Đang chuyển đến trang thanh toán...')

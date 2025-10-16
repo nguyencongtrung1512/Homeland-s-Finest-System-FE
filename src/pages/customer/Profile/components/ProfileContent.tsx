@@ -6,9 +6,28 @@ import { useAuth } from '../../../../contexts/auth.context'
 import { getUserById, updateUser, type User } from '../../../../apis/user.api'
 import { toast } from 'react-toastify'
 
+// Helper function to convert DD-MM-YYYY to YYYY-MM-DD format
+const convertDateFormat = (dateString: string): string => {
+  if (!dateString) return ''
+
+  // Check if it's already in YYYY-MM-DD format
+  if (dateString.includes('-') && dateString.split('-')[0].length === 4) {
+    return dateString
+  }
+
+  // Convert DD-MM-YYYY to YYYY-MM-DD
+  const parts = dateString.split('-')
+  if (parts.length === 3) {
+    const [day, month, year] = parts
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+
+  return dateString
+}
+
 export default function ProfileContent() {
   const { user: authUser } = useAuth()
-  const [user, setUser] = useState<User | null>(null)
+  const [, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [formData, setFormData] = useState({
@@ -37,7 +56,7 @@ export default function ProfileContent() {
           lastName: userData.lastName || '',
           email: userData.email || '',
           phoneNumber: userData.phoneNumber || '',
-          dateOfBirth: userData.dateOfBirth ? userData.dateOfBirth.split('T')[0] : '',
+          dateOfBirth: userData.dateOfBirth ? convertDateFormat(userData.dateOfBirth) : '',
           currentPassword: '',
           newPassword: '',
           confirmPassword: ''
@@ -54,7 +73,7 @@ export default function ProfileContent() {
   }, [authUser?.userId])
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value
     }))
@@ -65,16 +84,20 @@ export default function ProfileContent() {
 
     try {
       setUpdating(true)
+
+      // Convert date from YYYY-MM-DD back to DD-MM-YYYY for API
+      const formattedDateOfBirth = formData.dateOfBirth ? formData.dateOfBirth.split('-').reverse().join('-') : ''
+
       await updateUser(authUser.userId, {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         phoneNumber: formData.phoneNumber,
-        dateOfBirth: formData.dateOfBirth
+        dateOfBirth: formattedDateOfBirth
       })
-      
+
       toast.success('Cập nhật thông tin thành công!')
-      
+
       // Reload user data
       const updatedUser = await getUserById(authUser.userId)
       setUser(updatedUser)
@@ -102,7 +125,7 @@ export default function ProfileContent() {
   }
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Đang tải...</div>
+    return <div className='flex justify-center items-center h-64'>Đang tải...</div>
   }
 
   return (
@@ -114,55 +137,55 @@ export default function ProfileContent() {
         <div className='grid grid-cols-2 gap-6'>
           <div>
             <Label htmlFor='firstName'>Họ</Label>
-            <Input 
-              id='firstName' 
+            <Input
+              id='firstName'
               value={formData.firstName}
               onChange={(e) => handleInputChange('firstName', e.target.value)}
-              className='mt-1' 
+              className='mt-1'
             />
           </div>
           <div>
             <Label htmlFor='lastName'>Tên</Label>
-            <Input 
-              id='lastName' 
+            <Input
+              id='lastName'
               value={formData.lastName}
               onChange={(e) => handleInputChange('lastName', e.target.value)}
-              className='mt-1' 
+              className='mt-1'
             />
           </div>
           <div>
             <Label htmlFor='email'>Email</Label>
-            <Input 
-              id='email' 
-              type='email' 
+            <Input
+              id='email'
+              type='email'
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              className='mt-1' 
+              className='mt-1'
             />
           </div>
           <div>
             <Label htmlFor='phoneNumber'>Số điện thoại</Label>
-            <Input 
-              id='phoneNumber' 
+            <Input
+              id='phoneNumber'
               value={formData.phoneNumber}
               onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-              className='mt-1' 
+              className='mt-1'
             />
           </div>
           <div className='col-span-2'>
             <Label htmlFor='dateOfBirth'>Ngày sinh</Label>
-            <Input 
-              id='dateOfBirth' 
-              type='date' 
+            <Input
+              id='dateOfBirth'
+              type='date'
               value={formData.dateOfBirth}
               onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-              className='mt-1' 
+              className='mt-1'
             />
           </div>
         </div>
 
         <div className='mt-6'>
-          <Button 
+          <Button
             className='bg-green-600 hover:bg-green-700 text-white'
             onClick={handleUpdateProfile}
             disabled={updating}
@@ -180,35 +203,35 @@ export default function ProfileContent() {
         <div className='space-y-4 max-w-md'>
           <div>
             <Label htmlFor='currentPassword'>Mật khẩu hiện tại</Label>
-            <Input 
-              id='currentPassword' 
-              type='password' 
+            <Input
+              id='currentPassword'
+              type='password'
               placeholder='Nhập mật khẩu hiện tại'
               value={formData.currentPassword}
               onChange={(e) => handleInputChange('currentPassword', e.target.value)}
-              className='mt-1' 
+              className='mt-1'
             />
           </div>
           <div>
             <Label htmlFor='newPassword'>Mật khẩu mới</Label>
-            <Input 
-              id='newPassword' 
-              type='password' 
+            <Input
+              id='newPassword'
+              type='password'
               placeholder='Nhập mật khẩu mới'
               value={formData.newPassword}
               onChange={(e) => handleInputChange('newPassword', e.target.value)}
-              className='mt-1' 
+              className='mt-1'
             />
           </div>
           <div>
             <Label htmlFor='confirmPassword'>Xác nhận mật khẩu mới</Label>
-            <Input 
-              id='confirmPassword' 
-              type='password' 
+            <Input
+              id='confirmPassword'
+              type='password'
               placeholder='Nhập lại mật khẩu mới'
               value={formData.confirmPassword}
               onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-              className='mt-1' 
+              className='mt-1'
             />
           </div>
         </div>
@@ -226,10 +249,7 @@ export default function ProfileContent() {
         </div>
 
         <div className='mt-6'>
-          <Button 
-            className='bg-green-600 hover:bg-green-700 text-white'
-            onClick={handleUpdatePassword}
-          >
+          <Button className='bg-green-600 hover:bg-green-700 text-white' onClick={handleUpdatePassword}>
             Cập nhật mật khẩu
           </Button>
           <Button variant='outline' className='ml-3'>

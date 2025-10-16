@@ -176,11 +176,11 @@ export default function Profile() {
           addresses.map((addr) =>
             addr.id === editingAddress.id
               ? {
-                ...addr,
-                ...updateData,
-                isDefault: updateData.isDefault || false,
-                updatedAt: new Date().toISOString()
-              }
+                  ...addr,
+                  ...updateData,
+                  isDefault: updateData.isDefault || false,
+                  updatedAt: new Date().toISOString()
+                }
               : addr
           )
         )
@@ -219,7 +219,7 @@ export default function Profile() {
     }
   }
 
-  const displayName = user ? `${user.firstName} ${user.lastName}` : 'Người dùng'
+  const displayName = user ? `${user.lastName} ${user.firstName}` : 'Người dùng'
 
   return (
     <div className='min-h-screen bg-[#f8f9f5]'>
