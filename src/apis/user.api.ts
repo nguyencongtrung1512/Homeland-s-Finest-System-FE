@@ -69,7 +69,7 @@ export const getUsers = async (params?: GetUsersParams): Promise<User[]> => {
 }
 
 export const getUserById = async (userId: string): Promise<User> => {
-  const response = await axiosInstance.get(`${API_URL}/${userId}`)
+  const response = await axiosInstance.get(`${API_URL}/customer-infor/${userId}`)
   return response.data
 }
 
@@ -113,7 +113,7 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
   const now = new Date().toISOString()
   formData.append('UpdatedAt', now)
 
-  const response = await axiosInstance.put(`${API_URL}/${userId}`, formData, {
+  const response = await axiosInstance.put(`${API_URL}/customer-infor/${userId}`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }

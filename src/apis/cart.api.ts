@@ -64,3 +64,9 @@ export const removeCombo = async (userId: string, comboId: string): Promise<Cart
   const response = await axiosInstance.put<CartResponse>(`${API_URL}/${userId}/remove-combo/${comboId}`)
   return response.data
 }
+
+// Remove promotion from cart
+export const removePromotionFromCart = async (cartId: string, promotionId: string): Promise<any> => {
+  const response = await axiosInstance.put(`${API_URL}/${cartId}/delete-promotion/${promotionId}`)
+  return response
+}

@@ -5,7 +5,6 @@ import Products from './pages/customer/Products/products'
 import path from './constants/path'
 import ProductsDetail from './pages/customer/Products/ProductDetail/productsDetail'
 import Cart from './pages/customer/Cart/Cart'
-import OrderConfirm from './pages/customer/Order/OrderCreate'
 import Invoice from './pages/customer/Order/Invoice'
 import Login from './pages/authentication/Login'
 import Register from './pages/authentication/Register'
@@ -44,6 +43,7 @@ import StoreManagement from './pages/admin/storeManagerment/list'
 import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
+import { AdminPromotionList, AdminPromotionDetail, AdminPromotionStats } from './pages/admin/promotionManagerment'
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import StoryWithSeller from './pages/customer/storyWithSeller'
 import StorePage from './pages/customer/storeSeller/storePage'
@@ -64,9 +64,8 @@ import DetailProductStaff from './pages/staff/productManagerment/detailProduct'
 import StaffStoreDetail from './pages/staff/storeManagerment/storeDetail'
 import ListProductByStoreStaff from './pages/staff/storeManagerment/listProductByStore'
 import OrderCreate from './pages/customer/Order/OrderCreate'
-import BuyNowCart from './pages/customer/Cart/BuyNowCart'
+import SellerPromotionList from './pages/seller/promotionManagement/list'
 
-// import ProtectedRoute from './components/ProtectedRoute'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -94,10 +93,6 @@ export default function useRouteElements() {
         {
           path: path.cartOrderCreate,
           element: <OrderCreate />
-        },
-        {
-          path: path.cartBuyNow,
-          element: <BuyNowCart />
         },
         {
           path: path.cartInvoice,
@@ -189,7 +184,10 @@ export default function useRouteElements() {
               path: path.ordersSeller,
               element: <OrderManagement />
             },
-           
+            {
+              path: path.promotionSeller,
+              element: <SellerPromotionList />
+            },
             {
               path: path.myStorySeller,
               element: <MyStory />
@@ -353,6 +351,18 @@ export default function useRouteElements() {
             {
               path: path.SYSTEM_STORAGE_ADMIN,
               element: <SystemStorage />
+            },
+            {
+              path: path.PROMOTION_MANAGEMENT_ADMIN,
+              element: <AdminPromotionList />
+            },
+            {
+              path: '/admin/promotions/:id',
+              element: <AdminPromotionDetail />
+            },
+            {
+              path: '/admin/promotions/stats',
+              element: <AdminPromotionStats />
             }
           ]
         }

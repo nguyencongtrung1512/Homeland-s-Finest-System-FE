@@ -25,6 +25,7 @@ export const path = {
   registerSeller: '/registerSeller',
   BASE_SELLER: '/seller',
   productsSeller: 'product-management',
+  promotionSeller: 'promotion-management',
   createProduct: 'create-product',
   detailProductSeller: 'seller/product-management/detail-product/:id',
   updateProductSeller: 'seller/product-management/update-product/:id',
@@ -66,6 +67,7 @@ export const path = {
   BASE_ADMIN: '/admin',
   // Admin nested routes (relative paths)
   STORE_MANAGEMENT_ADMIN: 'storeManagement',
+  PROMOTION_MANAGEMENT_ADMIN: '/admin/promotions',
   STORE_DETAIL_ADMIN: 'storeManagement/store-detail/:storeId',
   ACCOUNT_MANAGEMENT_ADMIN: 'accountManagement',
   TERMS_MANAGEMENT_ADMIN: 'termsManagement',

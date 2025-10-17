@@ -13,6 +13,7 @@ import ReportModal from './components/ReportModal'
 import ProductCard from '../Products/Product/productCard'
 import { productApi } from '../../../apis/product.api'
 import type { Product } from '../../../types'
+import { PromotionBubble } from '../../../components/PromotionBubble'
 
 const StorePage = () => {
   const { storeId } = useParams<{ storeId: string }>()
@@ -294,6 +295,7 @@ const StorePage = () => {
           </div>
         </DialogContent>
       </Dialog>
+      <PromotionBubble />
     </div>
   )
 }

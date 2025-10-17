@@ -11,6 +11,28 @@ export interface CartItem {
   comboId: string
 }
 
+// Applied Promotion interface
+export interface AppliedPromotion {
+  cartPromotionId: string
+  promotionId: string
+  type: string
+  title: string
+  description: string
+  discountType: string
+  discountValue: number
+  discountAmount: number
+  minValueDiscount: number
+  appliedAt: string
+  expiredAt: string
+  minutesLeft: number
+  secondsLeft: number
+  status: string
+  isExpiringSoon: boolean
+  isExpired: boolean
+  discountDisplayText: string
+  timeLeftDisplayText: string
+}
+
 // Cart interface for each store
 export interface Cart {
   cartId: string
@@ -18,7 +40,10 @@ export interface Cart {
   storeName: string
   storeLogoUrl: string
   items: CartItem[]
+  appliedPromotions?: AppliedPromotion[]
   subTotal: number
+  totalDiscount?: number
+  finalTotal?: number
   totalItems: number
 }
 

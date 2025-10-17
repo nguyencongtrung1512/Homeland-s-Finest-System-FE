@@ -9,7 +9,8 @@ import {
   Store,
   HelpCircle,
   Leaf,
-  Component
+  Component,
+  Gift
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../../contexts/store.context'
@@ -47,6 +48,11 @@ function SideBar() {
       key: path.comboSeller,
       label: 'Quản lý Combo',
       icon: <Component size={18} />
+    },
+    {
+      key: path.promotionSeller,
+      label: 'Quản lý mã giảm giá',
+      icon: <Gift size={18} />
     },
     {
       key: path.ordersSeller,

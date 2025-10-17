@@ -3,16 +3,34 @@ import { useLocation } from 'react-router-dom'
 import { Avatar } from '../../../components/ui/avatar'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import { Settings, FileText, MapPin } from 'lucide-react'
+import { Settings, FileText, MapPin, Gift } from 'lucide-react'
 import type { Address, AddressCreateInput } from '../../../types/addressType'
 import type { Order, OrderStatus } from '../../../types/orderType'
+// Define the actual API response structure for user promotions
+interface UserPromotionResponse {
+  promotionUserID: string
+  promotionID: string
+  title: string
+  description: string
+  discountType: string
+  discountValue: number
+  startDate: string
+  endDate: string
+  quantity: number
+  maxPerUser: number
+  isActive: boolean
+  isExpired: boolean
+  daysRemaining: number
+}
 import { addressApi } from '../../../apis/address.api'
 import { getCustomerOrders } from '../../../apis/order.api'
+import { promotionApi } from '../../../apis/promotion.api'
 import { useAuth } from '../../../contexts/auth.context'
 import { getUserById, type User } from '../../../apis/user.api'
 import ProfileContent from './components/ProfileContent'
 import OrdersContent from './components/OrdersContent'
 import AddressContent from './components/AddressContent'
+import PromotionsContent from './components/PromotionsContent'
 import AddressModal from './components/AddressModal'
 
 export default function Profile() {
@@ -22,6 +40,8 @@ export default function Profile() {
   const [user, setUser] = useState<User | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
+  const [promotions, setPromotions] = useState<UserPromotionResponse[]>([])
+  const [promotionsLoading, setPromotionsLoading] = useState(false)
 
   // Khi vào trang, nếu có query tab=orders thì active tab đơn hàng
   useEffect(() => {
@@ -33,6 +53,8 @@ export default function Profile() {
       setActiveTab('addresses')
     } else if (tab === 'profile') {
       setActiveTab('profile')
+    } else if (tab === 'promotions') {
+      setActiveTab('promotions')
     }
   }, [location.search])
 
@@ -82,6 +104,28 @@ export default function Profile() {
       loadCustomerOrders()
     }
   }, [activeTab, authUser?.userId, loadCustomerOrders])
+
+  // Load user promotions
+  const loadUserPromotions = useCallback(async () => {
+    if (!authUser?.userId) return
+
+    try {
+      setPromotionsLoading(true)
+      const response = await promotionApi.getUserPromotions(authUser.userId, 0, 1)
+      setPromotions((response.data as any[]) || [])
+    } catch (error) {
+      console.error('Error loading user promotions:', error)
+    } finally {
+      setPromotionsLoading(false)
+    }
+  }, [authUser?.userId])
+
+  // Load promotions when component mounts or when switching to promotions tab
+  useEffect(() => {
+    if (activeTab === 'promotions') {
+      loadUserPromotions()
+    }
+  }, [activeTab, authUser?.userId, loadUserPromotions])
 
   const [addresses, setAddresses] = useState<Address[]>([])
   const [showAddressModal, setShowAddressModal] = useState(false)
@@ -176,11 +220,11 @@ export default function Profile() {
           addresses.map((addr) =>
             addr.id === editingAddress.id
               ? {
-                  ...addr,
-                  ...updateData,
-                  isDefault: updateData.isDefault || false,
-                  updatedAt: new Date().toISOString()
-                }
+                ...addr,
+                ...updateData,
+                isDefault: updateData.isDefault || false,
+                updatedAt: new Date().toISOString()
+              }
               : addr
           )
         )
@@ -279,6 +323,14 @@ export default function Profile() {
                 <MapPin className='w-4 h-4 mr-2' />
                 Sổ địa chỉ
               </Button>
+              <Button
+                variant={activeTab === 'promotions' ? 'default' : 'ghost'}
+                className={`w-full justify-start text-sm ${activeTab === 'promotions' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                onClick={() => setActiveTab('promotions')}
+              >
+                <Gift className='w-4 h-4 mr-2' />
+                Khuyến mãi của tôi
+              </Button>
             </nav>
           </CardContent>
         </Card>
@@ -305,6 +357,9 @@ export default function Profile() {
                   onSetDefault={handleSetDefault}
                   refreshTrigger={refreshTrigger}
                 />
+              )}
+              {activeTab === 'promotions' && (
+                <PromotionsContent promotions={promotions} loading={promotionsLoading} onRefresh={loadUserPromotions} />
               )}
             </CardContent>
           </Card>

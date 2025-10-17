@@ -87,7 +87,7 @@ export const useProductDetail = (productId: string | undefined): UseProductDetai
       const response = await productApi.getById(productId)
       console.log('data sản phẩm của useProduct nè', response)
       if (response.status === 200 && response.data) {
-        setProduct(response.data as ProductDetailData)
+        setProduct(response.data as any)
       } else {
         setError('Không thể tải thông tin sản phẩm')
       }
