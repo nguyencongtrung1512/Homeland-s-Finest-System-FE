@@ -65,6 +65,9 @@ import StaffStoreDetail from './pages/staff/storeManagerment/storeDetail'
 import ListProductByStoreStaff from './pages/staff/storeManagerment/listProductByStore'
 import OrderCreate from './pages/customer/Order/OrderCreate'
 import SellerPromotionList from './pages/seller/promotionManagement/list'
+import CreateComboSeller from './pages/seller/combos/createCombo'
+import UpdateComboSeller from './pages/seller/combos/updateCombo'
+import DetailComboSeller from './pages/seller/combos/detailCombo'
 
 
 export default function useRouteElements() {
@@ -219,6 +222,18 @@ export default function useRouteElements() {
             {
               path: path.comboSeller,
               element: <ComboSeller />
+            },
+            {
+              path: path.createComboSeller,
+              element: <CreateComboSeller />
+            },
+            {
+              path: path.updateComboSeller,
+              element: <UpdateComboSeller />
+            },
+            {
+              path: path.detailComboSeller,
+              element: <DetailComboSeller />
             }
           ]
         }

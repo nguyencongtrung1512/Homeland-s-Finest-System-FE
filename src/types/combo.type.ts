@@ -3,26 +3,51 @@
 // Request types for creating combo
 export interface CreateComboRequest {
   name: string
-  provinceId: number
-  description: string
-  thumbnailFile: File
+  description?: string
+  sellerId: string
+  thumbnailFile?: File
+}
+
+// Request types for updating combo
+export interface UpdateComboRequest {
+  name: string
+  description?: string
+  isActive: boolean
+  thumbnailFile?: File
+}
+
+// Request types for combo items
+export interface CreateComboItemRequest {
+  productVariantId: string
+  comboItemName: string
+  price: number
+  quantity: number
+  isActive: boolean
+}
+
+export interface UpdateComboItemRequest {
+  id?: string // Có ID = update, không có ID = thêm mới
+  productVariantId: string
+  comboItemName: string
+  price: number
+  quantity: number
+  isActive: boolean
 }
 
 // Response types for combo operations
 export interface ComboResponse {
-  succeeded: boolean
+  status: number
   message: string
-  errors: string[] | null
   data: ComboData | null
 }
 
 export interface ComboData {
   id: string
   name: string
-  provinceId: number
-  thumbnailUrl: string
   description: string
-  status: 'Pending' | 'Approved' | 'Rejected'
+  thumbnailUrl: string
+  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected'
+  provinceId: string
   isActive: boolean
 }
 
@@ -42,21 +67,19 @@ export interface ComboItem {
   comboItemImageUrl: string
   price: number
   quantity: number
-  productName: string
-  variantName: string
-  storeName: string
+  isActive: boolean
 }
 
 // Full combo with items
 export interface Combo {
   id: string
   name: string
-  provinceId: number
-  provinceName: string
   description: string
-  isActive: boolean
   thumbnailUrl: string
-  staffNote: string | null
+  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected'
+  provinceId: string
+  provinceName?: string
+  isActive: boolean
   comboItems: ComboItem[]
 }
 
@@ -79,7 +102,5 @@ export interface ComboListResponse {
 export interface ComboParams {
   pageSize?: number
   pageNumber?: number
-  search?: string
-  provinceId?: number
-  isActive?: boolean
+  sellerID?: string
 }
