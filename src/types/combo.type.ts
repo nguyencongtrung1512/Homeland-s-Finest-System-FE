@@ -68,6 +68,9 @@ export interface ComboItem {
   price: number
   quantity: number
   isActive: boolean
+  productName?: string
+  variantName?: string
+  storeName?: string
 }
 
 // Full combo with items
@@ -76,11 +79,12 @@ export interface Combo {
   name: string
   description: string
   thumbnailUrl: string
-  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected'
-  provinceId: string
+  status?: 'Draft' | 'Pending' | 'Approved' | 'Rejected'
+  provinceId: number
   provinceName?: string
   isActive: boolean
   comboItems: ComboItem[]
+  staffNote?: string
 }
 
 // Pagination types

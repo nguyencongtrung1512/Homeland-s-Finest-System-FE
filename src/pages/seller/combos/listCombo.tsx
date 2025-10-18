@@ -35,6 +35,55 @@ function ComboSeller() {
   // Lấy combo cho trang hiện tại
   const combos = allCombos.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
+  // Mock data cứng cho demo
+  const mockCombos: Combo[] = [
+    {
+      id: '1',
+      name: 'Combo Gạo Sạch Miền Tây',
+      provinceId: 1,
+      provinceName: 'An Giang',
+      description: 'Combo gạo sạch chất lượng cao từ miền Tây Nam Bộ, đảm bảo an toàn thực phẩm',
+      isActive: true,
+      thumbnailUrl: 'https://via.placeholder.com/300x200/4ade80/ffffff?text=Combo+Gạo+Sạch',
+      staffNote: 'Combo được duyệt và đang bán tốt',
+      comboItems: [
+        {
+          id: '1-1',
+          productVariantId: 'pv-1',
+          comboItemName: 'Gạo ST25 5kg',
+          comboItemImageUrl: 'https://via.placeholder.com/150x150/22c55e/ffffff?text=Gạo+ST25',
+          price: 150000,
+          quantity: 1,
+          productName: 'Gạo ST25',
+          variantName: '5kg',
+          storeName: 'Cửa hàng Gạo Sạch Miền Tây'
+        },
+        {
+          id: '1-2',
+          productVariantId: 'pv-2',
+          comboItemName: 'Gạo Jasmine 2kg',
+          comboItemImageUrl: 'https://via.placeholder.com/150x150/84cc16/ffffff?text=Gạo+Jasmine',
+          price: 80000,
+          quantity: 1,
+          productName: 'Gạo Jasmine',
+          variantName: '2kg',
+          storeName: 'Cửa hàng Gạo Sạch Miền Tây'
+        },
+        {
+          id: '1-3',
+          productVariantId: 'pv-3',
+          comboItemName: 'Gạo Nàng Thơm 3kg',
+          comboItemImageUrl: 'https://via.placeholder.com/150x150/65a30d/ffffff?text=Gạo+Nàng+Thơm',
+          price: 120000,
+          quantity: 1,
+          productName: 'Gạo Nàng Thơm',
+          variantName: '3kg',
+          storeName: 'Cửa hàng Gạo Sạch Miền Tây'
+        }
+      ]
+    }
+  ]
+
   // Fetch combos function
   const fetchCombos = useCallback(async () => {
     if (!user?.userId) {
@@ -46,15 +95,18 @@ function ComboSeller() {
     setError(null)
 
     try {
-      const params: ComboParams = {
-        pageSize: 0, // Lấy tất cả combo
-        pageNumber: 1,
-        sellerID: user.userId
-      }
-
-      const response = await getAllCombos(params)
-      setAllCombos(response)
+      // Sử dụng mock data thay vì gọi API
+      setAllCombos(mockCombos)
       setCurrentPage(1)
+
+      // Uncomment để sử dụng API thật
+      // const params: ComboParams = {
+      //   pageSize: 0, // Lấy tất cả combo
+      //   pageNumber: 1,
+      //   sellerID: user.userId
+      // }
+      // const response = await getAllCombos(params)
+      // setAllCombos(response)
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải danh sách combo'
       setError(errorMessage)
@@ -129,8 +181,8 @@ function ComboSeller() {
         }
       default:
         return {
-          text: 'be trả là được',
-          className: 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+          text: 'Đã duyệt',
+          className: 'bg-green-100 text-green-800 hover:bg-green-100'
         }
     }
   }
@@ -209,7 +261,7 @@ function ComboSeller() {
                         </td>
                         <td className='py-3 px-4 text-gray-900 font-semibold'>{totalPrice.toLocaleString()}₫</td>
                         <td className='py-3 px-4 text-gray-900'>
-                          {activeItemsCount}/{combo.comboItems.length}
+                          3/3
                         </td>
                         <td className='py-3 px-4'>
                           <Badge variant='secondary' className={statusInfo.className}>
