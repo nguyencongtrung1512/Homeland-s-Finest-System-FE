@@ -71,10 +71,11 @@ interface PromotionCardProps {
   isApplied?: boolean
   isExpired?: boolean
   userQuantity?: number
-  onApply?: () => void
+  onApply?: (promotionId: string, promotionType: 'global' | 'store' | 'user') => void
   onRemove?: () => void
   showActions?: boolean
   loading?: boolean
+  promotionType?: 'global' | 'store' | 'user'
 }
 
 const PromotionCard: React.FC<PromotionCardProps> = ({
@@ -85,10 +86,89 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
   onApply,
   onRemove,
   showActions = true,
-  loading = false
+  loading = false,
+  promotionType = 'global'
 }) => {
+  const promo = 'promotion' in promotion ? promotion.promotion : promotion
+
+  // Check if promotion is upcoming (start date in future)
+  const isUpcoming = () => {
+    try {
+      let startDateObj: Date
+
+      // Handle backend format: "HH:mm:ss dd/MM/yyyy"
+      if (promo.startDate.includes(' ')) {
+        const [timePart, datePart] = promo.startDate.split(' ')
+        const [hours, minutes, seconds] = timePart.split(':')
+        const [day, month, year] = datePart.split('/')
+        startDateObj = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hours),
+          parseInt(minutes),
+          parseInt(seconds)
+        )
+      } else {
+        startDateObj = new Date(promo.startDate)
+      }
+
+      return startDateObj > new Date()
+    } catch (error) {
+      console.error('Error checking upcoming date:', error)
+      return false
+    }
+  }
+
+  // Check if promotion is currently active
+  const isCurrentlyActive = () => {
+    try {
+      let startDateObj: Date
+      let endDateObj: Date
+
+      // Handle start date
+      if (promo.startDate.includes(' ')) {
+        const [timePart, datePart] = promo.startDate.split(' ')
+        const [hours, minutes, seconds] = timePart.split(':')
+        const [day, month, year] = datePart.split('/')
+        startDateObj = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hours),
+          parseInt(minutes),
+          parseInt(seconds)
+        )
+      } else {
+        startDateObj = new Date(promo.startDate)
+      }
+
+      // Handle end date
+      if (promo.endDate.includes(' ')) {
+        const [timePart, datePart] = promo.endDate.split(' ')
+        const [hours, minutes, seconds] = timePart.split(':')
+        const [day, month, year] = datePart.split('/')
+        endDateObj = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hours),
+          parseInt(minutes),
+          parseInt(seconds)
+        )
+      } else {
+        endDateObj = new Date(promo.endDate)
+      }
+
+      const now = new Date()
+      return startDateObj <= now && now <= endDateObj
+    } catch (error) {
+      console.error('Error checking active date:', error)
+      return false
+    }
+  }
+
   const getDiscountText = () => {
-    const promo = 'promotion' in promotion ? promotion.promotion : promotion
     switch (promo.discountType) {
       case 'percentage':
         return `Giảm ${promo.discountValue}%`
@@ -128,8 +208,6 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
         return <Gift className='h-4 w-4' />
     }
   }
-
-  const promo = 'promotion' in promotion ? promotion.promotion : promotion
 
   return (
     <Card
@@ -177,7 +255,9 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
 
           <div className='flex items-center gap-2 text-sm text-gray-600'>
             <Clock className='h-4 w-4' />
-            <span>Có hiệu lực đến {formatDate(promo.endDate)}</span>
+            <span>
+              Có hiệu lực từ {formatDate(promo.startDate)} đến {formatDate(promo.endDate)}
+            </span>
           </div>
         </div>
 
@@ -197,8 +277,17 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
               <Button
                 size='sm'
                 variant='green'
-                onClick={onApply}
-                disabled={isExpired || (promo.type === 'User' && userQuantity === 0) || loading}
+                onClick={() => {
+                  const promo = 'promotion' in promotion ? promotion.promotion : promotion
+                  onApply?.(promo.id, promotionType)
+                }}
+                disabled={
+                  isExpired ||
+                  (promo.type === 'User' && userQuantity === 0) ||
+                  loading ||
+                  isUpcoming() ||
+                  !isCurrentlyActive()
+                }
                 className='flex-1'
               >
                 {loading ? (
@@ -207,8 +296,12 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
                   'Đã hết hạn'
                 ) : promo.type === 'User' && userQuantity === 0 ? (
                   'Hết lượt'
+                ) : isUpcoming() ? (
+                  'Sắp tới'
+                ) : !isCurrentlyActive() ? (
+                  'Chưa có hiệu lực'
                 ) : (
-                  'Áp dụng'
+                  'Lấy'
                 )}
               </Button>
             )}
@@ -226,12 +319,20 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
 interface PromotionListProps {
   applied: PromotionDTO[]
   notYet: PromotionDTO[]
-  onApply: (promotionId: string) => void
+  onApply: (promotionId: string, promotionType: 'global' | 'store' | 'user') => void
   onRemove: (promotionId: string) => void
   loading?: boolean
+  promotionType: 'global' | 'store' | 'user'
 }
 
-const PromotionList: React.FC<PromotionListProps> = ({ applied, notYet, onApply, onRemove, loading = false }) => {
+const PromotionList: React.FC<PromotionListProps> = ({
+  applied,
+  notYet,
+  onApply,
+  onRemove,
+  loading = false,
+  promotionType
+}) => {
   // const appliedIds = applied.map(p => p.id)
 
   return (
@@ -251,6 +352,7 @@ const PromotionList: React.FC<PromotionListProps> = ({ applied, notYet, onApply,
                 isApplied={true}
                 onRemove={() => onRemove(promotion.id)}
                 loading={loading}
+                promotionType={promotionType}
               />
             ))}
           </div>
@@ -267,8 +369,9 @@ const PromotionList: React.FC<PromotionListProps> = ({ applied, notYet, onApply,
                 key={promotion.id}
                 promotion={promotion}
                 isApplied={false}
-                onApply={() => onApply(promotion.id)}
+                onApply={onApply}
                 loading={loading}
+                promotionType={promotionType}
               />
             ))}
           </div>
@@ -293,9 +396,10 @@ const PromotionList: React.FC<PromotionListProps> = ({ applied, notYet, onApply,
 interface UserPromotionListProps {
   applied: UserPromotionDetailDTO[]
   notYet: UserPromotionDetailDTO[]
-  onApply: (promotionId: string) => void
+  onApply: (promotionId: string, promotionType: 'global' | 'store' | 'user') => void
   onRemove: (promotionId: string) => void
   loading?: boolean
+  promotionType: 'global' | 'store' | 'user'
 }
 
 const UserPromotionList: React.FC<UserPromotionListProps> = ({
@@ -303,7 +407,8 @@ const UserPromotionList: React.FC<UserPromotionListProps> = ({
   notYet,
   onApply,
   onRemove,
-  loading = false
+  loading = false,
+  promotionType
 }) => {
   // const appliedIds = applied.map(p => p.promotionId)
 
@@ -325,6 +430,7 @@ const UserPromotionList: React.FC<UserPromotionListProps> = ({
                 userQuantity={userPromotion.quantity}
                 onRemove={() => onRemove(userPromotion.promotionId)}
                 loading={loading}
+                promotionType={promotionType}
               />
             ))}
           </div>
@@ -342,8 +448,9 @@ const UserPromotionList: React.FC<UserPromotionListProps> = ({
                 promotion={userPromotion}
                 isApplied={false}
                 userQuantity={userPromotion.quantity}
-                onApply={() => onApply(userPromotion.promotionId)}
+                onApply={onApply}
                 loading={loading}
+                promotionType={promotionType}
               />
             ))}
           </div>
@@ -370,17 +477,40 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
   const { availablePromotions, loading } = usePromotions(cartId)
   const { user } = useAuth()
 
-  const handleApply = async (promotionId: string) => {
+  const handleApply = async (promotionId: string, promotionType: 'global' | 'store' | 'user') => {
     if (!user?.userId) {
       toast.error('Vui lòng đăng nhập để sử dụng mã giảm giá')
       return
     }
 
-    try {
-      // Call claim API instead of applyPromotionToCart
-      await promotionApi.claimPromotion(promotionId, user.userId)
+    // Check if there's already an applied promotion of the same type
+    const hasAppliedPromotionOfSameType = (availablePromotions[promotionType]?.applied?.length || 0) > 0
 
-      toast.success('Nhận mã giảm giá thành công!', {
+    if (hasAppliedPromotionOfSameType) {
+      const typeLabels = {
+        global: 'mã toàn hệ thống',
+        store: 'mã của shop',
+        user: 'mã cá nhân'
+      }
+
+      toast.warning(
+        `Bạn chỉ có thể áp dụng 1 ${typeLabels[promotionType]} tại một thời điểm. Vui lòng hủy mã hiện tại trước khi chọn mã khác.`,
+        {
+          position: 'top-right',
+          autoClose: 4000
+        }
+      )
+      return
+    }
+
+    try {
+      // Call applyPromotionToCart API
+      await promotionApi.applyPromotionToCart({
+        cartId: cartId,
+        promotionId: promotionId
+      })
+
+      toast.success('Áp dụng mã giảm giá thành công!', {
         position: 'top-right',
         autoClose: 2000
       })
@@ -388,10 +518,10 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
       // Call the onApply callback to refresh data
       onApply(promotionId)
     } catch (error: unknown) {
-      console.error('Error claiming promotion:', error)
+      console.error('Error applying promotion:', error)
 
       // Extract error message from backend response
-      let errorMessage = 'Không thể nhận mã giảm giá'
+      let errorMessage = 'Không thể áp dụng mã giảm giá'
 
       const apiError = error as ApiError
       if (apiError?.response?.data?.message) {
@@ -411,7 +541,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
 
   const handleRemove = async (promotionId: string) => {
     try {
-      // Call delete-promotion API instead of removePromotionFromCart
+      // Call removePromotionFromCart API
       await removePromotionFromCart(cartId, promotionId)
 
       toast.success('Hủy mã giảm giá thành công!', {
@@ -484,6 +614,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                     onApply={handleApply}
                     onRemove={handleRemove}
                     loading={loading}
+                    promotionType='global'
                   />
                 )}
               </TabsContent>
@@ -500,6 +631,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                     onApply={handleApply}
                     onRemove={handleRemove}
                     loading={loading}
+                    promotionType='store'
                   />
                 )}
               </TabsContent>
@@ -516,6 +648,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                     onApply={handleApply}
                     onRemove={handleRemove}
                     loading={loading}
+                    promotionType='user'
                   />
                 )}
               </TabsContent>

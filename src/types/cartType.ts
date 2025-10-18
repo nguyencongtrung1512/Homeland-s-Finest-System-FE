@@ -41,6 +41,7 @@ export interface Cart {
   storeLogoUrl: string
   items: CartItem[]
   appliedPromotions?: AppliedPromotion[]
+  hasFreeship?: boolean
   subTotal: number
   totalDiscount?: number
   finalTotal?: number

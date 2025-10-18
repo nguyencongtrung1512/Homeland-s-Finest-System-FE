@@ -20,6 +20,8 @@ import {
   type PromotionFormData,
   type PromotionFormErrors,
   type PromotionType,
+  type PromotionAdminDTO,
+  type DiscountType,
   DISCOUNT_TYPES,
   PROMOTION_TYPE_LABELS,
   DISCOUNT_TYPE_LABELS
@@ -32,6 +34,51 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
   loading = false,
   isEdit = false
 }) => {
+  // Map API discountType format to frontend format
+  const mapDiscountTypeFromAPI = (apiDiscountType: string): DiscountType => {
+    if (!apiDiscountType) return 'percentage'
+
+    const normalized = apiDiscountType.toLowerCase()
+
+    switch (normalized) {
+      case 'freeship':
+        return 'freeship'
+      case 'fixedamount':
+      case 'fixed_amount':
+        return 'fixed_amount'
+      case 'percentage':
+        return 'percentage'
+      default:
+        // Try original case mapping for API format
+        switch (apiDiscountType) {
+          case 'FreeShip':
+            return 'freeship'
+          case 'FixedAmount':
+            return 'fixed_amount'
+          case 'Percentage':
+            return 'percentage'
+          default:
+            console.warn('Unknown discountType from API:', apiDiscountType)
+            return 'percentage'
+        }
+    }
+  }
+
+  // Map frontend discountType format to API format
+  const mapDiscountTypeToAPI = (frontendDiscountType: DiscountType): string => {
+    switch (frontendDiscountType) {
+      case 'freeship':
+        return 'FreeShip'
+      case 'fixed_amount':
+        return 'FixedAmount'
+      case 'percentage':
+        return 'Percentage'
+      default:
+        console.warn('Unknown frontend discountType:', frontendDiscountType)
+        return 'Percentage'
+    }
+  }
+
   const [formData, setFormData] = useState<PromotionFormData>({
     type: 'Global',
     title: '',
@@ -57,6 +104,12 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
   const [endTime, setEndTime] = useState('18:00')
   const [isInitialized, setIsInitialized] = useState(false)
 
+  // Debug formData changes
+  useEffect(() => {
+    console.log('🔄 FormData discountType changed to:', formData.discountType)
+    console.log('🔄 Type of discountType:', typeof formData.discountType)
+  }, [formData.discountType])
+
   const adminPromotionTypes = ['Global', 'User'] as const
 
   const loadUsers = useCallback(async (searchTerm = '') => {
@@ -79,7 +132,9 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
 
   useEffect(() => {
     if (initialData && !isInitialized) {
-      console.log('📄 Initializing form data for edit:', initialData)
+      console.log('📝 Initializing form data for edit:', initialData)
+      console.log('📝 Initial discountType from API:', initialData.discountType)
+      console.log('📝 isInitialized:', isInitialized)
 
       let processedStartDate = ''
       let processedEndDate = ''
@@ -144,23 +199,30 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
 
       let userIds: string[] = []
       if (initialData.type === 'User') {
-        const promotionData = initialData as any
-        if (promotionData.promotionUsers?.length > 0) {
-          userIds = promotionData.promotionUsers.map((pu: any) => pu.userID)
-        } else if (promotionData.userIds?.length > 0) {
-          userIds = promotionData.userIds
+        const promotionData = initialData as PromotionAdminDTO
+        if (promotionData.promotionUsers && promotionData.promotionUsers.length > 0) {
+          userIds = promotionData.promotionUsers.map((pu: { userID: string }) => pu.userID)
         }
       }
 
       const processedType = initialData.type || 'Global'
+      const mappedDiscountType = mapDiscountTypeFromAPI(initialData.discountType || 'percentage')
+      console.log('📝 Mapped discountType:', mappedDiscountType)
 
       const processedData = {
         ...initialData,
         type: processedType,
+        discountType: mappedDiscountType,
         startDate: processedStartDate,
         endDate: processedEndDate,
         userIds: userIds
       }
+
+      console.log('📝 Processed form data:', processedData)
+      console.log('📝 Original discountType:', initialData.discountType)
+      console.log('📝 Mapped discountType:', mappedDiscountType)
+      console.log('📝 Type of mapped discountType:', typeof mappedDiscountType)
+      console.log('📝 Setting formData with discountType:', processedData.discountType)
 
       setFormData(processedData)
       setIsInitialized(true)
@@ -195,12 +257,15 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       newErrors.description = 'Mô tả phải có ít nhất 10 ký tự'
     }
 
-    if (formData.discountValue <= 0) {
-      newErrors.discountValue = 'Giá trị giảm giá phải lớn hơn 0'
-    }
+    // Only validate discount value if not free shipping
+    if (formData.discountType !== 'freeship') {
+      if (formData.discountValue <= 0) {
+        newErrors.discountValue = 'Giá trị giảm giá phải lớn hơn 0'
+      }
 
-    if (formData.discountType === 'percentage' && formData.discountValue > 100) {
-      newErrors.discountValue = 'Phần trăm giảm giá không được vượt quá 100%'
+      if (formData.discountType === 'percentage' && formData.discountValue > 100) {
+        newErrors.discountValue = 'Phần trăm giảm giá không được vượt quá 100%'
+      }
     }
 
     if (formData.minValueDiscount && formData.minValueDiscount <= 0) {
@@ -213,6 +278,26 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
 
     if (!formData.endDate) {
       newErrors.endDate = 'Ngày kết thúc không được để trống'
+    }
+
+    // Validate start time not after current time if start date is today
+    if (formData.startDate) {
+      const startDate = new Date(formData.startDate)
+      const today = new Date()
+
+      // Check if start date is today
+      if (startDate.toDateString() === today.toDateString()) {
+        const [hours, minutes] = startTime.split(':').map(Number)
+        const selectedTime = new Date(startDate)
+        selectedTime.setHours(hours, minutes, 0, 0)
+
+        const now = new Date()
+        now.setSeconds(0, 0) // Ignore seconds for comparison
+
+        if (selectedTime > now) {
+          newErrors.startTime = 'Giờ bắt đầu không được sau giờ hiện tại khi chọn ngày hôm nay'
+        }
+      }
     }
 
     if (formData.startDate && formData.endDate) {
@@ -242,7 +327,22 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (validateForm()) {
-      onSubmit(formData)
+      // Remove discountValue if discountType is freeship
+      const submitData = { ...formData }
+      if (submitData.discountType === 'freeship') {
+        submitData.discountValue = 0
+      }
+
+      // Map discountType to API format
+      const apiData = {
+        ...submitData,
+        discountType: mapDiscountTypeToAPI(submitData.discountType) as DiscountType // Type assertion for API compatibility
+      }
+
+      console.log('📝 Submitting form data:', apiData)
+      console.log('📝 Original frontend discountType:', submitData.discountType)
+      console.log('📝 Mapped API discountType:', apiData.discountType)
+      onSubmit(apiData)
     }
   }
 
@@ -258,6 +358,9 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         }
         return newData
       })
+    } else if (field === 'discountType') {
+      console.log('🔄 Discount type changed to:', value)
+      setFormData((prev) => ({ ...prev, [field]: value as DiscountType }))
     } else {
       setFormData((prev) => ({ ...prev, [field]: value }))
     }
@@ -322,9 +425,9 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         </CardTitle>
       </CardHeader>
 
-      <CardContent className='pt-6'>
-        <form onSubmit={handleSubmit} className='space-y-6'>
-          <div className='space-y-4'>
+      <CardContent className='p-0'>
+        <form onSubmit={handleSubmit} className='space-y-2'>
+          <div className='space-y-2 p-4'>
             <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
               <div className='w-1 h-6 bg-blue-500 rounded'></div>
               Thông tin cơ bản
@@ -472,7 +575,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
             )}
           </div>
 
-          <div className='space-y-4'>
+          <div className='space-y-2 p-4'>
             <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
               <div className='w-1 h-6 bg-blue-500 rounded'></div>
               Cấu hình giảm giá
@@ -481,11 +584,15 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div className='space-y-2'>
                 <Label htmlFor='discountType' className='text-blue-900 font-medium'>
-                  Loại giảm giá
+                  Loại giảm giá *
                 </Label>
                 <Select
+                  key={`discount-type-${isInitialized}`}
                   value={formData.discountType}
-                  onValueChange={(value) => handleInputChange('discountType', value)}
+                  onValueChange={(value) => {
+                    console.log('🔄 Changing discountType to:', value)
+                    handleInputChange('discountType', value)
+                  }}
                 >
                   <SelectTrigger className='border-blue-200 focus:ring-blue-500 focus:border-blue-500'>
                     <SelectValue placeholder='Chọn loại giảm giá' />
@@ -498,28 +605,32 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
+                <p className='text-xs text-gray-500'>Giá trị hiện tại: {formData.discountType}</p>
+                <p className='text-xs text-gray-500'>isInitialized: {isInitialized.toString()}</p>
               </div>
 
-              <div className='space-y-2'>
-                <Label htmlFor='discountValue' className='text-blue-900 font-medium'>
-                  Giá trị giảm giá *{formData.discountType === 'percentage' && ' (%)'}
-                  {formData.discountType === 'fixed_amount' && ' (₫)'}
-                </Label>
-                <Input
-                  id='discountValue'
-                  type='number'
-                  min='0'
-                  max={formData.discountType === 'percentage' ? 100 : undefined}
-                  value={formData.discountValue}
-                  onChange={(e) => handleInputChange('discountValue', Number(e.target.value))}
-                  placeholder='Nhập giá trị giảm giá'
-                  className={cn(
-                    'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
-                    errors.discountValue && 'border-red-500'
-                  )}
-                />
-                {errors.discountValue && <p className='text-sm text-red-600'>{errors.discountValue}</p>}
-              </div>
+              {formData.discountType !== 'freeship' && (
+                <div className='space-y-2'>
+                  <Label htmlFor='discountValue' className='text-blue-900 font-medium'>
+                    Giá trị giảm giá *{formData.discountType === 'percentage' && ' (%)'}
+                    {formData.discountType === 'fixed_amount' && ' (₫)'}
+                  </Label>
+                  <Input
+                    id='discountValue'
+                    type='number'
+                    min='0'
+                    max={formData.discountType === 'percentage' ? 100 : undefined}
+                    value={formData.discountValue}
+                    onChange={(e) => handleInputChange('discountValue', Number(e.target.value))}
+                    placeholder='Nhập giá trị giảm giá'
+                    className={cn(
+                      'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
+                      errors.discountValue && 'border-red-500'
+                    )}
+                  />
+                  {errors.discountValue && <p className='text-sm text-red-600'>{errors.discountValue}</p>}
+                </div>
+              )}
             </div>
 
             <div className='space-y-2'>
@@ -544,7 +655,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
             </div>
           </div>
 
-          <div className='space-y-4'>
+          <div className='space-y-2 p-4'>
             <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
               <div className='w-1 h-6 bg-blue-500 rounded'></div>
               Thời gian áp dụng
@@ -578,7 +689,11 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                           handleDateChange('startDate', date)
                           setStartDateOpen(false)
                         }}
-                        disabled={(date) => date < new Date()}
+                        disabled={(date) => {
+                          const today = new Date()
+                          today.setHours(0, 0, 0, 0)
+                          return date < today
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
@@ -595,6 +710,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                   </div>
                 </div>
                 {errors.startDate && <p className='text-sm text-red-600'>{errors.startDate}</p>}
+                {errors.startTime && <p className='text-sm text-red-600'>{errors.startTime}</p>}
               </div>
 
               <div className='space-y-2'>
@@ -625,10 +741,15 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                           setEndDateOpen(false)
                         }}
                         disabled={(date) => {
+                          const today = new Date()
+                          today.setHours(0, 0, 0, 0)
+
                           if (formData.startDate) {
-                            return date <= new Date(formData.startDate)
+                            const startDate = new Date(formData.startDate)
+                            startDate.setHours(0, 0, 0, 0)
+                            return date <= startDate
                           }
-                          return date < new Date()
+                          return date < today
                         }}
                         initialFocus
                       />
@@ -650,7 +771,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
             </div>
           </div>
 
-          <div className='space-y-4'>
+          <div className='space-y-2 p-4'>
             <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
               <div className='w-1 h-6 bg-blue-500 rounded'></div>
               Cấu hình số lượng
@@ -699,7 +820,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
             </div>
           </div>
 
-          <div className='space-y-4'>
+          <div className='space-y-2 p-4'>
             <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
               <div className='w-1 h-6 bg-blue-500 rounded'></div>
               Trạng thái
@@ -717,7 +838,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
             </div>
           </div>
 
-          <div className='flex items-center justify-end space-x-4 pt-6 border-t border-blue-200'>
+          <div className='flex items-center justify-end space-x-4 pt-2 px-4 pb-4 border-t border-blue-200'>
             <Button
               type='button'
               variant='outline'

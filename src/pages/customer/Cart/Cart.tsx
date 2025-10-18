@@ -50,7 +50,7 @@ export default function Cart() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false)
   const [selectedStoreForPromotion, setSelectedStoreForPromotion] = useState<string | null>(null)
-  const [storePromotions, setStorePromotions] = useState<Record<string, StorePromotion[]>>({})
+  const [storePromotions] = useState<Record<string, StorePromotion[]>>({})
   const [isAppliedPromotionsModalOpen, setIsAppliedPromotionsModalOpen] = useState(false)
   const [selectedStoreForAppliedPromotions, setSelectedStoreForAppliedPromotions] = useState<string | null>(null)
   const reloadCartData = useCallback(async () => {
@@ -187,23 +187,40 @@ export default function Cart() {
   // Calculate discount for a specific store
   const getStoreDiscount = (storeId: string) => {
     const store = cartData?.carts.find((s) => s.storeId === storeId)
-    if (store?.appliedPromotions) {
-      return store.appliedPromotions.reduce((sum, promo) => {
+    if (!store) return 0
+
+    let discount = 0
+
+    // Check if store has free shipping
+    if (store.hasFreeship) {
+      discount += shippingFee // Free shipping = shipping fee discount
+      console.log('🚚 Free shipping applied for store:', store.storeName, 'discount:', shippingFee)
+    }
+
+    // Add applied promotions discount
+    if (store.appliedPromotions) {
+      const promotionDiscount = store.appliedPromotions.reduce((sum, promo) => {
         if (!promo.isExpired && promo.status === 'Reserved') {
           return sum + promo.discountAmount
         }
         return sum
       }, 0)
+      discount += promotionDiscount
+      console.log('🎁 Promotion discount for store:', store.storeName, 'discount:', promotionDiscount)
     }
 
     // Fallback to mock promotions if no appliedPromotions
     const promotions = getStorePromotions(storeId)
-    return promotions.reduce((sum, promo) => {
+    const mockDiscount = promotions.reduce((sum, promo) => {
       if (!promo.isExpired && promo.status === 'Reserved') {
         return sum + promo.discountAmount
       }
       return sum
     }, 0)
+    discount += mockDiscount
+
+    console.log('💰 Total discount for store:', store.storeName, 'total:', discount)
+    return discount
   }
 
   const getTotalDiscount = () => {
@@ -330,25 +347,12 @@ export default function Cart() {
     }
   }
 
-  const handleApplyPromotion = async (promotionId: string) => {
+  const handleApplyPromotion = async () => {
     if (!selectedStoreForPromotion) return false
 
     try {
-      // Here you would call API to apply promotion to specific store cart
-      // For now, we'll simulate it
-      const mockPromotion: StorePromotion = {
-        id: promotionId,
-        promotionId: promotionId,
-        title: `Mã giảm giá ${promotionId}`,
-        discountAmount: 50000,
-        status: 'Reserved',
-        isExpired: false
-      }
-
-      setStorePromotions((prev) => ({
-        ...prev,
-        [selectedStoreForPromotion]: [...(prev[selectedStoreForPromotion] || []), mockPromotion]
-      }))
+      // Reload cart data to get updated appliedPromotions
+      await reloadCartData()
 
       setIsPromotionModalOpen(false)
       setSelectedStoreForPromotion(null)
@@ -435,6 +439,11 @@ export default function Cart() {
                     <div className='flex items-center gap-2'>
                       <Store className='w-5 h-5 text-orange-600' />
                       <span className='font-semibold text-gray-800'>{store.storeName}</span>
+                      {store.hasFreeship && (
+                        <span className='bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium'>
+                          Miễn phí vận chuyển
+                        </span>
+                      )}
                     </div>
                     <div className='flex items-center gap-2'>
                       <Button
@@ -644,7 +653,9 @@ export default function Cart() {
                       </div>
                       {storeDiscount > 0 && (
                         <div className='flex justify-between text-xs text-green-600'>
-                          <span>Giảm giá</span>
+                          <span>
+                            {store.hasFreeship && storeDiscount >= shippingFee ? 'Miễn phí vận chuyển' : 'Giảm giá'}
+                          </span>
                           <span>-₫{formatPrice(storeDiscount)}</span>
                         </div>
                       )}
@@ -658,7 +669,9 @@ export default function Cart() {
 
                 <div className='flex justify-between text-sm'>
                   <span className='text-gray-600'>Phí vận chuyển</span>
-                  <span className='font-medium'>₫{formatPrice(shippingFee)}</span>
+                  <span className={`font-medium ${getTotalDiscount() > 0 ? 'text-green-600' : ''}`}>
+                    {getTotalDiscount() >= shippingFee ? 'Miễn phí' : `₫${formatPrice(shippingFee)}`}
+                  </span>
                 </div>
               </div>
 

@@ -114,15 +114,11 @@ export interface ApiResponse<T> {
   data: T
 }
 
-export interface ApiResponseWithPagination<T> {
-  status: number
-  message: string
-  data: T
-  pagination: {
-    pageNumber: number
-    pageSize: number
-    totalItems: number
-  }
+export interface PaginationState {
+  pageNumber: number
+  pageSize: number
+  totalItems: number
+  totalPages: number
 }
 
 export interface DisplayPromotionToApply {
@@ -229,6 +225,7 @@ export interface PromotionFormErrors {
   discountValue?: string
   minValueDiscount?: string
   startDate?: string
+  startTime?: string
   endDate?: string
   maxQuantity?: string
   maxPerUser?: string

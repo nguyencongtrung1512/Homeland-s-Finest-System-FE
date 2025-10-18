@@ -121,7 +121,7 @@ export const getPromotionDetailAdmin = async (id: string): Promise<ApiResponse<P
  * Lấy tất cả promotions (Admin)
  */
 export const getAllPromotionsAdmin = async (
-  pageSize: number = 10,
+  pageSize: number = 0,
   pageNumber: number = 1,
   filter?: PromotionFilter,
   sort?: PromotionSort
@@ -166,7 +166,7 @@ export const deletePromotion = async (id: string): Promise<ApiResponse<Promotion
  */
 export const getSellerPromotions = async (
   sellerId: string,
-  pageSize: number = 10,
+  pageSize: number = 0,
   pageNumber: number = 1,
   filter?: PromotionFilter,
   sort?: PromotionSort
@@ -322,7 +322,7 @@ export const claimPromotionLegacy = async (data: ClaimPromotionRequest): Promise
  */
 export const getUserPromotions = async (
   userId: string,
-  pageSize: number = 10,
+  pageSize: number = 0,
   pageNumber: number = 1
 ): Promise<ApiResponseWithPagination<UserPromotionDetailDTO[]>> => {
   const params = new URLSearchParams({
@@ -358,7 +358,7 @@ export const getPromotionDetail = async (id: string): Promise<ApiResponse<Promot
  * Lấy Global Promotions đang active
  */
 export const getActiveGlobalPromotions = async (
-  pageSize: number = 10,
+  pageSize: number = 0,
   pageNumber: number = 1
 ): Promise<ApiResponseWithPagination<PromotionDTO[]>> => {
   const params = new URLSearchParams({
@@ -442,7 +442,7 @@ export const getCartUserPromotions = async (
 export const applyPromotionToCart = async (
   data: ApplyPromotionToCartRequest
 ): Promise<ApiResponse<CartPromotionDto>> => {
-  return axiosInstance.post('/Cart/apply-promotion', data)
+  return axiosInstance.post('/CartPromotion/apply', data)
 }
 
 /**

@@ -13,7 +13,8 @@ import {
   type PromotionFilter,
   type PromotionSort,
   type PromotionAdminRequest,
-  type PromotionSellerRequest
+  type PromotionSellerRequest,
+  type PaginationState
 } from '../types/promotionType'
 import { promotionApi } from '../apis/promotion.api'
 
@@ -227,8 +228,26 @@ export const usePromotionTimer = (expiredAt: string): UsePromotionTimerReturn =>
 
   const calculateTimeLeft = useCallback((expiredAt: string) => {
     const now = new Date().getTime()
-    const expiry = new Date(expiredAt).getTime()
-    const difference = expiry - now
+    let expiry: Date
+
+    // Parse backend date format "HH:mm:ss dd/MM/yyyy"
+    if (expiredAt.includes(' ') && expiredAt.includes('/')) {
+      const [timePart, datePart] = expiredAt.split(' ')
+      const [hours, minutes, seconds] = timePart.split(':')
+      const [day, month, year] = datePart.split('/')
+      expiry = new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hours),
+        parseInt(minutes),
+        parseInt(seconds)
+      )
+    } else {
+      expiry = new Date(expiredAt)
+    }
+
+    const difference = expiry.getTime() - now
 
     if (difference > 0) {
       return {
@@ -349,7 +368,7 @@ export const useUserPromotions = (userId: string) => {
   const [error, setError] = useState<string | null>(null)
   const [pagination, setPagination] = useState({
     pageNumber: 1,
-    pageSize: 10,
+    pageSize: 0,
     totalItems: 0
   })
 
@@ -430,10 +449,11 @@ export const useAdminPromotions = () => {
   const [adminPromotions, setAdminPromotions] = useState<PromotionDTO[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<PaginationState>({
     pageNumber: 1,
-    pageSize: 10,
-    totalItems: 0
+    pageSize: 0,
+    totalItems: 0,
+    totalPages: 1
   })
   const [filters, setFilters] = useState<PromotionFilter>({})
   const [sort, setSort] = useState<PromotionSort>({ field: 'createdAt', direction: 'desc' })
@@ -476,7 +496,8 @@ export const useAdminPromotions = () => {
         setPagination({
           pageNumber: response.pagination.pageNumber,
           pageSize: response.pagination.pageSize,
-          totalItems: response.pagination.totalItems
+          totalItems: response.pagination.totalItems,
+          totalPages: Math.ceil(response.pagination.totalItems / response.pagination.pageSize) || 1
         })
       } catch (err: unknown) {
         console.error('Error fetching admin promotions:', err)
@@ -494,7 +515,7 @@ export const useAdminPromotions = () => {
       setLoading(true)
       try {
         await promotionApi.createPromotionAdmin(data)
-        await fetchAdminPromotions()
+        await fetchAdminPromotions(pagination.pageNumber)
 
         toast.success('Tạo promotion thành công!', {
           position: 'top-right',
@@ -521,7 +542,7 @@ export const useAdminPromotions = () => {
       setLoading(true)
       try {
         await promotionApi.updatePromotionAdmin(id, data)
-        await fetchAdminPromotions()
+        await fetchAdminPromotions(pagination.pageNumber)
 
         toast.success('Cập nhật promotion thành công!', {
           position: 'top-right',
@@ -548,7 +569,7 @@ export const useAdminPromotions = () => {
       setLoading(true)
       try {
         await promotionApi.deletePromotion(id)
-        await fetchAdminPromotions()
+        await fetchAdminPromotions(pagination.pageNumber)
 
         toast.success('Xóa promotion thành công!', {
           position: 'top-right',
@@ -575,7 +596,7 @@ export const useAdminPromotions = () => {
       setLoading(true)
       try {
         await promotionApi.togglePromotionStatus(promotionId)
-        await fetchAdminPromotions()
+        await fetchAdminPromotions(pagination.pageNumber)
 
         toast.success('Thay đổi trạng thái promotion thành công!', {
           position: 'top-right',
@@ -615,7 +636,7 @@ export const useAdminPromotions = () => {
   }, [])
 
   useEffect(() => {
-    fetchAdminPromotions()
+    fetchAdminPromotions(1)
   }, [fetchAdminPromotions])
 
   return {
@@ -802,7 +823,7 @@ export const useSellerPromotionsWithId = (sellerId: string) => {
   const [error, setError] = useState<string | null>(null)
   const [pagination, setPagination] = useState({
     pageNumber: 1,
-    pageSize: 10,
+    pageSize: 0,
     totalItems: 0
   })
   const [filters, setFilters] = useState<PromotionFilter>({})
