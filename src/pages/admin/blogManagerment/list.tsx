@@ -84,26 +84,16 @@ function BlogCategoryList() {
   const loadAllCategories = async () => {
     setLoading(true)
     try {
-      console.log('Loading all categories without pagination')
-
       const response = await blogCategoryApi.getAll()
-
-      console.log('All categories response:', response)
-
       if (response.status === 200) {
         if (response.data && Array.isArray(response.data)) {
-          console.log('Setting all categories:', response.data)
           setCategories(response.data)
           setTotalPages(1) // All in one page
         } else {
-          console.log('No data found, trying alternative approach...')
-          // If still no data, try calling with a large pageSize
           const largePageResponse = await blogCategoryApi.getAll({
-            pageNumber: 1,
-            pageSize: 100
+            pageNumber: 0,
+            pageSize: 1
           })
-          console.log('Large page response:', largePageResponse)
-
           if (largePageResponse.status === 200 && largePageResponse.data) {
             setCategories(largePageResponse.data)
             setTotalPages(1)

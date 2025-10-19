@@ -98,7 +98,7 @@ function Header() {
           <Link to={path.discover} className='hover:text-green-700 transition whitespace-nowrap'>
             Khám phá cửa hàng
           </Link>
-          <Link to={path.home} className='hover:text-green-700 transition whitespace-nowrap'>
+          <Link to={path.blog} className='hover:text-green-700 transition whitespace-nowrap'>
             Blog
           </Link>
         </nav>

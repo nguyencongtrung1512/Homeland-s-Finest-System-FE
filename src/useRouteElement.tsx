@@ -25,7 +25,6 @@ import HelpCenter from './pages/seller/help/help'
 import DetailHelp from './pages/seller/help/detailHelp'
 import MyStory from './pages/seller/mystory/myStory'
 import VerifyEmail from './pages/authentication/ForgotPassword/VerifyEmail'
-import NewPassword from './pages/authentication/ForgotPassword/NewPassword'
 import StaffDashboard from './pages/staff/dashboard/dashboard'
 import StaffLayout from './Layouts/StaffLayout/staffLayout'
 import ProfileCustomer from './pages/customer/Profile/ProfileCustomer'
@@ -68,6 +67,7 @@ import SellerPromotionList from './pages/seller/promotionManagement/list'
 import CreateComboSeller from './pages/seller/combos/createCombo'
 import UpdateComboSeller from './pages/seller/combos/updateCombo'
 import DetailComboSeller from './pages/seller/combos/detailCombo'
+import ViewBlog from './pages/customer/Blog/viewBlog'
 
 
 export default function useRouteElements() {
@@ -112,6 +112,10 @@ export default function useRouteElements() {
         {
           path: path.discover,
           element: <Discover />
+        },
+        {
+          path: path.blog,
+          element: <ViewBlog />
         }
       ]
     },
@@ -126,10 +130,6 @@ export default function useRouteElements() {
     {
       path: path.forgotPassword,
       element: <VerifyEmail />
-    },
-    {
-      path: path.resetPassword,
-      element: <NewPassword />
     },
     // Profile Customer with separate layout
     {

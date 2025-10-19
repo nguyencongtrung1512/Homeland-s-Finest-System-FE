@@ -1,6 +1,7 @@
 export const path = {
   //===============Public===============
   home: '/',
+  blog: '/view-blog',
   login: '/login',
   product: '/products',
   productDetail: '/product/:id',

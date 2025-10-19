@@ -59,13 +59,7 @@ function BlogByCategory() {
       if (response.status === 200) {
         // Lấy data từ response.data
         const responseData = response.data
-        console.log('Raw API Response:', responseData)
-
-        // Lấy blogs trực tiếp từ responseData
         const blogsArray = Array.isArray(responseData[0].blogs) ? responseData[0].blogs : []
-        console.log('Blogs array:', blogsArray)
-
-        // Lấy thông tin category từ các thuộc tính trực tiếp của responseData
         const categoryData: BlogCategoryDetail = {
           categoryId: responseData[0].categoryId,
           name: responseData[0].name,
@@ -74,9 +68,6 @@ function BlogByCategory() {
           updatedAt: responseData[0].updatedAt,
           blogs: blogsArray
         }
-
-        console.log('Final categoryData:', categoryData)
-        console.log('Blogs count:', categoryData.blogs.length)
 
         setCategoryDetail(categoryData)
       }
@@ -106,7 +97,6 @@ function BlogByCategory() {
     try {
       const response = await blogApi.delete(blogToDelete)
       if (response.status === 200) {
-        // Reload category detail to update the blog list
         loadCategoryDetail()
         setIsDeleteDialogOpen(false)
         setBlogToDelete(null)
