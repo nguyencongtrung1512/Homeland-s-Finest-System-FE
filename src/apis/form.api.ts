@@ -97,7 +97,7 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.post('/api/form', formData, {
+    const response = await axiosInstance.post('/Form', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -106,7 +106,7 @@ export const formApi = {
   },
 
   updateForm: async (id: string, data: UpdateFormRequest): Promise<FormDTO> => {
-    const response = await axiosInstance.put(`/api/form/customer-update/${id}`, data)
+    const response = await axiosInstance.put(`/Form/customer-update/${id}`, data)
     return response.data
   },
 
@@ -115,7 +115,7 @@ export const formApi = {
   },
 
   getFormById: async (id: string): Promise<FormDTO> => {
-    const response = await axiosInstance.get(`/api/form/${id}`)
+    const response = await axiosInstance.get(`/Form/${id}`)
     return response.data
   },
 
@@ -131,17 +131,17 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/api/form?${queryParams.toString()}`)
+    const response = await axiosInstance.get(`/Form?${queryParams.toString()}`)
     return response.data
   },
 
   // Admin APIs
   assignStaff: async (staffId: string, formId: string): Promise<void> => {
-    await axiosInstance.put(`/api/form/Admin/assign-staff/${staffId}/form/${formId}`)
+    await axiosInstance.put(`/api/Form/Admin/assign-staff/${staffId}/Form/${formId}`)
   },
 
   adminUpdateForm: async (formId: string, data: AdminUpdateRequest): Promise<void> => {
-    await axiosInstance.put(`/api/form/${formId}/admin-update`, data)
+    await axiosInstance.put(`/api/Form/${formId}/admin-update`, data)
   },
 
   getAllForms: async (params?: Partial<FormQueryParams>): Promise<FormDTO[]> => {
@@ -155,13 +155,13 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/api/form?${queryParams.toString()}`)
+    const response = await axiosInstance.get(`/Form?${queryParams.toString()}`)
     return response.data
   },
 
   // Staff APIs
   staffUpdateForm: async (formId: string, data: StaffUpdateRequest): Promise<void> => {
-    await axiosInstance.put(`/api/form/${formId}/staff-update`, data)
+    await axiosInstance.put(`/Form/${formId}/staff-update`, data)
   },
 
   getAssignedForms: async (staffId: string, params?: Partial<FormQueryParams>): Promise<FormDTO[]> => {
@@ -176,7 +176,7 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/api/form?${queryParams.toString()}`)
+    const response = await axiosInstance.get(`/Form?${queryParams.toString()}`)
     return response.data
   }
 }

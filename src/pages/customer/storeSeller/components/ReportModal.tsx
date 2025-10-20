@@ -1,9 +1,11 @@
-import { Camera, AlertTriangle } from 'lucide-react'
+import { Camera, AlertTriangle, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ui/dialog'
 import { Button } from '../../../../components/ui/button'
 import { Textarea } from '../../../../components/ui/textarea'
 import { Label } from '../../../../components/ui/label'
 import { useState } from 'react'
+import { formApi, type CreateFormRequest } from '../../../../apis/form.api'
+import { useAuth } from '../../../../contexts/auth.context'
 
 interface ReportModalProps {
   isOpen: boolean
@@ -13,9 +15,12 @@ interface ReportModalProps {
 }
 
 const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) => {
+  const { user } = useAuth()
   const [selectedReasons, setSelectedReasons] = useState<string[]>([])
   const [description, setDescription] = useState('')
   const [images, setImages] = useState<File[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const reportReasons = [
     'Người bán hàng có hành cám',
@@ -34,20 +39,42 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
     setImages((prev: File[]) => [...prev, ...files])
   }
 
-  const handleSubmit = () => {
-    // TODO: Implement API call to submit report
-    console.log({
-      storeId,
-      reasons: selectedReasons,
-      description,
-      images
-    })
+  const handleSubmit = async () => {
+    if (!user?.userId) {
+      setError('Vui lòng đăng nhập để gửi khiếu nại')
+      return
+    }
 
-    // Reset form and close modal
-    setSelectedReasons([])
-    setDescription('')
-    setImages([])
-    onClose()
+    if (selectedReasons.length === 0) {
+      setError('Vui lòng chọn ít nhất một lý do báo cáo')
+      return
+    }
+
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      const formData: CreateFormRequest = {
+        userId: user.userId,
+        type: 'ReportSeller',
+        subject: `Báo cáo cửa hàng: ${storeName}`,
+        description: `Lý do báo cáo: ${selectedReasons.join(', ')}\n\nMô tả chi tiết: ${description}`,
+        imageFiles: images.length > 0 ? images : undefined
+      }
+
+      await formApi.createForm(formData)
+
+      // Reset form and close modal
+      setSelectedReasons([])
+      setDescription('')
+      setImages([])
+      onClose()
+    } catch (err) {
+      console.error('Error submitting report:', err)
+      setError('Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleCancel = () => {
@@ -55,6 +82,7 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
     setSelectedReasons([])
     setDescription('')
     setImages([])
+    setError(null)
     onClose()
   }
 
@@ -91,9 +119,13 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
                     id={`reason-${index}`}
                     checked={selectedReasons.includes(reason)}
                     onChange={() => handleReasonToggle(reason)}
-                    className='h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500'
+                    disabled={isSubmitting}
+                    className='h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500 disabled:opacity-50'
                   />
-                  <Label htmlFor={`reason-${index}`} className='text-sm text-gray-700 cursor-pointer'>
+                  <Label
+                    htmlFor={`reason-${index}`}
+                    className={`text-sm text-gray-700 ${isSubmitting ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                  >
                     {reason}
                   </Label>
                 </div>
@@ -105,10 +137,11 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
           <div>
             <Label className='text-sm font-medium text-gray-700 mb-2 block'>Mô tả</Label>
             <Textarea
-              placeholder='Điều gì làm bạn báo cáo về sản phẩm này?'
+              placeholder='Điều gì làm bạn báo cáo về cửa hàng này?'
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className='min-h-[100px] resize-none'
+              disabled={isSubmitting}
             />
           </div>
 
@@ -123,8 +156,12 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
                 onChange={handleImageUpload}
                 className='hidden'
                 id='image-upload'
+                disabled={isSubmitting}
               />
-              <Label htmlFor='image-upload' className='cursor-pointer'>
+              <Label
+                htmlFor='image-upload'
+                className={`cursor-pointer ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
                 <Camera className='w-8 h-8 text-gray-400 mx-auto mb-2' />
                 <span className='text-sm text-gray-600 block'>Thêm Hình ảnh</span>
                 <span className='text-xs text-gray-500 block mt-1'>
@@ -132,19 +169,38 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
                 </span>
               </Label>
             </div>
+            {images.length > 0 && (
+              <div className='mt-2'>
+                <p className='text-xs text-gray-600'>Đã chọn {images.length} hình ảnh</p>
+              </div>
+            )}
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
+              <p className='text-sm text-red-600'>{error}</p>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className='flex gap-3 pt-4'>
-            <Button variant='outline' onClick={handleCancel} className='flex-1'>
+            <Button variant='outline' onClick={handleCancel} className='flex-1' disabled={isSubmitting}>
               Trở lại
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={selectedReasons.length === 0}
+              disabled={selectedReasons.length === 0 || isSubmitting}
               className='flex-1 bg-red-600 hover:bg-red-700 text-white'
             >
-              Hoàn thành
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                  Đang gửi...
+                </>
+              ) : (
+                'Hoàn thành'
+              )}
             </Button>
           </div>
 

@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { Avatar } from '../../../components/ui/avatar'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import { Settings, FileText, MapPin, Gift } from 'lucide-react'
+import { Settings, FileText, MapPin, Gift, MessageSquare } from 'lucide-react'
 import type { Address, AddressCreateInput } from '../../../types/addressType'
 import type { Order, OrderStatus } from '../../../types/orderType'
 // Define the actual API response structure for user promotions
@@ -25,12 +25,14 @@ interface UserPromotionResponse {
 import { addressApi } from '../../../apis/address.api'
 import { getCustomerOrders } from '../../../apis/order.api'
 import { promotionApi } from '../../../apis/promotion.api'
+import { formApi, type FormDTO } from '../../../apis/form.api'
 import { useAuth } from '../../../contexts/auth.context'
 import { getUserById, type User } from '../../../apis/user.api'
 import ProfileContent from './components/ProfileContent'
 import OrdersContent from './components/OrdersContent'
 import AddressContent from './components/AddressContent'
 import PromotionsContent from './components/PromotionsContent'
+import FormsContent from './components/FormsContent'
 import AddressModal from './components/AddressModal'
 
 export default function Profile() {
@@ -42,6 +44,8 @@ export default function Profile() {
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [promotions, setPromotions] = useState<UserPromotionResponse[]>([])
   const [promotionsLoading, setPromotionsLoading] = useState(false)
+  const [forms, setForms] = useState<FormDTO[]>([])
+  const [formsLoading, setFormsLoading] = useState(false)
 
   // Khi vào trang, nếu có query tab=orders thì active tab đơn hàng
   useEffect(() => {
@@ -55,6 +59,8 @@ export default function Profile() {
       setActiveTab('profile')
     } else if (tab === 'promotions') {
       setActiveTab('promotions')
+    } else if (tab === 'forms') {
+      setActiveTab('forms')
     }
   }, [location.search])
 
@@ -127,6 +133,33 @@ export default function Profile() {
     }
   }, [activeTab, authUser?.userId, loadUserPromotions])
 
+  // Load user forms
+  const loadUserForms = useCallback(async () => {
+    if (!authUser?.userId) return
+
+    try {
+      setFormsLoading(true)
+      const response = await formApi.getCustomerForms(authUser.userId, {
+        pageSize: 0, // Load all forms for better UX
+        pageNumber: 1,
+        sortBy: 'createdat',
+        sortOrder: 'desc'
+      })
+      setForms(Array.isArray(response) ? response : [])
+    } catch (error) {
+      console.error('Error loading user forms:', error)
+    } finally {
+      setFormsLoading(false)
+    }
+  }, [authUser?.userId])
+
+  // Load forms when component mounts or when switching to forms tab
+  useEffect(() => {
+    if (activeTab === 'forms') {
+      loadUserForms()
+    }
+  }, [activeTab, authUser?.userId, loadUserForms])
+
   const [addresses, setAddresses] = useState<Address[]>([])
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
@@ -158,7 +191,6 @@ export default function Profile() {
   }
 
   const handleEditAddress = (address: Address) => {
-    console.log('📝 Editing address:', address)
     setEditingAddress(address)
     setShowAddressModal(true)
   }
@@ -331,6 +363,14 @@ export default function Profile() {
                 <Gift className='w-4 h-4 mr-2' />
                 Khuyến mãi của tôi
               </Button>
+              <Button
+                variant={activeTab === 'forms' ? 'default' : 'ghost'}
+                className={`w-full justify-start text-sm ${activeTab === 'forms' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                onClick={() => setActiveTab('forms')}
+              >
+                <MessageSquare className='w-4 h-4 mr-2' />
+                Khiếu nại của tôi
+              </Button>
             </nav>
           </CardContent>
         </Card>
@@ -361,6 +401,7 @@ export default function Profile() {
               {activeTab === 'promotions' && (
                 <PromotionsContent promotions={promotions} loading={promotionsLoading} onRefresh={loadUserPromotions} />
               )}
+              {activeTab === 'forms' && <FormsContent forms={forms} loading={formsLoading} onRefresh={loadUserForms} />}
             </CardContent>
           </Card>
         </div>
