@@ -1,5 +1,12 @@
 import axiosInstance from '../service/axiosInstance'
-import type { OrderListResponse, OrderResponse, OrderQueryParams, CreateOrderInput, Order, OrderStatus } from '../types/orderType'
+import type {
+  OrderListResponse,
+  OrderResponse,
+  OrderQueryParams,
+  CreateOrderInput,
+  Order,
+  OrderStatus
+} from '../types/orderType'
 const API_URL = `/Order`
 
 // GET /api/Order/get-all - Lấy danh sách tất cả orders với pagination
@@ -35,9 +42,15 @@ export const createOrder = async (orderData: CreateOrderInput): Promise<Order[]>
   return response.data // API trả về array theo documentation
 }
 
-// PUT /api/Order/confirm/{orderId} - Xác nhận order (chuyển sang Processing)
+// PUT /api/Order/confirm/{orderId} - Xác nhận order (chuyển sang Confirmed)
 export const confirmOrder = async (orderId: string): Promise<Order> => {
   const response: OrderResponse = await axiosInstance.put(`${API_URL}/confirm/${orderId}`)
+  return response.data
+}
+
+// PUT /api/Order/ship/{orderId} - Xác nhận đang giao hàng (chuyển sang Shipping)
+export const shipOrder = async (orderId: string): Promise<Order> => {
+  const response: OrderResponse = await axiosInstance.put(`${API_URL}/shipping/${orderId}`)
   return response.data
 }
 
@@ -101,6 +114,7 @@ export default {
   getOrderDetail,
   createOrder,
   confirmOrder,
+  shipOrder,
   cancelOrder,
   markOrderDelivered,
   returnOrder,

@@ -319,6 +319,7 @@ export default function Cart() {
           order: createdOrder[0], // Lấy order đầu tiên từ array
           paymentMethod: selectedPaymentMethod,
           selectedItemIds: selectedItemIds, // Pass item IDs to clear later
+          selectedAddress: selectedAddress, // Pass selected address
           appliedPromotions: storePromotions // Pass promotions for order confirmation
         }
       })

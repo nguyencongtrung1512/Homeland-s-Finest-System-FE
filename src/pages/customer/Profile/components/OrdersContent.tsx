@@ -15,7 +15,7 @@ import { toast } from 'react-toastify'
 interface Order {
   id: string
   date: string
-  status: 'Chưa xác nhận' | 'Đang giao' | 'Đã giao' | 'Đã hủy' | 'Chờ xác nhận'
+  status: 'Chưa xác nhận' | 'Chờ xác nhận' | 'Đã xác nhận' | 'Đang giao' | 'Đã giao' | 'Đã hủy'
   statusColor: string
   statusBgColor: string
   statusText: string
@@ -89,6 +89,13 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusColor: 'text-blue-700',
           statusBgColor: 'bg-blue-50',
           statusText: 'Đang chờ xác nhận đơn hàng'
+        }
+      case 'Confirmed':
+        return {
+          status: 'Đã xác nhận' as const,
+          statusColor: 'text-green-700',
+          statusBgColor: 'bg-green-50',
+          statusText: 'Đơn hàng đã được xác nhận'
         }
       case 'Shipping':
         return {
@@ -188,7 +195,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     total: formatPrice(apiOrder?.finalPrice),
     totalAmount: apiOrder?.finalPrice || 0,
     note: apiOrder?.note || '',
-    canConfirmReceived: apiOrder?.status === 'Delivered',
+    canConfirmReceived: apiOrder?.status === 'Delivered' && !apiOrder?.isPayOut,
     canReturn: apiOrder?.status === 'Delivered',
     shippingInfo: {
       recipientName: apiOrder?.toName || '',
@@ -260,6 +267,7 @@ export default function OrdersContent({
       all: undefined,
       'Chưa xác nhận': 'NotYet',
       'Chờ xác nhận': 'Processing',
+      'Đã xác nhận': 'Confirmed',
       'Đang giao': 'Shipping',
       'Đã giao': 'Delivered',
       'Đã hủy': 'Cancel',
@@ -433,6 +441,7 @@ export default function OrdersContent({
           { key: 'all', label: 'Tất cả' },
           { key: 'Chưa xác nhận', label: 'Chưa xác nhận' },
           { key: 'Chờ xác nhận', label: 'Chờ xác nhận' },
+          { key: 'Đã xác nhận', label: 'Đã xác nhận' },
           { key: 'Đang giao', label: 'Đang giao' },
           { key: 'Đã giao', label: 'Đã giao' },
           { key: 'Đã hủy', label: 'Đã hủy' },

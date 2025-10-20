@@ -44,6 +44,7 @@ function OrderManagement() {
     { key: 'all', label: 'Tất cả' },
     { key: 'NotYet', label: 'Chưa xác nhận' },
     { key: 'Processing', label: 'Chờ xác nhận' },
+    { key: 'Confirmed', label: 'Đã xác nhận' },
     { key: 'Shipping', label: 'Đang giao' },
     { key: 'Delivered', label: 'Đã giao' },
     { key: 'Cancel', label: 'Đã hủy' },
@@ -62,6 +63,8 @@ function OrderManagement() {
         return <Badge className='bg-orange-100 text-orange-800 hover:bg-orange-100'>Chưa xử lí</Badge>
       case 'Processing':
         return <Badge className='bg-blue-100 text-blue-800 hover:bg-blue-100'>Chờ xác nhận</Badge>
+      case 'Confirmed':
+        return <Badge className='bg-green-100 text-green-800 hover:bg-green-100'>Đã xác nhận</Badge>
       case 'Shipping':
         return <Badge className='bg-purple-100 text-purple-800 hover:bg-purple-100'>Đang giao</Badge>
       case 'Delivered':

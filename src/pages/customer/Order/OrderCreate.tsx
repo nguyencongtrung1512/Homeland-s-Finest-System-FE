@@ -31,21 +31,49 @@ function OrderCreate() {
   const { user } = useAuth()
   const { refreshCart } = useCart()
 
+  // Helper function to get current time with +7 hours offset
+  const getCurrentTimeWithOffset = () => {
+    const now = new Date()
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000
+    const vietnamTime = new Date(utc + 7 * 3600000) // +7 hours
+    // Format as Vietnam time without Z suffix
+    return vietnamTime.toISOString().replace('Z', '+07:00')
+  }
+
+  // Helper function to format Vietnam time for display
+  const getVietnamTimeDisplay = () => {
+    const now = new Date()
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000
+    const vietnamTime = new Date(utc + 7 * 3600000) // +7 hours
+
+    // Format as readable Vietnam time
+    const year = vietnamTime.getFullYear()
+    const month = String(vietnamTime.getMonth() + 1).padStart(2, '0')
+    const day = String(vietnamTime.getDate()).padStart(2, '0')
+    const hours = String(vietnamTime.getHours()).padStart(2, '0')
+    const minutes = String(vietnamTime.getMinutes()).padStart(2, '0')
+    const seconds = String(vietnamTime.getSeconds()).padStart(2, '0')
+
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000+07:00`
+  }
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>()
 
-  const hardcodedAddressId = '11000000-0000-0000-0000-000000000001'
-
   // Lấy dữ liệu từ navigation state
   const buyNowProduct = location.state?.product
   const existingOrder: Order = location.state?.order
   const existingPaymentMethod: PaymentMethod = location.state?.paymentMethod
+  const selectedAddress = location.state?.selectedAddress
   const selectedItemIds: string[] = useMemo(
     () => location.state?.selectedItemIds || [],
     [location.state?.selectedItemIds]
   )
+
+  // Get address ID from selected address - no fallback
+  const userAddressId = selectedAddress?.id
 
   // Helper function to clear cart after successful payment
   const clearCartAfterPayment = useCallback(async () => {
@@ -67,11 +95,6 @@ function OrderCreate() {
     }
   }, [user?.userId, selectedItemIds, refreshCart])
 
-  // Debug logging
-  console.log('OrderCreate - Navigation state:', location.state)
-  console.log('OrderCreate - existingOrder:', existingOrder)
-  console.log('OrderCreate - existingPaymentMethod:', existingPaymentMethod)
-  console.log('OrderCreate - selectedItemIds:', selectedItemIds)
 
   const params = new URLSearchParams(location.search)
   const orderId = params.get('orderId')
@@ -116,11 +139,6 @@ function OrderCreate() {
         image: it.orderItemImageUrl
       }))
       : cartItems
-
-  // Debug logging
-  console.log('OrderCreate - order:', order)
-  console.log('OrderCreate - order.orderItems:', order?.orderItems)
-  console.log('OrderCreate - displayItems:', displayItems)
 
   // Backend sẽ tính tiền ship, frontend chỉ hiển thị dữ liệu từ API
   const shipping = order ? order.shipPrice || 0 : 0
@@ -172,12 +190,18 @@ function OrderCreate() {
       return
     }
 
+    // NEW: Validate address - now required
+    if (!selectedAddress?.id) {
+      toast.error('Vui lòng chọn địa chỉ giao hàng trước khi đặt hàng')
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
       const orderData: CreateOrderInput = {
         userId: user.userId,
-        userAddressId: hardcodedAddressId,
+        userAddressId: userAddressId,
         paymentMethod: selectedPaymentMethod,
         orderItemCreates: cartItems.map((item) => ({
           productVariantId: item.productVariantId,
@@ -187,9 +211,11 @@ function OrderCreate() {
       }
 
       console.log('Creating order with data:', orderData)
+      console.log('Request timestamp (Vietnam time):', getCurrentTimeWithOffset())
       const createdOrder = await createOrder(orderData)
 
       console.log('Order created successfully:', createdOrder)
+      console.log('Response timestamp (Vietnam time):', getCurrentTimeWithOffset())
 
       toast.success('Đặt hàng thành công!')
 
@@ -265,7 +291,6 @@ function OrderCreate() {
     navigate('/products')
   }
 
-
   return (
     <div className='min-h-screen bg-gray-50 py-8'>
       <div className='max-w-6xl mx-auto px-4'>
@@ -273,13 +298,7 @@ function OrderCreate() {
         <div className='mb-8'>
           <h1 className='text-2xl font-bold text-gray-900 mb-2'>Xác nhận đơn hàng</h1>
           <p className='text-gray-600'>Vui lòng kiểm tra lại thông tin đơn hàng trước khi thanh toán</p>
-          {existingOrder && (
-            <div className='mt-2 p-3 bg-green-100 rounded-lg border border-green-200'>
-              <p className='text-sm text-green-800 font-medium'>✅ Đơn hàng đã được tạo thành công</p>
-              <p className='text-xs text-green-700 mt-1'>Order ID: {existingOrder.id}</p>
-              <p className='text-xs text-green-700'>Phương thức: {existingPaymentMethod}</p>
-            </div>
-          )}
+
           {buyNowProduct && !existingOrder && (
             <div className='mt-2 p-2 bg-blue-100 rounded-lg'>
               <p className='text-sm text-blue-800'>🛒 Đơn hàng từ "Mua ngay"</p>
@@ -418,11 +437,24 @@ function OrderCreate() {
               <div className='flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200'>
                 <AlertCircle className='w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5' />
                 <div className='flex-1'>
-                  <p className='text-sm text-gray-700 font-medium mb-1'>Địa chỉ đã chọn (Cứng)</p>
-                  <p className='text-sm text-gray-600'>
-                    Address ID: <span className='font-mono text-xs'>{hardcodedAddressId}</span>
-                  </p>
-                  <p className='text-xs text-gray-500 mt-2'>💡 Đang sử dụng dữ liệu test cứng</p>
+                  <p className='text-sm text-gray-700 font-medium mb-1'>Địa chỉ đã chọn</p>
+                  {selectedAddress ? (
+                    <div>
+                      <p className='text-sm text-gray-600'>
+                        {selectedAddress.streetAddress}, {selectedAddress.ward}, {selectedAddress.district}, {selectedAddress.province}
+                      </p>
+
+                    </div>
+                  ) : (
+                    <div>
+                      <p className='text-sm text-red-600 font-medium'>
+                        ⚠️ Chưa chọn địa chỉ giao hàng
+                      </p>
+                      <p className='text-xs text-gray-500 mt-1'>
+                        Vui lòng quay lại giỏ hàng để chọn địa chỉ
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -488,7 +520,7 @@ function OrderCreate() {
                       </>
                     ) : (
                       <>
-                        <CheckCircle className='w-4 h-4 mr-2' />
+                        <CheckCircle className='w-4 h-4 mr-2 py-5' />
                         {paymentDisplay === 'COD'
                           ? 'Đặt hàng ngay'
                           : paymentDisplay === 'Banking'
@@ -536,33 +568,6 @@ function OrderCreate() {
                     <span className='text-gray-700'>Hỗ trợ 24/7</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Test Data Info */}
-              <div className='bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg shadow-sm border border-yellow-200 p-4'>
-                <h4 className='font-semibold text-sm mb-2 text-gray-700 flex items-center gap-2'>
-                  <AlertCircle className='w-4 h-4 text-yellow-600' />
-                  Thông tin đơn hàng
-                </h4>
-                <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border mb-1'>
-                  User: {user?.userId || 'Chưa đăng nhập'}
-                </p>
-                <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border mb-1'>
-                  Address: {hardcodedAddressId}
-                </p>
-                {order && (
-                  <>
-                    <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border mb-1'>
-                      Order ID: {order.id}
-                    </p>
-                    <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border mb-1'>
-                      GHN Code: {order.ghnorderCode}
-                    </p>
-                    <p className='text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border'>
-                      Status: {order.status}
-                    </p>
-                  </>
-                )}
               </div>
             </div>
           </div>

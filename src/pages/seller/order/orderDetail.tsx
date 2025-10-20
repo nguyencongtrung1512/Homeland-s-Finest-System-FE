@@ -4,7 +4,7 @@ import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Dialog, DialogContent } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
-import { getOrderDetail, confirmOrder, cancelOrder } from '../../../apis/order.api'
+import { getOrderDetail, confirmOrder, shipOrder, cancelOrder } from '../../../apis/order.api'
 import type { Order as APIOrder } from '../../../types/orderType'
 import {
   Loader2,
@@ -204,6 +204,24 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
     }
   }
 
+  // Handle ship order
+  const handleShipOrder = async () => {
+    if (!order?.id) return
+
+    setActionLoading(true)
+    try {
+      await shipOrder(order.id)
+      toast.success('Đơn hàng đã được xác nhận đang giao!')
+      // Refresh order data
+      await fetchOrderDetail()
+    } catch (err) {
+      console.error('Error shipping order:', err)
+      toast.error('Không thể xác nhận đơn hàng đang giao')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   // Handle cancel order
   const handleCancelOrder = async () => {
     if (!order?.id || !cancelReason.trim()) {
@@ -231,6 +249,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
     const statusTextMap: Record<string, string> = {
       NotYet: 'Chưa xử lí',
       Processing: 'Chờ xác nhận',
+      Confirmed: 'Đã xác nhận',
       Shipping: 'Đang giao',
       Delivered: 'Đã giao',
       Cancel: 'Đã hủy',
@@ -594,6 +613,25 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                       Từ chối đơn hàng
                     </Button>
                   </>
+                )}
+                {order.status === 'Confirmed' && (
+                  <Button
+                    onClick={handleShipOrder}
+                    disabled={actionLoading}
+                    className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
+                  >
+                    {actionLoading ? (
+                      <>
+                        <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      <>
+                        <Package className='w-4 h-4 mr-2' />
+                        Xác nhận đang giao
+                      </>
+                    )}
+                  </Button>
                 )}
                 {(order.status === 'Shipping' || order.status === 'Delivered') && (
                   <Button className='flex-1 bg-gray-600 hover:bg-gray-700 text-white' disabled>

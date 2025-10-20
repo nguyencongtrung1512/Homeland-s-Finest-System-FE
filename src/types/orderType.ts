@@ -2,7 +2,7 @@
 export type OrderStatus =
   | 'NotYet' // Chưa xác nhận
   | 'Processing' // Chờ xác nhận
-  | 'Confirmed' // Đã xác nhận
+  | 'Confirmed' // Đã xác nhận bên seller
   | 'Shipping' // Đang giao
   | 'Delivered' // Đã giao hàng thành công
   | 'Canceled' // Đã hủy
