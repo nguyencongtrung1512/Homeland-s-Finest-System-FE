@@ -1,4 +1,6 @@
 import axiosInstance from '../service/axiosInstance'
+import { staffApi } from './staff.api'
+import { sellerApi } from './seller.api'
 
 const API_URL = '/User'
 
@@ -73,6 +75,25 @@ export const getUserById = async (userId: string): Promise<User> => {
   return response.data
 }
 
+// Helper function để lấy thông tin user dựa trên role
+const getUserInfoByRole = async (userId: string, role?: string): Promise<User | null> => {
+  try {
+    if (role === 'Staff') {
+      const response = await staffApi.getStaffInfo(userId)
+      return response.data
+    } else if (role === 'Seller') {
+      const response = await sellerApi.getSellerDetail(userId)
+      return response.data
+    } else {
+      // Default: sử dụng getUserById cho Customer
+      return await getUserById(userId)
+    }
+  } catch (error) {
+    console.error('Error fetching user info by role:', error)
+    return null
+  }
+}
+
 export interface UpdateUserData {
   firstName?: string
   lastName?: string
@@ -94,26 +115,41 @@ export interface UpdateUserResponse {
 }
 
 export const updateUser = async (userId: string, data: UpdateUserData): Promise<UpdateUserResponse> => {
-  // Tạo FormData để match với API requirement (multipart/form-data)
+  // Lấy thông tin user hiện tại trước khi update
+  let currentUser: User | null = null
+  try {
+    // Thử lấy thông tin từ các API khác nhau dựa trên role
+    currentUser = await getUserInfoByRole(userId, data.role)
+
+    // Nếu không lấy được từ role-specific API, thử getUserById
+    if (!currentUser) {
+      currentUser = await getUserById(userId)
+    }
+  } catch (error) {
+    console.error('Error fetching current user data:', error)
+    // Nếu không lấy được thông tin hiện tại, vẫn tiếp tục với data được truyền vào
+  }
+
   const formData = new FormData()
 
-  if (data.firstName !== undefined) formData.append('FirstName', data.firstName)
-  if (data.lastName !== undefined) formData.append('LastName', data.lastName)
-  if (data.email !== undefined) formData.append('Email', data.email)
-  if (data.phoneNumber !== undefined) formData.append('PhoneNumber', data.phoneNumber)
-  if (data.gender !== undefined) formData.append('Gender', data.gender)
-  if (data.dateOfBirth !== undefined) formData.append('DateOfBirth', data.dateOfBirth)
-  if (data.role !== undefined) formData.append('Role', data.role)
-  if (data.avatar !== undefined) formData.append('Avatar', data.avatar)
-  if (data.isActive !== undefined) formData.append('IsActive', data.isActive.toString())
-  if (data.isPermission !== undefined) formData.append('IsPermission', data.isPermission.toString())
-  if (data.note !== undefined) formData.append('Note', data.note)
+  // Sử dụng giá trị từ data nếu có, nếu không thì dùng giá trị hiện tại
+  formData.append('FirstName', data.firstName !== undefined ? data.firstName : (currentUser?.firstName || ''))
+  formData.append('LastName', data.lastName !== undefined ? data.lastName : (currentUser?.lastName || ''))
+  formData.append('Email', data.email !== undefined ? data.email : (currentUser?.email || ''))
+  formData.append('PhoneNumber', data.phoneNumber !== undefined ? data.phoneNumber : (currentUser?.phoneNumber || ''))
+  formData.append('Gender', data.gender !== undefined ? data.gender : (currentUser?.gender || ''))
+  formData.append('DateOfBirth', data.dateOfBirth !== undefined ? data.dateOfBirth : (currentUser?.dateOfBirth || ''))
+  formData.append('Role', data.role !== undefined ? data.role : (currentUser?.role || ''))
+  formData.append('Avatar', data.avatar !== undefined ? data.avatar : (currentUser?.avatar || ''))
+  formData.append('IsActive', (data.isActive !== undefined ? data.isActive : (currentUser?.isActive ?? true)).toString())
+  formData.append('IsPermission', (data.isPermission !== undefined ? data.isPermission : (currentUser?.isPermission ?? true)).toString())
+  formData.append('Note', data.note !== undefined ? data.note : (currentUser?.note || ''))
 
-  // Thêm các field bắt buộc với giá trị hiện tại (có thể cần lấy từ user hiện tại)
+  // Thêm UpdatedAt timestamp
   const now = new Date().toISOString()
   formData.append('UpdatedAt', now)
 
-  const response = await axiosInstance.put(`${API_URL}/customer-infor/${userId}`, formData, {
+  const response = await axiosInstance.put(`${API_URL}/update-customer/${userId}`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }

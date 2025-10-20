@@ -184,7 +184,8 @@ function StaffManagement() {
       setActionLoading(true)
       try {
         await updateUser(staffToLock.userId, {
-          isPermission: false
+          isPermission: false,
+          role: 'Staff' // Thêm role để API biết cách lấy thông tin hiện tại
         })
 
         toast.success(`Đã khóa quyền hạn của ${staffToLock.firstName} ${staffToLock.lastName}`, {
@@ -220,7 +221,8 @@ function StaffManagement() {
       setActionLoading(true)
       try {
         await updateUser(staffToDelete.userId, {
-          isActive: false
+          isActive: false,
+          role: 'Staff' // Thêm role để API biết cách lấy thông tin hiện tại
         })
 
         toast.success(`Đã xóa tài khoản ${staffToDelete.firstName} ${staffToDelete.lastName}`, {

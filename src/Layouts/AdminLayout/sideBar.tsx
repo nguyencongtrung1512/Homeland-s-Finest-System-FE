@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
 import path from '../../constants/path'
+import { ShopOutlined } from '@ant-design/icons'
 
 interface SideBarProps {
   isCollapsed: boolean
@@ -50,7 +51,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
     },
     {
       key: path.STAFF_MANAGEMENT_ADMIN,
-      label: 'Quản lí staff',
+      label: 'Quản lí nhân viên',
       icon: <User size={18} />
     },
     {
@@ -61,7 +62,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
     {
       key: path.SELLER_MANAGEMENT_ADMIN,
       label: 'Quản lí seller',
-      icon: <User size={18} />
+      icon: <ShopOutlined size={18} />
     },
     {
       key: path.TERMS_MANAGEMENT_ADMIN,

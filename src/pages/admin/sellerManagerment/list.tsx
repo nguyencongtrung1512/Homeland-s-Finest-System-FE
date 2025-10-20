@@ -165,7 +165,8 @@ function SellerManagement() {
       setActionLoading(true)
       try {
         await updateUser(sellerToLock.id, {
-          isPermission: false
+          isPermission: false,
+          role: 'Seller' // Thêm role để API biết cách lấy thông tin hiện tại
         })
 
         toast.success(`Đã khóa quyền hạn của ${sellerToLock.firstName} ${sellerToLock.lastName}`, {
@@ -201,7 +202,8 @@ function SellerManagement() {
       setActionLoading(true)
       try {
         await updateUser(sellerToDelete.id, {
-          isActive: false
+          isActive: false,
+          role: 'Seller' // Thêm role để API biết cách lấy thông tin hiện tại
         })
 
         toast.success(`Đã xóa tài khoản ${sellerToDelete.firstName} ${sellerToDelete.lastName}`, {
