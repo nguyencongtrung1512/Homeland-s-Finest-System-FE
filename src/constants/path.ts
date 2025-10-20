@@ -81,7 +81,7 @@ export const path = {
   BLOG_MANAGEMENT_ADMIN: 'blogManagement',
   BLOG_CATEGORY_DETAIL: '/admin/blogManagement/detail/:id',
   SYSTEM_STORAGE_ADMIN: 'systemStorage',
-
+  FORM_MANAGEMENT_ADMIN: 'formManagement',
   // ============ BLOG =============
   CREATE_BLOG: '/admin/blogManagement/detail/:id/create-blog',
   BLOG_CATEGORY_EDIT: '/admin/blogManagement/edit/:id'

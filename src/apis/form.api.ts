@@ -1,86 +1,13 @@
 import axiosInstance from '../service/axiosInstance'
+import type {
+  AdminUpdateRequest,
+  CreateFormRequest,
+  FormDTO,
+  FormQueryParams,
+  StaffUpdateRequest,
+  UpdateFormRequest
+} from '../types/form.type'
 
-// Form Types
-export type FormType =
-  | 'SupportAccount'
-  | 'SupportPayment'
-  | 'SupportTechnical'
-  | 'ComplaintContent'
-  | 'RequestInformation'
-  | 'ReportSeller'
-  | 'FeedbackSuggestion'
-  | 'PrivacyDataRequest'
-  | 'SupportMarketing'
-  | 'SupportOther'
-  | 'SupportRefundMoney'
-
-// Form Status
-export type FormStatus =
-  | 'Pending'
-  | 'Processing'
-  | 'ApprovedByStaff'
-  | 'RejectedByStaff'
-  | 'ApprovedByAdmin'
-  | 'RejectedByAdmin'
-  | 'Cancel'
-
-// Form Interfaces
-export interface CreateFormRequest {
-  userId: string
-  orderId?: string
-  type: FormType
-  subject: string
-  description: string
-  imageFiles?: File[]
-}
-
-export interface UpdateFormRequest {
-  orderId?: string
-  type: FormType
-  subject: string
-  description: string
-  imageUrl?: string[]
-}
-
-export interface StaffUpdateRequest {
-  reply: string
-  status: 'ApprovedByStaff' | 'RejectedByStaff'
-}
-
-export interface AdminUpdateRequest {
-  adminText: string
-  status: 'ApprovedByAdmin' | 'RejectedByAdmin'
-}
-
-export interface FormDTO {
-  id: string
-  userId: string
-  orderId?: string
-  type: FormType
-  subject: string
-  description: string
-  imageUrl: string[]
-  status: FormStatus
-  reply?: string
-  staffId?: string
-  staffName?: string
-  adminId?: string
-  adminText?: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface FormQueryParams {
-  pageSize: number
-  pageNumber: number
-  userId?: string
-  status?: FormStatus
-  type?: FormType
-  sortBy?: 'status' | 'type' | 'createdat'
-  sortOrder?: 'asc' | 'desc'
-}
-
-// API Functions
 export const formApi = {
   // Customer APIs
   createForm: async (data: CreateFormRequest): Promise<FormDTO> => {
@@ -137,11 +64,19 @@ export const formApi = {
 
   // Admin APIs
   assignStaff: async (staffId: string, formId: string): Promise<void> => {
-    await axiosInstance.put(`/api/Form/Admin/assign-staff/${staffId}/Form/${formId}`)
+    await axiosInstance.put(`/Form/Admin/assign-staff/${staffId}/form/${formId}`)
   },
 
   adminUpdateForm: async (formId: string, data: AdminUpdateRequest): Promise<void> => {
-    await axiosInstance.put(`/api/Form/${formId}/admin-update`, data)
+    const formData = new FormData()
+    formData.append('AdminText', data.adminText)
+    formData.append('Status', data.status)
+
+    await axiosInstance.put(`/Form/${formId}/admin-update`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
   },
 
   getAllForms: async (params?: Partial<FormQueryParams>): Promise<FormDTO[]> => {
@@ -161,7 +96,15 @@ export const formApi = {
 
   // Staff APIs
   staffUpdateForm: async (formId: string, data: StaffUpdateRequest): Promise<void> => {
-    await axiosInstance.put(`/Form/${formId}/staff-update`, data)
+    const formData = new FormData()
+    formData.append('Reply', data.reply)
+    formData.append('Status', data.status)
+
+    await axiosInstance.put(`/Form/${formId}/staff-update`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
   },
 
   getAssignedForms: async (staffId: string, params?: Partial<FormQueryParams>): Promise<FormDTO[]> => {

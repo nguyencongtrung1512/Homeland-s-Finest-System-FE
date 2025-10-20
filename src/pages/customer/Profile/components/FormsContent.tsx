@@ -40,8 +40,9 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
       case 'ApprovedByStaff':
       case 'ApprovedByAdmin':
         return <CheckCircle className='w-4 h-4 text-green-500' />
-      case 'RejectedByStaff':
-      case 'RejectedByAdmin':
+      case 'DeniedByStaff':
+      case 'DeniedByAdmin':
+      case 'Rejected':
         return <XCircle className='w-4 h-4 text-red-500' />
       case 'Cancel':
         return <XCircle className='w-4 h-4 text-gray-500' />
@@ -59,8 +60,9 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
       case 'ApprovedByStaff':
       case 'ApprovedByAdmin':
         return 'default'
-      case 'RejectedByStaff':
-      case 'RejectedByAdmin':
+      case 'DeniedByStaff':
+      case 'DeniedByAdmin':
+      case 'Rejected':
         return 'destructive'
       case 'Cancel':
         return 'outline'

@@ -70,6 +70,7 @@ import DetailComboSeller from './pages/seller/combos/detailCombo'
 import ViewBlog from './pages/customer/Blog/viewBlog'
 import SellerManagement from './pages/admin/sellerManagerment/list'
 import StaffManagement from './pages/admin/staffManagerment/list'
+import AdminFormManagement from './pages/admin/formManagerment/form'
 
 
 export default function useRouteElements() {
@@ -380,6 +381,10 @@ export default function useRouteElements() {
             {
               path: path.PROMOTION_MANAGEMENT_ADMIN,
               element: <AdminPromotionList />
+            },
+            {
+              path: path.FORM_MANAGEMENT_ADMIN,
+              element: <AdminFormManagement />
             },
             {
               path: '/admin/promotions/:id',
