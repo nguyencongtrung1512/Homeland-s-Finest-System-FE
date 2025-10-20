@@ -153,13 +153,17 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
               Number.parseInt(minutes),
               Number.parseInt(seconds)
             )
-            processedStartDate = date.toISOString()
+            // Subtract 7 hours to convert from UTC+7 to local time for display
+            const adjustedDate = new Date(date.getTime() - 7 * 60 * 60 * 1000)
+            processedStartDate = adjustedDate.toISOString()
             setStartTime(`${hours}:${minutes}`)
           } else {
-            processedStartDate = new Date(initialData.startDate).toISOString()
-            const startDate = new Date(initialData.startDate)
+            // Subtract 7 hours to convert from UTC+7 to local time for display
+            const backendDate = new Date(initialData.startDate)
+            const adjustedDate = new Date(backendDate.getTime() - 7 * 60 * 60 * 1000)
+            processedStartDate = adjustedDate.toISOString()
             setStartTime(
-              `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`
+              `${adjustedDate.getHours().toString().padStart(2, '0')}:${adjustedDate.getMinutes().toString().padStart(2, '0')}`
             )
           }
         } catch (error) {
@@ -182,13 +186,17 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
               Number.parseInt(minutes),
               Number.parseInt(seconds)
             )
-            processedEndDate = date.toISOString()
+            // Subtract 7 hours to convert from UTC+7 to local time for display
+            const adjustedDate = new Date(date.getTime() - 7 * 60 * 60 * 1000)
+            processedEndDate = adjustedDate.toISOString()
             setEndTime(`${hours}:${minutes}`)
           } else {
-            processedEndDate = new Date(initialData.endDate).toISOString()
-            const endDate = new Date(initialData.endDate)
+            // Subtract 7 hours to convert from UTC+7 to local time for display
+            const backendDate = new Date(initialData.endDate)
+            const adjustedDate = new Date(backendDate.getTime() - 7 * 60 * 60 * 1000)
+            processedEndDate = adjustedDate.toISOString()
             setEndTime(
-              `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`
+              `${adjustedDate.getHours().toString().padStart(2, '0')}:${adjustedDate.getMinutes().toString().padStart(2, '0')}`
             )
           }
         } catch (error) {
@@ -217,13 +225,6 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         endDate: processedEndDate,
         userIds: userIds
       }
-
-      console.log('📝 Processed form data:', processedData)
-      console.log('📝 Original discountType:', initialData.discountType)
-      console.log('📝 Mapped discountType:', mappedDiscountType)
-      console.log('📝 Type of mapped discountType:', typeof mappedDiscountType)
-      console.log('📝 Setting formData with discountType:', processedData.discountType)
-
       setFormData(processedData)
       setIsInitialized(true)
     }
@@ -294,7 +295,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         const now = new Date()
         now.setSeconds(0, 0) // Ignore seconds for comparison
 
-        if (selectedTime > now) {
+        if (selectedTime <= now) {
           newErrors.startTime = 'Giờ bắt đầu không được sau giờ hiện tại khi chọn ngày hôm nay'
         }
       }
@@ -316,9 +317,9 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       newErrors.maxPerUser = 'Số lượt sử dụng tối đa mỗi user phải lớn hơn 0'
     }
 
-    if (formData.type === 'User' && (!formData.userIds || formData.userIds.length === 0)) {
-      newErrors.userIds = 'Phải chọn ít nhất một user cho promotion cá nhân'
-    }
+    // if (formData.type === 'User' && (!formData.userIds || formData.userIds.length === 0)) {
+    //   newErrors.userIds = 'Phải chọn ít nhất một user cho promotion cá nhân'
+    // }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -339,9 +340,12 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         discountType: mapDiscountTypeToAPI(submitData.discountType) as DiscountType // Type assertion for API compatibility
       }
 
+      // Note: Dates are sent with +7 hours added to match Vietnam timezone (UTC+7)
       console.log('📝 Submitting form data:', apiData)
       console.log('📝 Original frontend discountType:', submitData.discountType)
       console.log('📝 Mapped API discountType:', apiData.discountType)
+      console.log('📝 Start Date (ISO with +7h):', apiData.startDate)
+      console.log('📝 End Date (ISO with +7h):', apiData.endDate)
       onSubmit(apiData)
     }
   }
@@ -376,7 +380,10 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       const [hours, minutes] = selectedTime.split(':')
       const combinedDate = new Date(date)
       combinedDate.setHours(Number.parseInt(hours), Number.parseInt(minutes), 0, 0)
-      handleInputChange(field, combinedDate.toISOString())
+
+      // Add 7 hours to match Vietnam timezone (UTC+7)
+      const adjustedDate = new Date(combinedDate.getTime() + 7 * 60 * 60 * 1000)
+      handleInputChange(field, adjustedDate.toISOString())
     }
   }
 
@@ -392,7 +399,10 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       const date = new Date(currentDate)
       const [hours, minutes] = time.split(':')
       date.setHours(Number.parseInt(hours), Number.parseInt(minutes), 0, 0)
-      handleInputChange(field, date.toISOString())
+
+      // Add 7 hours to match Vietnam timezone (UTC+7)
+      const adjustedDate = new Date(date.getTime() + 7 * 60 * 60 * 1000)
+      handleInputChange(field, adjustedDate.toISOString())
     }
   }
 

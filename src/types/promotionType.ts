@@ -308,6 +308,7 @@ export interface UsePromotionTimerReturn {
   isExpired: boolean
   isExpiringSoon: boolean
   timeLeftDisplayText: string
+  originalTimeDisplay: string
 }
 
 export interface UsePromotionValidationReturn {

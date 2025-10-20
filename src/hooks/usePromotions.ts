@@ -19,6 +19,23 @@ import {
 import { promotionApi } from '../apis/promotion.api'
 
 // ========================================
+// Utility Functions
+// ========================================
+
+/**
+ * Formats time to 12-hour format with AM/PM
+ * @param date - Date object
+ * @returns Formatted time string (e.g., "3:00 PM")
+ */
+const formatTime12Hour = (date: Date): string => {
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  })
+}
+
+// ========================================
 // usePromotions Hook
 // ========================================
 
@@ -244,6 +261,7 @@ export const usePromotionTimer = (expiredAt: string): UsePromotionTimerReturn =>
         parseInt(seconds)
       )
     } else {
+      // Handle ISO string format - use as is since backend handles timezone
       expiry = new Date(expiredAt)
     }
 
@@ -278,6 +296,30 @@ export const usePromotionTimer = (expiredAt: string): UsePromotionTimerReturn =>
     return `${timeLeft.minutes.toString().padStart(2, '0')}:${timeLeft.seconds.toString().padStart(2, '0')}`
   }, [timeLeft])
 
+  const originalTimeDisplay = useMemo(() => {
+    let expiry: Date
+
+    // Parse backend date format "HH:mm:ss dd/MM/yyyy"
+    if (expiredAt.includes(' ') && expiredAt.includes('/')) {
+      const [timePart, datePart] = expiredAt.split(' ')
+      const [hours, minutes, seconds] = timePart.split(':')
+      const [day, month, year] = datePart.split('/')
+      expiry = new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hours),
+        parseInt(minutes),
+        parseInt(seconds)
+      )
+    } else {
+      // Handle ISO string format - use as is since backend handles timezone
+      expiry = new Date(expiredAt)
+    }
+
+    return formatTime12Hour(expiry)
+  }, [expiredAt])
+
   useEffect(() => {
     setTimeLeft(calculateTimeLeft(expiredAt))
 
@@ -293,7 +335,8 @@ export const usePromotionTimer = (expiredAt: string): UsePromotionTimerReturn =>
     seconds: timeLeft.seconds,
     isExpired: timeLeft.isExpired,
     isExpiringSoon: timeLeft.isExpiringSoon,
-    timeLeftDisplayText
+    timeLeftDisplayText,
+    originalTimeDisplay
   }
 }
 
@@ -517,11 +560,6 @@ export const useAdminPromotions = () => {
         await promotionApi.createPromotionAdmin(data)
         await fetchAdminPromotions(pagination.pageNumber)
 
-        toast.success('Tạo promotion thành công!', {
-          position: 'top-right',
-          autoClose: 2000
-        })
-
         return true
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Không thể tạo promotion'
@@ -730,7 +768,6 @@ export const useSellerPromotions = () => {
     setLoading(true)
     try {
       await promotionApi.createPromotionSeller(data)
-      toast.success('Tạo promotion thành công', { position: 'top-right', autoClose: 3000 })
     } catch (err: unknown) {
       console.error('Error creating seller promotion:', err)
       const errorMessage = err instanceof Error ? err.message : 'Không thể tạo promotion'
@@ -871,12 +908,6 @@ export const useSellerPromotionsWithId = (sellerId: string) => {
       try {
         await promotionApi.createPromotionSeller(data)
         await fetchSellerPromotions()
-
-        toast.success('Tạo promotion thành công!', {
-          position: 'top-right',
-          autoClose: 2000
-        })
-
         return true
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Không thể tạo promotion'
@@ -898,11 +929,6 @@ export const useSellerPromotionsWithId = (sellerId: string) => {
       try {
         await promotionApi.updatePromotionSeller(id, data)
         await fetchSellerPromotions()
-
-        toast.success('Cập nhật promotion thành công!', {
-          position: 'top-right',
-          autoClose: 2000
-        })
 
         return true
       } catch (err: unknown) {
