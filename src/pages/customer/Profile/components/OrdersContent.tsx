@@ -6,11 +6,14 @@ import ReportModal from './ReportModal'
 import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
 import ReviewModal from './ReviewModal'
+import ComplaintModal from './ComplaintModal'
 import { confirmOrderReceived } from '../../../../apis/order.api'
 import { purchaseOrder } from '../../../../apis/transaction.api'
+import { formApi, type CreateFormRequest, type FormType } from '../../../../apis/form.api'
 import { path } from '../../../../constants/path'
 import type { Order as APIOrder } from '../../../../types/orderType'
 import { toast } from 'react-toastify'
+import { useAuth } from '../../../../contexts/auth.context'
 
 interface Order {
   id: string
@@ -225,17 +228,20 @@ export default function OrdersContent({
 }: OrdersContentProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
+  const { user: authUser } = useAuth()
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [showReportModal, setShowReportModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [showComplaintModal, setShowComplaintModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<{ name: string; image: string; category?: string } | null>(
     null
   )
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [confirmingOrderId, setConfirmingOrderId] = useState<string>('') // Thêm state để track loading
   const [processingPaymentOrderId, setProcessingPaymentOrderId] = useState<string>('') // State để track payment loading
+  const [submittingComplaintOrderId, setSubmittingComplaintOrderId] = useState<string>('') // State để track complaint loading
   const ordersPerPage = 3
 
   // Transform API orders to UI orders - add safety check
@@ -338,6 +344,40 @@ export default function OrdersContent({
     }
   }
 
+  // Handle complaint for delivered orders
+  const handleComplaint = async (
+    orderId: string,
+    complaintData: { formType: FormType; subject: string; description: string; images?: File[] }
+  ) => {
+    if (!authUser?.userId) {
+      toast.error('Vui lòng đăng nhập để gửi khiếu nại')
+      return
+    }
+
+    try {
+      setSubmittingComplaintOrderId(orderId)
+
+      const formData: CreateFormRequest = {
+        userId: authUser.userId,
+        orderId: orderId,
+        type: complaintData.formType,
+        subject: complaintData.subject,
+        description: complaintData.description,
+        imageFiles: complaintData.images
+      }
+
+      await formApi.createForm(formData)
+
+      toast.success('Gửi khiếu nại thành công! Chúng tôi sẽ xem xét và phản hồi sớm nhất.')
+      setShowComplaintModal(false)
+    } catch (error) {
+      console.error('Error submitting complaint:', error)
+      toast.error('Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.')
+    } finally {
+      setSubmittingComplaintOrderId('')
+    }
+  }
+
   // Modal handlers
   // const handleOpenReportModal = (product: { name: string; image: string; category?: string }) => {
   //   setSelectedProduct(product)
@@ -379,6 +419,16 @@ export default function OrdersContent({
   const handleCloseReviewModal = () => {
     setShowReviewModal(false)
     setSelectedProduct(null)
+  }
+
+  const handleOpenComplaintModal = (orderId: string) => {
+    setSelectedOrderId(orderId)
+    setShowComplaintModal(true)
+  }
+
+  const handleCloseComplaintModal = () => {
+    setShowComplaintModal(false)
+    setSelectedOrderId('')
   }
 
   // Handle buy again functionality - Sửa hàm này
@@ -567,19 +617,37 @@ export default function OrdersContent({
                   </Button>
                 )}
                 {order.status === 'Đã giao' && (
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() =>
-                      handleOpenReviewModal({
-                        name: order.products[0]?.name || '',
-                        image: order.products[0]?.image || ''
-                      })
-                    }
-                    className='text-green-600 border-green-600 hover:bg-green-50'
-                  >
-                    Đánh giá
-                  </Button>
+                  <>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() =>
+                        handleOpenReviewModal({
+                          name: order.products[0]?.name || '',
+                          image: order.products[0]?.image || ''
+                        })
+                      }
+                      className='text-green-600 border-green-600 hover:bg-green-50'
+                    >
+                      Đánh giá
+                    </Button>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleOpenComplaintModal(order.id)}
+                      disabled={submittingComplaintOrderId === order.id}
+                      className='text-red-600 border-red-600 hover:bg-red-50 disabled:opacity-50'
+                    >
+                      {submittingComplaintOrderId === order.id ? (
+                        <>
+                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2'></div>
+                          Đang gửi...
+                        </>
+                      ) : (
+                        'Khiếu nại'
+                      )}
+                    </Button>
+                  </>
                 )}
                 {order.status === 'Đã hủy' && (
                   <Button
@@ -668,6 +736,15 @@ export default function OrdersContent({
 
       {/* Review Modal */}
       <ReviewModal isOpen={showReviewModal} onClose={handleCloseReviewModal} product={selectedProduct} />
+
+      {/* Complaint Modal */}
+      <ComplaintModal
+        isOpen={showComplaintModal}
+        onClose={handleCloseComplaintModal}
+        orderId={selectedOrderId}
+        onSubmit={handleComplaint}
+        isLoading={submittingComplaintOrderId === selectedOrderId}
+      />
     </div>
   )
 }
