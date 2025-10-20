@@ -47,7 +47,7 @@ export interface ProductForReview {
   typeProduct: string
   status: 'Pending' | 'Approved' | 'Rejected'
   staffNote: string | null
-  comboItems: any | null
+  comboItems: unknown | null
   createdAt: string
   updatedAt: string | null
 }
@@ -91,8 +91,6 @@ export interface ReviewStoreResponse {
     reviewedAt: string
   }
 }
-
-// Interface cho review sản phẩm
 export interface ReviewProductRequest {
   status: 'Approved' | 'Rejected' | 'Pending'
   staffNote?: string
@@ -109,7 +107,73 @@ export interface ReviewProductResponse {
   }
 }
 
+// Interface cho thông tin staff
+export interface StaffInfo {
+  userId: string
+  provinceId: number | null
+  email: string
+  phoneNumber: string
+  role: string
+  firstName: string
+  lastName: string
+  avatar: string
+  isActive: boolean
+  note: string | null
+  dateOfBirth: string
+  isPermission: boolean
+  hireDate: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StaffInfoResponse {
+  status: number
+  message: string
+  data: StaffInfo
+}
+
+export interface StaffListResponse {
+  status: number
+  message: string
+  data: StaffInfo[]
+}
+
+export interface StaffListParams {
+  pageSize?: number
+  pageNumber?: number
+  search?: string
+  isActive?: boolean
+}
+
 export const staffApi = {
+  // Lấy danh sách tất cả staff (backend trả về tất cả, frontend tự phân trang)
+  getAllStaff: async (params?: StaffListParams): Promise<StaffListResponse> => {
+    const queryParams = new URLSearchParams()
+
+    // Luôn lấy tất cả staff từ backend (pageSize = 0)
+    queryParams.append('pageSize', '0')
+    queryParams.append('pageNumber', '1')
+
+    // Chỉ truyền search và isActive filter lên backend
+    if (params?.search) {
+      queryParams.append('search', params.search)
+    }
+
+    if (params?.isActive !== undefined) {
+      queryParams.append('isActive', params.isActive.toString())
+    }
+
+    const url = `${API_URL}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+
+    const response = await axiosInstance.get(url)
+    return response.data
+  },
+
+  getStaffInfo: async (staffId: string): Promise<any> => {
+    const response = await axiosInstance.get(`${API_URL}/${staffId}`)
+    return response
+  },
+
   getAssignedStores: async (staffId: string, params?: AssignedStoresParams): Promise<AssignedStoresResponse> => {
     const queryParams = new URLSearchParams()
 
@@ -128,7 +192,7 @@ export const staffApi = {
   },
 
   // Lấy danh sách sản phẩm cần review của staff
-  getProductsForReview: async (staffId: string, params?: ProductsForReviewParams): Promise<any> => {
+  getProductsForReview: async (staffId: string, params?: ProductsForReviewParams): Promise<ProductsForReviewResponse> => {
     const queryParams = new URLSearchParams()
 
     if (params?.pageSize) {

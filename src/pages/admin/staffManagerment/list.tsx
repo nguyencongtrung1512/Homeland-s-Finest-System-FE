@@ -1,0 +1,1104 @@
+import { useState, useEffect, useCallback } from 'react'
+import {
+  Search,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Building2,
+  Phone,
+  Mail,
+  Calendar as CalendarIcon,
+  FileText,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Briefcase,
+  UserCheck,
+  UserPlus,
+  Lock,
+  Trash2
+} from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Input } from '../../../components/ui/input'
+import { Button } from '../../../components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '../../../components/ui/dialog'
+import { Badge } from '../../../components/ui/badge'
+import { Calendar } from '../../../components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
+import { staffApi, type StaffInfo } from '../../../apis/staff.api'
+import { registerStaff, type StaffRegistrationData } from '../../../apis/auth.api'
+import { updateUser } from '../../../apis/user.api'
+import { toast } from 'react-toastify'
+
+function StaffManagement() {
+  const [searchText, setSearchText] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
+  const [allStaff, setAllStaff] = useState<StaffInfo[]>([]) // Tất cả staff từ API
+  const [filteredStaff, setFilteredStaff] = useState<StaffInfo[]>([]) // Staff sau khi filter
+  const [paginatedStaff, setPaginatedStaff] = useState<StaffInfo[]>([]) // Staff cho trang hiện tại
+  const [selectedStaff, setSelectedStaff] = useState<StaffInfo | null>(null)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [totalPages, setTotalPages] = useState(1)
+
+  // Lock/Delete states
+  const [showLockConfirm, setShowLockConfirm] = useState(false)
+  const [staffToLock, setStaffToLock] = useState<StaffInfo | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [staffToDelete, setStaffToDelete] = useState<StaffInfo | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+
+  // Staff creation states
+  const [showCreateStaffModal, setShowCreateStaffModal] = useState(false)
+  const [staffFormData, setStaffFormData] = useState<StaffRegistrationData>({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    gender: 'Male',
+    phoneNumber: '',
+    dateOfBirth: '',
+    hireDate: ''
+  })
+  const [staffFormLoading, setStaffFormLoading] = useState(false)
+  const [dateOfBirthOpen, setDateOfBirthOpen] = useState(false)
+  const [hireDateOpen, setHireDateOpen] = useState(false)
+
+  // Fetch staff data từ API
+  const fetchStaff = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = {
+        search: searchText || undefined,
+        isActive: statusFilter === 'all' ? undefined : statusFilter === 'active'
+      }
+
+      const response = await staffApi.getAllStaff(params)
+
+      // Debug: Log the response structure
+      console.log('API Response:', response)
+
+      // Check if response and data exist
+      if (response && response.data && Array.isArray(response.data)) {
+        setAllStaff(response.data)
+      } else if (response && Array.isArray(response)) {
+        // If response is directly an array (fallback)
+        setAllStaff(response)
+      } else {
+        console.warn('Invalid response structure:', response)
+        setAllStaff([])
+        toast.warning('Dữ liệu trả về không đúng định dạng')
+      }
+    } catch (error) {
+      console.error('Error fetching staff:', error)
+      setAllStaff([])
+      toast.error('Không thể tải danh sách staff')
+    } finally {
+      setLoading(false)
+    }
+  }, [searchText, statusFilter])
+
+  // Filter staff dựa trên search và status
+  const applyFilters = useCallback(() => {
+    let filtered = [...allStaff]
+
+    // Apply search filter
+    if (searchText.trim()) {
+      const searchLower = searchText.toLowerCase()
+      filtered = filtered.filter(
+        (staff) =>
+          staff.firstName.toLowerCase().includes(searchLower) ||
+          staff.lastName.toLowerCase().includes(searchLower) ||
+          staff.email.toLowerCase().includes(searchLower) ||
+          staff.phoneNumber.includes(searchText)
+      )
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((staff) => (statusFilter === 'active' ? staff.isActive : !staff.isActive))
+    }
+
+    setFilteredStaff(filtered)
+    setCurrentPage(1) // Reset về trang đầu khi filter
+  }, [allStaff, searchText, statusFilter])
+
+  // Paginate filtered staff
+  const paginateStaff = useCallback(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    const endIndex = startIndex + pageSize
+    const paginated = filteredStaff.slice(startIndex, endIndex)
+
+    setPaginatedStaff(paginated)
+    setTotalPages(Math.ceil(filteredStaff.length / pageSize))
+  }, [filteredStaff, currentPage, pageSize])
+
+  // Handle search
+  const handleSearch = () => {
+    applyFilters()
+  }
+
+  // Handle filter change
+  const handleFilterChange = (value: string) => {
+    setStatusFilter(value)
+  }
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  // Handle view detail
+  const handleViewDetail = async (staffId: string) => {
+    try {
+      const response = await staffApi.getStaffInfo(staffId)
+      setSelectedStaff(response.data)
+      setShowDetailModal(true)
+    } catch (error) {
+      console.error('Error fetching staff detail:', error)
+      toast.error('Không thể tải thông tin chi tiết staff')
+    }
+  }
+
+  // Handle lock permission
+  const handleLock = (staff: StaffInfo) => {
+    setStaffToLock(staff)
+    setShowLockConfirm(true)
+  }
+
+  const confirmLock = async () => {
+    if (staffToLock) {
+      setActionLoading(true)
+      try {
+        await updateUser(staffToLock.userId, {
+          isPermission: false
+        })
+
+        toast.success(`Đã khóa quyền hạn của ${staffToLock.firstName} ${staffToLock.lastName}`, {
+          position: 'top-right',
+          autoClose: 3000
+        })
+
+        // Refresh data
+        await fetchStaff()
+      } catch (err: unknown) {
+        const error = err as { message?: string }
+        const errorMessage = error.message || 'Có lỗi xảy ra khi khóa quyền hạn'
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } finally {
+        setActionLoading(false)
+        setShowLockConfirm(false)
+        setStaffToLock(null)
+      }
+    }
+  }
+
+  // Handle delete account
+  const handleDelete = (staff: StaffInfo) => {
+    setStaffToDelete(staff)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = async () => {
+    if (staffToDelete) {
+      setActionLoading(true)
+      try {
+        await updateUser(staffToDelete.userId, {
+          isActive: false
+        })
+
+        toast.success(`Đã xóa tài khoản ${staffToDelete.firstName} ${staffToDelete.lastName}`, {
+          position: 'top-right',
+          autoClose: 3000
+        })
+
+        // Refresh data
+        await fetchStaff()
+      } catch (err: unknown) {
+        const error = err as { message?: string }
+        const errorMessage = error.message || 'Có lỗi xảy ra khi xóa tài khoản'
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } finally {
+        setActionLoading(false)
+        setShowDeleteConfirm(false)
+        setStaffToDelete(null)
+      }
+    }
+  }
+
+  // Close modal functions
+  const closeLockConfirm = () => {
+    setShowLockConfirm(false)
+    setStaffToLock(null)
+  }
+
+  const closeDeleteConfirm = () => {
+    setShowDeleteConfirm(false)
+    setStaffToDelete(null)
+  }
+
+  // Get status badge
+  const getStatusBadge = (isActive: boolean) => {
+    if (isActive) {
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+          <CheckCircle className="w-3 h-3 mr-1" />
+          Hoạt động
+        </Badge>
+      )
+    } else {
+      return (
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+          <XCircle className="w-3 h-3 mr-1" />
+          Không hoạt động
+        </Badge>
+      )
+    }
+  }
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('vi-VN')
+  }
+
+  // Get initials for avatar
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+  }
+
+  // Get avatar URL with fallback
+  const getAvatarUrl = (avatar: string) => {
+    const defaultAvatar = 'https://scontent.fsgn2-7.fna.fbcdn.net/v/t39.30808-6/465035753_1661013661514519_1627670806811343264_n.jpg?_nc_cat=100&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=5mOa7Gq6_bUQ7kNvwHRbhKw&_nc_oc=Adn3WhVjw5Wtj6FQhxzAO17d70tHXNI_NFMKYkyiF27-6gP0H454mkF4QLv581AV61I&_nc_zt=23&_nc_ht=scontent.fsgn2-7.fna&_nc_gid=mFuBPxElXDeTfVFh0IcEtw&oh=00_AffkK-HwLzMpjLePHbZSdd8gGf0elGj51mwvEyIxTd0uIg&oe=68FB86F6'
+
+    console.log('Staff Avatar from API:', avatar)
+
+    // Kiểm tra nếu avatar là URL thật (không phải example.com)
+    if (avatar &&
+      avatar.trim() !== '' &&
+      avatar !== 'null' &&
+      avatar !== 'undefined' &&
+      avatar.startsWith('http') &&
+      !avatar.includes('example.com')) {
+      console.log('Using staff avatar:', avatar)
+      return avatar
+    }
+
+    console.log('Using default avatar for staff:', defaultAvatar)
+    return defaultAvatar
+  }
+
+  // Fetch data khi component mount
+  useEffect(() => {
+    fetchStaff()
+  }, [fetchStaff])
+
+  // Apply filters khi allStaff thay đổi
+  useEffect(() => {
+    applyFilters()
+  }, [applyFilters])
+
+  // Paginate khi filteredStaff hoặc currentPage thay đổi
+  useEffect(() => {
+    paginateStaff()
+  }, [paginateStaff])
+
+  // Staff creation functions
+  const handleCreateStaff = () => {
+    setShowCreateStaffModal(true)
+    // Reset form data
+    setStaffFormData({
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      gender: 'Male',
+      phoneNumber: '',
+      dateOfBirth: '',
+      hireDate: ''
+    })
+  }
+
+  const handleStaffFormChange = (field: keyof StaffRegistrationData, value: string) => {
+    setStaffFormData((prev) => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleStaffFormSubmit = async () => {
+    // Basic validation
+    if (
+      !staffFormData.email ||
+      !staffFormData.password ||
+      !staffFormData.firstName ||
+      !staffFormData.lastName ||
+      !staffFormData.phoneNumber ||
+      !staffFormData.dateOfBirth ||
+      !staffFormData.hireDate
+    ) {
+      toast.error('Vui lòng điền đầy đủ thông tin', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    // Password validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+    if (!passwordRegex.test(staffFormData.password)) {
+      toast.error('Mật khẩu phải chứa ít nhất một chữ hoa, một chữ thường, một số và một ký tự đặc biệt', {
+        position: 'top-right',
+        autoClose: 5000
+      })
+      return
+    }
+
+    // Email validation
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    if (!emailRegex.test(staffFormData.email)) {
+      toast.error('Email không hợp lệ', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    // Phone validation
+    const phoneRegex = /^[0-9]{10,12}$/
+    if (!phoneRegex.test(staffFormData.phoneNumber)) {
+      toast.error('Số điện thoại phải có 10-12 chữ số', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    setStaffFormLoading(true)
+    try {
+      await registerStaff(staffFormData)
+
+      toast.success('Tạo tài khoản nhân viên thành công!', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+
+      // Close modal and refresh data
+      setShowCreateStaffModal(false)
+      await fetchStaff()
+    } catch (err: unknown) {
+      console.error('Staff creation error:', err)
+
+      // Handle different types of errors
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+
+        if (axiosError.response?.data?.errors) {
+          // Handle validation errors from backend
+          const errors = axiosError.response.data.errors
+          const errorMessages = Object.values(errors).flat()
+          const firstError = errorMessages[0] || 'Có lỗi xảy ra khi tạo tài khoản nhân viên'
+          toast.error(firstError, {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        } else if (axiosError.response?.data?.message) {
+          // Handle backend error message
+          toast.error(axiosError.response.data.message, {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        } else {
+          toast.error('Có lỗi xảy ra khi tạo tài khoản nhân viên', {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        }
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        const errorWithMessage = err as { message: string }
+        toast.error(errorWithMessage.message, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } else {
+        toast.error('Có lỗi xảy ra khi tạo tài khoản nhân viên', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      }
+    } finally {
+      setStaffFormLoading(false)
+    }
+  }
+
+  const closeCreateStaffModal = () => {
+    setShowCreateStaffModal(false)
+    setStaffFormData({
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      gender: 'Male',
+      phoneNumber: '',
+      dateOfBirth: '',
+      hireDate: ''
+    })
+    setDateOfBirthOpen(false)
+    setHireDateOpen(false)
+  }
+
+  // Date formatting functions
+  const formatDateForForm = (date: Date | undefined): string => {
+    if (!date) return ''
+    return date.toISOString().split('T')[0] // Format as YYYY-MM-DD
+  }
+
+  const formatDisplayDate = (dateString: string): string => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    return date.toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Quản lý Staff</h1>
+          <p className="text-gray-600 mt-1">Quản lý thông tin và trạng thái của các staff</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            onClick={handleCreateStaff}
+            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+          >
+            <UserPlus className="w-4 h-4" />
+            Tạo nhân viên
+          </Button>
+          <Users className="w-8 h-8 text-blue-600" />
+          <span className="text-2xl font-bold text-blue-600">{filteredStaff.length}</span>
+          <span className="text-sm text-gray-500">/ {allStaff.length} tổng</span>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Search className="w-5 h-5 mr-2" />
+            Tìm kiếm và lọc
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <Input
+                placeholder="Tìm kiếm theo tên, email, số điện thoại..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                className="w-full"
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <Select value={statusFilter} onValueChange={handleFilterChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="active">Hoạt động</SelectItem>
+                  <SelectItem value="inactive">Không hoạt động</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleSearch} className="w-full sm:w-auto">
+              <Search className="w-4 h-4 mr-2" />
+              Tìm kiếm
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Staff Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Danh sách Staff</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Staff</TableHead>
+                    <TableHead>Thông tin liên hệ</TableHead>
+                    <TableHead>Thông tin cá nhân</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead>Ngày tuyển</TableHead>
+                    <TableHead>Hành động</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedStaff.map((staff) => (
+                    <TableRow key={staff.userId}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage
+                              src={getAvatarUrl(staff.avatar)}
+                              alt={`${staff.firstName} ${staff.lastName}`}
+                            />
+                            <AvatarFallback>
+                              {getInitials(staff.firstName, staff.lastName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">
+                              {staff.firstName} {staff.lastName}
+                            </div>
+                            <div className="text-sm text-gray-500">ID: {staff.userId.slice(0, 8)}...</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center text-sm">
+                            <Mail className="w-4 h-4 mr-2 text-gray-400" />
+                            {staff.email}
+                          </div>
+                          <div className="flex items-center text-sm">
+                            <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                            {staff.phoneNumber}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center text-sm">
+                            <CalendarIcon className="w-4 h-4 mr-2 text-gray-400" />
+                            {staff.dateOfBirth}
+                          </div>
+                          <div className="flex items-center text-sm">
+                            <Briefcase className="w-4 h-4 mr-2 text-gray-400" />
+                            {staff.role}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(staff.isActive)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {formatDate(staff.hireDate)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewDetail(staff.userId)}
+                            className="flex items-center"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            Xem chi tiết
+                          </Button>
+                          {staff.isPermission && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLock(staff)}
+                              className="text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 flex items-center"
+                            >
+                              <Lock className="w-4 h-4 mr-2" />
+                              Khóa quyền
+                            </Button>
+                          )}
+                          {staff.isActive && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(staff)}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 flex items-center"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Xóa tài khoản
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-500">
+                Hiển thị {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredStaff.length)}{' '}
+                trong tổng số {filteredStaff.length} staff
+                <br />
+                Trang {currentPage} / {totalPages}
+              </div>
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Staff Detail Modal */}
+      <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <UserCheck className="w-5 h-5 mr-2" />
+              Thông tin chi tiết Staff
+            </DialogTitle>
+            <DialogDescription>
+              Thông tin đầy đủ về staff
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedStaff && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Users className="w-5 h-5 mr-2" />
+                    Thông tin cá nhân
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex items-center space-x-4">
+                      <Avatar className="w-20 h-20">
+                        <AvatarImage
+                          src={getAvatarUrl(selectedStaff.avatar)}
+                          alt={`${selectedStaff.firstName} ${selectedStaff.lastName}`}
+                        />
+                        <AvatarFallback className="text-lg">
+                          {getInitials(selectedStaff.firstName, selectedStaff.lastName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="text-xl font-semibold">
+                          {selectedStaff.firstName} {selectedStaff.lastName}
+                        </h3>
+                        <p className="text-gray-600">{selectedStaff.email}</p>
+                        {getStatusBadge(selectedStaff.isActive)}
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center">
+                        <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                        <span>{selectedStaff.phoneNumber}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <CalendarIcon className="w-4 h-4 mr-2 text-gray-400" />
+                        <span>{selectedStaff.dateOfBirth}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Briefcase className="w-4 h-4 mr-2 text-gray-400" />
+                        <span>{selectedStaff.role}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Work Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Building2 className="w-5 h-5 mr-2" />
+                    Thông tin công việc
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Ngày tuyển dụng</label>
+                        <p className="text-lg font-semibold">{formatDate(selectedStaff.hireDate)}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Tỉnh/Thành phố</label>
+                        <p className="text-sm">{selectedStaff.provinceId ? `ID: ${selectedStaff.provinceId}` : 'Chưa phân công'}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Ghi chú</label>
+                        <p className="text-sm">{selectedStaff.note || 'Không có ghi chú'}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Avatar URL</label>
+                        <p className="text-sm break-all">{selectedStaff.avatar}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Status and Dates */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <CalendarIcon className="w-5 h-5 mr-2" />
+                    Trạng thái và thời gian
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Trạng thái quyền</label>
+                      <div className="mt-1">
+                        {selectedStaff.isPermission ? (
+                          <Badge className="bg-green-100 text-green-800">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Có quyền
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-yellow-100 text-yellow-800">
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            Không có quyền
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Ngày tạo tài khoản</label>
+                      <p className="text-sm">{formatDate(selectedStaff.createdAt)}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Cập nhật lần cuối</label>
+                      <p className="text-sm">{formatDate(selectedStaff.updatedAt)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Statistics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <FileText className="w-5 h-5 mr-2" />
+                    Thống kê
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center space-x-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {selectedStaff.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                      </div>
+                      <div className="text-sm text-gray-500">Trạng thái hiện tại</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {selectedStaff.isPermission ? 'Có quyền' : 'Không quyền'}
+                      </div>
+                      <div className="text-sm text-gray-500">Quyền truy cập</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Staff Modal */}
+      <Dialog open={showCreateStaffModal} onOpenChange={setShowCreateStaffModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Tạo tài khoản nhân viên</DialogTitle>
+            <DialogDescription>Điền thông tin để tạo tài khoản nhân viên mới</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* First Name and Last Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Họ *</label>
+                <Input
+                  type="text"
+                  placeholder="Nhập họ"
+                  value={staffFormData.firstName}
+                  onChange={(e) => handleStaffFormChange('firstName', e.target.value)}
+                  className="h-10"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tên *</label>
+                <Input
+                  type="text"
+                  placeholder="Nhập tên"
+                  value={staffFormData.lastName}
+                  onChange={(e) => handleStaffFormChange('lastName', e.target.value)}
+                  className="h-10"
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+              <Input
+                type="email"
+                placeholder="Nhập email nhân viên"
+                value={staffFormData.email}
+                onChange={(e) => handleStaffFormChange('email', e.target.value)}
+                className="h-10"
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu *</label>
+              <Input
+                type="password"
+                placeholder="Nhập mật khẩu"
+                value={staffFormData.password}
+                onChange={(e) => handleStaffFormChange('password', e.target.value)}
+                className="h-10"
+              />
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại *</label>
+              <Input
+                type="tel"
+                placeholder="Nhập số điện thoại"
+                value={staffFormData.phoneNumber}
+                onChange={(e) => handleStaffFormChange('phoneNumber', e.target.value)}
+                className="h-10"
+              />
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Giới tính *</label>
+              <Select value={staffFormData.gender} onValueChange={(value) => handleStaffFormChange('gender', value)}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Chọn giới tính" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Male">Nam</SelectItem>
+                  <SelectItem value="Female">Nữ</SelectItem>
+                  <SelectItem value="Other">Khác</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date of Birth */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ngày sinh *</label>
+              <Popover open={dateOfBirthOpen} onOpenChange={setDateOfBirthOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
+                      }`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {staffFormData.dateOfBirth ? formatDisplayDate(staffFormData.dateOfBirth) : 'Chọn ngày sinh'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={staffFormData.dateOfBirth ? new Date(staffFormData.dateOfBirth) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        handleStaffFormChange('dateOfBirth', formatDateForForm(date))
+                        setDateOfBirthOpen(false)
+                      }
+                    }}
+                    disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                    captionLayout="dropdown"
+                    fromYear={1900}
+                    toYear={new Date().getFullYear()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Hire Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ngày tuyển dụng *</label>
+              <Popover open={hireDateOpen} onOpenChange={setHireDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.hireDate ? 'text-muted-foreground' : ''
+                      }`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {staffFormData.hireDate ? formatDisplayDate(staffFormData.hireDate) : 'Chọn ngày tuyển dụng'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={staffFormData.hireDate ? new Date(staffFormData.hireDate) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        handleStaffFormChange('hireDate', formatDateForForm(date))
+                        setHireDateOpen(false)
+                      }
+                    }}
+                    disabled={(date) => date < new Date('2020-01-01')}
+                    captionLayout="dropdown"
+                    fromYear={2020}
+                    toYear={new Date().getFullYear() + 1}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={closeCreateStaffModal} disabled={staffFormLoading}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleStaffFormSubmit}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={staffFormLoading}
+            >
+              {staffFormLoading ? 'Đang tạo...' : 'Tạo nhân viên'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lock Confirmation Modal */}
+      <Dialog open={showLockConfirm} onOpenChange={setShowLockConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Xác nhận khóa quyền hạn</DialogTitle>
+            <DialogDescription>
+              {staffToLock && (
+                <>
+                  Bạn có muốn khóa quyền hạn của nhân viên{' '}
+                  <span className="font-semibold">
+                    {staffToLock.firstName} {staffToLock.lastName}
+                  </span>{' '}
+                  không?
+                  <br />
+                  <span className="text-sm text-gray-500 mt-2 block">
+                    Nhân viên sẽ không thể thực hiện các chức năng trên hệ thống sau khi bị khóa quyền.
+                  </span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeLockConfirm} disabled={actionLoading}>
+              Hủy
+            </Button>
+            <Button
+              onClick={confirmLock}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'Đang xử lý...' : 'Khóa quyền hạn'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa tài khoản</DialogTitle>
+            <DialogDescription>
+              {staffToDelete && (
+                <>
+                  Bạn có muốn xóa tài khoản của nhân viên{' '}
+                  <span className="font-semibold">
+                    {staffToDelete.firstName} {staffToDelete.lastName}
+                  </span>{' '}
+                  không?
+                  <br />
+                  <span className="text-sm text-gray-500 mt-2 block">
+                    Tài khoản sẽ bị vô hiệu hóa và không thể đăng nhập vào hệ thống.
+                  </span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDeleteConfirm} disabled={actionLoading}>
+              Hủy
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'Đang xử lý...' : 'Xóa tài khoản'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+export default StaffManagement

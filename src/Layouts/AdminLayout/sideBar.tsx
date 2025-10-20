@@ -49,8 +49,18 @@ function SideBar({ isCollapsed }: SideBarProps) {
       icon: <LibraryBig size={18} />
     },
     {
+      key: path.STAFF_MANAGEMENT_ADMIN,
+      label: 'Quản lí staff',
+      icon: <User size={18} />
+    },
+    {
       key: path.ACCOUNT_MANAGEMENT_ADMIN,
       label: 'Quản lí người dùng',
+      icon: <User size={18} />
+    },
+    {
+      key: path.SELLER_MANAGEMENT_ADMIN,
+      label: 'Quản lí seller',
       icon: <User size={18} />
     },
     {

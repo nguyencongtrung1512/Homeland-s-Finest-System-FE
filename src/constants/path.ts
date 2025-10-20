@@ -74,6 +74,8 @@ export const path = {
   PROMOTION_MANAGEMENT_ADMIN: '/admin/promotions',
   STORE_DETAIL_ADMIN: 'storeManagement/store-detail/:storeId',
   ACCOUNT_MANAGEMENT_ADMIN: 'accountManagement',
+  SELLER_MANAGEMENT_ADMIN: 'sellerManagement', //đang phát triển
+  STAFF_MANAGEMENT_ADMIN: 'staffManagement', //đang phát triển
   TERMS_MANAGEMENT_ADMIN: 'termsManagement',
   TRANSACTION_MANAGEMENT_ADMIN: 'transactionManagement',
   BLOG_MANAGEMENT_ADMIN: 'blogManagement',
