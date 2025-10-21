@@ -64,10 +64,10 @@ export const removePromotionFromCart = async (cartId: string, promotionId: strin
 export const calculateShippingFee = async (
   cartItemIds: string[],
   userAddressId: string
-): Promise<ShippingFeeResponse> => {
+): Promise<any> => {
   const response = await axiosInstance.post<ShippingFeeResponse>(`${API_URL}/calculate-shipping-fee`, {
     cartItemIds,
     userAddressId
   })
-  return response.data
+  return response
 }

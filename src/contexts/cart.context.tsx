@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAuth } from './auth.context'
-import { getCartByUserId, addToCart as addToCartAPI, getCartCount } from '../apis/cart.api'
+import { getCartByUserId, addToCart as addToCartAPI, removeCartItem } from '../apis/cart.api'
 import type { CartData, Cart as APICart, CartItem as APICartItem } from '../types/cartType'
 import { toast } from 'react-toastify'
 
@@ -25,6 +25,7 @@ interface CartContextProps {
   addToCart: (productVariantId: string, quantity: number, comboId?: string) => Promise<void>
   refreshCart: () => Promise<void>
   clearCart: () => void
+  clearCartAfterOrder: (itemIds: string[]) => Promise<void>
 }
 
 const CartContext = createContext<CartContextProps | undefined>(undefined)
@@ -61,7 +62,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }
 
   // Load cart data from API
-  const loadCart = async () => {
+  const loadCart = useCallback(async () => {
     if (!user?.userId || !isAuthenticated) {
       setCart([])
       setCartCount(0)
@@ -84,7 +85,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.userId, isAuthenticated])
 
   // Add item to cart via API
   // CartProvider: addToCart
@@ -111,17 +112,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       await addToCartAPI(user.userId, items)
       await loadCart()
       toast.success('Đã thêm sản phẩm vào giỏ hàng!')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding to cart:', error)
-      const errorMessage = error.response?.data?.message || 'Có lỗi xảy ra khi thêm vào giỏ hàng'
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Có lỗi xảy ra khi thêm vào giỏ hàng'
       toast.error(errorMessage)
     }
   }
 
   // Refresh cart data
-  const refreshCart = async () => {
+  const refreshCart = useCallback(async () => {
     await loadCart()
-  }
+  }, [loadCart])
 
   // Clear cart (local only)
   const clearCart = () => {
@@ -129,10 +132,44 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCartCount(0)
   }
 
+  // Clear cart items after successful order creation
+  const clearCartAfterOrder = useCallback(
+    async (itemIds: string[]) => {
+      if (!user?.userId || !isAuthenticated || itemIds.length === 0) {
+        return
+      }
+
+      try {
+        setLoading(true)
+
+        // Remove items from backend
+        const removePromises = itemIds.map((itemId) => removeCartItem(user.userId, itemId))
+
+        // Wait for all removal operations to complete
+        await Promise.all(removePromises)
+
+        // Add a small delay to ensure backend is updated
+        await new Promise((resolve) => setTimeout(resolve, 500))
+
+        // Refresh cart to get updated data
+        await loadCart()
+
+        console.log('Cart cleared after order creation successfully')
+      } catch (error) {
+        console.error('Error clearing cart after order:', error)
+        // Still try to refresh cart even if removal failed
+        await loadCart()
+      } finally {
+        setLoading(false)
+      }
+    },
+    [user?.userId, isAuthenticated, loadCart]
+  )
+
   // Load cart when user changes
   useEffect(() => {
     loadCart()
-  }, [user?.userId, isAuthenticated])
+  }, [user?.userId, isAuthenticated, loadCart])
 
   return (
     <CartContext.Provider
@@ -142,7 +179,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         loading,
         addToCart,
         refreshCart,
-        clearCart
+        clearCart,
+        clearCartAfterOrder
       }}
     >
       {children}

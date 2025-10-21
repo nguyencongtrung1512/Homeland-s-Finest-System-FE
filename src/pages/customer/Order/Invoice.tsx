@@ -11,11 +11,13 @@ function Invoice() {
   const navigate = useNavigate()
 
   const [order, setOrder] = useState<Order | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const params = new URLSearchParams(location.search)
   const status = params.get('status') === 'fail' ? 'fail' : 'success'
   const orderId = params.get('orderId')
+  const multiple = params.get('multiple') === 'true'
 
   useEffect(() => {
     const fetchOrderDetail = async () => {
@@ -27,8 +29,20 @@ function Invoice() {
 
       try {
         setLoading(true)
-        const orderData = await getOrderDetail(orderId)
-        setOrder(orderData)
+
+        if (multiple) {
+          // For multiple orders, we need to fetch all orders
+          // For now, we'll fetch the first order and show it
+          // TODO: Implement proper multiple orders fetching
+          const orderData = await getOrderDetail(orderId)
+          setOrder(orderData)
+          setOrders([orderData])
+        } else {
+          // Single order
+          const orderData = await getOrderDetail(orderId)
+          setOrder(orderData)
+          setOrders([orderData])
+        }
       } catch (err) {
         console.error('Error fetching order detail:', err)
         setError('Không thể tải thông tin đơn hàng')
@@ -39,7 +53,7 @@ function Invoice() {
     }
 
     fetchOrderDetail()
-  }, [orderId])
+  }, [orderId, multiple])
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A'

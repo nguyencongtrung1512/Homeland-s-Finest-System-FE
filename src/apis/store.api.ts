@@ -16,15 +16,15 @@ export interface StoreResponse {
   logoUrl: string | null
   coverImageUrl: string | null
   status:
-    | 'ReviewedByStaff'
-    | 'Approved'
-    | 'Pending'
-    | 'Rejected'
-    | 'Active'
-    | 'Inactive'
-    | 'Processing'
-    | 'ApprovedByStaff'
-    | 'RejectedByStaff'
+  | 'ReviewedByStaff'
+  | 'Approved'
+  | 'Pending'
+  | 'Rejected'
+  | 'Active'
+  | 'Inactive'
+  | 'Processing'
+  | 'ApprovedByStaff'
+  | 'RejectedByStaff'
   adminNote: string | null
   reviewedBy: string | null
   approvedBy: string | null
@@ -63,8 +63,8 @@ export interface StoreResponse {
       dateOfBirth: string | null
     }
   }
-  storeStories: any[]
-  products: any[]
+  storeStories: unknown[]
+  products: unknown[]
 }
 
 // Interface cho API response wrapper
@@ -105,7 +105,7 @@ export const storeApi = {
   },
 
   // Lấy thông tin chi tiết một store
-  getStoreById: async (storeId: string): Promise<any> => {
+  getStoreById: async (storeId: string): Promise<{ status: number; message: string; data: StoreResponse }> => {
     return await axiosInstance.get(`/Store/${storeId}`)
   },
 
@@ -123,6 +123,18 @@ export const storeApi = {
     return await axiosInstance.put(`/Store/${storeId}/status`, {
       status,
       note
+    })
+  },
+
+  // Cập nhật thông tin store theo seller ID
+  updateStoreBySeller: async (
+    sellerId: string,
+    formData: FormData
+  ): Promise<{ status: number; message: string; data: StoreResponse }> => {
+    return await axiosInstance.put(`/Store/by-seller/${sellerId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     })
   }
 }

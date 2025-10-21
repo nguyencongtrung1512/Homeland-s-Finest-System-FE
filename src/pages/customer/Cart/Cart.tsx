@@ -45,7 +45,7 @@ type GroupedItem = APICartItem | ComboGroup
 
 export default function Cart() {
   const navigate = useNavigate()
-  const { refreshCart, loading } = useCart()
+  const { refreshCart, loading, clearCartAfterOrder } = useCart()
   const { user } = useAuth()
   const [cartData, setCartData] = useState<CartData | null>(null)
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({})
@@ -60,6 +60,7 @@ export default function Cart() {
   const [isAppliedPromotionsModalOpen, setIsAppliedPromotionsModalOpen] = useState(false)
   const [selectedStoreForAppliedPromotions, setSelectedStoreForAppliedPromotions] = useState<string | null>(null)
   const [shippingFee, setShippingFee] = useState(0)
+  const [storeShippingFees, setStoreShippingFees] = useState<Record<string, number>>({})
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false)
   const reloadCartData = useCallback(async () => {
     if (!user?.userId) return
@@ -97,28 +98,61 @@ export default function Cart() {
   const calculateShipping = useCallback(async () => {
     if (!cartData || !selectedAddress) return
 
-    const selectedItemsList = cartData.carts.flatMap((store) => store.items.filter((item) => selectedItems[item.id]))
+    const selectedStores = cartData.carts.filter((store) => store.items.some((item) => selectedItems[item.id]))
 
-    if (selectedItemsList.length === 0) {
+    if (selectedStores.length === 0) {
       setShippingFee(0)
+      setStoreShippingFees({})
       return
     }
 
     setIsCalculatingShipping(true)
+    const newStoreShippingFees: Record<string, number> = {}
+    let totalShippingFee = 0
+
     try {
-      const cartItemIds = selectedItemsList.map((item) => item.id)
-      const response = await calculateShippingFee(cartItemIds, selectedAddress.id)
+      // Calculate shipping fee for each store separately
+      for (const store of selectedStores) {
+        const selectedItemsInStore = store.items.filter((item) => selectedItems[item.id])
 
-      console.log('[CalculateShipping] response:', response)
+        if (selectedItemsInStore.length === 0) {
+          newStoreShippingFees[store.storeId] = 0
+          continue
+        }
 
-      if (response.success) {
-        setShippingFee(response.totalShippingFee)
-      } else {
-        setShippingFee(30000) // Fallback to default fee
+        const cartItemIds = selectedItemsInStore.map((item) => item.id)
+        const response = await calculateShippingFee(cartItemIds, selectedAddress.id)
+
+        console.log(`[CalculateShipping] Store ${store.storeName} response:`, response)
+
+        let storeShippingFee = 0
+        if (response.data.success) {
+          storeShippingFee = response.data.totalShippingFee
+        } else {
+          storeShippingFee = 30000
+        }
+
+        if (store.hasFreeship) {
+          console.log(`🚚 Free shipping applied for store: ${store.storeName}`)
+          storeShippingFee = 0
+        }
+
+        newStoreShippingFees[store.storeId] = storeShippingFee
+        totalShippingFee += storeShippingFee
       }
+
+      setStoreShippingFees(newStoreShippingFees)
+      setShippingFee(totalShippingFee)
     } catch (error) {
       console.error('Error calculating shipping fee:', error)
-      setShippingFee(30000) // Fallback to default fee
+      // Fallback: set default fee for each store
+      selectedStores.forEach((store) => {
+        const fee = store.hasFreeship ? 0 : 30000
+        newStoreShippingFees[store.storeId] = fee
+        totalShippingFee += fee
+      })
+      setStoreShippingFees(newStoreShippingFees)
+      setShippingFee(totalShippingFee)
     } finally {
       setIsCalculatingShipping(false)
     }
@@ -233,10 +267,11 @@ export default function Cart() {
 
     let discount = 0
 
-    // Check if store has free shipping
+    // Check if store has free shipping - use store-specific shipping fee
     if (store.hasFreeship) {
-      discount += shippingFee // Free shipping = shipping fee discount
-      console.log('🚚 Free shipping applied for store:', store.storeName, 'discount:', shippingFee)
+      const storeShippingFee = storeShippingFees[storeId] || 0
+      discount += storeShippingFee // Free shipping = shipping fee discount
+      console.log('🚚 Free shipping applied for store:', store.storeName, 'discount:', storeShippingFee)
     }
 
     // Add applied promotions discount
@@ -329,6 +364,32 @@ export default function Cart() {
         return
       }
 
+      // Create storePromotions from appliedPromotions in cart data
+      const storePromotionsMap = new Map<string, string[]>()
+
+      if (cartData) {
+        cartData.carts.forEach((store) => {
+          // Only include stores that have selected items
+          const hasSelectedItems = store.items.some((item) => selectedItems[item.id])
+
+          if (hasSelectedItems && store.appliedPromotions && store.appliedPromotions.length > 0) {
+            const validPromotionIds = store.appliedPromotions
+              .filter((promo) => !promo.isExpired && promo.status === 'Reserved')
+              .map((promo) => promo.promotionId)
+
+            if (validPromotionIds.length > 0) {
+              storePromotionsMap.set(store.storeId, validPromotionIds)
+            }
+          }
+        })
+      }
+
+      // Convert Map to array format expected by backend
+      const storePromotionsArray = Array.from(storePromotionsMap.entries()).map(([storeId, promotionIds]) => ({
+        storeId,
+        promotionIds
+      }))
+
       const orderData = {
         userId: user.userId,
         userAddressId: selectedAddress.id,
@@ -338,27 +399,32 @@ export default function Cart() {
           quantity: item.quantity,
           ...(item.isCombo && item.comboId ? { comboId: item.comboId } : {})
         })),
-        // Include applied promotions for each store
-        appliedPromotions: Object.entries(storePromotions).flatMap(([storeId, promotions]) =>
-          promotions
-            .filter((promo) => !promo.isExpired && promo.status === 'Reserved')
-            .map((promo) => ({
-              storeId,
-              promotionId: promo.promotionId,
-              discountAmount: promo.discountAmount
-            }))
-        )
+        storePromotions: storePromotionsArray
       }
 
+      console.log('[Cart] orderData being sent:', orderData)
+      console.log('[Cart] storePromotions:', orderData.storePromotions)
+
       const createdOrder = await createOrder(orderData)
+      console.log('[Cart] createdOrder response:', createdOrder)
+      console.log('[Cart] createdOrder length:', createdOrder.length)
+      console.log('[Cart] createdOrder items:', createdOrder.map(order => ({
+        orderId: order.id.slice(-8),
+        storeName: order.fromName,
+        itemsCount: order.orderItems?.length || 0
+      })))
       toast.success('Đơn hàng đã được tạo! Đang chuyển đến trang thanh toán...')
 
       // Store selected item IDs for later clearing after successful payment
       const selectedItemIds = selectedItemsList.map((item) => item.id)
 
+      // Clear cart items immediately after successful order creation
+      await clearCartAfterOrder(selectedItemIds)
+
+      console.log('[Cart] Navigating with orders:', createdOrder)
       navigate('/cart/create-order', {
         state: {
-          order: createdOrder[0], // Lấy order đầu tiên từ array
+          orders: createdOrder, // Truyền tất cả orders từ array
           paymentMethod: selectedPaymentMethod,
           selectedItemIds: selectedItemIds, // Pass item IDs to clear later
           selectedAddress: selectedAddress, // Pass selected address
@@ -709,8 +775,35 @@ export default function Cart() {
                   )
                 })}
 
-                <div className='flex justify-between text-sm'>
-                  <span className='text-gray-600'>Phí vận chuyển</span>
+                {/* Store-wise shipping breakdown */}
+                {cartData?.carts.map((store) => {
+                  const storeSubtotal = store.items
+                    .filter((item) => selectedItems[item.id])
+                    .reduce((sum, item) => sum + item.totalPrice, 0)
+                  const storeShippingFee = storeShippingFees[store.storeId] || 0
+
+                  if (storeSubtotal === 0) return null
+
+                  return (
+                    <div key={`shipping-${store.storeId}`} className='ml-4'>
+                      <div className='flex justify-between text-xs text-gray-500'>
+                        <span>Phí vận chuyển {store.storeName}</span>
+                        <span className={store.hasFreeship ? 'text-green-600' : ''}>
+                          {isCalculatingShipping ? (
+                            <span className='text-blue-600'>Đang tính...</span>
+                          ) : store.hasFreeship ? (
+                            'Miễn phí'
+                          ) : (
+                            `₫${formatPrice(storeShippingFee)}`
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+
+                <div className='flex justify-between text-sm font-medium'>
+                  <span className='text-gray-600'>Tổng phí vận chuyển</span>
                   <span className={`font-medium ${getTotalDiscount() > 0 ? 'text-green-600' : ''}`}>
                     {isCalculatingShipping ? (
                       <span className='text-blue-600'>Đang tính...</span>
