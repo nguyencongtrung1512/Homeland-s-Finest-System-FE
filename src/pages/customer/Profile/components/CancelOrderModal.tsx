@@ -6,7 +6,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from '../../../../components/ui/dialog'
 import { Alert, AlertDescription } from '../../../../components/ui/alert'
 import { Label } from '../../../../components/ui/label'
@@ -18,9 +18,10 @@ interface CancelOrderModalProps {
   isOpen: boolean
   onClose: () => void
   orderId: string
+  userId: string
 }
 
-export default function CancelOrderModal({ isOpen, onClose, orderId }: CancelOrderModalProps) {
+export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: CancelOrderModalProps) {
   const [selectedReason, setSelectedReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -42,8 +43,8 @@ export default function CancelOrderModal({ isOpen, onClose, orderId }: CancelOrd
 
     setIsLoading(true)
     try {
-      await cancelOrder(orderId, selectedReason)
-      
+      await cancelOrder(orderId, userId, selectedReason)
+
       toast.success('Hủy đơn hàng thành công!', {
         position: 'top-right',
         autoClose: 3000,
@@ -51,7 +52,7 @@ export default function CancelOrderModal({ isOpen, onClose, orderId }: CancelOrd
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
-        progress: undefined,
+        progress: undefined
       })
 
       // Reset and close
@@ -66,7 +67,7 @@ export default function CancelOrderModal({ isOpen, onClose, orderId }: CancelOrd
         closeOnClick: true,
         pauseOnHover: true,
         draggable: true,
-        progress: undefined,
+        progress: undefined
       })
     } finally {
       setIsLoading(false)
@@ -86,47 +87,42 @@ export default function CancelOrderModal({ isOpen, onClose, orderId }: CancelOrd
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden">
+      <DialogContent className='sm:max-w-[500px] max-h-[90vh] overflow-hidden'>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
+          <DialogTitle className='flex items-center gap-2 text-xl'>
+            <AlertTriangle className='h-5 w-5 text-red-500' />
             Hủy đơn hàng
           </DialogTitle>
-          <DialogDescription>
-            Vui lòng chọn lý do hủy đơn hàng. Thao tác này không thể hoàn tác.
-          </DialogDescription>
+          <DialogDescription>Vui lòng chọn lý do hủy đơn hàng. Thao tác này không thể hoàn tác.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="max-h-[50vh] overflow-y-auto pr-2">
+        <form onSubmit={handleSubmit} className='space-y-6'>
+          <div className='max-h-[50vh] overflow-y-auto pr-2'>
             {/* Warning Alert */}
-            <Alert variant="destructive" className="mb-6">
-              <AlertTriangle className="h-4 w-4" />
+            <Alert variant='destructive' className='mb-6'>
+              <AlertTriangle className='h-4 w-4' />
               <AlertDescription>
                 <strong>Lưu ý:</strong> Thao tác này sẽ hủy tất cả các sản phẩm có trong đơn hàng và không thể hoàn tác.
               </AlertDescription>
             </Alert>
 
             {/* Reason Selection */}
-            <div className="space-y-4">
-              <Label className="text-base font-medium">Chọn lý do hủy đơn hàng</Label>
-              <div className="space-y-3">
+            <div className='space-y-4'>
+              <Label className='text-base font-medium'>Chọn lý do hủy đơn hàng</Label>
+              <div className='space-y-3'>
                 {cancelReasons.map((reason, index) => (
-                  <div key={index} className="flex items-start space-x-3">
+                  <div key={index} className='flex items-start space-x-3'>
                     <input
-                      type="radio"
+                      type='radio'
                       id={`reason-${index}`}
-                      name="cancelReason"
+                      name='cancelReason'
                       value={reason}
                       checked={selectedReason === reason}
                       onChange={(e) => setSelectedReason(e.target.value)}
-                      className="mt-1 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500 focus:ring-2"
+                      className='mt-1 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500 focus:ring-2'
                       disabled={isLoading}
                     />
-                    <Label 
-                      htmlFor={`reason-${index}`} 
-                      className="text-sm leading-5 cursor-pointer font-normal"
-                    >
+                    <Label htmlFor={`reason-${index}`} className='text-sm leading-5 cursor-pointer font-normal'>
                       {reason}
                     </Label>
                   </div>
@@ -135,25 +131,25 @@ export default function CancelOrderModal({ isOpen, onClose, orderId }: CancelOrd
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className='gap-2 sm:gap-0'>
             <Button
-              type="button"
-              variant="outline"
+              type='button'
+              variant='outline'
               onClick={handleCancel}
               disabled={isLoading}
-              className="w-full sm:w-auto"
+              className='w-full sm:w-auto'
             >
               Không phải bây giờ
             </Button>
             <Button
-              type="submit"
-              variant="destructive"
+              type='submit'
+              variant='destructive'
               disabled={isLoading || !selectedReason}
-              className="w-full sm:w-auto"
+              className='w-full sm:w-auto'
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                   Đang hủy...
                 </>
               ) : (

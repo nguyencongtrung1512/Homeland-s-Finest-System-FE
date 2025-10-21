@@ -13,8 +13,6 @@ function Invoice() {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  // Lấy trạng thái thanh toán và orderId từ query string
   const params = new URLSearchParams(location.search)
   const status = params.get('status') === 'fail' ? 'fail' : 'success'
   const orderId = params.get('orderId')
@@ -43,11 +41,9 @@ function Invoice() {
     fetchOrderDetail()
   }, [orderId])
 
-  // Format date function
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A'
     try {
-      // Handle the format "01:29:03 13-10-2025"
       const [, date] = dateString.split(' ')
       const [day, month, year] = date.split('-')
       return `${day}/${month}/${year}`
@@ -56,7 +52,6 @@ function Invoice() {
     }
   }
 
-  // Get payment method display text
   const getPaymentMethodText = (paymentType: string) => {
     switch (paymentType) {
       case 'COD':
@@ -72,7 +67,6 @@ function Invoice() {
     }
   }
 
-  // Get status display text
   const getStatusText = (status: string) => {
     switch (status) {
       case 'NotYet':
@@ -140,7 +134,6 @@ function Invoice() {
         )}
       </div>
 
-      {/* Invoice info (only show if success) */}
       {status === 'success' && (
         <div className='bg-white rounded-lg shadow p-6 mx-auto max-w-xl'>
           <div className='flex justify-between mb-2 text-sm'>
@@ -164,7 +157,6 @@ function Invoice() {
             </span>
           </div>
 
-          {/* Shipping Information */}
           <div className='border-t pt-4 mb-4'>
             <div className='font-semibold mb-2'>Thông tin giao hàng</div>
             <div className='text-sm text-gray-600'>
@@ -210,7 +202,6 @@ function Invoice() {
             <span>{(order.finalPrice || 0).toLocaleString('vi-VN')}₫</span>
           </div>
 
-          {/* Order History */}
           {order.orderHistories && order.orderHistories.length > 0 && (
             <div className='border-t pt-4 mt-4'>
               <div className='font-semibold mb-2'>Lịch sử đơn hàng</div>

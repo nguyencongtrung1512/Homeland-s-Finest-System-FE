@@ -55,8 +55,9 @@ export const shipOrder = async (orderId: string): Promise<Order> => {
 }
 
 // PUT /api/Order/cancel/{orderId} - Hủy order
-export const cancelOrder = async (orderId: string, reason: string): Promise<Order[]> => {
+export const cancelOrder = async (orderId: string, userId: string, reason: string): Promise<Order[]> => {
   const formData = new FormData()
+  formData.append('userID', userId)
   formData.append('reason', reason)
 
   const response: OrderListResponse = await axiosInstance.put(`${API_URL}/cancel/${orderId}`, formData, {

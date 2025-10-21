@@ -67,3 +67,42 @@ export interface CartResponse {
   message: string
   data: CartData
 }
+
+// Shipping fee interfaces
+export interface ShippingCartItem {
+  cartItemId: string
+  itemName: string
+  imageUrl: string
+  quantity: number
+  length: number
+  width: number
+  height: number
+  weight: number
+  isCombo: boolean
+}
+
+export interface StoreShippingInfo {
+  storeId: string
+  storeName: string
+  storeAddress: string
+  cartItems: ShippingCartItem[]
+  totalLength: number
+  totalWidth: number
+  totalHeight: number
+  totalWeight: number
+  shippingFee: number
+  shippingService: string
+}
+
+export interface ShippingFeeData {
+  storeShippingInfos: StoreShippingInfo[]
+  totalShippingFee: number
+  success: boolean
+  message: string
+}
+
+export interface ShippingFeeResponse {
+  status: number
+  message: string
+  data: ShippingFeeData
+}

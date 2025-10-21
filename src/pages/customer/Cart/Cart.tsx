@@ -5,7 +5,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
 import { useAuth } from '../../../contexts/auth.context'
-import { updateCartItem, removeCartItem, getCartByUserId, removePromotionFromCart } from '../../../apis/cart.api'
+import {
+  updateCartItem,
+  removeCartItem,
+  getCartByUserId,
+  removePromotionFromCart,
+  calculateShippingFee
+} from '../../../apis/cart.api'
 import { toast } from 'react-toastify'
 import { createOrder } from '../../../apis/order.api'
 import { addressApi } from '../../../apis/address.api'
@@ -53,6 +59,8 @@ export default function Cart() {
   const [storePromotions] = useState<Record<string, StorePromotion[]>>({})
   const [isAppliedPromotionsModalOpen, setIsAppliedPromotionsModalOpen] = useState(false)
   const [selectedStoreForAppliedPromotions, setSelectedStoreForAppliedPromotions] = useState<string | null>(null)
+  const [shippingFee, setShippingFee] = useState(0)
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false)
   const reloadCartData = useCallback(async () => {
     if (!user?.userId) return
     try {
@@ -86,10 +94,44 @@ export default function Cart() {
     }
   }, [user?.userId])
 
+  const calculateShipping = useCallback(async () => {
+    if (!cartData || !selectedAddress) return
+
+    const selectedItemsList = cartData.carts.flatMap((store) => store.items.filter((item) => selectedItems[item.id]))
+
+    if (selectedItemsList.length === 0) {
+      setShippingFee(0)
+      return
+    }
+
+    setIsCalculatingShipping(true)
+    try {
+      const cartItemIds = selectedItemsList.map((item) => item.id)
+      const response = await calculateShippingFee(cartItemIds, selectedAddress.id)
+
+      console.log('[CalculateShipping] response:', response)
+
+      if (response.success) {
+        setShippingFee(response.totalShippingFee)
+      } else {
+        setShippingFee(30000) // Fallback to default fee
+      }
+    } catch (error) {
+      console.error('Error calculating shipping fee:', error)
+      setShippingFee(30000) // Fallback to default fee
+    } finally {
+      setIsCalculatingShipping(false)
+    }
+  }, [cartData, selectedAddress, selectedItems])
+
   useEffect(() => {
     reloadCartData()
     loadUserAddresses()
   }, [reloadCartData, loadUserAddresses])
+
+  useEffect(() => {
+    calculateShipping()
+  }, [calculateShipping])
 
   useEffect(() => {
     if (cartData) {
@@ -402,7 +444,6 @@ export default function Cart() {
     )
   }
 
-  const shippingFee = 30000
   const subtotal = getSelectedTotal()
   const totalDiscount = getTotalDiscount()
   const finalTotal = Math.max(0, subtotal + shippingFee - totalDiscount)
@@ -671,7 +712,13 @@ export default function Cart() {
                 <div className='flex justify-between text-sm'>
                   <span className='text-gray-600'>Phí vận chuyển</span>
                   <span className={`font-medium ${getTotalDiscount() > 0 ? 'text-green-600' : ''}`}>
-                    {getTotalDiscount() >= shippingFee ? 'Miễn phí' : `₫${formatPrice(shippingFee)}`}
+                    {isCalculatingShipping ? (
+                      <span className='text-blue-600'>Đang tính...</span>
+                    ) : getTotalDiscount() >= shippingFee ? (
+                      'Miễn phí'
+                    ) : (
+                      `₫${formatPrice(shippingFee)}`
+                    )}
                   </span>
                 </div>
               </div>
@@ -746,14 +793,20 @@ export default function Cart() {
                     ? 'border-orange-500 bg-orange-50'
                     : 'border-gray-200 hover:border-gray-300'
                     }`}
-                  onClick={() => setSelectedAddress(address)}
+                  onClick={() => {
+                    setSelectedAddress(address)
+                    setTimeout(() => calculateShipping(), 100)
+                  }}
                 >
                   <div className='flex items-start justify-between'>
                     <div className='flex items-start gap-3'>
                       <input
                         type='radio'
                         checked={selectedAddress?.id === address.id}
-                        onChange={() => setSelectedAddress(address)}
+                        onChange={() => {
+                          setSelectedAddress(address)
+                          setTimeout(() => calculateShipping(), 100)
+                        }}
                         className='w-4 h-4 text-orange-600 mt-1'
                       />
                       <div className='flex-1'>
@@ -840,7 +893,7 @@ export default function Cart() {
 
       {/* Promotion Modal */}
       <PromotionModal
-        cartId={cartData?.carts.find(store => store.storeId === selectedStoreForPromotion)?.cartId || ''}
+        cartId={cartData?.carts.find((store) => store.storeId === selectedStoreForPromotion)?.cartId || ''}
         isOpen={isPromotionModalOpen}
         onClose={() => {
           setIsPromotionModalOpen(false)

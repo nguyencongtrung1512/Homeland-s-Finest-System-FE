@@ -130,7 +130,6 @@ function Products() {
               ))}
             </div>
 
-            {/* Search box */}
             <form
               onSubmit={handleSearch}
               className='flex w-full max-w-[420px] items-center rounded-full border border-[#D5E4CF] bg-white px-3 py-1.5 shadow-sm'
@@ -205,7 +204,6 @@ function Products() {
                   ))}
               </div>
 
-              {/* Empty state */}
               {activeTab === 'product'
                 ? productCardData.length === 0 && (
                   <div className='text-center py-12'>
@@ -240,7 +238,6 @@ function Products() {
                   </div>
                 )}
 
-              {/* Pagination */}
               <Pagination
                 currentPage={currentPage + 1}
                 totalPages={activeTab === 'product' ? pagination.totalPages : 1}

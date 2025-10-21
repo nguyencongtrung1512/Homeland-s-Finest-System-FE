@@ -260,7 +260,6 @@ function UpdateComboSeller() {
         })
         toast.success('Xóa sản phẩm thành công')
 
- back to Draft
         if (response.data?.status === 'Draft') {
           toast.info('Combo đã chuyển về trạng thái nháp')
         }

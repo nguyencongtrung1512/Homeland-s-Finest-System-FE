@@ -9,11 +9,12 @@ import ReviewModal from './ReviewModal'
 import ComplaintModal from './ComplaintModal'
 import { confirmOrderReceived } from '../../../../apis/order.api'
 import { purchaseOrder } from '../../../../apis/transaction.api'
-import { formApi, type CreateFormRequest, type FormType } from '../../../../apis/form.api'
+import { formApi } from '../../../../apis/form.api'
 import { path } from '../../../../constants/path'
 import type { Order as APIOrder } from '../../../../types/orderType'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../../../contexts/auth.context'
+import type { CreateFormRequest, FormType } from '../../../../types/form.type'
 
 interface Order {
   id: string
@@ -74,9 +75,7 @@ interface OrdersContentProps {
   onFilterByStatus?: (status: string) => void
 }
 
-// Utility function to transform API order to UI order format
 const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
-  // Map API status to UI status
   const getUIStatus = (apiStatus: string) => {
     switch (apiStatus) {
       case 'NotYet':
@@ -140,9 +139,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
 
   const statusInfo = getUIStatus(apiOrder?.status || '')
 
-  // Transform order items to products - add safety checks
   const products = [
-    // Regular order items
     ...(apiOrder?.orderItems || []).map((item) => ({
       id: item?.id || '',
       productInventoryId: item?.productVariantId || '', // Use productVariantId instead
@@ -157,7 +154,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           : 'Thông tin kích thước không có',
       isCombo: false
     })),
-    // Combo order items
+
     ...(apiOrder?.orderItemsWithCombo || []).map((item) => ({
       id: item?.id || '',
       productInventoryId: item?.productVariantId || '',
@@ -174,7 +171,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     }))
   ]
 
-  // Format total price - add safety check
   const formatPrice = (price?: number) => {
     if (typeof price !== 'number' || isNaN(price)) {
       return '0đ'
@@ -187,7 +183,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
       .replace('₫', 'đ')
   }
 
-  // Get order history safely
+
   const orderHistories = apiOrder?.orderHistories || []
 
   return {
@@ -202,7 +198,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     canReturn: apiOrder?.status === 'Delivered',
     shippingInfo: {
       recipientName: apiOrder?.toName || '',
-      phone: '', // API doesn't provide phone in order
+      phone: '',
       address: apiOrder?.toAddress || '',
       note: apiOrder?.note || undefined
     },
@@ -226,9 +222,9 @@ export default function OrdersContent({
   onRefreshOrders,
   onFilterByStatus
 }: OrdersContentProps) {
+  const { user } = useAuth()
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
-  const { user: authUser } = useAuth()
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [showReportModal, setShowReportModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -244,7 +240,6 @@ export default function OrdersContent({
   const [submittingComplaintOrderId, setSubmittingComplaintOrderId] = useState<string>('') // State để track complaint loading
   const ordersPerPage = 3
 
-  // Transform API orders to UI orders - add safety check
   const orders: Order[] = useMemo(() => {
     if (!apiOrders || !Array.isArray(apiOrders)) {
       return []
@@ -257,18 +252,16 @@ export default function OrdersContent({
     }
   }, [apiOrders])
 
-  // Filter orders based on selected filter
   const filteredOrders = useMemo(() => {
     if (selectedFilter === 'all') return orders
     return orders.filter((order) => order.status === selectedFilter)
   }, [orders, selectedFilter])
 
-  // Handle filter change - call API with new status
   const handleFilterChange = (filterKey: string) => {
     setSelectedFilter(filterKey)
-    setCurrentPage(1) // Reset to first page when filter changes
+    setCurrentPage(1)
 
-    // Map UI filter to API status
+
     const apiStatusMap: { [key: string]: string | undefined } = {
       all: undefined,
       'Chưa xác nhận': 'NotYet',
@@ -286,7 +279,6 @@ export default function OrdersContent({
     }
   }
 
-  // Pagination logic
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage)
   const startIndex = (currentPage - 1) * ordersPerPage
   const endIndex = startIndex + ordersPerPage
@@ -297,23 +289,20 @@ export default function OrdersContent({
   }
   const handleConfirmReceived = async (orderId: string) => {
     try {
-      setConfirmingOrderId(orderId) // Bắt đầu loading
+      setConfirmingOrderId(orderId)
       await confirmOrderReceived(orderId)
-      // Refresh orders sau khi xác nhận thành công
       onRefreshOrders()
     } catch (error) {
       console.error('Lỗi khi xác nhận đã nhận hàng:', error)
-      // Có thể thêm toast notification ở đây
       alert('Có lỗi xảy ra khi xác nhận đã nhận hàng. Vui lòng thử lại.')
     } finally {
-      setConfirmingOrderId('') // Kết thúc loading
+      setConfirmingOrderId('')
     }
   }
 
-  // Handle payment for unconfirmed orders
   const handlePayment = async (orderId: string) => {
     try {
-      setProcessingPaymentOrderId(orderId) // Bắt đầu loading
+      setProcessingPaymentOrderId(orderId)
 
       // Call purchase API to create transaction
       const transactions = await purchaseOrder({ orderIds: [orderId] })
@@ -349,7 +338,7 @@ export default function OrdersContent({
     orderId: string,
     complaintData: { formType: FormType; subject: string; description: string; images?: File[] }
   ) => {
-    if (!authUser?.userId) {
+    if (!user?.userId) {
       toast.error('Vui lòng đăng nhập để gửi khiếu nại')
       return
     }
@@ -358,7 +347,7 @@ export default function OrdersContent({
       setSubmittingComplaintOrderId(orderId)
 
       const formData: CreateFormRequest = {
-        userId: authUser.userId,
+        userId: user.userId,
         orderId: orderId,
         type: complaintData.formType,
         subject: complaintData.subject,
@@ -378,11 +367,7 @@ export default function OrdersContent({
     }
   }
 
-  // Modal handlers
-  // const handleOpenReportModal = (product: { name: string; image: string; category?: string }) => {
-  //   setSelectedProduct(product)
-  //   setShowReportModal(true)
-  // }
+
 
   const handleCloseReportModal = () => {
     setShowReportModal(false)
@@ -397,7 +382,6 @@ export default function OrdersContent({
   const handleCloseCancelModal = () => {
     setShowCancelModal(false)
     setSelectedOrderId('')
-    // Refresh orders after cancellation
     onRefreshOrders()
   }
 
@@ -431,38 +415,25 @@ export default function OrdersContent({
     setSelectedOrderId('')
   }
 
-  // Handle buy again functionality - Sửa hàm này
   const handleBuyAgain = (order: Order) => {
-    console.log('=== DEBUG BUY AGAIN ===')
-    console.log('Order object:', order)
-    console.log('Order products:', order.products)
 
-    // Navigate to the first product in the order
     const firstProduct = order.products[0]
-    console.log('First product:', firstProduct)
+
 
     if (firstProduct?.productInventoryId) {
-      // Log the path template and productInventoryId
-      console.log('Path template:', path.productDetail)
-      console.log('Product Inventory ID:', firstProduct.productInventoryId)
 
-      // Create the final navigation path
       const navigationPath = path.productDetail.replace(':id', firstProduct.productInventoryId)
-      console.log('Final navigation path:', navigationPath)
-      console.log('Full URL would be:', window.location.origin + navigationPath)
 
-      // Navigate to the product detail page
+
+
       navigate(navigationPath)
-      console.log('Navigation executed!')
+
     } else {
-      console.log('No productInventoryId found in first product')
-      console.log('Available product fields:', Object.keys(firstProduct || {}))
-      alert('Không thể tìm thấy thông tin sản phẩm để mua lại.')
+
+      toast.error('Không thể tìm thấy thông tin sản phẩm để mua lại.')
     }
-    console.log('=== END DEBUG ===')
   }
 
-  // Loading state
   if (loading) {
     return (
       <div className='flex justify-center items-center h-64'>
@@ -485,7 +456,6 @@ export default function OrdersContent({
         </Button>
       </div>
 
-      {/* Filter Tabs */}
       <div className='flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg'>
         {[
           { key: 'all', label: 'Tất cả' },
@@ -508,12 +478,10 @@ export default function OrdersContent({
         ))}
       </div>
 
-      {/* Orders List */}
       <div className='space-y-4'>
         {currentOrders.length > 0 ? (
           currentOrders.map((order) => (
             <div key={order.id} className='bg-white border rounded-lg p-6'>
-              {/* Order Header */}
               <div className='flex justify-between items-start mb-4'>
                 <div>
                   <div className='flex items-center gap-3 mb-2'>
@@ -533,7 +501,6 @@ export default function OrdersContent({
                 </Button>
               </div>
 
-              {/* Products */}
               <div className='space-y-3 mb-4'>
                 {order.products.map((product, index) => (
                   <div key={index} className='flex items-center gap-4'>
@@ -564,7 +531,6 @@ export default function OrdersContent({
                 ))}
               </div>
 
-              {/* Order Total */}
               <div className='flex justify-between items-center pt-4 border-t'>
                 <span className='text-gray-600'>Tổng tiền:</span>
                 <span className='text-lg font-semibold text-gray-900'>{order.total}</span>
@@ -686,7 +652,6 @@ export default function OrdersContent({
         )}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className='flex justify-center items-center space-x-2 py-6'>
           <button
@@ -723,21 +688,21 @@ export default function OrdersContent({
         </div>
       )}
 
-      {/* Report Modal */}
       {selectedProduct && (
         <ReportModal isOpen={showReportModal} onClose={handleCloseReportModal} product={selectedProduct} />
       )}
 
-      {/* Cancel Order Modal */}
-      <CancelOrderModal isOpen={showCancelModal} onClose={handleCloseCancelModal} orderId={selectedOrderId} />
+      <CancelOrderModal
+        isOpen={showCancelModal}
+        onClose={handleCloseCancelModal}
+        orderId={selectedOrderId}
+        userId={user?.userId || ''}
+      />
 
-      {/* Order Detail Modal */}
       <OrderDetailModal isOpen={showOrderDetailModal} onClose={handleCloseOrderDetailModal} orderId={selectedOrderId} />
 
-      {/* Review Modal */}
       <ReviewModal isOpen={showReviewModal} onClose={handleCloseReviewModal} product={selectedProduct} />
 
-      {/* Complaint Modal */}
       <ComplaintModal
         isOpen={showComplaintModal}
         onClose={handleCloseComplaintModal}

@@ -23,7 +23,6 @@ interface CartItem {
   comboId?: string
 }
 
-// import & setup
 
 function OrderCreate() {
   const navigate = useNavigate()
@@ -31,38 +30,33 @@ function OrderCreate() {
   const { user } = useAuth()
   const { refreshCart } = useCart()
 
-  // Helper function to get current time with +7 hours offset
   const getCurrentTimeWithOffset = () => {
     const now = new Date()
     const utc = now.getTime() + now.getTimezoneOffset() * 60000
     const vietnamTime = new Date(utc + 7 * 3600000) // +7 hours
-    // Format as Vietnam time without Z suffix
     return vietnamTime.toISOString().replace('Z', '+07:00')
   }
 
-  // Helper function to format Vietnam time for display
-  const getVietnamTimeDisplay = () => {
-    const now = new Date()
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000
-    const vietnamTime = new Date(utc + 7 * 3600000) // +7 hours
+  // const getVietnamTimeDisplay = () => {
+  //   const now = new Date()
+  //   const utc = now.getTime() + now.getTimezoneOffset() * 60000
+  //   const vietnamTime = new Date(utc + 7 * 3600000) // +7 hours
 
-    // Format as readable Vietnam time
-    const year = vietnamTime.getFullYear()
-    const month = String(vietnamTime.getMonth() + 1).padStart(2, '0')
-    const day = String(vietnamTime.getDate()).padStart(2, '0')
-    const hours = String(vietnamTime.getHours()).padStart(2, '0')
-    const minutes = String(vietnamTime.getMinutes()).padStart(2, '0')
-    const seconds = String(vietnamTime.getSeconds()).padStart(2, '0')
+  //   // Format as readable Vietnam time
+  //   const year = vietnamTime.getFullYear()
+  //   const month = String(vietnamTime.getMonth() + 1).padStart(2, '0')
+  //   const day = String(vietnamTime.getDate()).padStart(2, '0')
+  //   const hours = String(vietnamTime.getHours()).padStart(2, '0')
+  //   const minutes = String(vietnamTime.getMinutes()).padStart(2, '0')
+  //   const seconds = String(vietnamTime.getSeconds()).padStart(2, '0')
 
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000+07:00`
-  }
+  //   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000+07:00`
+  // }
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>()
-
-  // Lấy dữ liệu từ navigation state
   const buyNowProduct = location.state?.product
   const existingOrder: Order = location.state?.order
   const existingPaymentMethod: PaymentMethod = location.state?.paymentMethod
@@ -72,29 +66,23 @@ function OrderCreate() {
     [location.state?.selectedItemIds]
   )
 
-  // Get address ID from selected address - no fallback
   const userAddressId = selectedAddress?.id
 
-  // Helper function to clear cart after successful payment
   const clearCartAfterPayment = useCallback(async () => {
     if (!user?.userId || selectedItemIds.length === 0) return
 
     try {
-      // Remove each selected item from cart
       for (const itemId of selectedItemIds) {
         await removeCartItem(user.userId, itemId)
       }
 
-      // Refresh cart data
       await refreshCart()
 
       console.log('Cart cleared after successful payment')
     } catch (error) {
       console.error('Error clearing cart after payment:', error)
-      // Don't show error to user as payment was already successful
     }
   }, [user?.userId, selectedItemIds, refreshCart])
-
 
   const params = new URLSearchParams(location.search)
   const orderId = params.get('orderId')
@@ -111,36 +99,33 @@ function OrderCreate() {
     }
   }, [existingOrder, orderId])
 
-  // Giữ fallback cho "Mua ngay" nhưng ưu tiên dữ liệu Backend từ order
   const cartItems: CartItem[] = buyNowProduct
     ? [
-      {
-        id: buyNowProduct.id,
-        productVariantId: buyNowProduct.productVariantId,
-        name: buyNowProduct.name,
-        desc: buyNowProduct.desc || buyNowProduct.description,
-        price: buyNowProduct.price,
-        quantity: buyNowProduct.quantity,
-        image: buyNowProduct.image
-      }
-    ]
+        {
+          id: buyNowProduct.id,
+          productVariantId: buyNowProduct.productVariantId,
+          name: buyNowProduct.name,
+          desc: buyNowProduct.desc || buyNowProduct.description,
+          price: buyNowProduct.price,
+          quantity: buyNowProduct.quantity,
+          image: buyNowProduct.image
+        }
+      ]
     : []
 
-  // NEW: Dùng dữ liệu động để hiển thị sản phẩm
   const displayItems: CartItem[] =
     order && order.orderItems
       ? order.orderItems.map((it) => ({
-        id: it.id,
-        productVariantId: it.productVariantId || it.id,
-        name: it.orderItemName,
-        desc: '',
-        price: it.finalPrice || it.totalPrice || 0,
-        quantity: it.quantity,
-        image: it.orderItemImageUrl
-      }))
+          id: it.id,
+          productVariantId: it.productVariantId || it.id,
+          name: it.orderItemName,
+          desc: '',
+          price: it.finalPrice || it.totalPrice || 0,
+          quantity: it.quantity,
+          image: it.orderItemImageUrl
+        }))
       : cartItems
 
-  // Backend sẽ tính tiền ship, frontend chỉ hiển thị dữ liệu từ API
   const shipping = order ? order.shipPrice || 0 : 0
   const subtotal = order
     ? order.totalOrder || 0 // Tổng giá trị hàng (chưa trừ promotion)
@@ -148,12 +133,10 @@ function OrderCreate() {
   const totalDiscount = order ? order.totalDiscount || 0 : 0
   const total = order ? order.finalPrice || 0 : subtotal + shipping
 
-  // NEW: Text phương thức thanh toán
   const paymentDisplay: PaymentMethod | undefined = order
     ? (existingPaymentMethod ?? (order.paymentType as PaymentMethod))
     : selectedPaymentMethod
 
-  // Sửa flow thanh toán để dùng order.id
   const handlePayment = async () => {
     try {
       if (order) {
@@ -172,25 +155,21 @@ function OrderCreate() {
   }
 
   const handleCreateNewOrder = async () => {
-    // Validate cart
     if (cartItems.length === 0) {
       toast.error('Giỏ hàng trống')
       return
     }
 
-    // Validate payment method
     if (!selectedPaymentMethod) {
       toast.error('Vui lòng chọn phương thức thanh toán')
       return
     }
 
-    // NEW: Validate user from auth
     if (!user?.userId) {
       toast.error('Vui lòng đăng nhập trước khi đặt hàng')
       return
     }
 
-    // NEW: Validate address - now required
     if (!selectedAddress?.id) {
       toast.error('Vui lòng chọn địa chỉ giao hàng trước khi đặt hàng')
       return
@@ -268,11 +247,11 @@ function OrderCreate() {
   }
 
   const handleConfirmCancel = async (reason: string) => {
-    if (!order) return
+    if (!order || !user?.userId) return
 
     setIsCancelling(true)
     try {
-      const cancelledOrders = await cancelOrder(order.id, reason)
+      const cancelledOrders = await cancelOrder(order.id, user.userId, reason)
       toast.success(`Đã hủy ${cancelledOrders.length} đơn hàng thành công!`)
       setShowCancelDialog(false)
       navigate('/products')
@@ -306,11 +285,8 @@ function OrderCreate() {
           )}
         </div>
 
-        {/* Main content */}
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
-          {/* Order items - Takes 2 columns on large screens */}
           <div className='lg:col-span-2 space-y-6'>
-            {/* Products List */}
             <div className='bg-white rounded-lg shadow-sm border p-6'>
               <h2 className='text-xl font-semibold mb-6 flex items-center gap-2'>
                 <CheckCircle className='w-5 h-5 text-green-600' />
@@ -342,7 +318,6 @@ function OrderCreate() {
                 ))}
               </div>
 
-              {/* Shipping info */}
               <div className='mt-6 pt-4 border-t border-gray-200'>
                 <div className='flex items-center justify-between text-sm text-gray-600'>
                   <div className='flex items-center gap-2'>
@@ -361,7 +336,6 @@ function OrderCreate() {
               </div>
             </div>
 
-            {/* Payment Method Selection */}
             <div className='bg-white rounded-lg shadow-sm border p-6'>
               <h2 className='text-xl font-semibold mb-4'>Phương thức thanh toán</h2>
               {existingOrder ? (
@@ -386,10 +360,11 @@ function OrderCreate() {
               ) : (
                 <div className='space-y-3'>
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'COD'
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'COD'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
                   >
                     <input
                       type='radio'
@@ -406,10 +381,11 @@ function OrderCreate() {
                   </label>
 
                   <label
-                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'Banking'
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
+                    className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'Banking'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
                   >
                     <input
                       type='radio'
@@ -428,7 +404,6 @@ function OrderCreate() {
               )}
             </div>
 
-            {/* Shipping Address Info */}
             <div className='bg-white rounded-lg shadow-sm border p-6'>
               <h2 className='text-xl font-semibold mb-4 flex items-center gap-2'>
                 <Truck className='w-5 h-5 text-green-600' />
@@ -441,18 +416,14 @@ function OrderCreate() {
                   {selectedAddress ? (
                     <div>
                       <p className='text-sm text-gray-600'>
-                        {selectedAddress.streetAddress}, {selectedAddress.ward}, {selectedAddress.district}, {selectedAddress.province}
+                        {selectedAddress.streetAddress}, {selectedAddress.ward}, {selectedAddress.district},{' '}
+                        {selectedAddress.province}
                       </p>
-
                     </div>
                   ) : (
                     <div>
-                      <p className='text-sm text-red-600 font-medium'>
-                        ⚠️ Chưa chọn địa chỉ giao hàng
-                      </p>
-                      <p className='text-xs text-gray-500 mt-1'>
-                        Vui lòng quay lại giỏ hàng để chọn địa chỉ
-                      </p>
+                      <p className='text-sm text-red-600 font-medium'>⚠️ Chưa chọn địa chỉ giao hàng</p>
+                      <p className='text-xs text-gray-500 mt-1'>Vui lòng quay lại giỏ hàng để chọn địa chỉ</p>
                     </div>
                   )}
                 </div>
@@ -460,10 +431,8 @@ function OrderCreate() {
             </div>
           </div>
 
-          {/* Order summary and actions - Takes 1 column */}
           <div className='lg:col-span-1'>
             <div className='sticky top-4 space-y-4'>
-              {/* Order total */}
               <div className='bg-white rounded-lg shadow-sm border p-6'>
                 <h3 className='font-semibold text-lg mb-4'>Tổng kết đơn hàng</h3>
 
@@ -490,7 +459,6 @@ function OrderCreate() {
                   </div>
                 </div>
 
-                {/* Payment method display */}
                 <div className='mb-4 p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200'>
                   <p className='text-xs text-gray-600 mb-1'>Phương thức thanh toán:</p>
                   <p className='text-sm font-semibold text-gray-900'>
@@ -579,7 +547,7 @@ function OrderCreate() {
         isOpen={showCancelDialog}
         onClose={() => setShowCancelDialog(false)}
         onConfirm={handleConfirmCancel}
-        orderInfo={order ? { orderId: order.id, totalAmount: order.finalPrice } : undefined}
+        orderInfo={order ? { orderId: order.id, userId: user?.userId || '', totalAmount: order.finalPrice } : undefined}
         isLoading={isCancelling}
       />
     </div>

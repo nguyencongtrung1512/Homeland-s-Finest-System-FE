@@ -9,6 +9,7 @@ interface CancelOrderDialogProps {
   onConfirm: (reason: string) => void
   orderInfo?: {
     orderId: string
+    userId: string
     totalAmount?: number // Make optional to handle undefined cases
   }
   productInfo?: {
