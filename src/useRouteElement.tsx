@@ -34,8 +34,8 @@ import ApproveStores from './pages/staff/storeManagerment/approveStores'
 import LockedStores from './pages/staff/storeManagerment/lockedStores'
 import ManagerProduct from './pages/staff/productManagerment/managerProduct'
 import TransactionManagement from './pages/staff/transactions/transactions'
-import ReportManagement from './pages/staff/reports/reports'
-import ReportDetail from './pages/staff/reports/reportDetail'
+import ReportManagement from './pages/staff/formReport/reports'
+import ReportDetail from './pages/staff/formReport/reportDetail'
 import AdminLayout from './Layouts/AdminLayout/adminLayout'
 import AdminDashboard from './pages/admin/dashboard'
 import StoreManagement from './pages/admin/storeManagerment/list'
@@ -268,6 +268,10 @@ export default function useRouteElements() {
               element: <StaffStoreDetail />
             },
             {
+              path: path.reportDetailStaff,
+              element: <ReportDetail />
+            },
+            {
               path: path.approveStoresStaff,
               element: <ApproveStores />
             },
@@ -307,15 +311,7 @@ export default function useRouteElements() {
               path: path.blogStaff,
               element: <BlogManagement />
             }
-            // TODO: Thêm các routes còn thiếu khi có components
-            // {
-            //   path: path.complianceStaff,
-            //   element: <ComplianceStaff />
-            // },
-            // {
-            //   path: path.settingsStaff,
-            //   element: <SettingsStaff />
-            // }
+           
           ]
         }
       ]
