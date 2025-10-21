@@ -1,6 +1,5 @@
 // combo.type.ts
 
-// Request types for creating combo
 export interface CreateComboRequest {
   name: string
   description?: string
@@ -8,7 +7,6 @@ export interface CreateComboRequest {
   thumbnailFile?: File
 }
 
-// Request types for updating combo
 export interface UpdateComboRequest {
   name: string
   description?: string
@@ -16,17 +14,14 @@ export interface UpdateComboRequest {
   thumbnailFile?: File
 }
 
-// Request types for combo items
 export interface CreateComboItemRequest {
   productVariantId: string
   comboItemName: string
   price: number
   quantity: number
-  isActive: boolean
 }
 
 export interface UpdateComboItemRequest {
-  id?: string // Có ID = update, không có ID = thêm mới
   productVariantId: string
   comboItemName: string
   price: number
@@ -34,7 +29,6 @@ export interface UpdateComboItemRequest {
   isActive: boolean
 }
 
-// Response types for combo operations
 export interface ComboResponse {
   status: number
   message: string
@@ -44,50 +38,52 @@ export interface ComboResponse {
 export interface ComboData {
   id: string
   name: string
-  description: string
-  thumbnailUrl: string
+  storeId?: string
+  provinceId: number
+  provinceName: string
+  thumbnailUrl?: string
+  description?: string
   status: 'Draft' | 'Pending' | 'Approved' | 'Rejected'
-  provinceId: string
   isActive: boolean
+  createdAt?: string
+  updatedAt?: string
+  comboItems: ComboItem[]
 }
 
-// Error response types
 export interface ComboErrorResponse {
   succeeded: false
   message: string
   errors: string[] | null
   data: null
 }
-
-// Combo item types
 export interface ComboItem {
   id: string
   productVariantId: string
   comboItemName: string
-  comboItemImageUrl: string
+  comboItemImageUrl?: string
   price: number
   quantity: number
   isActive: boolean
-  productName?: string
-  variantName?: string
-  storeName?: string
+  productName: string
+  variantName: string
+  storeName: string
 }
-
-// Full combo with items
 export interface Combo {
   id: string
   name: string
-  description: string
-  thumbnailUrl: string
-  status?: 'Draft' | 'Pending' | 'Approved' | 'Rejected'
+  storeId?: string
   provinceId: number
-  provinceName?: string
+  provinceName: string
+  thumbnailUrl?: string
+  description?: string
+  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected'
   isActive: boolean
+  createdAt?: string
+  updatedAt?: string
   comboItems: ComboItem[]
   staffNote?: string
 }
 
-// Pagination types
 export interface ComboPagination {
   pageSize: number
   pageNumber: number
@@ -102,7 +98,6 @@ export interface ComboListResponse {
   pagination: ComboPagination
 }
 
-// Query parameters
 export interface ComboParams {
   pageSize?: number
   pageNumber?: number

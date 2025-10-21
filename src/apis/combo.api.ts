@@ -1,5 +1,7 @@
 // combo.api.ts
 import axiosInstance from '../service/axiosInstance'
+import { storeApi } from './store.api'
+import { productApi } from './product.api'
 import type {
   CreateComboRequest,
   UpdateComboRequest,
@@ -39,20 +41,17 @@ export const createComboShell = async (comboData: CreateComboRequest): Promise<a
 }
 
 // POST /api/combo/{comboId}/items - Thêm Items vào Combo (Bước 2)
-export const addItemToCombo = async (comboId: string, itemData: CreateComboItemRequest): Promise<ComboResponse> => {
+export const addItemToCombo = async (comboId: string, itemData: CreateComboItemRequest): Promise<any> => {
   const response = await axiosInstance.post<ComboResponse>(`${API_URL}/${comboId}/items`, itemData, {
     headers: {
       'Content-Type': 'application/json'
     }
   })
 
-  return response.data
+  return response
 }
 
-// ===== LUỒNG CẬP NHẬT COMBO =====
-
-// PUT /api/combo/{id} - Cập nhật Combo Shell
-export const updateComboShell = async (comboId: string, comboData: UpdateComboRequest): Promise<ComboResponse> => {
+export const updateComboShell = async (comboId: string, comboData: UpdateComboRequest): Promise<any> => {
   const formData = new FormData()
 
   formData.append('Name', comboData.name)
@@ -72,29 +71,32 @@ export const updateComboShell = async (comboId: string, comboData: UpdateComboRe
     }
   })
 
-  return response.data
+  return response
 }
 
-// PUT /api/combo/{comboId}/items - Cập nhật Items trong Combo
-export const updateComboItem = async (comboId: string, itemData: UpdateComboItemRequest): Promise<ComboResponse> => {
-  const response = await axiosInstance.put<ComboResponse>(`${API_URL}/${comboId}/items`, itemData, {
+export const updateComboItem = async (
+  comboId: string,
+  itemId: string,
+  itemData: UpdateComboItemRequest
+): Promise<any> => {
+  const response = await axiosInstance.put<ComboResponse>(`${API_URL}/${comboId}/items/${itemId}`, itemData, {
     headers: {
       'Content-Type': 'application/json'
     }
   })
 
-  return response.data
+  return response
 }
 
-// ===== LUỒNG ĐỌC DỮ LIỆU =====
-
-// GET /api/combo - Lấy danh sách Combo
 export const getAllCombos = async (params?: ComboParams): Promise<Combo[]> => {
   try {
+    console.log('getAllCombos params:', params)
     const response = await axiosInstance.get(API_URL, { params })
+    console.log('getAllCombos response:', response.data)
 
     // Backend trả về array trực tiếp hoặc object có data property
     const data = Array.isArray(response.data) ? response.data : response.data?.data || []
+    console.log('getAllCombos processed data:', data)
     return data
   } catch (error) {
     console.error('getAllCombos API error:', error)
@@ -102,21 +104,16 @@ export const getAllCombos = async (params?: ComboParams): Promise<Combo[]> => {
   }
 }
 
-// GET /api/combo/{id} - Lấy chi tiết Combo
-export const getComboById = async (comboId: string): Promise<ComboResponse> => {
+export const getComboById = async (comboId: string): Promise<any> => {
   const response = await axiosInstance.get<ComboResponse>(`${API_URL}/${comboId}`)
-  return response.data
+  return response
 }
 
-// ===== UTILITY FUNCTIONS =====
-
-// Helper function để tạo combo hoàn chỉnh (Shell + Items)
 export const createCompleteCombo = async (
   shellData: CreateComboRequest,
   itemsData: CreateComboItemRequest[]
 ): Promise<ComboResponse> => {
   try {
-    // Bước 1: Tạo combo shell
     const shellResponse = await createComboShell(shellData)
 
     if (!shellResponse.data?.id) {
@@ -126,7 +123,6 @@ export const createCompleteCombo = async (
     const comboId = shellResponse.data.id
     let lastResponse = shellResponse
 
-    // Bước 2: Thêm từng item vào combo
     for (const itemData of itemsData) {
       lastResponse = await addItemToCombo(comboId, itemData)
     }
@@ -138,19 +134,16 @@ export const createCompleteCombo = async (
   }
 }
 
-// Helper function để cập nhật combo hoàn chỉnh
 export const updateCompleteCombo = async (
   comboId: string,
   shellData: UpdateComboRequest,
-  itemsData: UpdateComboItemRequest[]
+  itemsData: { itemId: string; data: UpdateComboItemRequest }[]
 ): Promise<ComboResponse> => {
   try {
-    // Bước 1: Cập nhật combo shell
     let lastResponse = await updateComboShell(comboId, shellData)
 
-    // Bước 2: Cập nhật từng item
-    for (const itemData of itemsData) {
-      lastResponse = await updateComboItem(comboId, itemData)
+    for (const { itemId, data } of itemsData) {
+      lastResponse = await updateComboItem(comboId, itemId, data)
     }
 
     return lastResponse
@@ -159,17 +152,47 @@ export const updateCompleteCombo = async (
     throw error
   }
 }
-
-// Helper function để xóa item khỏi combo (set isActive = false)
 export const removeItemFromCombo = async (comboId: string, itemId: string): Promise<ComboResponse> => {
   const itemData: UpdateComboItemRequest = {
-    id: itemId,
-    productVariantId: '', // Sẽ được ignore khi có ID
-    comboItemName: '', // Sẽ được ignore khi có ID
-    price: 0, // Sẽ được ignore khi có ID
-    quantity: 0, // Sẽ được ignore khi có ID
+    productVariantId: '',
+    comboItemName: '',
+    price: 0,
+    quantity: 0,
     isActive: false
   }
 
-  return updateComboItem(comboId, itemData)
+  return updateComboItem(comboId, itemId, itemData)
+}
+
+// ===== UTILITY FUNCTIONS FOR VARIANTS =====
+
+// Lấy danh sách variants theo sellerId
+export const getVariantsBySellerId = async (sellerId: string) => {
+  try {
+    console.log('Getting store for sellerId:', sellerId)
+
+    // Bước 1: Lấy store theo sellerId
+    const storeResponse = await storeApi.getStoreBySellerId(sellerId)
+    console.log('Store response:', storeResponse)
+
+    if (!storeResponse.data?.id) {
+      throw new Error('Không tìm thấy store cho seller này')
+    }
+
+    const storeId = storeResponse.data.id
+    console.log('StoreId found:', storeId)
+
+    // Bước 2: Lấy variants theo storeId
+    const variantsResponse = await productApi.getAllActiveVariants(storeId)
+    console.log('Variants response:', variantsResponse)
+
+    // Đảm bảo trả về array
+    const variants = variantsResponse.data || []
+    console.log('Processed variants:', variants)
+
+    return variants
+  } catch (error) {
+    console.error('Error getting variants by sellerId:', error)
+    throw error
+  }
 }

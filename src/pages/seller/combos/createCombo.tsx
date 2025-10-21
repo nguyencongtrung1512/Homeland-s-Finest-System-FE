@@ -76,10 +76,7 @@ function CreateComboSeller() {
       return
     }
 
-    if (!thumbnailFile) {
-      toast.error('Vui lòng chọn ảnh thumbnail')
-      return
-    }
+    // Thumbnail is optional for combo creation
 
     setLoading(true)
 
@@ -95,7 +92,8 @@ function CreateComboSeller() {
 
       if (response.status === 201) {
         toast.success('Tạo combo thành công! Bạn có thể thêm sản phẩm vào combo.')
-        navigate(`../${path.comboSeller}`)
+        // Navigate to edit page to add items
+        navigate(`../${path.updateComboSeller.replace(':id', response.data.id)}`)
       } else {
         toast.error(response.message || 'Có lỗi xảy ra khi tạo combo')
       }
@@ -161,7 +159,7 @@ function CreateComboSeller() {
 
             {/* Upload ảnh */}
             <div className='space-y-2'>
-              <Label htmlFor='thumbnail'>Ảnh thumbnail *</Label>
+              <Label htmlFor='thumbnail'>Ảnh thumbnail</Label>
 
               {!thumbnailFile ? (
                 <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors'>
@@ -203,7 +201,7 @@ function CreateComboSeller() {
               </Button>
               <Button
                 type='submit'
-                disabled={loading || !formData.name.trim() || !thumbnailFile}
+                disabled={loading || !formData.name.trim()}
                 className='bg-green-600 hover:bg-green-700'
               >
                 {loading ? 'Đang tạo...' : 'Tạo Combo'}
@@ -221,9 +219,10 @@ function CreateComboSeller() {
         <CardContent>
           <ul className='space-y-2 text-sm text-gray-600'>
             <li>• Combo sẽ được tạo với trạng thái "Nháp"</li>
-            <li>• Sau khi tạo, bạn có thể thêm sản phẩm vào combo</li>
+            <li>• Sau khi tạo, bạn sẽ được chuyển đến trang chỉnh sửa để thêm sản phẩm</li>
             <li>• Combo cần ít nhất 2 sản phẩm để có thể gửi duyệt</li>
-            <li>• Ảnh thumbnail sẽ được tự động resize và tối ưu hóa</li>
+            <li>• Khi có đủ 2 sản phẩm, combo sẽ tự động chuyển sang trạng thái "Chờ duyệt"</li>
+            <li>• Ảnh thumbnail là tùy chọn và sẽ được tự động resize</li>
           </ul>
         </CardContent>
       </Card>

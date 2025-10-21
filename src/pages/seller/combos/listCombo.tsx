@@ -23,17 +23,15 @@ function ComboSeller() {
   const pagination =
     allCombos.length > 0
       ? {
-          pageNumber: currentPage,
-          pageSize: pageSize,
-          totalItems: allCombos.length,
-          totalPages: Math.ceil(allCombos.length / pageSize)
-        }
+        pageNumber: currentPage,
+        pageSize: pageSize,
+        totalItems: allCombos.length,
+        totalPages: Math.ceil(allCombos.length / pageSize)
+      }
       : null
 
-  // Lấy combo cho trang hiện tại
   const combos = allCombos.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
-  // Fetch combos function
   const fetchCombos = useCallback(async () => {
     if (!user?.userId) {
       setError('Chưa đăng nhập')
@@ -44,26 +42,22 @@ function ComboSeller() {
     setError(null)
 
     try {
-      // Sử dụng mock data thay vì gọi API
-      setAllCombos(allCombos)
-      setCurrentPage(1)
       const params: ComboParams = {
-        pageSize: 0, // Lấy tất cả combo
+        pageSize: 0,
         pageNumber: 1,
         sellerID: user.userId
       }
       const response = await getAllCombos(params)
       setAllCombos(response)
+      setCurrentPage(1)
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải danh sách combo'
       setError(errorMessage)
-      console.error('Lỗi khi tải combo:', err)
     } finally {
       setLoading(false)
     }
   }, [user?.userId])
 
-  // Load combos on mount
   useEffect(() => {
     fetchCombos()
   }, [fetchCombos])
@@ -197,7 +191,7 @@ function ComboSeller() {
                 <tbody>
                   {combos.map((combo) => {
                     const statusInfo = getStatusBadge(combo.status, combo.isActive)
-                    const totalPrice = calculateTotalPrice(combo.comboItems)
+                    const totalPrice = calculateTotalPrice(combo.comboItems.filter((item) => item.isActive))
                     const activeItemsCount = combo.comboItems.filter((item) => item.isActive).length
 
                     return (
@@ -207,7 +201,9 @@ function ComboSeller() {
                           {combo.description || 'Không có mô tả'}
                         </td>
                         <td className='py-3 px-4 text-gray-900 font-semibold'>{totalPrice.toLocaleString()}₫</td>
-                        <td className='py-3 px-4 text-gray-900'>3/3</td>
+                        <td className='py-3 px-4 text-gray-900'>
+                          {activeItemsCount}/{combo.comboItems.length}
+                        </td>
                         <td className='py-3 px-4'>
                           <Badge variant='secondary' className={statusInfo.className}>
                             {statusInfo.text}

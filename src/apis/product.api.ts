@@ -1,5 +1,5 @@
 import axiosInstance from '../service/axiosInstance'
-import type { Product, ProductUpdateInput } from '../types'
+import type { Product, ProductUpdateInput, ProductVariant } from '../types'
 
 const API_URL = `/Product`
 
@@ -219,9 +219,21 @@ export const productApi = {
     return response as unknown as ProductResponse
   },
 
-   getByProvinceName: async (provinceName: string, params?: { pageSize?: number; pageNumber?: number }): Promise<ProductListResponse> => {
+  getByProvinceName: async (
+    provinceName: string,
+    params?: { pageSize?: number; pageNumber?: number }
+  ): Promise<ProductListResponse> => {
     const response = await axiosInstance.get(`${API_URL}/province/name/${encodeURIComponent(provinceName)}`, { params })
     return response as unknown as ProductListResponse
+  },
+
+  // Get all active product variants by store ID
+  getAllActiveVariants: async (
+    storeId: string,
+    params?: { pageSize?: number; pageNumber?: number }
+  ): Promise<ApiResponse<ProductVariant[]>> => {
+    const response = await axiosInstance.get(`/ProductVavariant/get-all-activce/${storeId}`, { params })
+    return response as unknown as ApiResponse<ProductVariant[]>
   }
 }
 

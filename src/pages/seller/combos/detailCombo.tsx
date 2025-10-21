@@ -3,61 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
-import { ArrowLeft, Edit, Package, MapPin, FileText } from 'lucide-react'
+import { ArrowLeft, Edit, Package, MapPin, FileText, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { getComboById } from '../../../apis/combo.api'
 import path from '../../../constants/path'
 import type { Combo } from '../../../types/combo.type'
 
-// Mock data cứng (giống với listCombo.tsx)
-const mockCombos: Combo[] = [
-  {
-    id: '1',
-    name: 'Combo Gạo Sạch Miền Tây',
-    provinceId: 1,
-    provinceName: 'An Giang',
-    description: 'Combo gạo sạch chất lượng cao từ miền Tây Nam Bộ, đảm bảo an toàn thực phẩm',
-    isActive: true,
-    thumbnailUrl: 'https://tse1.mm.bing.net/th/id/OIP.xS6YZHwSZbjL4L_kfFPHEQHaEL?cb=12&rs=1&pid=ImgDetMain&o=7&rm=3',
-    staffNote: 'Combo được duyệt và đang bán tốt',
-    comboItems: [
-      {
-        id: '1-1',
-        productVariantId: 'pv-1',
-        comboItemName: 'Gạo ST25 5kg',
-        comboItemImageUrl: 'https://tse2.mm.bing.net/th/id/OIP.HTagk8TrUtzQbnYskxV_bwHaEK?cb=12&pid=ImgDet&w=184&h=103&c=7&dpr=1.3&o=7&rm=3',
-        price: 150000,
-        quantity: 1,
-        isActive: true,
-        productName: 'Gạo ST25',
-        variantName: '5kg',
-        storeName: 'Cửa hàng Gạo Sạch Miền Tây'
-      },
-      {
-        id: '1-2',
-        productVariantId: 'pv-2',
-        comboItemName: 'Gạo Jasmine 2kg',
-        comboItemImageUrl: 'https://tse3.mm.bing.net/th/id/OIP.lVQdtmjBTXhN-BzGdkkVWAHaFs?cb=12&w=780&h=600&rs=1&pid=ImgDetMain&o=7&rm=3',
-        price: 80000,
-        quantity: 1,
-        isActive: true,
-        productName: 'Gạo Jasmine',
-        variantName: '2kg',
-        storeName: 'Cửa hàng Gạo Sạch Miền Tây'
-      },
-      {
-        id: '1-3',
-        productVariantId: 'pv-3',
-        comboItemName: 'Gạo Nàng Thơm 3kg',
-        comboItemImageUrl: 'https://tse3.mm.bing.net/th/id/OIP.lVQdtmjBTXhN-BzGdkkVWAHaFs?cb=12&w=780&h=600&rs=1&pid=ImgDetMain&o=7&rm=3',
-        price: 120000,
-        quantity: 1,
-        isActive: true,
-        productName: 'Gạo Nàng Thơm',
-        variantName: '3kg',
-        storeName: 'Cửa hàng Gạo Sạch Miền Tây'
-      }
-    ]
-  }
-]
 
 function DetailComboSeller() {
   const { id } = useParams<{ id: string }>()
@@ -66,14 +16,13 @@ function DetailComboSeller() {
   const [loading, setLoading] = useState(true)
 
   const fetchCombo = useCallback(async () => {
+    if (!id) return
+
     setLoading(true)
     try {
-      // Simulate delay
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      const foundCombo = mockCombos.find((c) => c.id === id)
-      if (foundCombo) {
-        setCombo(foundCombo)
+      const response = await getComboById(id)
+      if (response.data) {
+        setCombo(response.data)
       } else {
         setCombo(null)
       }
@@ -86,10 +35,8 @@ function DetailComboSeller() {
   }, [id])
 
   useEffect(() => {
-    if (id) {
-      fetchCombo()
-    }
-  }, [id, fetchCombo])
+    fetchCombo()
+  }, [fetchCombo])
 
   const handleBack = () => {
     navigate(-1)
@@ -101,16 +48,46 @@ function DetailComboSeller() {
     }
   }
 
-  const getStatusBadge = (isActive: boolean) => {
+  const getStatusBadge = (status: string, isActive: boolean) => {
     if (!isActive) {
       return {
         text: 'Đã xóa',
-        className: 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+        className: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
+        icon: <XCircle className='w-4 h-4' />
       }
     }
-    return {
-      text: 'Hoạt động',
-      className: 'bg-green-100 text-green-800 hover:bg-green-100'
+
+    switch (status) {
+      case 'Draft':
+        return {
+          text: 'Nháp',
+          className: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
+          icon: <FileText className='w-4 h-4' />
+        }
+      case 'Pending':
+        return {
+          text: 'Chờ duyệt',
+          className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
+          icon: <Clock className='w-4 h-4' />
+        }
+      case 'Approved':
+        return {
+          text: 'Đã duyệt',
+          className: 'bg-green-100 text-green-800 hover:bg-green-100',
+          icon: <CheckCircle className='w-4 h-4' />
+        }
+      case 'Rejected':
+        return {
+          text: 'Bị từ chối',
+          className: 'bg-red-100 text-red-800 hover:bg-red-100',
+          icon: <XCircle className='w-4 h-4' />
+        }
+      default:
+        return {
+          text: 'Đã duyệt',
+          className: 'bg-green-100 text-green-800 hover:bg-green-100',
+          icon: <CheckCircle className='w-4 h-4' />
+        }
     }
   }
 
@@ -121,8 +98,15 @@ function DetailComboSeller() {
 
   const calculateTotalItems = () => {
     if (!combo) return 0
-    return combo.comboItems.reduce((total, item) => total + item.quantity, 0)
+    return combo.comboItems.filter(item => item.isActive).reduce((total, item) => total + item.quantity, 0)
   }
+
+  const calculateActiveItemsCount = () => {
+    if (!combo) return 0
+    return combo.comboItems.filter(item => item.isActive).length
+  }
+
+  const canEdit = combo?.status === 'Draft' || combo?.status === 'Rejected'
 
   if (loading) {
     return (
@@ -150,9 +134,10 @@ function DetailComboSeller() {
     )
   }
 
-  const statusInfo = getStatusBadge(combo.isActive)
+  const statusInfo = getStatusBadge(combo.status, combo.isActive)
   const totalPrice = calculateTotalPrice()
   const totalItems = calculateTotalItems()
+  const activeItemsCount = calculateActiveItemsCount()
 
   return (
     <div className='p-6'>
@@ -165,10 +150,23 @@ function DetailComboSeller() {
           </Button>
           <h1 className='text-2xl font-semibold text-gray-900'>{combo.name}</h1>
         </div>
-        <Button onClick={handleEdit} className='bg-green-600 hover:bg-green-700'>
-          <Edit className='w-4 h-4 mr-2' />
-          Chỉnh sửa
-        </Button>
+        <div className='flex items-center gap-4'>
+          <Badge variant='secondary' className={statusInfo.className}>
+            {statusInfo.icon}
+            <span className='ml-1'>{statusInfo.text}</span>
+          </Badge>
+          {canEdit && (
+            <Button onClick={handleEdit} className='bg-green-600 hover:bg-green-700'>
+              <Edit className='w-4 h-4 mr-2' />
+              Chỉnh sửa
+            </Button>
+          )}
+          {!canEdit && combo.status === 'Pending' && (
+            <div className='text-sm text-yellow-600 bg-yellow-50 px-3 py-1 rounded'>
+              Combo đang chờ duyệt
+            </div>
+          )}
+        </div>
       </div>
 
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
@@ -177,7 +175,13 @@ function DetailComboSeller() {
           {/* Combo Image */}
           <Card>
             <CardContent className='p-0'>
-              <img src={combo.thumbnailUrl} alt={combo.name} className='w-full h-64 object-cover rounded-t-lg' />
+              {combo.thumbnailUrl ? (
+                <img src={combo.thumbnailUrl} alt={combo.name} className='w-full h-64 object-cover rounded-t-lg' />
+              ) : (
+                <div className='w-full h-64 bg-gray-200 rounded-t-lg flex items-center justify-center'>
+                  <Package className='w-16 h-16 text-gray-400' />
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -186,36 +190,54 @@ function DetailComboSeller() {
             <CardHeader>
               <CardTitle className='flex items-center gap-2'>
                 <Package className='w-5 h-5' />
-                Sản phẩm trong combo ({combo.comboItems.length} items)
+                Sản phẩm trong combo ({activeItemsCount}/{combo.comboItems.length} items)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                {combo.comboItems.map((item) => (
-                  <div key={item.id} className='border rounded-lg p-4 hover:shadow-md transition-shadow'>
-                    <div className='flex gap-4'>
-                      <img
-                        src={item.comboItemImageUrl}
-                        alt={item.comboItemName}
-                        className='w-16 h-16 object-cover rounded-lg'
-                      />
-                      <div className='flex-1'>
-                        <h4 className='font-medium text-gray-900'>{item.comboItemName}</h4>
-                        <p className='text-sm text-gray-600'>
-                          {item.productName} - {item.variantName}
-                        </p>
-                        <p className='text-sm text-gray-500'>{item.storeName}</p>
-                        <div className='flex justify-between items-center mt-2'>
-                          <span className='text-sm text-gray-600'>Số lượng: {item.quantity}</span>
-                          <span className='font-semibold text-green-600'>
-                            {(item.price * item.quantity).toLocaleString()}₫
-                          </span>
+              {combo.comboItems.length === 0 ? (
+                <div className='text-center py-8'>
+                  <Package className='w-12 h-12 mx-auto text-gray-400 mb-4' />
+                  <p className='text-gray-500'>Chưa có sản phẩm nào trong combo</p>
+                </div>
+              ) : (
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                  {combo.comboItems.map((item) => (
+                    <div key={item.id} className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${!item.isActive ? 'opacity-50' : ''}`}>
+                      <div className='flex gap-4'>
+                        {item.comboItemImageUrl ? (
+                          <img
+                            src={item.comboItemImageUrl}
+                            alt={item.comboItemName}
+                            className='w-16 h-16 object-cover rounded-lg'
+                          />
+                        ) : (
+                          <div className='w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center'>
+                            <Package className='w-8 h-8 text-gray-400' />
+                          </div>
+                        )}
+                        <div className='flex-1'>
+                          <h4 className='font-medium text-gray-900'>{item.comboItemName}</h4>
+                          <p className='text-sm text-gray-600'>
+                            {item.productName} - {item.variantName}
+                          </p>
+                          <p className='text-sm text-gray-500'>{item.storeName}</p>
+                          <div className='flex justify-between items-center mt-2'>
+                            <span className='text-sm text-gray-600'>Số lượng: {item.quantity}</span>
+                            <span className='font-semibold text-green-600'>
+                              {(item.price * item.quantity).toLocaleString()}₫
+                            </span>
+                          </div>
+                          {!item.isActive && (
+                            <Badge variant='secondary' className='mt-2 bg-gray-100 text-gray-800'>
+                              Đã ẩn
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -244,21 +266,29 @@ function DetailComboSeller() {
                 <span className='text-sm font-medium text-gray-700'>Tổng số lượng:</span>
                 <span className='text-lg font-semibold text-gray-900'>{totalItems}</span>
               </div>
+
+              <div className='flex items-center justify-between'>
+                <span className='text-sm font-medium text-gray-700'>Sản phẩm hoạt động:</span>
+                <span className='text-lg font-semibold text-gray-900'>{activeItemsCount}</span>
+              </div>
+
+              {combo.createdAt && (
+                <div className='flex items-center justify-between'>
+                  <span className='text-sm font-medium text-gray-700'>Ngày tạo:</span>
+                  <span className='text-sm text-gray-600'>{combo.createdAt}</span>
+                </div>
+              )}
+
+              {combo.updatedAt && (
+                <div className='flex items-center justify-between'>
+                  <span className='text-sm font-medium text-gray-700'>Cập nhật lần cuối:</span>
+                  <span className='text-sm text-gray-600'>{combo.updatedAt}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Location */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <MapPin className='w-5 h-5' />
-                Vị trí
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className='text-sm text-gray-600'>{combo.provinceName}</p>
-            </CardContent>
-          </Card>
+
 
           {/* Description */}
           <Card>

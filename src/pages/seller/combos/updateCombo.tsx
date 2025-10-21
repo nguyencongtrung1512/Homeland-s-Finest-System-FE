@@ -1,164 +1,346 @@
-import React from 'react'
-
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, CardContent } from '../../../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
-import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
-import { Upload, Image as ImageIcon, Save, X, ArrowLeft, Package } from 'lucide-react'
+import { Textarea } from '../../../components/ui/textarea'
+import { Badge } from '../../../components/ui/badge'
+import { Switch } from '../../../components/ui/switch'
+import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 import { toast } from 'react-toastify'
-import type { Combo } from '../../../types/combo.type'
-
-// Mock data cứng (giống với detailCombo.tsx)
-const mockCombos: Combo[] = [
-  {
-    id: '1',
-    name: 'Combo Gạo Sạch Miền Tây',
-    provinceId: 1,
-    provinceName: 'An Giang',
-    description: 'Combo gạo sạch chất lượng cao từ miền Tây Nam Bộ, đảm bảo an toàn thực phẩm',
-    isActive: true,
-    thumbnailUrl: 'https://tse1.mm.bing.net/th/id/OIP.xS6YZHwSZbjL4L_kfFPHEQHaEL?cb=12&rs=1&pid=ImgDetMain&o=7&rm=3',
-    staffNote: 'Combo được duyệt và đang bán tốt',
-    comboItems: [
-      {
-        id: '1-1',
-        productVariantId: 'pv-1',
-        comboItemName: 'Gạo ST25 5kg',
-        comboItemImageUrl: 'https://tse2.mm.bing.net/th/id/OIP.HTagk8TrUtzQbnYskxV_bwHaEK?cb=12&pid=ImgDet&w=184&h=103&c=7&dpr=1.3&o=7&rm=3',
-        price: 150000,
-        quantity: 1,
-        isActive: true,
-        productName: 'Gạo ST25',
-        variantName: '5kg',
-        storeName: 'Cửa hàng Gạo Sạch Miền Tây'
-      },
-      {
-        id: '1-2',
-        productVariantId: 'pv-2',
-        comboItemName: 'Gạo Jasmine 2kg',
-        comboItemImageUrl: 'https://tse3.mm.bing.net/th/id/OIP.lVQdtmjBTXhN-BzGdkkVWAHaFs?cb=12&w=780&h=600&rs=1&pid=ImgDetMain&o=7&rm=3',
-        price: 80000,
-        quantity: 1,
-        isActive: true,
-        productName: 'Gạo Jasmine',
-        variantName: '2kg',
-        storeName: 'Cửa hàng Gạo Sạch Miền Tây'
-      },
-      {
-        id: '1-3',
-        productVariantId: 'pv-3',
-        comboItemName: 'Gạo Nàng Thơm 3kg',
-        comboItemImageUrl: 'https://tse3.mm.bing.net/th/id/OIP.lVQdtmjBTXhN-BzGdkkVWAHaFs?cb=12&w=780&h=600&rs=1&pid=ImgDetMain&o=7&rm=3',
-        price: 120000,
-        quantity: 1,
-        isActive: true,
-        productName: 'Gạo Nàng Thơm',
-        variantName: '3kg',
-        storeName: 'Cửa hàng Gạo Sạch Miền Tây'
-      }
-    ]
-  }
-]
+import {
+  getComboById,
+  updateComboShell,
+  addItemToCombo,
+  updateComboItem,
+  removeItemFromCombo
+} from '../../../apis/combo.api'
+import ComboItemsManager from './ComboItemsManager'
+import type {
+  Combo,
+  CreateComboItemRequest,
+  UpdateComboItemRequest,
+  UpdateComboRequest
+} from '../../../types/combo.type'
 
 function UpdateComboSeller() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+
   const [combo, setCombo] = useState<Combo | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('basic')
+  const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
-    isActive: true,
-    thumbnailFile: null as File | null,
-    thumbnailPreview: ''
+    description: ''
   })
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
-  useEffect(() => {
-    // Simulate API call to get combo data
-    const fetchCombo = async () => {
-      setLoading(true)
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 500))
+  const fetchCombo = useCallback(async () => {
+    if (!id) return
 
-        const foundCombo = mockCombos.find((c) => c.id === id)
-        if (foundCombo) {
-          setCombo(foundCombo)
-          setFormData({
-            name: foundCombo.name,
-            description: foundCombo.description,
-            isActive: foundCombo.isActive,
-            thumbnailFile: null,
-            thumbnailPreview: foundCombo.thumbnailUrl
-          })
-        } else {
-          setCombo(null)
+    setLoading(true)
+    try {
+      const response = await getComboById(id)
+      if (response.data) {
+        const comboData = response.data
+        setCombo(comboData)
+        setFormData({
+          name: comboData.name,
+          description: comboData.description || ''
+        })
+        if (comboData.thumbnailUrl) {
+          setPreviewUrl(comboData.thumbnailUrl)
         }
-      } catch (error) {
-        console.error('Error fetching combo:', error)
-        setCombo(null)
-      } finally {
-        setLoading(false)
       }
-    }
-
-    if (id) {
-      fetchCombo()
+    } catch (error) {
+      console.error('Error fetching combo:', error)
+      toast.error('Không thể tải thông tin combo')
+    } finally {
+      setLoading(false)
     }
   }, [id])
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  useEffect(() => {
+    fetchCombo()
+  }, [fetchCombo])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [name]: value
     }))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         toast.error('Vui lòng chọn file ảnh')
         return
       }
 
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.error('Kích thước file không được vượt quá 5MB')
         return
       }
 
-      setFormData((prev) => ({
-        ...prev,
-        thumbnailFile: file,
-        thumbnailPreview: URL.createObjectURL(file)
-      }))
+      setThumbnailFile(file)
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
     }
   }
 
-  const handleSave = () => {
-    if (!formData.name.trim()) {
+  const removeFile = () => {
+    setThumbnailFile(null)
+    if (previewUrl && !combo?.thumbnailUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    setPreviewUrl(combo?.thumbnailUrl || null)
+  }
+
+
+  const handleSaveComboShell = async () => {
+    if (!combo || !formData.name.trim()) {
       toast.error('Vui lòng nhập tên combo')
       return
     }
 
-    console.log('Saving combo data:', formData)
-    toast.success('Cập nhật combo thành công!')
-    navigate(-1)
+    setSaving(true)
+    try {
+      const updateData: UpdateComboRequest = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        isActive: combo.isActive,
+        thumbnailFile: thumbnailFile || undefined
+      }
+
+      const response = await updateComboShell(combo.id, updateData)
+
+      if (response) {
+        setCombo({
+          ...response.data as unknown as Combo,
+          isActive: (response.data as unknown as Combo).isActive ?? true
+        })
+        toast.success('Cập nhật thông tin combo thành công')
+
+        if (response.data?.status === 'Pending') {
+          toast.info('Combo đã được gửi duyệt do có thay đổi')
+        }
+
+        await fetchCombo()
+      }
+    } catch (error) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as any
+        const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Có lỗi xảy ra khi cập nhật combo'
+        toast.error(errorMessage)
+      } else {
+        toast.error('Có lỗi xảy ra khi cập nhật combo')
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleCancel = () => {
-    navigate(-1)
+
+  const handleAddItem = async (itemData: CreateComboItemRequest) => {
+    if (!combo) return
+
+    setSaving(true)
+    try {
+      const response = await addItemToCombo(combo.id, itemData)
+
+      if (response) {
+        setCombo({
+          ...response,
+          isActive: response.isActive ?? true
+        })
+        toast.success('Thêm sản phẩm vào combo thành công')
+
+        if (response.status === 'Pending') {
+          toast.info('Combo đã được gửi duyệt do có đủ 2 sản phẩm')
+        }
+
+        await fetchCombo()
+      }
+    } catch (error) {
+
+      let errorMessage = 'Có lỗi xảy ra khi thêm sản phẩm'
+
+      if (error && typeof error === 'object') {
+        // Kiểm tra axios error structure
+        if ('response' in error) {
+          const axiosError = error as any
+
+          if (axiosError.response?.data?.message) {
+            errorMessage = axiosError.response.data.message
+          } else if (axiosError.response?.data?.error) {
+            errorMessage = axiosError.response.data.error
+          } else if (axiosError.message) {
+            errorMessage = axiosError.message
+          }
+        } else if ('message' in error) {
+          errorMessage = (error as Error).message
+        }
+      }
+
+      toast.error(errorMessage)
+      throw error
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUpdateItem = async (itemId: string, itemData: UpdateComboItemRequest) => {
+    if (!combo) return
+
+    setSaving(true)
+    try {
+      const response = await updateComboItem(combo.id, itemId, itemData)
+
+      if (response) {
+        setCombo({
+          ...response,
+          isActive: response.isActive ?? true
+        })
+        toast.success('Cập nhật sản phẩm thành công')
+
+        if (response.status === 'Pending') {
+          toast.info('Combo đã được gửi duyệt do có thay đổi')
+        } else if (response.status === 'Draft') {
+          toast.info('Combo đã chuyển về trạng thái nháp')
+        }
+
+        await fetchCombo()
+      }
+    } catch (error) {
+      console.error('Error updating item:', error)
+
+      let errorMessage = 'Có lỗi xảy ra khi cập nhật sản phẩm'
+
+      if (error && typeof error === 'object') {
+        if ('response' in error) {
+          const axiosError = error as any
+
+          if (axiosError.response?.data?.message) {
+            errorMessage = axiosError.response.data.message
+          } else if (axiosError.response?.data?.error) {
+            errorMessage = axiosError.response.data.error
+          } else if (axiosError.message) {
+            errorMessage = axiosError.message
+          }
+        } else if ('message' in error) {
+          errorMessage = (error as Error).message
+        }
+      }
+
+      toast.error(errorMessage)
+      throw error
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRemoveItem = async (itemId: string) => {
+    if (!combo) return
+
+    setSaving(true)
+    try {
+      const response = await removeItemFromCombo(combo.id, itemId)
+
+      if (response) {
+        setCombo({
+          ...response.data as unknown as Combo,
+          isActive: (response.data as unknown as Combo).isActive ?? true
+        })
+        toast.success('Xóa sản phẩm thành công')
+
+ back to Draft
+        if (response.data?.status === 'Draft') {
+          toast.info('Combo đã chuyển về trạng thái nháp')
+        }
+
+        await fetchCombo()
+
+
+      }
+    } catch (error) {
+      console.error('Error removing item:', error)
+
+      let errorMessage = 'Có lỗi xảy ra khi xóa sản phẩm'
+
+      if (error && typeof error === 'object') {
+        // Kiểm tra axios error structure
+        if ('response' in error) {
+          const axiosError = error as any
+
+          // Lấy message từ response.data.message
+          if (axiosError.response?.data?.message) {
+            errorMessage = axiosError.response.data.message
+          } else if (axiosError.response?.data?.error) {
+            errorMessage = axiosError.response.data.error
+          } else if (axiosError.message) {
+            errorMessage = axiosError.message
+          }
+        } else if ('message' in error) {
+          errorMessage = (error as Error).message
+        }
+      }
+
+      toast.error(errorMessage)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleBack = () => {
-    navigate(-1)
+    navigate('/seller/combo-management')
   }
+
+  const getStatusBadge = (status: string, isActive: boolean) => {
+    if (!isActive) {
+      return {
+        text: 'Đã xóa',
+        className: 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+      }
+    }
+
+    switch (status) {
+      case 'Draft':
+        return {
+          text: 'Nháp',
+          className: 'bg-blue-100 text-blue-800 hover:bg-blue-100'
+        }
+      case 'Pending':
+        return {
+          text: 'Chờ duyệt',
+          className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+        }
+      case 'Approved':
+        return {
+          text: 'Đã duyệt',
+          className: 'bg-green-100 text-green-800 hover:bg-green-100'
+        }
+      case 'Rejected':
+        return {
+          text: 'Bị từ chối',
+          className: 'bg-red-100 text-red-800 hover:bg-red-100'
+        }
+      default:
+        return {
+          text: 'Đã duyệt',
+          className: 'bg-green-100 text-green-800 hover:bg-green-100'
+        }
+    }
+  }
+
+  const canEdit = combo?.status === 'Draft' || combo?.status === 'Rejected' || combo?.status === 'Pending'
 
   if (loading) {
     return (
@@ -186,207 +368,172 @@ function UpdateComboSeller() {
     )
   }
 
+  const statusInfo = getStatusBadge(combo.status, combo.isActive)
+
   return (
-    <div className='p-6 bg-gray-50 min-h-screen'>
+    <div className='p-6'>
       {/* Header */}
-      <div className='mb-8'>
-        <div className='flex items-center gap-4 mb-4'>
+      <div className='flex items-center justify-between mb-6'>
+        <div className='flex items-center gap-4'>
           <Button variant='ghost' onClick={handleBack}>
             <ArrowLeft className='w-4 h-4 mr-2' />
             Quay lại
           </Button>
-          <h1 className='text-3xl font-bold text-green-700'>Chỉnh sửa Combo</h1>
+          <h1 className='text-2xl font-semibold text-gray-900'>Chỉnh sửa Combo</h1>
         </div>
-        <p className='text-gray-600'>Cập nhật thông tin và cài đặt combo của bạn</p>
+        <div className='flex items-center gap-4'>
+          <Badge variant='secondary' className={statusInfo.className}>
+            {statusInfo.text}
+          </Badge>
+          {combo?.status === 'Approved' && (
+            <div className='text-sm text-green-600 bg-green-50 px-3 py-1 rounded'>
+              Combo đã được duyệt, không thể chỉnh sửa
+            </div>
+          )}
+          {combo?.status === 'Pending' && (
+            <div className='text-sm text-yellow-600 bg-yellow-50 px-3 py-1 rounded'>
+              Combo đang chờ duyệt, vẫn có thể chỉnh sửa
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className='flex space-x-8 border-b border-gray-200 mb-8'>
-        <button
-          onClick={() => setActiveTab('basic')}
-          className={`pb-3 text-sm font-medium transition-colors ${activeTab === 'basic' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-600 hover:text-gray-900'
-            }`}
-        >
-          Thông tin cơ bản
-        </button>
-        <button
-          onClick={() => setActiveTab('items')}
-          className={`pb-3 text-sm font-medium transition-colors ${activeTab === 'items' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-600 hover:text-gray-900'
-            }`}
-        >
-          Sản phẩm trong combo
-        </button>
-      </div>
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+        {/* Combo Shell Form */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Thông tin Combo</CardTitle>
+          </CardHeader>
+          <CardContent className='space-y-6'>
+            {/* Tên combo */}
+            <div className='space-y-2'>
+              <Label htmlFor='name'>Tên combo *</Label>
+              <Input
+                id='name'
+                name='name'
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder='Nhập tên combo...'
+                disabled={!canEdit}
+                maxLength={200}
+              />
+              <p className='text-sm text-gray-500'>{formData.name.length}/200 ký tự</p>
+            </div>
 
-      {/* Main Content */}
-      <Card className='max-w-4xl mx-auto'>
-        <CardContent className='p-8'>
-          {activeTab === 'basic' && (
-            <div className='space-y-8'>
-              {/* Combo Thumbnail Section */}
-              <div>
-                <h3 className='text-lg font-semibold text-gray-900 mb-4'>Ảnh thumbnail combo</h3>
-                <div className='flex items-start gap-6'>
-                  <div className='w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden'>
-                    {formData.thumbnailPreview ? (
-                      <img
-                        src={formData.thumbnailPreview}
-                        alt='Combo thumbnail'
-                        className='w-full h-full object-cover'
-                      />
-                    ) : (
-                      <ImageIcon className='w-8 h-8 text-gray-400' />
+            {/* Mô tả */}
+            <div className='space-y-2'>
+              <Label htmlFor='description'>Mô tả</Label>
+              <Textarea
+                id='description'
+                name='description'
+                value={formData.description}
+                onChange={handleInputChange}
+                placeholder='Nhập mô tả combo...'
+                rows={4}
+                disabled={!canEdit}
+                maxLength={500}
+              />
+              <p className='text-sm text-gray-500'>{formData.description.length}/500 ký tự</p>
+            </div>
+
+            {/* Trạng thái hoạt động */}
+            <div className='space-y-2'>
+              <div className='flex items-center justify-between'>
+                <Label htmlFor='isActive'>Trạng thái hoạt động</Label>
+                <Switch
+                  id='isActive'
+                  checked={combo?.isActive ?? true}
+                  onCheckedChange={(checked) => {
+                    if (combo) {
+                      setCombo({ ...combo, isActive: checked })
+                    }
+                  }}
+                  disabled={!canEdit}
+                />
+              </div>
+              <p className='text-sm text-gray-500'>
+                {combo?.isActive ? 'Combo đang hoạt động' : 'Combo đã bị vô hiệu hóa'}
+              </p>
+            </div>
+
+            {/* Upload ảnh */}
+            <div className='space-y-2'>
+              <Label htmlFor='thumbnail'>Ảnh thumbnail</Label>
+
+              {!previewUrl ? (
+                <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors'>
+                  <Upload className='w-8 h-8 mx-auto text-gray-400 mb-2' />
+                  <p className='text-gray-600 mb-2'>Kéo thả ảnh vào đây hoặc click để chọn</p>
+                  <p className='text-sm text-gray-500'>PNG, JPG, JPEG (tối đa 5MB)</p>
+                  <Input
+                    id='thumbnail'
+                    type='file'
+                    accept='image/*'
+                    onChange={handleFileChange}
+                    className='mt-4'
+                    disabled={!canEdit}
+                  />
+                </div>
+              ) : (
+                <div className='space-y-4'>
+                  <div className='relative inline-block'>
+                    <img src={previewUrl} alt='Preview' className='w-32 h-32 object-cover rounded-lg border' />
+                    {canEdit && (
+                      <Button
+                        type='button'
+                        variant='destructive'
+                        size='sm'
+                        className='absolute -top-2 -right-2'
+                        onClick={removeFile}
+                      >
+                        <X className='w-4 h-4' />
+                      </Button>
                     )}
                   </div>
-                  <div className='flex-1'>
-                    <Button onClick={() => document.getElementById('thumbnail')?.click()} className='bg-green-600 hover:bg-green-700 text-white mb-2'>
-                      <Upload className='w-4 h-4 mr-2' />
-                      Tải lên ảnh mới
-                    </Button>
-                    <input
-                      id='thumbnail'
-                      type='file'
-                      accept='image/*'
-                      onChange={handleFileChange}
-                      className='hidden'
-                    />
-                    <p className='text-sm text-gray-500'>Khuyến nghị: 300x200px, định dạng PNG hoặc JPG</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Combo Information Fields */}
-              <div className='space-y-6'>
-                {/* Combo Name */}
-                <div>
-                  <Label htmlFor='name' className='text-sm font-medium text-gray-700 mb-2 block'>
-                    Tên combo *
-                  </Label>
-                  <Input
-                    id='name'
-                    placeholder='Nhập tên combo'
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className='w-full'
-                    required
-                  />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <Label htmlFor='description' className='text-sm font-medium text-gray-700 mb-2 block'>
-                    Mô tả combo
-                  </Label>
-                  <Textarea
-                    id='description'
-                    placeholder='Nhập mô tả chi tiết về combo'
-                    value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
-                    className='w-full min-h-[100px]'
-                  />
-                </div>
-
-                {/* Status */}
-                <div>
-                  <Label className='text-sm font-medium text-gray-700 mb-2 block'>
-                    Trạng thái combo
-                  </Label>
-                  <div className='flex items-center space-x-4'>
-                    <label className='flex items-center'>
-                      <input
-                        type='radio'
-                        name='status'
-                        checked={formData.isActive}
-                        onChange={() => handleInputChange('isActive', true)}
-                        className='mr-2'
-                      />
-                      <span className='text-sm text-gray-700'>Hoạt động</span>
-                    </label>
-                    <label className='flex items-center'>
-                      <input
-                        type='radio'
-                        name='status'
-                        checked={!formData.isActive}
-                        onChange={() => handleInputChange('isActive', false)}
-                        className='mr-2'
-                      />
-                      <span className='text-sm text-gray-700'>Tạm dừng</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'items' && (
-            <div className='space-y-8'>
-              <div className='flex items-center justify-between'>
-                <h3 className='text-lg font-semibold text-gray-900'>Sản phẩm trong combo</h3>
-                <Button className='bg-green-600 hover:bg-green-700 text-white'>
-                  <Package className='w-4 h-4 mr-2' />
-                  Thêm sản phẩm
-                </Button>
-              </div>
-
-              {/* Combo Items List */}
-              <div className='space-y-4'>
-                {combo.comboItems.map((item) => (
-                  <div key={item.id} className='border rounded-lg p-4 hover:shadow-md transition-shadow'>
-                    <div className='flex gap-4'>
-                      <img
-                        src={item.comboItemImageUrl}
-                        alt={item.comboItemName}
-                        className='w-16 h-16 object-cover rounded-lg'
-                      />
-                      <div className='flex-1'>
-                        <h4 className='font-medium text-gray-900'>{item.comboItemName}</h4>
-                        <p className='text-sm text-gray-600'>
-                          {item.productName} - {item.variantName}
-                        </p>
-                        <p className='text-sm text-gray-500'>{item.storeName}</p>
-                        <div className='flex justify-between items-center mt-2'>
-                          <span className='text-sm text-gray-600'>Số lượng: {item.quantity}</span>
-                          <span className='font-semibold text-green-600'>
-                            {(item.price * item.quantity).toLocaleString()}₫
-                          </span>
-                        </div>
-                      </div>
-                      <div className='flex gap-2'>
-                        <Button variant='outline' size='sm'>
-                          Chỉnh sửa
-                        </Button>
-                        <Button variant='outline' size='sm' className='text-red-600 hover:text-red-700'>
-                          Xóa
-                        </Button>
-                      </div>
+                  {thumbnailFile && (
+                    <div>
+                      <p className='text-sm text-gray-600'>{thumbnailFile.name}</p>
+                      <p className='text-xs text-gray-500'>{(thumbnailFile.size / 1024 / 1024).toFixed(2)} MB</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Add Item Button */}
-              <div className='text-center py-8 border-2 border-dashed border-gray-300 rounded-lg'>
-                <Button variant='outline' className='border-green-600 text-green-600 hover:bg-green-50'>
-                  <Package className='w-4 h-4 mr-2' />
-                  Thêm sản phẩm mới vào combo
-                </Button>
-              </div>
+                  )}
+                  {canEdit && (
+                    <Button
+                      type='button'
+                      variant='outline'
+                      onClick={() => document.getElementById('thumbnail')?.click()}
+                    >
+                      Chọn ảnh khác
+                    </Button>
+                  )}
+                  <Input id='thumbnail' type='file' accept='image/*' onChange={handleFileChange} className='hidden' />
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Action Buttons */}
-          <div className='flex justify-end gap-4 pt-8 border-t border-gray-200 mt-8'>
-            <Button variant='outline' onClick={handleCancel} className='border-gray-300 text-gray-700 hover:bg-gray-50'>
-              <X className='w-4 h-4 mr-2' />
-              Hủy bỏ
-            </Button>
-            <Button onClick={handleSave} className='bg-green-600 hover:bg-green-700 text-white'>
-              <Save className='w-4 h-4 mr-2' />
-              Lưu thay đổi
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            {/* Save Button */}
+            {canEdit && (
+              <Button
+                onClick={handleSaveComboShell}
+                disabled={saving || !formData.name.trim()}
+                className='w-full bg-green-600 hover:bg-green-700'
+              >
+                <Save className='w-4 h-4 mr-2' />
+                {saving ? 'Đang lưu...' : 'Lưu thông tin combo'}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Combo Items */}
+        <ComboItemsManager
+          items={combo.comboItems}
+          canEdit={canEdit}
+          comboStatus={combo.status}
+          onAddItem={handleAddItem}
+          onUpdateItem={handleUpdateItem}
+          onRemoveItem={handleRemoveItem}
+        />
+      </div>
     </div>
   )
 }
