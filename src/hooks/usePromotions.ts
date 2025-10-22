@@ -59,9 +59,9 @@ export const usePromotions = (cartId: string): UsePromotionsReturn => {
     try {
       // Fetch applied promotions from all three APIs
       const [globalResponse, storeResponse, userResponse] = await Promise.all([
-        promotionApi.getCartGlobalPromotions(cartId, 0, 1),
-        promotionApi.getCartStorePromotions(cartId, 0, 1),
-        promotionApi.getCartUserPromotions(cartId, 0, 1)
+        promotionApi.getGlobalPromotions(cartId, 0, 1),
+        promotionApi.getStorePromotions(cartId, 0, 1),
+        promotionApi.getCartUserPromotionsWithUsage(cartId, 0, 1)
       ])
 
       // Combine all applied promotions
@@ -112,11 +112,11 @@ export const usePromotions = (cartId: string): UsePromotionsReturn => {
     try {
       setLoading(true)
 
-      // Fetch all three types of promotions in parallel
+      // ✅ Fetch với usage info mặc định
       const [globalResponse, storeResponse, userResponse] = await Promise.all([
-        promotionApi.getCartGlobalPromotions(cartId, 0, 1),
-        promotionApi.getCartStorePromotions(cartId, 0, 1),
-        promotionApi.getCartUserPromotions(cartId, 0, 1)
+        promotionApi.getGlobalPromotions(cartId, 0, 1),  // API đã có usage info
+        promotionApi.getStorePromotions(cartId, 0, 1),   // API đã có usage info  
+        promotionApi.getCartUserPromotionsWithUsage(cartId, 0, 1)     // API đã có usage info
       ])
 
       setAvailablePromotions({

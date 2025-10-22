@@ -98,9 +98,12 @@ export default function Cart() {
   const calculateShipping = useCallback(async () => {
     if (!cartData || !selectedAddress) return
 
-    const selectedStores = cartData.carts.filter((store) => store.items.some((item) => selectedItems[item.id]))
+    // Get all selected items from all stores
+    const selectedItemsList = cartData.carts.flatMap((store) =>
+      store.items.filter((item) => selectedItems[item.id])
+    )
 
-    if (selectedStores.length === 0) {
+    if (selectedItemsList.length === 0) {
       setShippingFee(0)
       setStoreShippingFees({})
       return
@@ -111,34 +114,87 @@ export default function Cart() {
     let totalShippingFee = 0
 
     try {
-      // Calculate shipping fee for each store separately
-      for (const store of selectedStores) {
-        const selectedItemsInStore = store.items.filter((item) => selectedItems[item.id])
+      // Get all selected cart item IDs
+      const cartItemIds = selectedItemsList.map((item) => item.id)
 
-        if (selectedItemsInStore.length === 0) {
-          newStoreShippingFees[store.storeId] = 0
-          continue
-        }
+      console.log('[CalculateShipping] Sending request with:', {
+        cartItemIds,
+        userAddressId: selectedAddress.id
+      })
 
-        const cartItemIds = selectedItemsInStore.map((item) => item.id)
-        const response = await calculateShippingFee(cartItemIds, selectedAddress.id)
+      // Send single request with all selected cart items
+      const response = await calculateShippingFee(cartItemIds, selectedAddress.id)
 
-        console.log(`[CalculateShipping] Store ${store.storeName} response:`, response)
+      console.log('[CalculateShipping] Response:', response)
 
-        let storeShippingFee = 0
-        if (response.data.success) {
-          storeShippingFee = response.data.totalShippingFee
+      if (response.data.success) {
+        totalShippingFee = response.data.totalShippingFee
+
+        // Use storeShippingInfos from API response if available
+        if (response.data.storeShippingInfos && Array.isArray(response.data.storeShippingInfos)) {
+          let actualTotalShippingFee = 0
+
+          response.data.storeShippingInfos.forEach((storeInfo: { storeId: string; shippingFee: number }) => {
+            let storeShippingFee = storeInfo.shippingFee || 0
+
+            // Apply free shipping if store has freeship
+            const store = cartData.carts.find((s) => s.storeId === storeInfo.storeId)
+            if (store?.hasFreeship) {
+              console.log(`🚚 Free shipping applied for store: ${store.storeName}`)
+              storeShippingFee = 0
+            }
+
+            newStoreShippingFees[storeInfo.storeId] = storeShippingFee
+            actualTotalShippingFee += storeShippingFee
+          })
+
+          // Update totalShippingFee to reflect actual fees after free shipping
+          totalShippingFee = actualTotalShippingFee
         } else {
-          storeShippingFee = 30000
-        }
+          // Fallback: distribute shipping fee among stores based on their item count
+          const storeItemCounts: Record<string, number> = {}
+          cartData.carts.forEach((store) => {
+            const storeSelectedItems = store.items.filter((item) => selectedItems[item.id])
+            if (storeSelectedItems.length > 0) {
+              storeItemCounts[store.storeId] = storeSelectedItems.length
+            }
+          })
 
-        if (store.hasFreeship) {
-          console.log(`🚚 Free shipping applied for store: ${store.storeName}`)
-          storeShippingFee = 0
-        }
+          const totalSelectedItems = Object.values(storeItemCounts).reduce((sum, count) => sum + count, 0)
 
-        newStoreShippingFees[store.storeId] = storeShippingFee
-        totalShippingFee += storeShippingFee
+          // Calculate shipping fee per item
+          const shippingFeePerItem = totalSelectedItems > 0 ? totalShippingFee / totalSelectedItems : 0
+
+          // Assign shipping fee to each store
+          cartData.carts.forEach((store) => {
+            const storeSelectedItemsCount = storeItemCounts[store.storeId] || 0
+            if (storeSelectedItemsCount > 0) {
+              let storeShippingFee = storeSelectedItemsCount * shippingFeePerItem
+
+              // Apply free shipping if store has freeship
+              if (store.hasFreeship) {
+                console.log(`🚚 Free shipping applied for store: ${store.storeName}`)
+                storeShippingFee = 0
+              }
+
+              newStoreShippingFees[store.storeId] = storeShippingFee
+            } else {
+              newStoreShippingFees[store.storeId] = 0
+            }
+          })
+        }
+      } else {
+        // Fallback: set default fee for each store
+        cartData.carts.forEach((store) => {
+          const storeSelectedItems = store.items.filter((item) => selectedItems[item.id])
+          if (storeSelectedItems.length > 0) {
+            const fee = store.hasFreeship ? 0 : 30000
+            newStoreShippingFees[store.storeId] = fee
+            totalShippingFee += fee
+          } else {
+            newStoreShippingFees[store.storeId] = 0
+          }
+        })
       }
 
       setStoreShippingFees(newStoreShippingFees)
@@ -146,10 +202,15 @@ export default function Cart() {
     } catch (error) {
       console.error('Error calculating shipping fee:', error)
       // Fallback: set default fee for each store
-      selectedStores.forEach((store) => {
-        const fee = store.hasFreeship ? 0 : 30000
-        newStoreShippingFees[store.storeId] = fee
-        totalShippingFee += fee
+      cartData.carts.forEach((store) => {
+        const storeSelectedItems = store.items.filter((item) => selectedItems[item.id])
+        if (storeSelectedItems.length > 0) {
+          const fee = store.hasFreeship ? 0 : 30000
+          newStoreShippingFees[store.storeId] = fee
+          totalShippingFee += fee
+        } else {
+          newStoreShippingFees[store.storeId] = 0
+        }
       })
       setStoreShippingFees(newStoreShippingFees)
       setShippingFee(totalShippingFee)
@@ -793,8 +854,10 @@ export default function Cart() {
                             <span className='text-blue-600'>Đang tính...</span>
                           ) : store.hasFreeship ? (
                             'Miễn phí'
-                          ) : (
+                          ) : storeShippingFee > 0 ? (
                             `₫${formatPrice(storeShippingFee)}`
+                          ) : (
+                            'Miễn phí'
                           )}
                         </span>
                       </div>
@@ -804,10 +867,10 @@ export default function Cart() {
 
                 <div className='flex justify-between text-sm font-medium'>
                   <span className='text-gray-600'>Tổng phí vận chuyển</span>
-                  <span className={`font-medium ${getTotalDiscount() > 0 ? 'text-green-600' : ''}`}>
+                  <span className={`font-medium ${shippingFee === 0 ? 'text-green-600' : ''}`}>
                     {isCalculatingShipping ? (
                       <span className='text-blue-600'>Đang tính...</span>
-                    ) : getTotalDiscount() >= shippingFee ? (
+                    ) : shippingFee === 0 ? (
                       'Miễn phí'
                     ) : (
                       `₫${formatPrice(shippingFee)}`

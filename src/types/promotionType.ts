@@ -29,6 +29,12 @@ export interface PromotionDTO {
   storeId?: string
   createdAt: string
   updatedAt: string
+
+  // ✅ USAGE INFO FIELDS
+  usedCount?: number         // Đã sử dụng bao nhiêu lần
+  remainingCount?: number    // Còn lại bao nhiêu lần (-1 = unlimited)
+  canApply?: boolean         // Có thể apply không
+  reasonCannotApply?: string // Lý do không thể apply
 }
 
 export interface UserPromotionDetailDTO {
@@ -37,6 +43,13 @@ export interface UserPromotionDetailDTO {
   quantity: number
   isActive: boolean
   promotion: PromotionDTO
+
+  // ✅ USER-SPECIFIC USAGE INFO
+  claimedQuantity?: number   // Đã claim
+  usedCount?: number         // Đã sử dụng thực tế
+  remainingCount?: number    // Còn lại
+  canApply?: boolean
+  reasonCannotApply?: string
 }
 
 export interface CartPromotionDto {
@@ -121,14 +134,15 @@ export interface PaginationState {
   totalPages: number
 }
 
+// ✅ API RESPONSE (updated)
 export interface DisplayPromotionToApply {
   applied: PromotionDTO[]
-  notYet: PromotionDTO[]
+  notYet: PromotionDTO[]  // Bao gồm cả available và unavailable
 }
 
 export interface DisplayUserPromotionToApply {
   applied: UserPromotionDetailDTO[]
-  notYet: UserPromotionDetailDTO[]
+  notYet: UserPromotionDetailDTO[]  // Bao gồm cả available và unavailable
 }
 
 // ========================================

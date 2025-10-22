@@ -31,8 +31,8 @@ export const getCustomerOrders = async (userId: string, params?: OrderQueryParam
 }
 
 // GET /api/Order/detail/{orderId} - Lấy chi tiết order
-export const getOrderDetail = async (orderId: string): Promise<Order> => {
-  const response: OrderResponse = await axiosInstance.get(`${API_URL}/detail/${orderId}`)
+export const getOrderDetail = async (orderId: string): Promise<Order | Order[]> => {
+  const response = await axiosInstance.get(`${API_URL}/detail/${orderId}`)
   return response.data
 }
 

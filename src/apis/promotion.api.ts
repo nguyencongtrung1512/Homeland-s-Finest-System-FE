@@ -389,9 +389,9 @@ export const getActiveUserPromotions = async (
 // ========================================
 
 /**
- * Lấy Global Promotions có thể apply vào Cart
+ * Lấy Global Promotions có thể apply vào Cart (với usage info)
  */
-export const getCartGlobalPromotions = async (
+export const getGlobalPromotions = async (
   cartId: string,
   pageSize: number = 0,
   pageNumber: number = 1
@@ -405,9 +405,20 @@ export const getCartGlobalPromotions = async (
 }
 
 /**
- * Lấy Store Promotions có thể apply vào Cart
+ * Lấy Global Promotions có thể apply vào Cart (legacy)
  */
-export const getCartStorePromotions = async (
+export const getCartGlobalPromotions = async (
+  cartId: string,
+  pageSize: number = 0,
+  pageNumber: number = 1
+): Promise<ApiResponse<DisplayPromotionToApply>> => {
+  return getGlobalPromotions(cartId, pageSize, pageNumber)
+}
+
+/**
+ * Lấy Store Promotions có thể apply vào Cart (với usage info)
+ */
+export const getStorePromotions = async (
   cartId: string,
   pageSize: number = 0,
   pageNumber: number = 1
@@ -421,9 +432,20 @@ export const getCartStorePromotions = async (
 }
 
 /**
- * Lấy User Promotions có thể apply vào Cart
+ * Lấy Store Promotions có thể apply vào Cart (legacy)
  */
-export const getCartUserPromotions = async (
+export const getCartStorePromotions = async (
+  cartId: string,
+  pageSize: number = 0,
+  pageNumber: number = 1
+): Promise<ApiResponse<DisplayPromotionToApply>> => {
+  return getStorePromotions(cartId, pageSize, pageNumber)
+}
+
+/**
+ * Lấy User Promotions có thể apply vào Cart (với usage info)
+ */
+export const getCartUserPromotionsWithUsage = async (
   cartId: string,
   pageSize: number = 0,
   pageNumber: number = 1
@@ -434,6 +456,17 @@ export const getCartUserPromotions = async (
   })
 
   return axiosInstance.get(`/Promotion/display-applied-user/${cartId}?${params.toString()}`)
+}
+
+/**
+ * Lấy User Promotions có thể apply vào Cart (legacy)
+ */
+export const getCartUserPromotions = async (
+  cartId: string,
+  pageSize: number = 0,
+  pageNumber: number = 1
+): Promise<ApiResponse<DisplayUserPromotionToApply>> => {
+  return getCartUserPromotionsWithUsage(cartId, pageSize, pageNumber)
 }
 
 /**
@@ -457,7 +490,7 @@ export const removePromotionFromCart = async (cartId: string, promotionId: strin
 // ========================================
 
 /**
- * Lấy tất cả promotions có thể apply vào cart (combine global, store, user)
+ * Lấy tất cả promotions có thể apply vào cart (combine global, store, user) với usage info
  */
 export const getAllAvailablePromotionsForCart = async (
   cartId: string,
@@ -490,9 +523,9 @@ export const getAllAvailablePromotionsForCart = async (
     } = options || {}
 
     const [globalPromotions, storePromotions, userPromotions] = await Promise.all([
-      getCartGlobalPromotions(cartId, globalPageSize, globalPageNumber),
-      getCartStorePromotions(cartId, storePageSize, storePageNumber),
-      getCartUserPromotions(cartId, userPageSize, userPageNumber)
+      getGlobalPromotions(cartId, globalPageSize, globalPageNumber),
+      getStorePromotions(cartId, storePageSize, storePageNumber),
+      getCartUserPromotionsWithUsage(cartId, userPageSize, userPageNumber)
     ])
 
     return {
@@ -605,6 +638,7 @@ export const promotionApi = {
   deletePromotion,
   getPromotionStats,
 
+  // Seller APIs
   getSellerPromotions,
   createPromotionSeller,
   updatePromotionSeller,
@@ -616,18 +650,28 @@ export const promotionApi = {
   claimPromotionLegacy,
   getUserPromotions,
 
+  // Public APIs
   getPromotionDetail,
   getActiveGlobalPromotions,
   getActiveUserPromotions,
 
+  // Cart APIs (với usage info)
+  getGlobalPromotions,
+  getStorePromotions,
+  getCartUserPromotionsWithUsage,
+
+  // Cart APIs (legacy)
   getCartGlobalPromotions,
   getCartStorePromotions,
   getCartUserPromotions,
+
+  // Cart Actions
   applyPromotionToCart,
   removePromotionFromCart,
   getAllAvailablePromotionsForCart,
   validatePromotionForCart,
 
+  // Utility APIs
   togglePromotionStatus,
   duplicatePromotion
 }

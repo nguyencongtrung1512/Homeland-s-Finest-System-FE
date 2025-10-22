@@ -4,7 +4,10 @@ import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
-import { Loader2, Clock, CheckCircle, XCircle, Gift, Store, User } from 'lucide-react'
+import {
+  Loader2, Clock, CheckCircle, XCircle, Gift, Store, User,
+  AlertCircle, TrendingDown, BarChart3
+} from 'lucide-react'
 import {
   type PromotionModalProps,
   type PromotionDTO,
@@ -33,6 +36,13 @@ interface ApiError {
 // ========================================
 // Utility Functions
 // ========================================
+
+// ✅ HELPER FUNCTION TO CATEGORIZE PROMOTIONS
+const categorizePromotions = <T extends { canApply?: boolean }>(promotions: T[]) => {
+  const available = promotions.filter(p => p.canApply !== false);
+  const unavailable = promotions.filter(p => p.canApply === false);
+  return { available, unavailable };
+};
 
 const formatDate = (dateString: string): string => {
   try {
@@ -81,8 +91,6 @@ interface PromotionCardProps {
 const PromotionCard: React.FC<PromotionCardProps> = ({
   promotion,
   isApplied = false,
-  isExpired = false,
-  userQuantity,
   onApply,
   onRemove,
   showActions = true,
@@ -90,6 +98,10 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
   promotionType = 'global'
 }) => {
   const promo = 'promotion' in promotion ? promotion.promotion : promotion
+
+  // ✅ DETERMINE CARD STATUS
+  const isUnavailable = promo.canApply === false;
+  const cardVariant = isApplied ? 'applied' : isUnavailable ? 'unavailable' : 'available';
 
   // Check if promotion is upcoming (start date in future)
   const isUpcoming = () => {
@@ -120,53 +132,6 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
     }
   }
 
-  // Check if promotion is currently active
-  const isCurrentlyActive = () => {
-    try {
-      let startDateObj: Date
-      let endDateObj: Date
-
-      // Handle start date
-      if (promo.startDate.includes(' ')) {
-        const [timePart, datePart] = promo.startDate.split(' ')
-        const [hours, minutes, seconds] = timePart.split(':')
-        const [day, month, year] = datePart.split('/')
-        startDateObj = new Date(
-          parseInt(year),
-          parseInt(month) - 1,
-          parseInt(day),
-          parseInt(hours),
-          parseInt(minutes),
-          parseInt(seconds)
-        )
-      } else {
-        startDateObj = new Date(promo.startDate)
-      }
-
-      // Handle end date
-      if (promo.endDate.includes(' ')) {
-        const [timePart, datePart] = promo.endDate.split(' ')
-        const [hours, minutes, seconds] = timePart.split(':')
-        const [day, month, year] = datePart.split('/')
-        endDateObj = new Date(
-          parseInt(year),
-          parseInt(month) - 1,
-          parseInt(day),
-          parseInt(hours),
-          parseInt(minutes),
-          parseInt(seconds)
-        )
-      } else {
-        endDateObj = new Date(promo.endDate)
-      }
-
-      const now = new Date()
-      return startDateObj <= now && now <= endDateObj
-    } catch (error) {
-      console.error('Error checking active date:', error)
-      return false
-    }
-  }
 
   const getDiscountText = () => {
     switch (promo.discountType) {
@@ -182,7 +147,6 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
   }
 
   const getTypeColor = () => {
-    const promo = 'promotion' in promotion ? promotion.promotion : promotion
     switch (promo.type) {
       case 'Global':
         return 'bg-blue-100 text-blue-800 border-blue-200'
@@ -196,7 +160,6 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
   }
 
   const getTypeIcon = () => {
-    const promo = 'promotion' in promotion ? promotion.promotion : promotion
     switch (promo.type) {
       case 'Global':
         return <Gift className='h-4 w-4' />
@@ -209,18 +172,114 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
     }
   }
 
+  // ✅ GET CARD STYLING BASED ON STATUS
+  const getCardClassName = () => {
+    const base = 'transition-all duration-200 hover:shadow-md';
+    switch (cardVariant) {
+      case 'applied':
+        return `${base} border-green-500 bg-green-50`;
+      case 'unavailable':
+        return `${base} border-red-300 bg-red-50 opacity-75`;
+      case 'available':
+        return `${base} border-gray-200 hover:border-gray-300`;
+      default:
+        return base;
+    }
+  };
+
+  // ✅ FORMAT USAGE INFO DISPLAY
+  const formatUsageInfo = () => {
+    if (promo.usedCount === undefined) return null;
+
+    if ('claimedQuantity' in promotion && promotion.claimedQuantity !== undefined) {
+      // User promotion
+      return (
+        <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+          <BarChart3 className="h-3 w-3" />
+          <span>
+            Đã claim: <strong>{promotion.claimedQuantity}</strong> |
+            Đã dùng: <strong>{promotion.usedCount}</strong> |
+            Còn lại: <strong>{promotion.remainingCount || 0}</strong>
+          </span>
+        </div>
+      );
+    } else {
+      // Global/Product promotion
+      const maxPerUser = promo.maxPerUser || 0;
+      const remainingText = promo.remainingCount === -1
+        ? 'Không giới hạn'
+        : `${promo.remainingCount || 0}`;
+
+      return (
+        <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+          <TrendingDown className="h-3 w-3" />
+          <span>
+            Đã dùng: <strong>{promo.usedCount}</strong>/{maxPerUser > 0 ? maxPerUser : '∞'} |
+            Còn lại: <strong>{remainingText}</strong>
+          </span>
+        </div>
+      );
+    }
+  };
+
+  // ✅ RENDER ACTION BUTTON
+  const renderActionButton = () => {
+    if (!showActions) return null;
+
+    if (isApplied) {
+      return (
+        <Button
+          onClick={onRemove}
+          disabled={loading}
+          variant="destructive"
+          className="w-full"
+        >
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          🗑️ Bỏ áp dụng
+        </Button>
+      );
+    }
+
+    if (isUnavailable) {
+      return (
+        <Button
+          disabled
+          variant="secondary"
+          className="w-full bg-gray-200 text-gray-500 cursor-not-allowed"
+        >
+          <AlertCircle className="mr-2 h-4 w-4" />
+          {promo.reasonCannotApply || 'Không thể sử dụng'}
+        </Button>
+      );
+    }
+
+    // Available promotion
+    return (
+      <Button
+        onClick={() => onApply?.(promo.id, promotionType)}
+        disabled={loading || isUpcoming()}
+        className="w-full bg-blue-500 hover:bg-blue-600"
+      >
+        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isUpcoming() ? (
+          <>
+            <Clock className="mr-2 h-4 w-4" />
+            Sắp có thể dùng
+          </>
+        ) : (
+          <>
+            ✅ Áp dụng
+          </>
+        )}
+      </Button>
+    );
+  };
+
   return (
-    <Card
-      className={`transition-all duration-200 hover:shadow-md ${isApplied
-        ? 'border-green-500 bg-green-50'
-        : isExpired
-          ? 'border-red-300 bg-red-50 opacity-70'
-          : 'border-gray-200 hover:border-gray-300'
-        }`}
-    >
+    <Card className={getCardClassName()}>
       <CardHeader className='pb-3'>
         <div className='flex items-start justify-between'>
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-2 flex-wrap'>
             <Badge variant='outline' className={`${getTypeColor()} flex items-center gap-1`}>
               {getTypeIcon()}
               {PROMOTION_TYPE_LABELS[promo.type]}
@@ -228,9 +287,11 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
             <Badge variant='destructive' className='bg-red-500 hover:bg-red-600'>
               {getDiscountText()}
             </Badge>
+            {/* ✅ STATUS INDICATOR */}
+            {isApplied && <CheckCircle className='h-5 w-5 text-green-500' />}
+            {isUnavailable && <XCircle className='h-5 w-5 text-red-500' />}
+            {isUpcoming() && <Clock className='h-5 w-5 text-yellow-500' />}
           </div>
-          {isApplied && <CheckCircle className='h-5 w-5 text-green-500' />}
-          {isExpired && <XCircle className='h-5 w-5 text-red-500' />}
         </div>
         <CardTitle className='text-lg font-semibold text-gray-900'>{promo.title}</CardTitle>
       </CardHeader>
@@ -238,75 +299,40 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
       <CardContent className='pt-0'>
         <p className='text-sm text-gray-600 mb-4 line-clamp-2'>{promo.description}</p>
 
-        <div className='space-y-2 mb-4'>
-          {promo.minValueDiscount && (
-            <div className='flex items-center gap-2 text-sm text-gray-600'>
-              <Clock className='h-4 w-4' />
-              <span>Đơn tối thiểu {promo.minValueDiscount.toLocaleString('vi-VN')}₫</span>
-            </div>
-          )}
-
-          {promo.type === 'User' && userQuantity !== undefined && (
-            <div className='flex items-center gap-2 text-sm text-gray-600'>
-              <User className='h-4 w-4' />
-              <span>Còn {userQuantity} lượt sử dụng</span>
-            </div>
-          )}
-
-          <div className='flex items-center gap-2 text-sm text-gray-600'>
-            <Clock className='h-4 w-4' />
-            <span>
-              Có hiệu lực từ {formatDate(promo.startDate)} đến {formatDate(promo.endDate)}
-            </span>
-          </div>
-        </div>
-
-        {showActions && (
-          <div className='flex gap-2'>
-            {isApplied ? (
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={onRemove}
-                disabled={loading}
-                className='flex-1 border-red-300 text-red-600 hover:bg-red-50'
-              >
-                {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : 'Hủy áp dụng'}
-              </Button>
-            ) : (
-              <Button
-                size='sm'
-                variant='green'
-                onClick={() => {
-                  const promo = 'promotion' in promotion ? promotion.promotion : promotion
-                  onApply?.(promo.id, promotionType)
-                }}
-                disabled={
-                  isExpired ||
-                  (promo.type === 'User' && userQuantity === 0) ||
-                  loading ||
-                  isUpcoming() ||
-                  !isCurrentlyActive()
-                }
-                className='flex-1'
-              >
-                {loading ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                ) : isExpired ? (
-                  'Đã hết hạn'
-                ) : promo.type === 'User' && userQuantity === 0 ? (
-                  'Hết lượt'
-                ) : isUpcoming() ? (
-                  'Sắp tới'
-                ) : !isCurrentlyActive() ? (
-                  'Chưa có hiệu lực'
-                ) : (
-                  'Lấy'
-                )}
-              </Button>
-            )}
+        {/* ✅ USAGE INFO SECTION */}
+        {formatUsageInfo() && (
+          <div className="mb-3">
+            {formatUsageInfo()}
           </div>
         )}
+
+        {/* ✅ PROMOTION DETAILS */}
+        <div className='space-y-2 mb-4'>
+          {promo.minValueDiscount && (
+            <div className='flex items-center gap-2 text-xs text-gray-600'>
+              <span className="font-medium">Đơn tối thiểu:</span>
+              <span>{promo.minValueDiscount.toLocaleString('vi-VN')}₫</span>
+            </div>
+          )}
+
+          <div className='flex items-center gap-2 text-xs text-gray-600'>
+            <Clock className='h-3 w-3' />
+            <span>
+              {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
+            </span>
+          </div>
+
+          {/* ✅ UNAVAILABLE REASON */}
+          {isUnavailable && promo.reasonCannotApply && (
+            <div className='flex items-center gap-2 text-xs text-red-600 bg-red-100 px-2 py-1 rounded'>
+              <AlertCircle className='h-3 w-3' />
+              <span>{promo.reasonCannotApply}</span>
+            </div>
+          )}
+        </div>
+
+        {/* ✅ ACTION BUTTON */}
+        {renderActionButton()}
       </CardContent>
     </Card>
   )
@@ -333,14 +359,15 @@ const PromotionList: React.FC<PromotionListProps> = ({
   loading = false,
   promotionType
 }) => {
-  // const appliedIds = applied.map(p => p.id)
+  // ✅ CATEGORIZE PROMOTIONS BASED ON canApply
+  const { available, unavailable } = categorizePromotions(notYet);
 
   return (
-    <div className='space-y-4'>
-      {/* Applied Promotions */}
+    <div className="space-y-6">
+      {/* ✅ APPLIED PROMOTIONS */}
       {applied.length > 0 && (
         <div>
-          <h4 className='text-sm font-medium text-green-600 mb-3 flex items-center gap-2'>
+          <h4 className='text-sm font-medium text-green-700 mb-3 flex items-center gap-2'>
             <CheckCircle className='h-4 w-4' />
             Đã áp dụng ({applied.length})
           </h4>
@@ -359,12 +386,15 @@ const PromotionList: React.FC<PromotionListProps> = ({
         </div>
       )}
 
-      {/* Available Promotions */}
-      {notYet.length > 0 && (
+      {/* ✅ AVAILABLE PROMOTIONS */}
+      {available.length > 0 && (
         <div>
-          <h4 className='text-sm font-medium text-gray-700 mb-3'>Có thể áp dụng ({notYet.length})</h4>
+          <h4 className='text-sm font-medium text-blue-700 mb-3 flex items-center gap-2'>
+            <Gift className='h-4 w-4' />
+            Có thể áp dụng ({available.length})
+          </h4>
           <div className='space-y-3'>
-            {notYet.map((promotion) => (
+            {available.map((promotion) => (
               <PromotionCard
                 key={promotion.id}
                 promotion={promotion}
@@ -378,7 +408,29 @@ const PromotionList: React.FC<PromotionListProps> = ({
         </div>
       )}
 
-      {/* Empty State */}
+      {/* ✅ UNAVAILABLE PROMOTIONS */}
+      {unavailable.length > 0 && (
+        <div>
+          <h4 className='text-sm font-medium text-red-700 mb-3 flex items-center gap-2'>
+            <XCircle className='h-4 w-4' />
+            Không thể sử dụng ({unavailable.length})
+          </h4>
+          <div className='space-y-3'>
+            {unavailable.map((promotion) => (
+              <PromotionCard
+                key={promotion.id}
+                promotion={promotion}
+                isApplied={false}
+                onApply={onApply}
+                loading={loading}
+                promotionType={promotionType}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ✅ EMPTY STATE */}
       {applied.length === 0 && notYet.length === 0 && (
         <div className='text-center py-8 text-gray-500'>
           <Gift className='h-12 w-12 mx-auto mb-4 text-gray-300' />
@@ -410,14 +462,15 @@ const UserPromotionList: React.FC<UserPromotionListProps> = ({
   loading = false,
   promotionType
 }) => {
-  // const appliedIds = applied.map(p => p.promotionId)
+  // ✅ CATEGORIZE USER PROMOTIONS
+  const { available, unavailable } = categorizePromotions(notYet);
 
   return (
-    <div className='space-y-4'>
-      {/* Applied Promotions */}
+    <div className="space-y-6">
+      {/* ✅ APPLIED USER PROMOTIONS */}
       {applied.length > 0 && (
         <div>
-          <h4 className='text-sm font-medium text-green-600 mb-3 flex items-center gap-2'>
+          <h4 className='text-sm font-medium text-green-700 mb-3 flex items-center gap-2'>
             <CheckCircle className='h-4 w-4' />
             Đã áp dụng ({applied.length})
           </h4>
@@ -437,12 +490,15 @@ const UserPromotionList: React.FC<UserPromotionListProps> = ({
         </div>
       )}
 
-      {/* Available Promotions */}
-      {notYet.length > 0 && (
+      {/* ✅ AVAILABLE USER PROMOTIONS */}
+      {available.length > 0 && (
         <div>
-          <h4 className='text-sm font-medium text-gray-700 mb-3'>Có thể áp dụng ({notYet.length})</h4>
+          <h4 className='text-sm font-medium text-blue-700 mb-3 flex items-center gap-2'>
+            <User className='h-4 w-4' />
+            Có thể áp dụng ({available.length})
+          </h4>
           <div className='space-y-3'>
-            {notYet.map((userPromotion) => (
+            {available.map((userPromotion) => (
               <PromotionCard
                 key={userPromotion.promotionId}
                 promotion={userPromotion}
@@ -457,7 +513,30 @@ const UserPromotionList: React.FC<UserPromotionListProps> = ({
         </div>
       )}
 
-      {/* Empty State */}
+      {/* ✅ UNAVAILABLE USER PROMOTIONS */}
+      {unavailable.length > 0 && (
+        <div>
+          <h4 className='text-sm font-medium text-red-700 mb-3 flex items-center gap-2'>
+            <XCircle className='h-4 w-4' />
+            Đã hết lượt ({unavailable.length})
+          </h4>
+          <div className='space-y-3'>
+            {unavailable.map((userPromotion) => (
+              <PromotionCard
+                key={userPromotion.promotionId}
+                promotion={userPromotion}
+                isApplied={false}
+                userQuantity={userPromotion.quantity}
+                onApply={onApply}
+                loading={loading}
+                promotionType={promotionType}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ✅ EMPTY STATE */}
       {applied.length === 0 && notYet.length === 0 && (
         <div className='text-center py-8 text-gray-500'>
           <User className='h-12 w-12 mx-auto mb-4 text-gray-300' />
@@ -577,7 +656,10 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className='max-w-4xl max-h-[80vh] flex flex-col'>
         <DialogHeader>
-          <DialogTitle className='text-xl font-bold text-gray-900'>Chọn mã giảm giá</DialogTitle>
+          <DialogTitle className='text-xl font-bold text-gray-900 flex items-center gap-2'>
+            <Gift className="h-5 w-5" />
+            Chọn mã giảm giá
+          </DialogTitle>
         </DialogHeader>
 
         <div className='flex flex-col flex-1 min-h-0'>
@@ -590,14 +672,29 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
               <TabsTrigger value='global' className='flex items-center gap-2'>
                 <Gift className='h-4 w-4' />
                 Mã toàn hệ thống
+                {(availablePromotions.global?.applied?.length || 0) > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {availablePromotions.global.applied.length}
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value='store' className='flex items-center gap-2'>
                 <Store className='h-4 w-4' />
                 Mã của shop
+                {(availablePromotions.store?.applied?.length || 0) > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {availablePromotions.store.applied.length}
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value='user' className='flex items-center gap-2'>
                 <User className='h-4 w-4' />
                 Mã cá nhân
+                {(availablePromotions.user?.applied?.length || 0) > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {availablePromotions.user.applied.length}
+                  </Badge>
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -606,6 +703,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                 {loading ? (
                   <div className='flex items-center justify-center py-8'>
                     <Loader2 className='h-8 w-8 animate-spin' />
+                    <span className="ml-2">Đang tải mã toàn hệ thống...</span>
                   </div>
                 ) : (
                   <PromotionList
@@ -623,6 +721,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                 {loading ? (
                   <div className='flex items-center justify-center py-8'>
                     <Loader2 className='h-8 w-8 animate-spin' />
+                    <span className="ml-2">Đang tải mã của shop...</span>
                   </div>
                 ) : (
                   <PromotionList
@@ -640,6 +739,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                 {loading ? (
                   <div className='flex items-center justify-center py-8'>
                     <Loader2 className='h-8 w-8 animate-spin' />
+                    <span className="ml-2">Đang tải mã cá nhân...</span>
                   </div>
                 ) : (
                   <UserPromotionList
