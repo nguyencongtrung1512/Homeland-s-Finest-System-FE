@@ -344,7 +344,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                   </div>
                   <div className='text-right'>
                     <p className='text-xs text-gray-600'>Ngày đặt</p>
-                    <p className='font-medium text-gray-900 text-sm'>{formatDate(order.createdAt)}</p>
+                    <p className='font-medium text-gray-900 text-sm'>{order.createdAt}</p>
                   </div>
                 </div>
                 <div className='flex justify-between items-start'>
@@ -577,8 +577,6 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                       })}
                     </div>
                   </div>
-
-                  <p className='text-center text-xs text-gray-500 mt-4 italic'>hiện order image ở đây lúc hoàn thành</p>
                 </div>
               )}
 

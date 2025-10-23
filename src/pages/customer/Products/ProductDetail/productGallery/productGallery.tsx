@@ -215,7 +215,8 @@ function ProductGallery() {
             </div>
 
             {/* Add to Cart Button */}
-            <div className='space-y-4'>
+            <div className='space-y-4 '>
+              <div className='flex items-center gap-2'>
               <button
                 onClick={handleAddToCart}
                 disabled={!product.isActive || currentStock === 0 || !currentVariant || isAddingToCart}
@@ -240,6 +241,8 @@ function ProductGallery() {
               >
                 {!product.isActive || currentStock === 0 ? 'Hết hàng' : 'Mua ngay'}
               </button>
+              </div>
+              
             </div>
 
             {/* Product Description */}

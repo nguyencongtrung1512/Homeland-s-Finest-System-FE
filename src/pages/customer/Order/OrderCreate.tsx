@@ -217,7 +217,9 @@ function OrderCreate() {
       console.log('[OrderCreate] Payment method:', paymentMethod)
 
       if (paymentMethod === 'COD') {
-        // COD: Chỉ cần navigate đến invoice để hiển thị đơn hàng
+        // COD: Call purchaseOrder API to create transaction
+        await purchaseOrder({ orderIds })
+
         toast.success(`Đơn hàng COD đã được tạo! Chờ giao hàng ${ordersToProcess.length} đơn.`)
 
         // Join all orderIds with comma for multiple orders
