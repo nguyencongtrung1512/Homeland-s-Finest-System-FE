@@ -13,6 +13,7 @@ export const formApi = {
   createForm: async (data: CreateFormRequest): Promise<FormDTO> => {
     const formData = new FormData()
     formData.append('userId', data.userId)
+    if (data.storeId) formData.append('storeId', data.storeId)
     if (data.orderId) formData.append('orderId', data.orderId)
     formData.append('type', data.type)
     formData.append('subject', data.subject)
@@ -38,7 +39,7 @@ export const formApi = {
   },
 
   cancelForm: async (id: string): Promise<void> => {
-    await axiosInstance.put(`/cancel-form/${id}`)
+    await axiosInstance.put(`/Form/cancel-form/${id}`)
   },
 
   getFormById: async (id: string): Promise<FormDTO> => {

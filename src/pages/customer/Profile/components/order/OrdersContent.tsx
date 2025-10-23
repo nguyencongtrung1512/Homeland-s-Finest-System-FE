@@ -1,23 +1,24 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '../../../../components/ui/button'
-import { Badge } from '../../../../components/ui/badge'
-import ReportModal from './ReportModal'
+import { Button } from '../../../../../components/ui/button'
+import { Badge } from '../../../../../components/ui/badge'
+import ReportModal from '../ReportModal'
 import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
-import ReviewModal from './ReviewModal'
-import ComplaintModal from './ComplaintModal'
-import { confirmOrderReceived } from '../../../../apis/order.api'
-import { purchaseOrder } from '../../../../apis/transaction.api'
-import { formApi } from '../../../../apis/form.api'
-import { path } from '../../../../constants/path'
-import type { Order as APIOrder } from '../../../../types/orderType'
+import ReviewModal from '../ReviewModal'
+import ComplaintModal from '../form/ComplaintModal'
+import { confirmOrderReceived } from '../../../../../apis/order.api'
+import { purchaseOrder } from '../../../../../apis/transaction.api'
+import { formApi } from '../../../../../apis/form.api'
+import { path } from '../../../../../constants/path'
+import type { Order as APIOrder } from '../../../../../types/orderType'
 import { toast } from 'react-toastify'
-import { useAuth } from '../../../../contexts/auth.context'
-import type { CreateFormRequest, FormType } from '../../../../types/form.type'
+import { useAuth } from '../../../../../contexts/auth.context'
+import type { CreateFormRequest, FormType } from '../../../../../types/form.type'
 
 interface Order {
   id: string
+  storeId: string
   date: string
   status: 'Chưa xác nhận' | 'Chờ xác nhận' | 'Đã xác nhận' | 'Đang giao' | 'Đã giao' | 'Đã hủy'
   statusColor: string
@@ -188,6 +189,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
 
   return {
     id: apiOrder?.id || '',
+    storeId: apiOrder?.storeId || '',
     date: apiOrder?.createdAt,
     ...statusInfo,
     products,
@@ -336,6 +338,8 @@ export default function OrdersContent({
   // Handle complaint for delivered orders
   const handleComplaint = async (
     orderId: string,
+    storeId: string,
+    userId: string,
     complaintData: { formType: FormType; subject: string; description: string; images?: File[] }
   ) => {
     if (!user?.userId) {
@@ -347,7 +351,8 @@ export default function OrdersContent({
       setSubmittingComplaintOrderId(orderId)
 
       const formData: CreateFormRequest = {
-        userId: user.userId,
+        userId: userId,
+        storeId: storeId,
         orderId: orderId,
         type: complaintData.formType,
         subject: complaintData.subject,
@@ -707,6 +712,8 @@ export default function OrdersContent({
         isOpen={showComplaintModal}
         onClose={handleCloseComplaintModal}
         orderId={selectedOrderId}
+        storeId={orders.find(order => order.id === selectedOrderId)?.storeId || ''}
+        userId={user?.userId || ''}
         onSubmit={handleComplaint}
         isLoading={submittingComplaintOrderId === selectedOrderId}
       />

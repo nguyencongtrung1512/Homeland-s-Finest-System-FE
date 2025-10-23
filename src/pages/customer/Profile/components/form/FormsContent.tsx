@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card'
-import { Button } from '../../../../components/ui/button'
-import { Badge } from '../../../../components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../../../components/ui/card'
+import { Button } from '../../../../../components/ui/button'
+import { Badge } from '../../../../../components/ui/badge'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,13 +12,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger
-} from '../../../../components/ui/alert-dialog'
+} from '../../../../../components/ui/alert-dialog'
 
 import { MessageSquare, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react'
-import type { FormDTO, FormStatus } from '../../../../apis/form.api'
-import { formApi } from '../../../../apis/form.api'
-import Loading from '../../../../components/Loading/loading'
-import EmptyState from '../../../../components/EmptyState/emptyState'
+import type { FormDTO } from '../../../../../types/form.type'
+import type { FormStatus } from '../../../../../types/form.type'
+import { formApi } from '../../../../../apis/form.api'
+import Loading from '../../../../../components/Loading/loading'
+import EmptyState from '../../../../../components/EmptyState/emptyState'
 import { toast } from 'react-toastify'
 
 interface FormsContentProps {

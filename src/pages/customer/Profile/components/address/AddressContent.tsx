@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Button } from '../../../../components/ui/button'
+import { Button } from '../../../../../components/ui/button'
 import AddressCard from './AddressCard'
-import { addressApi } from '../../../../apis/address.api'
-import type { Address } from '../../../../types/addressType'
+import { addressApi } from '../../../../../apis/address.api'
+import type { Address } from '../../../../../types/addressType'
 
 interface AddressContentProps {
   userId?: string // Thêm userId để lấy địa chỉ của user cụ thể

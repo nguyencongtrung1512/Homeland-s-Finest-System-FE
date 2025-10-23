@@ -71,6 +71,8 @@ interface FormData {
   gender: string
   dateOfBirth: string
   businessName: string
+  businessLicense: File[]
+  description: string
   taxCode: string
   bankAccount: string
   identifyCard: string
@@ -353,6 +355,7 @@ function SellerRegistrationForm() {
     gender: '',
     dateOfBirth: '',
     businessName: '',
+    description: '',
     taxCode: '',
     bankAccount: '',
     identifyCard: '',

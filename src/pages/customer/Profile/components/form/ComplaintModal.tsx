@@ -1,25 +1,37 @@
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ui/dialog'
-import { Button } from '../../../../components/ui/button'
-import { Textarea } from '../../../../components/ui/textarea'
-import { Label } from '../../../../components/ui/label'
-import { Input } from '../../../../components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../../components/ui/dialog'
+import { Button } from '../../../../../components/ui/button'
+import { Textarea } from '../../../../../components/ui/textarea'
+import { Label } from '../../../../../components/ui/label'
+import { Input } from '../../../../../components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select'
 import { Camera, AlertTriangle, Loader2 } from 'lucide-react'
-import type { FormType } from '../../../../apis/form.api'
+import type { FormType } from '../../../../../types/form.type'
 
 interface ComplaintModalProps {
   isOpen: boolean
   onClose: () => void
   orderId: string
+  storeId: string
+  userId: string
   onSubmit: (
     orderId: string,
+    storeId: string,
+    userId: string,
     data: { formType: FormType; subject: string; description: string; images?: File[] }
   ) => void
   isLoading?: boolean
 }
 
-const ComplaintModal = ({ isOpen, onClose, orderId, onSubmit, isLoading = false }: ComplaintModalProps) => {
+const ComplaintModal = ({
+  isOpen,
+  onClose,
+  orderId,
+  storeId,
+  userId,
+  onSubmit,
+  isLoading = false
+}: ComplaintModalProps) => {
   const [formType, setFormType] = useState<FormType>('ComplaintContent')
   const [subject, setSubject] = useState('')
   const [description, setDescription] = useState('')
@@ -54,7 +66,7 @@ const ComplaintModal = ({ isOpen, onClose, orderId, onSubmit, isLoading = false 
       return
     }
 
-    onSubmit(orderId, {
+    onSubmit(orderId, storeId, userId, {
       formType,
       subject: subject.trim(),
       description: description.trim(),

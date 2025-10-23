@@ -11,7 +11,6 @@ import {
   Store,
   CreditCard,
   Calendar,
-  Clock,
   CheckCircle,
   XCircle,
   AlertCircle
@@ -23,21 +22,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Calendar as CalendarComponent } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { format } from 'date-fns'
-import { formApi } from '../../../apis/form.api'
-import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
-import { useAuth } from '../../../contexts/auth.context'
+import { staffApi } from '../../../apis/staff.api'
+import type { StaffForm } from '../../../apis/staff.api'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from 'react-toastify'
 
 function ReportManagement() {
   const navigate = useNavigate()
-  const { user } = useAuth()
-  const [forms, setForms] = useState<FormDTO[]>([])
+  const [forms, setForms] = useState<StaffForm[]>([])
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [typeFilter, setTypeFilter] = useState<FormType | 'all'>('all')
-  const [statusFilter, setStatusFilter] = useState<FormStatus | 'all'>('all')
+  const [typeFilter, setTypeFilter] = useState<string | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<string | 'all'>('all')
   const [startDate, setStartDate] = useState<Date | undefined>(undefined)
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
   const [currentPage, setCurrentPage] = useState(1)
@@ -45,34 +42,25 @@ function ReportManagement() {
 
   // Load assigned forms
   const loadAssignedForms = useCallback(async () => {
-    if (!user?.userId) {
-      console.log('No user ID available')
-      return
-    }
-
-    console.log('Loading assigned forms for staff ID:', user.userId)
     try {
       setLoading(true)
-      const response = await formApi.getAssignedForms(user.userId, {
-        pageSize: 100, // Load all for now
-        pageNumber: 1
-      })
-      console.log('Assigned forms API response:', response)
-      setForms(response || [])
+      const response = await staffApi.getMyForms()
+      console.log('Staff forms API response:', response)
+      setForms(response.data || [])
     } catch (error) {
-      console.error('Error loading assigned forms:', error)
+      console.error('Error loading staff forms:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách khiếu nại')
     } finally {
       setLoading(false)
     }
-  }, [user?.userId])
+  }, [])
 
   useEffect(() => {
     loadAssignedForms()
   }, [loadAssignedForms])
 
-  const getTypeConfig = (type: FormType) => {
-    const configs = {
+  const getTypeConfig = (type: string) => {
+    const configs: Record<string, { text: string; bgColor: string; textColor: string; icon: React.ReactElement }> = {
       SupportAccount: {
         text: 'Hỗ trợ tài khoản',
         bgColor: 'bg-blue-100',
@@ -143,14 +131,8 @@ function ReportManagement() {
     return configs[type] || configs.SupportOther
   }
 
-  const getStatusConfig = (status: FormStatus) => {
-    const configs = {
-      Pending: {
-        text: 'Chờ phân công',
-        bgColor: 'bg-yellow-100',
-        textColor: 'text-yellow-600',
-        icon: <Clock className='w-3 h-3' />
-      },
+  const getStatusConfig = (status: string) => {
+    const configs: Record<string, { text: string; bgColor: string; textColor: string; icon: React.ReactElement }> = {
       Processing: {
         text: 'Đang xử lý',
         bgColor: 'bg-blue-100',
@@ -164,25 +146,7 @@ function ReportManagement() {
         icon: <CheckCircle className='w-3 h-3' />
       },
       DeniedByStaff: {
-        text: 'Từ chối (Staff)',
-        bgColor: 'bg-red-100',
-        textColor: 'text-red-600',
-        icon: <XCircle className='w-3 h-3' />
-      },
-      ApprovedByAdmin: {
-        text: 'Đã duyệt (Admin)',
-        bgColor: 'bg-green-100',
-        textColor: 'text-green-600',
-        icon: <CheckCircle className='w-3 h-3' />
-      },
-      DeniedByAdmin: {
-        text: 'Từ chối (Admin)',
-        bgColor: 'bg-red-100',
-        textColor: 'text-red-600',
-        icon: <XCircle className='w-3 h-3' />
-      },
-      Rejected: {
-        text: 'Bị từ chối',
+        text: 'Đã từ chối (Staff)',
         bgColor: 'bg-red-100',
         textColor: 'text-red-600',
         icon: <XCircle className='w-3 h-3' />
@@ -193,14 +157,14 @@ function ReportManagement() {
         textColor: 'text-green-600',
         icon: <CheckCircle className='w-3 h-3' />
       },
-      Cancel: {
-        text: 'Đã hủy',
-        bgColor: 'bg-gray-100',
-        textColor: 'text-gray-600',
+      Rejected: {
+        text: 'Đã từ chối',
+        bgColor: 'bg-red-100',
+        textColor: 'text-red-600',
         icon: <XCircle className='w-3 h-3' />
       }
     }
-    return configs[status] || configs.Pending
+    return configs[status] || configs.Processing
   }
 
   const filteredForms = forms.filter((form) => {
@@ -221,7 +185,7 @@ function ReportManagement() {
   const endIndex = startIndex + pageSize
   const currentForms = filteredForms.slice(startIndex, endIndex)
 
-  const handleView = (form: FormDTO) => {
+  const handleView = (form: StaffForm) => {
     navigate(`/staff/formReport/${form.id}`)
   }
 
@@ -274,7 +238,7 @@ function ReportManagement() {
               </div>
               <div className='w-56'>
                 <label className='block text-sm font-medium text-gray-700 mb-2'>Loại khiếu nại</label>
-                <Select value={typeFilter} onValueChange={(value: FormType | 'all') => setTypeFilter(value)}>
+                <Select value={typeFilter} onValueChange={(value: string) => setTypeFilter(value)}>
                   <SelectTrigger className='h-10'>
                     <SelectValue placeholder='Tất cả' />
                   </SelectTrigger>
@@ -296,21 +260,17 @@ function ReportManagement() {
               </div>
               <div className='w-56'>
                 <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái</label>
-                <Select value={statusFilter} onValueChange={(value: FormStatus | 'all') => setStatusFilter(value)}>
+                <Select value={statusFilter} onValueChange={(value: string) => setStatusFilter(value)}>
                   <SelectTrigger className='h-10'>
                     <SelectValue placeholder='Tất cả' />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='all'>Tất cả</SelectItem>
-                    <SelectItem value='Pending'>Chờ phân công</SelectItem>
                     <SelectItem value='Processing'>Đang xử lý</SelectItem>
                     <SelectItem value='ApprovedByStaff'>Đã duyệt (Staff)</SelectItem>
                     <SelectItem value='DeniedByStaff'>Từ chối (Staff)</SelectItem>
-                    <SelectItem value='ApprovedByAdmin'>Đã duyệt (Admin)</SelectItem>
-                    <SelectItem value='DeniedByAdmin'>Từ chối (Admin)</SelectItem>
-                    <SelectItem value='Rejected'>Bị từ chối</SelectItem>
                     <SelectItem value='Confirmed'>Đã xác nhận</SelectItem>
-                    <SelectItem value='Cancel'>Đã hủy</SelectItem>
+                    <SelectItem value='Rejected'>Đã từ chối</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -11,7 +11,8 @@ import {
   Clock,
   XCircle,
   AlertCircle,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Store
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -22,34 +23,55 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { formApi } from '../../../apis/form.api'
 import { getUserById } from '../../../apis/user.api'
-import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
+import { storeApi } from '../../../apis/store.api'
+import type { FormDTO, FormStatus } from '../../../types/form.type'
+import type { StoreResponse } from '../../../apis/store.api'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from 'react-toastify'
 
 function ReportDetail() {
-  const { id } = useParams<{ id: string }>()
+  const { formId } = useParams<{ formId: string }>()
   const navigate = useNavigate()
   const [form, setForm] = useState<FormDTO | null>(null)
   const [loading, setLoading] = useState(false)
   const [userInfo, setUserInfo] = useState<{ firstName: string; lastName: string; email: string } | null>(null)
   const [loadingUser, setLoadingUser] = useState(false)
+  const [storeInfo, setStoreInfo] = useState<StoreResponse | null>(null)
+  const [loadingStore, setLoadingStore] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [staffReply, setStaffReply] = useState('')
-  const [staffStatus, setStaffStatus] = useState<'ApprovedByStaff' | 'DeniedByStaff'>('ApprovedByStaff')
+  const [selectedStatus, setSelectedStatus] = useState<'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected'>(
+    'ApprovedByStaff'
+  )
+
+  // Set default status based on current form status
+  useEffect(() => {
+    if (form) {
+      if (form.status === 'Processing') {
+        setSelectedStatus('Confirmed') // Default to confirm for initial processing
+      } else if (form.status === 'Confirmed' || form.status === 'Rejected') {
+        setSelectedStatus('ApprovedByStaff') // Default to approve for confirmed/rejected
+      }
+    }
+  }, [form])
 
   // Load form detail
   const loadFormDetail = useCallback(async () => {
-    if (!id) {
-      console.log('No form ID provided')
+    console.log('Current URL params formId:', formId)
+    console.log('Type of formId:', typeof formId)
+
+    if (!formId) {
+      console.log('No form ID provided - formId is:', formId)
       return
     }
 
-    console.log('Loading form detail for ID:', id)
+    console.log('Loading form detail for ID:', formId)
     try {
       setLoading(true)
-      const response = await formApi.getFormById(id)
+      console.log('Calling formApi.getFormById with ID:', formId)
+      const response = await formApi.getFormById(formId)
       console.log('Form API response:', response)
       setForm(response)
       setStaffReply(response.reply || '')
@@ -72,13 +94,28 @@ function ReportDetail() {
           setLoadingUser(false)
         }
       }
+
+      // Load store info
+      if (response.storeId) {
+        try {
+          setLoadingStore(true)
+          const storeResponse = await storeApi.getStoreById(response.storeId)
+          console.log('Store API response:', storeResponse)
+          setStoreInfo(storeResponse.data)
+        } catch (error) {
+          console.error('Error loading store info:', error)
+          setStoreInfo(null)
+        } finally {
+          setLoadingStore(false)
+        }
+      }
     } catch (error) {
       console.error('Error loading form detail:', error)
       toast.error('Có lỗi xảy ra khi tải chi tiết khiếu nại')
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [formId])
 
   useEffect(() => {
     loadFormDetail()
@@ -147,7 +184,7 @@ function ReportDetail() {
         return {
           icon: <CheckCircle className='w-5 h-5 text-green-500' />,
           badge: 'default',
-          text: 'Đã xác nhận',
+          text: 'Đã chấp nhận',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -171,7 +208,7 @@ function ReportDetail() {
   }
 
   // Get type text in Vietnamese
-  const getTypeText = (type: FormType) => {
+  const getTypeText = (type: string) => {
     switch (type) {
       case 'SupportAccount':
         return 'Hỗ trợ tài khoản'
@@ -200,7 +237,7 @@ function ReportDetail() {
     }
   }
 
-  // Handle staff update
+  // Handle staff update with modal
   const handleStaffUpdate = async () => {
     if (!form || !staffReply.trim()) {
       toast.error('Vui lòng nhập phản hồi từ nhân viên')
@@ -211,7 +248,7 @@ function ReportDetail() {
       setUpdating(true)
       await formApi.staffUpdateForm(form.id, {
         reply: staffReply.trim(),
-        status: staffStatus
+        status: selectedStatus
       })
 
       toast.success('Cập nhật thành công!')
@@ -309,6 +346,70 @@ function ReportDetail() {
             </CardContent>
           </Card>
 
+          {/* Store Information */}
+          {form.storeId && (
+            <Card className='bg-white shadow-sm'>
+              <CardHeader className='pb-3'>
+                <CardTitle className='flex items-center gap-2 text-lg'>
+                  <Store className='w-5 h-5 text-green-600' />
+                  Thông tin cửa hàng
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-4'>
+                {loadingStore ? (
+                  <div className='flex items-center justify-center py-8'>
+                    <div className='flex items-center gap-2'>
+                      <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-green-600'></div>
+                      <span className='text-sm text-gray-500'>Đang tải thông tin cửa hàng...</span>
+                    </div>
+                  </div>
+                ) : storeInfo ? (
+                  <>
+                    <div className='flex items-center gap-4'>
+                      <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center'>
+                        {storeInfo.logoUrl ? (
+                          <img
+                            src={storeInfo.logoUrl}
+                            alt={storeInfo.storeName}
+                            className='w-12 h-12 rounded-full object-cover'
+                          />
+                        ) : (
+                          <Store className='w-8 h-8 text-green-600' />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className='font-semibold text-gray-900 text-lg'>{storeInfo.storeName}</h3>
+                        <div className='space-y-1 mt-2'>
+                          <div className='flex items-center gap-2'>
+                            <span className='text-sm text-gray-700'>{storeInfo.address}</span>
+                          </div>
+                          <div className='flex items-center gap-2'>
+                            <span className='text-sm text-gray-500'>
+                              {storeInfo.province}, {storeInfo.district}, {storeInfo.ward}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className='pt-2 border-t border-gray-200'>
+                      <div className='flex items-center gap-2'>
+                        <Badge variant={storeInfo.status === 'Active' ? 'default' : 'secondary'} className='text-xs'>
+                          {storeInfo.status === 'Active' ? 'Hoạt động' : storeInfo.status}
+                        </Badge>
+                        <span className='text-sm text-gray-500'>ID: {storeInfo.id}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className='text-center py-4'>
+                    <p className='text-sm text-gray-500'>Không thể tải thông tin cửa hàng</p>
+                    <p className='text-xs text-gray-400 mt-1'>ID: {form.storeId}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Form Content */}
           <Card className='bg-white shadow-sm'>
             <CardHeader className='pb-3'>
@@ -393,20 +494,6 @@ function ReportDetail() {
             </CardHeader>
             <CardContent className='space-y-3'>
               <div>
-                <Label className='text-sm font-medium text-gray-500'>ID khiếu nại</Label>
-                <p className='text-sm text-gray-900 font-mono'>{form.id}</p>
-              </div>
-              <div>
-                <Label className='text-sm font-medium text-gray-500'>ID người dùng</Label>
-                <p className='text-sm text-gray-900 font-mono'>{form.userId}</p>
-              </div>
-              {form.orderId && (
-                <div>
-                  <Label className='text-sm font-medium text-gray-500'>ID đơn hàng</Label>
-                  <p className='text-sm text-gray-900 font-mono'>{form.orderId}</p>
-                </div>
-              )}
-              <div>
                 <Label className='text-sm font-medium text-gray-500'>Loại</Label>
                 <p className='text-sm text-gray-900'>{getTypeText(form.type)}</p>
               </div>
@@ -455,40 +542,77 @@ function ReportDetail() {
             </Card>
           )}
 
-          {/* Staff Actions */}
-          <Card className='bg-white shadow-sm'>
-            <CardHeader className='pb-3'>
-              <CardTitle className='flex items-center gap-2 text-lg'>
-                <RefreshCw className='w-5 h-5 text-blue-600' />
-                Hành động xử lý
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-3'>
-                <Button
-                  onClick={() => setShowUpdateModal(true)}
-                  className='w-full bg-blue-600 hover:bg-blue-700 text-white h-12'
-                  disabled={form.status === 'ApprovedByStaff' || form.status === 'DeniedByStaff'}
-                >
-                  <RefreshCw className='w-4 h-4 mr-2' />
-                  <span className='text-sm'>
-                    {form.status === 'ApprovedByStaff' || form.status === 'DeniedByStaff'
-                      ? 'Đã xử lý'
-                      : 'Cập nhật phản hồi'
-                    }
-                  </span>
-                </Button>
-
-                {(form.status === 'ApprovedByStaff' || form.status === 'DeniedByStaff') && (
-                  <div className='text-center'>
-                    <Badge variant={form.status === 'ApprovedByStaff' ? 'default' : 'destructive'} className='text-sm'>
-                      {form.status === 'ApprovedByStaff' ? 'Đã duyệt' : 'Đã từ chối'}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Staff Actions - Show for Processing, Confirmed, and Rejected status */}
+          {(form.status === 'Processing' || form.status === 'Confirmed' || form.status === 'Rejected') && (
+            <Card className='bg-white shadow-sm'>
+              <CardHeader className='pb-3'>
+                <CardTitle className='flex items-center gap-2 text-lg'>
+                  <RefreshCw className='w-5 h-5 text-blue-600' />
+                  Hành động xử lý
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-4'>
+                  {/* Action Buttons */}
+                  {form.status === 'Processing' ? (
+                    <div className='space-y-3'>
+                      <div className='grid grid-cols-2 gap-3'>
+                        <Button
+                          onClick={() => {
+                            setSelectedStatus('Confirmed')
+                            setShowUpdateModal(true)
+                          }}
+                          disabled={updating}
+                          className='w-full bg-green-600 hover:bg-green-700 text-white h-12'
+                        >
+                          <CheckCircle className='w-4 h-4 mr-2' />
+                          Tiếp nhận
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setSelectedStatus('Rejected')
+                            setShowUpdateModal(true)
+                          }}
+                          disabled={updating}
+                          className='w-full bg-red-600 hover:bg-red-700 text-white h-12'
+                        >
+                          <XCircle className='w-4 h-4 mr-2' />
+                          Từ chối
+                        </Button>
+                      </div>
+                    </div>
+                  ) : form.status === 'Confirmed' || form.status === 'Rejected' ? (
+                    <div className='space-y-3'>
+                      <div className='grid grid-cols-2 gap-3'>
+                        <Button
+                          onClick={() => {
+                            setSelectedStatus('ApprovedByStaff')
+                            setShowUpdateModal(true)
+                          }}
+                          disabled={updating}
+                          className='w-full bg-green-600 hover:bg-green-700 text-white h-12'
+                        >
+                          <CheckCircle className='w-4 h-4 mr-2' />
+                          Chấp nhận
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setSelectedStatus('DeniedByStaff')
+                            setShowUpdateModal(true)
+                          }}
+                          disabled={updating}
+                          className='w-full bg-red-600 hover:bg-red-700 text-white h-12'
+                        >
+                          <XCircle className='w-4 h-4 mr-2' />
+                          Từ chối
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -498,7 +622,15 @@ function ReportDetail() {
           <DialogHeader>
             <DialogTitle className='text-lg font-semibold text-gray-900 flex items-center gap-2'>
               <RefreshCw className='w-5 h-5 text-blue-500' />
-              Cập nhật phản hồi
+              {selectedStatus === 'ApprovedByStaff'
+                ? 'Chấp nhận khiếu nại'
+                : selectedStatus === 'DeniedByStaff'
+                  ? 'Từ chối khiếu nại'
+                  : selectedStatus === 'Confirmed'
+                    ? 'Tiếp nhận khiếu nại'
+                    : selectedStatus === 'Rejected'
+                      ? 'Từ chối xử lý khiếu nại'
+                      : 'Cập nhật trạng thái khiếu nại'}
             </DialogTitle>
           </DialogHeader>
 
@@ -515,16 +647,34 @@ function ReportDetail() {
             <div>
               <Label className='text-sm font-medium text-gray-700 mb-2 block'>Trạng thái</Label>
               <Select
-                value={staffStatus}
-                onValueChange={(value: 'ApprovedByStaff' | 'DeniedByStaff') => setStaffStatus(value)}
+                value={selectedStatus}
+                onValueChange={(value: 'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected') =>
+                  setSelectedStatus(value)
+                }
                 disabled={updating}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='ApprovedByStaff'>Duyệt</SelectItem>
-                  <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
+                  {form.status === 'Processing' ? (
+                    <>
+                      <SelectItem value='Confirmed'>Tiếp nhận</SelectItem>
+                      <SelectItem value='Rejected'>Từ chối</SelectItem>
+                    </>
+                  ) : form.status === 'Confirmed' || form.status === 'Rejected' ? (
+                    <>
+                      <SelectItem value='ApprovedByStaff'>Chấp nhận</SelectItem>
+                      <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value='ApprovedByStaff'>Duyệt</SelectItem>
+                      <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
+                      <SelectItem value='Confirmed'>Chấp nhận</SelectItem>
+                      <SelectItem value='Rejected'>Từ chối</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -561,6 +711,14 @@ function ReportDetail() {
                     <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
                     Đang cập nhật...
                   </>
+                ) : selectedStatus === 'ApprovedByStaff' ? (
+                  'Chấp nhận'
+                ) : selectedStatus === 'DeniedByStaff' ? (
+                  'Từ chối'
+                ) : selectedStatus === 'Confirmed' ? (
+                  'Tiếp nhận'
+                ) : selectedStatus === 'Rejected' ? (
+                  'Từ chối'
                 ) : (
                   'Cập nhật'
                 )}
@@ -569,7 +727,15 @@ function ReportDetail() {
 
             {/* Footer Note */}
             <p className='text-xs text-gray-500 text-center'>
-              Phản hồi này sẽ được gửi đến khách hàng và admin sẽ được thông báo.
+              {selectedStatus === 'ApprovedByStaff'
+                ? 'Khiếu nại sẽ được chấp nhận và chuyển sang trạng thái "Đã duyệt (Staff)".'
+                : selectedStatus === 'DeniedByStaff'
+                  ? 'Khiếu nại sẽ bị từ chối và chuyển sang trạng thái "Từ chối (Staff)".'
+                  : selectedStatus === 'Confirmed'
+                    ? 'Khiếu nại sẽ được tiếp nhận và chuyển sang trạng thái "Đã chấp nhận".'
+                    : selectedStatus === 'Rejected'
+                      ? 'Khiếu nại sẽ bị từ chối và chuyển sang trạng thái "Đã từ chối".'
+                      : 'Phản hồi này sẽ được gửi đến khách hàng và admin sẽ được thông báo.'}
             </p>
           </div>
         </DialogContent>

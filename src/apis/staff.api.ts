@@ -145,6 +145,33 @@ export interface StaffListParams {
   isActive?: boolean
 }
 
+// Interface cho form được giao cho staff
+export interface StaffForm {
+  id: string
+  userId: string
+  storeId: string
+  orderId: string
+  type: string
+  subject: string
+  imageUrl: string[]
+  description: string
+  reply: string | null
+  staffId: string
+  staffName: string
+  adminId: string
+  adminText: string | null
+  lastEditId: string
+  status: 'Processing' | 'Completed' | 'Cancelled'
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StaffFormsResponse {
+  status: number
+  message: string
+  data: StaffForm[]
+}
+
 export const staffApi = {
   // Lấy danh sách tất cả staff (backend trả về tất cả, frontend tự phân trang)
   getAllStaff: async (params?: StaffListParams): Promise<StaffListResponse> => {
@@ -192,7 +219,7 @@ export const staffApi = {
   },
 
   // Lấy danh sách sản phẩm cần review của staff
-  getProductsForReview: async (staffId: string, params?: ProductsForReviewParams): Promise<ProductsForReviewResponse> => {
+  getProductsForReview: async (staffId: string, params?: ProductsForReviewParams): Promise<any> => {
     const queryParams = new URLSearchParams()
 
     if (params?.pageSize) {
@@ -256,5 +283,11 @@ export const staffApi = {
     })
 
     return response.data
+  },
+
+  // Lấy danh sách form được giao cho staff
+  getMyForms: async (): Promise<any> => {
+    const response = await axiosInstance.get(`${API_URL}/my-forms`)
+    return response
   }
 }

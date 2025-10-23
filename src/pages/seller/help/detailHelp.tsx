@@ -1,79 +1,181 @@
+import { useEffect, useState } from 'react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
-import { ArrowLeft, CheckCircle, Paperclip, User } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, CheckCircle, Paperclip, User, Clock, XCircle, Loader2, AlertCircle } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { formApi } from '../../../apis/form.api'
+import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
+import { toast } from 'react-toastify'
 
 function DetailHelp() {
   const navigate = useNavigate()
-  // const { requestId } = useParams()
+  const { requestId } = useParams<{ requestId: string }>()
+  const [formData, setFormData] = useState<FormDTO | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data for the specific request
-  const requestData = {
-    id: 'HT-86251',
-    dateSent: '03/09/2025',
-    status: 'resolved',
-    statusText: 'Đã giải quyết',
-    userRequest: {
-      content: `Chào đội ngũ hỗ trợ,
+  // Fetch form detail
+  useEffect(() => {
+    const fetchFormDetail = async () => {
+      if (!requestId) {
+        setError('Không tìm thấy mã yêu cầu')
+        setIsLoading(false)
+        return
+      }
 
-Tôi là Nguyễn Thị Lan, chủ cửa hàng "Nông sản sạch Lan". Tôi gặp vấn đề nghiêm trọng với đơn hàng #DH-2025-001234. Khách hàng đã thanh toán qua VNPay nhưng giao dịch bị lỗi, tuy nhiên tiền vẫn bị trừ khỏi tài khoản khách hàng.
-
-Đây là lần thứ 3 trong tuần này tôi gặp vấn đề tương tự, điều này ảnh hưởng nghiêm trọng đến uy tín cửa hàng của tôi. Khách hàng đã liên hệ phàn nàn và yêu cầu hoàn tiền ngay lập tức.
-
-Xin hãy hỗ trợ tôi xử lý vấn đề này một cách khẩn cấp.
-
-Trân trọng,
-Nguyễn Thị Lan`,
-      sentTime: '14:30, 03/09/2025',
-      attachments: [
-        {
-          name: 'loi_thanh_toan.png',
-          type: 'image'
-        }
-      ]
-    },
-    supportResponse: {
-      agent: {
-        name: 'Trần Mai Anh',
-        title: 'Chuyên viên hỗ trợ kỹ thuật',
-        avatar: null
-      },
-      content: `Chào chị Nguyễn Thị Lan,
-
-Cảm ơn chị đã liên hệ với chúng tôi về vấn đề thanh toán VNPay. Tôi hiểu sự bất tiện này đã gây ra cho chị và khách hàng.
-
-Sau khi kiểm tra hệ thống, chúng tôi đã xác định được nguyên nhân lỗi là do vấn đề đồng bộ dữ liệu tạm thời giữa VNPay và hệ thống của chúng tôi. Vấn đề này đã được khắc phục hoàn toàn.
-
-**Các biện pháp đã thực hiện:**
-• Hoàn tiền tự động cho đơn hàng #DH-2025-001234 (đã xử lý)
-• Cập nhật cơ chế xử lý lỗi để tránh tình trạng tương tự
-• Gửi email xác nhận đến khách hàng về việc hoàn tiền
-
-Chị vui lòng kiểm tra lại và cho tôi biết nếu còn vấn đề gì khác cần hỗ trợ.
-
-Trân trọng,
-Trần Mai Anh`,
-      responseTime: '09:15, 04/09/2025'
+      try {
+        setIsLoading(true)
+        const data = await formApi.getFormById(requestId)
+        setFormData(data)
+      } catch (error: any) {
+        console.error('Error fetching form detail:', error)
+        setError('Không thể tải thông tin yêu cầu hỗ trợ')
+        toast.error('Không thể tải thông tin yêu cầu hỗ trợ')
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }
+
+    fetchFormDetail()
+  }, [requestId])
 
   const handleBack = () => {
     navigate('/helpSeller')
   }
 
-  const getStatusBadge = (status: string, statusText: string) => {
-    switch (status) {
-      case 'resolved':
-        return (
-          <div className='flex items-center gap-2'>
-            <CheckCircle className='w-4 h-4 text-green-600' />
-            <span className='text-green-600 font-medium'>{statusText}</span>
-          </div>
-        )
-      default:
-        return <Badge className='bg-gray-100 text-gray-800'>{statusText}</Badge>
+  const handleCreateNew = () => {
+    navigate('/helpSeller')
+    // Có thể trigger mở modal tạo mới ở đây nếu cần
+  }
+
+  // Map FormType to Vietnamese
+  const getFormTypeLabel = (type: FormType): string => {
+    const typeMap: Record<FormType, string> = {
+      SupportAccount: 'Hỗ trợ tài khoản',
+      SupportPayment: 'Hỗ trợ thanh toán',
+      SupportTechnical: 'Hỗ trợ kỹ thuật',
+      ComplaintContent: 'Khiếu nại nội dung',
+      RequestInformation: 'Yêu cầu thông tin',
+      ReportSeller: 'Báo cáo người bán',
+      FeedbackSuggestion: 'Góp ý đề xuất',
+      PrivacyDataRequest: 'Yêu cầu dữ liệu cá nhân',
+      SupportMarketing: 'Hỗ trợ marketing',
+      SupportOther: 'Hỗ trợ khác',
+      SupportRefundMoney: 'Hỗ trợ hoàn tiền'
     }
+    return typeMap[type] || type
+  }
+
+  // Get status display with icon
+  const getStatusDisplay = (status: FormStatus) => {
+    const statusMap: Record<
+      FormStatus,
+      { text: string; icon: JSX.Element; className: string }
+    > = {
+      Pending: {
+        text: 'Chờ xử lý',
+        icon: <Clock className='w-4 h-4' />,
+        className: 'text-yellow-600'
+      },
+      Processing: {
+        text: 'Đang xử lý',
+        icon: <Clock className='w-4 h-4' />,
+        className: 'text-blue-600'
+      },
+      ApprovedByStaff: {
+        text: 'Staff đã phê duyệt',
+        icon: <CheckCircle className='w-4 h-4' />,
+        className: 'text-cyan-600'
+      },
+      DeniedByStaff: {
+        text: 'Staff từ chối',
+        icon: <XCircle className='w-4 h-4' />,
+        className: 'text-red-600'
+      },
+      ApprovedByAdmin: {
+        text: 'Đã giải quyết',
+        icon: <CheckCircle className='w-4 h-4' />,
+        className: 'text-green-600'
+      },
+      DeniedByAdmin: {
+        text: 'Admin từ chối',
+        icon: <XCircle className='w-4 h-4' />,
+        className: 'text-red-600'
+      },
+      Rejected: {
+        text: 'Bị từ chối',
+        icon: <XCircle className='w-4 h-4' />,
+        className: 'text-red-600'
+      },
+      Confirmed: {
+        text: 'Đã xác nhận',
+        icon: <CheckCircle className='w-4 h-4' />,
+        className: 'text-green-600'
+      },
+      Cancel: {
+        text: 'Đã hủy',
+        icon: <XCircle className='w-4 h-4' />,
+        className: 'text-gray-600'
+      }
+    }
+
+    const statusInfo = statusMap[status] || {
+      text: status,
+      icon: <AlertCircle className='w-4 h-4' />,
+      className: 'text-gray-600'
+    }
+
+    return (
+      <div className={`flex items-center gap-2 ${statusInfo.className} font-medium`}>
+        {statusInfo.icon}
+        <span>{statusInfo.text}</span>
+      </div>
+    )
+  }
+
+  // Format date
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // Get file name from URL
+  const getFileNameFromUrl = (url: string) => {
+    const parts = url.split('/')
+    return parts[parts.length - 1]
+  }
+
+  if (isLoading) {
+    return (
+      <div className='p-6 bg-gray-50 min-h-screen'>
+        <div className='flex items-center justify-center py-20'>
+          <Loader2 className='w-8 h-8 text-green-600 animate-spin' />
+          <span className='ml-3 text-gray-600'>Đang tải...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !formData) {
+    return (
+      <div className='p-6 bg-gray-50 min-h-screen'>
+        <div className='flex flex-col items-center justify-center py-20'>
+          <AlertCircle className='w-16 h-16 text-red-400 mb-4' />
+          <p className='text-gray-600 text-lg mb-4'>{error || 'Không tìm thấy thông tin yêu cầu'}</p>
+          <Button onClick={handleBack} className='bg-green-600 hover:bg-green-700 text-white'>
+            <ArrowLeft className='w-4 h-4 mr-2' />
+            Quay lại
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -87,25 +189,38 @@ Trần Mai Anh`,
 
       {/* Header */}
       <div className='mb-6'>
-        <h1 className='text-2xl font-bold text-green-700 mb-4'>Chi tiết yêu cầu #{requestData.id}</h1>
+        <h1 className='text-2xl font-bold text-green-700 mb-4'>
+          Chi tiết yêu cầu #{formData.id.substring(0, 8).toUpperCase()}
+        </h1>
 
         {/* Request Info Card */}
         <Card className='mb-6'>
           <CardContent className='p-6'>
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+            <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
               <div>
                 <p className='text-sm text-gray-600 mb-1'>Mã yêu cầu</p>
-                <p className='font-medium text-gray-900'>#{requestData.id}</p>
+                <p className='font-medium text-gray-900'>#{formData.id.substring(0, 8).toUpperCase()}</p>
+              </div>
+              <div>
+                <p className='text-sm text-gray-600 mb-1'>Loại yêu cầu</p>
+                <p className='font-medium text-gray-900'>{getFormTypeLabel(formData.type)}</p>
               </div>
               <div>
                 <p className='text-sm text-gray-600 mb-1'>Ngày gửi</p>
-                <p className='font-medium text-gray-900'>{requestData.dateSent}</p>
+                <p className='font-medium text-gray-900'>{formatDateTime(formData.createdAt)}</p>
               </div>
               <div>
                 <p className='text-sm text-gray-600 mb-1'>Trạng thái</p>
-                {getStatusBadge(requestData.status, requestData.statusText)}
+                {getStatusDisplay(formData.status)}
               </div>
             </div>
+
+            {formData.orderId && (
+              <div className='mt-4 pt-4 border-t border-gray-200'>
+                <p className='text-sm text-gray-600 mb-1'>Mã đơn hàng</p>
+                <p className='font-medium text-gray-900'>{formData.orderId}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -114,19 +229,36 @@ Trần Mai Anh`,
       <div className='mb-8'>
         <div className='flex items-center justify-between mb-4'>
           <h2 className='text-lg font-semibold text-green-700'>Nội dung yêu cầu của bạn</h2>
-          <span className='text-sm text-gray-500'>Bạn đã gửi vào lúc {requestData.userRequest.sentTime}</span>
+          <span className='text-sm text-gray-500'>Bạn đã gửi vào lúc {formatDateTime(formData.createdAt)}</span>
         </div>
 
         <Card>
           <CardContent className='p-6'>
             <div className='border-l-4 border-green-500 bg-gray-50 p-4 rounded-r-lg'>
-              <div className='whitespace-pre-line text-gray-700 mb-4'>{requestData.userRequest.content}</div>
+              {/* Subject */}
+              <h3 className='font-semibold text-gray-900 mb-3'>{formData.subject}</h3>
+
+              {/* Description */}
+              <div className='whitespace-pre-line text-gray-700 mb-4'>{formData.description}</div>
 
               {/* Attachments */}
-              {requestData.userRequest.attachments && requestData.userRequest.attachments.length > 0 && (
-                <div className='flex items-center gap-2'>
-                  <Paperclip className='w-4 h-4 text-gray-500' />
-                  <span className='text-sm text-gray-600'>{requestData.userRequest.attachments[0].name}</span>
+              {formData.imageUrl && formData.imageUrl.length > 0 && (
+                <div className='mt-4 pt-4 border-t border-gray-200'>
+                  <p className='text-sm font-medium text-gray-700 mb-2'>Tệp đính kèm:</p>
+                  <div className='space-y-2'>
+                    {formData.imageUrl.map((url, index) => (
+                      <a
+                        key={index}
+                        href={url}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='flex items-center gap-2 text-blue-600 hover:text-blue-700 hover:underline'
+                      >
+                        <Paperclip className='w-4 h-4' />
+                        <span className='text-sm'>{getFileNameFromUrl(url)}</span>
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -134,35 +266,58 @@ Trần Mai Anh`,
         </Card>
       </div>
 
-      {/* Support Response Section */}
-      <div>
-        <div className='flex items-center justify-between mb-4'>
-          <h2 className='text-lg font-semibold text-green-700'>Phản hồi từ đội ngũ hỗ trợ</h2>
-          <span className='text-sm text-gray-500'>
-            {requestData.supportResponse.agent.name} đã phản hồi vào lúc {requestData.supportResponse.responseTime}
-          </span>
-        </div>
+      {/* Support Response Section - Only show if there's a reply from staff */}
+      {formData.reply && formData.staffName && (
+        <div className='mb-8'>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-lg font-semibold text-green-700'>Phản hồi từ đội ngũ hỗ trợ</h2>
+            <span className='text-sm text-gray-500'>
+              {formData.staffName} đã phản hồi vào lúc {formatDateTime(formData.updatedAt)}
+            </span>
+          </div>
 
-        <Card>
-          <CardContent className='p-6'>
-            <div className='border-l-4 border-yellow-500 bg-gray-50 p-4 rounded-r-lg'>
-              {/* Agent Info */}
-              <div className='flex items-center gap-3 mb-4'>
-                <div className='w-10 h-10 bg-green-100 rounded-full flex items-center justify-center'>
-                  <User className='w-5 h-5 text-green-600' />
+          <Card>
+            <CardContent className='p-6'>
+              <div className='border-l-4 border-yellow-500 bg-gray-50 p-4 rounded-r-lg'>
+                {/* Agent Info */}
+                <div className='flex items-center gap-3 mb-4'>
+                  <div className='w-10 h-10 bg-green-100 rounded-full flex items-center justify-center'>
+                    <User className='w-5 h-5 text-green-600' />
+                  </div>
+                  <div>
+                    <p className='font-medium text-gray-900'>{formData.staffName}</p>
+                    <p className='text-sm text-gray-600'>Chuyên viên hỗ trợ</p>
+                  </div>
                 </div>
-                <div>
-                  <p className='font-medium text-gray-900'>{requestData.supportResponse.agent.name}</p>
-                  <p className='text-sm text-gray-600'>{requestData.supportResponse.agent.title}</p>
-                </div>
+
+                {/* Response Content */}
+                <div className='whitespace-pre-line text-gray-700'>{formData.reply}</div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-              {/* Response Content */}
-              <div className='whitespace-pre-line text-gray-700'>{requestData.supportResponse.content}</div>
+      {/* Status Information */}
+      {(formData.status === 'Pending' || formData.status === 'Processing') && (
+        <Card className='mb-8 bg-blue-50 border-blue-200'>
+          <CardContent className='p-4'>
+            <div className='flex items-start gap-3'>
+              <Clock className='w-5 h-5 text-blue-600 mt-0.5' />
+              <div>
+                <p className='font-medium text-blue-900 mb-1'>
+                  {formData.status === 'Pending' ? 'Yêu cầu đang chờ xử lý' : 'Yêu cầu đang được xử lý'}
+                </p>
+                <p className='text-sm text-blue-700'>
+                  {formData.status === 'Pending'
+                    ? 'Chúng tôi đã nhận được yêu cầu của bạn và sẽ xử lý trong thời gian sớm nhất.'
+                    : 'Đội ngũ hỗ trợ đang xem xét và xử lý yêu cầu của bạn. Vui lòng chờ phản hồi.'}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
-      </div>
+      )}
 
       {/* Action Buttons */}
       <div className='flex justify-end gap-3 mt-8'>
@@ -170,7 +325,9 @@ Trần Mai Anh`,
           <ArrowLeft className='w-4 h-4 mr-2' />
           Quay lại
         </Button>
-        <Button className='bg-green-600 hover:bg-green-700 text-white px-6'>Tạo yêu cầu mới</Button>
+        <Button onClick={handleCreateNew} className='bg-green-600 hover:bg-green-700 text-white px-6'>
+          Tạo yêu cầu mới
+        </Button>
       </div>
     </div>
   )

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from '../../../../components/ui/button'
+import { Button } from '../../../../../components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -7,10 +7,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from '../../../../components/ui/dialog'
-import { Alert, AlertDescription } from '../../../../components/ui/alert'
-import { Label } from '../../../../components/ui/label'
-import { cancelOrder } from '../../../../apis/order.api'
+} from '../../../../../components/ui/dialog'
+import { Alert, AlertDescription } from '../../../../../components/ui/alert'
+import { Label } from '../../../../../components/ui/label'
+import { cancelOrder } from '../../../../../apis/order.api'
 import { toast } from 'react-toastify'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 

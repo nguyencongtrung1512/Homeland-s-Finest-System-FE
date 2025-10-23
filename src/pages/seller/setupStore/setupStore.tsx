@@ -96,6 +96,7 @@ function SetupStore() {
       formData.append('ProvinceId', storeData.provinceId?.toString() || '')
       formData.append('DistrictId', storeData.districtId?.toString() || '')
       formData.append('WardId', storeData.wardId?.toString() || '')
+      formData.append('Description', storeData.description || '')
 
       // Add existing URLs
       if (storeData.logoUrl) {
@@ -411,6 +412,28 @@ function SetupStore() {
                     )}
                   </div>
 
+                  {/* Store Description */}
+                  <div>
+                    <Label htmlFor='description' className='text-sm font-medium text-gray-700 mb-2 block'>
+                      Mô tả cửa hàng
+                    </Label>
+                    {isEditMode ? (
+                      <Textarea
+                        id='description'
+                        placeholder='Nhập mô tả về cửa hàng của bạn'
+                        value={storeData.description || ''}
+                        onChange={(e) => handleInputChange('description', e.target.value)}
+                        className='w-full min-h-[120px]'
+                      />
+                    ) : (
+                      <div className='p-3 bg-gray-50 rounded-md border min-h-[120px]'>
+                        <p className='text-gray-900 whitespace-pre-wrap'>
+                          {storeData.description || 'Chưa có mô tả cửa hàng'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Store Information */}
                   <div>
                     <h3 className='text-lg font-semibold text-gray-900 mb-4'>Thông tin cửa hàng</h3>
@@ -439,12 +462,12 @@ function SetupStore() {
                         <div className='p-3 bg-gray-50 rounded-md border'>
                           <span
                             className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${storeData.status === 'Approved'
-                                ? 'bg-green-100 text-green-800'
-                                : storeData.status === 'Pending'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : storeData.status === 'Rejected'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-gray-100 text-gray-800'
+                              ? 'bg-green-100 text-green-800'
+                              : storeData.status === 'Pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : storeData.status === 'Rejected'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-800'
                               }`}
                           >
                             {storeData.status === 'Approved'

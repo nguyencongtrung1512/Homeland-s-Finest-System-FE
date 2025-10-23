@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Button } from '../../../../components/ui/button'
-import { Input } from '../../../../components/ui/input'
-import { Label } from '../../../../components/ui/label'
-import { useAuth } from '../../../../contexts/auth.context'
-import { getUserById, updateUser, type User } from '../../../../apis/user.api'
+import { Button } from '../../../../../components/ui/button'
+import { Input } from '../../../../../components/ui/input'
+import { Label } from '../../../../../components/ui/label'
+import { useAuth } from '../../../../../contexts/auth.context'
+import { getUserById, updateUser, type User } from '../../../../../apis/user.api'
 import { toast } from 'react-toastify'
 
 // Helper function to convert DD-MM-YYYY to YYYY-MM-DD format

@@ -25,15 +25,16 @@ interface UserPromotionResponse {
 import { addressApi } from '../../../apis/address.api'
 import { getCustomerOrders } from '../../../apis/order.api'
 import { promotionApi } from '../../../apis/promotion.api'
-import { formApi, type FormDTO } from '../../../apis/form.api'
+import { formApi } from '../../../apis/form.api'
 import { useAuth } from '../../../contexts/auth.context'
 import { getUserById, type User } from '../../../apis/user.api'
-import ProfileContent from './components/ProfileContent'
-import OrdersContent from './components/OrdersContent'
-import AddressContent from './components/AddressContent'
-import PromotionsContent from './components/PromotionsContent'
-import FormsContent from './components/FormsContent'
-import AddressModal from './components/AddressModal'
+import ProfileContent from './components/profile/ProfileContent'
+import OrdersContent from './components/order/OrdersContent'
+import AddressContent from './components/address/AddressContent'
+import PromotionsContent from './components/promotion/PromotionsContent'
+import FormsContent from './components/form/FormsContent'
+import AddressModal from './components/address/AddressModal'
+import type { FormDTO } from '../../../types/form.type'
 
 export default function Profile() {
   const location = useLocation()

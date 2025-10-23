@@ -8,7 +8,8 @@ import { Label } from '../../../components/ui/label'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, Search, Filter } from 'lucide-react'
-import { formApi, type FormDTO, type FormStatus, type FormType } from '../../../apis/form.api'
+import { formApi } from '../../../apis/form.api'
+import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
 import { toast } from 'react-toastify'
 import AssignStaffModal from './components/AssignStaffModal'
 import FormDetailModal from './components/FormDetailModal'
@@ -347,6 +348,11 @@ export default function AdminFormManagement() {
                         <Badge variant='outline' className='text-xs'>
                           {getTypeText(form.type)}
                         </Badge>
+                        {form.storeId && (
+                          <Badge variant='outline' className='text-xs bg-blue-50 text-blue-700 border-blue-200'>
+                            Store: {form.storeId.slice(0, 8)}...
+                          </Badge>
+                        )}
                       </div>
                       <h3 className='text-lg font-semibold text-gray-900 mb-2'>{form.subject}</h3>
                       <p className='text-sm text-gray-600 line-clamp-2'>{form.description}</p>
@@ -360,12 +366,18 @@ export default function AdminFormManagement() {
                       <div>
                         <p className='text-xs text-gray-500 mb-2'>Hình ảnh đính kèm:</p>
                         <div className='flex gap-2 flex-wrap'>
-                          {form.imageUrl.map((imageUrl, index) => (
+                          {form.imageUrl.map((imageUrl: string, index: number) => (
                             <img
                               key={index}
                               src={imageUrl}
                               alt={`Attachment ${index + 1}`}
-                              className='w-16 h-16 object-cover rounded border'
+                              className='w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity'
+                              onClick={() => window.open(imageUrl, '_blank')}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.src = '/src/assets/react.svg'
+                                target.alt = 'Image not available'
+                              }}
                             />
                           ))}
                         </div>

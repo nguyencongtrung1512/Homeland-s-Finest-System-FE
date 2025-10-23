@@ -6,11 +6,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../../components
 import { Textarea } from '../../../../components/ui/textarea'
 import { Label } from '../../../../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../components/ui/select'
-import { ArrowLeft, Calendar, Clock, CheckCircle, XCircle, AlertCircle, User, Image as ImageIcon } from 'lucide-react'
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  User,
+  Image as ImageIcon,
+  Store
+} from 'lucide-react'
 import { formApi } from '../../../../apis/form.api'
 import type { FormDTO, FormStatus, FormType } from '../../../../types/form.type'
 import { getUserById } from '../../../../apis/user.api'
+import { storeApi, type StoreResponse } from '../../../../apis/store.api'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router-dom'
 
 interface FormDetailModalProps {
   isOpen: boolean
@@ -20,6 +32,7 @@ interface FormDetailModalProps {
 }
 
 export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: FormDetailModalProps) {
+  const navigate = useNavigate()
   const [form, setForm] = useState<FormDTO | null>(null)
   const [loading, setLoading] = useState(false)
   const [updating, setUpdating] = useState(false)
@@ -27,6 +40,8 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
   const [adminStatus, setAdminStatus] = useState<'ApprovedByAdmin' | 'DeniedByAdmin'>('ApprovedByAdmin')
   const [userInfo, setUserInfo] = useState<{ firstName: string; lastName: string; email: string } | null>(null)
   const [loadingUser, setLoadingUser] = useState(false)
+  const [storeInfo, setStoreInfo] = useState<StoreResponse | null>(null)
+  const [loadingStore, setLoadingStore] = useState(false)
 
   // Load user info
   const loadUserInfo = useCallback(async (userId: string) => {
@@ -46,6 +61,20 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
     }
   }, [])
 
+  // Load store info
+  const loadStoreInfo = useCallback(async (storeId: string) => {
+    try {
+      setLoadingStore(true)
+      const response = await storeApi.getStoreById(storeId)
+      setStoreInfo(response.data)
+    } catch (error) {
+      console.error('Error loading store info:', error)
+      setStoreInfo(null)
+    } finally {
+      setLoadingStore(false)
+    }
+  }, [])
+
   // Load form detail
   const loadFormDetail = useCallback(async () => {
     if (!formId) return
@@ -60,13 +89,18 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
       if (response.userId) {
         await loadUserInfo(response.userId)
       }
+
+      // Load store info
+      if (response.storeId) {
+        await loadStoreInfo(response.storeId)
+      }
     } catch (error) {
       console.error('Error loading form detail:', error)
       toast.error('Có lỗi xảy ra khi tải chi tiết khiếu nại')
     } finally {
       setLoading(false)
     }
-  }, [formId, loadUserInfo])
+  }, [formId, loadUserInfo, loadStoreInfo])
 
   useEffect(() => {
     if (isOpen && formId) {
@@ -220,6 +254,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
     setAdminText('')
     setAdminStatus('ApprovedByAdmin')
     setUserInfo(null)
+    setStoreInfo(null)
     onClose()
   }
 
@@ -416,7 +451,6 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                 <CardTitle className='text-lg'>Thông tin chi tiết</CardTitle>
               </CardHeader>
               <CardContent className='space-y-3'>
-
                 <div>
                   <Label className='text-sm font-medium text-gray-500'>Tên người dùng</Label>
                   {loadingUser ? (
@@ -439,6 +473,33 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                   <div>
                     <Label className='text-sm font-medium text-gray-500'>ID đơn hàng</Label>
                     <p className='text-sm text-gray-900 font-mono'>{form.orderId}</p>
+                  </div>
+                )}
+                {form.storeId && (
+                  <div>
+                    <Label className='text-sm font-medium text-gray-500'>Cửa hàng</Label>
+                    {loadingStore ? (
+                      <div className='flex items-center gap-2'>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600'></div>
+                        <span className='text-sm text-gray-500'>Đang tải...</span>
+                      </div>
+                    ) : storeInfo ? (
+                      <div
+                        className='cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors'
+                        onClick={() => navigate(`/admin/storeManagement/store-detail/${form.storeId}`)}
+                      >
+                        <div className='flex items-center gap-2'>
+                          <Store className='w-4 h-4 text-blue-500' />
+                          <div>
+                            <p className='text-sm text-gray-900 font-medium'>{storeInfo.storeName}</p>
+                            <p className='text-xs text-gray-500'>{storeInfo.address}</p>
+                          </div>
+                        </div>
+                        <p className='text-xs text-blue-600 mt-1'>Click để xem chi tiết</p>
+                      </div>
+                    ) : (
+                      <p className='text-sm text-gray-500'>Không tìm thấy thông tin cửa hàng</p>
+                    )}
                   </div>
                 )}
                 <div>

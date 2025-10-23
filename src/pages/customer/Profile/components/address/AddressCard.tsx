@@ -1,6 +1,6 @@
-import { Button } from '../../../../components/ui/button'
-import { Badge } from '../../../../components/ui/badge'
-import type { Address } from '../../../../types/addressType'
+import { Button } from '../../../../../components/ui/button'
+import { Badge } from '../../../../../components/ui/badge'
+import type { Address } from '../../../../../types/addressType'
 
 interface AddressCardProps {
   address: Address

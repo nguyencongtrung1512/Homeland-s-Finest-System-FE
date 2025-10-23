@@ -25,6 +25,7 @@ export type FormStatus =
 
 export interface CreateFormRequest {
   userId: string
+  storeId?: string
   orderId?: string
   type: FormType
   subject: string
@@ -33,6 +34,7 @@ export interface CreateFormRequest {
 }
 
 export interface UpdateFormRequest {
+  storeId?: string
   orderId?: string
   type: FormType
   subject: string
@@ -42,7 +44,7 @@ export interface UpdateFormRequest {
 
 export interface StaffUpdateRequest {
   reply: string
-  status: 'ApprovedByStaff' | 'DeniedByStaff'
+  status: 'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected'
 }
 
 export interface AdminUpdateRequest {
@@ -53,6 +55,7 @@ export interface AdminUpdateRequest {
 export interface FormDTO {
   id: string
   userId: string
+  storeId?: string
   orderId?: string
   type: FormType
   subject: string
@@ -72,6 +75,7 @@ export interface FormQueryParams {
   pageSize: number
   pageNumber: number
   userId?: string
+  storeId?: string
   status?: FormStatus
   type?: FormType
   sortBy?: 'status' | 'type' | 'createdat'
