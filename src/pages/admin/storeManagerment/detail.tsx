@@ -20,12 +20,15 @@ import {
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
+import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { adminApi, type Staff, type StatusStoreRequest } from '../../../apis/admin.api'
+import { getAllCombos } from '../../../apis/combo.api'
+import { type Combo } from '../../../types/combo.type'
 import { toast } from 'react-toastify'
 import ProductModal from './modalProduct'
 import { exportStoreToExcel } from './excelExport'
@@ -47,8 +50,16 @@ function StoreDetailAdmin() {
   const [statusLoading, setStatusLoading] = useState(false)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [productModalOpen, setProductModalOpen] = useState(false)
+  const [comboModalOpen, setComboModalOpen] = useState(false)
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('')
+
+  // Combo states
+  const [combos, setCombos] = useState<Combo[]>([])
+  const [comboLoading, setComboLoading] = useState(false)
+  const [comboError, setComboError] = useState<string | null>(null)
+  const [comboCurrentPage, setComboCurrentPage] = useState(1)
+  const comboItemsPerPage = 6
 
   const handleApiError = (error: any, defaultMessage: string) => {
     console.error('API Error:', error)
@@ -174,9 +185,33 @@ function StoreDetailAdmin() {
     }
   }
 
+  const fetchCombos = async () => {
+    if (!storeId) return
+
+    try {
+      setComboLoading(true)
+      setComboError(null)
+
+      const response = await getAllCombos({
+        storeId: storeId,
+        pageSize: 0,
+        pageNumber: 1
+      })
+
+      setCombos(response)
+    } catch (error: any) {
+      const errorMessage = handleApiError(error, 'Có lỗi xảy ra khi tải danh sách combo')
+      setComboError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setComboLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchStoreDetail()
     fetchStaffList()
+    fetchCombos()
   }, [storeId])
 
   const getStatusConfig = (status: string) => {
@@ -387,7 +422,7 @@ function StoreDetailAdmin() {
         {/* Header */}
         <div className='mb-6'>
           <Button
-            onClick={() => navigate('/admin/storeManagement')}
+            onClick={() => navigate(-1 as any)}
             variant='ghost'
             className='mb-4 text-gray-600 hover:text-gray-900'
           >
@@ -453,18 +488,29 @@ function StoreDetailAdmin() {
                     </div>
                   </div>
                 </div>
-                <div>
+                <div className='mb-2'>
                   <Button
                     onClick={() => setProductModalOpen(true)}
                     variant='outline'
-                    className='w-full border-blue-200 text-blue-600 hover:bg-blue-50'
+                    className='w-full border-green-200 text-green-600 hover:bg-green-50'
                   >
                     <Package className='w-4 h-4 mr-2' />
                     Xem sản phẩm ({store?.products?.length || 0})
                   </Button>
                 </div>
+                <div>
+                  <Button
+                    onClick={() => setComboModalOpen(true)}
+                    variant='outline'
+                    className='w-full border-purple-200 text-purple-600 hover:bg-purple-50'
+                  >
+                    <Package className='w-4 h-4 mr-2' />
+                    Xem combo ({combos.length || 0})
+                  </Button>
+                </div>
               </CardContent>
             </Card>
+
 
             {/* Người đại diện pháp lý */}
             <Card className='border-0 shadow-sm'>
@@ -776,6 +822,190 @@ function StoreDetailAdmin() {
         products={store?.products || []}
         storeName={store?.storeName || ''}
       />
+
+      {/* Combo Modal */}
+      <Dialog open={comboModalOpen} onOpenChange={setComboModalOpen}>
+        <DialogContent className='max-w-6xl max-h-[90vh] overflow-y-auto'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-gray-900'>
+              <Package className='w-5 h-5 text-purple-500' />
+              Danh sách Combo - {store?.storeName || 'Cửa hàng'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className='mt-4'>
+            {comboLoading ? (
+              <div className='flex items-center justify-center py-12'>
+                <div className='flex items-center gap-3 text-gray-600'>
+                  <Loader2 className='w-6 h-6 animate-spin text-purple-500' />
+                  <p>Đang tải danh sách combo...</p>
+                </div>
+              </div>
+            ) : comboError ? (
+              <div className='text-center py-12'>
+                <div className='text-red-500 text-lg mb-2'>⚠️</div>
+                <p className='text-red-600 font-medium mb-4'>{comboError}</p>
+                <Button onClick={fetchCombos} variant='outline'>
+                  Thử lại
+                </Button>
+              </div>
+            ) : combos.length > 0 ? (
+              <div className='space-y-6'>
+                {/* Combo Cards Grid */}
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                  {combos
+                    .slice((comboCurrentPage - 1) * comboItemsPerPage, comboCurrentPage * comboItemsPerPage)
+                    .map((combo) => (
+                      <Card key={combo.id} className='hover:shadow-lg transition-shadow duration-200'>
+                        <CardContent className='p-4'>
+                          {/* Combo Header */}
+                          <div className='flex items-start justify-between mb-3'>
+                            <div className='flex-1'>
+                              <h3 className='font-semibold text-gray-900 text-lg mb-1 line-clamp-2'>
+                                {combo.name}
+                              </h3>
+                              <div className='flex items-center gap-2'>
+                                <Badge
+                                  variant='secondary'
+                                  className={`text-xs ${combo.status === 'Approved'
+                                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                    : combo.status === 'Pending'
+                                      ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                                      : combo.status === 'Rejected'
+                                        ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                                        : combo.status === 'Processing'
+                                          ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                    }`}
+                                >
+                                  {combo.status === 'Approved'
+                                    ? 'Đã duyệt'
+                                    : combo.status === 'Pending'
+                                      ? 'Chờ duyệt'
+                                      : combo.status === 'Rejected'
+                                        ? 'Từ chối'
+                                        : combo.status === 'Processing'
+                                          ? 'Đang xử lý'
+                                          : combo.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Combo Description */}
+                          {combo.description && (
+                            <p className='text-sm text-gray-600 mb-3 line-clamp-2'>
+                              {combo.description}
+                            </p>
+                          )}
+
+                          {/* Combo Stats */}
+                          <div className='space-y-2 mb-4'>
+                            <div className='flex justify-between items-center text-sm'>
+                              <span className='text-gray-500'>Số sản phẩm:</span>
+                              <span className='font-medium text-gray-900'>
+                                {combo.comboItems?.length || 0}
+                              </span>
+                            </div>
+                            <div className='flex justify-between items-center text-sm'>
+                              <span className='text-gray-500'>Giá gốc:</span>
+                              <span className='font-semibold text-green-600'>
+                                {new Intl.NumberFormat('vi-VN', {
+                                  style: 'currency',
+                                  currency: 'VND'
+                                }).format(combo.totalBasePrice)}
+                              </span>
+                            </div>
+                            <div className='flex justify-between items-center text-sm'>
+                              <span className='text-gray-500'>Giá bán:</span>
+                              <span className='font-semibold text-blue-600'>
+                                {new Intl.NumberFormat('vi-VN', {
+                                  style: 'currency',
+                                  currency: 'VND'
+                                }).format(combo.totalFinalPrice)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Combo Items Preview */}
+                          {combo.comboItems && combo.comboItems.length > 0 && (
+                            <div className='border-t pt-3'>
+                              <p className='text-xs text-gray-500 mb-2'>Sản phẩm trong combo:</p>
+                              <div className='space-y-1'>
+                                {combo.comboItems.slice(0, 3).map((item, index) => (
+                                  <div key={index} className='flex justify-between items-center text-xs'>
+                                    <span className='text-gray-600 truncate flex-1 mr-2'>
+                                      {item.comboItemName}
+                                    </span>
+                                    <span className='text-gray-500'>
+                                      x{item.quantity}
+                                    </span>
+                                  </div>
+                                ))}
+                                {combo.comboItems.length > 3 && (
+                                  <p className='text-xs text-gray-400 italic'>
+                                    +{combo.comboItems.length - 3} sản phẩm khác...
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+
+                {/* Pagination */}
+                {combos.length > comboItemsPerPage && (
+                  <div className='flex items-center justify-between pt-4 border-t'>
+                    <div className='text-sm text-gray-700'>
+                      Hiển thị {(comboCurrentPage - 1) * comboItemsPerPage + 1} đến{' '}
+                      {Math.min(comboCurrentPage * comboItemsPerPage, combos.length)} trong {combos.length} combo
+                    </div>
+                    <div className='flex items-center space-x-2'>
+                      <Button
+                        onClick={() => setComboCurrentPage(comboCurrentPage - 1)}
+                        disabled={comboCurrentPage === 1}
+                        variant='outline'
+                        size='sm'
+                      >
+                        Trước
+                      </Button>
+                      {Array.from(
+                        { length: Math.ceil(combos.length / comboItemsPerPage) },
+                        (_, i) => i + 1
+                      ).map((page) => (
+                        <Button
+                          key={page}
+                          onClick={() => setComboCurrentPage(page)}
+                          variant={comboCurrentPage === page ? 'default' : 'outline'}
+                          size='sm'
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                      <Button
+                        onClick={() => setComboCurrentPage(comboCurrentPage + 1)}
+                        disabled={comboCurrentPage === Math.ceil(combos.length / comboItemsPerPage)}
+                        variant='outline'
+                        size='sm'
+                      >
+                        Sau
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className='text-center py-12 text-gray-500'>
+                <Package size={64} className='mx-auto mb-4 text-gray-300' />
+                <h3 className='text-lg font-medium text-gray-900 mb-2'>Chưa có combo nào</h3>
+                <p className='text-gray-500'>Cửa hàng này chưa tạo combo nào.</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Assign Staff Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>

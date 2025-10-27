@@ -78,6 +78,7 @@ export interface ComboItem {
 }
 export interface Combo {
   id: string
+  storeName: string
   name: string
   storeId?: string
   provinceId: number

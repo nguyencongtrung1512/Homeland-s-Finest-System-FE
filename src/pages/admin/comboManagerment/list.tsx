@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Calendar, Store } from 'lucide-react'
-import { format } from 'date-fns'
-import { vi } from 'date-fns/locale'
+import { Calendar, CheckCircle, Eye, Store } from 'lucide-react'
 
 import { adminApi, type ComboAdminParams } from '../../../apis/admin.api'
 import { type Combo } from '../../../types/combo.type'
+import ComboDetailPopup from './detail'
+import { Button } from '../../../components/ui/button'
 
 // Status badge component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -27,7 +27,26 @@ const StatusBadge = ({ status }: { status: string }) => {
     }
   }
 
-  return <span className={getStatusColor(status)}>{status}</span>
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'Approved':
+        return 'Đã duyệt'
+      case 'Pending':
+        return 'Chờ duyệt'
+      case 'Rejected':
+        return 'Từ chối'
+      case 'Draft':
+        return 'Nháp'
+      case 'Processing':
+        return 'Đang xử lý'
+      case 'Cancelled':
+        return 'Đã hủy'
+      default:
+        return status
+    }
+  }
+
+  return <span className={getStatusColor(status)}>{getStatusText(status)}</span>
 }
 
 function ManagerComboAdmin() {
@@ -41,6 +60,10 @@ function ManagerComboAdmin() {
   const [storeSearch, setStoreSearch] = useState<string>('')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
+
+  // Popup states
+  const [selectedComboId, setSelectedComboId] = useState<string | null>(null)
+  const [isDetailPopupOpen, setIsDetailPopupOpen] = useState(false)
 
   // Fetch data
   const fetchCombos = useCallback(async () => {
@@ -71,6 +94,9 @@ function ManagerComboAdmin() {
   // Filter data based on frontend filters
   const filteredData = useMemo(() => {
     let filtered = data
+
+    // Hide Draft status combos from UI
+    filtered = filtered.filter((combo) => combo.status !== 'Draft')
 
     // Store search filter
     if (storeSearch) {
@@ -103,6 +129,63 @@ function ManagerComboAdmin() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
+  }
+
+  const handleViewDetail = (comboId: string) => {
+    setSelectedComboId(comboId)
+    setIsDetailPopupOpen(true)
+  }
+
+  const handleCloseDetail = () => {
+    setIsDetailPopupOpen(false)
+    setSelectedComboId(null)
+  }
+  const formatDate = (dateString: string) => {
+    if (!dateString || dateString === 'null' || dateString === 'undefined') {
+      return '-'
+    }
+
+    // Xử lý định dạng "HH:MM:SS DD/MM/YYYY" từ API
+    // Ví dụ: "14:58:24 07/10/2025"
+    const timeDateMatch = dateString.match(/(\d{2}:\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/)
+
+    if (timeDateMatch) {
+      const [, time, date] = timeDateMatch
+      const [day, month, year] = date.split('/')
+      const [hours, minutes, seconds] = time.split(':')
+
+      // Tạo Date object với định dạng chuẩn
+      const dateObj = new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hours),
+        parseInt(minutes),
+        parseInt(seconds)
+      )
+
+      if (isNaN(dateObj.getTime())) {
+        return '-'
+      }
+
+      return dateObj.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      })
+    }
+
+    // Fallback cho các định dạng khác
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return '-'
+    }
+
+    return date.toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
   }
 
   if (loading) {
@@ -140,12 +223,11 @@ function ManagerComboAdmin() {
             className='px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent'
           >
             <option value=''>Tất cả trạng thái</option>
-            <option value='Draft'>Draft</option>
-            <option value='Pending'>Pending</option>
-            <option value='Approved'>Approved</option>
-            <option value='Rejected'>Rejected</option>
-            <option value='Processing'>Processing</option>
-            <option value='Cancelled'>Cancelled</option>
+            <option value='Pending'>Chờ duyệt</option>
+            <option value='Approved'>Đã duyệt</option>
+            <option value='Rejected'>Từ chối</option>
+            <option value='Processing'>Đang xử lý</option>
+            <option value='Cancelled'>Đã hủy</option>
           </select>
 
           {/* Date Range */}
@@ -187,9 +269,6 @@ function ManagerComboAdmin() {
             <thead className='bg-gray-50'>
               <tr>
                 <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  <input type='checkbox' className='rounded border-gray-300' />
-                </th>
-                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                   Tên Combo
                 </th>
                 <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
@@ -218,9 +297,6 @@ function ManagerComboAdmin() {
                   return (
                     <tr key={combo.id} className='hover:bg-gray-50'>
                       <td className='px-6 py-4 whitespace-nowrap'>
-                        <input type='checkbox' className='rounded border-gray-300' />
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap'>
                         <div className='text-sm font-medium text-gray-900 max-w-[200px] truncate'>{combo.name}</div>
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap'>
@@ -235,26 +311,34 @@ function ManagerComboAdmin() {
                         </div>
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                        {combo.createdAt && !isNaN(Date.parse(combo.createdAt))
-                          ? format(new Date(combo.createdAt), 'dd/MM/yyyy HH:mm', {
-                            locale: vi
-                          })
-                          : '-'}
+                        {formatDate(combo.createdAt || '-')}
                       </td>
-                      <td className='px-6 py-4 whitespace-nowrap text-sm font-medium'>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(combo.id)}
+                      <td className='px-6 py-4 whitespace-nowrap text-sm flex items-center gap-2 font-medium'>
+                        <Button
+                          variant='outline'
+                          title='Xem chi tiết'
+                          size='sm'
+                          onClick={() => handleViewDetail(combo.id)}
                           className='text-blue-600 hover:text-blue-900'
                         >
-                          Copy ID
-                        </button>
+                          <Eye className='w-4 h-4' />
+                        </Button>
+                        <Button
+                          variant='outline'
+                          title='Xử lý'
+                          size='sm'
+
+                          className='text-green-600 hover:text-green-900'
+                        >
+                          <CheckCircle className='w-4 h-4' />
+                        </Button>
                       </td>
                     </tr>
                   )
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className='px-6 py-12 text-center text-gray-500'>
+                  <td colSpan={6} className='px-6 py-12 text-center text-gray-500'>
                     Không có kết quả.
                   </td>
                 </tr>
@@ -298,6 +382,9 @@ function ManagerComboAdmin() {
           </div>
         </div>
       </div>
+
+      {/* Combo Detail Popup */}
+      <ComboDetailPopup comboId={selectedComboId} isOpen={isDetailPopupOpen} onClose={handleCloseDetail} />
     </div>
   )
 }
