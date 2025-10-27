@@ -196,3 +196,16 @@ export const getVariantsBySellerId = async (sellerId: string) => {
     throw error
   }
 }
+
+// ===== SUBMIT / CANCEL COMBO =====
+export const submitCombo = async (comboId: string): Promise<any> => {
+  const response = await axiosInstance.put<ComboResponse>(`/combos/${comboId}/submit`)
+  return response
+}
+
+export const cancelCombo = async (comboId: string): Promise<any> => {
+  const response = await axiosInstance.put<ComboResponse>(`/combos/${comboId}/cancel`)
+  return response
+}
+
+

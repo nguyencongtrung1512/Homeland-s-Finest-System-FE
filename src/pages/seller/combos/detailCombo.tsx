@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
-import { ArrowLeft, Edit, Package, MapPin, FileText, Clock, CheckCircle, XCircle } from 'lucide-react'
-import { getComboById } from '../../../apis/combo.api'
+import { ArrowLeft, Edit, Package, MapPin, FileText, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
+import { getComboById, submitCombo, cancelCombo } from '../../../apis/combo.api'
 import path from '../../../constants/path'
 import type { Combo } from '../../../types/combo.type'
+import { toast } from 'react-toastify'
 
 
 function DetailComboSeller() {
@@ -14,6 +15,44 @@ function DetailComboSeller() {
   const navigate = useNavigate()
   const [combo, setCombo] = useState<Combo | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  const canSubmitStatus = (status: string) => status === 'Draft' || status === 'Rejected' || status === 'Approved'
+  const canCancelStatus = (status: string) => status !== 'Rejected' && status !== 'Confirmed'
+
+  const handleSubmit = async () => {
+    if (!combo) return
+    try {
+      const res = await submitCombo(combo.id)
+      if (res.status === 200) {
+        const s = res.data?.status
+        if (s === 'Pending') toast.success('Đã gửi duyệt. Combo đang chờ Admin phân công.')
+        else if (s === 'Processing') toast.success('Đã gửi duyệt. Combo đang được Staff xử lý.')
+        else toast.success('Đã gửi duyệt combo.')
+        await fetchCombo()
+      } else {
+        toast.error(res.message || 'Gửi duyệt combo thất bại')
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Gửi duyệt combo thất bại'
+      toast.error(msg)
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!combo) return
+    try {
+      const res = await cancelCombo(combo.id)
+      if (res.status === 200) {
+        toast.success('Đã hủy combo thành công.')
+        await fetchCombo()
+      } else {
+        toast.error(res.message || 'Hủy combo thất bại')
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Hủy combo thất bại'
+      toast.error(msg)
+    }
+  }
 
   const fetchCombo = useCallback(async () => {
     if (!id) return
@@ -59,35 +98,17 @@ function DetailComboSeller() {
 
     switch (status) {
       case 'Draft':
-        return {
-          text: 'Nháp',
-          className: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-          icon: <FileText className='w-4 h-4' />
-        }
+        return { text: 'Nháp', className: 'bg-blue-100 text-blue-800 hover:bg-blue-100', icon: <FileText className='w-4 h-4' /> }
       case 'Pending':
-        return {
-          text: 'Chờ duyệt',
-          className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
-          icon: <Clock className='w-4 h-4' />
-        }
+        return { text: 'Chờ duyệt', className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100', icon: <Clock className='w-4 h-4' /> }
+      case 'Processing':
+        return { text: 'Đang xử lý', className: 'bg-orange-100 text-orange-800 hover:bg-orange-100', icon: <Clock className='w-4 h-4' /> }
       case 'Approved':
-        return {
-          text: 'Đã duyệt',
-          className: 'bg-green-100 text-green-800 hover:bg-green-100',
-          icon: <CheckCircle className='w-4 h-4' />
-        }
+        return { text: 'Đã duyệt', className: 'bg-green-100 text-green-800 hover:bg-green-100', icon: <CheckCircle className='w-4 h-4' /> }
       case 'Rejected':
-        return {
-          text: 'Bị từ chối',
-          className: 'bg-red-100 text-red-800 hover:bg-red-100',
-          icon: <XCircle className='w-4 h-4' />
-        }
+        return { text: 'Bị từ chối', className: 'bg-red-100 text-red-800 hover:bg-red-100', icon: <XCircle className='w-4 h-4' /> }
       default:
-        return {
-          text: 'Đã duyệt',
-          className: 'bg-green-100 text-green-800 hover:bg-green-100',
-          icon: <CheckCircle className='w-4 h-4' />
-        }
+        return { text: 'Đã duyệt', className: 'bg-green-100 text-green-800 hover:bg-green-100', icon: <CheckCircle className='w-4 h-4' /> }
     }
   }
 
@@ -165,6 +186,31 @@ function DetailComboSeller() {
             <div className='text-sm text-yellow-600 bg-yellow-50 px-3 py-1 rounded'>
               Combo đang chờ duyệt
             </div>
+          )}
+
+          {/* NEW: Submit & Cancel buttons */}
+          {canSubmitStatus(combo.status) && (
+            <Button
+              onClick={handleSubmit}
+              variant='outline'
+              className='border-green-600 text-green-700 hover:bg-green-50'
+              disabled={calculateActiveItemsCount() < 2}
+              title={calculateActiveItemsCount() >= 2 ? 'Gửi duyệt' : 'Cần ≥ 2 sản phẩm active'}
+            >
+              <RefreshCw className='w-4 h-4 mr-2' />
+              Gửi duyệt
+            </Button>
+          )}
+          {canCancelStatus(combo.status) && (
+            <Button
+              onClick={handleCancel}
+              variant='outline'
+              className='border-orange-600 text-orange-700 hover:bg-orange-50'
+              title='Hủy combo'
+            >
+              <XCircle className='w-4 h-4 mr-2' />
+              Hủy
+            </Button>
           )}
         </div>
       </div>
@@ -321,6 +367,7 @@ function DetailComboSeller() {
       </div>
     </div>
   )
+
 }
 
 export default DetailComboSeller

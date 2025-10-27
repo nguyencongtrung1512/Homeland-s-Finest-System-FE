@@ -1,6 +1,26 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Search, Filter, RefreshCw, Store, Package, ExternalLink, Calendar, User } from 'lucide-react'
-import { staffApi, type AssignedStore } from '../../../apis/staff.api'
+import { storeApi } from '../../../apis/store.api'
+
+// Interface cho Store response thực tế từ API
+interface ActualStoreResponse {
+  id: string
+  sellerId: string
+  sellerName: string | null
+  storeName: string
+  address: string
+  description: string | null
+  logoUrl: string | null
+  coverImageUrl: string | null
+  status: string
+  adminNote: string | null
+  staffNotes: string | null
+  staffName: string | null
+  staffImage: string | null
+  submittedDate: string
+  decisionDate: string | null
+  createdAt: string
+}
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { toast } from 'react-toastify'
 import { Card, CardContent } from '../../../components/ui/card'
@@ -10,7 +30,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../../../components/ui/badge'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../../contexts/auth.context'
 
 interface StoreData {
   key: string
@@ -25,12 +44,19 @@ interface StoreData {
   }
   createdDate: string
   products: number
-  status: 'Processing' | 'ReviewedByStaff' | 'Pending' | 'Approved' | 'Rejected' | 'Inactive'
+  status:
+    | 'Processing'
+    | 'ReviewedByStaff'
+    | 'Pending'
+    | 'Approved'
+    | 'Rejected'
+    | 'Inactive'
+    | 'ApprovedByStaff'
+    | 'RejectedByStaff'
 }
 
 function ListStore() {
   const navigate = useNavigate()
-  const { user } = useAuth() // ✅ Sử dụng useAuth context
   const [searchText, setSearchText] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
@@ -38,12 +64,12 @@ function ListStore() {
   const [storeData, setStoreData] = useState<StoreData[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [totalStores, setTotalStores] = useState(0) // ✅ Sửa cú pháp useState
+  const [totalStores, setTotalStores] = useState(0)
   const [productCategories, setProductCategories] = useState<ProductCategoryItem[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
-  const pageSize = 3
+  const pageSize = 12
 
-  const convertAssignedStore = (apiStore: AssignedStore): StoreData => {
+  const convertStoreResponse = (apiStore: ActualStoreResponse): StoreData => {
     const avatarText = apiStore.storeName
       .split(' ')
       .map((word) => word.charAt(0))
@@ -64,7 +90,7 @@ function ListStore() {
         id: apiStore.id
       },
       owner: {
-        name: 'Chủ cửa hàng',
+        name: apiStore.sellerName || 'Chủ cửa hàng',
         email: 'N/A'
       },
       createdDate: formatDate(apiStore.createdAt),
@@ -77,11 +103,12 @@ function ListStore() {
         | 'Inactive'
         | 'ApprovedByStaff'
         | 'RejectedByStaff'
+        | 'ReviewedByStaff'
     }
   }
 
   // Function để fetch product categories
-  const fetchProductCategories = async () => {
+  const fetchProductCategories = useCallback(async () => {
     try {
       setCategoriesLoading(true)
       const response = await getAllProductCategory({
@@ -98,76 +125,61 @@ function ListStore() {
       } else {
         console.warn('Không thể tải danh sách ngành hàng')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Lỗi khi tải danh sách ngành hàng:', err)
     } finally {
       setCategoriesLoading(false)
     }
-  }
+  }, [])
 
-  // Function để fetch assigned stores
-  const fetchAssignedStores = async () => {
+  // Function để fetch all stores
+  const fetchAllStores = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      // ✅ Sử dụng user từ auth context thay vì localStorage
-      if (!user?.userId) {
-        setError('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.')
-        return
-      }
-
-      const response = await staffApi.getAssignedStores(user.userId, {
+      const response = await storeApi.getAllStores({
         pageSize: 0,
         pageNumber: 1
       })
 
-      if (response && Array.isArray(response)) {
-        const convertedStores = response.map(convertAssignedStore)
-        setStoreData(convertedStores)
-        setTotalStores(convertedStores.length)
-      } else if (response && response.data && Array.isArray(response.data)) {
-        const convertedStores = response.data.map(convertAssignedStore)
+      if (response && response.data && Array.isArray(response.data)) {
+        const convertedStores = response.data.map((store: unknown) =>
+          convertStoreResponse(store as ActualStoreResponse)
+        )
         setStoreData(convertedStores)
         setTotalStores(convertedStores.length)
       } else {
         setError('Định dạng dữ liệu không đúng')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải danh sách cửa hàng'
       setError(errorMessage)
       toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    // ✅ Chỉ fetch khi có user
-    if (user?.userId) {
-      fetchAssignedStores()
-      fetchProductCategories()
-    }
-  }, [user?.userId]) // ✅ Thêm dependency
+    fetchAllStores()
+    fetchProductCategories()
+  }, [fetchAllStores, fetchProductCategories])
 
-  // Reset về trang 1 khi search text thay đổi
   useEffect(() => {
     setCurrentPage(1)
   }, [searchText])
 
-  // Lọc stores dựa trên search text (chỉ tìm theo tên cửa hàng)
   const filteredStores = storeData.filter((store) => {
     const searchLower = searchText.toLowerCase().trim()
 
     if (!searchLower) return true
 
-    // Chỉ tìm kiếm theo tên cửa hàng (storeName)
     const matchStoreName = store.store.name.toLowerCase().includes(searchLower)
 
     return matchStoreName
   })
 
-  // Tính toán pagination cho filtered data
   const totalFilteredStores = filteredStores.length
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
@@ -288,12 +300,10 @@ function ListStore() {
       <div className='flex items-center justify-between'>
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Quản lí cửa hàng</h1>
-          <p className='text-gray-600 mt-1'>
-            Xem xét và phê duyệt các cửa hàng được phân công ({totalStores} cửa hàng)
-          </p>
+          <p className='text-gray-600 mt-1'>Xem xét và phê duyệt tất cả cửa hàng ({totalStores} cửa hàng)</p>
         </div>
         <Button
-          onClick={fetchAssignedStores}
+          onClick={fetchAllStores}
           disabled={loading}
           variant='outline'
           className='flex items-center gap-2 bg-transparent'
@@ -358,7 +368,7 @@ function ListStore() {
             <div className='text-center'>
               <div className='text-red-500 text-lg mb-2'>⚠️</div>
               <p className='text-red-600 font-medium mb-4'>{error}</p>
-              <Button onClick={fetchAssignedStores} className='bg-green-600 hover:bg-green-700'>
+              <Button onClick={fetchAllStores} className='bg-green-600 hover:bg-green-700'>
                 Thử lại
               </Button>
             </div>
@@ -367,7 +377,7 @@ function ListStore() {
           <div className='flex items-center justify-center py-12'>
             <div className='text-center'>
               <div className='text-gray-400 text-lg mb-2'>🏪</div>
-              <p className='text-gray-600'>Chưa có cửa hàng nào được phân công</p>
+              <p className='text-gray-600'>Chưa có cửa hàng nào trong hệ thống</p>
             </div>
           </div>
         ) : filteredStores.length === 0 ? (
