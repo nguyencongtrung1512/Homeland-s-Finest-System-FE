@@ -1,4 +1,5 @@
 import axiosInstance from '../service/axiosInstance'
+import type { Combo } from '../types/combo.type'
 
 const API_URL = `/Admin`
 // Interface cho Staff
@@ -60,6 +61,15 @@ export interface ReviewStoreResponse {
   }
 }
 
+// Interface cho combo admin params
+export interface ComboAdminParams {
+  status?: string
+  staffId?: string
+  storeId?: string
+  pageSize?: number
+  pageNumber?: number
+}
+
 // API functions
 export const adminApi = {
   // Lấy danh sách tất cả staff
@@ -118,6 +128,19 @@ export const adminApi = {
     } else {
       throw new Error(response.data?.message || `API returned status ${response.status}`)
     }
+  },
+
+  // Lấy danh sách tất cả combo cho admin
+  getAllCombos: async (params?: ComboAdminParams): Promise<Combo[]> => {
+    try {
+      const response = await axiosInstance.get(`${API_URL}/combos`, { params })
+
+      // Backend trả về array trực tiếp hoặc object có data property
+      const data = Array.isArray(response.data) ? response.data : response.data?.data || []
+      return data
+    } catch (error) {
+      console.error('getAllCombos API error:', error)
+      throw error
+    }
   }
 }
-

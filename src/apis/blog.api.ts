@@ -145,17 +145,17 @@ export const createBlog = async (data: CreateBlogInput) => {
 
 // Function để cập nhật Blog
 export const updateBlog = async (id: string, data: FormData | UpdateBlogInput) => {
-  let headers = {};
+  let headers = {}
 
   if (data instanceof FormData) {
     headers = {
       'Content-Type': 'multipart/form-data'
-    };
+    }
   } else {
     headers = {
       'Content-Type': 'application/json'
-    };
-    data = convertToFormData(data);
+    }
+    data = convertToFormData(data)
   }
 
   const response = await axiosInstance.put(`${API_URL}/${id}`, data, {
@@ -166,22 +166,22 @@ export const updateBlog = async (id: string, data: FormData | UpdateBlogInput) =
 
 // Hàm hỗ trợ chuyển đổi object thành FormData
 function convertToFormData(data: UpdateBlogInput): FormData {
-  const formData = new FormData();
+  const formData = new FormData()
 
-  if (data.title) formData.append('Title', data.title);
-  if (data.description) formData.append('Description', data.description);
-  if (data.content) formData.append('Content', data.content);
+  if (data.title) formData.append('Title', data.title)
+  if (data.description) formData.append('Description', data.description)
+  if (data.content) formData.append('Content', data.content)
 
   if (data.blogCategoryId && data.blogCategoryId.length > 0) {
     data.blogCategoryId.forEach((categoryId, index) => {
-      formData.append(`BlogCategoryId[${index}]`, categoryId);
-    });
+      formData.append(`BlogCategoryId[${index}]`, categoryId)
+    })
   }
 
-  if (data.image) formData.append('Image', data.image);
-  if (data.isActive !== undefined) formData.append('IsActive', data.isActive.toString());
+  if (data.image) formData.append('Image', data.image)
+  if (data.isActive !== undefined) formData.append('IsActive', data.isActive.toString())
 
-  return formData;
+  return formData
 }
 
 // Function để lấy Blog theo category

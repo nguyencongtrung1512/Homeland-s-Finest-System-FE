@@ -1,8 +1,5 @@
 import axiosInstance from '../service/axiosInstance'
-import type {
-  TransactionDashboardParams,
-  TransactionDashboardData
-} from '../types/transactionDashboardType'
+import type { TransactionDashboardParams, TransactionDashboardData } from '../types/transactionDashboardType'
 
 /**
  * Lấy dữ liệu dashboard giao dịch

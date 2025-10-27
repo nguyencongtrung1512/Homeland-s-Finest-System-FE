@@ -67,12 +67,16 @@ export const path = {
   CATEGORY_MANAGEMENT: '/category-management',
   BLOG_LIST_BY_CATEGORY: '/category/:categoryId/blogs',
   BLOG_DETAIL: '/blog-detail/:id',
+  comboManagementStaff: 'combo-management',
+  detailComboStaff: '/staff/combo-management/detail-combo/:id',
   // ============ ADMIN =============
   BASE_ADMIN: '/admin',
   // Admin nested routes (relative paths)
   STORE_MANAGEMENT_ADMIN: 'storeManagement',
   PROMOTION_MANAGEMENT_ADMIN: '/admin/promotions',
   STORE_DETAIL_ADMIN: 'storeManagement/store-detail/:storeId',
+  COMBO_MANAGEMENT_ADMIN: 'comboManagement',
+  PRODUCT_MANAGEMENT_ADMIN: 'productManagement',
   ACCOUNT_MANAGEMENT_ADMIN: 'accountManagement',
   SELLER_MANAGEMENT_ADMIN: 'sellerManagement', //đang phát triển
   STAFF_MANAGEMENT_ADMIN: 'staffManagement', //đang phát triển

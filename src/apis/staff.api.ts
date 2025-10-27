@@ -172,6 +172,80 @@ export interface StaffFormsResponse {
   data: StaffForm[]
 }
 
+// Interface cho combo được giao cho staff
+export interface ComboForReview {
+  id: string
+  name: string
+  description: string | null
+  thumbnailUrl: string | null
+  status: 'Processing' | 'Confirmed' | 'Approved' | 'Denied' | 'Rejected'
+  assignedToId: string
+  storeId: string
+  storeName: string
+  sellerId: string
+  sellerName: string
+  comboItems: {
+    id: string
+    productVariantId: string
+    productVariantName: string
+    quantity: number
+    price: number
+    isActive: boolean
+  }[]
+  staffNote: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// Interface cho combo detail từ API GET /Combo/{id}
+export interface ComboDetail {
+  id: string
+  name: string
+  storeId: string
+  provinceId: number
+  provinceName: string
+  thumbnailUrl: string
+  description: string
+  totalBasePrice: number
+  totalFinalPrice: number
+  disabledReason: string
+  status: string
+  staffNote: string
+  assignedToId: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  comboItems: {
+    id: string
+    productVariantId: string
+    comboItemName: string
+    comboItemImageUrl: string
+    basePrice: number
+    finalPrice: number
+    quantity: number
+    productName: string
+    variantName: string
+    storeName: string
+    isActive: boolean
+  }[]
+}
+
+export interface ComboDetailResponse {
+  data: ComboDetail
+}
+
+export interface CombosForReviewResponse {
+  status: number
+  message: string
+  data: ComboForReview[]
+  pagination?: {
+    pageSize: number
+    pageNumber: number
+    totalItems: number
+    totalPages: number
+  }
+}
+
 export const staffApi = {
   // Lấy danh sách tất cả staff (backend trả về tất cả, frontend tự phân trang)
   getAllStaff: async (params?: StaffListParams): Promise<StaffListResponse> => {
@@ -288,6 +362,46 @@ export const staffApi = {
   // Lấy danh sách form được giao cho staff
   getMyForms: async (): Promise<any> => {
     const response = await axiosInstance.get(`${API_URL}/my-forms`)
+    return response
+  },
+
+  // Lấy danh sách combo được giao cho staff để review
+  getCombosForReview: async (
+    staffId: string,
+    params?: {
+      storeId?: string
+      status?: string
+      pageSize?: number
+      pageNumber?: number
+    }
+  ): Promise<any> => {
+    const queryParams = new URLSearchParams()
+
+    if (params?.storeId) {
+      queryParams.append('storeId', params.storeId)
+    }
+
+    if (params?.status) {
+      queryParams.append('status', params.status)
+    }
+
+    if (params?.pageSize !== undefined) {
+      queryParams.append('pageSize', params.pageSize.toString())
+    }
+
+    if (params?.pageNumber !== undefined) {
+      queryParams.append('pageNumber', params.pageNumber.toString())
+    }
+
+    const url = `${API_URL}/${staffId}/combos-for-review${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+
+    const response = await axiosInstance.get(url)
+    return response
+  },
+
+  // Lấy chi tiết combo by ID
+  getComboById: async (comboId: string): Promise<any> => {
+    const response = await axiosInstance.get(`/Combo/${comboId}`)
     return response
   }
 }

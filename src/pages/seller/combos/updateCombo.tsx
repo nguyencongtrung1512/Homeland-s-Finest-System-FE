@@ -136,7 +136,7 @@ function UpdateComboSeller() {
       }
     } catch (error) {
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as any
+        const axiosError = error as { response?: { data?: { message?: string } }; message?: string }
         const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Có lỗi xảy ra khi cập nhật combo'
         toast.error(errorMessage)
       } else {
@@ -175,7 +175,7 @@ function UpdateComboSeller() {
       if (error && typeof error === 'object') {
         // Kiểm tra axios error structure
         if ('response' in error) {
-          const axiosError = error as any
+          const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string }
 
           if (axiosError.response?.data?.message) {
             errorMessage = axiosError.response.data.message
@@ -225,7 +225,7 @@ function UpdateComboSeller() {
 
       if (error && typeof error === 'object') {
         if ('response' in error) {
-          const axiosError = error as any
+          const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string }
 
           if (axiosError.response?.data?.message) {
             errorMessage = axiosError.response.data.message
@@ -276,7 +276,7 @@ function UpdateComboSeller() {
       if (error && typeof error === 'object') {
         // Kiểm tra axios error structure
         if ('response' in error) {
-          const axiosError = error as any
+          const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string }
 
           // Lấy message từ response.data.message
           if (axiosError.response?.data?.message) {

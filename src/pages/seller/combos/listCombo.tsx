@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, Eye, RefreshCw, XCircle } from 'lucide-react'
 import { toast } from 'react-toastify'
 import path from '../../../constants/path'
 import { getAllCombos, submitCombo, cancelCombo } from '../../../apis/combo.api'
+import { storeApi } from '../../../apis/store.api'
 import { useAuth } from '../../../contexts/auth.context'
 import { useState, useEffect, useCallback } from 'react'
 import type { Combo, ComboParams } from '../../../types/combo.type'
@@ -23,11 +24,11 @@ function ComboSeller() {
   const pagination =
     allCombos.length > 0
       ? {
-        pageNumber: currentPage,
-        pageSize: pageSize,
-        totalItems: allCombos.length,
-        totalPages: Math.ceil(allCombos.length / pageSize)
-      }
+          pageNumber: currentPage,
+          pageSize: pageSize,
+          totalItems: allCombos.length,
+          totalPages: Math.ceil(allCombos.length / pageSize)
+        }
       : null
 
   const combos = allCombos.slice((currentPage - 1) * pageSize, currentPage * pageSize)
@@ -42,10 +43,21 @@ function ComboSeller() {
     setError(null)
 
     try {
+      // First, get the store information using userId
+      const storeResponse = await storeApi.getStoreBySellerId(user.userId)
+
+      if (!storeResponse.data?.id) {
+        setError('Không tìm thấy thông tin cửa hàng')
+        return
+      }
+
+      const storeId = storeResponse.data.id
+
+      // Then fetch combos using storeId
       const params: ComboParams = {
         pageSize: 0,
         pageNumber: 1,
-        sellerID: user.userId
+        storeId: storeId
       }
       const response = await getAllCombos(params)
       setAllCombos(response)
@@ -125,6 +137,16 @@ function ComboSeller() {
           text: 'Bị từ chối',
           className: 'bg-red-100 text-red-800 hover:bg-red-100'
         }
+      case 'Active':
+        return {
+          text: 'Hoạt động',
+          className: 'bg-green-100 text-green-800 hover:bg-green-100'
+        }
+      case 'Cancelled':
+        return {
+          text: 'Đã hủy',
+          className: 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+        }
       default:
         return {
           text: 'Đã duyệt',
@@ -133,8 +155,8 @@ function ComboSeller() {
     }
   }
 
-  const calculateTotalPrice = (comboItems: { price: number; quantity: number }[]) => {
-    return comboItems.reduce((total, item) => total + item.price * item.quantity, 0)
+  const calculateTotalPrice = (comboItems: { finalPrice: number; quantity: number }[]) => {
+    return comboItems.reduce((total, item) => total + item.finalPrice * item.quantity, 0)
   }
 
   const canSubmitStatus = (status: string) => status === 'Draft' || status === 'Rejected' || status === 'Approved'

@@ -17,14 +17,16 @@ export interface UpdateComboRequest {
 export interface CreateComboItemRequest {
   productVariantId: string
   comboItemName: string
-  price: number
+  basePrice: number
+  finalPrice: number
   quantity: number
 }
 
 export interface UpdateComboItemRequest {
   productVariantId: string
   comboItemName: string
-  price: number
+  basePrice: number
+  finalPrice: number
   quantity: number
   isActive: boolean
 }
@@ -43,7 +45,12 @@ export interface ComboData {
   provinceName: string
   thumbnailUrl?: string
   description?: string
-  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected'
+  totalBasePrice: number
+  totalFinalPrice: number
+  disabledReason?: string | null
+  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Cancelled'
+  staffNote?: string | null
+  assignedToId?: string | null
   isActive: boolean
   createdAt?: string
   updatedAt?: string
@@ -61,7 +68,8 @@ export interface ComboItem {
   productVariantId: string
   comboItemName: string
   comboItemImageUrl?: string
-  price: number
+  basePrice: number
+  finalPrice: number
   quantity: number
   isActive: boolean
   productName: string
@@ -76,12 +84,16 @@ export interface Combo {
   provinceName: string
   thumbnailUrl?: string
   description?: string
-  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected'
+  totalBasePrice: number
+  totalFinalPrice: number
+  disabledReason?: string | null
+  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Cancelled'
+  staffNote?: string | null
+  assignedToId?: string | null
   isActive: boolean
   createdAt?: string
   updatedAt?: string
   comboItems: ComboItem[]
-  staffNote?: string
 }
 
 export interface ComboPagination {
@@ -102,4 +114,5 @@ export interface ComboParams {
   pageSize?: number
   pageNumber?: number
   sellerID?: string
+  storeId?: string
 }

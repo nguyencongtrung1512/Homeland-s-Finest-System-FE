@@ -71,6 +71,10 @@ import ViewBlog from './pages/customer/Blog/viewBlog'
 import SellerManagement from './pages/admin/sellerManagerment/list'
 import StaffManagement from './pages/admin/staffManagerment/list'
 import AdminFormManagement from './pages/admin/formManagerment/form'
+import ManagerComboStaff from './pages/staff/comboManagerment/managerCombo'
+import DetailComboStaff from './pages/staff/comboManagerment/detailCombo'
+import ManagerProductAdmin from './pages/admin/productManagerment/list'
+import ManagerComboAdmin from './pages/admin/comboManagerment/list'
 
 
 export default function useRouteElements() {
@@ -284,6 +288,14 @@ export default function useRouteElements() {
               element: <ManagerProduct />
             },
             {
+              path: path.comboManagementStaff,
+              element: <ManagerComboStaff />
+            },
+            {
+              path: path.detailComboStaff,
+              element: <DetailComboStaff />
+            },
+            {
               path: path.detailProductStaff,
               element: <DetailProductStaff />
             },
@@ -311,7 +323,7 @@ export default function useRouteElements() {
               path: path.blogStaff,
               element: <BlogManagement />
             }
-           
+
           ]
         }
       ]
@@ -338,10 +350,14 @@ export default function useRouteElements() {
               path: path.STORE_DETAIL_ADMIN,
               element: <StoreDetailAdmin />
             },
-            // {
-            //   path: path.PRODUCT_MANAGEMENT_ADMIN,
-            //   element: <ManagerProductAdmin />
-            // },
+            {
+              path: path.PRODUCT_MANAGEMENT_ADMIN,
+              element: <ManagerProductAdmin />
+            },
+            {
+              path: path.COMBO_MANAGEMENT_ADMIN,
+              element: <ManagerComboAdmin />
+            },
             {
               path: path.ACCOUNT_MANAGEMENT_ADMIN,
               element: <CustomerManagement />

@@ -36,7 +36,7 @@ interface VariantResponse {
 interface ComboItemsManagerProps {
   items: ComboItem[]
   canEdit: boolean
-  comboStatus?: 'Draft' | 'Pending' | 'Approved' | 'Rejected'
+  comboStatus?: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Cancelled'
   onAddItem: (itemData: CreateComboItemRequest) => Promise<void>
   onUpdateItem: (itemId: string, itemData: UpdateComboItemRequest) => Promise<void>
   onRemoveItem: (itemId: string) => Promise<void>
@@ -62,7 +62,8 @@ function ComboItemsManager({
   const [newItemData, setNewItemData] = useState<CreateComboItemRequest>({
     productVariantId: '',
     comboItemName: '',
-    price: 0,
+    basePrice: 0,
+    finalPrice: 0,
     quantity: 1
   })
 
@@ -70,7 +71,8 @@ function ComboItemsManager({
   const [editItemData, setEditItemData] = useState<UpdateComboItemRequest>({
     productVariantId: '',
     comboItemName: '',
-    price: 0,
+    basePrice: 0,
+    finalPrice: 0,
     quantity: 1,
     isActive: true
   })
@@ -98,7 +100,7 @@ function ComboItemsManager({
     const { name, value } = e.target
     setNewItemData((prev) => ({
       ...prev,
-      [name]: name === 'price' || name === 'quantity' ? Number(value) : value
+      [name]: name === 'basePrice' || name === 'finalPrice' || name === 'quantity' ? Number(value) : value
     }))
   }
 
@@ -106,7 +108,7 @@ function ComboItemsManager({
     const { name, value } = e.target
     setEditItemData((prev) => ({
       ...prev,
-      [name]: name === 'price' || name === 'quantity' ? Number(value) : value
+      [name]: name === 'basePrice' || name === 'finalPrice' || name === 'quantity' ? Number(value) : value
     }))
   }
 
@@ -117,7 +119,8 @@ function ComboItemsManager({
     const variantData = {
       productVariantId: variantId,
       comboItemName: `${selectedVariant.productName || 'Sản phẩm'} - ${selectedVariant.variantName}`,
-      price: selectedVariant.finalPrice || selectedVariant.basePrice || 0,
+      basePrice: selectedVariant.basePrice || 0,
+      finalPrice: selectedVariant.finalPrice || selectedVariant.basePrice || 0,
       quantity: 1
     }
 
@@ -235,7 +238,7 @@ function ComboItemsManager({
   const activeItemsCount = items.filter((item) => item.isActive).length
   const totalItemsCount = items.length
 
-  const isEditable = canEdit && comboStatus !== 'Approved'
+  const isEditable = canEdit && comboStatus !== 'Approved' && comboStatus !== 'Processing'
 
   const getStatusMessage = () => {
     switch (comboStatus) {
@@ -254,6 +257,16 @@ function ComboItemsManager({
           message: 'Combo bị từ chối, có thể chỉnh sửa',
           type: 'error' as const
         }
+      case 'Processing':
+        return {
+          message: 'Combo đang được xử lý, không thể chỉnh sửa',
+          type: 'warning' as const
+        }
+      case 'Cancelled':
+        return {
+          message: 'Combo đã bị hủy, có thể chỉnh sửa',
+          type: 'error' as const
+        }
       default:
         return null
     }
@@ -265,10 +278,15 @@ function ComboItemsManager({
     <Card>
       <CardHeader>
         {statusInfo && (
-          <div className={`mb-4 p-3 rounded-lg ${statusInfo.type === 'warning' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-            statusInfo.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
-              'bg-red-100 text-red-800 border border-red-200'
-            }`}>
+          <div
+            className={`mb-4 p-3 rounded-lg ${
+              statusInfo.type === 'warning'
+                ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                : statusInfo.type === 'success'
+                  ? 'bg-green-100 text-green-800 border border-green-200'
+                  : 'bg-red-100 text-red-800 border border-red-200'
+            }`}
+          >
             <div className='flex items-center gap-2'>
               {statusInfo.type === 'warning' && <Clock className='w-4 h-4' />}
               {statusInfo.type === 'success' && <CheckCircle className='w-4 h-4' />}
@@ -366,19 +384,19 @@ function ComboItemsManager({
                         min='0'
                       />
                     </div>
+                  </div>
 
-                    <div className='space-y-2'>
-                      <Label htmlFor='quantity'>Số lượng *</Label>
-                      <Input
-                        id='quantity'
-                        name='quantity'
-                        type='number'
-                        value={newItemData.quantity}
-                        onChange={handleNewItemChange}
-                        placeholder='1'
-                        min='1'
-                      />
-                    </div>
+                  <div className='space-y-2'>
+                    <Label htmlFor='quantity'>Số lượng *</Label>
+                    <Input
+                      id='quantity'
+                      name='quantity'
+                      type='number'
+                      value={newItemData.quantity}
+                      onChange={handleNewItemChange}
+                      placeholder='1'
+                      min='1'
+                    />
                   </div>
 
                   <div className='flex gap-2 pt-4'>
@@ -438,9 +456,14 @@ function ComboItemsManager({
                     <p className='text-sm text-gray-500'>{item.storeName}</p>
                     <div className='flex justify-between items-center mt-2'>
                       <span className='text-sm text-gray-600'>Số lượng: {item.quantity}</span>
-                      <span className='font-semibold text-green-600'>
-                        {(item.price * item.quantity).toLocaleString()}₫
-                      </span>
+                      <div className='text-right'>
+                        <div className='text-sm text-gray-500 line-through'>
+                          {(item.basePrice * item.quantity).toLocaleString()}₫
+                        </div>
+                        <div className='font-semibold text-green-600'>
+                          {(item.finalPrice * item.quantity).toLocaleString()}₫
+                        </div>
+                      </div>
                     </div>
                     {!item.isActive && (
                       <Badge variant='secondary' className='mt-2 bg-gray-100 text-gray-800'>
@@ -506,26 +529,28 @@ function ComboItemsManager({
                         {loadingVariants ? 'Đang tải sản phẩm...' : 'Không có sản phẩm nào'}
                       </div>
                     ) : (
-                      variants.filter((variant) => variant && variant.productVariantId).map((variant) => (
-                        <SelectItem key={variant.productVariantId} value={variant.productVariantId}>
-                          <div className='flex items-center gap-2'>
-                            {variant.imageUrl && (
-                              <img
-                                src={variant.imageUrl}
-                                alt={variant.variantName}
-                                className='w-8 h-8 object-cover rounded'
-                              />
-                            )}
-                            <div>
-                              <div className='font-medium'>{variant.productName || 'Sản phẩm'}</div>
-                              <div className='text-sm text-gray-500'>{variant.variantName || 'Variant'}</div>
-                              <div className='text-sm text-green-600 font-semibold'>
-                                {(variant.finalPrice || variant.basePrice || 0).toLocaleString()}₫
+                      variants
+                        .filter((variant) => variant && variant.productVariantId)
+                        .map((variant) => (
+                          <SelectItem key={variant.productVariantId} value={variant.productVariantId}>
+                            <div className='flex items-center gap-2'>
+                              {variant.imageUrl && (
+                                <img
+                                  src={variant.imageUrl}
+                                  alt={variant.variantName}
+                                  className='w-8 h-8 object-cover rounded'
+                                />
+                              )}
+                              <div>
+                                <div className='font-medium'>{variant.productName || 'Sản phẩm'}</div>
+                                <div className='text-sm text-gray-500'>{variant.variantName || 'Variant'}</div>
+                                <div className='text-sm text-green-600 font-semibold'>
+                                  {(variant.finalPrice || variant.basePrice || 0).toLocaleString()}₫
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </SelectItem>
-                      ))
+                          </SelectItem>
+                        ))
                     )}
                   </SelectContent>
                 </Select>
@@ -555,19 +580,19 @@ function ComboItemsManager({
                     min='0'
                   />
                 </div>
+              </div>
 
-                <div className='space-y-2'>
-                  <Label htmlFor='edit-quantity'>Số lượng *</Label>
-                  <Input
-                    id='edit-quantity'
-                    name='quantity'
-                    type='number'
-                    value={editItemData.quantity}
-                    onChange={handleEditItemChange}
-                    placeholder='1'
-                    min='1'
-                  />
-                </div>
+              <div className='space-y-2'>
+                <Label htmlFor='edit-quantity'>Số lượng *</Label>
+                <Input
+                  id='edit-quantity'
+                  name='quantity'
+                  type='number'
+                  value={editItemData.quantity}
+                  onChange={handleEditItemChange}
+                  placeholder='1'
+                  min='1'
+                />
               </div>
 
               <div className='flex gap-2 pt-4'>

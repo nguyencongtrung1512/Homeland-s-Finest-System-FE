@@ -156,7 +156,8 @@ export const removeItemFromCombo = async (comboId: string, itemId: string): Prom
   const itemData: UpdateComboItemRequest = {
     productVariantId: '',
     comboItemName: '',
-    price: 0,
+    basePrice: 0,
+    finalPrice: 0,
     quantity: 0,
     isActive: false
   }
@@ -207,5 +208,3 @@ export const cancelCombo = async (comboId: string): Promise<any> => {
   const response = await axiosInstance.put<ComboResponse>(`/combos/${comboId}/cancel`)
   return response
 }
-
-

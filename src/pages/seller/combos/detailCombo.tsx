@@ -114,7 +114,7 @@ function DetailComboSeller() {
 
   const calculateTotalPrice = () => {
     if (!combo) return 0
-    return combo.comboItems.reduce((total, item) => total + item.price * item.quantity, 0)
+    return combo.comboItems.reduce((total, item) => total + item.basePrice * item.quantity, 0)
   }
 
   const calculateTotalItems = () => {
@@ -270,7 +270,7 @@ function DetailComboSeller() {
                           <div className='flex justify-between items-center mt-2'>
                             <span className='text-sm text-gray-600'>Số lượng: {item.quantity}</span>
                             <span className='font-semibold text-green-600'>
-                              {(item.price * item.quantity).toLocaleString()}₫
+                              {(item.basePrice * item.quantity).toLocaleString()}₫
                             </span>
                           </div>
                           {!item.isActive && (

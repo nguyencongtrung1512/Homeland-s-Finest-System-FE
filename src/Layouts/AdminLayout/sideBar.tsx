@@ -1,4 +1,4 @@
-import { BarChart3, CheckCircle, ClipboardMinus, CreditCard, FileText, Leaf, LibraryBig, User, Gift, AlertTriangle } from 'lucide-react'
+import { BarChart3, CheckCircle, ClipboardMinus, CreditCard, FileText, Leaf, LibraryBig, User, Gift, AlertTriangle, Component, Package } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
@@ -24,16 +24,16 @@ function SideBar({ isCollapsed }: SideBarProps) {
       label: 'Quản lý cửa hàng',
       icon: <CheckCircle size={18} />
     },
-    // {
-    //   key: path.COMBO_MANAGEMENT_ADMIN,
-    //   label: 'Quản lý Combo',
-    //   icon: <Component size={18} />
-    // },
-    // {
-    //   key: path.PRODUCT_MANAGEMENT_ADMIN,
-    //   label: 'Quản lý sản phẩm',
-    //   icon: <Package size={18} />
-    // },
+    {
+      key: path.COMBO_MANAGEMENT_ADMIN,
+      label: 'Quản lý Combo',
+      icon: <Component size={18} />
+    },
+    {
+      key: path.PRODUCT_MANAGEMENT_ADMIN,
+      label: 'Quản lý sản phẩm',
+      icon: <Package size={18} />
+    },
     {
       key: path.TRANSACTION_MANAGEMENT_ADMIN,
       label: 'Quản lí giao dịch',
