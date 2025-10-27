@@ -41,7 +41,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
     },
     {
       key: path.PROMOTION_MANAGEMENT_ADMIN,
-      label: 'Quản lý mã giảm giá',
+      label: 'Quản lý Mã khuyến mãi ',
       icon: <Gift size={18} />
     },
     {

@@ -131,7 +131,7 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
         <DialogHeader>
           <DialogTitle className='text-2xl font-bold text-gray-900 flex items-center gap-3'>
             <Gift className='h-6 w-6 text-blue-600' />
-            Chi tiết mã giảm giá
+            Chi tiết Mã khuyến mãi
           </DialogTitle>
         </DialogHeader>
 
@@ -162,7 +162,7 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
               </h3>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <div>
-                  <label className='text-sm font-medium text-gray-600'>Loại mã giảm giá</label>
+                  <label className='text-sm font-medium text-gray-600'>Loại Mã khuyến mãi </label>
                   <p className='text-gray-900'>{promotion.type}</p>
                 </div>
                 <div>
@@ -259,7 +259,7 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                 </h3>
                 <div className='space-y-2'>
                   <p className='text-sm text-gray-600 mb-3'>
-                    Có {promotion.promotionUsers.length} người dùng được áp dụng mã giảm giá này
+                    Có {promotion.promotionUsers.length} người dùng được áp dụng Mã khuyến mãi  này
                   </p>
                   <div className='max-h-32 overflow-y-auto space-y-1'>
                     {promotion.promotionUsers.map((user, index) => (

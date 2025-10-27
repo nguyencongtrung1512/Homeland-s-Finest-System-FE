@@ -526,10 +526,10 @@ export default function Cart() {
 
       setIsPromotionModalOpen(false)
       setSelectedStoreForPromotion(null)
-      toast.success('Áp dụng mã giảm giá thành công')
+      toast.success('Áp dụng Mã khuyến mãi  thành công')
       return true
     } catch {
-      toast.error('Có lỗi xảy ra khi áp dụng mã giảm giá')
+      toast.error('Có lỗi xảy ra khi áp dụng Mã khuyến mãi ')
       return false
     }
   }
@@ -538,10 +538,10 @@ export default function Cart() {
     try {
       await removePromotionFromCart(cartId, promotionId)
       await reloadCartData() // Reload cart data to get updated appliedPromotions
-      toast.success('Hủy mã giảm giá thành công')
+      toast.success('Hủy Mã khuyến mãi  thành công')
     } catch (error) {
       console.error('Error removing applied promotion:', error)
-      toast.error('Có lỗi xảy ra khi hủy mã giảm giá')
+      toast.error('Có lỗi xảy ra khi hủy Mã khuyến mãi ')
     }
   }
 
@@ -622,7 +622,7 @@ export default function Cart() {
                         className='text-xs'
                       >
                         <Tag className='h-3 w-3 mr-1' />
-                        Mã giảm giá
+                        Mã khuyến mãi
                       </Button>
                       {store.appliedPromotions && store.appliedPromotions.length > 0 && (
                         <Button
@@ -632,7 +632,7 @@ export default function Cart() {
                           className='text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
                         >
                           <Gift className='h-3 w-3 mr-1' />
-                          Xem voucher ({store.appliedPromotions.length})
+                          Đã áp dụng ({store.appliedPromotions.length})
                         </Button>
                       )}
                       <button className='text-sm text-orange-600 hover:text-orange-700 font-medium'>Xem shop</button>

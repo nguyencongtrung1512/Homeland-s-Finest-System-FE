@@ -10,7 +10,7 @@ export interface AssignedStore {
   address: string
   logoUrl: string | null
   coverImageUrl: string | null
-  status: 'ApprovedByStaff' | 'RejectedByStaff' | 'Processing'
+  status: 'ApprovedByStaff' | 'RejectedByStaff' | 'Processing' | 'Pending' | 'Approved' | 'Rejected' | 'Inactive'
   staffNote: string | null
   history: string | null
   createdAt: string

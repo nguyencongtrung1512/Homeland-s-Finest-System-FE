@@ -494,7 +494,7 @@ const PromotionList: React.FC<PromotionListProps> = ({
       {applied.length === 0 && notYet.length === 0 && (
         <div className='text-center py-8 text-gray-500'>
           <Gift className='h-12 w-12 mx-auto mb-4 text-gray-300' />
-          <p>Không có mã giảm giá nào</p>
+          <p>Không có Mã khuyến mãi  nào</p>
         </div>
       )}
     </div>
@@ -597,7 +597,7 @@ const UserPromotionList: React.FC<UserPromotionListProps> = ({
       {applied.length === 0 && notYet.length === 0 && (
         <div className='text-center py-8 text-gray-500'>
           <User className='h-12 w-12 mx-auto mb-4 text-gray-300' />
-          <p>Không có mã giảm giá cá nhân nào</p>
+          <p>Không có Mã khuyến mãi  cá nhân nào</p>
         </div>
       )}
     </div>
@@ -620,7 +620,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
 
   const handleApply = async (promotionId: string, promotionType: 'global' | 'store' | 'user') => {
     if (!user?.userId) {
-      toast.error('Vui lòng đăng nhập để sử dụng mã giảm giá')
+      toast.error('Vui lòng đăng nhập để sử dụng Mã khuyến mãi ')
       return
     }
 
@@ -651,7 +651,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
         promotionId: promotionId
       })
 
-      toast.success('Áp dụng mã giảm giá thành công!', {
+      toast.success('Áp dụng Mã khuyến mãi  thành công!', {
         position: 'top-right',
         autoClose: 2000
       })
@@ -662,7 +662,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
       console.error('Error applying promotion:', error)
 
       // Extract error message from backend response
-      let errorMessage = 'Không thể áp dụng mã giảm giá'
+      let errorMessage = 'Không thể áp dụng Mã khuyến mãi '
 
       const apiError = error as any
       if (apiError?.response?.data?.message) {
@@ -685,7 +685,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
       // Call removePromotionFromCart API
       await removePromotionFromCart(cartId, promotionId)
 
-      toast.success('Hủy mã giảm giá thành công!', {
+      toast.success('Hủy Mã khuyến mãi  thành công!', {
         position: 'top-right',
         autoClose: 2000
       })
@@ -696,7 +696,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
       console.error('Error removing promotion:', error)
 
       // Extract error message from backend response
-      let errorMessage = 'Không thể hủy mã giảm giá'
+      let errorMessage = 'Không thể hủy Mã khuyến mãi '
 
       const apiError = error as any
       if (apiError?.response?.data?.message) {
@@ -720,7 +720,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({
         <DialogHeader>
           <DialogTitle className='text-xl font-bold text-gray-900 flex items-center gap-2'>
             <Gift className="h-5 w-5" />
-            Chọn mã giảm giá
+            Chọn Mã khuyến mãi 
           </DialogTitle>
         </DialogHeader>
 

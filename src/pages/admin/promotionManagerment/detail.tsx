@@ -48,7 +48,7 @@ const AdminPromotionDetail: React.FC = () => {
       const data = await getPromotionById(id!)
       setPromotion(data)
     } catch (error) {
-      toast.error('Không thể tải thông tin mã giảm giá')
+      toast.error('Không thể tải thông tin Mã khuyến mãi ')
       navigate('/admin/promotions')
     } finally {
       setLoading(false)
@@ -60,20 +60,20 @@ const AdminPromotionDetail: React.FC = () => {
       await updatePromotion(id!, data)
       setIsEditModalOpen(false)
       await loadPromotionDetail() // Reload data
-      toast.success('Cập nhật mã giảm giá thành công')
+      toast.success('Cập nhật Mã khuyến mãi  thành công')
     } catch (error) {
-      toast.error('Có lỗi xảy ra khi cập nhật mã giảm giá')
+      toast.error('Có lỗi xảy ra khi cập nhật Mã khuyến mãi ')
     }
   }
 
   const handleDeletePromotion = async () => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa mã giảm giá này?')) {
+    if (window.confirm('Bạn có chắc chắn muốn xóa Mã khuyến mãi  này?')) {
       try {
         await deletePromotion(id!)
-        toast.success('Xóa mã giảm giá thành công')
+        toast.success('Xóa Mã khuyến mãi  thành công')
         navigate('/admin/promotions')
       } catch (error) {
-        toast.error('Có lỗi xảy ra khi xóa mã giảm giá')
+        toast.error('Có lỗi xảy ra khi xóa Mã khuyến mãi ')
       }
     }
   }
@@ -157,7 +157,7 @@ const AdminPromotionDetail: React.FC = () => {
     return (
       <div className='text-center py-12'>
         <Gift className='h-12 w-12 mx-auto text-gray-400 mb-4' />
-        <h3 className='text-lg font-medium text-gray-900 mb-2'>Không tìm thấy mã giảm giá</h3>
+        <h3 className='text-lg font-medium text-gray-900 mb-2'>Không tìm thấy Mã khuyến mãi </h3>
         <Button onClick={() => navigate('/admin/promotions')}>
           <ArrowLeft className='h-4 w-4 mr-2' />
           Quay lại danh sách
@@ -180,7 +180,7 @@ const AdminPromotionDetail: React.FC = () => {
           </Button>
           <div>
             <h1 className='text-3xl font-bold text-gray-900'>{promotion.title}</h1>
-            <p className='text-gray-600 mt-1'>Chi tiết mã giảm giá</p>
+            <p className='text-gray-600 mt-1'>Chi tiết Mã khuyến mãi </p>
           </div>
         </div>
 
@@ -215,7 +215,7 @@ const AdminPromotionDetail: React.FC = () => {
         <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
           <div className='flex items-center'>
             <Clock className='h-5 w-5 text-red-600 mr-2' />
-            <span className='text-red-800 font-medium'>Mã giảm giá đã hết hạn</span>
+            <span className='text-red-800 font-medium'>Mã khuyến mãi  đã hết hạn</span>
           </div>
         </div>
       )}
@@ -224,7 +224,7 @@ const AdminPromotionDetail: React.FC = () => {
         <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
           <div className='flex items-center'>
             <Clock className='h-5 w-5 text-yellow-600 mr-2' />
-            <span className='text-yellow-800 font-medium'>Mã giảm giá sắp hết hạn</span>
+            <span className='text-yellow-800 font-medium'>Mã khuyến mãi  sắp hết hạn</span>
           </div>
         </div>
       )}
@@ -399,7 +399,7 @@ const AdminPromotionDetail: React.FC = () => {
                 className='w-full'
                 onClick={handleToggleStatus}
               >
-                {promotion.isActive ? 'Tắt mã giảm giá' : 'Bật mã giảm giá'}
+                {promotion.isActive ? 'Tắt Mã khuyến mãi ' : 'Bật Mã khuyến mãi '}
               </Button>
 
               <Button
@@ -408,7 +408,7 @@ const AdminPromotionDetail: React.FC = () => {
                 onClick={handleDeletePromotion}
               >
                 <Trash2 className='h-4 w-4 mr-2' />
-                Xóa mã giảm giá
+                Xóa Mã khuyến mãi
               </Button>
             </CardContent>
           </Card>
@@ -420,7 +420,7 @@ const AdminPromotionDetail: React.FC = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleUpdatePromotion}
-        title='Chỉnh sửa mã giảm giá'
+        title='Chỉnh sửa Mã khuyến mãi '
         mode='edit'
         initialData={promotion}
       />

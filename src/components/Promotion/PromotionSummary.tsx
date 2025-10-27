@@ -54,22 +54,21 @@ const PromotionSummaryItem: React.FC<PromotionSummaryItemProps> = ({ promotion }
             {getDiscountText()}
           </Badge>
         </div>
-        
+
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">
             {promotion.title}
           </p>
-          
+
           <div className="flex items-center gap-2 mt-1">
-            <div className={`flex items-center gap-1 text-xs ${
-              isExpired ? 'text-red-600' : 
-              isExpiringSoon ? 'text-orange-600' : 
-              'text-gray-500'
-            }`}>
+            <div className={`flex items-center gap-1 text-xs ${isExpired ? 'text-red-600' :
+                isExpiringSoon ? 'text-orange-600' :
+                  'text-gray-500'
+              }`}>
               <Clock className="h-3 w-3" />
               <span>{timeLeftDisplayText}</span>
             </div>
-            
+
             {isExpiringSoon && !isExpired && (
               <div className="flex items-center gap-1 text-xs text-orange-600">
                 <AlertTriangle className="h-3 w-3" />
@@ -79,7 +78,7 @@ const PromotionSummaryItem: React.FC<PromotionSummaryItemProps> = ({ promotion }
           </div>
         </div>
       </div>
-      
+
       <div className="text-right">
         <span className="text-sm font-semibold text-red-600">
           -{promotion.discountAmount.toLocaleString('vi-VN')}₫
@@ -119,7 +118,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           Tóm tắt đơn hàng
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* Subtotal */}
         <div className="flex items-center justify-between">
@@ -135,10 +134,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <div className="flex items-center gap-2 mb-3">
               <Gift className="h-4 w-4 text-green-600" />
               <span className="text-sm font-medium text-green-600">
-                Mã giảm giá đã áp dụng ({activePromotions.length})
+                Mã khuyến mãi  đã áp dụng ({activePromotions.length})
               </span>
             </div>
-            
+
             <div className="space-y-2">
               {activePromotions.map((promotion) => (
                 <PromotionSummaryItem
@@ -147,9 +146,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 />
               ))}
             </div>
-            
+
             <Separator className="my-3" />
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Tổng giảm giá</span>
               <span className="text-sm font-semibold text-red-600">
@@ -165,11 +164,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-orange-600" />
               <span className="text-sm font-medium text-orange-800">
-                Có {expiredPromotions.length} mã giảm giá đã hết hạn
+                Có {expiredPromotions.length} Mã khuyến mãi  đã hết hạn
               </span>
             </div>
             <p className="text-xs text-orange-700 mt-1">
-              Mã giảm giá hết hạn sẽ không được áp dụng vào đơn hàng
+              Mã khuyến mãi  hết hạn sẽ không được áp dụng vào đơn hàng
             </p>
           </div>
         )}
@@ -233,10 +232,10 @@ const PromotionSummary: React.FC<PromotionSummaryProps> = ({
       <div className="flex items-center gap-2">
         <Gift className="h-4 w-4 text-green-600" />
         <span className="text-sm font-medium text-green-600">
-          Mã giảm giá đã áp dụng ({activePromotions.length})
+          Mã khuyến mãi  đã áp dụng ({activePromotions.length})
         </span>
       </div>
-      
+
       <div className="space-y-2">
         {activePromotions.map((promotion) => (
           <PromotionSummaryItem
@@ -245,7 +244,7 @@ const PromotionSummary: React.FC<PromotionSummaryProps> = ({
           />
         ))}
       </div>
-      
+
       <div className="flex items-center justify-between pt-2 border-t">
         <span className="text-sm font-medium text-gray-700">Tổng giảm giá</span>
         <span className="text-sm font-semibold text-red-600">

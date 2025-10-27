@@ -431,7 +431,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     <Card className='w-full max-w-2xl mx-auto border-blue-200 shadow-lg'>
       <CardHeader className='bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200'>
         <CardTitle className='text-2xl font-bold text-blue-900'>
-          {isEdit ? 'Chỉnh sửa mã giảm giá' : 'Tạo mã giảm giá mới'}
+          {isEdit ? 'Chỉnh sửa Mã khuyến mãi ' : 'Tạo Mã khuyến mãi  mới'}
         </CardTitle>
       </CardHeader>
 
@@ -445,7 +445,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
 
             <div className='space-y-2'>
               <Label htmlFor='type' className='text-blue-900 font-medium'>
-                Loại mã giảm giá
+                Loại Mã khuyến mãi
               </Label>
               <Select
                 value={formData.type}
@@ -456,7 +456,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                 }}
               >
                 <SelectTrigger className='border-blue-200 focus:ring-blue-500 focus:border-blue-500'>
-                  <SelectValue placeholder='Chọn loại mã giảm giá' />
+                  <SelectValue placeholder='Chọn loại Mã khuyến mãi ' />
                 </SelectTrigger>
                 <SelectContent>
                   {adminPromotionTypes.map((type) => (
@@ -476,7 +476,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                 id='title'
                 value={formData.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
-                placeholder='Nhập tiêu đề mã giảm giá'
+                placeholder='Nhập tiêu đề Mã khuyến mãi '
                 className={cn(
                   'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
                   errors.title && 'border-red-500'
@@ -493,7 +493,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                 id='description'
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder='Nhập mô tả chi tiết về mã giảm giá'
+                placeholder='Nhập mô tả chi tiết về Mã khuyến mãi '
                 rows={3}
                 className={cn(
                   'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
@@ -843,7 +843,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                 onCheckedChange={(checked) => handleInputChange('isActive', checked)}
               />
               <Label htmlFor='isActive' className='text-blue-900 font-medium cursor-pointer'>
-                Kích hoạt mã giảm giá
+                Kích hoạt Mã khuyến mãi
               </Label>
             </div>
           </div>

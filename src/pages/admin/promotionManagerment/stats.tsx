@@ -51,8 +51,8 @@ const AdminPromotionStats: React.FC = () => {
       {/* Header */}
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Thống kê mã giảm giá</h1>
-          <p className='text-gray-600 mt-1'>Phân tích hiệu quả và xu hướng sử dụng mã giảm giá</p>
+          <h1 className='text-3xl font-bold text-gray-900'>Thống kê Mã khuyến mãi </h1>
+          <p className='text-gray-600 mt-1'>Phân tích hiệu quả và xu hướng sử dụng Mã khuyến mãi </p>
         </div>
 
         <div className='flex items-center gap-4'>
@@ -84,7 +84,7 @@ const AdminPromotionStats: React.FC = () => {
                 <Gift className='h-6 w-6 text-blue-600' />
               </div>
               <div className='ml-4'>
-                <p className='text-sm font-medium text-gray-600'>Tổng mã giảm giá</p>
+                <p className='text-sm font-medium text-gray-600'>Tổng Mã khuyến mãi </p>
                 <p className='text-2xl font-bold text-gray-900'>{stats?.totalPromotions || 0}</p>
               </div>
             </div>
@@ -170,7 +170,7 @@ const AdminPromotionStats: React.FC = () => {
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <Target className='h-5 w-5' />
-              Mã giảm giá phổ biến
+              Mã khuyến mãi  phổ biến
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -192,11 +192,11 @@ const AdminPromotionStats: React.FC = () => {
                   </div>
                 </div>
               )) || (
-                <div className='text-center py-8 text-gray-500'>
-                  <Gift className='h-8 w-8 mx-auto mb-2 text-gray-300' />
-                  <p>Chưa có dữ liệu</p>
-                </div>
-              )}
+                  <div className='text-center py-8 text-gray-500'>
+                    <Gift className='h-8 w-8 mx-auto mb-2 text-gray-300' />
+                    <p>Chưa có dữ liệu</p>
+                  </div>
+                )}
             </div>
           </CardContent>
         </Card>
@@ -209,7 +209,7 @@ const AdminPromotionStats: React.FC = () => {
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <Activity className='h-5 w-5' />
-              Phân loại mã giảm giá
+              Phân loại Mã khuyến mãi
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -218,15 +218,14 @@ const AdminPromotionStats: React.FC = () => {
                 <div key={type.type} className='flex items-center justify-between'>
                   <div className='flex items-center gap-2'>
                     <div
-                      className={`w-3 h-3 rounded-full ${
-                        type.type === 'Global'
+                      className={`w-3 h-3 rounded-full ${type.type === 'Global'
                           ? 'bg-blue-500'
                           : type.type === 'User'
                             ? 'bg-green-500'
                             : type.type === 'Product'
                               ? 'bg-purple-500'
                               : 'bg-gray-500'
-                      }`}
+                        }`}
                     ></div>
                     <span className='text-sm text-gray-600'>{type.type}</span>
                   </div>
@@ -236,10 +235,10 @@ const AdminPromotionStats: React.FC = () => {
                   </div>
                 </div>
               )) || (
-                <div className='text-center py-4 text-gray-500'>
-                  <p>Chưa có dữ liệu</p>
-                </div>
-              )}
+                  <div className='text-center py-4 text-gray-500'>
+                    <p>Chưa có dữ liệu</p>
+                  </div>
+                )}
             </div>
           </CardContent>
         </Card>
@@ -268,10 +267,10 @@ const AdminPromotionStats: React.FC = () => {
                   </div>
                 </div>
               )) || (
-                <div className='text-center py-4 text-gray-500'>
-                  <p>Chưa có dữ liệu</p>
-                </div>
-              )}
+                  <div className='text-center py-4 text-gray-500'>
+                    <p>Chưa có dữ liệu</p>
+                  </div>
+                )}
             </div>
           </CardContent>
         </Card>
@@ -288,12 +287,12 @@ const AdminPromotionStats: React.FC = () => {
             <div className='space-y-4'>
               <div className='text-center'>
                 <p className='text-3xl font-bold text-green-600'>{stats?.conversionRate || 0}%</p>
-                <p className='text-sm text-gray-500'>Tỷ lệ sử dụng mã giảm giá</p>
+                <p className='text-sm text-gray-500'>Tỷ lệ sử dụng Mã khuyến mãi </p>
               </div>
 
               <div className='space-y-2'>
                 <div className='flex justify-between text-sm'>
-                  <span className='text-gray-600'>Đơn hàng có mã giảm giá</span>
+                  <span className='text-gray-600'>Đơn hàng có Mã khuyến mãi </span>
                   <span className='font-semibold'>{formatNumber(stats?.ordersWithPromotion || 0)}</span>
                 </div>
                 <div className='flex justify-between text-sm'>
@@ -330,11 +329,11 @@ const AdminPromotionStats: React.FC = () => {
                 </div>
               </div>
             )) || (
-              <div className='text-center py-8 text-gray-500'>
-                <Activity className='h-8 w-8 mx-auto mb-2 text-gray-300' />
-                <p>Chưa có hoạt động nào</p>
-              </div>
-            )}
+                <div className='text-center py-8 text-gray-500'>
+                  <Activity className='h-8 w-8 mx-auto mb-2 text-gray-300' />
+                  <p>Chưa có hoạt động nào</p>
+                </div>
+              )}
           </div>
         </CardContent>
       </Card>

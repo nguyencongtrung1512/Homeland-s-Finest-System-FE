@@ -142,14 +142,14 @@ export const usePromotions = (cartId: string): UsePromotionsReturn => {
         await promotionApi.applyPromotionToCart({ cartId, promotionId })
         await Promise.all([fetchAppliedPromotions(), fetchAvailablePromotions()])
 
-        toast.success('Áp dụng mã giảm giá thành công!', {
+        toast.success('Áp dụng Mã khuyến mãi  thành công!', {
           position: 'top-right',
           autoClose: 2000
         })
 
         return true
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Không thể áp dụng mã giảm giá'
+        const errorMessage = err instanceof Error ? err.message : 'Không thể áp dụng Mã khuyến mãi '
         toast.error(errorMessage, {
           position: 'top-right',
           autoClose: 3000
@@ -171,14 +171,14 @@ export const usePromotions = (cartId: string): UsePromotionsReturn => {
         await promotionApi.removePromotionFromCart(cartId, promotionId)
         await Promise.all([fetchAppliedPromotions(), fetchAvailablePromotions()])
 
-        toast.success('Hủy áp dụng mã giảm giá thành công!', {
+        toast.success('Hủy áp dụng Mã khuyến mãi  thành công!', {
           position: 'top-right',
           autoClose: 2000
         })
 
         return true
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Không thể hủy áp dụng mã giảm giá'
+        const errorMessage = err instanceof Error ? err.message : 'Không thể hủy áp dụng Mã khuyến mãi '
         toast.error(errorMessage, {
           position: 'top-right',
           autoClose: 3000
@@ -353,7 +353,7 @@ export const usePromotionValidation = (): UsePromotionValidationReturn => {
 
     // Check if promotion is active
     if (!promotion.isActive) {
-      validationErrors.push('Mã giảm giá không còn hoạt động')
+      validationErrors.push('Mã khuyến mãi  không còn hoạt động')
     }
 
     // Check if promotion is within date range
@@ -362,11 +362,11 @@ export const usePromotionValidation = (): UsePromotionValidationReturn => {
     const endDate = new Date(promotion.endDate)
 
     if (now < startDate) {
-      validationErrors.push('Mã giảm giá chưa có hiệu lực')
+      validationErrors.push('Mã khuyến mãi  chưa có hiệu lực')
     }
 
     if (now > endDate) {
-      validationErrors.push('Mã giảm giá đã hết hạn')
+      validationErrors.push('Mã khuyến mãi  đã hết hạn')
     }
 
     // Check minimum value requirement
@@ -376,7 +376,7 @@ export const usePromotionValidation = (): UsePromotionValidationReturn => {
 
     // Check quantity limits
     if (promotion.maxQuantity && promotion.usedQuantity >= promotion.maxQuantity) {
-      validationErrors.push('Mã giảm giá đã hết lượt sử dụng')
+      validationErrors.push('Mã khuyến mãi  đã hết lượt sử dụng')
     }
 
     // Check discount value validity
@@ -448,14 +448,14 @@ export const useUserPromotions = (userId: string) => {
         await promotionApi.claimPromotion({ promotionID: promotionId, userID: userId })
         await fetchUserPromotions()
 
-        toast.success('Nhận mã giảm giá thành công!', {
+        toast.success('Nhận Mã khuyến mãi  thành công!', {
           position: 'top-right',
           autoClose: 2000
         })
 
         return true
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Không thể nhận mã giảm giá'
+        const errorMessage = err instanceof Error ? err.message : 'Không thể nhận Mã khuyến mãi '
         toast.error(errorMessage, {
           position: 'top-right',
           autoClose: 3000

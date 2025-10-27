@@ -35,7 +35,7 @@ const AppliedPromotionModal: React.FC<AppliedPromotionModalProps> = ({
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <Gift className='h-5 w-5 text-green-600' />
-            Mã giảm giá đã áp dụng - {storeName}
+            Mã khuyến mãi  đã áp dụng - {storeName}
           </DialogTitle>
         </DialogHeader>
 

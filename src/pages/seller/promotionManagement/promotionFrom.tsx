@@ -24,12 +24,19 @@ import {
   TrendingUp,
   Edit,
   X,
-  Plus
+  Plus,
+  Search,
+  Package
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { useAuth } from '../../../contexts/auth.context'
 import { type PromotionSellerDTO, type PromotionSellerRequest, type DiscountType } from '../../../types/promotionType'
+import { storeApi } from '../../../apis/store.api'
+import { productApi } from '../../../apis/product.api'
+import { type Product } from '../../../types/productType'
+import Loading from '../../../components/Loading/loading'
+import EmptyState from '../../../components/EmptyState/emptyState'
 
 interface PromotionDetailModalProps {
   promotion: PromotionSellerDTO | null
@@ -71,6 +78,11 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
   const [endTime, setEndTime] = useState('23:59')
   const [productSearchTerm, setProductSearchTerm] = useState('')
   const [selectedProducts, setSelectedProducts] = useState<string[]>([])
+
+  // Product selection states
+  const [products, setProducts] = useState<Product[]>([])
+  const [productsLoading, setProductsLoading] = useState(false)
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
 
   // Initialize form data when modal opens or promotion changes
   useEffect(() => {
@@ -192,6 +204,8 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
         setEndTime('23:59')
         setSelectedProducts([])
         setProductSearchTerm('')
+        setProducts([])
+        setFilteredProducts([])
       }
     }
   }, [isOpen, promotion, mode, user?.userId])
@@ -216,6 +230,50 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
     setIsEditing(mode === 'edit' || mode === 'create')
   }, [mode])
 
+  // Fetch store and products when modal opens
+  useEffect(() => {
+    const fetchStoreAndProducts = async () => {
+      if (!isOpen || !user?.userId) return
+
+      try {
+        // Get store by seller ID
+        const storeResponse = await storeApi.getStoreBySellerId(user.userId)
+        if (storeResponse.data?.id) {
+          // Get products by store
+          setProductsLoading(true)
+          const productsResponse = await productApi.getByStore(storeResponse.data.id, {
+            pageSize: 100, // Get more products for selection
+            pageNumber: 1
+          })
+          if (productsResponse.data) {
+            setProducts(productsResponse.data)
+            setFilteredProducts(productsResponse.data)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching store and products:', error)
+      } finally {
+        setProductsLoading(false)
+      }
+    }
+
+    fetchStoreAndProducts()
+  }, [isOpen, user?.userId])
+
+  // Filter products based on search term
+  useEffect(() => {
+    if (!productSearchTerm.trim()) {
+      setFilteredProducts(products)
+    } else {
+      const filtered = products.filter(
+        (product) =>
+          product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+          product.id.toLowerCase().includes(productSearchTerm.toLowerCase())
+      )
+      setFilteredProducts(filtered)
+    }
+  }, [productSearchTerm, products])
+
   // Safety check
   if (!promotion && mode !== 'create') {
     console.log('🔍 No promotion data and not create mode, returning null')
@@ -223,7 +281,10 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
   }
 
   // Form handlers
-  const handleInputChange = (field: keyof PromotionSellerRequest, value: string | number | boolean | string[] | undefined) => {
+  const handleInputChange = (
+    field: keyof PromotionSellerRequest,
+    value: string | number | boolean | string[] | undefined
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value
@@ -322,15 +383,21 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
     }
   }
 
-  const addProduct = () => {
-    if (productSearchTerm.trim() && !selectedProducts.includes(productSearchTerm.trim())) {
-      setSelectedProducts((prev) => [...prev, productSearchTerm.trim()])
-      setProductSearchTerm('')
+  const addProduct = (productId: string) => {
+    if (!selectedProducts.includes(productId)) {
+      setSelectedProducts((prev) => [...prev, productId])
     }
   }
 
   const removeProduct = (productId: string) => {
     setSelectedProducts((prev) => prev.filter((id) => id !== productId))
+  }
+
+  const getSelectedProductNames = () => {
+    return selectedProducts.map((productId) => {
+      const product = products.find((p) => p.id === productId)
+      return product ? product.name : productId
+    })
   }
 
   const formatDate = (dateString: string) => {
@@ -679,45 +746,120 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
             {/* Product Selection */}
             <Card>
               <CardHeader>
-                <CardTitle>Sản phẩm áp dụng</CardTitle>
+                <CardTitle className='flex items-center gap-2'>
+                  <Package className='h-5 w-5 text-blue-500' />
+                  Sản phẩm áp dụng
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className='space-y-2'>
-                  <Label htmlFor='productSearch'>Thêm sản phẩm</Label>
-                  <div className='flex gap-2'>
-                    <Input
-                      id='productSearch'
-                      value={productSearchTerm}
-                      onChange={(e) => setProductSearchTerm(e.target.value)}
-                      placeholder='Nhập ID sản phẩm'
-                    />
-                    <Button type='button' onClick={addProduct} variant='outline'>
-                      <Plus className='h-4 w-4' />
-                    </Button>
-                  </div>
-                </div>
-
-                {selectedProducts.length > 0 && (
-                  <div className='space-y-2 mt-4'>
-                    <Label>Sản phẩm đã chọn</Label>
-                    <div className='flex flex-wrap gap-2'>
-                      {selectedProducts.map((productId) => (
-                        <Badge key={productId} variant='secondary' className='flex items-center gap-1'>
-                          {productId}
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => removeProduct(productId)}
-                            className='h-4 w-4 p-0 hover:bg-transparent'
-                          >
-                            <X className='h-3 w-3' />
-                          </Button>
-                        </Badge>
-                      ))}
+                <div className='space-y-4'>
+                  {/* Search Products */}
+                  <div className='space-y-2'>
+                    <Label htmlFor='productSearch'>Tìm kiếm sản phẩm</Label>
+                    <div className='relative'>
+                      <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400' />
+                      <Input
+                        id='productSearch'
+                        value={productSearchTerm}
+                        onChange={(e) => setProductSearchTerm(e.target.value)}
+                        placeholder='Tìm kiếm theo tên hoặc ID sản phẩm...'
+                        className='pl-10'
+                      />
                     </div>
                   </div>
-                )}
+
+                  {/* Products List */}
+                  <div className='space-y-2'>
+                    <Label>Danh sách sản phẩm</Label>
+                    {productsLoading ? (
+                      <div className='flex items-center justify-center py-8'>
+                        <Loading />
+                      </div>
+                    ) : filteredProducts.length === 0 ? (
+                      <EmptyState
+                        type='search'
+                        title='Không tìm thấy sản phẩm nào'
+                        description='Hãy thử tìm kiếm với từ khóa khác'
+                        showAction={false}
+                      />
+                    ) : (
+                      <div className='max-h-60 overflow-y-auto border rounded-lg'>
+                        {filteredProducts.map((product) => (
+                          <div
+                            key={product.id}
+                            className={`flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-gray-50 ${selectedProducts.includes(product.id) ? 'bg-blue-50' : ''
+                              }`}
+                          >
+                            <div className='flex-1'>
+                              <div className='flex items-center gap-2'>
+                                <h4 className='font-medium text-sm'>{product.name}</h4>
+                                {product.isActive ? (
+                                  <Badge variant='default' className='text-xs bg-green-100 text-green-800'>
+                                    Hoạt động
+                                  </Badge>
+                                ) : (
+                                  <Badge variant='secondary' className='text-xs'>
+                                    Tạm dừng
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className='text-xs text-gray-500 mt-1'>ID: {product.id}</p>
+                              <p className='text-xs text-gray-600 mt-1 line-clamp-2'>{product.description}</p>
+                            </div>
+                            <Button
+                              type='button'
+                              variant={selectedProducts.includes(product.id) ? 'default' : 'outline'}
+                              size='sm'
+                              onClick={() => {
+                                if (selectedProducts.includes(product.id)) {
+                                  removeProduct(product.id)
+                                } else {
+                                  addProduct(product.id)
+                                }
+                              }}
+                              className='ml-2'
+                            >
+                              {selectedProducts.includes(product.id) ? (
+                                <>
+                                  <X className='h-3 w-3 mr-1' />
+                                  Bỏ chọn
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className='h-3 w-3 mr-1' />
+                                  Chọn
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Selected Products */}
+                  {selectedProducts.length > 0 && (
+                    <div className='space-y-2'>
+                      <Label>Sản phẩm đã chọn ({selectedProducts.length})</Label>
+                      <div className='flex flex-wrap gap-2'>
+                        {getSelectedProductNames().map((productName, index) => (
+                          <Badge key={selectedProducts[index]} variant='secondary' className='flex items-center gap-1'>
+                            {productName}
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => removeProduct(selectedProducts[index])}
+                              className='h-4 w-4 p-0 hover:bg-transparent'
+                            >
+                              <X className='h-3 w-3' />
+                            </Button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 

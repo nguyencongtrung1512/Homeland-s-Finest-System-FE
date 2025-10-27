@@ -269,7 +269,7 @@ const AppliedPromotions: React.FC<AppliedPromotionsProps> = ({ cartPromotions, o
     return (
       <div className='text-center py-6 text-gray-500'>
         <CheckCircle className='h-12 w-12 mx-auto mb-4 text-gray-300' />
-        <p>Chưa có mã giảm giá nào được áp dụng</p>
+        <p>Chưa có Mã khuyến mãi  nào được áp dụng</p>
       </div>
     )
   }
@@ -280,7 +280,7 @@ const AppliedPromotions: React.FC<AppliedPromotionsProps> = ({ cartPromotions, o
       <div className='bg-gray-50 rounded-lg p-4'>
         <div className='flex items-center justify-between'>
           <div>
-            <h3 className='text-sm font-medium text-gray-700'>Mã giảm giá đã áp dụng ({cartPromotions.length})</h3>
+            <h3 className='text-sm font-medium text-gray-700'>Mã khuyến mãi  đã áp dụng ({cartPromotions.length})</h3>
             <p className='text-xs text-gray-500 mt-1'>
               Tổng giảm giá:{' '}
               <span className='font-semibold text-red-600'>-{totalDiscount.toLocaleString('vi-VN')}₫</span>

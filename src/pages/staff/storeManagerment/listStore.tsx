@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from 'react'
 import { Search, Filter, RefreshCw, Store, Package, ExternalLink, Calendar, User } from 'lucide-react'
 import { staffApi, type AssignedStore } from '../../../apis/staff.api'
@@ -70,7 +69,14 @@ function ListStore() {
       },
       createdDate: formatDate(apiStore.createdAt),
       products: 0,
-      status: apiStore.status
+      status: apiStore.status as
+        | 'Processing'
+        | 'Pending'
+        | 'Approved'
+        | 'Rejected'
+        | 'Inactive'
+        | 'ApprovedByStaff'
+        | 'RejectedByStaff'
     }
   }
 
@@ -381,7 +387,8 @@ function ListStore() {
             {/* Pagination */}
             <div className='flex items-center justify-between mt-8 pt-6 border-t border-gray-200'>
               <div className='text-sm text-gray-600'>
-                Hiển thị {startIndex + 1} đến {Math.min(endIndex, totalFilteredStores)} của {totalFilteredStores} kết quả
+                Hiển thị {startIndex + 1} đến {Math.min(endIndex, totalFilteredStores)} của {totalFilteredStores} kết
+                quả
               </div>
               <div className='flex items-center gap-2'>
                 <Button
@@ -398,7 +405,9 @@ function ListStore() {
                 <Button
                   variant='outline'
                   size='sm'
-                  onClick={() => setCurrentPage((prev) => Math.min(Math.ceil(totalFilteredStores / pageSize), prev + 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(Math.ceil(totalFilteredStores / pageSize), prev + 1))
+                  }
                   disabled={currentPage >= Math.ceil(totalFilteredStores / pageSize)}
                 >
                   Sau

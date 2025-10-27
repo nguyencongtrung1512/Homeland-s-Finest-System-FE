@@ -104,19 +104,19 @@ interface PromotionContextType {
 const PromotionContext = createContext<PromotionContextType>({
   // State
   appliedPromotions: [],
-  setAppliedPromotions: () => {},
+  setAppliedPromotions: () => { },
   availablePromotions: {
     global: null,
     store: null,
     user: null
   },
-  setAvailablePromotions: () => {},
+  setAvailablePromotions: () => { },
   userPromotions: [],
-  setUserPromotions: () => {},
+  setUserPromotions: () => { },
   adminPromotions: [],
-  setAdminPromotions: () => {},
+  setAdminPromotions: () => { },
   sellerPromotions: [],
-  setSellerPromotions: () => {},
+  setSellerPromotions: () => { },
 
   // Loading
   loading: {
@@ -128,11 +128,11 @@ const PromotionContext = createContext<PromotionContextType>({
     applying: false,
     removing: false
   },
-  setLoading: () => {},
+  setLoading: () => { },
 
   // Error
   error: null,
-  setError: () => {},
+  setError: () => { },
 
   // Pagination
   pagination: {
@@ -140,30 +140,30 @@ const PromotionContext = createContext<PromotionContextType>({
     pageSize: 10,
     totalItems: 0
   },
-  setPagination: () => {},
+  setPagination: () => { },
 
   // Filters & Sort
   filters: {},
-  setFilters: () => {},
+  setFilters: () => { },
   sort: { field: 'createdAt', direction: 'desc' },
-  setSort: () => {},
+  setSort: () => { },
 
   // Stats
   stats: null,
-  setStats: () => {},
+  setStats: () => { },
 
   // Actions
-  fetchAppliedPromotions: async () => {},
-  fetchAvailablePromotions: async () => {},
-  fetchUserPromotions: async () => {},
-  fetchAdminPromotions: async () => {},
-  fetchSellerPromotions: async () => {},
+  fetchAppliedPromotions: async () => { },
+  fetchAvailablePromotions: async () => { },
+  fetchUserPromotions: async () => { },
+  fetchAdminPromotions: async () => { },
+  fetchSellerPromotions: async () => { },
   applyPromotion: async () => false,
   removePromotion: async () => false,
   claimPromotion: async () => false,
-  refreshPromotions: async () => {},
-  clearPromotions: () => {},
-  fetchPromotionStats: async () => {}
+  refreshPromotions: async () => { },
+  clearPromotions: () => { },
+  fetchPromotionStats: async () => { }
 })
 
 // ========================================
@@ -378,14 +378,14 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
         // Refresh applied promotions
         await fetchAppliedPromotions(cartId)
 
-        toast.success('Áp dụng mã giảm giá thành công!', {
+        toast.success('Áp dụng Mã khuyến mãi  thành công!', {
           position: 'top-right',
           autoClose: 2000
         })
 
         return true
       } catch (err: any) {
-        const errorMessage = err?.message || 'Không thể áp dụng mã giảm giá'
+        const errorMessage = err?.message || 'Không thể áp dụng Mã khuyến mãi '
         setError(errorMessage)
         toast.error(errorMessage, {
           position: 'top-right',
@@ -410,14 +410,14 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
         // Refresh applied promotions
         await fetchAppliedPromotions(cartId)
 
-        toast.success('Hủy áp dụng mã giảm giá thành công!', {
+        toast.success('Hủy áp dụng Mã khuyến mãi  thành công!', {
           position: 'top-right',
           autoClose: 2000
         })
 
         return true
       } catch (err: any) {
-        const errorMessage = err?.message || 'Không thể hủy áp dụng mã giảm giá'
+        const errorMessage = err?.message || 'Không thể hủy áp dụng Mã khuyến mãi '
         setError(errorMessage)
         toast.error(errorMessage, {
           position: 'top-right',
@@ -442,14 +442,14 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
         // Refresh user promotions
         await fetchUserPromotions(userId)
 
-        toast.success('Nhận mã giảm giá thành công!', {
+        toast.success('Nhận Mã khuyến mãi  thành công!', {
           position: 'top-right',
           autoClose: 2000
         })
 
         return true
       } catch (err: any) {
-        const errorMessage = err?.message || 'Không thể nhận mã giảm giá'
+        const errorMessage = err?.message || 'Không thể nhận Mã khuyến mãi '
         setError(errorMessage)
         toast.error(errorMessage, {
           position: 'top-right',

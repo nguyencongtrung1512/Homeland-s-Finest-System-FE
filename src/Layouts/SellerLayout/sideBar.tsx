@@ -51,7 +51,7 @@ function SideBar() {
     },
     {
       key: path.promotionSeller,
-      label: 'Quản lý mã giảm giá',
+      label: 'Quản lý Mã khuyến mãi ',
       icon: <Gift size={18} />
     },
     {

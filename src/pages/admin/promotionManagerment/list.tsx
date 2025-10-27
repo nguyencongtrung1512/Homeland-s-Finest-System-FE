@@ -217,9 +217,9 @@ const AdminPromotionList: React.FC = () => {
       }
       await createPromotion(adminRequest)
       setIsCreateModalOpen(false)
-      toast.success('Tạo mã giảm giá thành công')
+      toast.success('Tạo Mã khuyến mãi  thành công')
     } catch {
-      toast.error('Có lỗi xảy ra khi tạo mã giảm giá')
+      toast.error('Có lỗi xảy ra khi tạo Mã khuyến mãi ')
     }
   }
 
@@ -246,9 +246,9 @@ const AdminPromotionList: React.FC = () => {
       await updatePromotion(selectedPromotion!.id, adminRequest)
       setIsEditModalOpen(false)
       setSelectedPromotion(null)
-      toast.success('Cập nhật mã giảm giá thành công')
+      toast.success('Cập nhật Mã khuyến mãi  thành công')
     } catch {
-      toast.error('Có lỗi xảy ra khi cập nhật mã giảm giá')
+      toast.error('Có lỗi xảy ra khi cập nhật Mã khuyến mãi ')
     }
   }
 
@@ -381,12 +381,12 @@ const AdminPromotionList: React.FC = () => {
       {/* Header */}
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Quản lý mã giảm giá</h1>
-          <p className='text-gray-600 mt-1'>Quản lý và theo dõi các mã giảm giá trong hệ thống</p>
+          <h1 className='text-3xl font-bold text-gray-900'>Quản lý Mã khuyến mãi </h1>
+          <p className='text-gray-600 mt-1'>Quản lý và theo dõi các Mã khuyến mãi  trong hệ thống</p>
         </div>
         <Button onClick={() => setIsCreateModalOpen(true)} className='bg-blue-600 hover:bg-blue-700'>
           <Plus className='h-4 w-4 mr-2' />
-          Tạo mã giảm giá
+          Tạo Mã khuyến mãi
         </Button>
       </div>
 
@@ -399,7 +399,7 @@ const AdminPromotionList: React.FC = () => {
                 <Gift className='h-6 w-6 text-blue-600' />
               </div>
               <div className='ml-4'>
-                <p className='text-sm font-medium text-gray-600'>Tổng mã giảm giá</p>
+                <p className='text-sm font-medium text-gray-600'>Tổng Mã khuyến mãi </p>
                 <p className='text-2xl font-bold text-gray-900'>{stats.total}</p>
               </div>
             </div>
@@ -457,7 +457,7 @@ const AdminPromotionList: React.FC = () => {
               <div className='relative'>
                 <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
                 <Input
-                  placeholder='Tìm kiếm mã giảm giá...'
+                  placeholder='Tìm kiếm Mã khuyến mãi ...'
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className='pl-10'
@@ -467,7 +467,7 @@ const AdminPromotionList: React.FC = () => {
 
             <Select value={filterType} onValueChange={(value) => setFilterType(value as PromotionType | 'all')}>
               <SelectTrigger className='w-48'>
-                <SelectValue placeholder='Loại mã giảm giá' />
+                <SelectValue placeholder='Loại Mã khuyến mãi ' />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='all'>Tất cả loại</SelectItem>
@@ -500,7 +500,7 @@ const AdminPromotionList: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='createdAt'>Ngày tạo</SelectItem>
-                <SelectItem value='title'>Tên mã giảm giá</SelectItem>
+                <SelectItem value='title'>Tên Mã khuyến mãi </SelectItem>
                 <SelectItem value='discountValue'>Giá trị giảm</SelectItem>
                 <SelectItem value='endDate'>Ngày hết hạn</SelectItem>
               </SelectContent>
@@ -516,7 +516,7 @@ const AdminPromotionList: React.FC = () => {
       {/* Promotions List */}
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách mã giảm giá ({paginationData.totalItems} kết quả)</CardTitle>
+          <CardTitle>Danh sách Mã khuyến mãi  ({paginationData.totalItems} kết quả)</CardTitle>
         </CardHeader>
         <CardContent>
           {paginationData.paginatedPromotions && paginationData.paginatedPromotions.length > 0 ? (
@@ -576,16 +576,16 @@ const AdminPromotionList: React.FC = () => {
           ) : (
             <div className='text-center py-12'>
               <Gift className='h-12 w-12 mx-auto text-gray-400 mb-4' />
-              <h3 className='text-lg font-medium text-gray-900 mb-2'>Không có mã giảm giá</h3>
+              <h3 className='text-lg font-medium text-gray-900 mb-2'>Không có Mã khuyến mãi </h3>
               <p className='text-gray-500 mb-4'>
                 {searchTerm || filterType !== 'all' || filterStatus !== 'all'
                   ? 'Không tìm thấy kết quả phù hợp'
-                  : 'Hãy tạo mã giảm giá đầu tiên của bạn'}
+                  : 'Hãy tạo Mã khuyến mãi  đầu tiên của bạn'}
               </p>
               {!searchTerm && filterType === 'all' && filterStatus === 'all' && (
                 <Button onClick={() => setIsCreateModalOpen(true)}>
                   <Plus className='h-4 w-4 mr-2' />
-                  Tạo mã giảm giá
+                  Tạo Mã khuyến mãi
                 </Button>
               )}
             </div>
@@ -601,7 +601,7 @@ const AdminPromotionList: React.FC = () => {
               <div className='text-sm text-gray-600'>
                 Hiển thị {paginationData.startIndex + 1} -{' '}
                 {Math.min(paginationData.endIndex, paginationData.totalItems)} trong tổng số {paginationData.totalItems}{' '}
-                mã giảm giá
+                Mã khuyến mãi
               </div>
               <div className='flex items-center gap-2'>
                 <Button variant='outline' size='sm' onClick={() => handlePageChange(1)} disabled={currentPage === 1}>
