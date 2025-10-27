@@ -4,6 +4,7 @@ export const path = {
   blog: '/view-blog',
   login: '/login',
   product: '/products',
+  detailCombo: '/combo/:id',
   productDetail: '/product/:id',
   store: '/store/:storeId',
   stories: '/stories',

@@ -5,18 +5,18 @@ import Discover from './discover'
 import { useProducts } from '../../../hooks/useProducts'
 import Pagination from '../../../components/Pagination/Pagination'
 import Loading from '../../../components/Loading/loading'
-import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
 import { getAllCombos } from '../../../apis/combo.api'
+import { type Combo } from '../../../types/combo.type'
+import { ComboList } from '../combo/combo'
 import { PromotionBubble } from '../../../components/PromotionBubble'
 
 function Products() {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(0) // Backend expect zero-based page
-  const navigate = useNavigate()
   const { addToCart } = useCart()
   const [activeTab, setActiveTab] = useState<'product' | 'combo'>('product')
-  const [comboCardData, setComboCardData] = useState<ProductCardData[]>([])
+  const [combos, setCombos] = useState<Combo[]>([])
   const [combosLoading, setCombosLoading] = useState(false)
   const [combosError, setCombosError] = useState<string | null>(null)
   // const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'updatedAt' | 'saleCount' | 'rating'>('createdAt')
@@ -36,23 +36,9 @@ function Products() {
       try {
         setCombosLoading(true)
         setCombosError(null)
-        const data = await getAllCombos({ pageNumber: currentPage + 1, pageSize: 10 })
-        const combosArray = Array.isArray(data) ? data : (data as any)?.data || []
-        const mapped = combosArray.map(
-          (combo: any) =>
-            ({
-              id: combo.id,
-              name: combo.name,
-              productImages: [combo.image || '/src/assets/react.svg'],
-              material: 'Combo',
-              rating: 0,
-              reviewCount: 0,
-              price: combo.price,
-              badge: { text: 'Combo', color: 'bg-amber-500' }
-            }) as unknown as ProductCardData
-        )
-        setComboCardData(mapped)
-      } catch (err) {
+        const data = await getAllCombos({ pageNumber: currentPage + 1, pageSize: 12 })
+        setCombos(data)
+      } catch {
         setCombosError('Không thể tải combo.')
       } finally {
         setCombosLoading(false)
@@ -73,6 +59,14 @@ function Products() {
             ? { text: 'Tươi ngon', color: 'bg-green-500' }
             : { text: 'Đặc sản', color: 'bg-blue-500' }
   }))
+
+  const handleAddCombo = async (comboId: string) => {
+    try {
+      await addToCart('', 1, comboId)
+    } catch {
+      // swallow and rely on global error handling/toast if any
+    }
+  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -151,7 +145,7 @@ function Products() {
               <input
                 className='w-full border-none bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none'
                 type='text'
-                placeholder='Tìm kiếm sản phẩm, vùng miền...'
+                placeholder={activeTab === 'product' ? 'Tìm kiếm sản phẩm, vùng miền...' : 'Tìm kiếm combo...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -192,65 +186,55 @@ function Products() {
           {/* Products/Combos grid */}
           {!(activeTab === 'product' ? loading || !!error : combosLoading || !!combosError) && (
             <>
-              <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
-                {activeTab === 'product'
-                  ? productCardData.map((product) => <ProductCard key={product.id} product={product} />)
-                  : comboCardData.map((combo) => (
-                    <ProductCard
-                      key={combo.id}
-                      product={combo}
-                      onClick={() => addToCart({ comboId: combo.id, quantity: 1 })}
-                    />
+              {activeTab === 'product' ? (
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+                  {productCardData.map((product) => (
+                    <ProductCard key={product.id} product={product} />
                   ))}
-              </div>
+                </div>
+              ) : (
+                <ComboList
+                  combos={combos}
+                  loading={combosLoading}
+                  error={combosError}
+                  onAddToCart={handleAddCombo}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
 
-              {activeTab === 'product'
-                ? productCardData.length === 0 && (
-                  <div className='text-center py-12'>
-                    <div className='text-gray-400 mb-4'>
-                      <svg className='mx-auto h-12 w-12' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth='2'
-                          d='M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'
-                        />
-                      </svg>
-                    </div>
-                    <h3 className='text-lg font-medium text-gray-900 mb-2'>Không tìm thấy sản phẩm</h3>
-                    <p className='text-gray-600'>Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc</p>
+              {activeTab === 'product' && productCardData.length === 0 && (
+                <div className='text-center py-12'>
+                  <div className='text-gray-400 mb-4'>
+                    <svg className='mx-auto h-12 w-12' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth='2'
+                        d='M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'
+                      />
+                    </svg>
                   </div>
-                )
-                : comboCardData.length === 0 && (
-                  <div className='text-center py-12'>
-                    <div className='text-gray-400 mb-4'>
-                      <svg className='mx-auto h-12 w-12' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth='2'
-                          d='M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'
-                        />
-                      </svg>
-                    </div>
-                    <h3 className='text-lg font-medium text-gray-900 mb-2'>Không tìm thấy combo</h3>
-                    <p className='text-gray-600'>Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc</p>
+                  <h3 className='text-lg font-medium text-gray-900 mb-2'>Không tìm thấy sản phẩm</h3>
+                  <p className='text-gray-600'>Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc</p>
+                </div>
+              )}
+
+              {activeTab === 'product' && (
+                <>
+                  <Pagination
+                    currentPage={currentPage + 1}
+                    totalPages={pagination.totalPages}
+                    onPageChange={handlePageChange}
+                    maxVisiblePages={5}
+                  />
+
+                  {/* Results info */}
+                  <div className='text-center text-sm text-gray-600 mt-4'>
+                    Hiển thị {productCardData.length} trong tổng số {pagination.totalItems} sản phẩm
                   </div>
-                )}
-
-              <Pagination
-                currentPage={currentPage + 1}
-                totalPages={activeTab === 'product' ? pagination.totalPages : 1}
-                onPageChange={handlePageChange}
-                maxVisiblePages={5}
-              />
-
-              {/* Results info */}
-              <div className='text-center text-sm text-gray-600 mt-4'>
-                {activeTab === 'product'
-                  ? `Hiển thị ${productCardData.length} trong tổng số ${pagination.totalItems} sản phẩm`
-                  : `Hiển thị ${comboCardData.length} combo`}
-              </div>
+                </>
+              )}
             </>
           )}
         </div>

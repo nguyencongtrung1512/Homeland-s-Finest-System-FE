@@ -75,6 +75,8 @@ import ManagerComboStaff from './pages/staff/comboManagerment/managerCombo'
 import DetailComboStaff from './pages/staff/comboManagerment/detailCombo'
 import ManagerProductAdmin from './pages/admin/productManagerment/list'
 import ManagerComboAdmin from './pages/admin/comboManagerment/list'
+import ComboPage from './pages/customer/combo/combo'
+import ComboDetail from './pages/customer/combo/detail'
 
 
 export default function useRouteElements() {
@@ -95,6 +97,10 @@ export default function useRouteElements() {
         {
           path: path.productDetail,
           element: <ProductsDetail />
+        },
+        {
+          path: path.detailCombo,
+          element: <ComboDetail />
         },
         {
           path: path.cart,
