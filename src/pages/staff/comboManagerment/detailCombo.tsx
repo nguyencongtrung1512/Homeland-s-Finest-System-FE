@@ -8,6 +8,9 @@ import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { Separator } from '../../../components/ui/separator'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../../components/ui/dialog'
+import { Label } from '../../../components/ui/label'
+import { Textarea } from '../../../components/ui/textarea'
 
 function DetailComboStaff() {
   const { id } = useParams<{ id: string }>()
@@ -16,6 +19,15 @@ function DetailComboStaff() {
   const [combo, setCombo] = useState<ComboDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const [showApproveDialog, setShowApproveDialog] = useState(false)
+  const [showDenyDialog, setShowDenyDialog] = useState(false)
+  const [confirmNote, setConfirmNote] = useState('')
+  const [rejectNote, setRejectNote] = useState('')
+  const [approveNote, setApproveNote] = useState('')
+  const [denyNote, setDenyNote] = useState('')
 
   const fetchComboDetail = useCallback(async () => {
     if (!comboId) return
@@ -43,6 +55,94 @@ function DetailComboStaff() {
   useEffect(() => {
     fetchComboDetail()
   }, [fetchComboDetail])
+
+  // Handle confirm assignment (Processing → Confirmed)
+  const handleConfirmAssignment = async () => {
+    if (!comboId || !confirmNote.trim()) {
+      toast.error('Vui lòng nhập ghi chú')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      await staffApi.confirmComboAssignment(comboId, confirmNote)
+      toast.success('Đã chấp nhận nhiệm vụ xử lý combo')
+      setShowConfirmDialog(false)
+      setConfirmNote('')
+      await fetchComboDetail() // Refresh data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi chấp nhận nhiệm vụ'
+      toast.error(errorMessage)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Handle reject assignment (Processing → Rejected)
+  const handleRejectAssignment = async () => {
+    if (!comboId || !rejectNote.trim()) {
+      toast.error('Vui lòng nhập lý do từ chối')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      await staffApi.rejectComboAssignment(comboId, rejectNote)
+      toast.success('Đã từ chối nhiệm vụ thành công')
+      setShowRejectDialog(false)
+      setRejectNote('')
+      await fetchComboDetail() // Refresh data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi từ chối nhiệm vụ'
+      toast.error(errorMessage)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Handle approve combo (Confirmed → Approved)
+  const handleApproveCombo = async () => {
+    if (!comboId || !approveNote.trim()) {
+      toast.error('Vui lòng nhập ghi chú')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      await staffApi.approveCombo(comboId, approveNote)
+      toast.success('Đã phê duyệt combo thành công')
+      setShowApproveDialog(false)
+      setApproveNote('')
+      await fetchComboDetail() // Refresh data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi phê duyệt combo'
+      toast.error(errorMessage)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Handle deny combo (Confirmed → Denied)
+  const handleDenyCombo = async () => {
+    if (!comboId || !denyNote.trim()) {
+      toast.error('Vui lòng nhập lý do từ chối')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      await staffApi.denyCombo(comboId, denyNote)
+      toast.success('Đã từ chối combo thành công')
+      setShowDenyDialog(false)
+      setDenyNote('')
+      await fetchComboDetail() // Refresh data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi từ chối combo'
+      toast.error(errorMessage)
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   const getStatusConfig = (status: string) => {
     const configs = {
@@ -87,17 +187,42 @@ function DetailComboStaff() {
       }
     )
   }
-
   const formatDate = (dateString: string) => {
-    if (!dateString) return '-'
+    if (!dateString || dateString === 'null' || dateString === 'undefined') {
+      return '-'
+    }
+
+    const timeDateMatch = dateString.match(/(\d{2}:\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/)
+
+    if (timeDateMatch) {
+      const [, time, date] = timeDateMatch
+      const [day, month, year] = date.split('/')
+      const [hours, minutes, seconds] = time.split(':')
+
+      // Tạo Date object với định dạng chuẩn
+      const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes), parseInt(seconds))
+
+      if (isNaN(dateObj.getTime())) {
+        return '-'
+      }
+
+      return dateObj.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      })
+    }
+
+    // Fallback cho các định dạng khác
     const date = new Date(dateString)
-    if (isNaN(date.getTime())) return '-'
+    if (isNaN(date.getTime())) {
+      return '-'
+    }
+
     return date.toLocaleDateString('vi-VN', {
       year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      month: '2-digit',
+      day: '2-digit'
     })
   }
 
@@ -175,8 +300,23 @@ function DetailComboStaff() {
           <Card>
             <CardHeader>
               <div className='flex items-start gap-4'>
-                <Avatar className='h-16 w-16 bg-gradient-to-br from-blue-500 to-blue-600'>
-                  <AvatarFallback className='text-white font-semibold text-lg'>
+                <Avatar className='h-16 w-16'>
+                  {combo.thumbnailUrl ? (
+                    <img
+                      src={combo.thumbnailUrl}
+                      alt={combo.name}
+                      className='w-full h-full object-cover'
+                      onError={(e) => {
+                        const target = e.currentTarget
+                        const fallback = target.nextElementSibling as HTMLElement
+                        if (fallback) {
+                          target.style.display = 'none'
+                          fallback.style.display = 'flex'
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <AvatarFallback className='text-white font-semibold text-lg bg-gradient-to-br from-blue-500 to-blue-600'>
                     {combo.name
                       .split(' ')
                       .map((word) => word.charAt(0))
@@ -220,7 +360,7 @@ function DetailComboStaff() {
                 </div>
                 <div className='flex items-center gap-2 text-sm text-gray-600'>
                   <Calendar size={16} className='text-gray-400' />
-                  <span className='font-medium'>Cập nhật:</span>
+                  <span className='font-medium'>Cập nhập:</span>
                   <span>{formatDate(combo.updatedAt)}</span>
                 </div>
               </div>
@@ -298,15 +438,152 @@ function DetailComboStaff() {
               <CardTitle className='text-lg'>Hành động</CardTitle>
             </CardHeader>
             <CardContent className='space-y-3'>
-              {(combo.status === 'Processing' || combo.status === 'Confirmed') && (
+              {/* Processing Status - Staff needs to Accept or Reject assignment */}
+              {combo.status === 'Processing' && (
                 <>
-                  <Button
-                    onClick={() => navigate(`/staff/combo-review/${combo.id}`)}
-                    className='w-full bg-green-600 hover:bg-green-700'
-                  >
-                    <CheckCircle size={16} className='mr-2' />
-                    Xử lý combo
-                  </Button>
+                  <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                    <DialogTrigger asChild>
+                      <Button className='w-full bg-green-600 hover:bg-green-700'>
+                        <CheckCircle size={16} className='mr-2' />
+                        Chấp nhận review
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Chấp nhận nhiệm vụ</DialogTitle>
+                      </DialogHeader>
+                      <div className='space-y-4'>
+                        <div className='space-y-2'>
+                          <Label htmlFor='confirmNote'>Ghi chú *</Label>
+                          <Textarea
+                            id='confirmNote'
+                            value={confirmNote}
+                            onChange={(e) => setConfirmNote(e.target.value)}
+                            placeholder='Nhập ghi chú khi chấp nhận nhiệm vụ...'
+                            rows={4}
+                          />
+                        </div>
+                        <div className='flex gap-2'>
+                          <Button variant='outline' onClick={() => setShowConfirmDialog(false)} className='flex-1'>
+                            Hủy
+                          </Button>
+                          <Button onClick={handleConfirmAssignment} disabled={actionLoading} className='flex-1'>
+                            {actionLoading ? 'Đang xử lý...' : 'Xác nhận chấp nhận'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant='destructive' className='w-full'>
+                        <XCircle size={16} className='mr-2' />
+                        Từ chối
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Từ chối nhiệm vụ</DialogTitle>
+                      </DialogHeader>
+                      <div className='space-y-4'>
+                        <div className='space-y-2'>
+                          <Label htmlFor='rejectNote'>Lý do từ chối *</Label>
+                          <Textarea
+                            id='rejectNote'
+                            value={rejectNote}
+                            onChange={(e) => setRejectNote(e.target.value)}
+                            placeholder='Nhập lý do từ chối nhiệm vụ...'
+                            rows={4}
+                          />
+                        </div>
+                        <div className='flex gap-2'>
+                          <Button variant='outline' onClick={() => setShowRejectDialog(false)} className='flex-1'>
+                            Hủy
+                          </Button>
+                          <Button onClick={handleRejectAssignment} disabled={actionLoading} className='flex-1'>
+                            {actionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Separator />
+                </>
+              )}
+
+              {/* Confirmed Status - Staff needs to Approve or Deny combo */}
+              {combo.status === 'Confirmed' && (
+                <>
+                  <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+                    <DialogTrigger asChild>
+                      <Button className='w-full bg-green-600 hover:bg-green-700'>
+                        <CheckCircle size={16} className='mr-2' />
+                        Approved
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Phê duyệt combo</DialogTitle>
+                      </DialogHeader>
+                      <div className='space-y-4'>
+                        <div className='space-y-2'>
+                          <Label htmlFor='approveNote'>Ghi chú *</Label>
+                          <Textarea
+                            id='approveNote'
+                            value={approveNote}
+                            onChange={(e) => setApproveNote(e.target.value)}
+                            placeholder='Nhập ghi chú khi phê duyệt combo...'
+                            rows={4}
+                          />
+                        </div>
+                        <div className='flex gap-2'>
+                          <Button variant='outline' onClick={() => setShowApproveDialog(false)} className='flex-1'>
+                            Hủy
+                          </Button>
+                          <Button onClick={handleApproveCombo} disabled={actionLoading} className='flex-1'>
+                            {actionLoading ? 'Đang xử lý...' : 'Xác nhận phê duyệt'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Dialog open={showDenyDialog} onOpenChange={setShowDenyDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant='destructive' className='w-full'>
+                        <XCircle size={16} className='mr-2' />
+                        Denied
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Từ chối combo</DialogTitle>
+                      </DialogHeader>
+                      <div className='space-y-4'>
+                        <div className='space-y-2'>
+                          <Label htmlFor='denyNote'>Lý do từ chối *</Label>
+                          <Textarea
+                            id='denyNote'
+                            value={denyNote}
+                            onChange={(e) => setDenyNote(e.target.value)}
+                            placeholder='Nhập lý do từ chối combo...'
+                            rows={4}
+                          />
+                        </div>
+                        <div className='flex gap-2'>
+                          <Button variant='outline' onClick={() => setShowDenyDialog(false)} className='flex-1'>
+                            Hủy
+                          </Button>
+                          <Button onClick={handleDenyCombo} disabled={actionLoading} className='flex-1'>
+                            {actionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
                   <Separator />
                 </>
               )}
@@ -339,7 +616,7 @@ function DetailComboStaff() {
                   <span className='font-medium text-green-600'>{formatCurrency(combo.totalBasePrice)}</span>
                 </div>
                 <div className='flex justify-between'>
-                  <span className='text-gray-600'>Tổng giá:</span>
+                  <span className='text-gray-600'>Giá bán:</span>
                   <span className='font-medium text-blue-600'>{formatCurrency(combo.totalFinalPrice)}</span>
                 </div>
                 <div className='flex justify-between'>

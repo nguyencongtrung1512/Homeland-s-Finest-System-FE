@@ -62,8 +62,7 @@ function ComboItemsManager({
   const [newItemData, setNewItemData] = useState<CreateComboItemRequest>({
     productVariantId: '',
     comboItemName: '',
-    basePrice: 0,
-    finalPrice: 0,
+    price: 0,
     quantity: 1
   })
 
@@ -71,8 +70,7 @@ function ComboItemsManager({
   const [editItemData, setEditItemData] = useState<UpdateComboItemRequest>({
     productVariantId: '',
     comboItemName: '',
-    basePrice: 0,
-    finalPrice: 0,
+    price: 0,
     quantity: 1,
     isActive: true
   })

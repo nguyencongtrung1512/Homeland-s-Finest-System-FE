@@ -19,13 +19,16 @@ import { Button } from '../../../components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Badge } from '../../../components/ui/badge'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import { Label } from '../../../components/ui/label'
+import { Textarea } from '../../../components/ui/textarea'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../contexts/auth.context'
 
 interface ComboData {
   key: string
   combo: {
-    avatar: string
+    thumbnailUrl: string
     name: string
     id: string
   }
@@ -36,7 +39,8 @@ interface ComboData {
   seller: {
     name: string
   }
-  createdDate: string
+  createdAt: string
+  updatedAt: string
   items: number
   status: 'Processing' | 'Confirmed' | 'Approved' | 'Denied' | 'Rejected'
 }
@@ -51,25 +55,58 @@ function ManagerComboStaff() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [totalCombos, setTotalCombos] = useState(0)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [showActionDialog, setShowActionDialog] = useState(false)
+  const [selectedCombo, setSelectedCombo] = useState<ComboData | null>(null)
+  const [actionNote, setActionNote] = useState('')
   const pageSize = 12
 
   const convertComboResponse = (apiCombo: ComboForReview): ComboData => {
-    const avatarText = apiCombo.name
-      .split(' ')
-      .map((word) => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-
     const formatDate = (dateString: string) => {
+      if (!dateString || dateString === 'null' || dateString === 'undefined') {
+        return '-'
+      }
+
+      // Xử lý định dạng "HH:MM:SS DD/MM/YYYY" từ API
+      // Ví dụ: "14:58:24 07/10/2025"
+      const timeDateMatch = dateString.match(/(\d{2}:\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/)
+
+      if (timeDateMatch) {
+        const [, time, date] = timeDateMatch
+        const [day, month, year] = date.split('/')
+        const [hours, minutes, seconds] = time.split(':')
+
+        // Tạo Date object với định dạng chuẩn
+        const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes), parseInt(seconds))
+
+        if (isNaN(dateObj.getTime())) {
+          return '-'
+        }
+
+        return dateObj.toLocaleDateString('vi-VN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        })
+      }
+
+      // Fallback cho các định dạng khác
       const date = new Date(dateString)
-      return date.toLocaleDateString('vi-VN')
+      if (isNaN(date.getTime())) {
+        return '-'
+      }
+
+      return date.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      })
     }
 
     return {
       key: apiCombo.id,
       combo: {
-        avatar: avatarText,
+        thumbnailUrl: apiCombo.thumbnailUrl || '',
         name: apiCombo.name,
         id: apiCombo.id
       },
@@ -80,7 +117,8 @@ function ManagerComboStaff() {
       seller: {
         name: apiCombo.sellerName
       },
-      createdDate: formatDate(apiCombo.createdAt),
+      createdAt: formatDate(apiCombo.createdAt),
+      updatedAt: formatDate(apiCombo.updatedAt),
       items: apiCombo.comboItems?.length || 0,
       status: apiCombo.status as 'Processing' | 'Confirmed' | 'Approved' | 'Denied' | 'Rejected'
     }
@@ -128,7 +166,6 @@ function ManagerComboStaff() {
     setCurrentPage(1)
   }, [searchText])
 
-  // Lọc combos dựa trên search text và status filter
   const filteredCombos = comboData.filter((combo) => {
     const searchLower = searchText.toLowerCase().trim()
     const matchSearch = !searchLower || combo.combo.name.toLowerCase().includes(searchLower)
@@ -143,6 +180,101 @@ function ManagerComboStaff() {
 
   const handleFilter = () => {
     setCurrentPage(1)
+  }
+
+  // Handle action dialog open
+  const handleOpenActionDialog = (combo: ComboData) => {
+    setSelectedCombo(combo)
+    setActionNote('')
+    setShowActionDialog(true)
+  }
+
+  // Handle confirm assignment (Processing → Confirmed)
+  const handleConfirmAssignment = async () => {
+    if (!selectedCombo || !actionNote.trim()) {
+      toast.error('Vui lòng nhập ghi chú')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      await staffApi.confirmComboAssignment(selectedCombo.combo.id, actionNote)
+      toast.success('Đã chấp nhận nhiệm vụ xử lý combo')
+      setShowActionDialog(false)
+      setActionNote('')
+      await fetchCombosForReview() // Refresh data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi chấp nhận nhiệm vụ'
+      toast.error(errorMessage)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Handle reject assignment (Processing → Rejected)
+  const handleRejectAssignment = async () => {
+    if (!selectedCombo || !actionNote.trim()) {
+      toast.error('Vui lòng nhập lý do từ chối')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      await staffApi.rejectComboAssignment(selectedCombo.combo.id, actionNote)
+      toast.success('Đã từ chối nhiệm vụ thành công')
+      setShowActionDialog(false)
+      setActionNote('')
+      await fetchCombosForReview() // Refresh data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi từ chối nhiệm vụ'
+      toast.error(errorMessage)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Handle approve combo (Confirmed → Approved)
+  const handleApproveCombo = async () => {
+    if (!selectedCombo || !actionNote.trim()) {
+      toast.error('Vui lòng nhập ghi chú')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      await staffApi.approveCombo(selectedCombo.combo.id, actionNote)
+      toast.success('Đã phê duyệt combo thành công')
+      setShowActionDialog(false)
+      setActionNote('')
+      await fetchCombosForReview() // Refresh data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi phê duyệt combo'
+      toast.error(errorMessage)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Handle deny combo (Confirmed → Denied)
+  const handleDenyCombo = async () => {
+    if (!selectedCombo || !actionNote.trim()) {
+      toast.error('Vui lòng nhập lý do từ chối')
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      await staffApi.denyCombo(selectedCombo.combo.id, actionNote)
+      toast.success('Đã từ chối combo thành công')
+      setShowActionDialog(false)
+      setActionNote('')
+      await fetchCombosForReview() // Refresh data
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi từ chối combo'
+      toast.error(errorMessage)
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   // Render combo card component
@@ -198,8 +330,30 @@ function ManagerComboStaff() {
           {/* Header with Avatar and Combo Info */}
           <div className='flex items-start gap-4 mb-4'>
             <div className='relative'>
-              <Avatar className='h-14 w-14 bg-gradient-to-br from-blue-500 to-blue-600'>
-                <AvatarFallback className='text-white font-semibold'>{combo.combo.avatar}</AvatarFallback>
+              <Avatar className='h-14 w-14'>
+                {combo.combo.thumbnailUrl ? (
+                  <img
+                    src={combo.combo.thumbnailUrl}
+                    alt={combo.combo.name}
+                    className='w-full h-full object-cover'
+                    onError={(e) => {
+                      const target = e.currentTarget
+                      const fallback = target.nextElementSibling as HTMLElement
+                      if (fallback) {
+                        target.style.display = 'none'
+                        fallback.style.display = 'flex'
+                      }
+                    }}
+                  />
+                ) : null}
+                <AvatarFallback className='text-white font-semibold bg-gradient-to-br from-blue-500 to-blue-600'>
+                  {combo.combo.name
+                    .split(' ')
+                    .map((word) => word.charAt(0))
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </AvatarFallback>
               </Avatar>
               <div className='absolute -bottom-1 -right-1 bg-white rounded-full p-1 border-2 border-gray-200'>
                 <Package size={14} className='text-blue-600' />
@@ -220,13 +374,14 @@ function ManagerComboStaff() {
               <User size={14} className='text-gray-400' />
               <span>Cửa hàng: {combo.store.name}</span>
             </div>
+
             <div className='flex items-center gap-2 text-sm text-gray-600'>
-              <User size={14} className='text-gray-400' />
-              <span>Seller: {combo.seller.name}</span>
+              <Calendar size={14} className='text-gray-400' />
+              <span>Ngày tạo: {combo.createdAt}</span>
             </div>
             <div className='flex items-center gap-2 text-sm text-gray-600'>
               <Calendar size={14} className='text-gray-400' />
-              <span>Ngày tạo: {combo.createdDate}</span>
+              <span>Ngày cập nhật: {combo.updatedAt}</span>
             </div>
             <div className='flex items-center gap-2 text-sm text-gray-600'>
               <Package size={14} className='text-gray-400' />
@@ -247,7 +402,7 @@ function ManagerComboStaff() {
             {(combo.status === 'Processing' || combo.status === 'Confirmed') && (
               <Button
                 variant='outline'
-                onClick={() => navigate(`/staff/combo-review/${combo.combo.id}`)}
+                onClick={() => handleOpenActionDialog(combo)}
                 className='flex items-center justify-center gap-2 border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300'
               >
                 <CheckCircle size={16} />
@@ -385,6 +540,94 @@ function ManagerComboStaff() {
           </>
         )}
       </div>
+
+      {/* Action Dialog */}
+      <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
+        <DialogContent className='max-w-md'>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedCombo?.status === 'Processing' ? 'Xử lý nhiệm vụ' : 'Xét duyệt combo'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className='space-y-4'>
+            {selectedCombo && (
+              <div className='p-3 bg-gray-50 rounded-lg'>
+                <h4 className='font-medium text-gray-900 mb-2'>{selectedCombo.combo.name}</h4>
+                <p className='text-sm text-gray-600'>
+                  {selectedCombo.status === 'Processing'
+                    ? 'Chọn hành động cho nhiệm vụ này:'
+                    : 'Chọn hành động cho combo này:'}
+                </p>
+              </div>
+            )}
+
+            <div className='space-y-2'>
+              <Label htmlFor='actionNote'>Ghi chú *</Label>
+              <Textarea
+                id='actionNote'
+                value={actionNote}
+                onChange={(e) => setActionNote(e.target.value)}
+                placeholder={
+                  selectedCombo?.status === 'Processing'
+                    ? 'Nhập ghi chú khi xử lý nhiệm vụ...'
+                    : 'Nhập ghi chú khi xét duyệt combo...'
+                }
+                rows={4}
+              />
+            </div>
+
+            <div className='grid grid-cols-2 gap-3'>
+              {selectedCombo?.status === 'Processing' ? (
+                <>
+                  <Button
+                    onClick={handleConfirmAssignment}
+                    disabled={actionLoading}
+                    className='bg-green-600 hover:bg-green-700'
+                  >
+                    <CheckCircle size={16} className='mr-2' />
+                    {actionLoading ? 'Đang xử lý...' : 'Chấp nhận'}
+                  </Button>
+                  <Button
+                    onClick={handleRejectAssignment}
+                    disabled={actionLoading}
+                    variant='destructive'
+                  >
+                    <XCircle size={16} className='mr-2' />
+                    {actionLoading ? 'Đang xử lý...' : 'Từ chối'}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleApproveCombo}
+                    disabled={actionLoading}
+                    className='bg-green-600 hover:bg-green-700'
+                  >
+                    <CheckCircle size={16} className='mr-2' />
+                    {actionLoading ? 'Đang xử lý...' : 'Phê duyệt'}
+                  </Button>
+                  <Button
+                    onClick={handleDenyCombo}
+                    disabled={actionLoading}
+                    variant='destructive'
+                  >
+                    <XCircle size={16} className='mr-2' />
+                    {actionLoading ? 'Đang xử lý...' : 'Từ chối'}
+                  </Button>
+                </>
+              )}
+            </div>
+
+            <Button
+              variant='outline'
+              onClick={() => setShowActionDialog(false)}
+              className='w-full'
+            >
+              Hủy
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
