@@ -49,7 +49,6 @@ const AdminPromotionList: React.FC = () => {
   const {
     promotions: allPromotions,
     loading,
-    pagination: apiPagination,
     createPromotion,
     updatePromotion,
     getPromotionDetail,

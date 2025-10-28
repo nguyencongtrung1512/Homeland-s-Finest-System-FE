@@ -26,9 +26,6 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
     try {
       setLoading(true)
       setError(null)
-
-      // Since admin API might not have getComboById, we'll use the combo data from the list
-      // For now, we'll simulate getting combo details
       const response = await adminApi.getAllCombos({ pageSize: 0, pageNumber: 1 })
       const foundCombo = response.find((c) => c.id === comboId)
 

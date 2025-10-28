@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '../../../components/ui/card'
-import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { ArrowLeft, CheckCircle, Paperclip, User, Clock, XCircle, Loader2, AlertCircle } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -69,10 +68,7 @@ function DetailHelp() {
 
   // Get status display with icon
   const getStatusDisplay = (status: FormStatus) => {
-    const statusMap: Record<
-      FormStatus,
-      { text: string; icon: JSX.Element; className: string }
-    > = {
+    const statusMap: Record<FormStatus, { text: string; icon: React.ReactElement; className: string }> = {
       Pending: {
         text: 'Chờ xử lý',
         icon: <Clock className='w-4 h-4' />,

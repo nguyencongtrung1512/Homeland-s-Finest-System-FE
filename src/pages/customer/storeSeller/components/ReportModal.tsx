@@ -4,8 +4,9 @@ import { Button } from '../../../../components/ui/button'
 import { Textarea } from '../../../../components/ui/textarea'
 import { Label } from '../../../../components/ui/label'
 import { useState } from 'react'
-import { formApi, type CreateFormRequest } from '../../../../apis/form.api'
+import { formApi } from '../../../../apis/form.api'
 import { useAuth } from '../../../../contexts/auth.context'
+import type { CreateFormRequest } from '../../../../types/form.type'
 
 interface ReportModalProps {
   isOpen: boolean
@@ -14,7 +15,7 @@ interface ReportModalProps {
   storeId: string
 }
 
-const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) => {
+const ReportModal = ({ isOpen, onClose, storeName }: ReportModalProps) => {
   const { user } = useAuth()
   const [selectedReasons, setSelectedReasons] = useState<string[]>([])
   const [description, setDescription] = useState('')

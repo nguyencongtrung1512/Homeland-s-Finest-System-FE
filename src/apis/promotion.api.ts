@@ -8,7 +8,6 @@ import {
   type PromotionAdminRequest,
   type PromotionSellerRequest,
   type ApiResponse,
-  type ApiResponseWithPagination,
   type DisplayPromotionToApply,
   type DisplayUserPromotionToApply,
   type PromotionDetailDTO,
@@ -125,7 +124,7 @@ export const getAllPromotionsAdmin = async (
   pageNumber: number = 1,
   filter?: PromotionFilter,
   sort?: PromotionSort
-): Promise<ApiResponseWithPagination<PromotionDTO[]>> => {
+): Promise<ApiResponse<PromotionDTO[]>> => {
   const params = new URLSearchParams({
     pageSize: pageSize.toString(),
     pageNumber: pageNumber.toString()
@@ -324,7 +323,7 @@ export const getUserPromotions = async (
   userId: string,
   pageSize: number = 0,
   pageNumber: number = 1
-): Promise<ApiResponseWithPagination<UserPromotionDetailDTO[]>> => {
+): Promise<ApiResponse<UserPromotionDetailDTO[]>> => {
   const params = new URLSearchParams({
     pageSize: pageSize.toString(),
     pageNumber: pageNumber.toString()
@@ -360,7 +359,7 @@ export const getPromotionDetail = async (id: string): Promise<ApiResponse<Promot
 export const getActiveGlobalPromotions = async (
   pageSize: number = 0,
   pageNumber: number = 1
-): Promise<ApiResponseWithPagination<PromotionDTO[]>> => {
+): Promise<ApiResponse<PromotionDTO[]>> => {
   const params = new URLSearchParams({
     pageSize: pageSize.toString(),
     pageNumber: pageNumber.toString()
@@ -375,7 +374,7 @@ export const getActiveGlobalPromotions = async (
 export const getActiveUserPromotions = async (
   pageSize: number = 10,
   pageNumber: number = 1
-): Promise<ApiResponseWithPagination<PromotionDTO[]>> => {
+): Promise<ApiResponse<PromotionDTO[]>> => {
   const params = new URLSearchParams({
     pageSize: pageSize.toString(),
     pageNumber: pageNumber.toString()

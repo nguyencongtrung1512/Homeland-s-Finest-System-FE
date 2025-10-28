@@ -32,6 +32,7 @@ import { type Combo } from '../../../types/combo.type'
 import { toast } from 'react-toastify'
 import ProductModal from './modalProduct'
 import { exportStoreToExcel } from './excelExport'
+import type { Product } from '../../../types'
 
 function StoreDetailAdmin() {
   const { storeId } = useParams<{ storeId: string }>()
@@ -141,8 +142,6 @@ function StoreDetailAdmin() {
       setError(null)
 
       const response = await storeApi.getStoreById(storeId)
-      console.log('API Response:', response)
-
       let storeData = null
 
       if (response) {
@@ -154,12 +153,10 @@ function StoreDetailAdmin() {
       }
 
       if (storeData) {
-        console.log('Setting store data:', storeData.products)
         setStore(storeData)
       } else {
         if (response && typeof response === 'object' && response !== null) {
-          console.log('Trying to use response directly as fallback')
-          setStore(response as StoreResponse)
+          setStore(response)
         } else {
           setError('Không tìm thấy thông tin cửa hàng')
         }
@@ -819,7 +816,7 @@ function StoreDetailAdmin() {
       <ProductModal
         isOpen={productModalOpen}
         onClose={() => setProductModalOpen(false)}
-        products={store?.products || []}
+        products={store?.products as Product[] || []}
         storeName={store?.storeName || ''}
       />
 

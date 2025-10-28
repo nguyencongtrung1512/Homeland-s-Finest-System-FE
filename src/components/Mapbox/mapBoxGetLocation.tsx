@@ -524,8 +524,6 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
           'Phường Bình Phú': 'Phường Bình Phú',
           'Binh Quoi': 'Phường Bình Quới',
           'Phường Bình Quới': 'Phường Bình Quới',
-          'Binh Tho': 'Phường Bình Thọ',
-          'Phường Bình Thọ': 'Phường Bình Thọ',
           'Binh Trung': 'Phường Bình Trung',
           'Phường Bình Trung': 'Phường Bình Trung',
           'Binh Yen': 'Phường Bình Yên',

@@ -36,6 +36,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, 
         day: '2-digit'
       })
     } catch (error) {
+      console.error('Error formatting date:', error)
       return 'Ngày không hợp lệ'
     }
   }

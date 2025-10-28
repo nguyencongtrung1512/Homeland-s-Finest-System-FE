@@ -5,12 +5,12 @@ import { Card, CardContent } from '../../../../../components/ui/card'
 import { Dialog, DialogContent } from '../../../../../components/ui/dialog'
 import { getOrderDetail } from '../../../../../apis/order.api'
 import { storeApi } from '../../../../../apis/store.api'
-import type { Order as APIOrder } from '../../../../../types/orderType'
 import type { StoreResponse } from '../../../../../apis/store.api'
 import { Loader2, Package, MapPin, CreditCard, Clock, RefreshCw, AlertCircle, Gift, Store } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router-dom'
 import { path } from '../../../../../constants/path'
+import { formatDate } from '../../../../../utils/formatDate'
 
 interface OrderItemWithCombo {
   id: string
@@ -89,7 +89,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
   const [storeError, setStoreError] = useState<string | null>(null)
 
   // Transform API order to UI order format
-  const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
+  const transformAPIOrderToUIOrder = (apiOrder: any): Order => {
     return {
       id: apiOrder?.id || '',
       ghnorderCode: apiOrder?.ghnorderCode || '',
@@ -104,7 +104,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       shipPrice: apiOrder?.shipPrice || 0,
       finalPrice: apiOrder?.finalPrice || 0,
       note: apiOrder?.note || undefined,
-      orderItems: (apiOrder?.orderItems || []).map((item) => ({
+      orderItems: (apiOrder?.orderItems || []).map((item: any) => ({
         id: item?.id || '',
         orderItemName: item?.orderItemName || 'Sản phẩm không xác định',
         orderItemImageUrl: item?.orderItemImageUrl || '/src/assets/react.svg',
@@ -116,7 +116,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
         height: item?.height,
         weight: item?.weight
       })),
-      orderItemsWithCombo: (apiOrder?.orderItemsWithCombo || []).map((item) => ({
+      orderItemsWithCombo: (apiOrder?.orderItemsWithCombo || []).map((item: any) => ({
         id: item?.id || '',
         comboId: item?.comboId,
         comboName: item?.comboName,
@@ -131,7 +131,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
         weight: item?.weight
       })),
       orderHistories: apiOrder?.orderHistories || [],
-      orderPromotions: (apiOrder?.orderPromotions || []).map((promo) => ({
+      orderPromotions: (apiOrder?.orderPromotions || []).map((promo: any) => ({
         promotionType: promo?.promotionType || '',
         title: promo?.title || '',
         description: promo?.description || '',
@@ -173,7 +173,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       const transformedOrder = transformAPIOrderToUIOrder(apiOrder)
       setOrder(transformedOrder)
 
-      // Fetch store details if storeId is available
       if (apiOrder?.storeId) {
         await fetchStoreDetail(apiOrder.storeId)
       }
@@ -218,24 +217,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN').format(price) + 'đ'
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  }
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
   }
 
   // Handle navigation to store detail page
@@ -558,7 +539,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                               <p className={`font-medium text-sm ${isCurrent ? 'text-gray-900' : 'text-gray-600'}`}>
                                 {history.description}
                               </p>
-                              <p className='text-xs text-gray-500'>{formatDateTime(history.time)}</p>
                             </div>
                           </div>
                         )
@@ -569,9 +549,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
               )}
 
               {/* Action Buttons */}
-              <div className='flex gap-3 pt-2'>
-                <Button className='flex-1 bg-green-600 hover:bg-green-700 text-white'>Tái báo cáo</Button>
-              </div>
+              {/* <div className='flex gap-3 pt-2'>
+                <Button className='flex-1 bg-green-600 hover:bg-green-700 text-white'>Tỉi báo cáo</Button>
+              </div> */}
             </div>
           ) : null}
         </div>

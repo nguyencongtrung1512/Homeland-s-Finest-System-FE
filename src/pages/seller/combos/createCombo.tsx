@@ -20,8 +20,8 @@ function CreateComboSeller() {
     name: '',
     description: ''
   })
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [thumbnailFile, setThumbnailFile] = useState<File | undefined>(undefined)
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -56,10 +56,10 @@ function CreateComboSeller() {
   }
 
   const removeFile = () => {
-    setThumbnailFile(null)
+    setThumbnailFile(undefined)
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
-      setPreviewUrl(null)
+      setPreviewUrl(undefined)
     }
   }
 

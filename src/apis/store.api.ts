@@ -105,7 +105,7 @@ export const storeApi = {
   },
 
   // Lấy thông tin chi tiết một store
-  getStoreById: async (storeId: string): Promise<{ status: number; message: string; data: StoreResponse }> => {
+  getStoreById: async (storeId: string): Promise<any> => {
     return await axiosInstance.get(`/Store/${storeId}`)
   },
 

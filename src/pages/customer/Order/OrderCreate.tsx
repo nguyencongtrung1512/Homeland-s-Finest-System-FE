@@ -117,16 +117,9 @@ function OrderCreate() {
 
   const displayItems = getAllOrderItems()
 
-  // Debug logs
-  console.log('[OrderCreate] location.state:', location.state)
-  console.log('[OrderCreate] existingOrders:', existingOrders)
-  console.log('[OrderCreate] createdOrders:', createdOrders)
-  console.log('[OrderCreate] displayItems:', displayItems)
-  console.log('[OrderCreate] displayItems length:', displayItems.length)
 
-  // Calculate totals for all orders
+
   const calculateTotals = () => {
-    // Priority: existingOrders from Cart > createdOrders > single order > cartItems
     const ordersToUse = existingOrders.length > 0 ? existingOrders : createdOrders
 
     if (ordersToUse.length > 0) {
@@ -163,19 +156,8 @@ function OrderCreate() {
 
   const { shipping, subtotal, totalDiscount, total } = calculateTotals()
 
-  // Debug logs for shipping calculation
-  console.log(
-    '[OrderCreate] Individual order shipping fees:',
-    (existingOrders.length > 0 ? existingOrders : createdOrders).map((order) => ({
-      orderId: order.id.slice(-8),
-      shipPrice: order.shipPrice
-    }))
-  )
-  console.log('[OrderCreate] Total shipping fee:', shipping)
-
   const handlePayment = async () => {
     try {
-      // Kiểm tra có orders từ Cart.tsx không
       const ordersToProcess = existingOrders.length > 0 ? existingOrders : createdOrders
 
       if (ordersToProcess.length > 0) {
@@ -212,9 +194,6 @@ function OrderCreate() {
 
       // Lấy orderIds để gửi API
       const orderIds = ordersToProcess.map((order) => order.id)
-
-      console.log('[OrderCreate] Processing payment for orders:', orderIds)
-      console.log('[OrderCreate] Payment method:', paymentMethod)
 
       if (paymentMethod === 'COD') {
         // COD: Call purchaseOrder API to create transaction
@@ -264,12 +243,26 @@ function OrderCreate() {
   }
 
   const handleConfirmCancel = async (reason: string) => {
-    if (!order || !user?.userId) return
+    if (!user?.userId) return
 
     setIsCancelling(true)
     try {
-      const cancelledOrders = await cancelOrder(order.id, user.userId, reason)
-      toast.success(`Đã hủy ${cancelledOrders.length} đơn hàng thành công!`)
+      const ordersToCancel = existingOrders.length > 0 ? existingOrders : createdOrders
+
+      if (ordersToCancel.length > 0) {
+        // Hủy nhiều orders
+        let totalCancelled = 0
+        for (const orderToCancel of ordersToCancel) {
+          const cancelledOrders = await cancelOrder(orderToCancel.id, user.userId, reason)
+          totalCancelled += cancelledOrders.length
+        }
+        toast.success(`Đã hủy ${totalCancelled} đơn hàng thành công!`)
+      } else if (order) {
+        // Hủy single order
+        const cancelledOrders = await cancelOrder(order.id, user.userId, reason)
+        toast.success(`Đã hủy ${cancelledOrders.length} đơn hàng thành công!`)
+      }
+
       setShowCancelDialog(false)
       navigate('/products')
     } catch (error: unknown) {
@@ -281,10 +274,6 @@ function OrderCreate() {
     } finally {
       setIsCancelling(false)
     }
-  }
-
-  const handleContinueShopping = () => {
-    navigate('/products')
   }
 
   return (
@@ -569,7 +558,7 @@ function OrderCreate() {
                     )}
                   </Button>
                   <Button
-                    onClick={order || existingOrder ? handleCancelOrder : handleContinueShopping}
+                    onClick={handleCancelOrder}
                     variant='outline'
                     disabled={isSubmitting || isCancelling}
                     className='w-full border-red-600 text-red-600 hover:bg-red-50 transition-all'
@@ -579,8 +568,6 @@ function OrderCreate() {
                         <Loader2 className='w-4 h-4 mr-2 animate-spin' />
                         Đang hủy...
                       </>
-                    ) : order || existingOrder ? (
-                      'Hủy đặt hàng'
                     ) : (
                       'Hủy đặt hàng'
                     )}

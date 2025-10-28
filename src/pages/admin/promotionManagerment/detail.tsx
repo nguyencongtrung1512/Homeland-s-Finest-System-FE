@@ -17,9 +17,10 @@ import {
   BarChart3,
   Activity
 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { useAdminPromotions } from '../../../hooks/usePromotions'
 import { PromotionForm } from '../../../components/Promotion'
-import type { PromotionType, PromotionDTO } from '../../../types/promotionType'
+import type { PromotionType, PromotionDTO, PromotionFormData } from '../../../types/promotionType'
 import { toast } from 'react-toastify'
 
 const AdminPromotionDetail: React.FC = () => {
@@ -47,7 +48,7 @@ const AdminPromotionDetail: React.FC = () => {
       setLoading(true)
       const data = await getPromotionById(id!)
       setPromotion(data)
-    } catch (error) {
+    } catch {
       toast.error('Không thể tải thông tin Mã khuyến mãi ')
       navigate('/admin/promotions')
     } finally {
@@ -55,13 +56,18 @@ const AdminPromotionDetail: React.FC = () => {
     }
   }
 
-  const handleUpdatePromotion = async (data: any) => {
+  const handleUpdatePromotion = async (data: PromotionFormData) => {
     try {
-      await updatePromotion(id!, data)
+      // Ensure userIds is always an array
+      const updateData = {
+        ...data,
+        userIds: data.userIds || []
+      }
+      await updatePromotion(id!, updateData)
       setIsEditModalOpen(false)
       await loadPromotionDetail() // Reload data
       toast.success('Cập nhật Mã khuyến mãi  thành công')
-    } catch (error) {
+    } catch {
       toast.error('Có lỗi xảy ra khi cập nhật Mã khuyến mãi ')
     }
   }
@@ -72,7 +78,7 @@ const AdminPromotionDetail: React.FC = () => {
         await deletePromotion(id!)
         toast.success('Xóa Mã khuyến mãi  thành công')
         navigate('/admin/promotions')
-      } catch (error) {
+      } catch {
         toast.error('Có lỗi xảy ra khi xóa Mã khuyến mãi ')
       }
     }
@@ -83,7 +89,7 @@ const AdminPromotionDetail: React.FC = () => {
       await togglePromotionStatus(id!)
       await loadPromotionDetail() // Reload data
       toast.success('Cập nhật trạng thái thành công')
-    } catch (error) {
+    } catch {
       toast.error('Có lỗi xảy ra khi cập nhật trạng thái')
     }
   }
@@ -416,14 +422,19 @@ const AdminPromotionDetail: React.FC = () => {
       </div>
 
       {/* Edit Modal */}
-      <PromotionForm
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSubmit={handleUpdatePromotion}
-        title='Chỉnh sửa Mã khuyến mãi '
-        mode='edit'
-        initialData={promotion}
-      />
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa Mã khuyến mãi</DialogTitle>
+          </DialogHeader>
+          <PromotionForm
+            initialData={promotion}
+            onSubmit={handleUpdatePromotion}
+            onCancel={() => setIsEditModalOpen(false)}
+            isEdit={true}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

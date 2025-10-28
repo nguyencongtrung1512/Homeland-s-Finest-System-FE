@@ -20,7 +20,6 @@ export interface BlogItem {
   createdAt: string
 }
 
-// Interface cho BlogCategory với danh sách blogs
 export interface BlogCategoryDetail extends BlogCategoryItem {
   blogs: BlogItem[]
 }

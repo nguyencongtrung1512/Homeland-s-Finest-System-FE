@@ -8,7 +8,6 @@ import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
-import { toast } from 'react-toastify'
 
 // Context for sharing combo data across components
 interface ComboDetailContextType {
@@ -94,11 +93,7 @@ function ComboDetail() {
       setIsAddingToCart(true)
       await addToCart('', quantity, combo.id)
       // Sau khi thêm vào giỏ hàng thành công, chuyển đến trang Cart
-      if (response.status === 200) {
-        navigate('/cart')
-      } else {
-        toast.error(response.message || 'Thêm vào giỏ hàng thất bại')
-      }
+      navigate('/cart')
     } catch (error) {
       console.error('Error adding to cart:', error)
     } finally {

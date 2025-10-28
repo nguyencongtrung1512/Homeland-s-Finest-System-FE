@@ -17,7 +17,6 @@ interface StoryData {
   coverImage: string
   province: string
   publishedDate: string
-  tags: string[]
 }
 
 const StoryWithSeller: React.FC = () => {
@@ -46,23 +45,18 @@ const StoryWithSeller: React.FC = () => {
 
   // Convert StoreResponse to StoryData format
   const convertStoreToStory = (store: StoreResponse): StoryData => {
-    const latestStory =
-      store.storeStories && store.storeStories.length > 0 ? store.storeStories[store.storeStories.length - 1] : null
-
     const extractedProvince = extractProvinceFromAddress(store.address)
 
     return {
       id: store.id,
       storeId: store.id,
       storeName: store.storeName,
-      storyTitle: latestStory?.title || `${store.storeName} - Câu chuyện nông sản`,
+      storyTitle: `${store.storeName} - Câu chuyện nông sản`,
       storyContent:
-        latestStory?.content ||
         `Khám phá câu chuyện đặc biệt từ ${store.storeName} tại ${extractedProvince}. Những sản phẩm chất lượng được tạo ra từ tình yêu và sự tận tâm của người nông dân Việt Nam.`,
       coverImage: store.coverImageUrl || '/src/assets/hinh-anh-canh-dong-lua-que-huong-viet-nam_082308136.jpg',
       province: extractedProvince,
-      publishedDate: latestStory?.createdAt || store.createdAt,
-      tags: latestStory?.tags || ['Nông sản', 'Chất lượng', 'Truyền thống']
+      publishedDate: store.createdAt,
     }
   }
 
@@ -227,14 +221,6 @@ const StoryWithSeller: React.FC = () => {
                 {/* Story Preview */}
                 <p className='text-gray-600 text-sm mb-4 line-clamp-3'>{story.storyContent}</p>
 
-                {/* Tags */}
-                <div className='flex flex-wrap gap-1 mb-4'>
-                  {story.tags.map((tag, index) => (
-                    <span key={index} className='bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs'>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
               </CardContent>
             </Card>
           ))}

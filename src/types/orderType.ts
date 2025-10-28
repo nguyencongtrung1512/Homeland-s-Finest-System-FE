@@ -6,7 +6,9 @@ export type OrderStatus =
   | 'Shipping' // Đang giao
   | 'Delivered' // Đã giao hàng thành công
   | 'Canceled' // Đã hủy
-  | 'Returned' // Customer đã trả hàng
+  | 'Returned' // Customer trả hàng 
+  | 'Refunded' // Seller hoàn tiền
+  | 'Paid' // Đã thanh toán
 
 // Promotion interface
 export interface OrderPromotion {

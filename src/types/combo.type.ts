@@ -17,16 +17,14 @@ export interface UpdateComboRequest {
 export interface CreateComboItemRequest {
   productVariantId: string
   comboItemName: string
-  basePrice: number
-  finalPrice: number
+  price: number
   quantity: number
 }
 
 export interface UpdateComboItemRequest {
   productVariantId: string
   comboItemName: string
-  basePrice: number
-  finalPrice: number
+  price: number
   quantity: number
   isActive: boolean
 }
@@ -68,6 +66,7 @@ export interface ComboItem {
   productVariantId: string
   comboItemName: string
   comboItemImageUrl?: string
+  price: number
   basePrice: number
   finalPrice: number
   quantity: number

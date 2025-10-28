@@ -119,7 +119,7 @@ const StorePage = () => {
       store.coverImageUrl ||
       'https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?w=800&h=300&fit=crop&crop=center',
     story:
-      store.storeStories?.[0]?.title || 'Chúng tôi cam kết mang đến những sản phẩm chất lượng cao nhất cho khách hàng.',
+      'Chúng tôi cam kết mang đến những sản phẩm chất lượng cao nhất cho khách hàng.',
     products: products.map((product) => {
       // Try to get price from variants if available, otherwise show placeholder
       const variantPrice = (product as Product & { variants?: Array<{ price: number }> }).variants?.[0]?.price

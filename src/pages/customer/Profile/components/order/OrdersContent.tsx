@@ -20,7 +20,7 @@ interface Order {
   id: string
   storeId: string
   date: string
-  status: 'Chưa xác nhận' | 'Chờ xác nhận' | 'Đã xác nhận' | 'Đang giao' | 'Đã giao' | 'Đã hủy'
+  status: 'Chưa xác nhận' | 'Chờ xác nhận' | 'Đã xác nhận' | 'Đang giao' | 'Đã giao' | 'Đã hủy' | 'Trả hàng'
   statusColor: string
   statusBgColor: string
   statusText: string
@@ -123,9 +123,9 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
         }
       case 'Returned':
         return {
-          status: 'Đã hủy' as const,
-          statusColor: 'text-red-700',
-          statusBgColor: 'bg-red-50',
+          status: 'Trả hàng' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
           statusText: 'Đơn hàng đã được trả lại'
         }
       default:
@@ -133,7 +133,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           status: 'Chờ xác nhận' as const,
           statusColor: 'text-gray-700',
           statusBgColor: 'bg-gray-50',
-          statusText: 'Trạng thái không xác định'
+          statusText: 'Đơn hàng đang chờ xử lý'
         }
     }
   }
