@@ -355,6 +355,7 @@ function SellerRegistrationForm() {
     gender: '',
     dateOfBirth: '',
     businessName: '',
+    businessLicense: [],
     description: '',
     taxCode: '',
     bankAccount: '',

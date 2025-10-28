@@ -866,7 +866,7 @@ export default function Cart() {
                 })}
 
                 <div className='flex justify-between text-sm font-medium'>
-                  <span className='text-gray-600'>Tổng phí vận chuyển</span>
+                  <span className='text-gray-600'>Tổng phí vận chuyển tạm tính</span>
                   <span className={`font-medium ${shippingFee === 0 ? 'text-green-600' : ''}`}>
                     {isCalculatingShipping ? (
                       <span className='text-blue-600'>Đang tính...</span>

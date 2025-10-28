@@ -18,7 +18,7 @@ interface Store {
   ownerEmail: string
   ownerAvatar: string
   createDate: string
-  createDateTimestamp: number // THÊM MỚI: Để sort theo ngày
+  createDateTimestamp: number
   productCount: number
   status:
     | 'Approved'
@@ -38,7 +38,7 @@ function StoreManagement() {
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
-  const [sortBy, setSortBy] = useState('date-desc') // THÊM MỚI: State cho sort
+  const [sortBy, setSortBy] = useState('date-desc')
   const [currentPage, setCurrentPage] = useState(1)
   const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(false)
@@ -113,7 +113,6 @@ function StoreManagement() {
     fetchStaffList()
   }, [])
 
-  // THÊM MỚI: Reset về trang 1 khi filter/sort thay đổi
   useEffect(() => {
     setCurrentPage(1)
   }, [searchText, statusFilter, dateFilter, sortBy])
@@ -132,7 +131,6 @@ function StoreManagement() {
     return configs[status as keyof typeof configs] || configs.Pending
   }
 
-  // THAY ĐỔI: Logic filter và sort mới
   const filteredAndSortedStores = (() => {
     // Bước 1: FILTER
     let result = stores.filter((store) => {
