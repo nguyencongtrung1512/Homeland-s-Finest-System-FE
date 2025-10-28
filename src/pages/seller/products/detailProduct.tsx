@@ -6,7 +6,7 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
-import { productApi, type ProductResponse } from '../../../apis/product.api'
+import { productApi } from '../../../apis/product.api'
 
 interface ProductCertificate {
   id: string
@@ -91,10 +91,10 @@ function DetailProductSeller() {
 
       try {
         setLoading(true)
-        const response: ProductResponse = await productApi.getById(id)
+        const response = await productApi.getById(id)
 
         if (response.status === 200 && response.data) {
-          setProduct(response.data as ProductDetail)
+          setProduct(response.data)
         } else {
           message.error('Không thể tải thông tin sản phẩm')
         }

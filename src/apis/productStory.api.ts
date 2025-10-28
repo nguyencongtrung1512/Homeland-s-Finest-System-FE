@@ -1,11 +1,11 @@
 import axiosInstance from '../service/axiosInstance'
-import type { ProductStoryUpdateInput, ProductStoryResponse, ProductStoryListResponse } from '../types/productStoryType'
+import type { ProductStoryUpdateInput, ProductStoryResponse } from '../types/productStoryType'
 
 const API_URL = `/ProductStory`
 
 export const productStoryApi = {
   getByProductId: async (productId: string) => {
-    return await axiosInstance.get<ProductStoryListResponse>(`${API_URL}/by-product/${productId}`)
+    return await axiosInstance.get<any>(`${API_URL}/by-product/${productId}`)
   },
 
   update: async (

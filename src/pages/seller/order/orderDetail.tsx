@@ -262,14 +262,6 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
     return new Intl.NumberFormat('vi-VN').format(price) + 'đ'
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  }
-
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('vi-VN', {
       day: '2-digit',

@@ -30,6 +30,7 @@ export interface CreateVariantResponse {
   id: string
   variantName: string
   basePrice: number
+  price: number
   finalPrice: number
   quantity: number
   isActive: boolean

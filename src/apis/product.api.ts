@@ -65,9 +65,9 @@ export const productApi = {
   },
 
   // Get product by ID
-  getById: async (id: string): Promise<ProductResponse> => {
+  getById: async (id: string): Promise<any> => {
     const response = await axiosInstance.get(`${API_URL}/${id}`)
-    return response as unknown as ProductResponse
+    return response
   },
 
   // Create new product with FormData (for file uploads)

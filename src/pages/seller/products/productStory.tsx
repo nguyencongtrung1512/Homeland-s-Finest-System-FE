@@ -201,7 +201,6 @@ function ProductStoryComponent({
 
   const removeImage = (index: number) => {
     const imageToRemove = editData.images[index]
-    const fileToRemove = editData.imageFiles[index]
     
     // Clean up object URL if it's a blob
     if (imageToRemove && imageToRemove.startsWith('blob:')) {
