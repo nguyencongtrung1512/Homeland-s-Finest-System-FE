@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '../../../components/ui/alert-dialog'
+import { formatDate } from '../../../utils/formatDate'
 
 function BlogByCategory() {
   const { id } = useParams<{ id: string }>()
@@ -156,7 +157,10 @@ function BlogByCategory() {
             </div>
           </div>
           <div className='flex space-x-3'>
-            <Button onClick={() => navigate(path.CREATE_BLOG.replace(':id', categoryDetail?.categoryId || ''))} variant='blue'>
+            <Button
+              onClick={() => navigate(path.CREATE_BLOG.replace(':id', categoryDetail?.categoryId || ''))}
+              variant='blue'
+            >
               <Database className='h-4 w-4 mr-2' />
               Tạo blog mới
             </Button>
@@ -190,9 +194,7 @@ function BlogByCategory() {
             <CardContent>
               <div className='flex items-center space-x-2'>
                 <Calendar className='h-4 w-4 text-muted-foreground' />
-                <span className='text-foreground'>
-                  {new Date(categoryDetail.createdAt).toLocaleDateString('vi-VN')}
-                </span>
+                <span className='text-foreground'>{formatDate(categoryDetail.createdAt)}</span>
               </div>
             </CardContent>
           </Card>
@@ -204,11 +206,7 @@ function BlogByCategory() {
             <CardContent>
               <div className='flex items-center space-x-2'>
                 <Calendar className='h-4 w-4 text-muted-foreground' />
-                <span className='text-foreground'>
-                  {categoryDetail.updatedAt
-                    ? new Date(categoryDetail.updatedAt).toLocaleDateString('vi-VN')
-                    : 'Chưa cập nhật'}
-                </span>
+                <span className='text-foreground'>{formatDate(categoryDetail?.updatedAt)}</span>
               </div>
             </CardContent>
           </Card>
@@ -291,7 +289,7 @@ function BlogByCategory() {
                         <div className='flex items-center space-x-6 text-sm text-muted-foreground'>
                           <div className='flex items-center space-x-2'>
                             <Calendar className='h-4 w-4' />
-                            <span>{new Date(blog.createdAt).toLocaleDateString('vi-VN')}</span>
+                            <span>{formatDate(categoryDetail.createdAt)}</span>
                           </div>
                           {blog.image && (
                             <div className='mt-3'>
@@ -300,29 +298,29 @@ function BlogByCategory() {
                           )}
                         </div>
                       </div>
-                      
+
                       {/* Thêm nút 3 chấm với dropdown */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
+                          <Button variant='ghost' size='icon'>
+                            <MoreVertical className='h-4 w-4' />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align='end'>
                           <DropdownMenuItem onClick={() => handleViewBlogDetail(blog)}>
-                            <Eye className="mr-2 h-4 w-4" />
+                            <Eye className='mr-2 h-4 w-4' />
                             Xem chi tiết
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleEditBlog(blog.blogId)}>
-                            <Edit className="mr-2 h-4 w-4" />
+                            <Edit className='mr-2 h-4 w-4' />
                             Chỉnh sửa
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-destructive focus:text-destructive" 
+                          <DropdownMenuItem
+                            className='text-destructive focus:text-destructive'
                             onClick={() => openDeleteDialog(blog.blogId)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
+                            <Trash2 className='mr-2 h-4 w-4' />
                             Xóa
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -338,18 +336,16 @@ function BlogByCategory() {
 
       {/* Modal xem chi tiết blog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className='sm:max-w-[600px]'>
           <DialogHeader>
             <DialogTitle>Chi tiết bài viết</DialogTitle>
-            <DialogDescription>
-              Thông tin chi tiết về bài viết
-            </DialogDescription>
+            <DialogDescription>Thông tin chi tiết về bài viết</DialogDescription>
           </DialogHeader>
-          
+
           {selectedBlog && (
-            <div className="space-y-4 mt-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">{selectedBlog.title}</h3>
+            <div className='space-y-4 mt-4'>
+              <div className='flex items-center justify-between'>
+                <h3 className='text-lg font-semibold'>{selectedBlog.title}</h3>
                 <Badge
                   variant={selectedBlog.isActive ? 'default' : 'destructive'}
                   className={
@@ -359,40 +355,33 @@ function BlogByCategory() {
                   {selectedBlog.isActive ? 'Hoạt động' : 'Không hoạt động'}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Ngày tạo: {new Date(selectedBlog.createdAt).toLocaleDateString('vi-VN')}
-              </p>
-              
+              <p className='text-sm text-muted-foreground'>Ngày tạo: {formatDate(categoryDetail.createdAt)}</p>
+
               {selectedBlog.image && (
-                <div className="my-4">
-                  <img 
-                    src={selectedBlog.image} 
-                    alt={selectedBlog.title} 
-                    className="w-full max-h-[300px] object-cover rounded-md"
+                <div className='my-4'>
+                  <img
+                    src={selectedBlog.image}
+                    alt={selectedBlog.title}
+                    className='w-full max-h-[300px] object-cover rounded-md'
                   />
                 </div>
               )}
-              
+
               <div>
-                <h4 className="font-medium mb-2">Mô tả</h4>
-                <p className="text-muted-foreground">{selectedBlog.description}</p>
+                <h4 className='font-medium mb-2'>Mô tả</h4>
+                <p className='text-muted-foreground'>{selectedBlog.description}</p>
               </div>
-              
+
               <div>
-                <h4 className="font-medium mb-2">Nội dung</h4>
-                <div 
-                  className="prose max-w-none" 
-                  dangerouslySetInnerHTML={{ __html: selectedBlog.content }}
-                />
+                <h4 className='font-medium mb-2'>Nội dung</h4>
+                <div className='prose max-w-none' dangerouslySetInnerHTML={{ __html: selectedBlog.content }} />
               </div>
-              
-              <DialogFooter className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+
+              <DialogFooter className='flex justify-end space-x-2 pt-4'>
+                <Button variant='outline' onClick={() => setIsDialogOpen(false)}>
                   Đóng
                 </Button>
-                <Button onClick={() => handleEditBlog(selectedBlog.blogId)}>
-                  Chỉnh sửa
-                </Button>
+                <Button onClick={() => handleEditBlog(selectedBlog.blogId)}>Chỉnh sửa</Button>
               </DialogFooter>
             </div>
           )}
@@ -410,7 +399,10 @@ function BlogByCategory() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setBlogToDelete(null)}>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteBlog} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDeleteBlog}
+              className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+            >
               Xóa
             </AlertDialogAction>
           </AlertDialogFooter>

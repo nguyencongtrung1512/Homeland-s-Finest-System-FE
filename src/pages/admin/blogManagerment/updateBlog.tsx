@@ -27,6 +27,8 @@ function UpdateBlogByCategory() {
   const [loading, setLoading] = useState(false)
   const [blogDetail, setBlogDetail] = useState<any>(null)
   const [categoryId, setCategoryId] = useState('')
+  const [isActive, setIsActive] = useState<boolean>(true)
+  const [categoryIdSelected, setCategoryIdSelected] = useState<string>('')
 
   useEffect(() => {
     if (id) {
@@ -47,9 +49,15 @@ function UpdateBlogByCategory() {
         setDescription(blogData.description)
         setContent(blogData.content)
         setImagePreview(blogData.image)
-        
+
+        setIsActive(typeof blogData.isActive === 'boolean' ? blogData.isActive : true)
+
         // Lấy categoryId đầu tiên từ mảng blogCategoryId
-        if (blogData.blogCategoryId && blogData.blogCategoryId.length > 0) {
+        // if (blogData.blogCategoryId && blogData.blogCategoryId.length > 0) {
+        //   setCategoryId(blogData.blogCategoryId[0])
+        // }
+
+        if (Array.isArray(blogData.blogCategoryId) && blogData.blogCategoryId.length > 0) {
           setCategoryId(blogData.blogCategoryId[0])
         }
       }
@@ -75,40 +83,43 @@ function UpdateBlogByCategory() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-  
+
     if (!userId || !id) {
       toast.error('Thiếu thông tin người dùng hoặc blog')
       return
     }
-  
+
     if (!title || !description || !content) {
       toast.error('Vui lòng điền đầy đủ thông tin')
       return
     }
-  
+
     setLoading(true)
-  
+
     try {
       // Tạo FormData để gửi dữ liệu
       const formData = new FormData()
-      
+
       // Thêm các trường với tên viết hoa đầu tiên
       formData.append('Title', title)
       formData.append('Description', description)
       formData.append('Content', content)
-      
+
       // Xử lý blogCategoryId như một mảng
       formData.append('BlogCategoryId[0]', categoryId)
-      
+
+      // QUAN TRỌNG: gửi IsActive luôn (string 'true'/'false' cho form-data)
+      formData.append('IsActive', String(isActive));
+
       // Nếu có ảnh mới, thêm vào formData
       if (image) {
         formData.append('Image', image)
       }
-  
+
       // Gọi API để cập nhật blog
       const response = await blogApi.update(id, formData)
       console.log('Update response:', response)
-  
+
       if (response.status === 200 || response.status === 202) {
         toast.success('Cập nhật blog thành công!')
         // Quay lại trang chi tiết danh mục
@@ -241,11 +252,7 @@ function UpdateBlogByCategory() {
                   <div className='mt-4'>
                     <p className='text-sm font-medium mb-2'>Xem trước:</p>
                     <div className='relative aspect-video w-full max-w-md overflow-hidden rounded-lg border border-border'>
-                      <img
-                        src={imagePreview}
-                        alt='Preview'
-                        className='h-full w-full object-cover'
-                      />
+                      <img src={imagePreview} alt='Preview' className='h-full w-full object-cover' />
                     </div>
                   </div>
                 )}

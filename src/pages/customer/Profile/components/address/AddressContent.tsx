@@ -3,6 +3,7 @@ import { Button } from '../../../../../components/ui/button'
 import AddressCard from './AddressCard'
 import { addressApi } from '../../../../../apis/address.api'
 import type { Address } from '../../../../../types/addressType'
+import { toast } from 'react-toastify'
 
 interface AddressContentProps {
   userId?: string // Thêm userId để lấy địa chỉ của user cụ thể
@@ -17,7 +18,6 @@ export default function AddressContent({
   userId,
   onAddAddress,
   onEditAddress,
-  onDeleteAddress,
   onSetDefault,
   refreshTrigger
 }: AddressContentProps) {
@@ -26,27 +26,25 @@ export default function AddressContent({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const toArray = <T,>(x: T | T[] | null | undefined): T[] => (Array.isArray(x) ? x : x ? [x] : [])
+
+  // type guard: chỉ nhận Address còn hoạt động
+  const isActiveAddress = (a: Address | null | undefined): a is Address => !!a && a.isActive !== false
   // Fetch addresses from API
-  const fetchAddresses = useCallback(async () => {
+  const fetchAddresses = useCallback(async (): Promise<void> => {
     if (!userId) return
 
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await addressApi.getUserAddresses(userId)
+      const { status, data, message } = await addressApi.getUserAddresses(userId)
+      if (status !== 200) throw new Error(message ?? 'Có lỗi xảy ra khi tải địa chỉ')
 
-      if (response.status === 200) {
-        // Handle both single address and array of addresses
-        const addressesData = Array.isArray(response.data) ? response.data : [response.data]
-        setAddresses(addressesData)
-      } else {
-        setError(response.message || 'Có lỗi xảy ra khi tải địa chỉ')
-      }
-    } catch (err: unknown) {
-      console.error('Error fetching addresses:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Không thể tải danh sách địa chỉ'
-      setError(errorMessage)
+      const list = toArray<Address>(data).filter(isActiveAddress)
+      setAddresses(list)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể tải danh sách địa chỉ')
     } finally {
       setIsLoading(false)
     }
@@ -68,15 +66,33 @@ export default function AddressContent({
   const handleDeleteAddress = async (addressId: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) return
 
+    console.log('🗑️ Deleting address:', addressId)
     setIsLoading(true)
+    setError(null)
+
     try {
       await addressApi.delete(addressId)
-      // Refresh the list after deletion
+
+      console.log('✅ Address deleted successfully')
+
+      toast.success('Đã xóa địa chỉ thành công!', {
+        position: 'top-right',
+        autoClose: 2000
+      })
+
       await fetchAddresses()
-      onDeleteAddress(addressId)
     } catch (err: unknown) {
-      console.error('Error deleting address:', err)
-      setError('Không thể xóa địa chỉ')
+      console.error('❌ Error deleting address:', err)
+
+      const error = err as { response?: { data?: { message?: string } }; message?: string }
+      const errorMessage = error.response?.data?.message || error.message || 'Không thể xóa địa chỉ'
+
+      setError(errorMessage)
+
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 4000
+      })
     } finally {
       setIsLoading(false)
     }
@@ -84,15 +100,27 @@ export default function AddressContent({
 
   // Handle set default address
   const handleSetDefault = async (addressId: string) => {
+    if (!userId) {
+      toast.error('Không tìm thấy thông tin người dùng')
+      return
+    }
+
+    console.log('Debug - Start setDefault:', { addressId, userId })
     setIsLoading(true)
+
     try {
-      await addressApi.setAsDefault(addressId)
-      // Refresh the list after setting default
-      await fetchAddresses()
+      await addressApi.setAsDefault(addressId, userId)
+      const response = await addressApi.getUserAddresses(userId)
+      if (response?.data) {
+        setAddresses(response.data)
+        console.log('Debug - Updated addresses:', response.data)
+      }
       onSetDefault(addressId)
+      toast.success('Đã đặt địa chỉ mặc định thành công!')
     } catch (err: unknown) {
-      console.error('Error setting default address:', err)
-      setError('Không thể đặt địa chỉ mặc định')
+      const error = err as { message?: string }
+      console.error('Debug - SetDefault Error:', error)
+      toast.error(error.message || 'Không thể đặt địa chỉ mặc định')
     } finally {
       setIsLoading(false)
     }

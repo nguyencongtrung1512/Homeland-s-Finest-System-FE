@@ -200,9 +200,59 @@ export const addressApi = {
   },
 
   // Set address as default
-  setAsDefault: async (id: string): Promise<AddressResponse> => {
-    const response = await axiosInstance.put(`${API_URL_ADDRESS}/${id}/set-default`)
-    return response as unknown as AddressResponse
+  // setAsDefault: async (id: string, userId: string): Promise<AddressResponse> => {
+  //   const response = await axiosInstance.put(`${API_URL_ADDRESS}/${id}/set-default`)
+  //   return response as unknown as AddressResponse
+  // },
+
+  // Set address as default - Sử dụng endpoint Update có sẵn
+  // Set address as default - Simple version
+  setAsDefault: async (id: string, userId: string): Promise<AddressResponse> => {
+    try {
+      console.log('🎯 setAsDefault called:', { id, userId })
+
+      // Lấy địa chỉ hiện tại
+      const current = await axiosInstance.get(`${API_URL_ADDRESS}/${id}`)
+      const addr = current.data || current
+
+      console.log('📋 Current address:', addr)
+
+      // Update với IsDefault = true
+      const formData = new FormData()
+      formData.append('UserId', userId)
+      formData.append('Province', addr.province || '')
+      formData.append('District', addr.district || '')
+      formData.append('Ward', addr.ward || '')
+      formData.append('ProvinceId', (addr.provinceId || 0).toString())
+      formData.append('DistrictId', (addr.districtId || 0).toString())
+      formData.append('WardId', (addr.wardId || 0).toString())
+      formData.append('StreetAddress', addr.streetAddress || '')
+      formData.append('IsDefault', 'true')
+      formData.append('IsActive', 'true')
+
+      console.log('📤 Sending FormData:', {
+        UserId: userId,
+        Province: addr.province,
+        District: addr.district,
+        Ward: addr.ward,
+        IsDefault: 'true'
+      })
+
+      const response = await axiosInstance.put(`${API_URL_ADDRESS}/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      console.log('✅ setAsDefault success:', response)
+      return response as unknown as AddressResponse
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number; data?: unknown }; message?: string }
+      console.error('❌ setAsDefault error:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      })
+      throw error
+    }
   },
 
   // Get user addresses by direct endpoint (new API endpoint)

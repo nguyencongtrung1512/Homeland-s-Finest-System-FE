@@ -29,7 +29,7 @@ import {
   type UpdateBlogCategoryInput
 } from '../../../apis/categoryBlog.api'
 import { Switch } from '../../../components/ui/switch'
-
+import { formatDate } from '../../../utils/formatDate'
 
 function BlogCategoryList() {
   const navigate = useNavigate()
@@ -361,12 +361,8 @@ function BlogCategoryList() {
                           {category.isActive ? 'Hoạt động' : 'Không hoạt động'}
                         </span>
                       </TableCell>
-                      <TableCell className='text-muted-foreground'>
-                        {new Date(category.createdAt).toLocaleDateString('vi-VN')}
-                      </TableCell>
-                      <TableCell className='text-muted-foreground'>
-                        {category.updatedAt ? new Date(category.updatedAt).toLocaleDateString('vi-VN') : '-'}
-                      </TableCell>
+                      <TableCell className='text-muted-foreground'>{formatDate(category.createdAt)}</TableCell>
+                      <TableCell className='text-muted-foreground'>{formatDate(category.updatedAt)}</TableCell>
                       <TableCell>
                         <div className='flex justify-center'>
                           <DropdownMenu>
