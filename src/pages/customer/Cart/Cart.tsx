@@ -16,11 +16,22 @@ import { toast } from 'react-toastify'
 import { createOrder } from '../../../apis/order.api'
 import { addressApi } from '../../../apis/address.api'
 import type { CartData, CartItem as APICartItem } from '../../../types/cartType'
-import type { Address } from '../../../types/addressType'
+import type { Address, AddressCreateInput } from '../../../types/addressType'
 
 // Import Promotion Components
 import { PromotionModal } from '../../../components/Promotion'
 import AppliedPromotionModal from '../../../components/Cart/AppliedPromotionModal'
+import AddressModal from '../../customer/Profile/components/address/AddressModal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../../../components/ui/alert-dialog'
 
 type PaymentMethod = 'COD' | 'Banking'
 
@@ -62,6 +73,12 @@ export default function Cart() {
   const [shippingFee, setShippingFee] = useState(0)
   const [storeShippingFees, setStoreShippingFees] = useState<Record<string, number>>({})
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false)
+
+  // Address management states
+  const [showAddressModal, setShowAddressModal] = useState(false)
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [addressToDelete, setAddressToDelete] = useState<string | null>(null)
   const reloadCartData = useCallback(async () => {
     if (!user?.userId) return
     try {
@@ -75,6 +92,10 @@ export default function Cart() {
     }
   }, [user?.userId])
 
+  // Helper function to filter active addresses
+  const toArray = <T,>(x: T | T[] | null | undefined): T[] => (Array.isArray(x) ? x : x ? [x] : [])
+  const isActiveAddress = (a: Address | null | undefined): a is Address => !!a && a.isActive === true
+
   // Helper function to load user addresses
   const loadUserAddresses = useCallback(async () => {
     if (!user?.userId) return
@@ -82,12 +103,15 @@ export default function Cart() {
     try {
       const response = await addressApi.getUserAddresses(user.userId)
       if (response?.status === 200) {
-        setAddresses(response.data)
-        const defaultAddress = response.data.find((addr) => addr.isDefault)
+        // Filter only active addresses
+        const activeAddresses = toArray<Address>(response.data).filter(isActiveAddress)
+        setAddresses(activeAddresses)
+
+        const defaultAddress = activeAddresses.find((addr) => addr.isDefault)
         if (defaultAddress) {
           setSelectedAddress(defaultAddress)
-        } else if (response.data.length > 0) {
-          setSelectedAddress(response.data[0])
+        } else if (activeAddresses.length > 0) {
+          setSelectedAddress(activeAddresses[0])
         }
       }
     } catch (error) {
@@ -99,9 +123,7 @@ export default function Cart() {
     if (!cartData || !selectedAddress) return
 
     // Get all selected items from all stores
-    const selectedItemsList = cartData.carts.flatMap((store) =>
-      store.items.filter((item) => selectedItems[item.id])
-    )
+    const selectedItemsList = cartData.carts.flatMap((store) => store.items.filter((item) => selectedItems[item.id]))
 
     if (selectedItemsList.length === 0) {
       setShippingFee(0)
@@ -227,6 +249,128 @@ export default function Cart() {
   useEffect(() => {
     calculateShipping()
   }, [calculateShipping])
+
+  // Address management handlers
+  const handleAddAddress = () => {
+    setEditingAddress(null)
+    setShowAddressModal(true)
+  }
+
+  const handleEditAddress = (address: Address) => {
+    setEditingAddress(address)
+    setShowAddressModal(true)
+  }
+
+  const handleDeleteClick = (addressId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setAddressToDelete(addressId)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!addressToDelete || !user?.userId) return
+
+    const deletedAddressId = addressToDelete
+    const wasSelectedAddress = selectedAddress?.id === deletedAddressId
+
+    try {
+      await addressApi.delete(deletedAddressId)
+      toast.success('Đã xóa địa chỉ thành công!', {
+        position: 'top-right',
+        autoClose: 2000
+      })
+
+      // Remove from local state immediately
+      const remainingAddresses = addresses.filter((addr) => addr.id !== deletedAddressId)
+      setAddresses(remainingAddresses)
+
+      // If deleted address was selected, select another one
+      if (wasSelectedAddress) {
+        if (remainingAddresses.length > 0) {
+          setSelectedAddress(remainingAddresses[0])
+        } else {
+          setSelectedAddress(null)
+        }
+      }
+
+      // Reload addresses from API to ensure sync
+      await loadUserAddresses()
+      setTimeout(() => calculateShipping(), 200)
+    } catch (error) {
+      console.error('Error deleting address:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error).message ||
+        'Không thể xóa địa chỉ'
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 4000
+      })
+    } finally {
+      setDeleteDialogOpen(false)
+      setAddressToDelete(null)
+    }
+  }
+
+  const handleSetDefault = async (addressId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    if (!user?.userId) {
+      toast.error('Không tìm thấy thông tin người dùng')
+      return
+    }
+
+    try {
+      await addressApi.setAsDefault(addressId, user.userId)
+      await loadUserAddresses()
+      toast.success('Đã đặt địa chỉ mặc định thành công!')
+    } catch (error) {
+      console.error('Error setting default address:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error).message ||
+        'Không thể đặt địa chỉ mặc định'
+      toast.error(errorMessage)
+    }
+  }
+
+  const handleSaveAddress = async (formData: AddressCreateInput) => {
+    if (!user?.userId) return
+
+    try {
+      if (editingAddress) {
+        // Update existing address
+        const updateData = {
+          userId: user.userId,
+          province: formData.province,
+          district: formData.district,
+          ward: formData.ward,
+          provinceId: formData.provinceId,
+          districtId: formData.districtId,
+          wardId: formData.wardId,
+          streetAddress: formData.streetAddress,
+          isDefault: formData.isDefault
+        }
+        await addressApi.update(editingAddress.id, updateData)
+        toast.success('Cập nhật địa chỉ thành công!')
+      } else {
+        // Create new address
+        await addressApi.create(formData)
+        toast.success('Thêm địa chỉ thành công!')
+      }
+
+      setShowAddressModal(false)
+      setEditingAddress(null)
+      await loadUserAddresses()
+      setTimeout(() => calculateShipping(), 100)
+    } catch (error) {
+      console.error('Error saving address:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error).message ||
+        'Có lỗi xảy ra khi lưu địa chỉ'
+      toast.error(errorMessage)
+    }
+  }
 
   useEffect(() => {
     if (cartData) {
@@ -469,11 +613,14 @@ export default function Cart() {
       const createdOrder = await createOrder(orderData)
       console.log('[Cart] createdOrder response:', createdOrder)
       console.log('[Cart] createdOrder length:', createdOrder.length)
-      console.log('[Cart] createdOrder items:', createdOrder.map(order => ({
-        orderId: order.id.slice(-8),
-        storeName: order.fromName,
-        itemsCount: order.orderItems?.length || 0
-      })))
+      console.log(
+        '[Cart] createdOrder items:',
+        createdOrder.map((order) => ({
+          orderId: order.id.slice(-8),
+          storeName: order.fromName,
+          itemsCount: order.orderItems?.length || 0
+        }))
+      )
       toast.success('Đơn hàng đã được tạo! Đang chuyển đến trang thanh toán...')
 
       // Store selected item IDs for later clearing after successful payment
@@ -936,7 +1083,10 @@ export default function Cart() {
             <div className='flex items-center gap-3 mb-4'>
               <MapPin className='w-6 h-6 text-orange-600' />
               <h2 className='text-xl font-bold text-gray-800'>Địa chỉ giao hàng</h2>
-              <button className='ml-auto text-orange-600 hover:text-orange-700 font-medium text-sm'>
+              <button
+                onClick={handleAddAddress}
+                className='ml-auto text-orange-600 hover:text-orange-700 font-medium text-sm'
+              >
                 + Thêm địa chỉ mới
               </button>
             </div>
@@ -982,12 +1132,32 @@ export default function Cart() {
                       </div>
                     </div>
                     <div className='flex items-center gap-2'>
-                      <button className='text-gray-400 hover:text-blue-500'>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditAddress(address)
+                        }}
+                        className='text-gray-400 hover:text-blue-500'
+                        title='Sửa địa chỉ'
+                      >
                         <Edit className='w-4 h-4' />
                       </button>
                       {!address.isDefault && (
-                        <button className='text-gray-400 hover:text-red-500'>
+                        <button
+                          onClick={(e) => handleDeleteClick(address.id, e)}
+                          className='text-gray-400 hover:text-red-500'
+                          title='Xóa địa chỉ'
+                        >
                           <Trash className='w-4 h-4' />
+                        </button>
+                      )}
+                      {!address.isDefault && (
+                        <button
+                          onClick={(e) => handleSetDefault(address.id, e)}
+                          className='text-xs text-green-600 hover:text-green-700 px-2 py-1 rounded border border-green-300 hover:bg-green-50'
+                          title='Đặt làm mặc định'
+                        >
+                          Đặt mặc định
                         </button>
                       )}
                     </div>
@@ -1077,6 +1247,37 @@ export default function Cart() {
           onRemovePromotion={handleRemoveAppliedPromotion}
         />
       )}
+
+      {/* Address Modal */}
+      <AddressModal
+        isOpen={showAddressModal}
+        onClose={() => {
+          setShowAddressModal(false)
+          setEditingAddress(null)
+        }}
+        address={editingAddress}
+        onSave={handleSaveAddress}
+        existingAddresses={addresses}
+        userId={user?.userId}
+      />
+
+      {/* Delete Address Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa địa chỉ</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa địa chỉ này? Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAddressToDelete(null)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className='bg-red-600 hover:bg-red-700 text-white'>
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
