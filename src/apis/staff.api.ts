@@ -145,6 +145,28 @@ export interface StaffListParams {
   isActive?: boolean
 }
 
+// Interface cho cập nhật thông tin staff
+export interface UpdateStaffRequest {
+  FirstName: string
+  LastName: string
+  Email: string
+  PhoneNumber: string
+  Gender: 'Male' | 'Female' | 'Other'
+  DateOfBirth: string
+  HireDate: string
+  IsActive: boolean
+  IsPermission: boolean
+  Note?: string
+  EmployeeCode?: string
+  Avatar?: File
+}
+
+export interface UpdateStaffResponse {
+  status: number
+  message: string
+  data?: StaffInfo
+}
+
 // Interface cho form được giao cho staff
 export interface StaffForm {
   id: string
@@ -438,6 +460,41 @@ export const staffApi = {
       status: 'Denied',
       note: note
     })
+    return response.data
+  },
+
+  // Cập nhật thông tin staff
+  updateStaff: async (staffId: string, updateData: UpdateStaffRequest): Promise<UpdateStaffResponse> => {
+    const formData = new FormData()
+
+    formData.append('FirstName', updateData.FirstName)
+    formData.append('LastName', updateData.LastName)
+    formData.append('Email', updateData.Email)
+    formData.append('PhoneNumber', updateData.PhoneNumber)
+    formData.append('Gender', updateData.Gender)
+    formData.append('DateOfBirth', updateData.DateOfBirth)
+    formData.append('HireDate', updateData.HireDate)
+    formData.append('IsActive', updateData.IsActive.toString())
+    formData.append('IsPermission', updateData.IsPermission.toString())
+
+    if (updateData.Note) {
+      formData.append('Note', updateData.Note)
+    }
+
+    if (updateData.EmployeeCode) {
+      formData.append('EmployeeCode', updateData.EmployeeCode)
+    }
+
+    if (updateData.Avatar) {
+      formData.append('Avatar', updateData.Avatar)
+    }
+
+    const response = await axiosInstance.put(`${API_URL}/${staffId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+
     return response.data
   }
 }
