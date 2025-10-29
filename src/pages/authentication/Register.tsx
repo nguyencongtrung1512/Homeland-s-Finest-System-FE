@@ -1,5 +1,5 @@
 import RegisterLayout from '../../Layouts/Authentication/registerLayout'
-import { Leaf, ThumbsUp, User, Mail, Phone, Lock, Loader2, ChevronDownIcon, Eye, EyeOff, MapPin } from 'lucide-react'
+import { Leaf, ThumbsUp, User, Mail, Phone, Lock, Loader2, ChevronDownIcon, Eye, EyeOff } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { registerCustomer } from '../../apis/auth.api'
 import { getProvinces, type Province } from '../../apis/province'

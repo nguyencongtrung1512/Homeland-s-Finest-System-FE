@@ -28,7 +28,6 @@ function UpdateBlogByCategory() {
   const [blogDetail, setBlogDetail] = useState<any>(null)
   const [categoryId, setCategoryId] = useState('')
   const [isActive, setIsActive] = useState<boolean>(true)
-  const [categoryIdSelected, setCategoryIdSelected] = useState<string>('')
 
   useEffect(() => {
     if (id) {

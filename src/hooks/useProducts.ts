@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react'
 import {
   productApi,
-  type ProductQueryParams,
   type ProductListResponse,
   type ProductResponse
 } from '../apis/product.api'
 import type { Product } from '../types'
 
 // Hook for getting products list
-export const useProducts = (params?: ProductQueryParams) => {
+export const useProducts = (params?: any) => {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -19,7 +18,7 @@ export const useProducts = (params?: ProductQueryParams) => {
     totalPages: 0
   })
 
-  const fetchProducts = async (queryParams?: ProductQueryParams) => {
+  const fetchProducts = async (queryParams?: any) => {
     try {
       setLoading(true)
       setError(null)
@@ -256,7 +255,7 @@ export const useTrendingProducts = (limit?: number) => {
 }
 
 // Hook for products by store
-export const useProductsByStore = (storeId: string, params?: Omit<ProductQueryParams, 'storeId'>) => {
+export const useProductsByStore = (storeId: string, params?: any) => {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -298,7 +297,7 @@ export const useProductsByStore = (storeId: string, params?: Omit<ProductQueryPa
 }
 
 // Hook for product search
-export const useProductSearch = (query: string, params?: Omit<ProductQueryParams, 'search'>) => {
+export const useProductSearch = (query: string, params?: any) => {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

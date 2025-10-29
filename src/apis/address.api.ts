@@ -209,13 +209,8 @@ export const addressApi = {
   // Set address as default - Simple version
   setAsDefault: async (id: string, userId: string): Promise<AddressResponse> => {
     try {
-      console.log('🎯 setAsDefault called:', { id, userId })
-
-      // Lấy địa chỉ hiện tại
       const current = await axiosInstance.get(`${API_URL_ADDRESS}/${id}`)
       const addr = current.data || current
-
-      console.log('📋 Current address:', addr)
 
       // Update với IsDefault = true
       const formData = new FormData()
@@ -230,28 +225,13 @@ export const addressApi = {
       formData.append('IsDefault', 'true')
       formData.append('IsActive', 'true')
 
-      console.log('📤 Sending FormData:', {
-        UserId: userId,
-        Province: addr.province,
-        District: addr.district,
-        Ward: addr.ward,
-        IsDefault: 'true'
-      })
-
       const response = await axiosInstance.put(`${API_URL_ADDRESS}/${id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      console.log('✅ setAsDefault success:', response)
       return response as unknown as AddressResponse
-    } catch (error: unknown) {
-      const err = error as { response?: { status?: number; data?: unknown }; message?: string }
-      console.error('❌ setAsDefault error:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status
-      })
-      throw error
+    } catch {
+      throw new Error('Không thể đặt địa chỉ mặc định')
     }
   },
 

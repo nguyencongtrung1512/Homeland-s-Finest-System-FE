@@ -211,9 +211,13 @@ export default function Profile() {
   }
 
   const handleSetDefault = async (addressId: string) => {
+    if (!authUser?.userId) {
+      console.error('User ID not found')
+      return
+    }
     try {
       // Call API to set address as default
-      await addressApi.setAsDefault(addressId)
+      await addressApi.setAsDefault(addressId, authUser.userId)
 
       // Update local state
       setAddresses(
