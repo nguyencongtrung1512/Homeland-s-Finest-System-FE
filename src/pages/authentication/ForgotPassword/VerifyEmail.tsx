@@ -4,6 +4,8 @@ import { Leaf, ThumbsUp, Mail, BadgeCheck, ArrowLeft } from 'lucide-react'
 import logoImage from '../../../assets/luachin2-7984.webp'
 import { path } from '../../../constants/path'
 import { useNavigate } from 'react-router-dom'
+import { resetPassword } from '../../../apis/auth.api'
+import { toast } from 'react-toastify'
 
 interface VerifyEmailProps {
   onEmailSubmit?: (email: string) => void
@@ -14,6 +16,7 @@ function VerifyEmail({ onEmailSubmit }: VerifyEmailProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [countdown, setCountdown] = useState(0)
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
   // Countdown timer effect
@@ -27,36 +30,90 @@ function VerifyEmail({ onEmailSubmit }: VerifyEmailProps) {
     return () => clearTimeout(timer)
   }, [countdown])
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (email.trim()) {
-      setIsLoading(true)
-      // Simulate loading and redirect to reset password page
-      setTimeout(() => {
-        setIsLoading(false)
+    setError('')
+
+    // Validate email format
+    if (!email.trim()) {
+      setError('Vui lòng nhập địa chỉ email')
+      return
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Địa chỉ email không hợp lệ')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await resetPassword({ email: email.trim() })
+
+      if (response.success) {
         setEmailSent(true)
         setCountdown(60) // Start 60 second countdown
+        toast.success(response.message || 'Email đặt lại mật khẩu đã được gửi thành công!', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+
         if (onEmailSubmit) {
           onEmailSubmit(email)
         }
-      }, 1500)
+      } else {
+        setError(response.message || 'Có lỗi xảy ra khi gửi email')
+        toast.error(response.message || 'Có lỗi xảy ra khi gửi email')
+      }
+    } catch (error: unknown) {
+      console.error('Reset password error:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ||
+        (error as { message?: string }).message ||
+        'Có lỗi xảy ra khi gửi email đặt lại mật khẩu'
+      setError(errorMessage)
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleResendEmail = () => {
-    if (countdown === 0) {
+  const handleResendEmail = async () => {
+    if (countdown === 0 && email.trim()) {
       setIsLoading(true)
-      setTimeout(() => {
+      try {
+        const response = await resetPassword({ email: email.trim() })
+
+        if (response.success) {
+          setCountdown(60) // Reset countdown
+          toast.success('Email đã được gửi lại thành công!', {
+            position: 'top-right',
+            autoClose: 3000
+          })
+        } else {
+          toast.error(response.message || 'Có lỗi xảy ra khi gửi lại email')
+        }
+      } catch (error: unknown) {
+        console.error('Resend email error:', error)
+        const errorMessage =
+          (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ||
+          (error as { message?: string }).message ||
+          'Có lỗi xảy ra khi gửi lại email'
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } finally {
         setIsLoading(false)
-        setCountdown(60) // Reset countdown
-        alert('📧 Email đã được gửi lại thành công!')
-      }, 1000)
+      }
     }
   }
 
   const handleReceivedCode = () => {
     // Navigate to OTP verification page
-    navigate(path.verifyOTP)
+    navigate(path.login)
   }
 
   const handleBackToLogin = () => {
@@ -101,6 +158,22 @@ function VerifyEmail({ onEmailSubmit }: VerifyEmailProps) {
         <div className='px-6 pb-6 space-y-4'>
           {!emailSent ? (
             <form className='space-y-4' onSubmit={handleSubmit}>
+              {/* Error Message */}
+              {error && (
+                <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
+                  <div className='flex items-center'>
+                    <div className='flex-shrink-0'>
+                      <svg className='h-5 w-5 text-red-400' fill='currentColor' viewBox='0 0 20 20'>
+                        <path fillRule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z' clipRule='evenodd' />
+                      </svg>
+                    </div>
+                    <div className='ml-3'>
+                      <p className='text-sm text-red-800'>{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className='block text-gray-700 text-sm font-medium mb-2'>
                   Địa chỉ Email<span className='text-red-500'>*</span>
@@ -120,7 +193,10 @@ function VerifyEmail({ onEmailSubmit }: VerifyEmailProps) {
                     type='email'
                     name='email'
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      if (error) setError('')
+                    }}
                     placeholder='Nhập địa chỉ email của bạn'
                     className='w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500'
                     required

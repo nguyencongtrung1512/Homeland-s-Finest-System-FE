@@ -13,6 +13,7 @@ export interface RegisterCustomerData {
   gender: string
   phoneNumber: string
   dateOfBirth: string
+  provinceId: number
 }
 
 export interface LoginData {
@@ -49,6 +50,7 @@ export const registerCustomer = async (data: RegisterCustomerData) => {
   formData.append('Gender', data.gender)
   formData.append('PhoneNumber', data.phoneNumber)
   formData.append('DateOfBirth', data.dateOfBirth)
+  formData.append('PronviceId', data.provinceId.toString())
 
   const response = await axiosInstance.post(`${API_URL_CUSTOMER}/Register`, formData, {
     headers: {
@@ -76,10 +78,42 @@ export interface LogoutResponse {
   data: null
 }
 
+export interface ResetPasswordRequest {
+  email: string
+}
+
+export interface ResetPasswordResponse {
+  success: boolean
+  message: string
+  requestedAt: string
+}
+
+export interface ChangePasswordRequest {
+  email: string
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
+}
+
+export interface ChangePasswordResponse {
+  success: boolean
+  message: string
+}
+
 export const logout = async (): Promise<LogoutResponse> => {
   const response = await axiosInstance.post(`${API_URL}/logout`)
   // Axios interceptor trả về response.data, nên response đã có cấu trúc LogoutResponse
   return response as unknown as LogoutResponse
+}
+
+export const resetPassword = async (data: ResetPasswordRequest): Promise<any> => {
+  const response = await axiosInstance.post(`${API_URL}/reset-password`, data)
+  return response
+}
+
+export const changePassword = async (data: ChangePasswordRequest): Promise<any> => {
+  const response = await axiosInstance.post(`${API_URL}/change-password`, data)
+  return response
 }
 
 // Seller Registration Interfaces

@@ -1,7 +1,8 @@
 import RegisterLayout from '../../Layouts/Authentication/registerLayout'
-import { Leaf, ThumbsUp, User, Mail, Phone, Lock, Loader2, ChevronDownIcon, Eye, EyeOff } from 'lucide-react'
-import { useState } from 'react'
+import { Leaf, ThumbsUp, User, Mail, Phone, Lock, Loader2, ChevronDownIcon, Eye, EyeOff, MapPin } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { registerCustomer } from '../../apis/auth.api'
+import { getProvinces, type Province } from '../../apis/province'
 import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router-dom'
 import { path } from '../../constants/path'
@@ -25,6 +26,7 @@ interface RegisterFormData {
   confirmPassword: string
   gender: string
   dateOfBirth: Date | undefined
+  provinceId: number | undefined
 }
 
 function Register() {
@@ -37,7 +39,8 @@ function Register() {
     password: '',
     confirmPassword: '',
     gender: 'Male',
-    dateOfBirth: undefined
+    dateOfBirth: undefined,
+    provinceId: undefined
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -45,6 +48,25 @@ function Register() {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [provinces, setProvinces] = useState<Province[]>([])
+  const [loadingProvinces, setLoadingProvinces] = useState(false)
+
+  // Load provinces on component mount
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      setLoadingProvinces(true)
+      try {
+        const data = await getProvinces()
+        setProvinces(data)
+      } catch (error) {
+        console.error('Error fetching provinces:', error)
+        toast.error('Không thể tải danh sách tỉnh/thành phố')
+      } finally {
+        setLoadingProvinces(false)
+      }
+    }
+    fetchProvinces()
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -61,6 +83,15 @@ function Register() {
     setFormData((prev) => ({
       ...prev,
       gender: value
+    }))
+    if (error) setError('')
+    if (success) setSuccess('')
+  }
+
+  const handleProvinceChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      provinceId: parseInt(value)
     }))
     if (error) setError('')
     if (success) setSuccess('')
@@ -121,6 +152,12 @@ function Register() {
       toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
       return false
     }
+    if (!formData.provinceId) {
+      const errorMsg = 'Vui lòng chọn tỉnh/thành phố'
+      setError(errorMsg)
+      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
+      return false
+    }
 
     // Validate date of birth - cannot be in the future
     const today = new Date()
@@ -169,7 +206,8 @@ function Register() {
         lastName: formData.lastName,
         gender: formData.gender,
         phoneNumber: formData.phoneNumber,
-        dateOfBirth: formData.dateOfBirth!.toISOString().split('T')[0] // Convert to YYYY-MM-DD format
+        dateOfBirth: formData.dateOfBirth!.toISOString().split('T')[0], // Convert to YYYY-MM-DD format
+        provinceId: formData.provinceId!
       }
 
       const response = await registerCustomer(apiData)
@@ -195,7 +233,8 @@ function Register() {
           password: '',
           confirmPassword: '',
           gender: 'Male',
-          dateOfBirth: undefined
+          dateOfBirth: undefined,
+          provinceId: undefined
         })
 
         // Navigate to login page after successful registration
@@ -348,6 +387,31 @@ function Register() {
                   placeholder='Nhập số điện thoại'
                   className='pl-10'
                 />
+              </div>
+            </div>
+
+            <div className='space-y-2'>
+              <Label>
+                Tỉnh/Thành phố<span className='text-destructive'>*</span>
+              </Label>
+              <div className='relative'>
+                <MapPin className='absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10' />
+                <Select
+                  value={formData.provinceId?.toString() || ''}
+                  onValueChange={handleProvinceChange}
+                  disabled={loadingProvinces}
+                >
+                  <SelectTrigger className='pl-10'>
+                    <SelectValue placeholder={loadingProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {provinces.map((province) => (
+                      <SelectItem key={province.id} value={province.id.toString()}>
+                        {province.name} - {province.region}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
