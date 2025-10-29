@@ -249,9 +249,24 @@ function UpdateComboSeller() {
   const handleRemoveItem = async (itemId: string) => {
     if (!combo) return
 
+    // Tìm item để lấy thông tin cần thiết cho API
+    const itemToRemove = combo.comboItems.find((item) => item.id === itemId)
+    if (!itemToRemove) {
+      toast.error('Không tìm thấy sản phẩm cần xóa')
+      return
+    }
+
     setSaving(true)
     try {
-      const response = await removeItemFromCombo(combo.id, itemId)
+      // Gửi thông tin item với isActive: false để xóa
+      const itemData: UpdateComboItemRequest = {
+        productVariantId: itemToRemove.productVariantId,
+        comboItemName: itemToRemove.comboItemName,
+        price: itemToRemove.price,
+        quantity: itemToRemove.quantity,
+        isActive: false
+      }
+      const response = await removeItemFromCombo(combo.id, itemId, itemData)
 
       if (response) {
         setCombo({

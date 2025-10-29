@@ -5,8 +5,18 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../../components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../../../components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
-import { Plus, Edit, Trash2, Package, Eye, EyeOff, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Edit, Trash2, Package, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { getVariantsBySellerId } from '../../../apis/combo.api'
 import { useAuth } from '../../../contexts/auth.context'
@@ -53,6 +63,8 @@ function ComboItemsManager({
   const { user } = useAuth()
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null)
   const [editingItem, setEditingItem] = useState<ComboItem | null>(null)
   const [saving, setSaving] = useState(false)
   const [variants, setVariants] = useState<VariantResponse[]>([])
@@ -191,34 +203,22 @@ function ComboItemsManager({
     }
   }
 
-  const handleRemoveItem = async (itemId: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi combo?')) {
-      setSaving(true)
-      try {
-        await onRemoveItem(itemId)
-      } catch (error) {
-        console.error('Error removing item:', error)
-        // Không hiển thị toast error ở đây vì updateCombo sẽ hiển thị
-      } finally {
-        setSaving(false)
-      }
-    }
+  const handleRemoveItemClick = (itemId: string) => {
+    setItemToDelete(itemId)
+    setShowDeleteDialog(true)
   }
 
-  const handleToggleItemVisibility = async (item: ComboItem) => {
-    const newData: UpdateComboItemRequest = {
-      productVariantId: item.productVariantId,
-      comboItemName: item.comboItemName,
-      price: item.price,
-      quantity: item.quantity,
-      isActive: !item.isActive
-    }
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return
 
     setSaving(true)
     try {
-      await onUpdateItem(item.id, newData)
+      await onRemoveItem(itemToDelete)
+      setShowDeleteDialog(false)
+      setItemToDelete(null)
     } catch (error) {
-      console.error('Error toggling item visibility:', error)
+      console.error('Error removing item:', error)
+      // Không hiển thị toast error ở đây vì updateCombo sẽ hiển thị
     } finally {
       setSaving(false)
     }
@@ -280,13 +280,12 @@ function ComboItemsManager({
       <CardHeader>
         {statusInfo && (
           <div
-            className={`mb-4 p-3 rounded-lg ${
-              statusInfo.type === 'warning'
-                ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                : statusInfo.type === 'success'
-                  ? 'bg-green-100 text-green-800 border border-green-200'
-                  : 'bg-red-100 text-red-800 border border-red-200'
-            }`}
+            className={`mb-4 p-3 rounded-lg ${statusInfo.type === 'warning'
+              ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+              : statusInfo.type === 'success'
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : 'bg-red-100 text-red-800 border border-red-200'
+              }`}
           >
             <div className='flex items-center gap-2'>
               {statusInfo.type === 'warning' && <Clock className='w-4 h-4' />}
@@ -480,21 +479,8 @@ function ComboItemsManager({
                       <Button
                         variant='ghost'
                         size='sm'
-                        onClick={() => handleToggleItemVisibility(item)}
-                        disabled={saving}
-                        className={
-                          item.isActive
-                            ? 'text-yellow-600 hover:text-yellow-700'
-                            : 'text-green-600 hover:text-green-700'
-                        }
-                      >
-                        {item.isActive ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
-                      </Button>
-                      <Button
-                        variant='ghost'
-                        size='sm'
                         className='text-red-600 hover:text-red-700'
-                        onClick={() => handleRemoveItem(item.id)}
+                        onClick={() => handleRemoveItemClick(item.id)}
                         disabled={saving}
                       >
                         <Trash2 className='w-4 h-4' />
@@ -607,6 +593,30 @@ function ComboItemsManager({
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Xác nhận xóa sản phẩm</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bạn có chắc chắn muốn xóa sản phẩm này khỏi combo? Hành động này không thể hoàn tác.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setItemToDelete(null)} disabled={saving}>
+                Hủy
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                disabled={saving}
+                className='bg-red-600 hover:bg-red-700 text-white'
+              >
+                {saving ? 'Đang xóa...' : 'Xóa'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   )

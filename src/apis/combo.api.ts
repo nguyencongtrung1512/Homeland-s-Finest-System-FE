@@ -152,17 +152,25 @@ export const updateCompleteCombo = async (
     throw error
   }
 }
-export const removeItemFromCombo = async (comboId: string, itemId: string): Promise<ComboResponse> => {
-  const itemData: UpdateComboItemRequest = {
-    productVariantId: '',
-    comboItemName: '',
-    basePrice: 0,
-    finalPrice: 0,
-    quantity: 0,
-    isActive: false
-  }
-
-  return updateComboItem(comboId, itemId, itemData)
+export const removeItemFromCombo = async (
+  comboId: string,
+  itemId: string,
+  itemData: UpdateComboItemRequest
+): Promise<any> => {
+  // Gửi PUT request với isActive: false để xóa item
+  const response = await axiosInstance.put<ComboResponse>(
+    `${API_URL}/${comboId}/items/${itemId}`,
+    {
+      ...itemData,
+      isActive: false
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }
+  )
+  return response
 }
 
 // ===== UTILITY FUNCTIONS FOR VARIANTS =====
