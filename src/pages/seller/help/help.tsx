@@ -313,8 +313,8 @@ function HelpCenter() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`pb-3 text-sm font-medium transition-colors ${activeTab === tab.key
-                ? 'text-green-600 border-b-2 border-green-600'
-                : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-green-600 border-b-2 border-green-600'
+                  : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
               {tab.label}
@@ -353,7 +353,6 @@ function HelpCenter() {
                       <th className='text-left py-4 px-6 font-medium text-gray-700'>Mã yêu cầu</th>
                       <th className='text-left py-4 px-6 font-medium text-gray-700'>Tiêu đề</th>
                       <th className='text-left py-4 px-6 font-medium text-gray-700'>Ngày gửi</th>
-                      <th className='text-left py-4 px-6 font-medium text-gray-700'>Cập nhật lần cuối</th>
                       <th className='text-left py-4 px-6 font-medium text-gray-700'>Trạng thái</th>
                       <th className='text-left py-4 px-6 font-medium text-gray-700'>Hành động</th>
                     </tr>
@@ -366,7 +365,6 @@ function HelpCenter() {
                         </td>
                         <td className='py-4 px-6 text-gray-700'>{request.subject}</td>
                         <td className='py-4 px-6 text-gray-700'>{formatDate(request.createdAt)}</td>
-                        <td className='py-4 px-6 text-gray-700'>{formatDate(request.updatedAt)}</td>
                         <td className='py-4 px-6'>{getStatusBadge(request.status)}</td>
                         <td className='py-4 px-6'>
                           <button
@@ -437,7 +435,7 @@ function HelpCenter() {
                     </div>
                     <div>
                       <p className='text-sm text-gray-600 mb-1'>Ngày gửi</p>
-                      <p className='font-medium text-gray-900'>{formatDateTime(selectedRequest.createdAt)}</p>
+                      <p className='font-medium text-gray-900'>{selectedRequest.createdAt}</p>
                     </div>
                     <div>
                       <p className='text-sm text-gray-600 mb-1'>Trạng thái</p>
@@ -458,9 +456,7 @@ function HelpCenter() {
               <div>
                 <div className='flex items-center justify-between mb-4'>
                   <h3 className='text-lg font-semibold text-green-700'>Nội dung yêu cầu của bạn</h3>
-                  <span className='text-sm text-gray-500'>
-                    Bạn đã gửi vào lúc {formatDateTime(selectedRequest.createdAt)}
-                  </span>
+                  <span className='text-sm text-gray-500'>Bạn đã gửi vào lúc {selectedRequest.createdAt}</span>
                 </div>
 
                 <Card>
@@ -503,7 +499,7 @@ function HelpCenter() {
                   <div className='flex items-center justify-between mb-4'>
                     <h3 className='text-lg font-semibold text-green-700'>Phản hồi từ đội ngũ hỗ trợ</h3>
                     <span className='text-sm text-gray-500'>
-                      {selectedRequest.staffName} đã phản hồi vào lúc {formatDateTime(selectedRequest.updatedAt)}
+                      {selectedRequest.staffName} đã phản hồi vào lúc {selectedRequest.updatedAt}
                     </span>
                   </div>
 
