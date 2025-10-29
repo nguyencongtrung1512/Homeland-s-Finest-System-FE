@@ -2,13 +2,17 @@
 export type OrderStatus =
   | 'NotYet' // Chưa xác nhận
   | 'Processing' // Chờ xác nhận
-  | 'Confirmed' // Đã xác nhận bên seller
+  | 'Confirmed' // Đã xác nhận bên seller   
   | 'Shipping' // Đang giao
   | 'Delivered' // Đã giao hàng thành công
   | 'Canceled' // Đã hủy
   | 'Returned' // Customer trả hàng 
+  | 'Returning' // Shipper đang trả hàng
   | 'Refunded' // Seller hoàn tiền
   | 'Paid' // Đã thanh toán
+  | 'PendingPayment' // Chờ thanh toán
+  | 'Complaining' // Đang phản hồi
+  | 'Complained' // Đã phản hồi
 
 // Promotion interface
 export interface OrderPromotion {
