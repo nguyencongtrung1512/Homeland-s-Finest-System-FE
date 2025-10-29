@@ -129,7 +129,10 @@ function ComboItemsManager({
         isActive: prev.isActive
       }))
     } else {
-      setNewItemData(variantData)
+      setNewItemData({
+        ...variantData,
+        price: 0
+      })
     }
   }
 
