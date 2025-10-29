@@ -20,8 +20,8 @@ const triggerSessionExpired = () => {
 // Function để reset session expired flag (gọi khi login thành công)
 export const resetSessionExpiredFlag = () => {
   sessionExpiredHandled = false
+  isTokenExpired = false
 }
-
 
 export const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -63,16 +63,19 @@ axiosInstance.interceptors.response.use(
         switch (error.response.status) {
           case 401: {
             // Luôn xử lý lỗi 401, không cần kiểm tra token
+            console.log('401 Unauthorized - Token expired, showing session expired modal')
             if (!sessionExpiredHandled) {
               sessionExpiredHandled = true
               clearAuthData()
-              
-              // Trigger session expired modal
-              triggerSessionExpired()
+
+              // Trigger session expired modal ngay lập tức
+              setTimeout(() => {
+                triggerSessionExpired()
+              }, 100)
             }
             break
           }
-          
+
           case 403: {
             if (!isTokenExpired) {
               isTokenExpired = true
@@ -115,6 +118,17 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error.response.data)
     } else {
       console.log('Network error')
+      // Nếu là network error và có token, có thể là do server không phản hồi
+      // Kiểm tra nếu có token và chưa xử lý session expired
+      const token = localStorage.getItem('token')
+      if (token && !sessionExpiredHandled) {
+        console.log('Network error with token - possible session expired')
+        sessionExpiredHandled = true
+        clearAuthData()
+        setTimeout(() => {
+          triggerSessionExpired()
+        }, 100)
+      }
       return Promise.reject(error)
     }
   }

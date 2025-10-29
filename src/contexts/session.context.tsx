@@ -2,7 +2,7 @@ import { type ReactNode, createContext, useContext, useState, useEffect } from '
 import { SessionExpiredModal } from '../components/ui/session-expired-modal'
 import { useAuth } from './auth.context'
 import { useNavigate } from 'react-router-dom'
-
+import { resetSessionExpiredFlag } from '../service/axiosInstance'
 
 interface SessionContextType {
   showSessionExpired: () => void
@@ -25,6 +25,8 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     // Xóa tất cả dữ liệu auth
     clearAuth()
     setIsSessionExpired(false)
+    // Reset session expired flag
+    resetSessionExpiredFlag()
     // Redirect về trang login
     navigate('/login')
   }
@@ -36,7 +38,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     window.addEventListener('session-expired', handleSessionExpired)
-    
+
     return () => {
       window.removeEventListener('session-expired', handleSessionExpired)
     }
@@ -45,10 +47,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   return (
     <SessionContext.Provider value={{ showSessionExpired }}>
       {children}
-      <SessionExpiredModal 
-        isOpen={isSessionExpired} 
-        onConfirm={handleConfirm}
-      />
+      <SessionExpiredModal isOpen={isSessionExpired} onConfirm={handleConfirm} />
     </SessionContext.Provider>
   )
 }
