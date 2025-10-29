@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import MapBoxByStore from '../../../components/Mapbox/mapBoxByStore'
-import mapstore from './data'
+// @ts-expect-error - No declaration file for data.js
+import mapstore from './data.js'
 import Loading from '../../../components/Loading/loading'
 
 interface Store {
@@ -21,7 +22,7 @@ interface Store {
 
 function Discover() {
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading] = useState(false)
 
   const handleStoreSelect = (store: Store) => {
     setSelectedStoreId(store.ID)
@@ -45,7 +46,7 @@ function Discover() {
           <div className='lg:w-1/3 bg-white rounded-lg shadow-md p-4 h-[600px] overflow-y-auto'>
             <h2 className='text-xl font-semibold text-green-700 mb-4'>Danh sách cửa hàng</h2>
             <div className='space-y-4'>
-              {mapstore.map((store) => (
+              {mapstore.map((store: Store) => (
                 <div
                   key={store.ID}
                   className={`p-4 rounded-lg cursor-pointer transition-all ${selectedStoreId === store.ID

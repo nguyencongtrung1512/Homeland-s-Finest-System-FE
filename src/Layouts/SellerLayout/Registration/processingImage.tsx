@@ -38,12 +38,11 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
   const [backImageList, setBackImageList] = useState<UploadFile[]>([])
   const [previewImage, setPreviewImage] = useState<string>('')
   const [showPreview, setShowPreview] = useState(false)
-  
+
   // States cho xử lý OCR
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [extractedData, setExtractedData] = useState<ExtractedCCCDInfo | null>(null)
+  const [, setIsProcessing] = useState(false)
+  const [, setExtractedData] = useState<ExtractedCCCDInfo | null>(null)
   const [processingStep, setProcessingStep] = useState<'upload' | 'processing' | 'review' | 'complete'>('upload')
-  
   // States cho chỉnh sửa thông tin
   const [editableData, setEditableData] = useState<ProcessedCCCDData>({
     firstName: '',
@@ -91,11 +90,11 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
   // Xử lý upload ảnh mặt trước
   const handleFrontImageChange: UploadProps['onChange'] = ({ fileList: newFileList }) => {
     setFrontImageList(newFileList)
-    
+
     if (newFileList.length > 0 && newFileList[0].originFileObj) {
       const file = newFileList[0].originFileObj
-      setEditableData(prev => ({ ...prev, frontImage: file }))
-      
+      setEditableData((prev) => ({ ...prev, frontImage: file }))
+
       // Tự động xử lý OCR khi có ảnh mặt trước
       handleOCRProcessing(file)
     }
@@ -104,10 +103,10 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
   // Xử lý upload ảnh mặt sau
   const handleBackImageChange: UploadProps['onChange'] = ({ fileList: newFileList }) => {
     setBackImageList(newFileList)
-    
+
     if (newFileList.length > 0 && newFileList[0].originFileObj) {
       const file = newFileList[0].originFileObj
-      setEditableData(prev => ({ ...prev, backImage: file }))
+      setEditableData((prev) => ({ ...prev, backImage: file }))
     }
   }
 
@@ -115,20 +114,20 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
   const handleOCRProcessing = async (file: File) => {
     setIsProcessing(true)
     setProcessingStep('processing')
-    
+
     try {
       const result = await extractCCCDInfo(file)
-      
+
       if (result) {
         setExtractedData(result)
-        
+
         // Parse tên
         const nameParts = result.name.trim().split(' ')
         const lastName = nameParts[0] || ''
         const firstName = nameParts.slice(1).join(' ') || ''
-        
+
         // Cập nhật dữ liệu có thể chỉnh sửa
-        setEditableData(prev => ({
+        setEditableData((prev) => ({
           ...prev,
           firstName,
           lastName,
@@ -141,7 +140,7 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
           ward: result.ward,
           street: result.street
         }))
-        
+
         setProcessingStep('review')
         toast.success('Đã đọc thông tin từ CCCD thành công!')
       }
@@ -156,7 +155,7 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
 
   // Xử lý thay đổi dữ liệu chỉnh sửa
   const handleEditableDataChange = (field: keyof ProcessedCCCDData, value: string) => {
-    setEditableData(prev => ({
+    setEditableData((prev) => ({
       ...prev,
       [field]: value
     }))
@@ -178,7 +177,7 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
     // Chuyển dữ liệu về component cha
     onDataProcessed(editableData)
     setProcessingStep('complete')
-    
+
     // Đóng dialog sau 1 giây
     setTimeout(() => {
       handleClose()
@@ -225,9 +224,7 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
     <div className='flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-colors cursor-pointer'>
       <div className='flex flex-col items-center space-y-2'>
         <FileImage className='w-8 h-8 text-gray-400' />
-        <div className='text-sm text-gray-600'>
-          {type === 'front' ? 'Chọn ảnh mặt trước' : 'Chọn ảnh mặt sau'}
-        </div>
+        <div className='text-sm text-gray-600'>{type === 'front' ? 'Chọn ảnh mặt trước' : 'Chọn ảnh mặt sau'}</div>
         <div className='text-xs text-gray-500'>JPG, PNG (tối đa 10MB)</div>
         {type === 'front' && (
           <div className='flex items-center space-x-1 text-xs text-blue-600'>
@@ -305,7 +302,8 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
                 <Loading size='lg' />
                 <h3 className='text-lg font-semibold'>Đang xử lý ảnh CCCD...</h3>
                 <p className='text-gray-600 text-center'>
-                  Hệ thống đang đọc thông tin từ ảnh CCCD của bạn.<br />
+                  Hệ thống đang đọc thông tin từ ảnh CCCD của bạn.
+                  <br />
                   Quá trình này có thể mất vài giây.
                 </p>
               </div>
@@ -318,7 +316,7 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
                   <Check className='w-5 h-5' />
                   <h3 className='text-lg font-semibold'>Thông tin đã được đọc thành công</h3>
                 </div>
-                
+
                 <div className='bg-blue-50 p-4 rounded-lg'>
                   <div className='flex items-start space-x-2'>
                     <AlertCircle className='w-5 h-5 text-blue-600 mt-0.5' />
@@ -404,7 +402,8 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
                 </div>
                 <h3 className='text-lg font-semibold text-green-600'>Xử lý thành công!</h3>
                 <p className='text-gray-600 text-center'>
-                  Thông tin đã được chuyển vào form đăng ký.<br />
+                  Thông tin đã được chuyển vào form đăng ký.
+                  <br />
                   Cửa sổ sẽ tự động đóng...
                 </p>
               </div>
@@ -417,7 +416,7 @@ const ProcessingImage: React.FC<ProcessingImageProps> = ({ isOpen, onClose, onDa
                 Hủy
               </Button>
             )}
-            
+
             {processingStep === 'review' && (
               <div className='flex space-x-2'>
                 <Button variant='outline' onClick={handleClose}>
