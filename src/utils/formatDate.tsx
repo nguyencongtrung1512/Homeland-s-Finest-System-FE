@@ -1,43 +1,84 @@
-export const formatDate = (dateString: string) => {
-  if (!dateString || dateString === 'null' || dateString === 'undefined') {
-    return '-'
+// export const formatDate = (dateString: string) => {
+//   if (!dateString || dateString === 'null' || dateString === 'undefined') {
+//     return '-'
+//   }
+
+//   const timeDateMatch = dateString.match(/(\d{2}:\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/)
+
+//   if (timeDateMatch) {
+//     const [, time, date] = timeDateMatch
+//     const [day, month, year] = date.split('/')
+//     const [hours, minutes, seconds] = time.split(':')
+
+//     const dateObj = new Date(
+//       parseInt(year),
+//       parseInt(month) - 1,
+//       parseInt(day),
+//       parseInt(hours),
+//       parseInt(minutes),
+//       parseInt(seconds)
+//     )
+
+//     if (isNaN(dateObj.getTime())) {
+//       return '-'
+//     }
+
+//     return dateObj.toLocaleDateString('vi-VN', {
+//       year: 'numeric',
+//       month: '2-digit',
+//       day: '2-digit'
+//     })
+//   }
+
+//   const date = new Date(dateString)
+//   if (isNaN(date.getTime())) {
+//     return '-'
+//   }
+
+//   return date.toLocaleDateString('vi-VN', {
+//     year: 'numeric',
+//     month: '2-digit',
+//     day: '2-digit'
+//   })
+// }
+export const formatDate = (input?: string | number | Date | null) => {
+  // 1) Normalize
+  if (input === null || input === undefined) return '-'
+
+  // Date object vào thẳng
+  if (input instanceof Date) {
+    return isNaN(input.getTime())
+      ? '-'
+      : input.toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
   }
 
-  const timeDateMatch = dateString.match(/(\d{2}:\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/)
+  // Chuỗi -> trim
+  const s = typeof input === 'string' ? input.trim() : input
 
-  if (timeDateMatch) {
-    const [, time, date] = timeDateMatch
-    const [day, month, year] = date.split('/')
-    const [hours, minutes, seconds] = time.split(':')
+  // Rỗng/‘null’/‘undefined’/‘0’ coi như invalid
+  if (s === '' || s === 'null' || s === 'undefined' || s === '0' || s === 0) return '-'
 
-    const dateObj = new Date(
-      parseInt(year),
-      parseInt(month) - 1,
-      parseInt(day),
-      parseInt(hours),
-      parseInt(minutes),
-      parseInt(seconds)
-    )
-
-    if (isNaN(dateObj.getTime())) {
-      return '-'
-    }
-
-    return dateObj.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    })
+  // 2) Nếu là số hoặc chuỗi số -> timestamp
+  if (typeof s === 'number' || /^[0-9]+$/.test(String(s))) {
+    const n = Number(s)
+    const ms = n < 1e12 ? n * 1000 : n // seconds -> ms
+    const d = new Date(ms)
+    return isNaN(d.getTime())
+      ? '-'
+      : d.toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
   }
 
-  const date = new Date(dateString)
-  if (isNaN(date.getTime())) {
-    return '-'
+  // 3) Định dạng "HH:mm:ss dd/MM/yyyy" từ BE
+  const m = String(s).match(/(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})/)
+  if (m) {
+    const [, hh, mm, ss, dd, MM, yyyy] = m
+    const d = new Date(+yyyy, +MM - 1, +dd, +hh, +mm, +ss)
+    return isNaN(d.getTime())
+      ? '-'
+      : d.toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
   }
 
-  return date.toLocaleDateString('vi-VN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
+  // ISO hoặc format khác mà JS parse được
+  const d = new Date(String(s))
+  return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
 }

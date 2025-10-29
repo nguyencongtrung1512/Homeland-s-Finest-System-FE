@@ -391,17 +391,16 @@ export default function AddressModal({
   }, [isOpen, formData.districtId, loadWards])
 
   // Load districts and wards when address changes (for editing)
+  // Load districts and wards when address changes (for editing)
   useEffect(() => {
-    if (address && isOpen) {
-      if (address.provinceId > 0) {
-        loadDistricts(address.provinceId).then(() => {
-          if (address.districtId > 0) {
-            loadWards(address.districtId)
-          }
-        })
-      }
+    if (address?.provinceId && isOpen) {
+      loadDistricts(address.provinceId).then(() => {
+        if (address.districtId && address.districtId > 0) {
+          loadWards(address.districtId)
+        }
+      })
     }
-  }, [address, isOpen, loadDistricts, loadWards])
+  }, [address?.id, isOpen])
 
   // Check if there's another default address
   const hasOtherDefault = useMemo(() => {

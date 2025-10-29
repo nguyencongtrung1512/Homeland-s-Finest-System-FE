@@ -2,16 +2,16 @@ export interface Address {
   id: string // UUID - Primary Key
   userId: string // UUID - Foreign Key to User
   province: string // varchar(255)
-  district: string // varchar(255)
+  district: string | null // varchar(255)
   ward: string // varchar(255)
   provinceId: number // integer
-  districtId: number // integer
+  districtId: number | null // integer
   wardId: number // integer
   streetAddress: string // text
-  isDefault: boolean // boolean
-  createdAt: string // TIMESTAMPTZ
-  updatedAt: string // TIMESTAMPTZ
-  isActive: boolean // boolean
+  isDefault: boolean | null // boolean
+  createdAt: string | null // TIMESTAMPTZ
+  updatedAt: string | null // TIMESTAMPTZ
+  isActive: boolean | null // boolean
 }
 
 export interface AddressCreateInput {
