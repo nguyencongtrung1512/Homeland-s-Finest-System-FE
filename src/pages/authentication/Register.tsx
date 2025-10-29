@@ -12,7 +12,16 @@ import { Label } from '../../components/ui/label'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '../../components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
+import { Check, ChevronsUpDown } from 'lucide-react'
 import { Calendar as CalendarComponent } from '../../components/ui/calendar'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -50,6 +59,8 @@ function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [provinces, setProvinces] = useState<Province[]>([])
   const [loadingProvinces, setLoadingProvinces] = useState(false)
+  const [provinceOpen, setProvinceOpen] = useState(false)
+  const [provinceSearchValue, setProvinceSearchValue] = useState('')
 
   // Load provinces on component mount
   useEffect(() => {
@@ -88,14 +99,25 @@ function Register() {
     if (success) setSuccess('')
   }
 
-  const handleProvinceChange = (value: string) => {
+  const handleProvinceChange = (provinceId: number) => {
     setFormData((prev) => ({
       ...prev,
-      provinceId: parseInt(value)
+      provinceId
     }))
+    setProvinceOpen(false)
     if (error) setError('')
     if (success) setSuccess('')
   }
+
+  // Filter provinces based on search
+  const filteredProvinces = provinces.filter(
+    (province) =>
+      province.name.toLowerCase().includes(provinceSearchValue.toLowerCase()) ||
+      province.region.toLowerCase().includes(provinceSearchValue.toLowerCase())
+  )
+
+  // Get selected province name for display
+  const selectedProvince = provinces.find((p) => p.id === formData.provinceId)
 
   const validateForm = (): boolean => {
     if (!formData.firstName.trim()) {
@@ -392,26 +414,56 @@ function Register() {
 
             <div className='space-y-2'>
               <Label>
-                Tỉnh/Thành phố<span className='text-destructive'>*</span>
+                Quê hương của bạn<span className='text-destructive'>*</span>
               </Label>
               <div className='relative'>
-                <MapPin className='absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10' />
-                <Select
-                  value={formData.provinceId?.toString() || ''}
-                  onValueChange={handleProvinceChange}
-                  disabled={loadingProvinces}
-                >
-                  <SelectTrigger className='pl-10'>
-                    <SelectValue placeholder={loadingProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {provinces.map((province) => (
-                      <SelectItem key={province.id} value={province.id.toString()}>
-                        {province.name} - {province.region}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant='outline'
+                      role='combobox'
+                      aria-expanded={provinceOpen}
+                      className='w-full justify-between pl-14 pr-8 h-10 text-left'
+                      disabled={loadingProvinces}
+                    >
+                      <span className='flex-1 truncate mr-2'>
+                        {loadingProvinces
+                          ? 'Đang tải...'
+                          : selectedProvince
+                            ? `${selectedProvince.name} - ${selectedProvince.region}`
+                            : 'Chọn tỉnh/thành phố'}
+                      </span>
+                      <ChevronsUpDown className='h-4 w-4 shrink-0 opacity-50' />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className='w-full p-0' align='start'>
+                    <Command>
+                      <CommandInput
+                        placeholder='Tìm kiếm tỉnh/thành phố...'
+                        value={provinceSearchValue}
+                        onValueChange={setProvinceSearchValue}
+                      />
+                      <CommandList>
+                        <CommandEmpty>Không tìm thấy tỉnh/thành phố nào.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredProvinces.map((province) => (
+                            <CommandItem
+                              key={province.id}
+                              value={`${province.name} - ${province.region}`}
+                              onSelect={() => handleProvinceChange(province.id)}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${formData.provinceId === province.id ? 'opacity-100' : 'opacity-0'
+                                  }`}
+                              />
+                              {province.name} - {province.region}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
