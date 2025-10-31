@@ -26,9 +26,9 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   hasPermission: false,
-  logout: async () => {},
-  login: () => {},
-  clearAuth: () => {},
+  logout: async () => { },
+  login: () => { },
+  clearAuth: () => { },
   checkPermission: () => false
 })
 
@@ -62,12 +62,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const logout = async () => {
-    clearAuth()
-    await logoutAPI()
-    toast.success('Đăng xuất thành công!', {
-      position: 'top-right',
-      autoClose: 2000
-    })
+    try {
+      // Gọi API logout trước khi clear auth để request có token
+      await logoutAPI()
+      clearAuth()
+      toast.success('Đăng xuất thành công!', {
+        position: 'top-right',
+        autoClose: 2000
+      })
+    } catch {
+      // Nếu API logout fail (có thể do token đã hết hạn), vẫn clear auth
+      clearAuth()
+      // Không hiển thị toast lỗi vì đã logout thành công về phía client
+    }
   }
 
   return (

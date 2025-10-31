@@ -62,6 +62,16 @@ axiosInstance.interceptors.response.use(
       } else {
         switch (error.response.status) {
           case 401: {
+            // Kiểm tra nếu là request logout thì không trigger session expired modal
+            const requestUrl = error.config?.url || ''
+            const isLogoutRequest = requestUrl.includes('/logout')
+
+            // Bỏ qua session expired modal nếu là logout request
+            if (isLogoutRequest) {
+              console.log('401 on logout request - skipping session expired modal')
+              break
+            }
+
             // Luôn xử lý lỗi 401, không cần kiểm tra token
             console.log('401 Unauthorized - Token expired, showing session expired modal')
             if (!sessionExpiredHandled) {
