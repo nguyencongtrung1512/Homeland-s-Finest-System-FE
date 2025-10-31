@@ -113,8 +113,8 @@ const ChatBot: React.FC = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className='fixed bottom-6 right-6 w-96 h-[500px] flex flex-col'>
-          <Card className='h-full flex flex-col shadow-2xl border-0 py-0'>
+        <div className='fixed bottom-6 right-6 w-96 h-[600px] flex flex-col'>
+          <Card className='h-full flex flex-col shadow-2xl border-0 py-0 rounded-xl overflow-hidden'>
             {/* Header */}
             <CardHeader className='bg-green-600 text-white px-5 py-3 rounded-t-xl !px-5'>
               <div className='flex items-center justify-between'>
@@ -139,9 +139,8 @@ const ChatBot: React.FC = () => {
                 {messages.map((message) => (
                   <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
                     <div
-                      className={`max-w-[85%] rounded-lg px-4 py-3 ${
-                        message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
-                      }`}
+                      className={`max-w-[85%] rounded-lg px-4 py-3 ${message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
+                        }`}
                     >
                       <div className='flex items-start gap-2'>
                         {!message.isUser && <Bot className='h-4 w-4 mt-0.5 text-green-600 flex-shrink-0' />}

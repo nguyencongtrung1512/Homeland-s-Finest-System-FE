@@ -3,7 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../../../contexts/cart.context'
 import { useAuth } from '../../../../../contexts/auth.context'
 import { useProductDetailContext } from '../productsDetail'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../../../components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../../../../components/ui/dialog'
 import { Button } from '../../../../../components/ui/button'
 
 function ProductGallery() {
@@ -100,8 +107,9 @@ function ProductGallery() {
                     <button
                       key={index}
                       onClick={() => setSelectedImage(index)}
-                      className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-colors ${selectedImage === index ? 'border-green-500' : 'border-transparent hover:border-gray-300'
-                        }`}
+                      className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-colors ${
+                        selectedImage === index ? 'border-green-500' : 'border-transparent hover:border-gray-300'
+                      }`}
                     >
                       <img
                         src={image}
@@ -129,8 +137,7 @@ function ProductGallery() {
                     {[...Array(5)].map((_, i) => (
                       <svg
                         key={i}
-                        className={`w-5 h-5 ${i < Math.floor(product.rating) ? 'text-yellow-400' : 'text-gray-300'
-                          }`}
+                        className={`w-5 h-5 ${i < Math.floor(product.rating) ? 'text-yellow-400' : 'text-gray-300'}`}
                         fill='currentColor'
                         viewBox='0 0 20 20'
                       >
@@ -148,8 +155,11 @@ function ProductGallery() {
 
                 {/* Status */}
                 <div className='flex items-center gap-2 mb-4'>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${product.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      product.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
                     {product.isActive ? 'Còn hàng' : 'Hết hàng'}
                   </span>
                   <span className='text-gray-500'>•</span>
@@ -159,9 +169,7 @@ function ProductGallery() {
 
               {/* Price */}
               <div className='border-t border-b border-gray-200 py-6'>
-                <div className='text-3xl font-bold text-red-600 mb-2'>
-                  {currentPrice.toLocaleString('vi-VN')}₫
-                </div>
+                <div className='text-3xl font-bold text-red-600 mb-2'>{currentPrice.toLocaleString('vi-VN')}₫</div>
                 {currentVariant?.basePrice && currentVariant.basePrice > currentPrice && (
                   <div className='text-lg text-gray-500 line-through'>
                     {currentVariant.basePrice.toLocaleString('vi-VN')}₫
@@ -182,21 +190,17 @@ function ProductGallery() {
                           setQuantity(1)
                         }}
                         disabled={!variant.isActive || variant.availableQuantity === 0}
-                        className={`p-3 border rounded-lg text-left transition-colors ${selectedVariant === index
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-300 hover:border-gray-400'
-                          } ${!variant.isActive || variant.availableQuantity === 0
-                            ? 'opacity-50 cursor-not-allowed'
-                            : ''
-                          }`}
+                        className={`p-3 border rounded-lg text-left transition-colors ${
+                          selectedVariant === index
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-300 hover:border-gray-400'
+                        } ${
+                          !variant.isActive || variant.availableQuantity === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
                       >
                         <div className='font-medium'>{variant.variantName}</div>
-                        <div className='text-sm text-gray-600'>
-                          {variant.price.toLocaleString('vi-VN')}₫
-                        </div>
-                        <div className='text-xs text-gray-500'>
-                          Còn {variant.availableQuantity} sản phẩm
-                        </div>
+                        <div className='text-sm text-gray-600'>{variant.price.toLocaleString('vi-VN')}₫</div>
+                        <div className='text-xs text-gray-500'>Còn {variant.availableQuantity} sản phẩm</div>
                       </button>
                     ))}
                   </div>
@@ -224,9 +228,7 @@ function ProductGallery() {
                       +
                     </button>
                   </div>
-                  <span className='text-gray-600'>
-                    {currentStock} sản phẩm có sẵn
-                  </span>
+                  <span className='text-gray-600'>{currentStock} sản phẩm có sẵn</span>
                 </div>
               </div>
 
@@ -244,9 +246,7 @@ function ProductGallery() {
                         Đang thêm...
                       </>
                     ) : (
-                      <>
-                        {!product.isActive || currentStock === 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
-                      </>
+                      <>{!product.isActive || currentStock === 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}</>
                     )}
                   </button>
 
@@ -258,7 +258,6 @@ function ProductGallery() {
                     {!product.isActive || currentStock === 0 ? 'Hết hàng' : 'Mua ngay'}
                   </button>
                 </div>
-
               </div>
 
               {/* Product Description */}
@@ -272,15 +271,13 @@ function ProductGallery() {
       </div>
 
       <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className='sm:max-w-md'>
           <DialogHeader>
             <DialogTitle>Đăng nhập để tiếp tục</DialogTitle>
-            <DialogDescription>
-              Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng.
-            </DialogDescription>
+            <DialogDescription>Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowLoginModal(false)}>
+            <Button variant='outline' onClick={() => setShowLoginModal(false)}>
               Hủy
             </Button>
             <Button variant='green' onClick={() => navigate('/login')}>

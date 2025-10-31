@@ -472,11 +472,12 @@ function Register() {
                 <Label>
                   Giới tính<span className='text-destructive'>*</span>
                 </Label>
-                <div className='relative'>
+                <div className='relative '>
                   <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10' />
                   <Select value={formData.gender} onValueChange={handleSelectChange}>
                     <SelectTrigger className='pl-10'>
                       <SelectValue placeholder='Chọn giới tính' />
+
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value='Male'>Nam</SelectItem>

@@ -7,6 +7,9 @@ import Brand from './brand/brand'
 import Loading from '../../../../components/Loading/loading'
 import EmptyState from '../../../../components/EmptyState/emptyState'
 import { useProductDetail, type ProductDetailData } from '../../../../hooks/useProductDetail'
+import { useAuth } from '../../../../contexts/auth.context'
+import ChatSystem from '../../Chat/chatSystem'
+import ChatBot from '../../../../components/ChatBot/chatbot'
 
 // Context for sharing product data across components
 interface ProductDetailContextType {
@@ -27,6 +30,7 @@ export const useProductDetailContext = () => {
 }
 
 function ProductsDetail() {
+  const { isAuthenticated } = useAuth()
   const { id } = useParams<{ id: string }>()
   
   // Sử dụng custom hook
@@ -74,6 +78,9 @@ function ProductsDetail() {
           <ProductTabs />
           <ViewRating />
         </div>
+      </div>
+      <div>
+        {isAuthenticated ? <ChatSystem /> : <ChatBot />}
       </div>
     </ProductDetailContext.Provider>
   )

@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useProductDetailContext } from '../productsDetail'
 import path from '../../../../../constants/path'
+import { useChat } from '../../../../../contexts/chat.context'
 
 function Brand() {
   const navigate = useNavigate()
   const { product } = useProductDetailContext()
+  const { openChatWithStore } = useChat()
 
   if (!product) {
     return null
@@ -16,6 +18,12 @@ function Brand() {
 
   const handleViewStory = () => {
     navigate(`${path.store.replace(':storeId', product.storeId)}?tab=story`)
+  }
+
+  const handleSendMessage = () => {
+    if (product.storeId) {
+      openChatWithStore(product.storeId, product.storeName)
+    }
   }
 
   return (
@@ -48,7 +56,10 @@ function Brand() {
                   </p>
 
                   {/* Send Message Button */}
-                  <button className='bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors flex items-center gap-2'>
+                  <button
+                    onClick={handleSendMessage}
+                    className='bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors flex items-center gap-2'
+                  >
                     <svg className='w-4 h-4' fill='currentColor' viewBox='0 0 20 20'>
                       <path
                         fillRule='evenodd'

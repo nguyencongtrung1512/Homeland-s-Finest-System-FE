@@ -19,6 +19,7 @@ import { Input } from '../../../components/ui/input'
 import { Card, CardHeader, CardTitle } from '../../../components/ui/card'
 import { ScrollArea } from '../../../components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
+import { useChat } from '../../../contexts/chat.context'
 
 interface Message {
   id: string
@@ -36,12 +37,14 @@ interface Conversation {
   online?: boolean
   time?: string
   unread?: number
+  storeId?: string
 }
 
 const ChatSystem: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState('ai')
+  const { isOpen, setIsOpen, activeTab, setActiveTab, selectedStoreId, selectedStoreName, setSelectedStoreId } =
+    useChat()
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null)
+  const [dynamicConversations, setDynamicConversations] = useState<Conversation[]>([])
   const [aiMessages, setAiMessages] = useState<Message[]>([
     {
       id: '1',
@@ -55,30 +58,75 @@ const ChatSystem: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const conversations: Conversation[] = [
+  const baseConversations: Conversation[] = [
     {
       id: 1,
       name: 'Cửa hàng Đặc sản Hà Giang',
       avatar: '🏪',
       lastMessage: 'Các bánh kẹnh có thêm bánh su',
       online: true,
-      unread: 2
+      unread: 2,
+      storeId: 'store-1'
     },
     {
       id: 2,
       name: 'Nguyễn Văn Minh',
       avatar: '👨',
       lastMessage: 'Cảm ơn shop, sản phẩm rất ok',
-      time: 'Hôm qua'
+      time: 'Hôm qua',
+      storeId: 'store-2'
     },
     {
       id: 3,
       name: 'Làng nghề Bát Tràng',
       avatar: '🏺',
       lastMessage: 'Bộ ấm chén đã sẵn sàng giao hàng',
-      time: '2 ngày'
+      time: '2 ngày',
+      storeId: 'store-3'
     }
   ]
+
+  // Kết hợp conversations cố định và động
+  const conversations = [...baseConversations, ...dynamicConversations]
+
+  // Tự động chọn hoặc tạo conversation khi selectedStoreId thay đổi
+  useEffect(() => {
+    if (selectedStoreId && isOpen) {
+      // Tìm trong cả base và dynamic conversations
+      const allConversations = [...baseConversations, ...dynamicConversations]
+      const foundConversation = allConversations.find((conv) => conv.storeId === selectedStoreId)
+
+      if (foundConversation) {
+        setSelectedConversation(foundConversation.id)
+        setActiveTab('seller')
+      } else {
+        // Tạo conversation mới nếu không tìm thấy
+        const newConversationId = Date.now()
+        const newConversation: Conversation = {
+          id: newConversationId,
+          name: selectedStoreName || 'Cửa hàng',
+          avatar: '🏪',
+          lastMessage: 'Bắt đầu cuộc trò chuyện',
+          online: true,
+          storeId: selectedStoreId
+        }
+
+        setDynamicConversations((prev) => {
+          // Kiểm tra xem conversation với storeId này đã tồn tại chưa
+          const existing = prev.find((c) => c.storeId === selectedStoreId)
+          if (existing) {
+            setSelectedConversation(existing.id)
+            return prev
+          }
+          return [...prev, newConversation]
+        })
+
+        setSelectedConversation(newConversationId)
+        setActiveTab('seller')
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStoreId, isOpen, selectedStoreName])
 
   const sellerMessages: { [key: number]: Message[] } = {
     1: [
@@ -174,14 +222,21 @@ const ChatSystem: React.FC = () => {
   }
 
   const handleTabChange = (value: string) => {
-    setActiveTab(value)
+    setActiveTab(value as 'ai' | 'seller')
     if (value === 'seller') {
+      // Nếu có selectedStoreId, giữ lại conversation đã chọn
+      if (!selectedStoreId) {
+        setSelectedConversation(null)
+      }
+    } else {
       setSelectedConversation(null)
+      setSelectedStoreId(null)
     }
   }
 
   const handleBackToList = () => {
     setSelectedConversation(null)
+    setSelectedStoreId(null)
   }
 
   const selectedConv = conversations.find((c) => c.id === selectedConversation)
@@ -208,10 +263,10 @@ const ChatSystem: React.FC = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className='fixed bottom-6 right-6 z-50 w-96 h-[600px] flex flex-col shadow-2xl'>
-          <Card className='h-full flex flex-col border-0 overflow-hidden'>
+        <div className='fixed bottom-6 right-6 w-96 h-[600px] flex flex-col'>
+          <Card className='h-full flex flex-col border-0 py-0 shadow-2xl overflow-hidden !gap-0'>
             {/* Header */}
-            <CardHeader className='bg-green-600 text-white px-5 py-3 flex-shrink-0'>
+            <CardHeader className='bg-green-600 text-white px-5 py-3 rounded-t-xl !px-5 !pb-3'>
               <div className='flex items-center justify-between'>
                 <div className='flex items-center gap-2'>
                   <ShoppingBag className='h-5 w-5' />
@@ -229,13 +284,19 @@ const ChatSystem: React.FC = () => {
             </CardHeader>
 
             {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={handleTabChange} className='flex-1 flex flex-col min-h-0'>
-              <TabsList className='w-full justify-start rounded-none border-b bg-white px-5 flex-shrink-0'>
-                <TabsTrigger value='ai' className='gap-2'>
+            <Tabs value={activeTab} onValueChange={handleTabChange} className='flex-1 flex flex-col min-h-0 py-2'>
+              <TabsList className='w-full justify-start rounded-none border-b bg-white px-5 flex-shrink-0 !pt-0 !mt-0'>
+                <TabsTrigger
+                  value='ai'
+                  className='gap-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-700'
+                >
                   <Bot className='h-4 w-4' />
                   Trợ lý AI
                 </TabsTrigger>
-                <TabsTrigger value='seller' className='gap-2'>
+                <TabsTrigger
+                  value='seller'
+                  className='gap-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-700'
+                >
                   <Store className='h-4 w-4' />
                   Tin nhắn
                   {totalUnread > 0 && (

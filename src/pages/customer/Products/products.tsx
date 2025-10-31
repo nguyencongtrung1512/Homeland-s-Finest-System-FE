@@ -10,8 +10,12 @@ import { getAllCombos } from '../../../apis/combo.api'
 import { type Combo } from '../../../types/combo.type'
 import { ComboList } from '../combo/combo'
 import { PromotionBubble } from '../../../components/PromotionBubble'
+import ChatBot from '../../../components/ChatBot/chatbot'
+import ChatSystem from '../Chat/chatSystem'
+import { useAuth } from '../../../contexts/auth.context'
 
 function Products() {
+  const { isAuthenticated } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(0) // Backend expect zero-based page
   const { addToCart } = useCart()
@@ -242,6 +246,9 @@ function Products() {
 
       <div>
         <Discover />
+      </div>
+      <div>
+      {isAuthenticated ? <ChatSystem /> : <ChatBot />}
       </div>
       <PromotionBubble />
     </div>
