@@ -65,7 +65,7 @@ export const ProductTabs: React.FC = () => {
     },
     {
       id: 'usage',
-      label: 'Cách sử dụng',
+      label: 'Chứng chỉ chất lượng',
       content: (
         <div className='max-w-4xl mx-auto'>
           <h3 className='text-black text-xl font-bold mb-4'>Cách sử dụng mật ong</h3>
@@ -86,47 +86,6 @@ export const ProductTabs: React.FC = () => {
               <span className='text-gray-700'>Có thể dùng thay đường trong các món ăn, thức uống</span>
             </li>
           </ul>
-        </div>
-      )
-    },
-    {
-      id: 'storage',
-      label: 'Lưu ý & Bảo quản',
-      content: (
-        <div className='max-w-4xl mx-auto'>
-          <h3 className='text-black text-xl font-bold mb-4'>Lưu ý và bảo quản</h3>
-          <div className='space-y-4'>
-            <div>
-              <h4 className='text-black text-base font-bold mb-2'>Cách bảo quản:</h4>
-              <ul className='space-y-2'>
-                <li className='flex items-start gap-2'>
-                  <span className='text-gray-700'>•</span>
-                  <span className='text-gray-700'>Bảo quản ở nơi khô ráo, thoáng mát</span>
-                </li>
-                <li className='flex items-start gap-2'>
-                  <span className='text-gray-700'>•</span>
-                  <span className='text-gray-700'>Tránh ánh nắng trực tiếp</span>
-                </li>
-                <li className='flex items-start gap-2'>
-                  <span className='text-gray-700'>•</span>
-                  <span className='text-gray-700'>Đậy kín nắp sau khi sử dụng</span>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className='text-black text-base font-bold mb-2'>Lưu ý:</h4>
-              <ul className='space-y-2'>
-                <li className='flex items-start gap-2'>
-                  <span className='text-gray-700'>•</span>
-                  <span className='text-gray-700'>Không dành cho trẻ em dưới 1 tuổi</span>
-                </li>
-                <li className='flex items-start gap-2'>
-                  <span className='text-gray-700'>•</span>
-                  <span className='text-gray-700'>Người bị dị ứng mật ong nên tránh sử dụng</span>
-                </li>
-              </ul>
-            </div>
-          </div>
         </div>
       )
     },

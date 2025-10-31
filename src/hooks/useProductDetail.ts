@@ -8,6 +8,7 @@ export interface ProductDetailData {
   provinceId: number
   editedById: string
   name: string
+  storeName: string
   description: string
   productImages: string[]
   productVideo: string
@@ -83,7 +84,7 @@ export const useProductDetail = (productId: string | undefined): UseProductDetai
     try {
       setLoading(true)
       setError(null)
-      
+
       const response = await productApi.getById(productId)
       console.log('data sản phẩm của useProduct nè', response)
       if (response.status === 200 && response.data) {

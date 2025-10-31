@@ -165,7 +165,7 @@ export default function AddressContent({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className='bg-gradient-to-br from-slate-50 to-green-50/30 p-6 rounded-2xl min-h-[500px]'>
+      <div className='bg-gradient-to-br from-slate-50 to-green-50/30 p-6 rounded-2xl min-h-[500px] w-full max-w-4xl mx-auto sm:p-8 md:p-10 lg:p-12 xl:max-w-5xl'>
         <div className='flex justify-between items-center mb-8'>
           <div>
             <h2 className='text-2xl font-bold text-gray-800 mb-1'> Sổ địa chỉ</h2>

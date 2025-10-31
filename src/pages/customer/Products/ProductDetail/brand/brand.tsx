@@ -40,9 +40,10 @@ function Brand() {
 
                 {/* Brand Info */}
                 <div className='flex-1'>
-                  <h3 className='text-2xl font-bold text-gray-900 mb-2'>{product.material}</h3>
+                  <h2 className='text-2xl font-bold text-gray-900 mb-2'>{product.storeName}</h2>
+                  <h4 className='text-base font-bold text-gray-900 mb-2'>Nhà sản xuất: {product.material}</h4>
                   <p className='text-gray-700 text-base leading-6 mb-4'>
-                    Cửa hàng chuyên cung cấp {product.typeProduct.toLowerCase()} chất lượng cao. 
+                    Cửa hàng chuyên cung cấp {product.typeProduct.toLowerCase()} chất lượng cao.
                     Cam kết mang đến những sản phẩm tốt nhất cho khách hàng.
                   </p>
 
@@ -138,13 +139,12 @@ function Brand() {
                     <div className='space-y-2'>
                       {product.productCertificateDTOs.map((cert) => (
                         <div key={cert.id} className='flex items-center gap-2'>
-                          <div className={`w-2 h-2 rounded-full ${
-                            cert.status === 'approved' ? 'bg-green-500' : 
+                          <div className={`w-2 h-2 rounded-full ${cert.status === 'approved' ? 'bg-green-500' :
                             cert.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
-                          }`}></div>
+                            }`}></div>
                           <span className='text-sm text-blue-800'>
-                            Chứng nhận {cert.status === 'approved' ? 'đã duyệt' : 
-                            cert.status === 'pending' ? 'đang chờ' : 'bị từ chối'}
+                            Chứng nhận {cert.status === 'approved' ? 'đã duyệt' :
+                              cert.status === 'pending' ? 'đang chờ' : 'bị từ chối'}
                           </span>
                         </div>
                       ))}

@@ -3,9 +3,13 @@ import HandicraftProducts from './handicraftProducts'
 import VietnamSpecialtyMap from './VietnamSpecialtyMap'
 import BannerWelcome from '../../../assets/BannerWelcome.png'
 import ChatBot from '../../../components/ChatBot/chatbot'
+import ChatSystem from '../Chat/chatSystem'
 import { PromotionBubble } from '../../../components/PromotionBubble'
+import { useAuth } from '../../../contexts/auth.context'
 
 function HomePage() {
+  const { isAuthenticated } = useAuth()
+
   return (
     <main>
       <section className='relative w-full'>
@@ -42,7 +46,7 @@ function HomePage() {
       <section>
         <HandicraftProducts />
       </section>
-      <ChatBot />
+      {isAuthenticated ? <ChatSystem /> : <ChatBot />}
       <PromotionBubble />
     </main>
   )

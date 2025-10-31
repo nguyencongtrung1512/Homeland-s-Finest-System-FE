@@ -390,8 +390,6 @@ export default function AddressModal({
     }
   }, [isOpen, formData.districtId, loadWards])
 
-  // Load districts and wards when address changes (for editing)
-  // Load districts and wards when address changes (for editing)
   useEffect(() => {
     if (address?.provinceId && isOpen) {
       loadDistricts(address.provinceId).then(() => {
@@ -415,7 +413,7 @@ export default function AddressModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='w-full max-w-3xl xl:max-w-4xl mx-auto max-h-[80vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>{address ? 'Sửa địa chỉ' : 'Thêm địa chỉ mới'}</DialogTitle>
           <DialogDescription>
@@ -455,7 +453,7 @@ export default function AddressModal({
                 </div>
               )}
 
-              <div className='grid grid-cols-3 gap-4'>
+              <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
                 <div>
                   <Label htmlFor='province'>Tỉnh/thành *</Label>
                   <Select
