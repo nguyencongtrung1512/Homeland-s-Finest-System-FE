@@ -1,3 +1,4 @@
+import type { is } from 'date-fns/locale'
 import axiosInstance from '../service/axiosInstance'
 
 const API_URL = `/BlogCategory`
@@ -18,6 +19,7 @@ export interface BlogItem {
   description: string
   image: string
   createdAt: string
+  isActive: boolean
 }
 
 export interface BlogCategoryDetail extends BlogCategoryItem {

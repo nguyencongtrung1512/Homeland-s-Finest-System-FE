@@ -33,6 +33,7 @@ import {
   AlertDialogTitle
 } from '../../../components/ui/alert-dialog'
 import { formatDate } from '../../../utils/formatDate'
+import { resolveImageUrl } from '../../../utils/image'
 
 function BlogByCategory() {
   const { id } = useParams<{ id: string }>()
@@ -226,27 +227,6 @@ function BlogByCategory() {
           </Card>
         </div>
 
-        {/* Category Details */}
-        <Card className='bg-card border-border'>
-          <CardHeader>
-            <CardTitle className='text-foreground'>Thông tin chi tiết</CardTitle>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <div>
-                <label className='text-sm font-medium text-muted-foreground'>Tên danh mục</label>
-                <p className='text-foreground font-medium mt-1'>{categoryDetail.name}</p>
-              </div>
-              <div>
-                <label className='text-sm font-medium text-muted-foreground'>ID danh mục</label>
-                <p className='text-foreground font-mono text-sm mt-1 bg-muted p-2 rounded'>
-                  {categoryDetail.categoryId}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Blogs Section */}
         <Card className='bg-card border-border'>
           <CardHeader>
@@ -293,7 +273,7 @@ function BlogByCategory() {
                           </div>
                           {blog.image && (
                             <div className='mt-3'>
-                              <img src={blog.image} alt={blog.title} className='w-20 h-20 object-cover rounded-md' />
+                              <img src={resolveImageUrl(blog.image)} alt={blog.title} className='w-20 h-20 object-cover rounded-md' />
                             </div>
                           )}
                         </div>
@@ -360,7 +340,7 @@ function BlogByCategory() {
               {selectedBlog.image && (
                 <div className='my-4'>
                   <img
-                    src={selectedBlog.image}
+                    src={resolveImageUrl(selectedBlog.image)}
                     alt={selectedBlog.title}
                     className='w-full max-h-[300px] object-cover rounded-md'
                   />

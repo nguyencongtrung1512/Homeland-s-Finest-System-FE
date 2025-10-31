@@ -75,7 +75,7 @@ export interface UpdateBlogInput {
   title?: string
   description?: string
   content?: string
-  image?: string
+  image?: File | string
   isActive?: boolean
 }
 
@@ -222,7 +222,7 @@ export const updateBlogActiveStatus = async (id: string, isActive: boolean) => {
 
 // Function để xóa Blog
 export const deleteBlog = async (id: string) => {
-  const response = await axiosInstance.put(`/delete-blog/${id}`, null, {
+  const response = await axiosInstance.put(`/Blog/delete-blog/${id}`, null, {
     headers: {
       'Content-Type': 'application/json'
     }
