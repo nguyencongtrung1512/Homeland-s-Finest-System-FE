@@ -12,6 +12,7 @@ import { toast } from 'react-toastify'
 import ReactQuill from 'react-quill-new'
 import 'react-quill-new/dist/quill.snow.css'
 import { blogApi } from '../../../apis/blog.api'
+import { resolveImageUrl } from '../../../utils/image'
 
 function UpdateBlogByCategory() {
   const { id } = useParams<{ id: string }>() // id của blog
@@ -47,7 +48,7 @@ function UpdateBlogByCategory() {
         setTitle(blogData.title)
         setDescription(blogData.description)
         setContent(blogData.content)
-        setImagePreview(blogData.image)
+        setImagePreview(resolveImageUrl(blogData.image))
 
         setIsActive(typeof blogData.isActive === 'boolean' ? blogData.isActive : true)
 

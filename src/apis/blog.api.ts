@@ -75,7 +75,7 @@ export interface UpdateBlogInput {
   title?: string
   description?: string
   content?: string
-  image?: string
+  image?: File | string
   isActive?: boolean
 }
 
