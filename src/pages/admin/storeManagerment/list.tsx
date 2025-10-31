@@ -320,7 +320,7 @@ function StoreManagement() {
                           <div className='flex items-center gap-4 flex-1'>
                             <Avatar className='w-10 h-10 border border-gray-200'>
                               <AvatarFallback className='bg-gray-100 text-blue-500 text-sm font-medium'>
-                                {store.ownerAvatar}
+                                {store.logoUrl}
                               </AvatarFallback>
                             </Avatar>
                             <div className='flex-1 min-w-0'>

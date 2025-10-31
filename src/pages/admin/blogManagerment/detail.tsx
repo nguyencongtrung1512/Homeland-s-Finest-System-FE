@@ -57,21 +57,30 @@ function BlogByCategory() {
     setLoading(true)
     try {
       const response = await blogCategoryApi.getDetail(id)
-      if (response.status === 200) {
-        // Lấy data từ response.data
-        const responseData = response.data
-        const blogsArray = Array.isArray(responseData[0].blogs) ? responseData[0].blogs : []
-        const categoryData: BlogCategoryDetail = {
-          categoryId: responseData[0].categoryId,
-          name: responseData[0].name,
-          isActive: responseData[0].isActive,
-          createdAt: responseData[0].createdAt,
-          updatedAt: responseData[0].updatedAt,
-          blogs: blogsArray
-        }
-
-        setCategoryDetail(categoryData)
+      // if (response.status === 200) {
+      //   // Lấy data từ response.data
+      //   const responseData = response.data
+      //   const blogsArray = Array.isArray(responseData[0].blogs) ? responseData[0].blogs : []
+      //   const categoryData: BlogCategoryDetail = {
+      //     categoryId: responseData[0].categoryId,
+      //     name: responseData[0].name,
+      //     isActive: responseData[0].isActive,
+      //     createdAt: responseData[0].createdAt,
+      //     updatedAt: responseData[0].updatedAt,
+      //     blogs: blogsArray
+      //   }
+      const raw = Array.isArray(response) ? response[0] : response
+      const blogsArray = Array.isArray(raw?.blogs) ? raw.blogs : []
+      const categoryData: BlogCategoryDetail = {
+        categoryId: raw.categoryId,
+        name: raw.name,
+        isActive: raw.isActive,
+        createdAt: raw.createdAt,
+        updatedAt: raw.updatedAt,
+        blogs: blogsArray
       }
+
+      setCategoryDetail(categoryData)
     } catch (error) {
       console.error('Error loading category detail:', error)
     } finally {
@@ -96,12 +105,16 @@ function BlogByCategory() {
     if (!blogToDelete) return
 
     try {
-      const response = await blogApi.delete(blogToDelete)
-      if (response.status === 200) {
-        loadCategoryDetail()
-        setIsDeleteDialogOpen(false)
-        setBlogToDelete(null)
-      }
+      // const response = await blogApi.delete(blogToDelete)
+      // if (response.status === 200) {
+      //   loadCategoryDetail()
+      //   setIsDeleteDialogOpen(false)
+      //   setBlogToDelete(null)
+      // }
+      await blogApi.update(blogToDelete, { isActive: false })
+      await loadCategoryDetail()
+      setIsDeleteDialogOpen(false)
+      setBlogToDelete(null)
     } catch (error) {
       console.error('Error deleting blog:', error)
     }
@@ -226,27 +239,6 @@ function BlogByCategory() {
           </Card>
         </div>
 
-        {/* Category Details */}
-        <Card className='bg-card border-border'>
-          <CardHeader>
-            <CardTitle className='text-foreground'>Thông tin chi tiết</CardTitle>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <div>
-                <label className='text-sm font-medium text-muted-foreground'>Tên danh mục</label>
-                <p className='text-foreground font-medium mt-1'>{categoryDetail.name}</p>
-              </div>
-              <div>
-                <label className='text-sm font-medium text-muted-foreground'>ID danh mục</label>
-                <p className='text-foreground font-mono text-sm mt-1 bg-muted p-2 rounded'>
-                  {categoryDetail.categoryId}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Blogs Section */}
         <Card className='bg-card border-border'>
           <CardHeader>
@@ -275,14 +267,25 @@ function BlogByCategory() {
                       <div className='flex-1'>
                         <div className='flex items-center justify-between mb-2'>
                           <h4 className='font-semibold text-foreground text-lg'>{blog.title}</h4>
-                          <Badge
+                          {/* <Badge
                             variant={blog.isActive ? 'default' : 'destructive'}
                             className={
                               blog.isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
                             }
                           >
                             {blog.isActive ? 'Hoạt động' : 'Không hoạt động'}
-                          </Badge>
+                          </Badge> */}
+                          {(() => {
+                            const active = blog?.isActive !== false
+                            return (
+                              <Badge
+                                variant={active ? 'default' : 'destructive'}
+                                className={active ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}
+                              >
+                                {active ? 'Hoạt động' : 'Không hoạt động'}
+                              </Badge>
+                            )
+                          })()}
                         </div>
                         <p className='text-muted-foreground mb-4 line-clamp-3'>{blog.description}</p>
 
@@ -346,14 +349,25 @@ function BlogByCategory() {
             <div className='space-y-4 mt-4'>
               <div className='flex items-center justify-between'>
                 <h3 className='text-lg font-semibold'>{selectedBlog.title}</h3>
-                <Badge
+                {/* <Badge
                   variant={selectedBlog.isActive ? 'default' : 'destructive'}
                   className={
                     selectedBlog.isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
                   }
                 >
                   {selectedBlog.isActive ? 'Hoạt động' : 'Không hoạt động'}
-                </Badge>
+                </Badge> */}
+                {(() => {
+                  const active = selectedBlog?.isActive !== false
+                  return (
+                    <Badge
+                      variant={active ? 'default' : 'destructive'}
+                      className={active ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}
+                    >
+                      {active ? 'Hoạt động' : 'Không hoạt động'}
+                    </Badge>
+                  )
+                })()}
               </div>
               <p className='text-sm text-muted-foreground'>Ngày tạo: {formatDate(categoryDetail.createdAt)}</p>
 

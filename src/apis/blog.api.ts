@@ -29,7 +29,7 @@ export interface BlogItem {
   description: string
   content: string
   image: string
-  isActive: boolean
+  isActive: boolean | null | string
   createdAt: string
   updatedAt: string
   user: BlogUser
@@ -222,7 +222,7 @@ export const updateBlogActiveStatus = async (id: string, isActive: boolean) => {
 
 // Function để xóa Blog
 export const deleteBlog = async (id: string) => {
-  const response = await axiosInstance.put(`/delete-blog/${id}`, null, {
+  const response = await axiosInstance.put(`/Blog/delete-blog/${id}`, null, {
     headers: {
       'Content-Type': 'application/json'
     }
