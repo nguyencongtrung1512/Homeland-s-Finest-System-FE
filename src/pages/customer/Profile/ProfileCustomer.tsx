@@ -323,6 +323,9 @@ export default function Profile() {
                   ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
                   : 'N/A'}
               </p>
+              {user?.userPoint !== undefined && (
+                <p className='text-sm font-semibold text-green-600 mt-1'>Điểm tích lũy: {user.userPoint} điểm</p>
+              )}
             </div>
           </div>
         </CardContent>
