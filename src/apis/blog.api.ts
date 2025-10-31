@@ -29,7 +29,7 @@ export interface BlogItem {
   description: string
   content: string
   image: string
-  isActive: boolean | null | string
+  isActive: boolean
   createdAt: string
   updatedAt: string
   user: BlogUser

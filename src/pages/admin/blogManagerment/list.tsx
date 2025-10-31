@@ -30,7 +30,6 @@ import {
 } from '../../../apis/categoryBlog.api'
 import { Switch } from '../../../components/ui/switch'
 import { formatDate } from '../../../utils/formatDate'
-import axiosInstance from '../../../apis/axiosInstance'
 
 function BlogCategoryList() {
   const navigate = useNavigate()
