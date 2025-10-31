@@ -52,7 +52,6 @@ function SideBar() {
   const location = useLocation()
   const { store, isStoreApproved } = useStore()
 
-  // Menu items cho seller chưa được duyệt (chỉ các chức năng cơ bản)
   const pendingMenuItems = [
     {
       key: path.BASE_SELLER,
@@ -61,7 +60,6 @@ function SideBar() {
     }
   ]
 
-  // Menu items đầy đủ cho seller đã được duyệt
   const approvedMenuItems = [
     {
       key: path.BASE_SELLER,
@@ -151,7 +149,6 @@ function SideBar() {
     }
   ]
 
-  // Chọn menu items dựa trên trạng thái store
   const menuItems = isStoreApproved ? approvedMenuItems : pendingMenuItems
 
   const handleMenuClick = ({ key }: { key: string }) => {
@@ -162,11 +159,9 @@ function SideBar() {
   const getSelectedKey = () => {
     const currentPath = location.pathname
 
-    // Tìm key khớp chính xác
     const exactMatch = menuItems.find((item) => item.key === currentPath)
     if (exactMatch) return exactMatch.key
 
-    // Kiểm tra nếu currentPath chứa key của menu item
     const partialMatch = menuItems.find((item) => {
       if (item.key.startsWith('/seller')) {
         return currentPath.startsWith(item.key) && item.key !== path.BASE_SELLER
@@ -220,7 +215,6 @@ function SideBar() {
           </span>
         </div>
 
-        {/* Store Status Indicator */}
         {store && !isStoreApproved && (
           <div
             style={{
@@ -236,7 +230,6 @@ function SideBar() {
           </div>
         )}
 
-        {/* Navigation Menu */}
         <Menu
           mode='inline'
           selectedKeys={[getSelectedKey()]}
