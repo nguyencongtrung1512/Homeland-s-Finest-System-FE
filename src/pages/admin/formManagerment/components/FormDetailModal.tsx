@@ -261,7 +261,12 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
   if (!form && loading) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+        <DialogContent
+          className='w-[96vw] sm:w-auto sm:max-w-3xl lg:max-w-6xl
+              max-h-[85vh] sm:max-h-[90vh]
+             overflow-y-auto p-0 sm:p-6
+              rounded-2xl border border-gray-200 shadow-xl overflow-hidden'
+        >
           <div className='flex items-center justify-center py-12'>
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
             <span className='ml-3 text-gray-600'>Đang tải chi tiết khiếu nại...</span>
@@ -274,7 +279,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
   if (!form) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className='max-w-md mx-auto'>
+        <DialogContent className='w-[92vw] sm:max-w-md mx-auto p-0 sm:p-6'>
           <div className='text-center py-12'>
             <h2 className='text-xl font-semibold text-gray-900 mb-2'>Không tìm thấy khiếu nại</h2>
             <p className='text-gray-600 mb-4'>Khiếu nại này có thể đã bị xóa hoặc không tồn tại.</p>
@@ -291,9 +296,13 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className='max-w-6xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent
+        className='w-[96vw] sm:w-auto sm:max-w-3xl lg:max-w-6xl
+              max-h-[85vh] sm:max-h-[90vh] overflow-y-auto
+              p-0 sm:p-6'
+      >
         <DialogHeader>
-          <DialogTitle className='text-xl font-bold text-gray-900 flex items-center gap-2'>
+          <DialogTitle className='text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2'>
             <ArrowLeft className='w-5 h-5 text-gray-500' />
             Chi tiết khiếu nại #{form.id}
           </DialogTitle>
@@ -327,7 +336,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                   <div>
                     <Label className='text-sm font-medium text-gray-700 mb-2 block'>Mô tả chi tiết</Label>
                     <div className='bg-gray-50 rounded-lg p-4'>
-                      <p className='text-gray-800 whitespace-pre-wrap'>{form.description}</p>
+                      <p className='text-gray-800 whitespace-pre-wrap break-words'>{form.description}</p>
                     </div>
                   </div>
 
@@ -338,13 +347,13 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                         <ImageIcon className='w-4 h-4' />
                         Hình ảnh đính kèm ({form.imageUrl.length})
                       </Label>
-                      <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
+                      <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
                         {form.imageUrl.map((imageUrl: string, index: number) => (
                           <div key={index} className='relative group'>
                             <img
                               src={imageUrl}
                               alt={`Attachment ${index + 1}`}
-                              className='w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity'
+                              className='w-full h-28 sm:h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity'
                               onClick={() => window.open(imageUrl, '_blank')}
                             />
                             <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center'>
@@ -359,7 +368,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                   )}
 
                   {/* Timestamps */}
-                  <div className='flex items-center gap-6 text-sm text-gray-500 pt-4 border-t'>
+                  <div className='flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-gray-500 pt-4 border-t'>
                     <div className='flex items-center gap-2'>
                       <Calendar className='w-4 h-4' />
                       Tạo: {form.createdAt}

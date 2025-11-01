@@ -149,6 +149,7 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
   formData.append('Gender', data.gender !== undefined ? data.gender : currentUser?.gender || '')
   formData.append('DateOfBirth', data.dateOfBirth !== undefined ? data.dateOfBirth : currentUser?.dateOfBirth || '')
   formData.append('Role', data.role !== undefined ? data.role : currentUser?.role || '')
+
   // Handle avatar - if it's a File, append it directly; if it's a string, append the string
   if (data.avatar !== undefined) {
     if (data.avatar instanceof File) {
@@ -167,7 +168,7 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
     'IsPermission',
     (data.isPermission !== undefined ? data.isPermission : (currentUser?.isPermission ?? true)).toString()
   )
-  formData.append('Note', data.note !== undefined ? data.note : currentUser?.note || '')
+  formData.append('note', (data.note ?? currentUser?.note ?? 'Cập nhật từ trang Profile').trim())
   formData.append(
     'ProvinceId',
     (data.provinceId !== undefined ? data.provinceId : currentUser?.provinceId || '').toString()
