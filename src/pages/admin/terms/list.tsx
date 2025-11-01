@@ -557,17 +557,13 @@ function TermsManagement() {
             {/* Type Field */}
             <div className='space-y-2'>
               <Label htmlFor='type'>Loại tài liệu *</Label>
-              <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder='Chọn loại tài liệu' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='Điều khoản'>Điều khoản</SelectItem>
-                  <SelectItem value='Chính sách'>Chính sách</SelectItem>
-                  <SelectItem value='Bảo mật'>Bảo mật</SelectItem>
-                  <SelectItem value='Giao hàng'>Giao hàng</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                id='type'
+                placeholder='Nhập loại tài liệu (ví dụ: Điều khoản, Chính sách, Bảo mật, Giao hàng)'
+                value={formData.type}
+                onChange={(e) => handleInputChange('type', e.target.value)}
+              />
+              <p className='text-xs text-gray-500'>Ví dụ: Điều khoản, Chính sách, Bảo mật, Giao hàng…</p>
             </div>
 
             {/* Version Field */}
@@ -674,17 +670,13 @@ function TermsManagement() {
             {/* Type Field */}
             <div className='space-y-2'>
               <Label htmlFor='edit-type'>Loại tài liệu *</Label>
-              <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder='Chọn loại tài liệu' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='Điều khoản'>Điều khoản</SelectItem>
-                  <SelectItem value='Chính sách'>Chính sách</SelectItem>
-                  <SelectItem value='Bảo mật'>Bảo mật</SelectItem>
-                  <SelectItem value='Giao hàng'>Giao hàng</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                id='edit-type'
+                placeholder='Nhập loại tài liệu (ví dụ: Điều khoản, Chính sách, Bảo mật, Giao hàng)'
+                value={formData.type}
+                onChange={(e) => handleInputChange('type', e.target.value)}
+              />
+              <p className='text-xs text-gray-500'>Ví dụ: Điều khoản, Chính sách, Bảo mật, Giao hàng…</p>
             </div>
 
             {/* Version Field */}

@@ -1,12 +1,14 @@
 export interface Product {
   id: string // UUID - Primary Key
   storeId: string // UUID - Foreign Key to Store
-  provinceId: string // UUID - Foreign Key to Province
+  provinceId: number // Foreign Key to Province (changed from string to number)
+  editedById: string // UUID - Foreign Key to User who edited
   name: string // varchar(255)
   description: string // text
+  price: number // Product price
   productImages: string[] // JSONB - Array of image URLs
   productVideo: string // varchar(500) - Video URL
-  categoryId: string[] // JSONB - Array of category IDs
+  categoryIds: string[] // JSONB - Array of category IDs (changed from categoryId)
   material: string // varchar(255) - Brand/Manufacturer
   saleCount: number // integer
   rating: number // numeric(3,2) - Average rating
@@ -14,18 +16,18 @@ export interface Product {
   isActive: boolean // boolean
   typeProduct: string // varchar(100) - Product type
   status: string // varchar(50) - Product status
-  note: string // text
-  embedding: number[] // JSONB - Vector embedding for search
+  staffNote: string // text (changed from note)
+  comboItems: string // Combo items information
   createdAt: string // TIMESTAMPTZ
   updatedAt: string // TIMESTAMPTZ
 }
 
 export interface ProductCreateInput {
   storeId: string
-  provinceId: string
+  provinceId: number // Changed from string to number
   name: string
   description: string
-  categoryId: string[]
+  categoryIds: string[] // Changed from categoryId to categoryIds
   productImages?: string[]
   productVideo?: string
   material?: string
@@ -35,7 +37,7 @@ export interface ProductCreateInput {
   isActive?: boolean
   typeProduct?: string
   status?: string
-  note?: string
+  staffNote?: string // Changed from note to staffNote
   storyTitle?: string
   storyDetail?: string
   certificateImages?: string[]
@@ -48,7 +50,7 @@ export interface ProductUpdateInput {
   description?: string
   productImages?: string[]
   productVideo?: string
-  categoryId?: string[]
+  categoryIds?: string[] // Changed from categoryId to categoryIds
   material?: string
   saleCount?: number
   rating?: number
@@ -56,6 +58,5 @@ export interface ProductUpdateInput {
   isActive?: boolean
   typeProduct?: string
   status?: string
-  note?: string
-  embedding?: number[]
+  staffNote?: string // Changed from note to staffNote
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '../../../../../components/ui/button'
 import AddressCard from './AddressCard'
 import { addressApi } from '../../../../../apis/address.api'
@@ -14,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '../../../../../components/ui/alert-dialog'
+import GlowLine from '../../../../../components/ui/glowLine'
 
 interface AddressContentProps {
   userId?: string // Thêm userId để lấy địa chỉ của user cụ thể
@@ -165,79 +167,170 @@ export default function AddressContent({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className='bg-gradient-to-br from-slate-50 to-green-50/30 p-6 rounded-2xl min-h-[500px] w-full max-w-4xl mx-auto sm:p-8 md:p-10 lg:p-12 xl:max-w-5xl'>
-        <div className='flex justify-between items-center mb-8'>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className='bg-gradient-to-br from-slate-50 to-green-50/30 p-6 rounded-2xl min-h-[500px] w-full max-w-4xl mx-auto sm:p-8 md:p-10 lg:p-12 xl:max-w-5xl'
+      >
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className='flex justify-between items-center mb-8'
+        >
           <div>
             <h2 className='text-2xl font-bold text-gray-800 mb-1'> Sổ địa chỉ</h2>
             <p className='text-green-600 text-sm'>Quản lý địa chỉ giao hàng của bạn</p>
           </div>
-          <Button
-            className='bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 px-6 py-3 rounded-xl'
-            onClick={onAddAddress}
-            disabled={isLoading}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            Thêm địa chỉ mới
-          </Button>
-        </div>
+            <Button
+              className='bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 px-6 py-3 rounded-xl'
+              onClick={onAddAddress}
+              disabled={isLoading}
+            >
+              Thêm địa chỉ mới
+            </Button>
+          </motion.div>
+        </motion.div>
 
         {/* Error Message */}
-        {error && (
-          <div className='mb-4 p-4 bg-red-50 border border-red-200 rounded-lg'>
-            <p className='text-red-600 text-sm'>{error}</p>
-            <Button
-              variant='outline'
-              size='sm'
-              className='mt-2 text-red-600 border-red-300 hover:bg-red-50'
-              onClick={fetchAddresses}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className='mb-4 p-4 bg-red-50 border border-red-200 rounded-lg'
             >
-              Thử lại
-            </Button>
-          </div>
-        )}
+              <p className='text-red-600 text-sm'>{error}</p>
+              <Button
+                variant='outline'
+                size='sm'
+                className='mt-2 text-red-600 border-red-300 hover:bg-red-50'
+                onClick={fetchAddresses}
+              >
+                Thử lại
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Loading State */}
-        {isLoading && addresses.length === 0 && (
-          <div className='flex justify-center items-center py-12'>
-            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-600'></div>
-            <span className='ml-3 text-gray-600'>Đang tải địa chỉ...</span>
-          </div>
-        )}
+        <AnimatePresence>
+          {isLoading && addresses.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className='flex justify-center items-center py-12'
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className='rounded-full h-8 w-8 border-b-2 border-green-600'
+              ></motion.div>
+              <span className='ml-3 text-gray-600'>Đang tải địa chỉ...</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Address Cards */}
-        {addresses.length === 0 ? (
-          <div className='bg-gradient-to-br from-green-50 to-green-100/50 p-8 rounded-2xl border border-green-200/50 text-center shadow-sm'>
-            <div className='text-green-500 text-4xl mb-4'>📍</div>
-            <h3 className='text-green-700 font-semibold mb-2 text-lg'>Chưa có địa chỉ nào</h3>
-            <p className='text-green-600 text-sm leading-relaxed'>Thêm địa chỉ đầu tiên để tiện giao hàng!</p>
-            <div className='mt-6'>
-              <Button
-                className='bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl shadow-md hover:shadow-lg transition-all duration-200'
-                onClick={onAddAddress}
-                disabled={isLoading}
+        <AnimatePresence mode='wait'>
+          {addresses.length === 0 ? (
+            <motion.div
+              key='empty-state'
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.4 }}
+              className='bg-gradient-to-br from-green-50 to-green-100/50 p-8 rounded-2xl border border-green-200/50 text-center shadow-sm'
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2, type: 'spring', stiffness: 200 }}
+                className='text-green-500 text-4xl mb-4'
+              ></motion.div>
+              <motion.h3
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+                className='text-green-700 font-semibold mb-2 text-lg'
               >
-                Thêm địa chỉ ngay
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className='space-y-4'>
-            {addresses.map((address, index) => (
-              <div
-                key={address.id}
-                className='transform transition-all duration-300 hover:scale-[1.02] hover:shadow-md'
-                style={{ animationDelay: `${index * 100}ms` }}
+                Chưa có địa chỉ nào
+              </motion.h3>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.4 }}
+                className='text-green-600 text-sm leading-relaxed'
               >
-                <AddressCard
-                  address={address}
-                  onEdit={onEditAddress}
-                  onDelete={handleDeleteClick}
-                  onSetDefault={handleSetDefault}
-                  isLoading={isLoading}
-                />
-              </div>
-            ))}
-          </div>
-        )}
+                Thêm địa chỉ đầu tiên để tiện giao hàng!
+              </motion.p>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.5 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className='mt-6'
+              >
+                <Button
+                  className='bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl shadow-md hover:shadow-lg transition-all duration-200'
+                  onClick={onAddAddress}
+                  disabled={isLoading}
+                >
+                  Thêm địa chỉ ngay
+                </Button>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key='address-list'
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className='space-y-4'
+            >
+              {addresses.map((address, index) => (
+                <motion.div
+                  key={address.id}
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    duration: 0.4,
+                    delay: index * 0.1,
+                    type: 'spring',
+                    stiffness: 100
+                  }}
+                  layout
+                  exit={{ opacity: 0, x: -100, scale: 0.8 }}
+                >
+                  <AddressCard
+                    address={address}
+                    onEdit={onEditAddress}
+                    onDelete={handleDeleteClick}
+                    onSetDefault={handleSetDefault}
+                    isLoading={isLoading}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+      <div className='py-4 relative w-full h-1 bg-white'>
+        <GlowLine orientation='horizontal' position='bottom-0' color='green' />
       </div>
     </>
   )

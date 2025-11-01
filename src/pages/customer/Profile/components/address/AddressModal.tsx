@@ -12,8 +12,17 @@ import {
   DialogDescription,
   DialogFooter
 } from '../../../../../components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select'
-import { addressApi, type GHNProvince, type GHNDistrict, type GHNWard } from '../../../../../apis/address.api'
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select'
+import ComboBox from '../../../../../components/ui/combo-box'
+// import { addressApi, type GHNProvince, type GHNDistrict, type GHNWard } from '../../../../../apis/address.api'
+import {
+  getProvinces,
+  getDistricts,
+  getWards,
+  type Province,
+  type District,
+  type Ward
+} from '../../../../../apis/province'
 import type { Address, AddressCreateInput } from '../../../../../types/addressType'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../../components/ui/tabs'
 import MapBoxGetLocation from '../../../../../components/Mapbox/mapBoxGetLocation'
@@ -59,9 +68,9 @@ export default function AddressModal({
     isDefault: address?.isDefault || false
   })
 
-  const [provinces, setProvinces] = useState<GHNProvince[]>([])
-  const [districts, setDistricts] = useState<GHNDistrict[]>([])
-  const [wards, setWards] = useState<GHNWard[]>([])
+  const [provinces, setProvinces] = useState<Province[]>([])
+  const [districts, setDistricts] = useState<District[]>([])
+  const [wards, setWards] = useState<Ward[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>('manual')
@@ -84,18 +93,17 @@ export default function AddressModal({
     [existingAddresses, address?.id]
   )
 
-  // Load provinces from GHN API
+  // Load provinces from Backend API
   const loadProvinces = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await addressApi.getProvinces()
+      //const response = await addressApi.getProvinces()
+      const response = await getProvinces()
       console.log('Provinces response:', response)
 
       if (response && Array.isArray(response)) {
         setProvinces(response)
-      } else if (response && response.data && Array.isArray(response.data)) {
-        setProvinces(response.data)
       } else {
         throw new Error('Invalid response format')
       }
@@ -120,38 +128,56 @@ export default function AddressModal({
     }
   }, [])
 
-  // Load districts from GHN API
+  // Load provinces from GHN API (COMMENTED - TẠM THỜI KHÔNG DÙNG)
+  // const loadProvinces = useCallback(async () => {
+  //   setLoading(true)
+  //   setError(null)
+  //   try {
+  //     const response = await addressApi.getProvinces()
+  //     console.log('Provinces response:', response)
+
+  //     if (response && Array.isArray(response)) {
+  //       setProvinces(response)
+  //     } else if (response && response.data && Array.isArray(response.data)) {
+  //       setProvinces(response.data)
+  //     } else {
+  //       throw new Error('Invalid response format')
+  //     }
+  //   } catch (err) {
+  //     console.error('Error loading provinces:', err)
+  //     setError('Không thể tải danh sách tỉnh/thành phố. Vui lòng thử lại.')
+  //     setProvinces([])
+
+  //     // Hiển thị toast lỗi
+  //     toast.error('Không thể tải danh sách tỉnh/thành phố. Vui lòng thử lại!', {
+  //       position: 'top-right',
+  //       autoClose: 4000,
+  //       hideProgressBar: false,
+  //       closeOnClick: true,
+  //       pauseOnHover: true,
+  //       draggable: true,
+  //       progress: undefined,
+  //       theme: 'light'
+  //     })
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }, [])
+
+  // Load districts from Backend API
   const loadDistricts = useCallback(async (provinceId: number) => {
     setLoading(true)
     setError(null)
     try {
-      const response = await addressApi.getDistricts(provinceId)
+      const response = await getDistricts(provinceId)
       console.log('Districts response:', response)
 
-      let districtsData: any[] = []
-      if (response && (response as any).data && Array.isArray((response as any).data)) {
-        districtsData = (response as any).data
-      } else if (Array.isArray(response)) {
-        districtsData = response
+      if (response && Array.isArray(response)) {
+        setDistricts(response)
       } else {
-        console.warn('Unexpected response format:', response)
-        if (response && typeof response === 'object') {
-          const keys = Object.keys(response)
-          console.log('Response keys:', keys)
-          for (const key of keys) {
-            if (Array.isArray((response as any)[key])) {
-              districtsData = (response as any)[key]
-              break
-            }
-          }
-        }
-
-        if (districtsData.length === 0) {
-          throw new Error('Invalid response format')
-        }
+        throw new Error('Invalid response format')
       }
 
-      setDistricts(districtsData)
       setWards([])
     } catch (err) {
       console.error('Error loading districts:', err)
@@ -175,25 +201,74 @@ export default function AddressModal({
     }
   }, [])
 
-  // Load wards from GHN API
+  // Load districts from GHN API (COMMENTED - TẠM THỜI KHÔNG DÙNG)
+  // const loadDistricts = useCallback(async (provinceId: number) => {
+  //   setLoading(true)
+  //   setError(null)
+  //   try {
+  //     const response = await addressApi.getDistricts(provinceId)
+  //     console.log('Districts response:', response)
+
+  //     let districtsData: any[] = []
+  //     if (response && (response as any).data && Array.isArray((response as any).data)) {
+  //       districtsData = (response as any).data
+  //     } else if (Array.isArray(response)) {
+  //       districtsData = response
+  //     } else {
+  //       console.warn('Unexpected response format:', response)
+  //       if (response && typeof response === 'object') {
+  //         const keys = Object.keys(response)
+  //         console.log('Response keys:', keys)
+  //         for (const key of keys) {
+  //           if (Array.isArray((response as any)[key])) {
+  //             districtsData = (response as any)[key]
+  //             break
+  //           }
+  //         }
+  //       }
+
+  //       if (districtsData.length === 0) {
+  //         throw new Error('Invalid response format')
+  //       }
+  //     }
+
+  //     setDistricts(districtsData)
+  //     setWards([])
+  //   } catch (err) {
+  //     console.error('Error loading districts:', err)
+  //     setError('Không thể tải danh sách quận/huyện. Vui lòng thử lại.')
+  //     setDistricts([])
+  //     setWards([])
+
+  //     // Hiển thị toast lỗi
+  //     toast.error('Không thể tải danh sách quận/huyện. Vui lòng thử lại!', {
+  //       position: 'top-right',
+  //       autoClose: 4000,
+  //       hideProgressBar: false,
+  //       closeOnClick: true,
+  //       pauseOnHover: true,
+  //       draggable: true,
+  //       progress: undefined,
+  //       theme: 'light'
+  //     })
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }, [])
+
+  // Load wards from Backend API
   const loadWards = useCallback(async (districtId: number) => {
     setLoading(true)
     setError(null)
     try {
-      const response = await addressApi.getWards(districtId)
+      const response = await getWards(districtId)
       console.log('Wards response:', response)
 
-      let wardsData: any[] = []
-      if (response && (response as any).data && Array.isArray((response as any).data)) {
-        wardsData = (response as any).data
-      } else if (Array.isArray(response)) {
-        wardsData = response
+      if (response && Array.isArray(response)) {
+        setWards(response)
       } else {
-        console.warn('Unexpected response format:', response)
         throw new Error('Invalid response format')
       }
-
-      setWards(wardsData)
     } catch (err) {
       console.error('Error loading wards:', err)
       setError('Không thể tải danh sách phường/xã. Vui lòng thử lại.')
@@ -215,68 +290,108 @@ export default function AddressModal({
     }
   }, [])
 
-  // Xử lý khi chọn tỉnh/thành phố
-  const handleProvinceChange = useCallback(
-    (value: string) => {
-      const provinceId = parseInt(value)
-      const selectedProvince = provinces.find((p) => p.ProvinceID === provinceId)
+  // Load wards from GHN API (COMMENTED - TẠM THỜI KHÔNG DÙNG)
+  // const loadWards = useCallback(async (districtId: number) => {
+  //   setLoading(true)
+  //   setError(null)
+  //   try {
+  //     const response = await addressApi.getWards(districtId)
+  //     console.log('Wards response:', response)
 
-      if (selectedProvince) {
-        setFormData((prev) => ({
-          ...prev,
-          province: selectedProvince.ProvinceName,
-          provinceId,
-          district: '',
-          districtId: 0,
-          ward: '',
-          wardId: 0
-        }))
+  //     let wardsData: any[] = []
+  //     if (response && (response as any).data && Array.isArray((response as any).data)) {
+  //       wardsData = (response as any).data
+  //     } else if (Array.isArray(response)) {
+  //       wardsData = response
+  //     } else {
+  //       console.warn('Unexpected response format:', response)
+  //       throw new Error('Invalid response format')
+  //     }
 
-        // Load districts for selected province
-        loadDistricts(provinceId)
-      }
-    },
-    [provinces, loadDistricts]
-  )
+  //     setWards(wardsData)
+  //   } catch (err) {
+  //     console.error('Error loading wards:', err)
+  //     setError('Không thể tải danh sách phường/xã. Vui lòng thử lại.')
+  //     setWards([])
 
-  // Xử lý khi chọn quận/huyện
-  const handleDistrictChange = useCallback(
-    (value: string) => {
-      const districtId = parseInt(value)
-      const selectedDistrict = districts.find((d) => d.DistrictID === districtId)
+  //     // Hiển thị toast lỗi
+  //     toast.error('Không thể tải danh sách phường/xã. Vui lòng thử lại!', {
+  //       position: 'top-right',
+  //       autoClose: 4000,
+  //       hideProgressBar: false,
+  //       closeOnClick: true,
+  //       pauseOnHover: true,
+  //       draggable: true,
+  //       progress: undefined,
+  //       theme: 'light'
+  //     })
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }, [])
 
-      if (selectedDistrict) {
-        setFormData((prev) => ({
-          ...prev,
-          district: selectedDistrict.DistrictName,
-          districtId,
-          ward: '',
-          wardId: 0
-        }))
+  // Xử lý khi chọn tỉnh/thành phố (OLD HANDLER - Đã thay thế bởi handleProvinceSelect)
+  // const handleProvinceChange = useCallback(
+  //   (value: string) => {
+  //     const provinceId = parseInt(value)
+  //     const selectedProvince = provinces.find((p) => p.id === provinceId)
 
-        // Load wards for selected district
-        loadWards(districtId)
-      }
-    },
-    [districts, loadWards]
-  )
+  //     if (selectedProvince) {
+  //       setFormData((prev) => ({
+  //         ...prev,
+  //         province: selectedProvince.name,
+  //         provinceId,
+  //         district: '',
+  //         districtId: 0,
+  //         ward: '',
+  //         wardId: 0
+  //       }))
 
-  // Xử lý khi chọn phường/xã
-  const handleWardChange = useCallback(
-    (value: string) => {
-      const wardCode = value
-      const selectedWard = wards.find((w) => w.WardCode === wardCode)
+  //       // Load districts for selected province
+  //       loadDistricts(provinceId)
+  //     }
+  //   },
+  //   [provinces, loadDistricts]
+  // )
 
-      if (selectedWard) {
-        setFormData((prev) => ({
-          ...prev,
-          ward: selectedWard.WardName,
-          wardId: parseInt(wardCode)
-        }))
-      }
-    },
-    [wards]
-  )
+  // Xử lý khi chọn quận/huyện (OLD HANDLER - Đã thay thế bởi handleDistrictSelect)
+  // const handleDistrictChange = useCallback(
+  //   (value: string) => {
+  //     const districtId = parseInt(value)
+  //     const selectedDistrict = districts.find((d) => d.id === districtId)
+
+  //     if (selectedDistrict) {
+  //       setFormData((prev) => ({
+  //         ...prev,
+  //         district: selectedDistrict.name,
+  //         districtId,
+  //         ward: '',
+  //         wardId: 0
+  //       }))
+
+  //       // Load wards for selected district
+  //       loadWards(districtId)
+  //     }
+  //   },
+  //   [districts, loadWards]
+  // )
+
+  // Xử lý khi chọn phường/xã (OLD HANDLER - Đã thay thế bởi handleWardSelect)
+  // const handleWardChange = useCallback(
+  //   (value: string) => {
+  //     const wardId = parseInt(value)
+  //     const selectedWard = wards.find((w) => w.id === wardId)
+
+  //     if (selectedWard) {
+  //       setFormData((prev) => ({
+  //         ...prev,
+  //         ward: selectedWard.name,
+  //         wardId
+  //       }))
+  //     }
+  //   },
+  //   [wards]
+  // )
 
   // Xử lý khi xác nhận vị trí từ bản đồ
   const handleLocationConfirm = useCallback(
@@ -398,12 +513,112 @@ export default function AddressModal({
         }
       })
     }
-  }, [address?.id, isOpen])
+  }, [address?.id, address?.provinceId, address?.districtId, isOpen, loadDistricts, loadWards])
 
   // Check if there's another default address
   const hasOtherDefault = useMemo(() => {
     return existingAddresses.some((addr) => addr.isDefault && addr.id !== address?.id)
   }, [existingAddresses, address])
+
+  // Memoize options for ComboBox
+  const provinceOptions = useMemo(() => {
+    return provinces.map((p) => p.name)
+  }, [provinces])
+
+  const districtOptions = useMemo(() => {
+    return districts.map((d) => d.name)
+  }, [districts])
+
+  const wardOptions = useMemo(() => {
+    return wards.map((w) => w.name)
+  }, [wards])
+
+  // Updated handlers for ComboBox (nhận string name thay vì id)
+  const handleProvinceSelect = useCallback(
+    (selectedName: string | null) => {
+      if (!selectedName) {
+        setFormData((prev) => ({
+          ...prev,
+          province: '',
+          provinceId: 0,
+          district: '',
+          districtId: 0,
+          ward: '',
+          wardId: 0
+        }))
+        setDistricts([])
+        setWards([])
+        return
+      }
+
+      const selectedProvince = provinces.find((p) => p.name === selectedName)
+      if (selectedProvince) {
+        setFormData((prev) => ({
+          ...prev,
+          province: selectedProvince.name,
+          provinceId: selectedProvince.id,
+          district: '',
+          districtId: 0,
+          ward: '',
+          wardId: 0
+        }))
+        loadDistricts(selectedProvince.id)
+      }
+    },
+    [provinces, loadDistricts]
+  )
+
+  const handleDistrictSelect = useCallback(
+    (selectedName: string | null) => {
+      if (!selectedName) {
+        setFormData((prev) => ({
+          ...prev,
+          district: '',
+          districtId: 0,
+          ward: '',
+          wardId: 0
+        }))
+        setWards([])
+        return
+      }
+
+      const selectedDistrict = districts.find((d) => d.name === selectedName)
+      if (selectedDistrict) {
+        setFormData((prev) => ({
+          ...prev,
+          district: selectedDistrict.name,
+          districtId: selectedDistrict.id,
+          ward: '',
+          wardId: 0
+        }))
+        loadWards(selectedDistrict.id)
+      }
+    },
+    [districts, loadWards]
+  )
+
+  const handleWardSelect = useCallback(
+    (selectedName: string | null) => {
+      if (!selectedName) {
+        setFormData((prev) => ({
+          ...prev,
+          ward: '',
+          wardId: 0
+        }))
+        return
+      }
+
+      const selectedWard = wards.find((w) => w.name === selectedName)
+      if (selectedWard) {
+        setFormData((prev) => ({
+          ...prev,
+          ward: selectedWard.name,
+          wardId: selectedWard.id
+        }))
+      }
+    },
+    [wards]
+  )
 
   // Form submission handler
   const handleSubmit = (e: React.FormEvent) => {
@@ -456,62 +671,53 @@ export default function AddressModal({
               <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
                 <div>
                   <Label htmlFor='province'>Tỉnh/thành *</Label>
-                  <Select
-                    value={formData.provinceId > 0 ? formData.provinceId.toString() : ''}
-                    onValueChange={handleProvinceChange}
-                    disabled={loading}
-                  >
-                    <SelectTrigger className='mt-1'>
-                      <SelectValue placeholder='Chọn tỉnh/thành' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {provinces?.map((province) => (
-                        <SelectItem key={province.ProvinceID} value={province.ProvinceID.toString()}>
-                          {province.ProvinceName}
-                        </SelectItem>
-                      )) || []}
-                    </SelectContent>
-                  </Select>
+                  <div className='mt-1'>
+                    <ComboBox
+                      options={provinceOptions}
+                      placeholder={loading ? 'Đang tải...' : 'Chọn tỉnh/thành'}
+                      onSelect={handleProvinceSelect}
+                      value={formData.province || undefined}
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <Label htmlFor='district'>Quận/huyện *</Label>
-                  <Select
-                    value={formData.districtId > 0 ? formData.districtId.toString() : ''}
-                    onValueChange={handleDistrictChange}
-                    disabled={!formData.provinceId || loading}
-                  >
-                    <SelectTrigger className='mt-1'>
-                      <SelectValue placeholder='Chọn quận/huyện' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {districts?.map((district) => (
-                        <SelectItem key={district.DistrictID} value={district.DistrictID.toString()}>
-                          {district.DistrictName}
-                        </SelectItem>
-                      )) || []}
-                    </SelectContent>
-                  </Select>
+                  <div className='mt-1'>
+                    <ComboBox
+                      options={districtOptions}
+                      placeholder={
+                        !formData.provinceId
+                          ? 'Vui lòng chọn tỉnh/thành trước'
+                          : loading
+                            ? 'Đang tải...'
+                            : 'Chọn quận/huyện'
+                      }
+                      onSelect={handleDistrictSelect}
+                      value={formData.district || undefined}
+                      disabled={!formData.provinceId || loading}
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <Label htmlFor='ward'>Phường/xã *</Label>
-                  <Select
-                    value={formData.wardId > 0 ? formData.wardId.toString() : ''}
-                    onValueChange={handleWardChange}
-                    disabled={!formData.districtId || loading}
-                  >
-                    <SelectTrigger className='mt-1'>
-                      <SelectValue placeholder='Chọn phường/xã' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {wards?.map((ward) => (
-                        <SelectItem key={ward.WardCode} value={ward.WardCode}>
-                          {ward.WardName}
-                        </SelectItem>
-                      )) || []}
-                    </SelectContent>
-                  </Select>
+                  <div className='mt-1'>
+                    <ComboBox
+                      options={wardOptions}
+                      placeholder={
+                        !formData.districtId
+                          ? 'Vui lòng chọn quận/huyện trước'
+                          : loading
+                            ? 'Đang tải...'
+                            : 'Chọn phường/xã'
+                      }
+                      onSelect={handleWardSelect}
+                      value={formData.ward || undefined}
+                      disabled={!formData.districtId || loading}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -560,11 +766,6 @@ export default function AddressModal({
               </p>
 
               <MapBoxGetLocation onLocationConfirm={handleLocationConfirm} />
-
-              <div className='text-xs text-blue-600 bg-blue-50 p-2 rounded'>
-                ℹ️ Sau khi xác nhận vị trí, bạn sẽ được chuyển sang tab nhập thủ công để kiểm tra và điều chỉnh thông
-                tin nếu cần.
-              </div>
             </div>
           </TabsContent>
         </Tabs>

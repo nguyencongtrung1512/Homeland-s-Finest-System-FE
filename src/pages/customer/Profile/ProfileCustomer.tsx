@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '../../../components/ui/avatar'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -119,7 +120,8 @@ export default function Profile() {
     try {
       setPromotionsLoading(true)
       const response = await promotionApi.getUserPromotions(authUser.userId, 0, 1)
-      setPromotions((response.data as any[]) || [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setPromotions((response.data as any) || [])
     } catch (error) {
       console.error('Error loading user promotions:', error)
     } finally {
@@ -303,116 +305,213 @@ export default function Profile() {
   const displayName = user ? `${user.lastName} ${user.firstName}` : 'Người dùng'
 
   return (
-    <div className='min-h-screen bg-[#f8f9f5]'>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className='min-h-screen bg-[#f8f9f5]'
+    >
       {/* Profile Header */}
-      <Card className='border-b rounded-none'>
-        <CardContent className='p-6'>
-          <div className='flex items-center gap-4'>
-            <Avatar className='w-20 h-20'>
-              <img
-                src={user?.avatar || '/src/assets/react.svg'}
-                alt='Profile'
-                className='w-full h-full object-cover rounded-full'
-              />
-            </Avatar>
-            <div>
-              <h2 className='text-xl font-bold text-gray-900'>Chào mừng trở lại, {displayName}</h2>
-              <p className='text-sm text-gray-500'>
-                Thành viên từ{' '}
-                {user?.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
-                  : 'N/A'}
-              </p>
-              {user?.userPoint !== undefined && (
-                <p className='text-sm font-semibold text-green-600 mt-1'>Điểm tích lũy: {user.userPoint} điểm</p>
-              )}
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
+        <Card className='border-b rounded-none'>
+          <CardContent className='p-6'>
+            <div className='flex items-center gap-4'>
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ duration: 0.6, delay: 0.2, type: 'spring', stiffness: 200 }}
+              >
+                <Avatar className='w-20 h-20'>
+                  <img
+                    src={user?.avatar || 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'}
+                    alt='Profile'
+                    className='w-full h-full object-cover rounded-full'
+                  />
+                </Avatar>
+              </motion.div>
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <motion.h2
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.4 }}
+                  className='text-xl font-bold text-gray-900'
+                >
+                  Chào mừng trở lại, {displayName}
+                </motion.h2>
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.5 }}
+                  className='text-sm text-gray-500'
+                >
+                  Thành viên từ{' '}
+                  {user?.createdAt
+                    ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+                    : 'N/A'}
+                </motion.p>
+                {user?.userPoint !== undefined && (
+                  <motion.p
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: 0.6, type: 'spring', stiffness: 200 }}
+                    className='text-sm font-semibold text-green-600 mt-1'
+                  >
+                    Điểm tích lũy: {user.userPoint} điểm
+                  </motion.p>
+                )}
+              </motion.div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       <div className='flex'>
         {/* Sidebar */}
-        <Card className='w-64 min-h-screen border-r rounded-none'>
-          <CardHeader className='pb-4'>
-            <CardTitle className='text-lg font-medium text-gray-900'>Quản lý tài khoản</CardTitle>
-          </CardHeader>
-          <CardContent className='pt-0'>
-            <nav className='space-y-2'>
-              <Button
-                variant={activeTab === 'profile' ? 'default' : 'ghost'}
-                className={`w-full justify-start text-sm ${activeTab === 'profile' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                onClick={() => setActiveTab('profile')}
+        <motion.div
+          initial={{ x: -50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Card className='w-64 min-h-screen border-r rounded-none'>
+            <CardHeader className='pb-4'>
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
               >
-                <Settings className='w-4 h-4 mr-2' />
-                Thông tin cá nhân
-              </Button>
-              <Button
-                variant={activeTab === 'orders' ? 'default' : 'ghost'}
-                className={`w-full justify-start text-sm ${activeTab === 'orders' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                onClick={() => setActiveTab('orders')}
-              >
-                <FileText className='w-4 h-4 mr-2' />
-                Đơn hàng của tôi
-              </Button>
-              <Button
-                variant={activeTab === 'addresses' ? 'default' : 'ghost'}
-                className={`w-full justify-start text-sm ${activeTab === 'addresses' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                onClick={() => setActiveTab('addresses')}
-              >
-                <MapPin className='w-4 h-4 mr-2' />
-                Sổ địa chỉ
-              </Button>
-              <Button
-                variant={activeTab === 'promotions' ? 'default' : 'ghost'}
-                className={`w-full justify-start text-sm ${activeTab === 'promotions' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                onClick={() => setActiveTab('promotions')}
-              >
-                <Gift className='w-4 h-4 mr-2' />
-                Khuyến mãi của tôi
-              </Button>
-              <Button
-                variant={activeTab === 'forms' ? 'default' : 'ghost'}
-                className={`w-full justify-start text-sm ${activeTab === 'forms' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                onClick={() => setActiveTab('forms')}
-              >
-                <MessageSquare className='w-4 h-4 mr-2' />
-                Khiếu nại của tôi
-              </Button>
-            </nav>
-          </CardContent>
-        </Card>
-
-        {/* Main Content */}
-        <div className='flex-1 p-6'>
-          <Card className='h-full'>
-            <CardContent className='p-6'>
-              {activeTab === 'profile' && <ProfileContent />}
-              {activeTab === 'orders' && (
-                <OrdersContent
-                  orders={orders}
-                  loading={ordersLoading}
-                  onRefreshOrders={() => loadCustomerOrders()}
-                  onFilterByStatus={(status) => loadCustomerOrders(status as OrderStatus)}
-                />
-              )}
-              {activeTab === 'addresses' && authUser?.userId && (
-                <AddressContent
-                  userId={authUser.userId}
-                  onAddAddress={handleAddAddress}
-                  onEditAddress={handleEditAddress}
-                  onDeleteAddress={handleDeleteAddress}
-                  onSetDefault={handleSetDefault}
-                  refreshTrigger={refreshTrigger}
-                />
-              )}
-              {activeTab === 'promotions' && (
-                <PromotionsContent promotions={promotions} loading={promotionsLoading} onRefresh={loadUserPromotions} />
-              )}
-              {activeTab === 'forms' && <FormsContent forms={forms} loading={formsLoading} onRefresh={loadUserForms} />}
+                <CardTitle className='text-lg font-medium text-gray-900'>Quản lý tài khoản</CardTitle>
+              </motion.div>
+            </CardHeader>
+            <CardContent className='pt-0'>
+              <nav className='space-y-2'>
+                {[
+                  { id: 'profile', icon: Settings, label: 'Thông tin cá nhân' },
+                  { id: 'orders', icon: FileText, label: 'Đơn hàng của tôi' },
+                  { id: 'addresses', icon: MapPin, label: 'Sổ địa chỉ' },
+                  { id: 'promotions', icon: Gift, label: 'Khuyến mãi của tôi' },
+                  { id: 'forms', icon: MessageSquare, label: 'Khiếu nại của tôi' }
+                ].map((tab, index) => {
+                  const Icon = tab.icon
+                  const isActive = activeTab === tab.id
+                  return (
+                    <motion.div
+                      key={tab.id}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
+                      whileHover={{ x: 5 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Button
+                        variant={isActive ? 'default' : 'ghost'}
+                        className={`w-full justify-start text-sm transition-all ${isActive ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        onClick={() => setActiveTab(tab.id)}
+                      >
+                        <Icon className='w-4 h-4 mr-2' />
+                        {tab.label}
+                      </Button>
+                    </motion.div>
+                  )
+                })}
+              </nav>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
+
+        {/* Main Content */}
+        <motion.div
+          initial={{ x: 50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className='flex-1 p-6'
+        >
+          <Card className='h-full'>
+            <CardContent className='p-6'>
+              <AnimatePresence mode='wait'>
+                {activeTab === 'profile' && (
+                  <motion.div
+                    key='profile'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ProfileContent />
+                  </motion.div>
+                )}
+                {activeTab === 'orders' && (
+                  <motion.div
+                    key='orders'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <OrdersContent
+                      orders={orders}
+                      loading={ordersLoading}
+                      onRefreshOrders={() => loadCustomerOrders()}
+                      onFilterByStatus={(status) => loadCustomerOrders(status as OrderStatus)}
+                    />
+                  </motion.div>
+                )}
+                {activeTab === 'addresses' && authUser?.userId && (
+                  <motion.div
+                    key='addresses'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <AddressContent
+                      userId={authUser.userId}
+                      onAddAddress={handleAddAddress}
+                      onEditAddress={handleEditAddress}
+                      onDeleteAddress={handleDeleteAddress}
+                      onSetDefault={handleSetDefault}
+                      refreshTrigger={refreshTrigger}
+                    />
+                  </motion.div>
+                )}
+                {activeTab === 'promotions' && (
+                  <motion.div
+                    key='promotions'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <PromotionsContent
+                      promotions={promotions}
+                      loading={promotionsLoading}
+                      onRefresh={loadUserPromotions}
+                    />
+                  </motion.div>
+                )}
+                {activeTab === 'forms' && (
+                  <motion.div
+                    key='forms'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <FormsContent forms={forms} loading={formsLoading} onRefresh={loadUserForms} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Address Modal */}
@@ -424,6 +523,6 @@ export default function Profile() {
         existingAddresses={addresses}
         userId={authUser?.userId}
       />
-    </div>
+    </motion.div>
   )
 }

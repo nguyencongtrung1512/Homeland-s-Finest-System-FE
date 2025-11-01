@@ -273,8 +273,7 @@ function BlogByCategory() {
                           </div>
                           {blog.image && (
                             <div className='mt-3'>
-                              <img src={resolveImageUrl(blog.image)} alt={blog.title} className='w-20 h-20 object-cover rounded-md' />
-                            </div>
+ <img src={blog.image} alt={blog.title} className='w-20 h-20 object-cover rounded-md' />                            </div>
                           )}
                         </div>
                       </div>
@@ -340,7 +339,7 @@ function BlogByCategory() {
               {selectedBlog.image && (
                 <div className='my-4'>
                   <img
-                    src={resolveImageUrl(selectedBlog.image)}
+                    src={selectedBlog.image}
                     alt={selectedBlog.title}
                     className='w-full max-h-[300px] object-cover rounded-md'
                   />
