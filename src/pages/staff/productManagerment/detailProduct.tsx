@@ -397,11 +397,11 @@ function DetailProductStaff() {
               </div>
             )}
 
-            {product.note && (
+            {product.staffNote && (
               <div>
                 <label className='text-sm font-medium text-gray-600'>Ghi chú từ Staff</label>
                 <div className='mt-1 bg-gray-50 rounded-lg p-3 border'>
-                  <p className='text-gray-900'>{product.note}</p>
+                  <p className='text-gray-900'>{product.staffNote}</p>
                 </div>
               </div>
             )}

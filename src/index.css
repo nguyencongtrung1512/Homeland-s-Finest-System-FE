@@ -163,3 +163,95 @@ h1 {
     @apply bg-background text-foreground;
   }
 }
+
+/* Enhanced mascot bounce - kiểu cellphone với tay giơ lên */
+@keyframes mascotBounce {
+  0% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-20px) scale(1.05) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-30px) scale(1.08) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-20px) scale(1.05) rotate(2deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+.animate-mascot-bounce {
+  animation: mascotBounce 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+  transform-origin: center bottom;
+}
+
+/* Animation cho tay giơ lên (như cầm điện thoại) */
+@keyframes handsRaised {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-hands-raised {
+  animation: handsRaised 1.5s ease-in-out infinite;
+}
+
+/* Voucher rơi như lì xì - sát xuống gần mascot hơn */
+@keyframes voucherFall {
+  0% {
+    transform: translateY(-10%) translateX(0) rotate(-8deg) scale(0.8);
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+    transform: translateY(-5%) translateX(-3px) rotate(-6deg) scale(0.85);
+  }
+  10% {
+    transform: translateY(0%) translateX(2px) rotate(-4deg) scale(0.9);
+  }
+  25% {
+    transform: translateY(30%) translateX(-5px) rotate(-2deg) scale(1);
+  }
+  30% {
+    transform: translateY(35%) translateX(4px) rotate(2deg) scale(1);
+  }
+  50% {
+    transform: translateY(70%) translateX(-4px) rotate(8deg) scale(0.95);
+  }
+  55% {
+    transform: translateY(75%) translateX(3px) rotate(10deg) scale(0.95);
+  }
+  75% {
+    transform: translateY(100%) translateX(-3px) rotate(12deg) scale(0.9);
+  }
+  80% {
+    transform: translateY(105%) translateX(2px) rotate(15deg) scale(0.9);
+  }
+  100% {
+    transform: translateY(110%) translateX(-2px) rotate(18deg) scale(0.85);
+    opacity: 0;
+  }
+}
+
+.animate-voucher {
+  animation: voucherFall 2.5s infinite linear;
+  top: -5%;
+}
+
+/* Responsive mascot container */
+.mascot-container {
+  position: relative;
+  min-height: 250px;
+}
+
+@media (max-width: 768px) {
+  .mascot-container {
+    min-height: 200px;
+  }
+}

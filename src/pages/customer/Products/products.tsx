@@ -23,17 +23,12 @@ function Products() {
   const [combos, setCombos] = useState<Combo[]>([])
   const [combosLoading, setCombosLoading] = useState(false)
   const [combosError, setCombosError] = useState<string | null>(null)
-  // const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'updatedAt' | 'saleCount' | 'rating'>('createdAt')
-  // const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  // Call API giống hệt Swagger UI
   const { products, loading, error, pagination, refetch } = useProducts({
-    pageNumber: currentPage + 1, // Swagger UI dùng pageNumber (1-based)
-    pageSize: 10 // Hiển thị 10 sản phẩm mỗi trang
-    // Không gửi search và isActive để tránh lỗi
+    pageNumber: currentPage + 1,
+    pageSize: 10
   })
 
-  // Load combos when switching to combo tab
   useEffect(() => {
     const fetchCombos = async () => {
       if (activeTab !== 'combo') return
@@ -51,7 +46,6 @@ function Products() {
     fetchCombos()
   }, [activeTab, currentPage])
 
-  // Convert Product[] to ProductCardData[]
   const productCardData: ProductCardData[] = products.map((product) => ({
     ...product,
     badge:

@@ -33,7 +33,6 @@ import {
   AlertDialogTitle
 } from '../../../components/ui/alert-dialog'
 import { formatDate } from '../../../utils/formatDate'
-import { resolveImageUrl } from '../../../utils/image'
 
 function BlogByCategory() {
   const { id } = useParams<{ id: string }>()
@@ -273,7 +272,12 @@ function BlogByCategory() {
                           </div>
                           {blog.image && (
                             <div className='mt-3'>
- <img src={blog.image} alt={blog.title} className='w-20 h-20 object-cover rounded-md' />                            </div>
+                              <img
+                                src={blog.image}
+                                alt={blog.title}
+                                className='w-20 h-20 object-cover rounded-md'
+                              />{' '}
+                            </div>
                           )}
                         </div>
                       </div>

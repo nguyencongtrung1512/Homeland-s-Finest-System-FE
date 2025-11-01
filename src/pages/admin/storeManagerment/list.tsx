@@ -16,7 +16,7 @@ interface Store {
   name: string
   ownerName: string
   ownerEmail: string
-  ownerAvatar: string
+  logoUrl: string
   createDate: string
   createDateTimestamp: number
   productCount: number
@@ -69,7 +69,7 @@ function StoreManagement() {
       name: apiStore.storeName,
       ownerName: 'Chủ cửa hàng',
       ownerEmail: 'N/A',
-      ownerAvatar: avatarText,
+      logoUrl: avatarText,
       createDate: formatDate(apiStore.createdAt),
       createDateTimestamp: new Date(apiStore.createdAt).getTime(), // THÊM MỚI
       productCount: 0,
