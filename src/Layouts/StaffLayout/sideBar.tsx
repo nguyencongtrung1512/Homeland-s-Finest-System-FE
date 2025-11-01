@@ -9,7 +9,9 @@ import {
   Settings,
   Leaf,
   LibraryBig,
-  ShoppingCart
+  ShoppingCart,
+  Package,
+  Component
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import path from '../../constants/path'
@@ -54,6 +56,16 @@ function SideBar() {
       icon: <CheckCircle size={18} />
     },
     {
+      key: path.comboManagementStaff,
+      label: 'Quản lý combo',
+      icon: <Component size={18} />
+    },
+    {
+      key: path.productCategoryStaff,
+      label: 'Quản lý danh mục',
+      icon: <Package size={18} />
+    },
+    {
       key: path.Order_Management_Staff,
       label: 'Quản lý đơn hàng',
       icon: <ShoppingCart size={18} />
@@ -86,7 +98,9 @@ function SideBar() {
   ]
 
   const handleMenuClick = ({ key }: { key: string }) => {
-    navigate(key)
+    // Nếu key là relative path, cần kết hợp với base path
+    const fullPath = key.startsWith('/') ? key : `${path.BASE_STAFF}/${key}`
+    navigate(fullPath)
   }
 
   return (

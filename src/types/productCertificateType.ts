@@ -1,30 +1,45 @@
-export interface ProductCertificate {
+export interface ProductCertificateType {
   id: string // UUID
   productId: string // UUID - Foreign key to Product
   reviewedByStaffId: string // UUID - Foreign key to Staff
-  approvedByAdminId?: string // UUID - Foreign key to Admin (optional)
   imageUrl: string // varchar(500)
-  status: 'pending' | 'approved' | 'rejected' | 'under_review' // varchar(50)
-  staffNotes?: string // text
-  adminFeedback?: string // text
-  submittedDate: string // TIMESTAMPTZ
-  decisionDate?: string // TIMESTAMPTZ
-  updatedAt: string // TIMESTAMPTZ
+  status: string // varchar(50) - có thể là bất kỳ string nào
+  staffNotes: string // text
+  submittedDate: string // ISO date string
+  decisionDate: string // ISO date string
+  updatedAt: string // ISO date string
 }
 
 export interface ProductCertificateCreateInput {
   productId: string
-  reviewedByStaffId: string
-  imageUrl: string
-  status?: 'pending' | 'approved' | 'rejected' | 'under_review'
-  staffNotes?: string
-  submittedDate?: string
+  certificateImage: File // File object cho multipart/form-data
 }
 
 export interface ProductCertificateUpdateInput {
-  approvedByAdminId?: string
-  status?: 'pending' | 'approved' | 'rejected' | 'under_review'
+  reviewedByStaffId?: string
+  imageUrl?: string
+  status?: string
   staffNotes?: string
-  adminFeedback?: string
+  submittedDate?: string
   decisionDate?: string
+}
+
+// Response từ API GET
+export interface ProductCertificateListResponse {
+  status: number
+  message: string
+  data: ProductCertificateType[]
+  pagination?: {
+    pageSize: number
+    pageNumber: number
+    totalItems: number
+    totalPages: number
+  }
+}
+
+// Response từ API POST/PUT/DELETE
+export interface ProductCertificateResponse {
+  status: number
+  message: string
+  data: ProductCertificateType
 }

@@ -1,8 +1,9 @@
-import { BarChart3, CheckCircle, CreditCard, FileText, Leaf, LibraryBig, User } from 'lucide-react'
+import { BarChart3, CheckCircle, ClipboardMinus, CreditCard, FileText, Leaf, LibraryBig, User, Gift, AlertTriangle, Component, Package } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
 import path from '../../constants/path'
+import { ShopOutlined } from '@ant-design/icons'
 
 interface SideBarProps {
   isCollapsed: boolean
@@ -23,20 +24,30 @@ function SideBar({ isCollapsed }: SideBarProps) {
       label: 'Quản lý cửa hàng',
       icon: <CheckCircle size={18} />
     },
-    // {
-    //   key: path.COMBO_MANAGEMENT_ADMIN,
-    //   label: 'Quản lý Combo',
-    //   icon: <Component size={18} />
-    // },
-    // {
-    //   key: path.PRODUCT_MANAGEMENT_ADMIN,
-    //   label: 'Quản lý sản phẩm',
-    //   icon: <Package size={18} />
-    // },
+    {
+      key: path.COMBO_MANAGEMENT_ADMIN,
+      label: 'Quản lý Combo',
+      icon: <Component size={18} />
+    },
+    {
+      key: path.PRODUCT_MANAGEMENT_ADMIN,
+      label: 'Quản lý sản phẩm',
+      icon: <Package size={18} />
+    },
     {
       key: path.TRANSACTION_MANAGEMENT_ADMIN,
       label: 'Quản lí giao dịch',
       icon: <CreditCard size={18} />
+    },
+    {
+      key: path.PROMOTION_MANAGEMENT_ADMIN,
+      label: 'Quản lý Mã khuyến mãi ',
+      icon: <Gift size={18} />
+    },
+    {
+      key: path.FORM_MANAGEMENT_ADMIN,
+      label: 'Quản lý khiếu nại',
+      icon: <AlertTriangle size={18} />
     },
     {
       key: path.BLOG_MANAGEMENT_ADMIN,
@@ -44,19 +55,36 @@ function SideBar({ isCollapsed }: SideBarProps) {
       icon: <LibraryBig size={18} />
     },
     {
+      key: path.STAFF_MANAGEMENT_ADMIN,
+      label: 'Quản lí nhân viên',
+      icon: <User size={18} />
+    },
+    {
       key: path.ACCOUNT_MANAGEMENT_ADMIN,
       label: 'Quản lí người dùng',
       icon: <User size={18} />
     },
     {
+      key: path.SELLER_MANAGEMENT_ADMIN,
+      label: 'Quản lí seller',
+      icon: <ShopOutlined size={18} />
+    },
+    {
       key: path.TERMS_MANAGEMENT_ADMIN,
       label: 'Điều khoản dịch vụ',
       icon: <FileText size={18} />
+    },
+    {
+      key: path.SYSTEM_STORAGE_ADMIN,
+      label: 'Quản lí hệ thống',
+      icon: <ClipboardMinus size={18} />
     }
   ]
 
   const handleMenuClick = (key: string) => {
-    navigate(key)
+    // Nếu key là relative path, cần kết hợp với base path
+    const fullPath = key.startsWith('/') ? key : `${path.BASE_ADMIN}/${key}`
+    navigate(fullPath)
   }
 
   return (
@@ -76,7 +104,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
         <div className='w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center'>
           <Leaf size={20} className='text-white' />
         </div>
-        {!isCollapsed && <span className='text-lg font-bold text-blue-600 whitespace-nowrap'>StaffPanel</span>}
+        {!isCollapsed && <span className='text-lg font-bold text-blue-600 whitespace-nowrap'>AdminPanel</span>}
       </div>
 
       {/* Navigation Menu */}

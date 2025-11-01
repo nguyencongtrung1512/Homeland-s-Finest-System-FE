@@ -2,21 +2,40 @@ export interface ProductVariant {
   id: string // UUID
   productId: string // UUID - Foreign key to Product
   variantName: string // varchar(255)
+  quantity: number // int
   price: number // numeric(10,2)
   isActive: boolean // boolean
+  length?: number // int
+  width?: number // int
+  height?: number // int
+  weight?: number // int
   createdAt: string // TIMESTAMPTZ
   updatedAt: string // TIMESTAMPTZ
 }
 
-export interface ProductVariantCreateInput {
+export interface ProductVariantInput {
   productId: string
   variantName: string
+  quantity: number
   price: number
+  length?: number // int
+  width?: number // int
+  height?: number // int
+  weight?: number // int
   isActive?: boolean
 }
 
-export interface ProductVariantUpdateInput {
-  variantName?: string
-  price?: number
-  isActive?: boolean
+// New interface for create variant response
+export interface CreateVariantResponse {
+  id: string
+  variantName: string
+  basePrice: number
+  price: number
+  finalPrice: number
+  quantity: number
+  isActive: boolean
+  length: number
+  width: number
+  height: number
+  weight: number
 }

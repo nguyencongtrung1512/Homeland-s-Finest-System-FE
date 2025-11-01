@@ -1,5 +1,15 @@
-import { useState } from 'react'
-import { Search, Users, UserX, ChevronLeft, ChevronRight, Lock, Eye } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import {
+  Search,
+  Users,
+  UserX,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Eye,
+  UserPlus,
+  Calendar as CalendarIcon
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -14,17 +24,18 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../components/ui/dialog'
+import { Calendar } from '../../../components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
+import { getUsers, updateUser, type User } from '../../../apis/user.api'
+import { registerStaff, type StaffRegistrationData } from '../../../apis/auth.api'
+import { toast } from 'react-toastify'
 
-interface Customer {
-  id: string
-  name: string
-  email: string
-  phone: string
-  avatar: string
-  joinDate: string
-  role: 'admin' | 'staff' | 'customer'
-  status: 'active' | 'temporarily_locked' | 'banned'
-  orderCount: number
+// Sử dụng User interface từ API, thêm một số field computed
+interface Customer extends User {
+  name: string // Computed từ firstName + lastName
+  phone: string // Alias cho phoneNumber
+  joinDate: string // Computed từ createdAt
+  status: 'active' | 'temporarily_locked' | 'banned' // Computed từ isActive
 }
 
 function CustomerManagement() {
@@ -37,96 +48,125 @@ function CustomerManagement() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showLockConfirm, setShowLockConfirm] = useState(false)
   const [customerToLock, setCustomerToLock] = useState<Customer | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
-  // Mock data
-  const customers: Customer[] = [
-    {
-      id: 'C001',
-      name: 'Nguyễn Thị Lan',
-      email: 'lan.nguyen@email.com',
-      phone: '0912345678',
-      avatar: 'NL',
-      joinDate: '15/03/2024',
-      role: 'admin',
-      status: 'active',
-      orderCount: 23
-    },
-    {
-      id: 'C002',
-      name: 'Trần Minh Tuấn',
-      email: 'tuan.tran@email.com',
-      phone: '0987654321',
-      avatar: 'TT',
-      joinDate: '22/02/2024',
-      role: 'staff',
-      status: 'temporarily_locked',
-      orderCount: 15
-    },
-    {
-      id: 'C003',
-      name: 'Lê Thị Mai',
-      email: 'mai.le@email.com',
-      phone: '0901234567',
-      avatar: 'LM',
-      joinDate: '08/01/2024',
-      role: 'customer',
-      status: 'banned',
-      orderCount: 8
-    },
-    {
-      id: 'C004',
-      name: 'Phạm Văn Hùng',
-      email: 'hung.pham@email.com',
-      phone: '0934567890',
-      avatar: 'PH',
-      joinDate: '12/04/2024',
-      role: 'customer',
-      status: 'active',
-      orderCount: 31
-    },
-    {
-      id: 'C005',
-      name: 'Hoàng Thị Hoa',
-      email: 'hoa.hoang@email.com',
-      phone: '0945678901',
-      avatar: 'HH',
-      joinDate: '05/05/2024',
-      role: 'customer',
-      status: 'active',
-      orderCount: 12
-    },
-    {
-      id: 'C006',
-      name: 'Vũ Đức Minh',
-      email: 'minh.vu@email.com',
-      phone: '0956789012',
-      avatar: 'VM',
-      joinDate: '18/06/2024',
-      role: 'staff',
-      status: 'active',
-      orderCount: 0
+  // Staff creation states
+  const [showCreateStaffModal, setShowCreateStaffModal] = useState(false)
+  const [staffFormData, setStaffFormData] = useState<StaffRegistrationData>({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    gender: 'Male',
+    phoneNumber: '',
+    dateOfBirth: '',
+    hireDate: ''
+  })
+  const [staffFormLoading, setStaffFormLoading] = useState(false)
+  const [dateOfBirthOpen, setDateOfBirthOpen] = useState(false)
+  const [hireDateOpen, setHireDateOpen] = useState(false)
+
+  // API states
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Function để transform User data thành Customer format
+  const transformUserToCustomer = (user: User): Customer => {
+    const firstName = user.firstName || ''
+    const lastName = user.lastName || ''
+    const fullName = `${firstName} ${lastName}`.trim()
+
+    return {
+      ...user,
+      name: fullName || 'Không có tên',
+      phone: user.phoneNumber || '',
+      joinDate: user.createdAt || '',
+      status: user.isActive ? 'active' : 'temporarily_locked'
     }
-  ]
+  }
+
+  // Function để fetch users từ API
+  const fetchUsers = async () => {
+    setLoading(true)
+    setError('')
+
+    try {
+      // Prepare API parameters
+      const apiParams: {
+        pageSize: number
+        pageNumber: number
+        searchTerm?: string
+        role?: string
+        isActive?: boolean
+      } = {
+        pageSize: 100,
+        pageNumber: 1
+      }
+
+      // Add search term if provided
+      if (searchText.trim()) {
+        apiParams.searchTerm = searchText.trim()
+      }
+
+      // Add role filter if not 'all'
+      if (roleFilter !== 'all') {
+        apiParams.role = roleFilter
+      }
+
+      // Add status filter if not 'all'
+      if (statusFilter !== 'all') {
+        apiParams.isActive = statusFilter === 'active'
+      }
+
+      console.log('API params:', apiParams)
+
+      const users = await getUsers(apiParams)
+
+      const transformedCustomers = users.map(transformUserToCustomer)
+      console.log('Fetched users:', users.length)
+      console.log('Transformed customers:', transformedCustomers.length)
+      console.log('Sample customer:', transformedCustomers[0])
+      setCustomers(transformedCustomers)
+    } catch (err: unknown) {
+      const error = err as { message?: string }
+      const errorMessage = error.message || 'Có lỗi xảy ra khi tải danh sách người dùng'
+      setError(errorMessage)
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch data khi component mount và khi có thay đổi filter
+  useEffect(() => {
+    fetchUsers()
+  }, [searchText, roleFilter, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getRoleConfig = (role: string) => {
     const configs = {
-      admin: {
-        text: 'Admin',
-        bgColor: 'bg-purple-100',
-        textColor: 'text-purple-600'
-      },
-      staff: {
+      Staff: {
         text: 'Nhân viên',
         bgColor: 'bg-blue-100',
         textColor: 'text-blue-600'
       },
-      customer: {
+      Customer: {
         text: 'Khách hàng',
         bgColor: 'bg-green-100',
         textColor: 'text-green-600'
+      },
+      Seller: {
+        text: 'Người bán',
+        bgColor: 'bg-purple-100',
+        textColor: 'text-purple-600'
       }
     }
-    return configs[role as keyof typeof configs] || configs.customer
+    return configs[role as keyof typeof configs] || configs.Customer
   }
 
   const getStatusConfig = (status: string) => {
@@ -150,18 +190,8 @@ function CustomerManagement() {
     return configs[status as keyof typeof configs] || configs.active
   }
 
-  const filteredCustomers = customers.filter((customer) => {
-    const matchesSearch =
-      searchText === '' ||
-      customer.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchText.toLowerCase()) ||
-      customer.phone.includes(searchText)
-
-    const matchesRole = roleFilter === 'all' || customer.role === roleFilter
-    const matchesStatus = statusFilter === 'all' || customer.status === statusFilter
-
-    return matchesSearch && matchesRole && matchesStatus
-  })
+  // No need for client-side filtering since we're using API search
+  const filteredCustomers = customers
 
   const totalPages = Math.ceil(filteredCustomers.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
@@ -178,14 +208,69 @@ function CustomerManagement() {
     setShowLockConfirm(true)
   }
 
-  const confirmLock = () => {
+  const confirmLock = async () => {
     if (customerToLock) {
-      // Update customer status to locked
-      console.log('Locking customer:', customerToLock.name)
-      // Here you would typically make an API call to update the customer status
+      setActionLoading(true)
+      try {
+        await updateUser(customerToLock.id, {
+          isPermission: false
+        })
+
+        toast.success(`Đã khóa quyền hạn của ${customerToLock.name}`, {
+          position: 'top-right',
+          autoClose: 3000
+        })
+
+        // Refresh data
+        await fetchUsers()
+      } catch (err: unknown) {
+        const error = err as { message?: string }
+        const errorMessage = error.message || 'Có lỗi xảy ra khi khóa quyền hạn'
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } finally {
+        setActionLoading(false)
+        setShowLockConfirm(false)
+        setCustomerToLock(null)
+      }
     }
-    setShowLockConfirm(false)
-    setCustomerToLock(null)
+  }
+
+  const handleDelete = (customer: Customer) => {
+    setCustomerToDelete(customer)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = async () => {
+    if (customerToDelete) {
+      setActionLoading(true)
+      try {
+        await updateUser(customerToDelete.id, {
+          isActive: false
+        })
+
+        toast.success(`Đã xóa tài khoản ${customerToDelete.name}`, {
+          position: 'top-right',
+          autoClose: 3000
+        })
+
+        // Refresh data
+        await fetchUsers()
+      } catch (err: unknown) {
+        const error = err as { message?: string }
+        const errorMessage = error.message || 'Có lỗi xảy ra khi xóa tài khoản'
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } finally {
+        setActionLoading(false)
+        setShowDeleteConfirm(false)
+        setCustomerToDelete(null)
+      }
+    }
   }
 
   const closeDetailModal = () => {
@@ -196,6 +281,171 @@ function CustomerManagement() {
   const closeLockConfirm = () => {
     setShowLockConfirm(false)
     setCustomerToLock(null)
+  }
+
+  const closeDeleteConfirm = () => {
+    setShowDeleteConfirm(false)
+    setCustomerToDelete(null)
+  }
+
+  // Staff creation functions
+  const handleCreateStaff = () => {
+    setShowCreateStaffModal(true)
+    // Reset form data
+    setStaffFormData({
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      gender: 'Male',
+      phoneNumber: '',
+      dateOfBirth: '',
+      hireDate: ''
+    })
+  }
+
+  const handleStaffFormChange = (field: keyof StaffRegistrationData, value: string) => {
+    setStaffFormData((prev) => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleStaffFormSubmit = async () => {
+    // Basic validation
+    if (
+      !staffFormData.email ||
+      !staffFormData.password ||
+      !staffFormData.firstName ||
+      !staffFormData.lastName ||
+      !staffFormData.phoneNumber ||
+      !staffFormData.dateOfBirth ||
+      !staffFormData.hireDate
+    ) {
+      toast.error('Vui lòng điền đầy đủ thông tin', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    // Password validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+    if (!passwordRegex.test(staffFormData.password)) {
+      toast.error('Mật khẩu phải chứa ít nhất một chữ hoa, một chữ thường, một số và một ký tự đặc biệt', {
+        position: 'top-right',
+        autoClose: 5000
+      })
+      return
+    }
+
+    // Email validation
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    if (!emailRegex.test(staffFormData.email)) {
+      toast.error('Email không hợp lệ', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    // Phone validation
+    const phoneRegex = /^[0-9]{10,12}$/
+    if (!phoneRegex.test(staffFormData.phoneNumber)) {
+      toast.error('Số điện thoại phải có 10-12 chữ số', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    setStaffFormLoading(true)
+    try {
+      await registerStaff(staffFormData)
+
+      toast.success('Tạo tài khoản nhân viên thành công!', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+
+      // Close modal and refresh data
+      setShowCreateStaffModal(false)
+      await fetchUsers()
+    } catch (err: unknown) {
+      console.error('Staff creation error:', err)
+
+      // Handle different types of errors
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+
+        if (axiosError.response?.data?.errors) {
+          // Handle validation errors from backend
+          const errors = axiosError.response.data.errors
+          const errorMessages = Object.values(errors).flat()
+          const firstError = errorMessages[0] || 'Có lỗi xảy ra khi tạo tài khoản nhân viên'
+          toast.error(firstError, {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        } else if (axiosError.response?.data?.message) {
+          // Handle backend error message
+          toast.error(axiosError.response.data.message, {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        } else {
+          toast.error('Có lỗi xảy ra khi tạo tài khoản nhân viên', {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        }
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        const errorWithMessage = err as { message: string }
+        toast.error(errorWithMessage.message, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } else {
+        toast.error('Có lỗi xảy ra khi tạo tài khoản nhân viên', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      }
+    } finally {
+      setStaffFormLoading(false)
+    }
+  }
+
+  const closeCreateStaffModal = () => {
+    setShowCreateStaffModal(false)
+    setStaffFormData({
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      gender: 'Male',
+      phoneNumber: '',
+      dateOfBirth: '',
+      hireDate: ''
+    })
+    setDateOfBirthOpen(false)
+    setHireDateOpen(false)
+  }
+
+  // Date formatting functions
+  const formatDate = (date: Date | undefined): string => {
+    if (!date) return ''
+    return date.toISOString().split('T')[0] // Format as YYYY-MM-DD
+  }
+
+  const formatDisplayDate = (dateString: string): string => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    return date.toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
   }
 
   // Calculate summary statistics
@@ -209,7 +459,22 @@ function CustomerManagement() {
         <div className='flex items-center gap-3'>
           <h1 className='text-2xl font-bold text-gray-900'>Quản lý tài khoản</h1>
         </div>
+        <div className='flex items-center gap-3'>
+          <Button
+            onClick={handleCreateStaff}
+            className='bg-green-600 hover:bg-green-700 text-white flex items-center gap-2'
+          >
+            <UserPlus className='w-4 h-4' />
+            Tạo nhân viên
+          </Button>
+          <Button onClick={fetchUsers} disabled={loading} className='bg-blue-600 hover:bg-blue-700 text-white'>
+            {loading ? 'Đang tải...' : 'Làm mới'}
+          </Button>
+        </div>
       </div>
+
+      {/* Error Message */}
+      {error && <div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg'>{error}</div>}
 
       {/* Summary Cards */}
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
@@ -269,9 +534,9 @@ function CustomerManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value='all'>Tất cả vai trò</SelectItem>
-                  <SelectItem value='admin'>Admin</SelectItem>
                   <SelectItem value='staff'>Nhân viên</SelectItem>
                   <SelectItem value='customer'>Khách hàng</SelectItem>
+                  <SelectItem value='seller'>Người bán</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -307,88 +572,110 @@ function CustomerManagement() {
           </div>
         </CardHeader>
         <CardContent className='p-0'>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className='px-6 py-3'>Tên khách hàng</TableHead>
-                <TableHead className='px-6 py-3'>Email / SDT</TableHead>
-                <TableHead className='px-6 py-3'>Ngày tham gia</TableHead>
-                <TableHead className='px-6 py-3'>Vai trò</TableHead>
-                <TableHead className='px-6 py-3'>Trạng thái</TableHead>
-                <TableHead className='px-6 py-3'>Hành động</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentCustomers.map((customer) => {
-                const roleConfig = getRoleConfig(customer.role)
-                const statusConfig = getStatusConfig(customer.status)
-
-                return (
-                  <TableRow key={customer.id}>
-                    <TableCell className='px-6 py-3'>
-                      <div className='flex items-center gap-3'>
-                        <Avatar className='w-10 h-10'>
-                          <AvatarFallback className='bg-blue-100 text-blue-600 text-sm font-semibold'>
-                            {customer.avatar}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className='font-medium text-gray-900 text-sm'>{customer.name}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className='px-6 py-3'>
-                      <div>
-                        <p className='font-medium text-gray-900 text-sm'>{customer.email}</p>
-                        <p className='text-xs text-gray-600'>{customer.phone}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className='px-6 py-3'>
-                      <span className='text-sm text-gray-700'>{customer.joinDate}</span>
-                    </TableCell>
-                    <TableCell className='px-6 py-3'>
-                      <div
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${roleConfig.bgColor} ${roleConfig.textColor}`}
-                      >
-                        {roleConfig.text}
-                      </div>
-                    </TableCell>
-                    <TableCell className='px-6 py-3'>
-                      <div
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.textColor}`}
-                      >
-                        {statusConfig.text}
-                      </div>
-                    </TableCell>
-                    <TableCell className='px-6 py-3'>
-                      <div className='flex items-center gap-2'>
-                        <Button
-                          variant='ghost'
-                          size='sm'
-                          onClick={() => handleView(customer)}
-                          className='text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1 text-sm flex items-center gap-1'
-                        >
-                          <Eye className='w-4 h-4' />
-                          Xem chi tiết
-                        </Button>
-                        {customer.status !== 'banned' && (
-                          <Button
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => handleLock(customer)}
-                            className='text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1 text-sm flex items-center gap-1'
-                          >
-                            <Lock className='w-4 h-4' />
-                            Khóa
-                          </Button>
-                        )}
-                      </div>
+          {loading ? (
+            <div className='flex items-center justify-center py-12'>
+              <div className='text-center'>
+                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
+                <p className='text-gray-600'>Đang tải dữ liệu...</p>
+              </div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className='px-6 py-3'>Tên khách hàng</TableHead>
+                  <TableHead className='px-6 py-3'>Email / SDT</TableHead>
+                  <TableHead className='px-6 py-3'>Ngày tham gia</TableHead>
+                  <TableHead className='px-6 py-3'>Vai trò</TableHead>
+                  <TableHead className='px-6 py-3'>Trạng thái</TableHead>
+                  <TableHead className='px-6 py-3'>Hành động</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentCustomers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className='text-center py-12 text-gray-500'>
+                      Không có dữ liệu
                     </TableCell>
                   </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                ) : (
+                  currentCustomers.map((customer) => {
+                    const roleConfig = getRoleConfig(customer.role)
+                    const statusConfig = getStatusConfig(customer.status)
+
+                    return (
+                      <TableRow key={customer.id}>
+                        <TableCell className='px-6 py-3'>
+                          <div className='flex items-center gap-3'>
+                            <Avatar className='w-10 h-10'>
+                              <AvatarFallback className='bg-blue-100 text-blue-600 text-sm font-semibold'>
+                                {customer.avatar ||
+                                  customer.name
+                                    .split(' ')
+                                    .map((n) => n[0])
+                                    .join('')
+                                    .toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className='font-medium text-gray-900 text-sm'>{customer.name}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className='px-6 py-3'>
+                          <div>
+                            <p className='font-medium text-gray-900 text-sm'>{customer.email}</p>
+                            <p className='text-xs text-gray-600'>{customer.phone}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className='px-6 py-3'>
+                          <span className='text-sm text-gray-700'>{customer.joinDate}</span>
+                        </TableCell>
+                        <TableCell className='px-6 py-3'>
+                          <div
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${roleConfig.bgColor} ${roleConfig.textColor}`}
+                          >
+                            {roleConfig.text}
+                          </div>
+                        </TableCell>
+                        <TableCell className='px-6 py-3'>
+                          <div
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.textColor}`}
+                          >
+                            {statusConfig.text}
+                          </div>
+                        </TableCell>
+                        <TableCell className='px-6 py-3'>
+                          <div className='flex items-center gap-2'>
+                            <Button
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => handleView(customer)}
+                              className='text-black hover:text-blue-800 hover:bg-blue-50 px-3 py-1 text-sm flex items-center gap-1'
+                            >
+                              <Eye className='w-4 h-4' />
+                              Xem chi tiết
+                            </Button>
+                            {customer.isPermission && (
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={() => handleLock(customer)}
+                                className='text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1 text-sm flex items-center gap-1'
+                              >
+                                <Lock className='w-4 h-4' />
+                                Khóa quyền hạn
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          )}
 
           {/* Pagination */}
           <div className='flex items-center justify-between px-6 py-4 border-t border-gray-200'>
@@ -465,19 +752,31 @@ function CustomerManagement() {
                 <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedCustomer.joinDate}</div>
               </div>
 
-              <div>
+              {/* <div>
                 <label className='block text-sm font-medium text-gray-700 mb-1'>Số đơn đã mua</label>
                 <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>
                   {selectedCustomer.orderCount} đơn hàng
                 </div>
-              </div>
+              </div> */}
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className='flex gap-2'>
             <Button variant='outline' onClick={closeDetailModal}>
               Đóng
             </Button>
+            {selectedCustomer && selectedCustomer.isActive && (
+              <Button
+                variant='destructive'
+                onClick={() => {
+                  closeDetailModal()
+                  handleDelete(selectedCustomer)
+                }}
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Đang xử lý...' : 'Xóa tài khoản'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -493,7 +792,7 @@ function CustomerManagement() {
                   Bạn có muốn khóa người dùng <span className='font-semibold'>{customerToLock.name}</span> không?
                   <br />
                   <span className='text-sm text-gray-500 mt-2 block'>
-                    Người dùng sẽ không thể đăng nhập vào hệ thống sau khi bị khóa.
+                    Người dùng sẽ không thể thực hiện các chức năng trên hệ thống sau khi bị khóa.
                   </span>
                 </>
               )}
@@ -501,11 +800,210 @@ function CustomerManagement() {
           </DialogHeader>
 
           <DialogFooter>
-            <Button variant='outline' onClick={closeLockConfirm}>
+            <Button variant='outline' onClick={closeLockConfirm} disabled={actionLoading}>
               Hủy
             </Button>
-            <Button onClick={confirmLock} className='bg-red-600 hover:bg-red-700 text-white'>
-              Khóa tài khoản
+            <Button onClick={confirmLock} className='bg-red-600 hover:bg-red-700 text-white' disabled={actionLoading}>
+              {actionLoading ? 'Đang xử lý...' : 'Khóa quyền hạn'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa tài khoản</DialogTitle>
+            <DialogDescription>
+              {customerToDelete && (
+                <>
+                  Bạn có muốn xóa tài khoản <span className='font-semibold'>{customerToDelete.name}</span> không?
+                  <br />
+                  <span className='text-sm text-gray-500 mt-2 block'>
+                    Tài khoản sẽ bị vô hiệu hóa và không thể đăng nhập vào hệ thống.
+                  </span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button variant='outline' onClick={closeDeleteConfirm} disabled={actionLoading}>
+              Hủy
+            </Button>
+            <Button onClick={confirmDelete} className='bg-red-600 hover:bg-red-700 text-white' disabled={actionLoading}>
+              {actionLoading ? 'Đang xử lý...' : 'Xóa tài khoản'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Staff Modal */}
+      <Dialog open={showCreateStaffModal} onOpenChange={setShowCreateStaffModal}>
+        <DialogContent className='sm:max-w-lg'>
+          <DialogHeader>
+            <DialogTitle>Tạo tài khoản nhân viên</DialogTitle>
+            <DialogDescription>Điền thông tin để tạo tài khoản nhân viên mới</DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-4'>
+            {/* First Name and Last Name */}
+            <div className='grid grid-cols-2 gap-4'>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Họ *</label>
+                <Input
+                  type='text'
+                  placeholder='Nhập họ'
+                  value={staffFormData.firstName}
+                  onChange={(e) => handleStaffFormChange('firstName', e.target.value)}
+                  className='h-10'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Tên *</label>
+                <Input
+                  type='text'
+                  placeholder='Nhập tên'
+                  value={staffFormData.lastName}
+                  onChange={(e) => handleStaffFormChange('lastName', e.target.value)}
+                  className='h-10'
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Email *</label>
+              <Input
+                type='email'
+                placeholder='Nhập email nhân viên'
+                value={staffFormData.email}
+                onChange={(e) => handleStaffFormChange('email', e.target.value)}
+                className='h-10'
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Mật khẩu *</label>
+              <Input
+                type='password'
+                placeholder='Nhập mật khẩu'
+                value={staffFormData.password}
+                onChange={(e) => handleStaffFormChange('password', e.target.value)}
+                className='h-10'
+              />
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Số điện thoại *</label>
+              <Input
+                type='tel'
+                placeholder='Nhập số điện thoại'
+                value={staffFormData.phoneNumber}
+                onChange={(e) => handleStaffFormChange('phoneNumber', e.target.value)}
+                className='h-10'
+              />
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Giới tính *</label>
+              <Select value={staffFormData.gender} onValueChange={(value) => handleStaffFormChange('gender', value)}>
+                <SelectTrigger className='h-10'>
+                  <SelectValue placeholder='Chọn giới tính' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='Male'>Nam</SelectItem>
+                  <SelectItem value='Female'>Nữ</SelectItem>
+                  <SelectItem value='Other'>Khác</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date of Birth */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày sinh *</label>
+              <Popover open={dateOfBirthOpen} onOpenChange={setDateOfBirthOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    className={`w-full h-10 justify-start text-left font-normal ${
+                      !staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
+                    }`}
+                  >
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {staffFormData.dateOfBirth ? formatDisplayDate(staffFormData.dateOfBirth) : 'Chọn ngày sinh'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar
+                    mode='single'
+                    selected={staffFormData.dateOfBirth ? new Date(staffFormData.dateOfBirth) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        handleStaffFormChange('dateOfBirth', formatDate(date))
+                        setDateOfBirthOpen(false)
+                      }
+                    }}
+                    disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                    captionLayout='dropdown'
+                    fromYear={1900}
+                    toYear={new Date().getFullYear()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Hire Date */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày tuyển dụng *</label>
+              <Popover open={hireDateOpen} onOpenChange={setHireDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    className={`w-full h-10 justify-start text-left font-normal ${
+                      !staffFormData.hireDate ? 'text-muted-foreground' : ''
+                    }`}
+                  >
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {staffFormData.hireDate ? formatDisplayDate(staffFormData.hireDate) : 'Chọn ngày tuyển dụng'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar
+                    mode='single'
+                    selected={staffFormData.hireDate ? new Date(staffFormData.hireDate) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        handleStaffFormChange('hireDate', formatDate(date))
+                        setHireDateOpen(false)
+                      }
+                    }}
+                    disabled={(date) => date < new Date('2020-01-01')}
+                    captionLayout='dropdown'
+                    fromYear={2020}
+                    toYear={new Date().getFullYear() + 1}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <DialogFooter className='flex gap-2'>
+            <Button variant='outline' onClick={closeCreateStaffModal} disabled={staffFormLoading}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleStaffFormSubmit}
+              className='bg-green-600 hover:bg-green-700 text-white'
+              disabled={staffFormLoading}
+            >
+              {staffFormLoading ? 'Đang tạo...' : 'Tạo nhân viên'}
             </Button>
           </DialogFooter>
         </DialogContent>

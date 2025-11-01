@@ -1,111 +1,91 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import AsideFilter from './AsideFilter/asideFilter'
 import ProductCard, { type ProductCardData } from './Product/productCard'
 import Discover from './discover'
+import { useProducts } from '../../../hooks/useProducts'
+import Pagination from '../../../components/Pagination/Pagination'
+import Loading from '../../../components/Loading/loading'
+import { useCart } from '../../../contexts/cart.context'
+import { getAllCombos } from '../../../apis/combo.api'
+import { type Combo } from '../../../types/combo.type'
+import { ComboList } from '../combo/combo'
+import { PromotionBubble } from '../../../components/PromotionBubble'
+import ChatBot from '../../../components/ChatBot/chatbot'
+import ChatSystem from '../Chat/chatSystem'
+import { useAuth } from '../../../contexts/auth.context'
 
 function Products() {
-  const [products, setProducts] = useState<ProductCardData[]>([])
+  const { isAuthenticated } = useAuth()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(0) // Backend expect zero-based page
+  const { addToCart } = useCart()
+  const [activeTab, setActiveTab] = useState<'product' | 'combo'>('product')
+  const [combos, setCombos] = useState<Combo[]>([])
+  const [combosLoading, setCombosLoading] = useState(false)
+  const [combosError, setCombosError] = useState<string | null>(null)
+  // const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'updatedAt' | 'saleCount' | 'rating'>('createdAt')
+  // const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
+  // Call API giống hệt Swagger UI
+  const { products, loading, error, pagination, refetch } = useProducts({
+    pageNumber: currentPage + 1, // Swagger UI dùng pageNumber (1-based)
+    pageSize: 10 // Hiển thị 10 sản phẩm mỗi trang
+    // Không gửi search và isActive để tránh lỗi
+  })
+
+  // Load combos when switching to combo tab
   useEffect(() => {
-    setProducts([
-      {
-        id: '1',
-        storeId: 'store-1',
-        provinceId: 'province-1',
-        name: 'Sữa Tươi Milk Organic',
-        description: 'Sữa tươi organic từ nông trại TH True Milk, đảm bảo chất lượng và an toàn thực phẩm',
-        productImages: ['https://images.unsplash.com/photo-1550581190-9c1c48d21d6c?q=80&w=800&auto=format&fit=crop'],
-        productVideo: '',
-        categoryId: ['category-1'],
-        madeBy: 'Nông trại TH True Milk, Hà Nội',
-        saleCount: 1250,
-        rating: 4.5,
-        reviewCount: 456,
-        isActive: true,
-        typeProduct: 'Dairy',
-        status: 'active',
-        note: '',
-        embedding: [],
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-15T00:00:00Z',
-        // Thêm fields cho ProductCard
-        price: 25000,
-        badge: { text: 'Organic', color: 'bg-green-600' }
-      },
-      {
-        id: '2',
-        storeId: 'store-2',
-        provinceId: 'province-2',
-        name: 'Hạt dinh dưỡng mix',
-        description: 'Hỗn hợp hạt dinh dưỡng từ các loại hạt tự nhiên, giàu protein và vitamin',
-        productImages: ['https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?q=80&w=800&auto=format&fit=crop'],
-        productVideo: '',
-        categoryId: ['category-2'],
-        madeBy: 'Làng nghề Bình Phước',
-        saleCount: 890,
-        rating: 4.2,
-        reviewCount: 112,
-        isActive: true,
-        typeProduct: 'Snack',
-        status: 'active',
-        note: '',
-        embedding: [],
-        createdAt: '2024-01-02T00:00:00Z',
-        updatedAt: '2024-01-16T00:00:00Z',
-        // Thêm fields cho ProductCard
-        price: 85000,
-        badge: { text: 'Tự nhiên', color: 'bg-yellow-500' }
-      },
-      {
-        id: '3',
-        storeId: 'store-3',
-        provinceId: 'province-3',
-        name: 'Nước dừa tươi',
-        description: 'Nước dừa tươi nguyên chất từ vườn dừa Bến Tre, giải khát tự nhiên',
-        productImages: ['https://images.unsplash.com/photo-1604908554027-432ea0b96227?q=80&w=800&auto=format&fit=crop'],
-        productVideo: '',
-        categoryId: ['category-3'],
-        madeBy: 'Vườn dừa Bến Tre',
-        saleCount: 2100,
-        rating: 4.0,
-        reviewCount: 89,
-        isActive: true,
-        typeProduct: 'Beverage',
-        status: 'active',
-        note: '',
-        embedding: [],
-        createdAt: '2024-01-03T00:00:00Z',
-        updatedAt: '2024-01-17T00:00:00Z',
-        // Thêm fields cho ProductCard
-        price: 18000,
-        badge: { text: 'Tươi ngon', color: 'bg-sky-500' }
-      },
-      {
-        id: '4',
-        storeId: 'store-4',
-        provinceId: 'province-4',
-        name: 'Socola đắng 70%',
-        description: 'Socola đắng cao cấp với 70% cacao nguyên chất, không đường',
-        productImages: ['https://images.unsplash.com/photo-1548907040-4a1b2e04e8f1?q=80&w=800&auto=format&fit=crop'],
-        productVideo: '',
-        categoryId: ['category-4'],
-        madeBy: 'Xưởng sản xuất TP.HCM',
-        saleCount: 650,
-        rating: 4.8,
-        reviewCount: 321,
-        isActive: true,
-        typeProduct: 'Confectionery',
-        status: 'active',
-        note: '',
-        embedding: [],
-        createdAt: '2024-01-04T00:00:00Z',
-        updatedAt: '2024-01-18T00:00:00Z',
-        // Thêm fields cho ProductCard
-        price: 89000,
-        badge: { text: 'Cao cấp', color: 'bg-purple-600' }
+    const fetchCombos = async () => {
+      if (activeTab !== 'combo') return
+      try {
+        setCombosLoading(true)
+        setCombosError(null)
+        const data = await getAllCombos({ pageNumber: currentPage + 1, pageSize: 12 })
+        setCombos(data)
+      } catch {
+        setCombosError('Không thể tải combo.')
+      } finally {
+        setCombosLoading(false)
       }
-    ])
-  }, [])
+    }
+    fetchCombos()
+  }, [activeTab, currentPage])
+
+  // Convert Product[] to ProductCardData[]
+  const productCardData: ProductCardData[] = products.map((product) => ({
+    ...product,
+    badge:
+      product.typeProduct === 'Traditional'
+        ? { text: 'Truyền thống', color: 'bg-orange-500' }
+        : product.typeProduct === 'Premium'
+          ? { text: 'Cao cấp', color: 'bg-purple-600' }
+          : product.typeProduct === 'Fresh'
+            ? { text: 'Tươi ngon', color: 'bg-green-500' }
+            : { text: 'Đặc sản', color: 'bg-blue-500' }
+  }))
+
+  const handleAddCombo = async (comboId: string) => {
+    try {
+      await addToCart('', 1, comboId)
+    } catch {
+      // swallow and rely on global error handling/toast if any
+    }
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    console.log('Search disabled for testing basic API call')
+    refetch()
+  }
+
+  const handleSortChange = (sort: string) => {
+    console.log('Sort disabled for testing basic API call:', sort)
+    refetch()
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page - 1) // Convert 1-based UI to 0-based API
+  }
 
   return (
     <div>
@@ -113,51 +93,164 @@ function Products() {
         <div className='lg:w-64 flex-shrink-0'>
           <AsideFilter />
         </div>
-        {/* Tabs filter top (mock) */}
+
+        {/* Main content */}
         <div className='flex-1'>
-          <div className='flex justify-between'>
-            <div className='mb-4 flex items-center gap-2 overflow-x-auto whitespace-nowrap'>
-              {['Mới nhất', 'Bán chạy', 'Giá thấp → cao', 'Giá cao → thấp'].map((t) => (
-                <button key={t} className='px-3 py-1.5 rounded-full border text-sm bg-white hover:border-green-400'>
-                  {t}
+          {/* Switch tabs */}
+          <div className='flex items-center justify-between mb-4'>
+            <div className='flex gap-2'>
+              <button
+                className={`px-3 py-1.5 rounded-full text-sm ${activeTab === 'product' ? 'bg-green-600 text-white' : 'border bg-white hover:border-green-400'}`}
+                onClick={() => setActiveTab('product')}
+              >
+                Sản phẩm
+              </button>
+              <button
+                className={`px-3 py-1.5 rounded-full text-sm ${activeTab === 'combo' ? 'bg-green-600 text-white' : 'border bg-white hover:border-green-400'}`}
+                onClick={() => setActiveTab('combo')}
+              >
+                Combo
+              </button>
+            </div>
+          </div>
+
+          {/* Search and filter section */}
+          <div className='flex flex-col lg:flex-row justify-between gap-4 mb-6'>
+            <div className='flex items-center gap-2 overflow-x-auto whitespace-nowrap'>
+              {['Mới nhất', 'Bán chạy', 'Giá thấp → cao', 'Giá cao → thấp'].map((sort) => (
+                <button
+                  key={sort}
+                  onClick={() => handleSortChange(sort)}
+                  className='px-3 py-1.5 rounded-full border text-sm bg-white hover:border-green-400 transition-colors'
+                >
+                  {sort}
                 </button>
               ))}
-              {/* Search box */}
-              <div className='flex w-full max-w-[420px] items-center justify-self-center rounded-full border border-[#D5E4CF] bg-white px-3 py-1.5 shadow-sm'>
-                <svg
-                  className='mr-2 h-4 w-4 text-gray-400'
-                  xmlns='http://www.w3.org/2000/svg'
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'
-                >
+            </div>
+
+            <form
+              onSubmit={handleSearch}
+              className='flex w-full max-w-[420px] items-center rounded-full border border-[#D5E4CF] bg-white px-3 py-1.5 shadow-sm'
+            >
+              <svg
+                className='mr-2 h-4 w-4 text-gray-400'
+                xmlns='http://www.w3.org/2000/svg'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth='2'
+                  d='M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z'
+                />
+              </svg>
+              <input
+                className='w-full border-none bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none'
+                type='text'
+                placeholder={activeTab === 'product' ? 'Tìm kiếm sản phẩm, vùng miền...' : 'Tìm kiếm combo...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </form>
+          </div>
+
+          {/* Loading state */}
+          {(activeTab === 'product' ? loading : combosLoading) && (
+            <div className='py-12'>
+              <Loading size='lg' text={activeTab === 'product' ? 'Đang tải sản phẩm...' : 'Đang tải combo...'} />
+            </div>
+          )}
+
+          {/* Error state */}
+          {(activeTab === 'product' ? !!error : !!combosError) && (
+            <div className='text-center py-12'>
+              <div className='text-red-600 mb-4'>
+                <svg className='mx-auto h-12 w-12' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
                   <path
                     strokeLinecap='round'
                     strokeLinejoin='round'
                     strokeWidth='2'
-                    d='M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z'
+                    d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z'
                   />
                 </svg>
-                <input
-                  className='w-full border-none bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none'
-                  type='text'
-                  placeholder='Tìm kiếm sản phẩm, vùng miền...'
-                />
               </div>
+              <h3 className='text-lg font-medium text-gray-900 mb-2'>Có lỗi xảy ra</h3>
+              <p className='text-gray-600 mb-4'>{activeTab === 'product' ? error : combosError}</p>
+              <button
+                onClick={() => (activeTab === 'product' ? refetch() : setActiveTab('combo'))}
+                className='px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors'
+              >
+                Thử lại
+              </button>
             </div>
-          </div>
+          )}
 
-          {/* Product grid */}
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
-            {products.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
+          {/* Products/Combos grid */}
+          {!(activeTab === 'product' ? loading || !!error : combosLoading || !!combosError) && (
+            <>
+              {activeTab === 'product' ? (
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+                  {productCardData.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+              ) : (
+                <ComboList
+                  combos={combos}
+                  loading={combosLoading}
+                  error={combosError}
+                  onAddToCart={handleAddCombo}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+
+              {activeTab === 'product' && productCardData.length === 0 && (
+                <div className='text-center py-12'>
+                  <div className='text-gray-400 mb-4'>
+                    <svg className='mx-auto h-12 w-12' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth='2'
+                        d='M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'
+                      />
+                    </svg>
+                  </div>
+                  <h3 className='text-lg font-medium text-gray-900 mb-2'>Không tìm thấy sản phẩm</h3>
+                  <p className='text-gray-600'>Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc</p>
+                </div>
+              )}
+
+              {activeTab === 'product' && (
+                <>
+                  <Pagination
+                    currentPage={currentPage + 1}
+                    totalPages={pagination.totalPages}
+                    onPageChange={handlePageChange}
+                    maxVisiblePages={5}
+                  />
+
+                  {/* Results info */}
+                  <div className='text-center text-sm text-gray-600 mt-4'>
+                    Hiển thị {productCardData.length} trong tổng số {pagination.totalItems} sản phẩm
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
+
       <div>
         <Discover />
       </div>
+      <div>
+      {isAuthenticated ? <ChatSystem /> : <ChatBot />}
+      </div>
+      <PromotionBubble />
     </div>
   )
 }

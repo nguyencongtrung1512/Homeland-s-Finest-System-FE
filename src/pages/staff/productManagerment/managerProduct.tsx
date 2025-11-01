@@ -1,137 +1,162 @@
-import { useState } from 'react'
-import { Card, Input, Select, DatePicker, Button, Table, Tag, Pagination } from 'antd'
+import { useState, useEffect } from 'react'
+import { Card, Input, Select, DatePicker, Button, Table, Tag, Pagination, message } from 'antd'
 import { Search, Filter, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
+import { staffApi, type ProductForReview } from '../../../apis/staff.api'
+import { useAuth } from '../../../contexts/auth.context'
+import path from '../../../constants/path'
 
 const { Search: AntSearch } = Input
 const { Option } = Select
 
-interface ProductData {
-  key: string
-  product: {
-    image: string
-    name: string
-    id: string
-  }
-  store: string
-  createdDate: string
-  price: number
-  status: 'pending' | 'approved' | 'rejected' | 'correction'
-}
-
 function ManagerProduct() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [products, setProducts] = useState<ProductForReview[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
 
-  const productData: ProductData[] = [
-    {
-      key: '1',
-      product: {
-        image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?q=80&w=100&auto=format&fit=crop',
-        name: 'iPhone 15 Pro Max',
-        id: 'SP001'
-      },
-      store: 'TechStore VN',
-      createdDate: '15/11/2024',
-      price: 29990000,
-      status: 'pending'
-    },
-    {
-      key: '2',
-      product: {
-        image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=100&auto=format&fit=crop',
-        name: 'Áo sơ mi nam cao cấp',
-        id: 'SP002'
-      },
-      store: 'Fashion House',
-      createdDate: '14/11/2024',
-      price: 450000,
-      status: 'approved'
-    },
-    {
-      key: '3',
-      product: {
-        image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=100&auto=format&fit=crop',
-        name: 'Sách lập trình Python',
-        id: 'SP003'
-      },
-      store: 'BookWorld',
-      createdDate: '13/11/2024',
-      price: 250000,
-      status: 'rejected'
-    },
-    {
-      key: '4',
-      product: {
-        image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=100&auto=format&fit=crop',
-        name: 'Laptop Gaming MSI',
-        id: 'SP004'
-      },
-      store: 'Gaming Pro',
-      createdDate: '12/11/2024',
-      price: 25500000,
-      status: 'correction'
+
+  // Fetch products for review
+  const fetchProductsForReview = async (page: number = 1, search: string = '', status: string = 'all') => {
+    try {
+      setLoading(true)
+
+      if (!user?.userId) {
+        message.error('Không tìm thấy thông tin staff')
+        return
+      }
+
+      const params = {
+        pageNumber: page,
+        pageSize: pageSize,
+        ...(search && { search }),
+        ...(status !== 'all' && { status })
+      }
+
+      const response = await staffApi.getProductsForReview(user.userId, params)
+
+      if (response) {
+        setProducts(response.data)
+        if (response.pagination) {
+          setTotalItems(response.pagination.totalItems)
+
+        } else {
+          setTotalItems(0)
+
+        }
+      } else {
+        message.error('Không thể tải danh sách sản phẩm')
+        setProducts([])
+        setTotalItems(0)
+
+      }
+    } catch (error) {
+      message.error('Có lỗi xảy ra khi tải dữ liệu')
+      setProducts([])
+      setTotalItems(0)
+
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  // Load products on component mount
+  useEffect(() => {
+    if (user?.userId) {
+      fetchProductsForReview(currentPage, searchText, statusFilter)
+    }
+  }, [user?.userId, currentPage])
 
   const getStatusTag = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'pending':
         return <Tag color='orange'>Chờ duyệt</Tag>
       case 'approved':
         return <Tag color='green'>Đã duyệt</Tag>
       case 'rejected':
         return <Tag color='red'>Từ chối</Tag>
-      case 'correction':
-        return <Tag color='orange'>Yêu cầu sửa</Tag>
       default:
         return <Tag>{status}</Tag>
     }
   }
 
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + '₫'
+  const formatDate = (dateString: string) => {
+    try {
+      const [date] = dateString.split(' ')
+      const [day, month, year] = date.split('-')
+      return `${day}/${month}/${year}`
+    } catch {
+      return dateString
+    }
   }
 
-  const columns: ColumnsType<ProductData> = [
+  const columns: ColumnsType<ProductForReview> = [
     {
       title: 'Sản phẩm',
-      dataIndex: 'product',
-      key: 'product',
-      render: (product) => (
+      dataIndex: 'name',
+      key: 'name',
+      render: (name, record) => (
         <div className='flex items-center gap-3'>
-          <div className='w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center'>
-            <span className='text-xs text-gray-500'>IMG 48x48</span>
+          <div className='w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden'>
+            {record.productImages && record.productImages.length > 0 ? (
+              <img
+                src={record.productImages[0]}
+                alt={name}
+                className='w-full h-full object-cover'
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                  const nextElement = target.nextElementSibling as HTMLElement
+                  if (nextElement) {
+                    nextElement.style.display = 'flex'
+                  }
+                }}
+              />
+            ) : null}
+            <span className='text-xs text-gray-500'>IMG</span>
           </div>
           <div>
-            <div className='font-medium text-gray-900'>{product.name}</div>
-            <div className='text-sm text-gray-500'>#{product.id}</div>
+            <div className='font-medium text-gray-900'>{name}</div>
+            <div className='text-sm text-gray-500'>#{record.id.slice(0, 8)}...</div>
           </div>
         </div>
       )
     },
     {
-      title: 'Cửa hàng',
-      dataIndex: 'store',
-      key: 'store',
-      render: (store) => <span className='text-gray-700'>{store}</span>
+      title: 'Loại sản phẩm',
+      dataIndex: 'typeProduct',
+      key: 'typeProduct',
+      render: (typeProduct) => <span className='text-gray-700'>{typeProduct}</span>
+    },
+    {
+      title: 'Xuất xứ',
+      dataIndex: 'material',
+      key: 'material',
+      render: (material) => <span className='text-gray-700'>{material}</span>
     },
     {
       title: 'Ngày tạo',
-      dataIndex: 'createdDate',
-      key: 'createdDate',
-      render: (date) => <span className='text-gray-700'>{date}</span>
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (date) => <span className='text-gray-700'>{formatDate(date)}</span>
     },
     {
-      title: 'Giá',
-      dataIndex: 'price',
-      key: 'price',
-      render: (price) => <span className='font-medium text-gray-900'>{formatPrice(price)}</span>
+      title: 'Đánh giá',
+      dataIndex: 'rating',
+      key: 'rating',
+      render: (rating, record) => (
+        <span className='text-gray-700'>
+          {rating.toFixed(1)} ⭐ ({record.reviewCount})
+        </span>
+      )
     },
     {
       title: 'Trạng thái',
@@ -143,18 +168,36 @@ function ManagerProduct() {
       title: 'Hành động',
       key: 'action',
       render: (_, record) => (
-        <Button
-          type='text'
-          icon={<Eye size={16} />}
-          onClick={() => navigate(`/detailProduct/${record.product.id}`)}
-          className='flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
-        />
+        <div className='flex items-center gap-2'>
+          <Button
+            type='text'
+            icon={<Eye size={16} />}
+            onClick={() => {
+              const detailPath = `${path.detailProductStaff.replace(':id', record.id)}`
+              navigate(detailPath)
+            }}
+            className='flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
+            title='Xem chi tiết'
+          />
+        </div>
       )
     }
   ]
 
   const handleFilter = () => {
-    console.log('Filtering with:', { searchText, statusFilter, categoryFilter, dateFilter })
+    setCurrentPage(1)
+    fetchProductsForReview(1, searchText, statusFilter)
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    fetchProductsForReview(page, searchText, statusFilter)
+  }
+
+  const handleSearch = (value: string) => {
+    setSearchText(value)
+    setCurrentPage(1)
+    fetchProductsForReview(1, value, statusFilter)
   }
 
   return (
@@ -162,7 +205,7 @@ function ManagerProduct() {
       {/* Header */}
       <div>
         <h1 className='text-2xl font-bold text-gray-900'>Quản lý sản phẩm</h1>
-        <p className='text-gray-600 mt-1'>Duyệt và quản lý tất cả sản phẩm trên hệ thống</p>
+        <p className='text-gray-600 mt-1'>Duyệt và quản lý tất cả sản phẩm được phân công</p>
       </div>
 
       {/* Search and Filters */}
@@ -173,6 +216,7 @@ function ManagerProduct() {
               placeholder='Tên sản phẩm hoặc ID...'
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
+              onSearch={handleSearch}
               prefix={<Search size={16} className='text-gray-400' />}
               className='w-full'
             />
@@ -180,10 +224,9 @@ function ManagerProduct() {
 
           <Select value={statusFilter} onChange={setStatusFilter} className='w-40' placeholder='Trạng thái'>
             <Option value='all'>Tất cả</Option>
-            <Option value='pending'>Chờ duyệt</Option>
-            <Option value='approved'>Đã duyệt</Option>
-            <Option value='rejected'>Từ chối</Option>
-            <Option value='correction'>Yêu cầu sửa</Option>
+            <Option value='Pending'>Chờ duyệt</Option>
+            <Option value='Approved'>Đã duyệt</Option>
+            <Option value='Rejected'>Từ chối</Option>
           </Select>
 
           <Select value={categoryFilter} onChange={setCategoryFilter} className='w-40' placeholder='Danh mục'>
@@ -209,18 +252,29 @@ function ManagerProduct() {
 
       {/* Table */}
       <Card>
-        <Table columns={columns} dataSource={productData} pagination={false} className='w-full' />
+        <Table
+          columns={columns}
+          dataSource={products}
+          pagination={false}
+          loading={loading}
+          rowKey="id"
+          className='w-full'
+        />
 
         {/* Pagination */}
         <div className='flex items-center justify-between mt-6'>
-          <div className='text-sm text-gray-600'>Hiển thị 1 đến 4 của 24 kết quả</div>
+          <div className='text-sm text-gray-600'>
+            Hiển thị {(currentPage - 1) * pageSize + 1} đến {Math.min(currentPage * pageSize, totalItems)} của {totalItems} kết quả
+          </div>
           <Pagination
             current={currentPage}
-            total={24}
-            pageSize={4}
-            onChange={setCurrentPage}
+            total={totalItems}
+            pageSize={pageSize}
+            onChange={handlePageChange}
             showSizeChanger={false}
-            className='flex items-center gap-2'
+            showQuickJumper={false}
+            disabled={loading}
+            hideOnSinglePage={false}
           />
         </div>
       </Card>

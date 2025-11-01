@@ -19,7 +19,7 @@ function FeaturedProducts() {
           ],
           productVideo: '',
           categoryId: ['cat-1', 'cat-2'],
-          madeBy: 'Nông sản Yên Bái',
+          material: 'Nông sản Yên Bái',
           saleCount: 89,
           rating: 5,
           reviewCount: 127,
@@ -45,7 +45,7 @@ function FeaturedProducts() {
           productImages: ['https://tse4.mm.bing.net/th/id/OIP.eyClux-tbPJODVkWttmwdQHaFA?rs=1&pid=ImgDetMain&o=7&rm=3'],
           productVideo: '',
           categoryId: ['cat-1'],
-          madeBy: 'Cà phê Tây Nguyên',
+          material: 'Cà phê Tây Nguyên',
           saleCount: 67,
           rating: 4,
           reviewCount: 89,
@@ -70,7 +70,7 @@ function FeaturedProducts() {
           productImages: ['https://cbu01.alicdn.com/img/ibank/2016/511/227/3707722115_220681559.jpg'],
           productVideo: '',
           categoryId: ['cat-3'],
-          madeBy: 'Gốm Bát Tràng',
+          material: 'Gốm Bát Tràng',
           saleCount: 45,
           rating: 5,
           reviewCount: 156,
@@ -98,7 +98,7 @@ function FeaturedProducts() {
           ],
           productVideo: '',
           categoryId: ['cat-4'],
-          madeBy: 'Mắm Phú Quốc',
+          material: 'Mắm Phú Quốc',
           saleCount: 123,
           rating: 4,
           reviewCount: 203,
@@ -123,7 +123,7 @@ function FeaturedProducts() {
   return (
     <div className='max-w-7xl mx-auto px-6 py-12'>
       {/* Tiêu đề */}
-      {/* <div className='flex justify-between items-center mb-6'>
+      <div className='flex justify-between items-center mb-6'>
         <div>
           <h2 className='text-2xl font-bold text-green-800'>Sản Phẩm Nổi Bật</h2>
           <p className='text-gray-500 text-sm'>Được tuyển chọn từ những nghệ nhân tâm huyết</p>
@@ -131,7 +131,7 @@ function FeaturedProducts() {
         <a href='/products' className='text-green-700 font-medium hover:underline'>
           Xem tất cả →
         </a>
-      </div> */}
+      </div>
 
       {/* Grid sản phẩm */}
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>

@@ -1,291 +1,71 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import VietnamMap, { type ProvinceProperties } from '../../../components/Province/VietnamMap'
+import { productApi } from '../../../apis/product.api'
+import type { Product } from '../../../types'
+import EmptyState from '../../../components/EmptyState/emptyState'
+import path from '../../../constants/path'
 
-// Interface cho đặc sản tỉnh thành
-interface Specialty {
-  id: string
-  name: string
-  price: string
-  image: string
-  rating: number
-  saleCount: number
-  // Thêm các field từ Product interface
-  storeId: string
-  provinceId: string
-  description: string
-  productImages: string[]
-  productVideo: string
-  categoryId: string[]
-  madeBy: string
-  isActive: boolean
-  typeProduct: string
-  status: string
-  note: string
-  embedding: number[]
-  createdAt: string
-  updatedAt: string
-}
-
-interface ProvinceSpecialties {
-  specialties: Specialty[]
-}
-
-const provinceSpecialties: Record<string, ProvinceSpecialties> = {
-  'Hà Nội': {
-    specialties: [
-      {
-        id: 'hn-1',
-        name: 'Bánh cuốn trôi',
-        price: '25,000₫',
-        image: 'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0',
-        rating: 5,
-        saleCount: 333,
-        storeId: 'store-hn-1',
-        provinceId: 'province-hn',
-        description: 'Bánh cuốn trôi truyền thống Hà Nội với nhân thịt băm và nấm hương',
-        productImages: [
-          'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0'
-        ],
-        productVideo: '',
-        categoryId: ['cat-food'],
-        madeBy: 'Quán bánh cuốn Hà Nội',
-        isActive: true,
-        typeProduct: 'Food',
-        status: 'active',
-        note: 'Đặc sản Hà Nội',
-        embedding: [],
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-15T00:00:00Z'
-      },
-      {
-        id: 'hn-2',
-        name: 'Chả cá Lã Vọng',
-        price: '120,000₫',
-        image: 'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0',
-        rating: 4,
-        saleCount: 63,
-        storeId: 'store-hn-2',
-        provinceId: 'province-hn',
-        description: 'Chả cá Lã Vọng nổi tiếng với hương vị đặc trưng',
-        productImages: [
-          'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0'
-        ],
-        productVideo: '',
-        categoryId: ['cat-food'],
-        madeBy: 'Nhà hàng Lã Vọng',
-        isActive: true,
-        typeProduct: 'Food',
-        status: 'active',
-        note: 'Món ăn truyền thống Hà Nội',
-        embedding: [],
-        createdAt: '2024-01-02T00:00:00Z',
-        updatedAt: '2024-01-16T00:00:00Z'
-      },
-      {
-        id: 'hn-3',
-        name: 'Bún chả',
-        price: '45,000₫',
-        image: 'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0',
-        rating: 3,
-        saleCount: 3533,
-        storeId: 'store-hn-3',
-        provinceId: 'province-hn',
-        description: 'Bún chả Hà Nội với thịt nướng thơm ngon',
-        productImages: [
-          'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0'
-        ],
-        productVideo: '',
-        categoryId: ['cat-food'],
-        madeBy: 'Quán bún chả Hà Nội',
-        isActive: true,
-        typeProduct: 'Food',
-        status: 'active',
-        note: 'Món ăn đường phố nổi tiếng',
-        embedding: [],
-        createdAt: '2024-01-03T00:00:00Z',
-        updatedAt: '2024-01-17T00:00:00Z'
-      },
-      {
-        id: 'hn-4',
-        name: 'Phở Hà Nội',
-        price: '50,000₫',
-        image: 'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0',
-        rating: 2,
-        saleCount: 433,
-        storeId: 'store-hn-4',
-        provinceId: 'province-hn',
-        description: 'Phở bò Hà Nội truyền thống với nước dùng đậm đà',
-        productImages: [
-          'https://th.bing.com/th/id/R.57068721a0c60a3621bcbc48f2e3318c?rik=kM4e5KdL74pvEg&pid=ImgRaw&r=0'
-        ],
-        productVideo: '',
-        categoryId: ['cat-food'],
-        madeBy: 'Quán phở Hà Nội',
-        isActive: true,
-        typeProduct: 'Food',
-        status: 'active',
-        note: 'Món ăn quốc hồn quốc túy',
-        embedding: [],
-        createdAt: '2024-01-04T00:00:00Z',
-        updatedAt: '2024-01-18T00:00:00Z'
-      }
-    ]
-  },
-  'Hồ Chí Minh': {
-    specialties: [
-      {
-        id: 'hcm-1',
-        name: 'Bánh mì Sài Gòn',
-        price: '15,000₫',
-        image: '/images/banh-mi.jpg',
-        rating: 5,
-        saleCount: 123,
-        storeId: 'store-hcm-1',
-        provinceId: 'province-hcm',
-        description: 'Bánh mì Sài Gòn với pate, thịt nướng và rau củ tươi ngon',
-        productImages: ['/images/banh-mi.jpg'],
-        productVideo: '',
-        categoryId: ['cat-food'],
-        madeBy: 'Quán bánh mì Sài Gòn',
-        isActive: true,
-        typeProduct: 'Food',
-        status: 'active',
-        note: 'Đặc sản Sài Gòn',
-        embedding: [],
-        createdAt: '2024-01-05T00:00:00Z',
-        updatedAt: '2024-01-19T00:00:00Z'
-      },
-      {
-        id: 'hcm-2',
-        name: 'Hủ tiếu Nam Vang',
-        price: '45,000₫',
-        image: '/images/hu-tieu.jpg',
-        rating: 4,
-        saleCount: 456,
-        storeId: 'store-hcm-2',
-        provinceId: 'province-hcm',
-        description: 'Hủ tiếu Nam Vang với tôm, thịt và nước dùng đậm đà',
-        productImages: ['/images/hu-tieu.jpg'],
-        productVideo: '',
-        categoryId: ['cat-food'],
-        madeBy: 'Quán hủ tiếu Nam Vang',
-        isActive: true,
-        typeProduct: 'Food',
-        status: 'active',
-        note: 'Món ăn đường phố Sài Gòn',
-        embedding: [],
-        createdAt: '2024-01-06T00:00:00Z',
-        updatedAt: '2024-01-20T00:00:00Z'
-      },
-      {
-        id: 'hcm-3',
-        name: 'Cơm tấm sườn',
-        price: '35,000₫',
-        image: '/images/com-tam.jpg',
-        rating: 5,
-        saleCount: 789,
-        storeId: 'store-hcm-3',
-        provinceId: 'province-hcm',
-        description: 'Cơm tấm sườn nướng với bì, chả và nước mắm pha',
-        productImages: ['/images/com-tam.jpg'],
-        productVideo: '',
-        categoryId: ['cat-food'],
-        madeBy: 'Quán cơm tấm Sài Gòn',
-        isActive: true,
-        typeProduct: 'Food',
-        status: 'active',
-        note: 'Món ăn truyền thống miền Nam',
-        embedding: [],
-        createdAt: '2024-01-07T00:00:00Z',
-        updatedAt: '2024-01-21T00:00:00Z'
-      }
-    ]
-  },
-  'Đà Nẵng': {
-    specialties: [
-      {
-        id: 'dn-1',
-        name: 'Mì Quảng',
-        price: '40,000₫',
-        image: '/images/mi-quang.jpg',
-        rating: 5,
-        saleCount: 210,
-        storeId: 'store-dn-1',
-        provinceId: 'province-dn',
-        description: 'Mì Quảng Đà Nẵng với tôm, thịt và bánh tráng nướng',
-        productImages: ['/images/mi-quang.jpg'],
-        productVideo: '',
-        categoryId: ['cat-food'],
-        madeBy: 'Quán mì Quảng Đà Nẵng',
-        isActive: true,
-        typeProduct: 'Food',
-        status: 'active',
-        note: 'Đặc sản miền Trung',
-        embedding: [],
-        createdAt: '2024-01-08T00:00:00Z',
-        updatedAt: '2024-01-22T00:00:00Z'
-      },
-      {
-        id: 'dn-2',
-        name: 'Bánh xèo tôm thịt',
-        price: '30,000₫',
-        image: '/images/banh-xeo.jpg',
-        rating: 4,
-        saleCount: 88,
-        storeId: 'store-dn-2',
-        provinceId: 'province-dn',
-        description: 'Bánh xèo giòn với tôm, thịt và rau sống',
-        productImages: ['/images/banh-xeo.jpg'],
-        productVideo: '',
-        categoryId: ['cat-food'],
-        madeBy: 'Quán bánh xèo Đà Nẵng',
-        isActive: true,
-        typeProduct: 'Food',
-        status: 'active',
-        note: 'Món ăn truyền thống miền Trung',
-        embedding: [],
-        createdAt: '2024-01-09T00:00:00Z',
-        updatedAt: '2024-01-23T00:00:00Z'
-      },
-      {
-        id: 'dn-3',
-        name: 'Nem lụi nướng',
-        price: '35,000₫',
-        image: '/images/nem-lui.jpg',
-        rating: 4,
-        saleCount: 145,
-        storeId: 'store-dn-3',
-        provinceId: 'province-dn',
-        description: 'Nem lụi nướng với thịt heo và gia vị đặc trưng',
-        productImages: ['/images/nem-lui.jpg'],
-        productVideo: '',
-        categoryId: ['cat-food'],
-        madeBy: 'Quán nem lụi Đà Nẵng',
-        isActive: true,
-        typeProduct: 'Food',
-        status: 'active',
-        note: 'Đặc sản ẩm thực miền Trung',
-        embedding: [],
-        createdAt: '2024-01-10T00:00:00Z',
-        updatedAt: '2024-01-24T00:00:00Z'
-      }
-    ]
-  }
-}
 
 function VietnamSpecialtyMap() {
+  const navigate = useNavigate()
   const [selectedProvince, setSelectedProvince] = useState<ProvinceProperties | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Chuẩn hóa tên tỉnh từ dữ liệu map
-  const aliasMap: Record<string, string> = {
-    'Ha Noi city': 'Hà Nội',
-    'Ho Chi Minh city': 'Hồ Chí Minh',
-    'Da Nang city': 'Đà Nẵng'
-  }
-  const normalizeProvinceName = (name: string) => aliasMap[name] ?? name
+  const normalizeProvinceName = (name: string) => name
+
+  // Fetch products when province is selected
+  useEffect(() => {
+    const fetchProducts = async () => {
+      if (!selectedProvince) {
+        setProducts([])
+        return
+      }
+
+      setLoading(true)
+      setError(null)
+      
+      try {
+        const provinceName = normalizeProvinceName(selectedProvince.Name)
+        const response = await productApi.getByProvinceName(provinceName, {
+          pageSize: 20,
+          pageNumber: 1
+        })
+        
+        if (response.status === 200) {
+          setProducts(response.data)
+        } else {
+          setError('Không thể tải dữ liệu sản phẩm')
+          setProducts([])
+        }
+      } catch (err) {
+        console.error('Error fetching products:', err)
+        setError('Có lỗi xảy ra khi tải dữ liệu')
+        setProducts([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [selectedProvince])
 
   const provinceKey = selectedProvince ? normalizeProvinceName(selectedProvince.Name) : null
-  const currentProvince = provinceKey ? provinceSpecialties[provinceKey as keyof typeof provinceSpecialties] : null
+
+  const handleRetry = () => {
+    if (selectedProvince) {
+      // Trigger re-fetch by updating the selectedProvince state
+      const currentProvince = selectedProvince
+      setSelectedProvince(null)
+      setTimeout(() => setSelectedProvince(currentProvince), 100)
+    }
+  }
+
+  const handleProductClick = (productId: string) => {
+    navigate(path.productDetail.replace(':id', productId))
+  }
 
   return (
     <div className='relative w-full min-h-screen flex flex-col lg:flex-row bg-[#F6FAF3]'>
@@ -335,45 +115,87 @@ function VietnamSpecialtyMap() {
             </div>
 
             <div className='flex-1'>
-              <h3 className='text-2xl font-bold text-[#065F46] mb-6 flex items-center gap-3'>Sản phẩm đặc sản</h3>
+              <h3 className='text-2xl font-bold text-[#065F46] mb-6 flex items-center gap-3'>
+                Sản phẩm đặc sản
+                {loading && (
+                  <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-[#065F46]'></div>
+                )}
+              </h3>
 
-              {!currentProvince?.specialties ? (
-                <div className='text-gray-600 text-center py-12'>
-                  <div className='text-6xl mb-4'>...</div>
-                  <p className='text-lg'>Chưa có dữ liệu đặc sản cho tỉnh/thành này.</p>
+              {error && (
+                <div className='bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4'>
+                  {error}
                 </div>
+              )}
+
+              {loading ? (
+                <div className='text-gray-600 text-center py-12'>
+                  <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-[#065F46] mx-auto mb-4'></div>
+                  <p className='text-lg'>Đang tải dữ liệu sản phẩm...</p>
+                </div>
+              ) : !products || products.length === 0 ? (
+                <EmptyState
+                  type="products"
+                  title="Chưa có sản phẩm đặc sản"
+                  description={`Hiện tại chưa có sản phẩm đặc sản nào cho ${provinceKey}. Hãy thử lại sau hoặc chọn tỉnh thành khác.`}
+                  actionLabel="Thử lại"
+                  onAction={handleRetry}
+                  className="border-dashed border-2 border-gray-300"
+                />
               ) : (
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
-                  {currentProvince.specialties.map((specialty, index) => (
+                  {products.map((product, index) => (
                     <div
-                      key={index}
-                      className='bg-white rounded-2xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-green-200'
+                      key={product.id || index}
+                      className='bg-white rounded-2xl shadow hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-green-200 cursor-pointer transform hover:scale-105'
+                      onClick={() => handleProductClick(product.id)}
                     >
                       {/* Ảnh sản phẩm */}
                       <div className='h-48 w-full overflow-hidden'>
                         <img
-                          src={specialty.image}
-                          alt={specialty.name}
+                          src={product.productImages?.[0] || '/images/placeholder.jpg'}
+                          alt={product.name}
                           className='w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.src = 'https://via.placeholder.com/300x200?text=No+Image'
+                          }}
                         />
                       </div>
 
                       {/* Nội dung */}
                       <div className='p-4 flex flex-col space-y-2'>
-                        <h4 className='font-semibold text-gray-800 text-lg'>{specialty.name}</h4>
-                        <div className='flex items-center gap-2'>
-                          <p className='text-[#F59E0B] font-bold text-lg'>{specialty.price}</p>
-                        </div>
-
+                        <h4 className='font-semibold text-gray-800 text-lg line-clamp-2 hover:text-[#065F46] transition-colors'>
+                          {product.name}
+                        </h4>
+                        <p className='text-gray-600 text-sm line-clamp-2'>{product.description}</p>
+                        
                         <div className='flex items-center gap-2 text-sm text-gray-500 justify-between'>
                           {/* Rating sao */}
                           <div className='flex items-center gap-1 text-yellow-500 text-lg'>
-                            {'★'.repeat(specialty.rating)}
-                            {'☆'.repeat(5 - specialty.rating)}
+                            {'★'.repeat(Math.floor(product.rating || 0))}
+                            {'☆'.repeat(5 - Math.floor(product.rating || 0))}
+                            <span className='text-gray-500 text-sm ml-1'>({product.rating || 0})</span>
                           </div>
                           {/* Số lượt bán */}
-                          <span className='ml-2 mt-1 text-gray-400'>
-                            {specialty.saleCount ? `${specialty.saleCount} đã bán` : 'Mới ra mắt'}
+                          <span className='text-gray-400'>
+                            {product.saleCount ? `${product.saleCount} đã bán` : 'Mới ra mắt'}
+                          </span>
+                        </div>
+
+                        <div className='flex items-center justify-between mt-2'>
+                          <span className='text-[#065F46] font-medium text-sm'>{product.material}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            product.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {product.isActive ? 'Còn hàng' : 'Hết hàng'}
+                          </span>
+                        </div>
+
+                        {/* Thêm indicator cho việc click */}
+                        <div className='mt-2 text-center'>
+                          <span className='text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity'>
+                            Nhấp để xem chi tiết →
                           </span>
                         </div>
                       </div>

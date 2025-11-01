@@ -3,22 +3,22 @@ import { User, LogOut, Settings, Menu, X } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Button } from '../../components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog'
 import { cn } from '../../lib/utils'
+import { useAuth } from '../../contexts/auth.context'
 import SideBar from './sideBar'
 import { Outlet } from 'react-router-dom'
 
 function AdminLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [userData] = useState({
-    fullname: 'Nguyễn Admin',
-    email: 'admin@example.com',
-    avatar: null,
-    role: 'Admin'
-  })
+  const { user, logout } = useAuth()
 
-  const handleLogout = () => {
-    console.log('Logout')
-    // Implement logout logic here
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   const toggleSidebar = () => {
@@ -26,7 +26,7 @@ function AdminLayout() {
   }
 
   const menuItems = [
-    { key: 'profile', icon: <User size={16} />, label: 'Thông tin cá nhân' },
+    { key: 'profile', icon: <User size={16} />, label: 'Thông tin cá nhân', isModal: true },
     { key: 'settings', icon: <Settings size={16} />, label: 'Cài đặt' },
     { key: 'logout', icon: <LogOut size={16} />, label: 'Đăng xuất', onClick: handleLogout }
   ]
@@ -49,7 +49,6 @@ function AdminLayout() {
             {/* Logo */}
             <div className='flex items-center gap-2'>
               <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none'>
-                <path d='M24 24H0V0H24V24Z' stroke='#ecf2ea' />
                 <path
                   d='M22 3.25C22 7.6875 18.6953 11.3555 14.4141 11.9219C14.1367 9.83594 13.2188 7.95312 11.8633 6.48047C13.3594 3.80859 16.2188 2 19.5 2H20.75C21.4414 2 22 2.55859 22 3.25ZM2 5.75C2 5.05859 2.55859 4.5 3.25 4.5H4.5C9.33203 4.5 13.25 8.41797 13.25 13.25V14.5V20.75C13.25 21.4414 12.6914 22 12 22C11.3086 22 10.75 21.4414 10.75 20.75V14.5C5.91797 14.5 2 10.582 2 5.75Z'
                   fill='#F4A261'
@@ -68,13 +67,13 @@ function AdminLayout() {
                   className='flex items-center gap-2 px-3 py-2 hover:bg-gray-100 transition-colors'
                 >
                   <Avatar className='h-8 w-8'>
-                    <AvatarImage src={userData.avatar || undefined} />
+                    <AvatarImage src={undefined} />
                     <AvatarFallback className='bg-blue-600 text-white text-sm'>
-                      {userData.fullname.charAt(0)}
+                      {user?.email?.charAt(0).toUpperCase() || 'A'}
                     </AvatarFallback>
                   </Avatar>
                   <div className='text-left'>
-                    <div className='text-sm text-gray-500'>{userData.role}</div>
+                    <div className='text-sm text-gray-500'>{user?.roleName || 'Admin'}</div>
                   </div>
                 </Button>
               </PopoverTrigger>
@@ -83,17 +82,65 @@ function AdminLayout() {
                   {menuItems.map((item, index) => (
                     <div key={item.key}>
                       {index === 2 && <div className='border-t border-gray-200 my-1' />}
-                      <Button
-                        variant='ghost'
-                        className={cn(
-                          'w-full justify-start gap-2 h-9 px-3 text-sm',
-                          item.key === 'logout' && 'text-red-600 hover:text-red-700 hover:bg-red-50'
-                        )}
-                        onClick={item.onClick}
-                      >
-                        {item.icon}
-                        {item.label}
-                      </Button>
+                      {item.isModal ? (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant='ghost' className='w-full justify-start gap-2 h-9 px-3 text-sm'>
+                              {item.icon}
+                              {item.label}
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className='max-w-md'>
+                            <DialogHeader>
+                              <DialogTitle>Thông tin cá nhân</DialogTitle>
+                            </DialogHeader>
+                            <div className='space-y-4'>
+                              <div className='flex items-center gap-4'>
+                                <Avatar className='h-16 w-16'>
+                                  <AvatarImage src={undefined} />
+                                  <AvatarFallback className='bg-blue-600 text-white text-xl'>
+                                    {user?.email?.charAt(0).toUpperCase() || 'A'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <h3 className='text-lg font-semibold'>{user?.email || 'admin@example.com'}</h3>
+                                  <p className='text-sm text-gray-500'>{user?.roleName || 'Admin'}</p>
+                                </div>
+                              </div>
+                              <div className='space-y-3'>
+                                <div className='flex justify-between items-center py-2 border-b border-gray-100'>
+                                  <span className='text-sm font-medium text-gray-600'>Email:</span>
+                                  <span className='text-sm text-gray-900'>{user?.email || 'admin@example.com'}</span>
+                                </div>
+                                <div className='flex justify-between items-center py-2 border-b border-gray-100'>
+                                  <span className='text-sm font-medium text-gray-600'>Vai trò:</span>
+                                  <span className='text-sm text-gray-900'>{user?.roleName || 'Admin'}</span>
+                                </div>
+                               
+                               
+                                <div className='flex justify-between items-center py-2'>
+                                  <span className='text-sm font-medium text-gray-600'>Token hết hạn:</span>
+                                  <span className='text-sm text-gray-900'>
+                                    {user?.expiresAt ? new Date(user.expiresAt).toLocaleDateString('vi-VN') : 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      ) : (
+                        <Button
+                          variant='ghost'
+                          className={cn(
+                            'w-full justify-start gap-2 h-9 px-3 text-sm',
+                            item.key === 'logout' && 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                          )}
+                          onClick={item.onClick}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>

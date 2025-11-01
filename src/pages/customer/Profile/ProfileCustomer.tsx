@@ -1,26 +1,53 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '../../../components/ui/avatar'
-import ProfileContent from './components/ProfileContent'
-import OrdersContent from './components/OrdersContent'
-import AddressContent from './components/AddressContent'
-import AddressModal from './components/AddressModal'
+import { Button } from '../../../components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Settings, FileText, MapPin, Gift, MessageSquare } from 'lucide-react'
+import type { Address, AddressCreateInput } from '../../../types/addressType'
+import type { Order, OrderStatus } from '../../../types/orderType'
+// Define the actual API response structure for user promotions
+interface UserPromotionResponse {
+  promotionUserID: string
+  promotionID: string
+  title: string
+  description: string
+  discountType: string
+  discountValue: number
+  startDate: string
+  endDate: string
+  quantity: number
+  maxPerUser: number
+  isActive: boolean
+  isExpired: boolean
+  daysRemaining: number
+}
+import { addressApi } from '../../../apis/address.api'
+import { getCustomerOrders } from '../../../apis/order.api'
+import { promotionApi } from '../../../apis/promotion.api'
+import { formApi } from '../../../apis/form.api'
+import { useAuth } from '../../../contexts/auth.context'
+import { getUserById, type User } from '../../../apis/user.api'
+import ProfileContent from './components/profile/ProfileContent'
+import OrdersContent from './components/order/OrdersContent'
+import AddressContent from './components/address/AddressContent'
+import PromotionsContent from './components/promotion/PromotionsContent'
+import FormsContent from './components/form/FormsContent'
+import AddressModal from './components/address/AddressModal'
+import type { FormDTO } from '../../../types/form.type'
 
 export default function Profile() {
-  interface Address {
-    id: number
-    name: string
-    phone: string
-    province: string
-    district: string
-    ward: string
-    address: string
-    fullAddress: string
-    isDefault: boolean
-  }
-
   const location = useLocation()
+  const { user: authUser } = useAuth()
   const [activeTab, setActiveTab] = useState('profile')
+  const [user, setUser] = useState<User | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [promotions, setPromotions] = useState<UserPromotionResponse[]>([])
+  const [promotionsLoading, setPromotionsLoading] = useState(false)
+  const [forms, setForms] = useState<FormDTO[]>([])
+  const [formsLoading, setFormsLoading] = useState(false)
 
   // Khi vào trang, nếu có query tab=orders thì active tab đơn hàng
   useEffect(() => {
@@ -32,36 +59,133 @@ export default function Profile() {
       setActiveTab('addresses')
     } else if (tab === 'profile') {
       setActiveTab('profile')
+    } else if (tab === 'promotions') {
+      setActiveTab('promotions')
+    } else if (tab === 'forms') {
+      setActiveTab('forms')
     }
   }, [location.search])
 
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: 1,
-      name: 'Nguyễn Minh Anh',
-      phone: '0362 345 678',
-      province: 'TP. Hồ Chí Minh',
-      district: 'Quận 1',
-      ward: 'Phường Bến Nghé',
-      address: '123 Đường Nguyễn Huệ',
-      fullAddress: '123 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-      isDefault: true
-    },
-    {
-      id: 2,
-      name: 'Nguyễn Minh Anh',
-      phone: '0362 345 678',
-      province: 'Đồng Nai',
-      district: 'Thành phố Biên Hòa',
-      ward: 'Phường Thống Nhất',
-      address: '456 Đường Loa Hương',
-      fullAddress: '456 Đường Loa Hương, Phường Thống Nhất, Thành phố Biên Hòa, Đồng Nai',
-      isDefault: false
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!authUser?.userId) return
+
+      try {
+        const userData = await getUserById(authUser.userId)
+        setUser(userData)
+      } catch (error) {
+        console.error('Error loading user data:', error)
+      }
     }
-  ])
+
+    loadUserData()
+  }, [authUser?.userId])
+
+  // Load customer orders
+  const loadCustomerOrders = useCallback(
+    async (status?: OrderStatus) => {
+      if (!authUser?.userId) return
+
+      try {
+        setOrdersLoading(true)
+        const customerOrders = await getCustomerOrders(authUser.userId, {
+          pageSize: 0, // Load all orders for better UX
+          pageNumber: 1,
+          status: status, // Filter by status if provided
+          sortBy: 'createdAt',
+          sortOrder: 'desc'
+        })
+        setOrders(customerOrders)
+      } catch (error) {
+        console.error('Error loading customer orders:', error)
+      } finally {
+        setOrdersLoading(false)
+      }
+    },
+    [authUser?.userId]
+  )
+
+  // Load orders when component mounts or when switching to orders tab
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      loadCustomerOrders()
+    }
+  }, [activeTab, authUser?.userId, loadCustomerOrders])
+
+  // Load user promotions
+  const loadUserPromotions = useCallback(async () => {
+    if (!authUser?.userId) return
+
+    try {
+      setPromotionsLoading(true)
+      const response = await promotionApi.getUserPromotions(authUser.userId, 0, 1)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setPromotions((response.data as any) || [])
+    } catch (error) {
+      console.error('Error loading user promotions:', error)
+    } finally {
+      setPromotionsLoading(false)
+    }
+  }, [authUser?.userId])
+
+  // Load promotions when component mounts or when switching to promotions tab
+  useEffect(() => {
+    if (activeTab === 'promotions') {
+      loadUserPromotions()
+    }
+  }, [activeTab, authUser?.userId, loadUserPromotions])
+
+  // Load user forms
+  const loadUserForms = useCallback(async () => {
+    if (!authUser?.userId) return
+
+    try {
+      setFormsLoading(true)
+      const response = await formApi.getCustomerForms(authUser.userId, {
+        pageSize: 0, // Load all forms for better UX
+        pageNumber: 1,
+        sortBy: 'createdat',
+        sortOrder: 'desc'
+      })
+      setForms(Array.isArray(response) ? response : [])
+    } catch (error) {
+      console.error('Error loading user forms:', error)
+    } finally {
+      setFormsLoading(false)
+    }
+  }, [authUser?.userId])
+
+  // Load forms when component mounts or when switching to forms tab
+  useEffect(() => {
+    if (activeTab === 'forms') {
+      loadUserForms()
+    }
+  }, [activeTab, authUser?.userId, loadUserForms])
+
+  const [addresses, setAddresses] = useState<Address[]>([])
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  // Load addresses from API
+  const loadAddresses = useCallback(async () => {
+    if (!authUser?.userId) return
+
+    try {
+      const response = await addressApi.getUserAddresses(authUser.userId)
+      // Handle both single address and array of addresses
+      const addressesData = Array.isArray(response.data) ? response.data : [response.data]
+      setAddresses(addressesData)
+    } catch (error) {
+      console.error('Error loading addresses:', error)
+    }
+  }, [authUser?.userId])
+
+  // Load addresses when component mounts
+  useEffect(() => {
+    loadAddresses()
+  }, [authUser?.userId, loadAddresses])
 
   // Address handlers
   const handleAddAddress = () => {
@@ -74,126 +198,320 @@ export default function Profile() {
     setShowAddressModal(true)
   }
 
-  const handleDeleteAddress = async (addressId: number) => {
+  const handleDeleteAddress = async (addressId: string) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) {
-      setIsLoading(true)
-      // Simulate API call
-      setTimeout(() => {
+      try {
+        // Call API to delete address
+        await addressApi.delete(addressId)
+
+        // Update local state
         setAddresses(addresses.filter((addr) => addr.id !== addressId))
-        setIsLoading(false)
-      }, 1000)
+      } catch (error) {
+        console.error('Error deleting address:', error)
+      }
     }
   }
 
-  const handleSetDefault = async (addressId: number) => {
-    setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
+  const handleSetDefault = async (addressId: string) => {
+    if (!authUser?.userId) {
+      console.error('User ID not found')
+      return
+    }
+    try {
+      // Call API to set address as default
+      await addressApi.setAsDefault(addressId, authUser.userId)
+
+      // Update local state
       setAddresses(
         addresses.map((addr) => ({
           ...addr,
           isDefault: addr.id === addressId
         }))
       )
-      setIsLoading(false)
-    }, 1000)
+    } catch (error) {
+      console.error('Error setting default address:', error)
+    }
   }
 
-  const handleSaveAddress = async (formData: Omit<Address, 'id' | 'fullAddress'>) => {
-    setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
+  const handleSaveAddress = async (formData: AddressCreateInput) => {
+    if (!authUser?.userId) return
+
+    try {
       if (editingAddress) {
-        // Update existing address
+        // Convert AddressCreateInput to AddressUpdateInput for update
+        const updateData = {
+          userId: authUser.userId,
+          province: formData.province,
+          district: formData.district,
+          ward: formData.ward,
+          provinceId: formData.provinceId,
+          districtId: formData.districtId,
+          wardId: formData.wardId,
+          streetAddress: formData.streetAddress,
+          isDefault: formData.isDefault
+        }
+
+        // Call API to update address
+        const response = await addressApi.update(editingAddress.id, updateData)
+
+        // Update local state
         setAddresses(
           addresses.map((addr) =>
             addr.id === editingAddress.id
               ? {
-                  ...addr,
-                  ...formData,
-                  fullAddress: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}`
-                }
+                ...addr,
+                ...updateData,
+                isDefault: updateData.isDefault || false,
+                updatedAt: new Date().toISOString()
+              }
               : addr
           )
         )
+
+        console.log('Address updated successfully:', response)
       } else {
-        // Add new address
-        const newAddress: Address = {
-          id: Date.now(),
+        const addressDataWithUserId = {
           ...formData,
-          fullAddress: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}`
+          userId: authUser.userId
+        }
+
+        // Call API to create address
+        const response = await addressApi.create(addressDataWithUserId)
+
+        // Add new address to local state
+        const newAddress: Address = {
+          id: response.data.id,
+          ...formData,
+          userId: authUser.userId,
+          isDefault: formData.isDefault || false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isActive: true
         }
         setAddresses([...addresses, newAddress])
+
+        console.log('Address created successfully:', response)
       }
-      setIsLoading(false)
+
       setShowAddressModal(false)
-    }, 1000)
+      // Trigger refresh of address list
+      setRefreshTrigger((prev) => prev + 1)
+    } catch (error) {
+      console.error('Error in address operation:', error)
+      // You can add toast notification here if needed
+    }
   }
 
+  const displayName = user ? `${user.lastName} ${user.firstName}` : 'Người dùng'
+
   return (
-    <div className='min-h-screen bg-[#f8f9f5]'>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className='min-h-screen bg-[#f8f9f5]'
+    >
       {/* Profile Header */}
-      <div className='bg-white p-6 border-b'>
-        <div className='flex items-center gap-4'>
-          <Avatar className='w-20 h-20'>
-            <img src='/src/assets/react.svg' alt='Profile' className='w-full h-full object-cover rounded-full' />
-          </Avatar>
-          <div>
-            <h2 className='text-xl font-bold text-gray-900'>Chào mừng trở lại, Minh Anh</h2>
-            <p className='text-sm text-gray-500'>Thành viên từ Tháng 1 năm 2024</p>
-          </div>
-        </div>
-      </div>
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
+        <Card className='border-b rounded-none'>
+          <CardContent className='p-6'>
+            <div className='flex items-center gap-4'>
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ duration: 0.6, delay: 0.2, type: 'spring', stiffness: 200 }}
+              >
+                <Avatar className='w-20 h-20'>
+                  <img
+                    src={user?.avatar || 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'}
+                    alt='Profile'
+                    className='w-full h-full object-cover rounded-full'
+                  />
+                </Avatar>
+              </motion.div>
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <motion.h2
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.4 }}
+                  className='text-xl font-bold text-gray-900'
+                >
+                  Chào mừng trở lại, {displayName}
+                </motion.h2>
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.5 }}
+                  className='text-sm text-gray-500'
+                >
+                  Thành viên từ{' '}
+                  {user?.createdAt
+                    ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+                    : 'N/A'}
+                </motion.p>
+                {user?.userPoint !== undefined && (
+                  <motion.p
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: 0.6, type: 'spring', stiffness: 200 }}
+                    className='text-sm font-semibold text-green-600 mt-1'
+                  >
+                    Điểm tích lũy: {user.userPoint} điểm
+                  </motion.p>
+                )}
+              </motion.div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       <div className='flex'>
         {/* Sidebar */}
-        <div className='w-64 bg-white min-h-screen border-r'>
-          <div className='p-4'>
-            <h3 className='font-medium text-gray-900 mb-4'>Quản lý tài khoản</h3>
-            <nav className='space-y-2'>
-              <button
-                onClick={() => setActiveTab('profile')}
-                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                  activeTab === 'profile' ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100'
-                }`}
+        <motion.div
+          initial={{ x: -50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Card className='w-64 min-h-screen border-r rounded-none'>
+            <CardHeader className='pb-4'>
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
               >
-                🔧 Thông tin cá nhân
-              </button>
-              <button
-                onClick={() => setActiveTab('orders')}
-                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                  activeTab === 'orders' ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                📋 Đơn hàng của tôi
-              </button>
-              <button
-                onClick={() => setActiveTab('addresses')}
-                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                  activeTab === 'addresses' ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                📍 Sổ địa chỉ
-              </button>
-            </nav>
-          </div>
-        </div>
+                <CardTitle className='text-lg font-medium text-gray-900'>Quản lý tài khoản</CardTitle>
+              </motion.div>
+            </CardHeader>
+            <CardContent className='pt-0'>
+              <nav className='space-y-2'>
+                {[
+                  { id: 'profile', icon: Settings, label: 'Thông tin cá nhân' },
+                  { id: 'orders', icon: FileText, label: 'Đơn hàng của tôi' },
+                  { id: 'addresses', icon: MapPin, label: 'Sổ địa chỉ' },
+                  { id: 'promotions', icon: Gift, label: 'Khuyến mãi của tôi' },
+                  { id: 'forms', icon: MessageSquare, label: 'Khiếu nại của tôi' }
+                ].map((tab, index) => {
+                  const Icon = tab.icon
+                  const isActive = activeTab === tab.id
+                  return (
+                    <motion.div
+                      key={tab.id}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
+                      whileHover={{ x: 5 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Button
+                        variant={isActive ? 'default' : 'ghost'}
+                        className={`w-full justify-start text-sm transition-all ${isActive ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        onClick={() => setActiveTab(tab.id)}
+                      >
+                        <Icon className='w-4 h-4 mr-2' />
+                        {tab.label}
+                      </Button>
+                    </motion.div>
+                  )
+                })}
+              </nav>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Main Content */}
-        <div className='flex-1 p-6'>
-          {activeTab === 'profile' && <ProfileContent />}
-          {activeTab === 'orders' && <OrdersContent />}
-          {activeTab === 'addresses' && (
-            <AddressContent
-              addresses={addresses}
-              onAddAddress={handleAddAddress}
-              onEditAddress={handleEditAddress}
-              onDeleteAddress={handleDeleteAddress}
-              onSetDefault={handleSetDefault}
-              isLoading={isLoading}
-            />
-          )}
-        </div>
+        <motion.div
+          initial={{ x: 50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className='flex-1 p-6'
+        >
+          <Card className='h-full'>
+            <CardContent className='p-6'>
+              <AnimatePresence mode='wait'>
+                {activeTab === 'profile' && (
+                  <motion.div
+                    key='profile'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ProfileContent />
+                  </motion.div>
+                )}
+                {activeTab === 'orders' && (
+                  <motion.div
+                    key='orders'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <OrdersContent
+                      orders={orders}
+                      loading={ordersLoading}
+                      onRefreshOrders={() => loadCustomerOrders()}
+                      onFilterByStatus={(status) => loadCustomerOrders(status as OrderStatus)}
+                    />
+                  </motion.div>
+                )}
+                {activeTab === 'addresses' && authUser?.userId && (
+                  <motion.div
+                    key='addresses'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <AddressContent
+                      userId={authUser.userId}
+                      onAddAddress={handleAddAddress}
+                      onEditAddress={handleEditAddress}
+                      onDeleteAddress={handleDeleteAddress}
+                      onSetDefault={handleSetDefault}
+                      refreshTrigger={refreshTrigger}
+                    />
+                  </motion.div>
+                )}
+                {activeTab === 'promotions' && (
+                  <motion.div
+                    key='promotions'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <PromotionsContent
+                      promotions={promotions}
+                      loading={promotionsLoading}
+                      onRefresh={loadUserPromotions}
+                    />
+                  </motion.div>
+                )}
+                {activeTab === 'forms' && (
+                  <motion.div
+                    key='forms'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <FormsContent forms={forms} loading={formsLoading} onRefresh={loadUserForms} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Address Modal */}
@@ -202,7 +520,9 @@ export default function Profile() {
         onClose={() => setShowAddressModal(false)}
         address={editingAddress}
         onSave={handleSaveAddress}
+        existingAddresses={addresses}
+        userId={authUser?.userId}
       />
-    </div>
+    </motion.div>
   )
 }

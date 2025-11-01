@@ -1,20 +1,24 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingCart } from 'lucide-react'
 import { useCart } from '../../contexts/cart.context'
+import { useAuth } from '../../contexts/auth.context'
 import { Button } from '../../components/ui/button'
 import path from '../../constants/path'
 import { useState, useRef, useEffect } from 'react'
 
 function Header() {
   const navigate = useNavigate()
-  const { cart } = useCart()
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
+  const { cart, cartCount } = useCart()
+  const { user, isAuthenticated, logout } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
   const [isHoveringIcon, setIsHoveringIcon] = useState(false)
   const [isHoveringPopup, setIsHoveringPopup] = useState(false)
+  const [showUserDropdown, setShowUserDropdown] = useState(false)
   const hideTimeout = useRef<NodeJS.Timeout | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const cartContainerRef = useRef<HTMLDivElement>(null)
+  const userDropdownRef = useRef<HTMLDivElement>(null)
+  const displayCount = cartCount || cart.reduce((sum, item) => sum + item.quantity, 0)
 
   // Xử lý click outside để đóng dropdown
   useEffect(() => {
@@ -24,16 +28,19 @@ function Header() {
         setIsHoveringIcon(false)
         setIsHoveringPopup(false)
       }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setShowUserDropdown(false)
+      }
     }
 
-    if (showDropdown) {
+    if (showDropdown || showUserDropdown) {
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showDropdown])
+  }, [showDropdown, showUserDropdown])
 
   // Hiển thị popup khi hover icon hoặc popup
   const handleIconEnter = () => {
@@ -59,6 +66,12 @@ function Header() {
     }, 100)
   }
 
+  const handleLogout = async () => {
+    await logout()
+    setShowUserDropdown(false)
+    navigate(path.home)
+  }
+
   return (
     <div className='w-full fixed top-0 left-0 z-50 bg-[#ecf2ea] border-b border-gray-500'>
       <div className='mx-auto flex w-full max-w-8xl items-center justify-between px-4 py-3 gap-4 flex-nowrap'>
@@ -82,8 +95,11 @@ function Header() {
           <Link to={path.stories} className='hover:text-green-700 transition whitespace-nowrap'>
             Câu chuyện
           </Link>
-          <Link to={path.home} className='hover:text-green-700 transition whitespace-nowrap'>
-            Liên hệ
+          <Link to={path.discover} className='hover:text-green-700 transition whitespace-nowrap'>
+            Khám phá cửa hàng
+          </Link>
+          <Link to={path.blog} className='hover:text-green-700 transition whitespace-nowrap'>
+            Blog
           </Link>
         </nav>
 
@@ -102,10 +118,10 @@ function Header() {
               className='relative focus:outline-none'
               aria-label='Xem giỏ hàng'
             >
-              <ShoppingCart size={28} />
-              {cartCount > 0 && (
+              <ShoppingCart size={25} />
+              {displayCount > 0 && (
                 <span className='absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center pointer-events-auto'>
-                  {cartCount}
+                  {displayCount}
                 </span>
               )}
             </button>
@@ -146,6 +162,9 @@ function Header() {
                         <div className='flex-1 min-w-0'>
                           <div className='truncate font-medium text-gray-900 text-base'>{item.name}</div>
                           <div className='text-xs text-gray-500'>Số lượng: {item.quantity}</div>
+                          {item.variant && (
+                            <div className='text-xs text-gray-500'>Phân loại: {item.variant}</div>
+                          )}
                         </div>
                         <div className='text-orange-600 font-semibold text-base whitespace-nowrap'>
                           {item.price.toLocaleString('vi-VN')}₫
@@ -171,40 +190,79 @@ function Header() {
             )}
           </div>
 
-          {/* Profile */}
-          <Link to={path.profileCustomer} className='text-[#2D5016] hover:text-[#F4A261] transition-colors p-1'>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='24'
-              height='24'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            >
-              <path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'></path>
-              <circle cx='12' cy='7' r='4'></circle>
-            </svg>
-          </Link>
+          {/* User Section */}
+          {isAuthenticated ? (
+            <div ref={userDropdownRef} className='relative mb-2'>
+              <button
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                className='flex items-center gap-2 text-[#2D5016] hover:text-[#F4A261] transition-colors p-2 rounded-lg hover:bg-green-50'
+              >
+                <svg
+                  xmlns='http://www.w3.org/2000/svg'
+                  width='23'
+                  height='23'
+                  viewBox='0 0 24 24'
+                  fill='none'
+                  stroke='currentColor'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                >
+                  <path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'></path>
+                  <circle cx='12' cy='7' r='4'></circle>
+                </svg>
+                <span className='text-sm font-medium max-w-35 truncate mt-1'>{user?.email}</span>
+                <svg
+                  className={`w-4 h-4 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`}
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 9l-7 7-7-7' />
+                </svg>
+              </button>
 
-          {/* Login Button */}
-          <Link to={path.loginCustomer}>
-            <Button
-              variant='default'
-              className='rounded-full px-4 py-2 text-sm whitespace-nowrap transition-colors hover:bg-green-600 hover:text-white'
+              {showUserDropdown && (
+                <div className='absolute right-0 top-full mt-2 w-48 bg-white shadow-lg rounded-lg border border-gray-200 z-50'>
+                  <div className='py-2'>
+                    <div className='px-4 py-2 text-sm text-gray-500 border-b'>{user?.email}</div>
+                    <Link
+                      to={path.profileCustomer}
+                      className='block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                      onClick={() => setShowUserDropdown(false)}
+                    >
+                      Thông tin cá nhân
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className='block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50'
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link to={path.loginCustomer}>
+              <Button
+                variant='green'
+                className='rounded-full px-4 py-2 text-sm whitespace-nowrap transition-colors hover:bg-green-600 hover:text-white'
+              >
+                Đăng nhập
+              </Button>
+            </Link>
+          )}
+          {/* Cộng tác viên link - chỉ hiện trên md trở lên và khi chưa đăng nhập */}
+          {!isAuthenticated && (
+            <Link
+              to={path.sellerPage}
+              className='hidden md:inline text-sm text-[#2D5016] hover:text-orange-500 transition-colors font-medium whitespace-nowrap ml-2'
             >
-              Đăng nhập
-            </Button>
-          </Link>
-          {/* Cộng tác viên link - chỉ hiện trên md trở lên */}
-          <Link
-            to={path.sellerPage}
-            className='hidden md:inline text-sm text-[#2D5016] hover:text-orange-500 transition-colors font-medium whitespace-nowrap ml-2'
-          >
-            Bạn muốn làm cộng tác viên?
-          </Link>
+              Bạn muốn làm cộng tác viên?
+            </Link>
+          )}
+          
         </div>
       </div>
     </div>

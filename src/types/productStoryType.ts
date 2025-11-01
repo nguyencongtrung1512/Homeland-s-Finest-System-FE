@@ -1,22 +1,47 @@
+export interface ProductStoryContent {
+  id: string // UUID
+  contentType: string // varchar - loại nội dung (text, image, video, etc.)
+  contentData: string // text - dữ liệu nội dung
+  order: number // int - thứ tự hiển thị
+}
+
 export interface ProductStory {
   id: string // UUID
   productId: string // UUID - Foreign key to Product
   title: string // varchar(255)
   thumbnailUrl: string // varchar(500)
-  isActive: boolean // boolean
-  createdAt: string // TIMESTAMPTZ
   updatedAt: string // TIMESTAMPTZ
+  contents: ProductStoryContent[] // Mảng các nội dung của story
 }
 
 export interface ProductStoryCreateInput {
   productId: string
   title: string
   thumbnailUrl: string
-  isActive?: boolean
+  contents?: ProductStoryContent[] // Optional khi tạo mới
 }
 
 export interface ProductStoryUpdateInput {
   title?: string
   thumbnailUrl?: string
-  isActive?: boolean
+  contents?: ProductStoryContent[]
+}
+
+// Response từ API
+export interface ProductStoryResponse {
+  status: number
+  message: string
+  data: ProductStory
+}
+
+export interface ProductStoryListResponse {
+  status: number
+  message: string
+  data: ProductStory[]
+  pagination?: {
+    pageSize: number
+    pageNumber: number
+    totalItems: number
+    totalPages: number
+  }
 }

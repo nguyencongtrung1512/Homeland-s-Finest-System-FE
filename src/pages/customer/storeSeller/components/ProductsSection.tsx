@@ -173,13 +173,7 @@ const ProductsSection: FC<ProductsSectionProps> = ({ products }) => {
                 <Button
                   className='w-full bg-green-600 hover:bg-green-700 text-white relative'
                   onClick={() => {
-                    addToCart({
-                      id: product.id,
-                      name: product.name,
-                      price: product.price,
-                      image: product.image,
-                      quantity: 1
-                    })
+                    addToCart(product.id, 1)
                     navigate('/cart')
                   }}
                 >

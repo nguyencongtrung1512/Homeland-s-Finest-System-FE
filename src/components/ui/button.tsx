@@ -9,15 +9,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90',
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         destructive:
-          'bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
         outline:
           'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
-        secondary: 'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
         link: 'text-primary underline-offset-4 hover:underline',
-        green: 'bg-green-500 text-white shadow-xs hover:bg-green-600'
+        green: 'bg-[#57992a]/90 text-white hover:bg-[#384f29]',
+        blue: 'bg-[#1E40AF]/90 text-white hover:bg-[#1E40AF]',
+        greenLight: 'border border-green-600 text-green-600 py-3 px-4 sm:px-6 rounded-lg font-semibold hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base'
       },
       size: {
         default: 'h-9 px-4 py-2 has-[>svg]:px-3',

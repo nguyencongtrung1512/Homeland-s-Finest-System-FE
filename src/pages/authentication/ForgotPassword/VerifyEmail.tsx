@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import VerifyEmailLayout from '../../../Layouts/Authentication/ForgotPasswordLayout/VerifyEmailLayout'
-import { Leaf, ThumbsUp, Mail, BadgeCheck } from 'lucide-react'
+import { Leaf, ThumbsUp, Mail, BadgeCheck, ArrowLeft } from 'lucide-react'
 import logoImage from '../../../assets/luachin2-7984.webp'
+import { path } from '../../../constants/path'
 import { useNavigate } from 'react-router-dom'
-import path from '../../../constants/path'
+import { resetPassword } from '../../../apis/auth.api'
+import { toast } from 'react-toastify'
 
 interface VerifyEmailProps {
   onEmailSubmit?: (email: string) => void
@@ -12,22 +14,112 @@ interface VerifyEmailProps {
 function VerifyEmail({ onEmailSubmit }: VerifyEmailProps) {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // Countdown timer effect
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (countdown > 0) {
+      timer = setTimeout(() => {
+        setCountdown(countdown - 1)
+      }, 1000)
+    }
+    return () => clearTimeout(timer)
+  }, [countdown])
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (email.trim()) {
-      setIsLoading(true)
-      // Simulate loading and redirect to reset password page
-      setTimeout(() => {
-        setIsLoading(false)
+    setError('')
+
+    // Validate email format
+    if (!email.trim()) {
+      setError('Vui lòng nhập địa chỉ email')
+      return
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Địa chỉ email không hợp lệ')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await resetPassword({ email: email.trim() })
+
+      if (response.success) {
+        setEmailSent(true)
+        setCountdown(60) // Start 60 second countdown
+        toast.success(response.message || 'Email đặt lại mật khẩu đã được gửi thành công!', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+
         if (onEmailSubmit) {
           onEmailSubmit(email)
         }
-        // Chuyển thẳng sang trang reset password (làm cứng layout)
-        navigate(path.resetPassword)
-      }, 1500)
+      } else {
+        setError(response.message || 'Có lỗi xảy ra khi gửi email')
+        toast.error(response.message || 'Có lỗi xảy ra khi gửi email')
+      }
+    } catch (error: unknown) {
+      console.error('Reset password error:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ||
+        (error as { message?: string }).message ||
+        'Có lỗi xảy ra khi gửi email đặt lại mật khẩu'
+      setError(errorMessage)
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  const handleResendEmail = async () => {
+    if (countdown === 0 && email.trim()) {
+      setIsLoading(true)
+      try {
+        const response = await resetPassword({ email: email.trim() })
+
+        if (response.success) {
+          setCountdown(60) // Reset countdown
+          toast.success('Email đã được gửi lại thành công!', {
+            position: 'top-right',
+            autoClose: 3000
+          })
+        } else {
+          toast.error(response.message || 'Có lỗi xảy ra khi gửi lại email')
+        }
+      } catch (error: unknown) {
+        console.error('Resend email error:', error)
+        const errorMessage =
+          (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ||
+          (error as { message?: string }).message ||
+          'Có lỗi xảy ra khi gửi lại email'
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+  }
+
+  const handleReceivedCode = () => {
+    // Navigate to OTP verification page
+    navigate(path.login)
+  }
+
+  const handleBackToLogin = () => {
+    const returnTo = localStorage.getItem('forgotPasswordReturnTo') || 'customer'
+    const loginPath = returnTo === 'seller' ? path.loginSeller : path.loginCustomer
+    navigate(loginPath)
   }
 
   return (
@@ -51,56 +143,128 @@ function VerifyEmail({ onEmailSubmit }: VerifyEmailProps) {
             <div className='w-16 h-16 rounded-full overflow-hidden mx-auto mb-3'>
               <img src={logoImage} alt='Logo' className='w-full h-full object-cover object-center' />
             </div>
-            <h2 className='text-xl font-bold text-gray-800'>Xác minh Email</h2>
-            <p className='text-sm text-gray-600 mt-1'>Nhập địa chỉ email để khôi phục mật khẩu</p>
+            <h2 className='text-xl font-bold text-gray-800'>
+              {emailSent ? 'Email đã được gửi!' : 'Xác minh Email'}
+            </h2>
+            <p className='text-sm text-gray-600 mt-1'>
+              {emailSent
+                ? `Mã xác minh đã được gửi đến ${email}`
+                : 'Nhập địa chỉ email để khôi phục mật khẩu'
+              }
+            </p>
           </div>
         </div>
 
         <div className='px-6 pb-6 space-y-4'>
-          <form className='space-y-4' onSubmit={handleSubmit}>
-            <div>
-              <label className='block text-gray-700 text-sm font-medium mb-2'>
-                Địa chỉ Email<span className='text-red-500'>*</span>
-              </label>
-              <div className='relative'>
-                <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
-                  <svg className='h-5 w-5 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
-                    />
-                  </svg>
+          {!emailSent ? (
+            <form className='space-y-4' onSubmit={handleSubmit}>
+              {/* Error Message */}
+              {error && (
+                <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
+                  <div className='flex items-center'>
+                    <div className='flex-shrink-0'>
+                      <svg className='h-5 w-5 text-red-400' fill='currentColor' viewBox='0 0 20 20'>
+                        <path fillRule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z' clipRule='evenodd' />
+                      </svg>
+                    </div>
+                    <div className='ml-3'>
+                      <p className='text-sm text-red-800'>{error}</p>
+                    </div>
+                  </div>
                 </div>
-                <input
-                  type='email'
-                  name='email'
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder='Nhập địa chỉ email của bạn'
-                  className='w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500'
-                  required
-                />
+              )}
+
+              <div>
+                <label className='block text-gray-700 text-sm font-medium mb-2'>
+                  Địa chỉ Email<span className='text-red-500'>*</span>
+                </label>
+                <div className='relative'>
+                  <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
+                    <svg className='h-5 w-5 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type='email'
+                    name='email'
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      if (error) setError('')
+                    }}
+                    placeholder='Nhập địa chỉ email của bạn'
+                    className='w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500'
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type='submit'
+                disabled={isLoading || !email.trim()}
+                className='w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2'
+              >
+                {isLoading ? 'Đang gửi email...' : 'Gửi email đặt lại mật khẩu →'}
+              </button>
+            </form>
+          ) : (
+            <div className='space-y-4'>
+              {/* Success message */}
+              <div className='bg-green-50 border border-green-200 rounded-lg p-4'>
+                <div className='flex items-center'>
+                  <div className='flex-shrink-0'>
+                    <svg className='h-5 w-5 text-green-400' fill='currentColor' viewBox='0 0 20 20'>
+                      <path fillRule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z' clipRule='evenodd' />
+                    </svg>
+                  </div>
+                  <div className='ml-3'>
+                    <p className='text-sm text-green-800'>
+                      Email đã được gửi thành công! Vui lòng kiểm tra hộp thư của bạn.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className='space-y-3'>
+                <button
+                  onClick={handleReceivedCode}
+                  className='w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2'
+                >
+                  <BadgeCheck className='w-5 h-5' />
+                  Tôi đã nhận được mã
+                </button>
+
+                <button
+                  onClick={handleResendEmail}
+                  disabled={countdown > 0 || isLoading}
+                  className='w-full bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 text-gray-700 font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2'
+                >
+                  {isLoading ? (
+                    'Đang gửi lại...'
+                  ) : countdown > 0 ? (
+                    `Tôi chưa nhận được mã (${countdown}s)`
+                  ) : (
+                    'Tôi chưa nhận được mã'
+                  )}
+                </button>
               </div>
             </div>
-
-            <button
-              type='submit'
-              disabled={isLoading || !email.trim()}
-              className='w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2'
-            >
-              {isLoading ? 'Đang gửi email...' : 'Gửi email đặt lại mật khẩu →'}
-            </button>
-          </form>
+          )}
 
           <div className='text-center'>
-            <p className='text-sm text-gray-600'>
-              Nhớ mật khẩu rồi?{' '}
-              <a href={path.loginCustomer} className='text-green-600 hover:text-green-700 font-medium'>
-                Đăng nhập
-              </a>
-            </p>
+            <button
+              onClick={handleBackToLogin}
+              className='text-green-600 hover:text-green-700 font-medium text-sm bg-transparent border-none cursor-pointer flex items-center justify-center gap-1 mx-auto'
+            >
+              <ArrowLeft className='w-4 h-4' />
+              Quay về trang đăng nhập
+            </button>
           </div>
 
           <div className='grid grid-cols-3 gap-4'>

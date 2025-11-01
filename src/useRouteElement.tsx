@@ -5,8 +5,7 @@ import Products from './pages/customer/Products/products'
 import path from './constants/path'
 import ProductsDetail from './pages/customer/Products/ProductDetail/productsDetail'
 import Cart from './pages/customer/Cart/Cart'
-import OrderConfirm from './pages/customer/Cart/OrderConfirm'
-import Invoice from './pages/customer/Cart/Invoice'
+import Invoice from './pages/customer/Order/Invoice'
 import Login from './pages/authentication/Login'
 import Register from './pages/authentication/Register'
 import IntroPage from './pages/seller/IntroPage/introPage'
@@ -16,10 +15,9 @@ import Dashboard from './pages/seller/dashboard/dashboard'
 import SellerLayout from './Layouts/SellerLayout/sellerLayout'
 import ProductsSeller from './pages/seller/products/products'
 import CreateProduct from './pages/seller/products/createProduct'
+import UpdateProduct from './pages/seller/products/updateProduct'
 import OrderManagement from './pages/seller/order/order'
-import OrderDetail from './pages/seller/order/orderDetail'
 import CreateMyStory from './pages/seller/mystory/createMyStory'
-import DetailMyStory from './pages/seller/mystory/detailMyStory'
 import ChatWithCustomer from './pages/seller/ChatWithCustomer/ChatWithCustomer'
 import FinanceManagement from './pages/seller/finance/finance'
 import SetupStore from './pages/seller/setupStore/setupStore'
@@ -27,7 +25,6 @@ import HelpCenter from './pages/seller/help/help'
 import DetailHelp from './pages/seller/help/detailHelp'
 import MyStory from './pages/seller/mystory/myStory'
 import VerifyEmail from './pages/authentication/ForgotPassword/VerifyEmail'
-import NewPassword from './pages/authentication/ForgotPassword/NewPassword'
 import StaffDashboard from './pages/staff/dashboard/dashboard'
 import StaffLayout from './Layouts/StaffLayout/staffLayout'
 import ProfileCustomer from './pages/customer/Profile/ProfileCustomer'
@@ -35,23 +32,51 @@ import ProfileLayout from './Layouts/CustomerLayout/ProfileLayout'
 import ListStore from './pages/staff/storeManagerment/listStore'
 import ApproveStores from './pages/staff/storeManagerment/approveStores'
 import LockedStores from './pages/staff/storeManagerment/lockedStores'
-import StoreDetail from './pages/staff/storeManagerment/storeDetail'
 import ManagerProduct from './pages/staff/productManagerment/managerProduct'
-import DetailProduct from './pages/staff/productManagerment/detailProduct'
 import TransactionManagement from './pages/staff/transactions/transactions'
-import ReportManagement from './pages/staff/reports/reports'
-import ReportDetail from './pages/staff/reports/reportDetail'
+import ReportManagement from './pages/staff/formReport/reports'
+import ReportDetail from './pages/staff/formReport/reportDetail'
 import AdminLayout from './Layouts/AdminLayout/adminLayout'
 import AdminDashboard from './pages/admin/dashboard'
 import StoreManagement from './pages/admin/storeManagerment/list'
 import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
-import BlogList from './pages/admin/blogManagerment/list'
-import ManagerProductAdmin from './pages/admin/productManagerment/productManager'
+import { AdminPromotionList, AdminPromotionDetail, AdminPromotionStats } from './pages/admin/promotionManagerment'
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import StoryWithSeller from './pages/customer/storyWithSeller'
 import StorePage from './pages/customer/storeSeller/storePage'
+import NotFound from './components/Error/NotFound'
+import SystemStorage from './pages/admin/systemStorage/list'
+import ListCategory from './pages/staff/productCategory/listCategory'
+import BlogManagement from './pages/staff/blogManagerment/list'
+import BlogCategoryList from './pages/admin/blogManagerment/list'
+import ComboSeller from './pages/seller/combos/listCombo'
+import ProtectedRoute from './components/ProtectedRoute'
+import Discover from './pages/customer/Discover/discover'
+import BlogByCategory from './pages/admin/blogManagerment'
+import CreateBlogByCategory from './pages/admin/blogManagerment/createBlog'
+import UpdateBlogByCategory from './pages/admin/blogManagerment/updateBlog'
+import StoreDetailAdmin from './pages/admin/storeManagerment/detail'
+import DetailProductSeller from './pages/seller/products/detailProduct'
+import DetailProductStaff from './pages/staff/productManagerment/detailProduct'
+import StaffStoreDetail from './pages/staff/storeManagerment/storeDetail'
+import ListProductByStoreStaff from './pages/staff/storeManagerment/listProductByStore'
+import OrderCreate from './pages/customer/Order/OrderCreate'
+import SellerPromotionList from './pages/seller/promotionManagement/list'
+import CreateComboSeller from './pages/seller/combos/createCombo'
+import UpdateComboSeller from './pages/seller/combos/updateCombo'
+import DetailComboSeller from './pages/seller/combos/detailCombo'
+import ViewBlog from './pages/customer/Blog/viewBlog'
+import SellerManagement from './pages/admin/sellerManagerment/list'
+import StaffManagement from './pages/admin/staffManagerment/list'
+import AdminFormManagement from './pages/admin/formManagerment/form'
+import ManagerComboStaff from './pages/staff/comboManagerment/managerCombo'
+import DetailComboStaff from './pages/staff/comboManagerment/detailCombo'
+import ManagerProductAdmin from './pages/admin/productManagerment/list'
+import ManagerComboAdmin from './pages/admin/comboManagerment/list'
+import ComboDetail from './pages/customer/combo/detail'
+
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -73,12 +98,16 @@ export default function useRouteElements() {
           element: <ProductsDetail />
         },
         {
+          path: path.detailCombo,
+          element: <ComboDetail />
+        },
+        {
           path: path.cart,
           element: <Cart />
         },
         {
-          path: path.cartOrderConfirm,
-          element: <OrderConfirm />
+          path: path.cartOrderCreate,
+          element: <OrderCreate />
         },
         {
           path: path.cartInvoice,
@@ -91,8 +120,28 @@ export default function useRouteElements() {
         {
           path: path.stories,
           element: <StoryWithSeller />
+        },
+        {
+          path: path.discover,
+          element: <Discover />
+        },
+        {
+          path: path.blog,
+          element: <ViewBlog />
         }
       ]
+    },
+    {
+      path: path.loginCustomer,
+      element: <Login />
+    },
+    {
+      path: path.registerCustomer,
+      element: <Register />
+    },
+    {
+      path: path.forgotPassword,
+      element: <VerifyEmail />
     },
     // Profile Customer with separate layout
     {
@@ -119,166 +168,274 @@ export default function useRouteElements() {
     },
     // =================================SELLER================================
     {
-      path: '/',
-      element: <SellerLayout />,
+      path: path.BASE_SELLER,
+      element: <ProtectedRoute requiredRole='Seller' />,
       children: [
         {
-          path: path.dashboard,
-          element: <Dashboard />
-        },
-        {
-          path: path.productsSeller,
-          element: <ProductsSeller />
-        },
-        {
-          path: path.createProduct,
-          element: <CreateProduct />
-        },
-        {
-          path: path.ordersSeller,
-          element: <OrderManagement />
-        },
-        {
-          path: path.orderDetailSeller,
-          element: <OrderDetail />
-        },
-        {
-          path: path.myStorySeller,
-          element: <MyStory />
-        },
-        {
-          path: path.createMyStorySeller,
-          element: <CreateMyStory />
-        },
-        {
-          path: path.detailMyStorySeller,
-          element: <DetailMyStory />
-        },
-        {
-          path: path.chatWithCustomerSeller,
-          element: <ChatWithCustomer />
-        },
-        {
-          path: path.financeSeller,
-          element: <FinanceManagement />
-        },
-        {
-          path: path.setupStoreSeller,
-          element: <SetupStore />
-        },
-        {
-          path: path.helpSeller,
-          element: <HelpCenter />
-        },
-        {
-          path: path.detailHelpSeller,
-          element: <DetailHelp />
+          path: '',
+          element: <SellerLayout />,
+          children: [
+            {
+              path: '',
+              element: <Dashboard />
+            },
+            {
+              path: path.productsSeller,
+              element: <ProductsSeller />
+            },
+            {
+              path: path.createProduct,
+              element: <CreateProduct />
+            },
+            {
+              path: path.updateProductSeller,
+              element: <UpdateProduct />
+            },
+            {
+              path: path.detailProductSeller,
+              element: <DetailProductSeller />
+            },
+            {
+              path: path.ordersSeller,
+              element: <OrderManagement />
+            },
+            {
+              path: path.promotionSeller,
+              element: <SellerPromotionList />
+            },
+            {
+              path: path.myStorySeller,
+              element: <MyStory />
+            },
+            {
+              path: path.createMyStorySeller,
+              element: <CreateMyStory />
+            },
+            {
+              path: path.chatWithCustomerSeller,
+              element: <ChatWithCustomer />
+            },
+            {
+              path: path.financeSeller,
+              element: <FinanceManagement />
+            },
+            {
+              path: path.setupStoreSeller,
+              element: <SetupStore />
+            },
+            {
+              path: path.helpSeller,
+              element: <HelpCenter />
+            },
+            {
+              path: path.detailHelpSeller,
+              element: <DetailHelp />
+            },
+            {
+              path: path.comboSeller,
+              element: <ComboSeller />
+            },
+            {
+              path: path.createComboSeller,
+              element: <CreateComboSeller />
+            },
+            {
+              path: path.updateComboSeller,
+              element: <UpdateComboSeller />
+            },
+            {
+              path: path.detailComboSeller,
+              element: <DetailComboSeller />
+            }
+          ]
         }
       ]
     },
+    //=================================STAFF================================
     {
-      path: path.loginCustomer,
-      element: <Login />
-    },
-    {
-      path: path.registerCustomer,
-      element: <Register />
-    },
-    {
-      path: path.forgotPassword,
-      element: <VerifyEmail />
-    },
-    {
-      path: path.resetPassword,
-      element: <NewPassword />
-    },
-
-    // =================================STAFF================================
-
-    {
-      path: '/',
-      element: <StaffLayout />,
+      path: path.BASE_STAFF,
+      element: <ProtectedRoute requiredRole='Staff' />,
       children: [
         {
-          path: path.BASE_STAFF,
-          element: <StaffDashboard />
-        },
-        {
-          path: path.storesStaff,
-          element: <ListStore />
-        },
-        {
-          path: path.storeDetailStaff,
-          element: <StoreDetail />
-        },
-        {
-          path: path.approveStoresStaff,
-          element: <ApproveStores />
-        },
-        {
-          path: path.lockedStoresStaff,
-          element: <LockedStores />
-        },
-        {
-          path: path.managerProductStaff,
-          element: <ManagerProduct />
-        },
-        {
-          path: path.detailProductStaff,
-          element: <DetailProduct />
-        },
-        {
-          path: path.transactionsStaff,
-          element: <TransactionManagement />
-        },
-        {
-          path: path.reportsStaff,
-          element: <ReportManagement />
-        },
-        {
-          path: path.reportDetailStaff,
-          element: <ReportDetail />
-        },
-        {
-          path: path.Order_Management_Staff,
-          element: <OrderManagementStaff />
+          path: '',
+          element: <StaffLayout />,
+          children: [
+            {
+              path: '',
+              element: <StaffDashboard />
+            },
+            {
+              path: path.storesStaff,
+              element: <ListStore />
+            },
+            {
+              path: path.listProductByStoreStaff,
+              element: <ListProductByStoreStaff />
+            },
+            {
+              path: path.storeDetailStaff,
+              element: <StaffStoreDetail />
+            },
+            {
+              path: path.reportDetailStaff,
+              element: <ReportDetail />
+            },
+            {
+              path: path.approveStoresStaff,
+              element: <ApproveStores />
+            },
+            {
+              path: path.lockedStoresStaff,
+              element: <LockedStores />
+            },
+            {
+              path: path.managerProductStaff,
+              element: <ManagerProduct />
+            },
+            {
+              path: path.comboManagementStaff,
+              element: <ManagerComboStaff />
+            },
+            {
+              path: path.detailComboStaff,
+              element: <DetailComboStaff />
+            },
+            {
+              path: path.detailProductStaff,
+              element: <DetailProductStaff />
+            },
+            {
+              path: path.transactionsStaff,
+              element: <TransactionManagement />
+            },
+            {
+              path: path.reportsStaff,
+              element: <ReportManagement />
+            },
+            {
+              path: path.reportDetailStaff,
+              element: <ReportDetail />
+            },
+            {
+              path: path.Order_Management_Staff,
+              element: <OrderManagementStaff />
+            },
+            {
+              path: path.productCategoryStaff,
+              element: <ListCategory />
+            },
+            {
+              path: path.blogStaff,
+              element: <BlogManagement />
+            }
+
+          ]
         }
       ]
     },
+
     // =================================ADMIN================================
     {
-      path: '/',
+      path: path.BASE_ADMIN,
+      element: <ProtectedRoute requiredRole='Admin' />,
+      children: [
+        {
+          path: '',
+          element: <AdminLayout />,
+          children: [
+            {
+              path: '',
+              element: <AdminDashboard />
+            },
+            {
+              path: path.STORE_MANAGEMENT_ADMIN,
+              element: <StoreManagement />
+            },
+            {
+              path: path.STORE_DETAIL_ADMIN,
+              element: <StoreDetailAdmin />
+            },
+            {
+              path: path.PRODUCT_MANAGEMENT_ADMIN,
+              element: <ManagerProductAdmin />
+            },
+            {
+              path: path.COMBO_MANAGEMENT_ADMIN,
+              element: <ManagerComboAdmin />
+            },
+            {
+              path: path.ACCOUNT_MANAGEMENT_ADMIN,
+              element: <CustomerManagement />
+            },
+            {
+              path: path.TERMS_MANAGEMENT_ADMIN,
+              element: <TermsManagement />
+            },
+            {
+              path: path.TRANSACTION_MANAGEMENT_ADMIN,
+              element: <TransactionManagementAdmin />
+            },
+            {
+              path: path.BLOG_MANAGEMENT_ADMIN,
+              element: <BlogCategoryList />
+            },
+            {
+              path: path.BLOG_CATEGORY_DETAIL,
+              element: <BlogByCategory />
+            },
+            {
+              path: path.SYSTEM_STORAGE_ADMIN,
+              element: <SystemStorage />
+            },
+            {
+              path: path.SELLER_MANAGEMENT_ADMIN,
+              element: <SellerManagement />
+            },
+            {
+              path: path.STAFF_MANAGEMENT_ADMIN,
+              element: <StaffManagement />
+            },
+            {
+              path: path.PROMOTION_MANAGEMENT_ADMIN,
+              element: <AdminPromotionList />
+            },
+            {
+              path: path.FORM_MANAGEMENT_ADMIN,
+              element: <AdminFormManagement />
+            },
+            {
+              path: '/admin/promotions/:id',
+              element: <AdminPromotionDetail />
+            },
+            {
+              path: '/admin/promotions/stats',
+              element: <AdminPromotionStats />
+            }
+          ]
+        }
+      ]
+    },
+
+    // Blog Category Detail Route (absolute path)
+    {
+      path: '',
       element: <AdminLayout />,
       children: [
         {
-          path: path.BASE_ADMIN,
-          element: <AdminDashboard />
+          path: path.CREATE_BLOG,
+          element: <CreateBlogByCategory />
         },
         {
-          path: path.STORE_MANAGEMENT_ADMIN,
-          element: <StoreManagement />
-        },
-        {
-          path: path.PRODUCT_MANAGEMENT_ADMIN,
-          element: <ManagerProductAdmin />
-        },
-        {
-          path: path.ACCOUNT_MANAGEMENT_ADMIN,
-          element: <CustomerManagement />
-        },
-        {
-          path: path.TERMS_MANAGEMENT_ADMIN,
-          element: <TermsManagement />
-        },
-        {
-          path: path.TRANSACTION_MANAGEMENT_ADMIN,
-          element: <TransactionManagementAdmin />
-        },
-        {
-          path: path.BLOG_MANAGEMENT_ADMIN,
-          element: <BlogList />
+          path: path.BLOG_CATEGORY_EDIT,
+          element: <UpdateBlogByCategory />
         }
       ]
+    },
+
+    // Catch-all route for 404 Not Found
+    {
+      path: '*',
+      element: <NotFound />
     }
   ])
 
