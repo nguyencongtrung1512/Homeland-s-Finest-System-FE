@@ -135,6 +135,7 @@ export interface SellerRegistrationData {
     identifyCard: string
     identifyFrontImage: File
     identifyBackImage: File
+    businessLicense: File
   }
   storeInfo: {
     storeName: string
@@ -145,6 +146,7 @@ export interface SellerRegistrationData {
     provinceID: number
     districtID: number
     wardID: number
+    description: string
     vendorApplicationImageUrl: File[]
   }
 }
@@ -170,6 +172,7 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   formData.append('SellerInfo.IdentifyCard', data.sellerInfo.identifyCard)
   formData.append('SellerInfo.IdentifyFrontImage', data.sellerInfo.identifyFrontImage)
   formData.append('SellerInfo.IdentifyBackImage', data.sellerInfo.identifyBackImage)
+  formData.append('SellerInfo.BusinessLicense', data.sellerInfo.businessLicense)
 
   // Add storeInfo
   formData.append('StoreInfo.StoreName', data.storeInfo.storeName)
@@ -177,9 +180,10 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   formData.append('StoreInfo.Province', data.storeInfo.province)
   formData.append('StoreInfo.District', data.storeInfo.district)
   formData.append('StoreInfo.Ward', data.storeInfo.ward)
-  formData.append('StoreInfo.ProvinceID', data.storeInfo.provinceID.toString())
-  formData.append('StoreInfo.DistrictID', data.storeInfo.districtID.toString())
-  formData.append('StoreInfo.WardID', data.storeInfo.wardID.toString())
+  formData.append('StoreInfo.ProvinceId', data.storeInfo.provinceID.toString())
+  formData.append('StoreInfo.ProvinceId', data.storeInfo.districtID.toString())
+  formData.append('StoreInfo.WardId', data.storeInfo.wardID.toString())
+  formData.append('StoreInfo.Description', data.storeInfo.description)
 
   // Add vendor application images
   data.storeInfo.vendorApplicationImageUrl.forEach((file) => {

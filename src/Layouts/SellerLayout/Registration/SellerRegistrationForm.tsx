@@ -803,6 +803,14 @@ function SellerRegistrationForm() {
       newErrors.vendorApplicationImageUrl = 'Vui lòng tải lên giấy phép kinh doanh'
     }
 
+    if (!formData.description || !formData.description.trim()) {
+      newErrors.description = 'Vui lòng nhập mô tả cửa hàng'
+    }
+
+    if (!formData.businessLicense || formData.businessLicense.length === 0) {
+      newErrors.businessLicense = 'Vui lòng tải lên Giấy phép kinh doanh'
+    }
+
     const allAgreed = Object.values(formData.agreements).every((value) => value === true)
     if (!allAgreed) {
       newErrors.agreements = 'Vui lòng đồng ý với tất cả các điều khoản bắt buộc'
@@ -842,7 +850,8 @@ function SellerRegistrationForm() {
           bankAccount: formData.bankAccount,
           identifyCard: formData.identifyCard,
           identifyFrontImage: formData.identifyFrontImage[0] || null,
-          identifyBackImage: formData.identifyBackImage[0] || null
+          identifyBackImage: formData.identifyBackImage[0] || null,
+          businessLicense: formData.businessLicense[0] || null
         },
         storeInfo: {
           storeName: formData.storeName,
@@ -853,6 +862,7 @@ function SellerRegistrationForm() {
           provinceID: selectedProvince?.ProvinceID || 0,
           districtID: selectedDistrict?.DistrictID || 0,
           wardID: selectedWard ? parseInt(selectedWard.WardCode) || 0 : 0,
+          description: formData.description.trim(),
           vendorApplicationImageUrl: formData.vendorApplicationImageUrl
         }
       }
@@ -1257,6 +1267,20 @@ function SellerRegistrationForm() {
 
               {errors.address && <p className='text-sm text-red-500'>{errors.address}</p>}
             </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='description' className='text-sm text-gray-600'>
+                Mô tả cửa hàng <span className='text-red-500'>*</span>
+              </Label>
+              <textarea
+                id='description'
+                className='w-full border rounded p-2 min-h-[100px]'
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                placeholder='Mô tả sản phẩm/dịch vụ, thế mạnh, nguồn hàng...'
+              />
+              {errors.description && <p className='text-sm text-red-500'>{errors.description}</p>}
+            </div>
           </div>
 
           {/* Thông tin seller */}
@@ -1358,6 +1382,14 @@ function SellerRegistrationForm() {
                   </div>
                 </div>
                 <div className='space-y-4'>
+                  <FileUploadField
+                    label='Giấy phép kinh doanh'
+                    onChange={(files) => handleFileChange('businessLicense', files)}
+                    required
+                    description='Bắt buộc: 1 file ảnh/PDF rõ nét'
+                    accept='image/*,.pdf'
+                    maxCount={1}
+                  />
                   <FileUploadField
                     label='Giấy tờ đăng ký bán hàng'
                     onChange={(files) => handleFileChange('vendorApplicationImageUrl', files)}

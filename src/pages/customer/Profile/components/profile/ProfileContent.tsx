@@ -51,7 +51,8 @@ export default function ProfileContent() {
     avatar: null as File | null,
     currentPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    note: ''
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [provinces, setProvinces] = useState<Province[]>([])
@@ -111,7 +112,8 @@ export default function ProfileContent() {
           avatar: null,
           currentPassword: '',
           newPassword: '',
-          confirmPassword: ''
+          confirmPassword: '',
+          note: userData.note || ''
         })
 
         setDateOfBirth(parsedDate)
@@ -189,6 +191,7 @@ export default function ProfileContent() {
       provinceId: formData.provinceId ? parseInt(formData.provinceId) : undefined,
       bankAccount: formData.bankAccount,
       toBin: formData.toBin,
+      note: (formData.note || 'Cập nhật từ trang Profile').trim(),
       avatar: formData.avatar || undefined
     }
   }
@@ -384,9 +387,9 @@ export default function ProfileContent() {
                       <SelectValue placeholder='Chọn giới tính' />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value='Nam'>Nam</SelectItem>
-                      <SelectItem value='Nữ'>Nữ</SelectItem>
-                      <SelectItem value='Khác'>Khác</SelectItem>
+                      <SelectItem value='Male'>Nam</SelectItem>
+                      <SelectItem value='Female'>Nữ</SelectItem>
+                      <SelectItem value='Other'>Khác</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
