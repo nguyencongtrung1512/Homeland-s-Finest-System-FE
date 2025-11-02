@@ -3,6 +3,7 @@ import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Gift } from 'lucide-react'
 import { useAuth } from '../../contexts/auth.context'
+import { useChat } from '../../contexts/chat.context'
 import { promotionApi } from '../../apis/promotion.api'
 import { type PromotionDTO } from '../../types/promotionType'
 import { toast } from '../../utils/toast'
@@ -15,6 +16,7 @@ interface PromotionBubbleProps {
 
 const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => {
   const { user } = useAuth()
+  const { isOpen: isChatOpen } = useChat()
   const [showModal, setShowModal] = useState(false)
   const [promotions, setPromotions] = useState<PromotionDTO[]>([])
   const [claiming, setClaiming] = useState<string | null>(null)
@@ -300,11 +302,32 @@ const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => 
       {/* Promotion Bubble Image - bên phải, phía trên chat */}
       <button
         onClick={() => setShowModal(true)}
-        className={`fixed bottom-24 right-6 z-50 cursor-pointer hover:scale-105 transition-transform shadow-lg animate-bounce ${className}`}
-        style={{ background: 'transparent', border: 'none', padding: 0 }}
+        className={`fixed right-6 z-40 cursor-pointer hover:scale-105 transition-all duration-300 animate-bounce ${isChatOpen ? 'bottom-[620px]' : 'bottom-24'
+          } ${className}`}
+        style={{
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          outline: 'none',
+          boxShadow: 'none'
+        }}
       >
-        <img src={givePromotionImg} alt='Nhận khuyến mãi' className='w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28' />
-
+        <img
+          src={givePromotionImg}
+          alt='Nhận khuyến mãi'
+          className='w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28'
+          style={{
+            backgroundColor: 'transparent',
+            background: 'none',
+            display: 'block',
+            border: 'none',
+            outline: 'none',
+            boxShadow: 'none',
+            padding: 0,
+            margin: 0,
+            verticalAlign: 'middle'
+          }}
+        />
       </button>
     </>
   )

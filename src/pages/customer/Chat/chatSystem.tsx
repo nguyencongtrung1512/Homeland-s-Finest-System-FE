@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   MessageCircle,
   Send,
@@ -246,279 +247,322 @@ const ChatSystem: React.FC = () => {
   return (
     <>
       {/* Chat Button */}
-      {!isOpen && (
-        <Button
-          onClick={() => setIsOpen(true)}
-          className='fixed bottom-6 right-6 z-50 h-16 w-16 rounded-full bg-green-600 hover:bg-green-700 shadow-lg'
-          size='icon'
-        >
-          <MessageCircle className='h-7 w-7 text-white' />
-          {totalUnread > 0 && (
-            <span className='absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center'>
-              {totalUnread}
-            </span>
-          )}
-        </Button>
-      )}
+      <AnimatePresence>
+        {!isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ duration: 0.3, type: 'spring', stiffness: 300, damping: 30 }}
+            className='fixed bottom-6 right-6 z-50'
+          >
+            <Button
+              onClick={() => setIsOpen(true)}
+              className='h-16 w-16 rounded-full bg-green-600 hover:bg-green-700 shadow-lg'
+              size='icon'
+            >
+              <MessageCircle className='h-7 w-7 text-white' />
+              {totalUnread > 0 && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className='absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center'
+                >
+                  {totalUnread}
+                </motion.span>
+              )}
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Chat Window */}
-      {isOpen && (
-        <div className='fixed bottom-6 right-6 w-96 h-[600px] flex flex-col'>
-          <Card className='h-full flex flex-col border-0 py-0 shadow-2xl overflow-hidden !gap-0'>
-            {/* Header */}
-            <CardHeader className='bg-green-600 text-white px-5 py-3 rounded-t-xl !px-5 !pb-3'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-2'>
-                  <ShoppingBag className='h-5 w-5' />
-                  <CardTitle className='text-white text-base font-semibold'>Tinh Hoa Quê Nhà</CardTitle>
-                </div>
-                <Button
-                  onClick={() => setIsOpen(false)}
-                  variant='ghost'
-                  size='icon'
-                  className='h-6 w-6 text-white hover:bg-green-700'
-                >
-                  <X className='h-4 w-4' />
-                </Button>
-              </div>
-            </CardHeader>
-
-            {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={handleTabChange} className='flex-1 flex flex-col min-h-0 py-2'>
-              <TabsList className='w-full justify-start rounded-none border-b bg-white px-5 flex-shrink-0 !pt-0 !mt-0'>
-                <TabsTrigger
-                  value='ai'
-                  className='gap-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-700'
-                >
-                  <Bot className='h-4 w-4' />
-                  Trợ lý AI
-                </TabsTrigger>
-                <TabsTrigger
-                  value='seller'
-                  className='gap-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-700'
-                >
-                  <Store className='h-4 w-4' />
-                  Tin nhắn
-                  {totalUnread > 0 && (
-                    <span className='ml-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center'>
-                      {totalUnread}
-                    </span>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-
-              {/* AI Chat Tab */}
-              <TabsContent value='ai' className='flex-1 flex flex-col m-0 min-h-0'>
-                {/* Messages Area */}
-                <div className='flex-1 min-h-0 bg-white/95'>
-                  <ScrollArea className='h-full px-5 py-3'>
-                    <div className='flex flex-col gap-3 pb-2'>
-                      {aiMessages.map((message) => (
-                        <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-                          <div
-                            className={`max-w-[85%] rounded-lg px-4 py-3 ${
-                              message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
-                            }`}
-                          >
-                            <div className='flex items-start gap-2'>
-                              {!message.isUser && <Bot className='h-4 w-4 mt-0.5 text-green-600 flex-shrink-0' />}
-                              {message.isUser && <User className='h-4 w-4 mt-0.5 text-white flex-shrink-0' />}
-                              <p className='text-sm leading-relaxed break-words'>{message.text}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-
-                      {isTyping && (
-                        <div className='flex justify-start'>
-                          <div className='bg-gray-100 rounded-lg px-3 py-2'>
-                            <div className='flex items-center gap-2'>
-                              <Bot className='h-4 w-4 text-green-600' />
-                              <div className='flex space-x-1'>
-                                <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'></div>
-                                <div
-                                  className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
-                                  style={{ animationDelay: '0.1s' }}
-                                ></div>
-                                <div
-                                  className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
-                                  style={{ animationDelay: '0.2s' }}
-                                ></div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
-                  </ScrollArea>
-                </div>
-
-                {/* Input Area */}
-                <div className='px-5 py-3 border-t bg-white/95 flex-shrink-0'>
-                  <div className='flex gap-2'>
-                    <Input
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder='Nhập tin nhắn...'
-                      className='flex-1'
-                    />
-                    <Button
-                      onClick={handleSendAIMessage}
-                      disabled={!inputValue.trim()}
-                      size='icon'
-                      className='bg-green-600 hover:bg-green-700 flex-shrink-0'
-                    >
-                      <Send className='h-5 w-5' />
-                    </Button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{
+              opacity: 0,
+              scale: 0.1,
+              x: 0,
+              y: 0,
+              borderRadius: '9999px'
+            }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              x: 0,
+              y: 0,
+              borderRadius: '0px'
+            }}
+            exit={{
+              opacity: 0,
+              scale: 0.1,
+              x: 0,
+              y: 0,
+              borderRadius: '9999px'
+            }}
+            transition={{
+              duration: 0.4,
+              type: 'spring',
+              stiffness: 300,
+              damping: 25
+            }}
+            className='fixed bottom-6 right-6 w-96 h-[600px] flex flex-col origin-bottom-right'
+          >
+            <Card className='h-full flex flex-col border-0 py-0 shadow-2xl overflow-hidden !gap-0'>
+              {/* Header */}
+              <CardHeader className='bg-green-600 text-white px-5 py-3 rounded-t-xl !px-5 !pb-3'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-2'>
+                    <ShoppingBag className='h-5 w-5' />
+                    <CardTitle className='text-white text-base font-semibold'>Tinh Hoa Quê Nhà</CardTitle>
                   </div>
+                  <Button
+                    onClick={() => setIsOpen(false)}
+                    variant='ghost'
+                    size='icon'
+                    className='h-6 w-6 text-white hover:bg-green-700'
+                  >
+                    <X className='h-4 w-4' />
+                  </Button>
                 </div>
-              </TabsContent>
+              </CardHeader>
 
-              {/* Seller Chat Tab */}
-              <TabsContent value='seller' className='flex-1 flex flex-col m-0 min-h-0'>
-                {/* Show Conversation List if no conversation selected */}
-                {!selectedConversation ? (
-                  <div className='flex-1 flex flex-col min-h-0'>
-                    {/* Search */}
-                    <div className='p-3 border-b bg-white flex-shrink-0'>
-                      <Input placeholder='Tìm kiếm cuộc trò chuyện' className='w-full' />
-                    </div>
+              {/* Tabs */}
+              <Tabs value={activeTab} onValueChange={handleTabChange} className='flex-1 flex flex-col min-h-0 py-2'>
+                <TabsList className='w-full justify-start rounded-none border-b bg-white px-5 flex-shrink-0 !pt-0 !mt-0'>
+                  <TabsTrigger
+                    value='ai'
+                    className='gap-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-700'
+                  >
+                    <Bot className='h-4 w-4' />
+                    Trợ lý AI
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value='seller'
+                    className='gap-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-700'
+                  >
+                    <Store className='h-4 w-4' />
+                    Tin nhắn
+                    {totalUnread > 0 && (
+                      <span className='ml-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center'>
+                        {totalUnread}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
 
-                    {/* Conversation List */}
-                    <div className='flex-1 min-h-0'>
-                      <ScrollArea className='h-full'>
-                        <div className='divide-y'>
-                          {conversations.map((conv) => (
+                {/* AI Chat Tab */}
+                <TabsContent value='ai' className='flex-1 flex flex-col m-0 min-h-0'>
+                  {/* Messages Area */}
+                  <div className='flex-1 min-h-0 bg-white/95'>
+                    <ScrollArea className='h-full px-5 py-3'>
+                      <div className='flex flex-col gap-3 pb-2'>
+                        {aiMessages.map((message) => (
+                          <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
                             <div
-                              key={conv.id}
-                              onClick={() => setSelectedConversation(conv.id)}
-                              className='flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors'
+                              className={`max-w-[85%] rounded-lg px-4 py-3 ${message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
+                                }`}
                             >
-                              <div className='relative flex-shrink-0'>
-                                <div className='h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-2xl'>
-                                  {conv.avatar}
-                                </div>
-                                {conv.online && (
-                                  <div className='absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white'></div>
-                                )}
+                              <div className='flex items-start gap-2'>
+                                {!message.isUser && <Bot className='h-4 w-4 mt-0.5 text-green-600 flex-shrink-0' />}
+                                {message.isUser && <User className='h-4 w-4 mt-0.5 text-white flex-shrink-0' />}
+                                <p className='text-sm leading-relaxed break-words'>{message.text}</p>
                               </div>
-                              <div className='flex-1 min-w-0'>
-                                <div className='flex items-start justify-between mb-1'>
-                                  <h3 className='font-semibold text-sm truncate'>{conv.name}</h3>
-                                  {conv.time && (
-                                    <span className='text-xs text-gray-500 ml-2 flex-shrink-0'>{conv.time}</span>
+                            </div>
+                          </div>
+                        ))}
+
+                        {isTyping && (
+                          <div className='flex justify-start'>
+                            <div className='bg-gray-100 rounded-lg px-3 py-2'>
+                              <div className='flex items-center gap-2'>
+                                <Bot className='h-4 w-4 text-green-600' />
+                                <div className='flex space-x-1'>
+                                  <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'></div>
+                                  <div
+                                    className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
+                                    style={{ animationDelay: '0.1s' }}
+                                  ></div>
+                                  <div
+                                    className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
+                                    style={{ animationDelay: '0.2s' }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    </ScrollArea>
+                  </div>
+
+                  {/* Input Area */}
+                  <div className='px-5 py-3 border-t bg-white/95 flex-shrink-0'>
+                    <div className='flex gap-2'>
+                      <Input
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder='Nhập tin nhắn...'
+                        className='flex-1'
+                      />
+                      <Button
+                        onClick={handleSendAIMessage}
+                        disabled={!inputValue.trim()}
+                        size='icon'
+                        className='bg-green-600 hover:bg-green-700 flex-shrink-0'
+                      >
+                        <Send className='h-5 w-5' />
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Seller Chat Tab */}
+                <TabsContent value='seller' className='flex-1 flex flex-col m-0 min-h-0'>
+                  {/* Show Conversation List if no conversation selected */}
+                  {!selectedConversation ? (
+                    <div className='flex-1 flex flex-col min-h-0'>
+                      {/* Search */}
+                      <div className='p-3 border-b bg-white flex-shrink-0'>
+                        <Input placeholder='Tìm kiếm cuộc trò chuyện' className='w-full' />
+                      </div>
+
+                      {/* Conversation List */}
+                      <div className='flex-1 min-h-0'>
+                        <ScrollArea className='h-full'>
+                          <div className='divide-y'>
+                            {conversations.map((conv) => (
+                              <div
+                                key={conv.id}
+                                onClick={() => setSelectedConversation(conv.id)}
+                                className='flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors'
+                              >
+                                <div className='relative flex-shrink-0'>
+                                  <div className='h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-2xl'>
+                                    {conv.avatar}
+                                  </div>
+                                  {conv.online && (
+                                    <div className='absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white'></div>
                                   )}
                                 </div>
-                                <p className='text-sm text-gray-600 truncate'>{conv.lastMessage}</p>
-                              </div>
-                              {conv.unread && conv.unread > 0 && (
-                                <span className='flex-shrink-0 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center'>
-                                  {conv.unread}
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  </div>
-                ) : (
-                  /* Show Chat Detail when conversation selected */
-                  <div className='flex-1 flex flex-col min-h-0'>
-                    {/* Chat Header with Back Button */}
-                    <div className='bg-white border-b p-3 flex items-center gap-3 flex-shrink-0'>
-                      <Button onClick={handleBackToList} variant='ghost' size='icon' className='h-8 w-8 flex-shrink-0'>
-                        <ArrowLeft className='h-5 w-5' />
-                      </Button>
-                      <div className='h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-xl flex-shrink-0'>
-                        {selectedConv?.avatar}
-                      </div>
-                      <div className='flex-1 min-w-0'>
-                        <h3 className='font-semibold text-sm truncate'>{selectedConv?.name}</h3>
-                        {selectedConv?.online && (
-                          <p className='text-xs text-green-600 flex items-center gap-1'>
-                            <span className='w-2 h-2 bg-green-600 rounded-full'></span>
-                            Đang hoạt động
-                          </p>
-                        )}
-                      </div>
-                      <div className='flex items-center gap-1 flex-shrink-0'>
-                        <Button variant='ghost' size='icon' className='h-8 w-8'>
-                          <Phone className='h-4 w-4' />
-                        </Button>
-                        <Button variant='ghost' size='icon' className='h-8 w-8'>
-                          <Video className='h-4 w-4' />
-                        </Button>
-                        <Button variant='ghost' size='icon' className='h-8 w-8'>
-                          <MoreVertical className='h-4 w-4' />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Messages */}
-                    <div className='flex-1 min-h-0 bg-gray-50'>
-                      <ScrollArea className='h-full p-4'>
-                        <div className='space-y-3 pb-2'>
-                          {currentSellerMessages.map((msg) => (
-                            <div key={msg.id} className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}>
-                              {!msg.isUser && (
-                                <div className='h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-sm mr-2 flex-shrink-0'>
-                                  {selectedConv?.avatar}
-                                </div>
-                              )}
-                              <div
-                                className={`max-w-[70%] ${
-                                  msg.isUser
-                                    ? 'bg-green-600 text-white rounded-2xl rounded-br-sm'
-                                    : 'bg-white text-gray-800 rounded-2xl rounded-bl-sm'
-                                } p-3 shadow-sm`}
-                              >
-                                <p className='text-sm break-words'>{msg.text}</p>
-                                {msg.hasImage && (
-                                  <div className='mt-2 rounded-lg overflow-hidden bg-gray-200 h-32 flex items-center justify-center'>
-                                    <span className='text-4xl'>🍪</span>
+                                <div className='flex-1 min-w-0'>
+                                  <div className='flex items-start justify-between mb-1'>
+                                    <h3 className='font-semibold text-sm truncate'>{conv.name}</h3>
+                                    {conv.time && (
+                                      <span className='text-xs text-gray-500 ml-2 flex-shrink-0'>{conv.time}</span>
+                                    )}
                                   </div>
+                                  <p className='text-sm text-gray-600 truncate'>{conv.lastMessage}</p>
+                                </div>
+                                {conv.unread && conv.unread > 0 && (
+                                  <span className='flex-shrink-0 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center'>
+                                    {conv.unread}
+                                  </span>
                                 )}
                               </div>
-                            </div>
-                          ))}
-                          <div ref={messagesEndRef} />
-                        </div>
-                      </ScrollArea>
-                    </div>
-
-                    {/* Input */}
-                    <div className='bg-white border-t p-3 flex-shrink-0'>
-                      <div className='flex items-center gap-2'>
-                        <Button variant='ghost' size='icon' className='h-9 w-9 flex-shrink-0'>
-                          <Paperclip className='h-4 w-4 text-gray-500' />
-                        </Button>
-                        <Button variant='ghost' size='icon' className='h-9 w-9 flex-shrink-0'>
-                          <Image className='h-4 w-4 text-gray-500' />
-                        </Button>
-                        <Input
-                          placeholder='Nhập tin nhắn...'
-                          value={sellerMessage}
-                          onChange={(e) => setSellerMessage(e.target.value)}
-                          className='flex-1'
-                        />
-                        <Button
-                          size='icon'
-                          className='bg-green-600 hover:bg-green-700 text-white rounded-lg h-9 w-9 flex-shrink-0'
-                        >
-                          <Send className='h-4 w-4' />
-                        </Button>
+                            ))}
+                          </div>
+                        </ScrollArea>
                       </div>
                     </div>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </Card>
-        </div>
-      )}
+                  ) : (
+                    /* Show Chat Detail when conversation selected */
+                    <div className='flex-1 flex flex-col min-h-0'>
+                      {/* Chat Header with Back Button */}
+                      <div className='bg-white border-b p-3 flex items-center gap-3 flex-shrink-0'>
+                        <Button onClick={handleBackToList} variant='ghost' size='icon' className='h-8 w-8 flex-shrink-0'>
+                          <ArrowLeft className='h-5 w-5' />
+                        </Button>
+                        <div className='h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-xl flex-shrink-0'>
+                          {selectedConv?.avatar}
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <h3 className='font-semibold text-sm truncate'>{selectedConv?.name}</h3>
+                          {selectedConv?.online && (
+                            <p className='text-xs text-green-600 flex items-center gap-1'>
+                              <span className='w-2 h-2 bg-green-600 rounded-full'></span>
+                              Đang hoạt động
+                            </p>
+                          )}
+                        </div>
+                        <div className='flex items-center gap-1 flex-shrink-0'>
+                          <Button variant='ghost' size='icon' className='h-8 w-8'>
+                            <Phone className='h-4 w-4' />
+                          </Button>
+                          <Button variant='ghost' size='icon' className='h-8 w-8'>
+                            <Video className='h-4 w-4' />
+                          </Button>
+                          <Button variant='ghost' size='icon' className='h-8 w-8'>
+                            <MoreVertical className='h-4 w-4' />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Messages */}
+                      <div className='flex-1 min-h-0 bg-gray-50'>
+                        <ScrollArea className='h-full p-4'>
+                          <div className='space-y-3 pb-2'>
+                            {currentSellerMessages.map((msg) => (
+                              <div key={msg.id} className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}>
+                                {!msg.isUser && (
+                                  <div className='h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-sm mr-2 flex-shrink-0'>
+                                    {selectedConv?.avatar}
+                                  </div>
+                                )}
+                                <div
+                                  className={`max-w-[70%] ${msg.isUser
+                                    ? 'bg-green-600 text-white rounded-2xl rounded-br-sm'
+                                    : 'bg-white text-gray-800 rounded-2xl rounded-bl-sm'
+                                    } p-3 shadow-sm`}
+                                >
+                                  <p className='text-sm break-words'>{msg.text}</p>
+                                  {msg.hasImage && (
+                                    <div className='mt-2 rounded-lg overflow-hidden bg-gray-200 h-32 flex items-center justify-center'>
+                                      <span className='text-4xl'>🍪</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            <div ref={messagesEndRef} />
+                          </div>
+                        </ScrollArea>
+                      </div>
+
+                      {/* Input */}
+                      <div className='bg-white border-t p-3 flex-shrink-0'>
+                        <div className='flex items-center gap-2'>
+                          <Button variant='ghost' size='icon' className='h-9 w-9 flex-shrink-0'>
+                            <Paperclip className='h-4 w-4 text-gray-500' />
+                          </Button>
+                          <Button variant='ghost' size='icon' className='h-9 w-9 flex-shrink-0'>
+                            <Image className='h-4 w-4 text-gray-500' />
+                          </Button>
+                          <Input
+                            placeholder='Nhập tin nhắn...'
+                            value={sellerMessage}
+                            onChange={(e) => setSellerMessage(e.target.value)}
+                            className='flex-1'
+                          />
+                          <Button
+                            size='icon'
+                            className='bg-green-600 hover:bg-green-700 text-white rounded-lg h-9 w-9 flex-shrink-0'
+                          >
+                            <Send className='h-4 w-4' />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }
