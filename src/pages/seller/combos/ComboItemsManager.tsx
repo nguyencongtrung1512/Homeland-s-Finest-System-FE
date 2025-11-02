@@ -17,7 +17,7 @@ import {
 } from '../../../components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Plus, Edit, Trash2, Package, Clock, CheckCircle, XCircle } from 'lucide-react'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import { getVariantsBySellerId } from '../../../apis/combo.api'
 import { useAuth } from '../../../contexts/auth.context'
 import type { ComboItem, CreateComboItemRequest, UpdateComboItemRequest } from '../../../types/combo.type'

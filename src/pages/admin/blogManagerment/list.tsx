@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Edit, Database, Users, Activity, MoreHorizontal, Eye } from 'lucide-react'
-import { toast, ToastContainer } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
+import { toast } from '../../../utils/toast'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
@@ -354,9 +353,8 @@ function BlogCategoryList() {
                       <TableCell className='font-medium text-foreground'>{category.name}</TableCell>
                       <TableCell>
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            category.isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
-                          }`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${category.isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+                            }`}
                         >
                           {category.isActive ? 'Hoạt động' : 'Không hoạt động'}
                         </span>

@@ -5,7 +5,7 @@ import { Gift } from 'lucide-react'
 import { useAuth } from '../../contexts/auth.context'
 import { promotionApi } from '../../apis/promotion.api'
 import { type PromotionDTO } from '../../types/promotionType'
-import { toast } from 'react-toastify'
+import { toast } from '../../utils/toast'
 import PromoMascot from '../ui/promo-mascot'
 import givePromotionImg from '../../assets/give-promotion.png'
 

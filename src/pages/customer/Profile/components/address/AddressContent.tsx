@@ -4,7 +4,7 @@ import { Button } from '../../../../../components/ui/button'
 import AddressCard from './AddressCard'
 import { addressApi } from '../../../../../apis/address.api'
 import type { Address } from '../../../../../types/addressType'
-import { toast } from 'react-toastify'
+import { toast } from '../../../../../utils/toast'
 import {
   AlertDialog,
   AlertDialogAction,

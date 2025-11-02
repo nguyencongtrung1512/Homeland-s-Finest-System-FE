@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { useAuth } from './auth.context'
 import { getCartByUserId, addToCart as addToCartAPI, removeCartItem } from '../apis/cart.api'
 import type { CartData, Cart as APICart, CartItem as APICartItem } from '../types/cartType'
-import { toast } from 'react-toastify'
+import { toast } from '../utils/toast'
 
 // Local cart item interface for UI
 export interface CartItem {

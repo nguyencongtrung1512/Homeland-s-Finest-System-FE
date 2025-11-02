@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft, Check, XCircle, Package, FileText, Award, Video, ImageIcon } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'

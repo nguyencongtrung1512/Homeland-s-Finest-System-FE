@@ -21,7 +21,7 @@ import { formApi } from '../../../../apis/form.api'
 import type { FormDTO, FormStatus, FormType } from '../../../../types/form.type'
 import { getUserById } from '../../../../apis/user.api'
 import { storeApi, type StoreResponse } from '../../../../apis/store.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../../utils/toast'
 import { useNavigate } from 'react-router-dom'
 
 interface FormDetailModalProps {

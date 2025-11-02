@@ -22,7 +22,7 @@ import {
 import CreateHelpModal from './createHelp'
 import { formApi } from '../../../apis/form.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import { useAuth } from '../../../contexts/auth.context'
 import { formatDate } from '../../../utils/formatDate'
 
@@ -313,8 +313,8 @@ function HelpCenter() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`pb-3 text-sm font-medium transition-colors ${activeTab === tab.key
-                  ? 'text-green-600 border-b-2 border-green-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                ? 'text-green-600 border-b-2 border-green-600'
+                : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
               {tab.label}
