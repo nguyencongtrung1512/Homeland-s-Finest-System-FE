@@ -36,8 +36,6 @@ export interface ProductCertificateListResponse {
     totalPages: number
   }
 }
-
-// Response từ API POST/PUT/DELETE
 export interface ProductCertificateResponse {
   status: number
   message: string
