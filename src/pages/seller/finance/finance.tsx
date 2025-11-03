@@ -130,11 +130,9 @@ function FinanceManagement() {
           <CardContent className='p-6'>
             <div className='flex justify-between items-start'>
               <div>
-                <h3 className='text-sm font-medium text-gray-600 mb-2'>Tổng doanh thu</h3>
+                <h3 className='text-sm font-medium text-gray-600 mb-2'>Đang nợ hệ thống</h3>
                 <p className='text-3xl font-bold text-green-600'>{financialSummary.totalRevenue.toLocaleString()} ₫</p>
-                <p className='text-sm text-green-600 mt-1 flex items-center gap-1'>
-                  <TrendingUp className='w-4 h-4' />+{financialSummary.revenueGrowth}% so với tháng trước
-                </p>
+
               </div>
               <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
                 <TrendingUp className='w-6 h-6 text-green-600' />
