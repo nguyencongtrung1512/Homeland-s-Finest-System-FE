@@ -5,16 +5,7 @@ import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import {
-  BookOpen,
-  Edit,
-  Save,
-  X,
-  Trash2,
-  Image,
-  Video,
-  Upload
-} from 'lucide-react'
+import { BookOpen, Edit, Save, X, Trash2, Image, Video, Upload } from 'lucide-react'
 import { productStoryApi } from '../../../apis/productStory.api'
 import type { ProductStory } from '../../../types/productStoryType'
 
@@ -37,12 +28,7 @@ interface StoryEditData {
   videoFile: File | null
 }
 
-function ProductStoryComponent({
-  productId,
-  isEditMode,
-  onToggleEditMode,
-  onCancelEdit
-}: ProductStoryProps) {
+function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCancelEdit }: ProductStoryProps) {
   const [stories, setStories] = useState<ProductStory[]>([])
   const [loading, setLoading] = useState(false)
   const [editData, setEditData] = useState<StoryEditData>({
@@ -57,7 +43,7 @@ function ProductStoryComponent({
   // Fix: Add setters for upload states
   const [uploadingImages, setUploadingImages] = useState(false)
   const [uploadingVideo, setUploadingVideo] = useState(false)
-  
+
   // File input refs
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
@@ -68,7 +54,7 @@ function ProductStoryComponent({
     if (!files || files.length === 0) return
 
     setUploadingImages(true) // Set loading state
-    
+
     const validFiles: File[] = []
     const previewUrls: string[] = []
 
@@ -90,7 +76,7 @@ function ProductStoryComponent({
     })
 
     if (validFiles.length > 0) {
-      setEditData(prev => ({
+      setEditData((prev) => ({
         ...prev,
         images: [...prev.images, ...previewUrls],
         imageFiles: [...prev.imageFiles, ...validFiles]
@@ -102,7 +88,7 @@ function ProductStoryComponent({
     if (imageInputRef.current) {
       imageInputRef.current.value = ''
     }
-    
+
     setUploadingImages(false) // Reset loading state
   }
 
@@ -128,20 +114,20 @@ function ProductStoryComponent({
     }
 
     const videoUrl = URL.createObjectURL(file)
-    
-    setEditData(prev => ({
+
+    setEditData((prev) => ({
       ...prev,
       video: videoUrl,
       videoFile: file
     }))
-    
+
     toast.success('Đã chọn video!')
 
     // Reset input
     if (videoInputRef.current) {
       videoInputRef.current.value = ''
     }
-    
+
     setUploadingVideo(false) // Reset loading state
   }
 
@@ -149,11 +135,11 @@ function ProductStoryComponent({
     try {
       if (stories.length > 0) {
         const storyId = stories[0].id
-        
+
         // Prepare data for API call
         const updateData: any = {
           title: editData.title,
-          storyDetail: editData.content,
+          storyDetail: editData.content
         }
 
         // Add files if they exist
@@ -180,7 +166,7 @@ function ProductStoryComponent({
   const handleCancel = () => {
     onCancelEdit('story')
     // Reset edit data and clean up object URLs
-    editData.images.forEach(url => {
+    editData.images.forEach((url) => {
       if (url.startsWith('blob:')) {
         URL.revokeObjectURL(url)
       }
@@ -188,7 +174,7 @@ function ProductStoryComponent({
     if (editData.video.startsWith('blob:')) {
       URL.revokeObjectURL(editData.video)
     }
-    
+
     if (stories.length > 0) {
       const processedData = processStoryData(stories[0])
       setEditData({
@@ -201,17 +187,17 @@ function ProductStoryComponent({
 
   const removeImage = (index: number) => {
     const imageToRemove = editData.images[index]
-    
+
     // Clean up object URL if it's a blob
     if (imageToRemove && imageToRemove.startsWith('blob:')) {
       URL.revokeObjectURL(imageToRemove)
     }
-    
+
     const newImages = editData.images.filter((_, i) => i !== index)
     const newFiles = editData.imageFiles.filter((_, i) => i !== index)
-    
-    setEditData(prev => ({ 
-      ...prev, 
+
+    setEditData((prev) => ({
+      ...prev,
       images: newImages,
       imageFiles: newFiles
     }))
@@ -222,16 +208,15 @@ function ProductStoryComponent({
     if (editData.video && editData.video.startsWith('blob:')) {
       URL.revokeObjectURL(editData.video)
     }
-    
-    setEditData(prev => ({ 
-      ...prev, 
+
+    setEditData((prev) => ({
+      ...prev,
       video: '',
       videoFile: null
     }))
   }
 
   // Process ProductStory data to match component's expected format
- 
 
   // Initialize edit data when entering edit mode
   useEffect(() => {
@@ -249,7 +234,7 @@ function ProductStoryComponent({
   // Clean up object URLs on unmount
   useEffect(() => {
     return () => {
-      editData.images.forEach(url => {
+      editData.images.forEach((url) => {
         if (url.startsWith('blob:')) {
           URL.revokeObjectURL(url)
         }
@@ -279,19 +264,19 @@ function ProductStoryComponent({
   // Process ProductStory data to match component's expected format
   const processStoryData = (story: ProductStory): StoryEditData => {
     const textContents = story.contents
-      .filter(content => content.contentType === 'text')
+      .filter((content) => content.contentType === 'text')
       .sort((a, b) => a.order - b.order)
-      .map(content => content.contentData)
+      .map((content) => content.contentData)
       .join('\n\n')
 
     const mediaContents = story.contents
-      .filter(content => content.contentType === 'media')
+      .filter((content) => content.contentType === 'media')
       .sort((a, b) => a.order - b.order)
 
     const images: string[] = []
     let video = ''
 
-    mediaContents.forEach(content => {
+    mediaContents.forEach((content) => {
       try {
         // Check if contentData is a JSON array (for images)
         if (content.contentData.startsWith('[')) {
@@ -348,16 +333,14 @@ function ProductStoryComponent({
     }
   }
 
- 
-
   // Get current story data for display
   const currentStory = stories.length > 0 ? processStoryData(stories[0]) : null
 
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-6">
-          <div className="text-center">Đang tải...</div>
+        <CardContent className='p-6'>
+          <div className='text-center'>Đang tải...</div>
         </CardContent>
       </Card>
     )
@@ -401,7 +384,7 @@ function ProductStoryComponent({
               <Input
                 id='storyTitle'
                 value={editData.title}
-                onChange={(e) => setEditData(prev => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => setEditData((prev) => ({ ...prev, title: e.target.value }))}
                 placeholder='Nhập tiêu đề cho câu chuyện sản phẩm'
                 className='mt-1'
               />
@@ -414,7 +397,7 @@ function ProductStoryComponent({
               <Textarea
                 id='storyContent'
                 value={editData.content}
-                onChange={(e) => setEditData(prev => ({ ...prev, content: e.target.value }))}
+                onChange={(e) => setEditData((prev) => ({ ...prev, content: e.target.value }))}
                 placeholder='Kể câu chuyện về sản phẩm, nguồn gốc, quy trình sản xuất...'
                 className='mt-1 min-h-[150px]'
               />
@@ -452,7 +435,7 @@ function ProductStoryComponent({
 
                 {/* Upload New Story Images */}
                 <div className='space-y-3'>
-                  <div 
+                  <div
                     className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
                     onClick={() => imageInputRef.current?.click()}
                   >
@@ -460,25 +443,25 @@ function ProductStoryComponent({
                     <p className='text-gray-600 mb-1'>Thêm hình ảnh cho câu chuyện</p>
                     <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
                   </div>
-                  
-                  <Button 
-                    type="button"
-                    variant="outline" 
+
+                  <Button
+                    type='button'
+                    variant='outline'
                     onClick={() => imageInputRef.current?.click()}
                     disabled={uploadingImages}
-                    className="w-full"
+                    className='w-full'
                   >
                     <Upload className='w-4 h-4 mr-2' />
                     {uploadingImages ? 'Đang upload...' : 'Chọn hình ảnh'}
                   </Button>
-                  
+
                   <input
                     ref={imageInputRef}
-                    type="file"
-                    accept="image/*"
+                    type='file'
+                    accept='image/*'
                     multiple
                     onChange={handleImageUpload}
-                    className="hidden"
+                    className='hidden'
                   />
                 </div>
               </div>
@@ -493,12 +476,7 @@ function ProductStoryComponent({
                     <p className='text-sm text-gray-600 mb-2'>Video hiện tại:</p>
                     <div className='relative'>
                       <video src={editData.video} controls className='w-full max-w-md rounded-lg' />
-                      <Button
-                        size='sm'
-                        variant='destructive'
-                        className='absolute top-2 right-2'
-                        onClick={removeVideo}
-                      >
+                      <Button size='sm' variant='destructive' className='absolute top-2 right-2' onClick={removeVideo}>
                         <Trash2 className='w-4 h-4' />
                       </Button>
                     </div>
@@ -506,7 +484,7 @@ function ProductStoryComponent({
                 )}
 
                 <div className='space-y-3'>
-                  <div 
+                  <div
                     className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
                     onClick={() => videoInputRef.current?.click()}
                   >
@@ -514,24 +492,24 @@ function ProductStoryComponent({
                     <p className='text-gray-600 mb-1'>Thêm video cho câu chuyện</p>
                     <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
                   </div>
-                  
-                  <Button 
-                    type="button"
-                    variant="outline" 
+
+                  <Button
+                    type='button'
+                    variant='outline'
                     onClick={() => videoInputRef.current?.click()}
                     disabled={uploadingVideo}
-                    className="w-full"
+                    className='w-full'
                   >
                     <Upload className='w-4 h-4 mr-2' />
                     {uploadingVideo ? 'Đang upload...' : 'Chọn video'}
                   </Button>
-                  
+
                   <input
                     ref={videoInputRef}
-                    type="file"
-                    accept="video/*"
+                    type='file'
+                    accept='video/*'
                     onChange={handleVideoUpload}
-                    className="hidden"
+                    className='hidden'
                   />
                 </div>
               </div>
@@ -544,9 +522,7 @@ function ProductStoryComponent({
               <>
                 <div>
                   <h3 className='text-xl font-semibold text-gray-900 mb-3'>{currentStory.title}</h3>
-                  <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>
-                    {currentStory.content}
-                  </p>
+                  <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>{currentStory.content}</p>
                 </div>
 
                 {/* Story Images */}
@@ -571,11 +547,7 @@ function ProductStoryComponent({
                 {currentStory.video && (
                   <div>
                     <h4 className='text-lg font-medium text-gray-900 mb-3'>Video câu chuyện</h4>
-                    <video
-                      src={currentStory.video}
-                      controls
-                      className='w-full max-w-2xl rounded-lg'
-                    />
+                    <video src={currentStory.video} controls className='w-full max-w-2xl rounded-lg' />
                   </div>
                 )}
               </>

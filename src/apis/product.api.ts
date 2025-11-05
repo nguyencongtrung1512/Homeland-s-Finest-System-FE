@@ -33,7 +33,7 @@ export interface ProductResponse {
 // Form Data interface for creating product with files
 export interface ProductCreateFormData {
   storeId: string
-  productType: string // "ProductMaster" or "ProductDetail" - REQUIRED
+  // "ProductMaster" or "ProductDetail" - REQUIRED
   parentId?: string | null // Required if ProductType = ProductDetail, must be null if ProductMaster
   name: string
   categoryId?: string // Single category ID - NOT array
@@ -54,7 +54,10 @@ export const productApi = {
     console.log('API Response:', response)
     return response as unknown as ProductListResponse
   },
-
+  getTree: async (id: string): Promise<any> => {
+    const response = await axiosInstance.get(`${API_URL}/${id}/Tree`)
+    return response
+  },
   // Get product by ID
   getById: async (id: string): Promise<any> => {
     const response = await axiosInstance.get(`${API_URL}/${id}`)
@@ -62,12 +65,59 @@ export const productApi = {
   },
 
   // Create new product with FormData (for file uploads)
-  create: async (data: ProductCreateFormData): Promise<ProductResponse> => {
+  createMaster: async (data: ProductCreateFormData): Promise<ProductResponse> => {
     const formData = new FormData()
 
     // Required fields
     formData.append('StoreId', data.storeId)
-    formData.append('ProductType', data.productType) // "ProductMaster" or "ProductDetail"
+    // "ProductMaster" or "ProductDetail"
+    formData.append('Name', data.name)
+
+    // Optional fields
+    if (data.parentId !== undefined && data.parentId !== null) {
+      formData.append('ParentId', data.parentId)
+    }
+
+    if (data.categoryId) {
+      formData.append('CategoryId', data.categoryId)
+    }
+
+    if (data.provinceId !== undefined) {
+      formData.append('ProvinceId', data.provinceId.toString())
+    }
+
+    if (data.description) {
+      formData.append('Description', data.description)
+    }
+
+    if (data.material) {
+      formData.append('Material', data.material)
+    }
+
+    // Add product images
+    if (data.productImages && data.productImages.length > 0) {
+      data.productImages.forEach((file) => {
+        formData.append('ProductImages', file)
+      })
+    }
+
+    // Add product video
+    if (data.productVideo) {
+      formData.append('ProductVideo', data.productVideo)
+    }
+
+    const response = await axiosInstance.post(`${API_URL}/CreateProduct`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response as unknown as ProductResponse
+  },
+  createDetail: async (data: ProductCreateFormData): Promise<ProductResponse> => {
+    const formData = new FormData()
+
+    // Required fields
+    formData.append('StoreId', data.storeId)
     formData.append('Name', data.name)
 
     // Optional fields
@@ -125,13 +175,13 @@ export const productApi = {
   },
 
   // Update product with FormData (for file uploads)
-  updateWithFormData: async (id: string, formData: FormData): Promise<ProductResponse> => {
+  updateWithFormData: async (id: string, formData: FormData): Promise<any> => {
     const response = await axiosInstance.put(`${API_URL}/${id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     })
-    return response as unknown as ProductResponse
+    return response
   },
 
   // Delete product
