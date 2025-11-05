@@ -259,6 +259,18 @@ export const productApi = {
   ): Promise<ApiResponse<ProductVariant[]>> => {
     const response = await axiosInstance.get(`/ProductVavariant/get-all-activce/${storeId}`, { params })
     return response as unknown as ApiResponse<ProductVariant[]>
+  },
+
+  // Submit product (for seller)
+  submit: async (id: string): Promise<ProductResponse> => {
+    const response = await axiosInstance.put(`${API_URL}/${id}/submit`)
+    return response as unknown as ProductResponse
+  },
+
+  // Cancel product (for seller)
+  cancel: async (id: string): Promise<ProductResponse> => {
+    const response = await axiosInstance.put(`${API_URL}/${id}/cancel`)
+    return response as unknown as ProductResponse
   }
 }
 

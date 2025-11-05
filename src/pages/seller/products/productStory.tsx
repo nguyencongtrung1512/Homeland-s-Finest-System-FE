@@ -134,6 +134,7 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
   const handleSave = async () => {
     try {
       if (stories.length > 0) {
+        // Update existing story
         const storyId = stories[0].id
 
         // Prepare data for API call
@@ -152,11 +153,30 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
         }
 
         await productStoryApi.update(storyId, updateData)
+        toast.success('Cập nhật câu chuyện thành công!')
+      } else {
+        // Create new story
+        const createData: any = {
+          productId: productId,
+          title: editData.title,
+          storyDetail: editData.content
+        }
+
+        // Add files if they exist
+        if (editData.imageFiles && editData.imageFiles.length > 0) {
+          createData.storyImages = editData.imageFiles
+        }
+
+        if (editData.videoFile) {
+          createData.storyVideo = editData.videoFile
+        }
+
+        await productStoryApi.create(createData)
+        toast.success('Tạo câu chuyện thành công!')
       }
 
       await fetchStories() // Refresh data after save
       onToggleEditMode('story') // Exit edit mode
-      toast.success('Lưu câu chuyện thành công!')
     } catch (error) {
       console.error('❌ Error saving story:', error)
       toast.error('Có lỗi xảy ra khi lưu câu chuyện')
@@ -167,11 +187,11 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
     onCancelEdit('story')
     // Reset edit data and clean up object URLs
     editData.images.forEach((url) => {
-      if (url.startsWith('blob:')) {
+      if (url && url.startsWith('blob:')) {
         URL.revokeObjectURL(url)
       }
     })
-    if (editData.video.startsWith('blob:')) {
+    if (editData.video && editData.video.startsWith('blob:')) {
       URL.revokeObjectURL(editData.video)
     }
 
@@ -179,6 +199,16 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
       const processedData = processStoryData(stories[0])
       setEditData({
         ...processedData,
+        imageFiles: [],
+        videoFile: null
+      })
+    } else {
+      // Reset to default when no story exists
+      setEditData({
+        title: '',
+        content: '',
+        images: [],
+        video: '',
         imageFiles: [],
         videoFile: null
       })
@@ -220,14 +250,26 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
 
   // Initialize edit data when entering edit mode
   useEffect(() => {
-    if (isEditMode && stories.length > 0) {
-      const story = stories[0] // Get first story
-      const processedData = processStoryData(story)
-      setEditData({
-        ...processedData,
-        imageFiles: [], // New files start empty
-        videoFile: null
-      })
+    if (isEditMode) {
+      if (stories.length > 0) {
+        const story = stories[0] // Get first story
+        const processedData = processStoryData(story)
+        setEditData({
+          ...processedData,
+          imageFiles: [], // New files start empty
+          videoFile: null
+        })
+      } else {
+        // Reset to default when creating new story
+        setEditData({
+          title: '',
+          content: '',
+          images: [],
+          video: '',
+          imageFiles: [],
+          videoFile: null
+        })
+      }
     }
   }, [isEditMode, stories])
 
@@ -235,11 +277,11 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
   useEffect(() => {
     return () => {
       editData.images.forEach((url) => {
-        if (url.startsWith('blob:')) {
+        if (url && url.startsWith('blob:')) {
           URL.revokeObjectURL(url)
         }
       })
-      if (editData.video.startsWith('blob:')) {
+      if (editData.video && editData.video.startsWith('blob:')) {
         URL.revokeObjectURL(editData.video)
       }
     }
@@ -252,14 +294,6 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
     }
   }, [productId])
 
-  // Initialize edit data when entering edit mode
-  useEffect(() => {
-    if (isEditMode && stories.length > 0) {
-      const story = stories[0] // Get first story
-      const processedData = processStoryData(story)
-      setEditData(processedData)
-    }
-  }, [isEditMode, stories])
 
   // Process ProductStory data to match component's expected format
   const processStoryData = (story: ProductStory): StoryEditData => {
@@ -319,8 +353,10 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
       console.log('📖 Product stories response:', response)
 
       if (response.status === 200) {
-        if (response.data) {
-          setStories([response.data])
+        // Response structure: { status, message, data: ProductStory }
+        const storyData = response.data?.data || response.data
+        if (storyData) {
+          setStories([storyData])
         } else {
           setStories([])
         }
@@ -365,12 +401,12 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
                 Lưu
               </Button>
             </>
-          ) : (
+          ) : stories.length > 0 ? (
             <Button size='sm' variant='outline' onClick={() => onToggleEditMode('story')}>
               <Edit className='w-4 h-4 mr-2' />
               Chỉnh sửa
             </Button>
-          )}
+          ) : null}
         </div>
       </CardHeader>
       <CardContent>

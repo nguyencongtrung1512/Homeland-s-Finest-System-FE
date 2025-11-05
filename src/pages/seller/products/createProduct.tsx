@@ -199,6 +199,11 @@ function CreateProduct() {
         return
       }
 
+      if (!productData.material.trim()) {
+        toast.error('Vui lòng nhập xuất xứ / material')
+        return
+      }
+
       // Validation: Chỉ validate các trường bắt buộc theo API
       // Description, ProductImages, ProductVideo không bắt buộc theo API spec
       // Nhưng có thể giữ validation cho UX tốt hơn
@@ -212,7 +217,7 @@ function CreateProduct() {
         categoryId: productData.categoryId || undefined, // Chỉ gửi nếu có chọn category
         provinceId: provinceId ? parseInt(provinceId) : 0, // Convert sang number, mặc định 0 nếu không có
         description: productData.description || undefined, // Không bắt buộc
-        material: productData.material || undefined, // Không bắt buộc
+        material: productData.material.trim(), // Luôn gửi material (đã validate không rỗng ở trên)
         productImages: mediaData.productImages.length > 0 ? mediaData.productImages : undefined, // Không bắt buộc
         productVideo: mediaData.productVideo || undefined // Không bắt buộc
       }
@@ -318,7 +323,7 @@ function CreateProduct() {
           Quản lý sản phẩm
         </span>
         <ChevronRight className='w-4 h-4' />
-        <span className='text-gray-900 font-medium'>Tạo sản phẩm mới</span>
+        <span className='text-gray-900 font-medium'>Tạo sản phẩm mới nha</span>
       </div>
 
       {/* Header */}
@@ -370,6 +375,19 @@ function CreateProduct() {
                       value={productData.description}
                       onChange={(e) => handleInputChange('description', e.target.value)}
                       className='mt-1 min-h-[120px]'
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor='material' className='text-sm font-medium'>
+                      Xuất xứ / Material <span className='text-red-500'>*</span>
+                    </Label>
+                    <Input
+                      id='material'
+                      placeholder='Nhập xuất xứ hoặc nguyên liệu sản phẩm...'
+                      value={productData.material}
+                      onChange={(e) => handleInputChange('material', e.target.value)}
+                      className='mt-1'
                     />
                   </div>
                 </CardContent>
@@ -647,11 +665,10 @@ function CreateProduct() {
                         {categories.map((category) => (
                           <div
                             key={category.id}
-                            className={`flex items-start space-x-3 p-2 rounded-md cursor-pointer transition-colors ${
-                              productData.categoryId === category.id
-                                ? 'bg-green-50 border border-green-200'
-                                : 'hover:bg-gray-50 border border-transparent'
-                            }`}
+                            className={`flex items-start space-x-3 p-2 rounded-md cursor-pointer transition-colors ${productData.categoryId === category.id
+                              ? 'bg-green-50 border border-green-200'
+                              : 'hover:bg-gray-50 border border-transparent'
+                              }`}
                             onClick={() => handleCategorySelect(category.id)}
                           >
                             <div className='flex items-center'>
