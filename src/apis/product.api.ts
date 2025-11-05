@@ -33,25 +33,16 @@ export interface ProductResponse {
 // Form Data interface for creating product with files
 export interface ProductCreateFormData {
   storeId: string
-  provinceId: string
+  // "ProductMaster" or "ProductDetail" - REQUIRED
+  parentId?: string | null // Required if ProductType = ProductDetail, must be null if ProductMaster
   name: string
-  description: string
-  categoryIds: string[]
+  categoryId?: string // Single category ID - NOT array
+  provinceId: string | number
+  description?: string
+  material?: string
   productImages?: File[]
   productVideo?: File
-  material?: string
-  saleCount?: number
-  rating?: number
-  reviewCount?: number
-  isActive?: boolean
-  typeProduct?: string
-  status?: string
-  note?: string
-  storyTitle?: string
-  storyDetail?: string
-  certificateImages?: File[]
-  storyVideo?: File
-  storyImages?: File[]
+  hashtagIds?: string[] // Optional array of hashtag IDs
 }
 
 // Product API Functions
@@ -63,7 +54,10 @@ export const productApi = {
     console.log('API Response:', response)
     return response as unknown as ProductListResponse
   },
-
+  getTree: async (id: string): Promise<any> => {
+    const response = await axiosInstance.get(`${API_URL}/${id}/Tree`)
+    return response
+  },
   // Get product by ID
   getById: async (id: string): Promise<any> => {
     const response = await axiosInstance.get(`${API_URL}/${id}`)
@@ -71,38 +65,34 @@ export const productApi = {
   },
 
   // Create new product with FormData (for file uploads)
-  create: async (data: ProductCreateFormData): Promise<ProductResponse> => {
+  createMaster: async (data: ProductCreateFormData): Promise<ProductResponse> => {
     const formData = new FormData()
 
-    // Add basic product info
+    // Required fields
     formData.append('StoreId', data.storeId)
-    formData.append('ProvinceId', data.provinceId)
+    // "ProductMaster" or "ProductDetail"
     formData.append('Name', data.name)
-    formData.append('Description', data.description)
 
-    // Fix: Properly handle categoryIds array
-    console.log('🔍 DEBUG - Before processing categoryIds:', data.categoryIds)
-    if (data.categoryIds && data.categoryIds.length > 0) {
-      console.log('🔍 DEBUG - Processing categoryIds array...')
-      data.categoryIds.forEach((categoryId, index) => {
-        console.log(`🔍 DEBUG - Adding CategoryIds[${index}]: ${categoryId}`)
-        formData.append(`CategoryIds[${index}]`, categoryId)
-      })
-    } else {
-      console.log('🔍 DEBUG - No categoryIds to process or empty array')
+    // Optional fields
+    if (data.parentId !== undefined && data.parentId !== null) {
+      formData.append('ParentId', data.parentId)
     }
 
-    // 🔍 DEBUG: Log FormData contents
-    console.log('🔍 DEBUG - FormData entries:')
-    for (const [key, value] of formData.entries()) {
-      console.log(`🔍 DEBUG - FormData[${key}]:`, value)
+    if (data.categoryId) {
+      formData.append('CategoryId', data.categoryId)
     }
 
-    if (data.material) formData.append('material', data.material)
-    if (data.typeProduct) formData.append('TypeProduct', data.typeProduct)
-    if (data.note) formData.append('Note', data.note)
-    if (data.storyTitle) formData.append('StoryTitle', data.storyTitle)
-    if (data.storyDetail) formData.append('StoryDetail', data.storyDetail)
+    if (data.provinceId !== undefined) {
+      formData.append('ProvinceId', data.provinceId.toString())
+    }
+
+    if (data.description) {
+      formData.append('Description', data.description)
+    }
+
+    if (data.material) {
+      formData.append('Material', data.material)
+    }
 
     // Add product images
     if (data.productImages && data.productImages.length > 0) {
@@ -116,26 +106,61 @@ export const productApi = {
       formData.append('ProductVideo', data.productVideo)
     }
 
-    // Add certificate images
-    if (data.certificateImages && data.certificateImages.length > 0) {
-      data.certificateImages.forEach((file) => {
-        formData.append('CertificateImages', file)
+    const response = await axiosInstance.post(`${API_URL}/CreateProduct`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response as unknown as ProductResponse
+  },
+  createDetail: async (data: ProductCreateFormData): Promise<ProductResponse> => {
+    const formData = new FormData()
+
+    // Required fields
+    formData.append('StoreId', data.storeId)
+    formData.append('Name', data.name)
+
+    // Optional fields
+    if (data.parentId !== undefined && data.parentId !== null) {
+      formData.append('ParentId', data.parentId)
+    }
+
+    if (data.categoryId) {
+      formData.append('CategoryId', data.categoryId)
+    }
+
+    if (data.provinceId !== undefined) {
+      formData.append('ProvinceId', data.provinceId.toString())
+    }
+
+    if (data.description) {
+      formData.append('Description', data.description)
+    }
+
+    if (data.material) {
+      formData.append('Material', data.material)
+    }
+
+    // Add product images
+    if (data.productImages && data.productImages.length > 0) {
+      data.productImages.forEach((file) => {
+        formData.append('ProductImages', file)
       })
     }
 
-    // Add story video
-    if (data.storyVideo) {
-      formData.append('StoryVideo', data.storyVideo)
+    // Add product video
+    if (data.productVideo) {
+      formData.append('ProductVideo', data.productVideo)
     }
 
-    // Add story images
-    if (data.storyImages && data.storyImages.length > 0) {
-      data.storyImages.forEach((file) => {
-        formData.append('StoryImages', file)
+    // Add hashtag IDs if provided
+    if (data.hashtagIds && data.hashtagIds.length > 0) {
+      data.hashtagIds.forEach((tagId, index) => {
+        formData.append(`HashtagIds[${index}]`, tagId)
       })
     }
 
-    const response = await axiosInstance.post(API_URL, formData, {
+    const response = await axiosInstance.post(`${API_URL}/CreateProduct`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -150,13 +175,13 @@ export const productApi = {
   },
 
   // Update product with FormData (for file uploads)
-  updateWithFormData: async (id: string, formData: FormData): Promise<ProductResponse> => {
+  updateWithFormData: async (id: string, formData: FormData): Promise<any> => {
     const response = await axiosInstance.put(`${API_URL}/${id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     })
-    return response as unknown as ProductResponse
+    return response
   },
 
   // Delete product

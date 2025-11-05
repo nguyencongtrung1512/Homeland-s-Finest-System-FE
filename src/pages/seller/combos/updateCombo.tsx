@@ -8,7 +8,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Badge } from '../../../components/ui/badge'
 import { Switch } from '../../../components/ui/switch'
 import { ArrowLeft, Save, Upload, X } from 'lucide-react'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import {
   getComboById,
   updateComboShell,

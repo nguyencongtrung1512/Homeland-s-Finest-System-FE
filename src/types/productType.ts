@@ -1,14 +1,53 @@
+import type { ProductCertificateType } from './productCertificateType'
+
+// Variant Option Interface
+export interface VariantOption {
+  id: string // UUID
+  name: string // varchar(255)
+  attributeName: string // varchar(255)
+  description: string // text
+  productImages: string[] | null // Array of image URLs
+  basePrice: number | null // numeric(10,2)
+  finalPrice: number | null // numeric(10,2)
+  quantity: number | null // integer
+  weight: number | null // numeric(10,2)
+  length: number | null // numeric(10,2)
+  width: number | null // numeric(10,2)
+  height: number | null // numeric(10,2)
+  saleCount: number | null // integer
+  rating: number | null // numeric(3,2)
+  reviewCount: number | null // integer
+  isActive: boolean // boolean
+  childVariantGroups: VariantGroup[] | null // Nested variant groups
+}
+
+// Variant Group Interface
+export interface VariantGroup {
+  attributeType: string // varchar(255) - Loại thuộc tính (Color, Size, etc.)
+  options: VariantOption[] // Array of variant options
+}
+
+// Product Category Interface
+export interface ProductCategory {
+  id: string // UUID
+  name: string // varchar(255)
+  description: string // text
+  isActive: boolean // boolean
+  createdAt: string // TIMESTAMPTZ
+  updatedAt: string // TIMESTAMPTZ
+}
+
 export interface Product {
   id: string // UUID - Primary Key
   storeId: string // UUID - Foreign Key to Store
-  provinceId: number // Foreign Key to Province (changed from string to number)
+  storeName: string // varchar(255)
+  provinceId: number // Foreign Key to Province
   editedById: string // UUID - Foreign Key to User who edited
+  summaryPrice: string // Price summary string
   name: string // varchar(255)
   description: string // text
-  price: number // Product price
   productImages: string[] // JSONB - Array of image URLs
   productVideo: string // varchar(500) - Video URL
-  categoryIds: string[] // JSONB - Array of category IDs (changed from categoryId)
   material: string // varchar(255) - Brand/Manufacturer
   saleCount: number // integer
   rating: number // numeric(3,2) - Average rating
@@ -16,10 +55,10 @@ export interface Product {
   isActive: boolean // boolean
   typeProduct: string // varchar(100) - Product type
   status: string // varchar(50) - Product status
-  staffNote: string // text (changed from note)
-  comboItems: string // Combo items information
-  createdAt: string // TIMESTAMPTZ
-  updatedAt: string // TIMESTAMPTZ
+  staffNote: string // text
+  variantGroups: VariantGroup[] // Array of variant groups
+  productCategories: ProductCategory // Single product category
+  productCertificateDTOs: ProductCertificateType[] // Array of product certificates
 }
 
 export interface ProductCreateInput {

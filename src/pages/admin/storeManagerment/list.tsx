@@ -7,30 +7,31 @@ import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import StaffComboBox from '../../../components/ui/staff-combo-box'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { adminApi, type Staff } from '../../../apis/admin.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 
 interface Store {
   id: string
   name: string
   ownerName: string
   ownerEmail: string
-  ownerAvatar: string
+  logoUrl: string
   createDate: string
   createDateTimestamp: number
   productCount: number
   status:
-    | 'Approved'
-    | 'Pending'
-    | 'Rejected'
-    | 'Processing'
-    | 'ApprovedByStaff'
-    | 'RejectedByStaff'
-    | 'Approve'
-    | 'Ban'
-    | 'Unban'
-    | 'Inactive'
+  | 'Approved'
+  | 'Pending'
+  | 'Rejected'
+  | 'Processing'
+  | 'ApprovedByStaff'
+  | 'RejectedByStaff'
+  | 'Approve'
+  | 'Ban'
+  | 'Unban'
+  | 'Inactive'
 }
 
 function StoreManagement() {
@@ -69,9 +70,9 @@ function StoreManagement() {
       name: apiStore.storeName,
       ownerName: 'Chủ cửa hàng',
       ownerEmail: 'N/A',
-      ownerAvatar: avatarText,
+      logoUrl: avatarText,
       createDate: formatDate(apiStore.createdAt),
-      createDateTimestamp: new Date(apiStore.createdAt).getTime(), // THÊM MỚI
+      createDateTimestamp: new Date(apiStore.createdAt).getTime(),
       productCount: 0,
       status: apiStore.status as Store['status']
     }
@@ -125,7 +126,7 @@ function StoreManagement() {
       Processing: { text: 'Nhân viên xử lí', dotColor: 'bg-indigo-500' },
       ApprovedByStaff: { text: 'Đã duyệt bởi nhân viên', dotColor: 'bg-purple-500' },
       RejectedByStaff: { text: 'Đã từ chối bởi nhân viên', dotColor: 'bg-red-500' },
-      Inactive: { text: 'Bị khóa', dotColor: 'bg-red-500' },
+      Inactive: { text: 'Bị khóa', dotColor: 'bg-red-500' }
     }
 
     return configs[status as keyof typeof configs] || configs.Pending
@@ -243,7 +244,7 @@ function StoreManagement() {
               className='pl-10 h-9'
             />
           </div>
-          
+
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className='w-[200px] h-9'>
               <SelectValue placeholder='Tất cả trạng thái' />
@@ -274,7 +275,7 @@ function StoreManagement() {
               <SelectItem value='status'>Theo trạng thái</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Input
             type='date'
             value={dateFilter}
@@ -448,32 +449,13 @@ function StoreManagement() {
                     Chưa có nhân viên nào
                   </div>
                 ) : (
-                  <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                    <SelectTrigger className='w-full'>
-                      <SelectValue placeholder='Chọn nhân viên...' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {staffList.map((staff) => (
-                        <SelectItem
-                          key={staff.staffId}
-                          value={staff.staffId}
-                          className='hover:bg-gray-100 focus:bg-gray-100 px-2 py-2 rounded-md cursor-pointer'
-                        >
-                          <div className='flex items-center gap-3 w-full'>
-                            <div className='w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0'>
-                              <span className='text-sm font-semibold text-blue-600'>
-                                {staff.staffName.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div className='flex flex-col'>
-                              <p className='text-sm font-medium text-gray-900'>{staff.staffName}</p>
-                              <p className='text-xs text-gray-500'>{staff.email}</p>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <StaffComboBox
+                    options={staffList}
+                    placeholder='Chọn nhân viên...'
+                    value={selectedStaffId}
+                    onSelect={(staffId) => setSelectedStaffId(staffId || '')}
+                    disabled={assignLoading}
+                  />
                 )}
               </div>
               <div className='flex justify-end gap-3 pt-2'>

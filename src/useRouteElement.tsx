@@ -15,7 +15,6 @@ import Dashboard from './pages/seller/dashboard/dashboard'
 import SellerLayout from './Layouts/SellerLayout/sellerLayout'
 import ProductsSeller from './pages/seller/products/products'
 import CreateProduct from './pages/seller/products/createProduct'
-import UpdateProduct from './pages/seller/products/updateProduct'
 import OrderManagement from './pages/seller/order/order'
 import CreateMyStory from './pages/seller/mystory/createMyStory'
 import ChatWithCustomer from './pages/seller/ChatWithCustomer/ChatWithCustomer'
@@ -186,10 +185,6 @@ export default function useRouteElements() {
             {
               path: path.createProduct,
               element: <CreateProduct />
-            },
-            {
-              path: path.updateProductSeller,
-              element: <UpdateProduct />
             },
             {
               path: path.detailProductSeller,

@@ -12,7 +12,7 @@ import {
   removePromotionFromCart,
   calculateShippingFee
 } from '../../../apis/cart.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import { createOrder } from '../../../apis/order.api'
 import { addressApi } from '../../../apis/address.api'
 import type { CartData, CartItem as APICartItem } from '../../../types/cartType'

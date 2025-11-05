@@ -10,21 +10,8 @@ import { productApi, type ProductCreateFormData } from '../../../apis/product.ap
 import { storeApi } from '../../../apis/store.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { useAuth } from '../../../contexts/auth.context'
-import {
-  Upload,
-  BookOpen,
-  Shield,
-  Info,
-  ChevronRight,
-  Trash2,
-  Video,
-  Image as ImageIcon,
-  Package,
-  FileImage,
-  Loader2,
-  X
-} from 'lucide-react'
-import { toast } from 'react-toastify'
+import { Upload, ChevronRight, Trash2, Video, Image as ImageIcon, Package, FileImage, Loader2, X } from 'lucide-react'
+import { toast } from '../../../utils/toast'
 
 function CreateProduct() {
   const navigate = useNavigate()
@@ -41,9 +28,8 @@ function CreateProduct() {
   const [productData, setProductData] = useState({
     name: '',
     description: '',
-    categories: [] as string[],
-    region: '',
-    story: ''
+    categoryId: null as string | null,
+    material: ''
   })
 
   const [mediaData, setMediaData] = useState({
@@ -51,15 +37,6 @@ function CreateProduct() {
     productVideo: null as File | null,
     certificateImages: [] as File[]
   })
-
-  const [storyData, setStoryData] = useState({
-    mainTitle: '',
-    storyDetail: '',
-    storyImage: null as File | null,
-    storyVideo: null as File | null
-  })
-
-  // const [productVariants, setProductVariants] = useState([
   //   {
   //     id: 1,
   //     name: '',
@@ -96,14 +73,6 @@ function CreateProduct() {
     }))
   }
 
-  // Helper function to remove certificate image from array
-  const removeCertificateImage = (indexToRemove: number) => {
-    setMediaData((prev) => ({
-      ...prev,
-      certificateImages: prev.certificateImages.filter((_, index) => index !== indexToRemove)
-    }))
-  }
-
   const handleInputChange = (field: string, value: string | boolean | string[]) => {
     setProductData((prev) => ({
       ...prev,
@@ -111,19 +80,10 @@ function CreateProduct() {
     }))
   }
 
-  const handleCategoryToggle = (categoryId: string) => {
-    setProductData((prev) => {
-      const categories = prev.categories.includes(categoryId)
-        ? prev.categories.filter((id) => id !== categoryId)
-        : [...prev.categories, categoryId]
-      return { ...prev, categories }
-    })
-  }
-
-  const handleStoryInputChange = (field: string, value: string) => {
-    setStoryData((prev) => ({
+  const handleCategorySelect = (categoryId: string) => {
+    setProductData((prev) => ({
       ...prev,
-      [field]: value
+      categoryId: prev.categoryId === categoryId ? null : categoryId
     }))
   }
 
@@ -140,13 +100,6 @@ function CreateProduct() {
     setMediaData((prev) => ({
       ...prev,
       certificateImages: [...prev.certificateImages, ...newFiles]
-    }))
-  }
-
-  const handleStoryMediaChange = (field: string, value: File | File[] | null) => {
-    setStoryData((prev) => ({
-      ...prev,
-      [field]: value
     }))
   }
 
@@ -246,53 +199,25 @@ function CreateProduct() {
         return
       }
 
-      if (!productData.description.trim()) {
-        toast.error('Vui lòng nhập mô tả sản phẩm')
-        return
-      }
+      // Validation: Chỉ validate các trường bắt buộc theo API
+      // Description, ProductImages, ProductVideo không bắt buộc theo API spec
+      // Nhưng có thể giữ validation cho UX tốt hơn
 
-      // Thêm validation cho categories
-      if (productData.categories.length === 0) {
-        toast.error('Vui lòng chọn ít nhất một danh mục sản phẩm')
-        return
-      }
-
-      if (mediaData.productImages.length === 0) {
-        toast.error('Vui lòng chọn ít nhất một hình ảnh sản phẩm')
-        return
-      }
-
-      if (!mediaData.productVideo) {
-        toast.error('Vui lòng chọn video sản phẩm')
-        return
-      }
-
-      // Prepare story images array
-      const storyImages: File[] = []
-      if (storyData.storyImage) {
-        storyImages.push(storyData.storyImage)
-      }
-
-      // Prepare form data theo cấu trúc mới
+      // Prepare form data theo cấu trúc API yêu cầu
       const formData: ProductCreateFormData = {
         storeId: storeId,
-        provinceId: provinceId,
+        // productType: 'ProductMaster', // Tạo Product Master (Gốc Hiển thị Cấp 1)
+        parentId: null, // ProductMaster không có parent, phải là null
         name: productData.name,
-        description: productData.description,
-        categoryIds: productData.categories, // Sửa từ productData.category thành productData.categories
-        material: productData.region || 'Việt Nam',
-        typeProduct: 'nông sản', // Default type, có thể làm dynamic
-        note: productData.story,
-        storyTitle: storyData.mainTitle,
-        storyDetail: storyData.storyDetail || '',
-        productImages: mediaData.productImages,
-        productVideo: mediaData.productVideo,
-        certificateImages: mediaData.certificateImages,
-        storyVideo: storyData.storyVideo || undefined,
-        storyImages: storyImages.length > 0 ? storyImages : undefined
+        categoryId: productData.categoryId || undefined, // Chỉ gửi nếu có chọn category
+        provinceId: provinceId ? parseInt(provinceId) : 0, // Convert sang number, mặc định 0 nếu không có
+        description: productData.description || undefined, // Không bắt buộc
+        material: productData.material || undefined, // Không bắt buộc
+        productImages: mediaData.productImages.length > 0 ? mediaData.productImages : undefined, // Không bắt buộc
+        productVideo: mediaData.productVideo || undefined // Không bắt buộc
       }
       // Call API với FormData
-      const response = await productApi.create(formData)
+      const response = await productApi.createMaster(formData)
 
       // Hiển thị thông tin response theo format mẫu
       if (response.data) {
@@ -301,7 +226,6 @@ function CreateProduct() {
           id: productData.id,
           name: productData.name,
           status: productData.status,
-          createdAt: productData.createdAt,
           productImages: productData.productImages,
           productVideo: productData.productVideo
         })
@@ -315,12 +239,47 @@ function CreateProduct() {
     } catch (error: unknown) {
       console.error('Error creating product:', error)
 
-      // Show error message
-      const errorMessage =
-        error instanceof Error && 'response' in error
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || error.message
-          : 'Có lỗi xảy ra khi tạo sản phẩm'
-      toast.error(`Lỗi: ${errorMessage}`)
+      // Extract error message from backend response
+      let errorMessage = 'Có lỗi xảy ra khi tạo sản phẩm'
+
+      if (error && typeof error === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = error as any
+
+        // Check for errors object (validation errors)
+        if (err.errors && typeof err.errors === 'object') {
+          const errorMessages: string[] = []
+          Object.keys(err.errors).forEach((field) => {
+            const fieldErrors = err.errors[field]
+            if (Array.isArray(fieldErrors)) {
+              errorMessages.push(...fieldErrors)
+            } else if (typeof fieldErrors === 'string') {
+              errorMessages.push(fieldErrors)
+            }
+          })
+          if (errorMessages.length > 0) {
+            errorMessage = errorMessages.join(', ')
+          }
+        }
+        // Check for title field
+        else if (err.title) {
+          errorMessage = err.title
+        }
+        // Check for message field
+        else if (err.message) {
+          errorMessage = err.message
+        }
+        // Check for errors array
+        else if (err.errors && Array.isArray(err.errors)) {
+          errorMessage = err.errors.join(', ')
+        }
+        // Check for error string
+        else if (err.error && typeof err.error === 'string') {
+          errorMessage = err.error
+        }
+      }
+
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -659,144 +618,6 @@ function CreateProduct() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Story Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-green-700 flex items-center gap-2'>
-                    <BookOpen className='w-5 h-5 text-green-600' />
-                    Câu chuyện gắn kết
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className='space-y-4'>
-                  <div className='flex items-start gap-2'>
-                    <Info className='w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0' />
-                    <p className='text-sm text-gray-600'>Câu chuyện giúp khách hàng hiểu rõ hơn về giá trị sản phẩm</p>
-                  </div>
-
-                  <div>
-                    <Label className='text-sm font-medium'>Tiêu đề chính</Label>
-                    <Input
-                      placeholder='Nông sản sạch Việt Nam'
-                      value={storyData.mainTitle}
-                      onChange={(e) => handleStoryInputChange('mainTitle', e.target.value)}
-                      className='mt-1'
-                    />
-                  </div>
-
-                  <div>
-                    <Label className='text-sm font-medium'>Nội dung câu chuyện</Label>
-                    <Textarea
-                      placeholder='Chia sẻ câu chuyện về sản phẩm của bạn...'
-                      value={storyData.storyDetail}
-                      onChange={(e) => handleStoryInputChange('storyDetail', e.target.value)}
-                      className='mt-1 min-h-[100px]'
-                    />
-                  </div>
-
-                  {/* Story Images */}
-                  <div>
-                    <Label className='text-sm font-medium'>Hình ảnh câu chuyện</Label>
-                    <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                      <ImageIcon className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                      <p className='text-gray-600 mb-2'>Tải ảnh minh họa cho câu chuyện</p>
-                      <input
-                        type='file'
-                        accept='image/*'
-                        className='hidden'
-                        id='story-image'
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null
-                          handleStoryMediaChange('storyImage', file)
-                        }}
-                      />
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        className='mt-2'
-                        onClick={() => document.getElementById('story-image')?.click()}
-                      >
-                        <Upload className='w-4 h-4 mr-2' />
-                        Chọn ảnh
-                      </Button>
-                    </div>
-                    {storyData.storyImage && (
-                      <div className='mt-4'>
-                        <p className='text-sm text-gray-600 mb-3'>Ảnh câu chuyện:</p>
-                        <div className='relative group max-w-xs'>
-                          <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200'>
-                            <img
-                              src={createPreviewUrl(storyData.storyImage)}
-                              alt='Story'
-                              className='w-full h-full object-cover'
-                            />
-                          </div>
-                          <button
-                            type='button'
-                            onClick={() => handleStoryMediaChange('storyImage', null)}
-                            className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity'
-                          >
-                            <X className='w-4 h-4' />
-                          </button>
-                          <p className='text-xs text-gray-500 mt-1 truncate'>{storyData.storyImage.name}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Story Video */}
-                  <div>
-                    <Label className='text-sm font-medium'>Video câu chuyện</Label>
-                    <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                      <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                      <p className='text-gray-600 mb-2'>Tải video minh họa cho câu chuyện</p>
-                      <input
-                        type='file'
-                        accept='video/*'
-                        className='hidden'
-                        id='story-video'
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null
-                          handleStoryMediaChange('storyVideo', file)
-                        }}
-                      />
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        className='mt-2'
-                        onClick={() => document.getElementById('story-video')?.click()}
-                      >
-                        <Upload className='w-4 h-4 mr-2' />
-                        Chọn video
-                      </Button>
-                    </div>
-                    {storyData.storyVideo && (
-                      <div className='mt-4'>
-                        <p className='text-sm text-gray-600 mb-3'>Video câu chuyện:</p>
-                        <div className='relative group max-w-xs'>
-                          <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200 bg-black'>
-                            <video
-                              src={createPreviewUrl(storyData.storyVideo)}
-                              controls
-                              className='w-full h-full object-contain'
-                            />
-                          </div>
-                          <button
-                            type='button'
-                            onClick={() => handleStoryMediaChange('storyVideo', null)}
-                            className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity'
-                          >
-                            <X className='w-4 h-4' />
-                          </button>
-                          <p className='text-xs text-gray-500 mt-1 truncate'>{storyData.storyVideo.name}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* Right Column - Sidebar */}
@@ -826,18 +647,20 @@ function CreateProduct() {
                         {categories.map((category) => (
                           <div
                             key={category.id}
-                            className={`flex items-start space-x-3 p-2 rounded-md cursor-pointer transition-colors ${productData.categories.includes(category.id)
-                              ? 'bg-green-50 border border-green-200'
-                              : 'hover:bg-gray-50 border border-transparent'
-                              }`}
-                            onClick={() => handleCategoryToggle(category.id)}
+                            className={`flex items-start space-x-3 p-2 rounded-md cursor-pointer transition-colors ${
+                              productData.categoryId === category.id
+                                ? 'bg-green-50 border border-green-200'
+                                : 'hover:bg-gray-50 border border-transparent'
+                            }`}
+                            onClick={() => handleCategorySelect(category.id)}
                           >
                             <div className='flex items-center'>
                               <input
-                                type='checkbox'
-                                checked={productData.categories.includes(category.id)}
-                                onChange={() => handleCategoryToggle(category.id)}
-                                className='w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500'
+                                type='radio'
+                                name='category'
+                                checked={productData.categoryId === category.id}
+                                onChange={() => handleCategorySelect(category.id)}
+                                className='w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500'
                               />
                             </div>
                             <div className='flex-1 min-w-0'>
@@ -851,114 +674,26 @@ function CreateProduct() {
                       </div>
                     )}
 
-                    {/* Show selected categories */}
-                    {productData.categories.length > 0 && (
+                    {/* Show selected category */}
+                    {productData.categoryId && (
                       <div className='mt-3'>
-                        <p className='text-sm font-medium text-gray-700 mb-2'>
-                          Đã chọn {productData.categories.length} danh mục:
-                        </p>
-                        <div className='flex flex-wrap gap-2'>
-                          {productData.categories.map((categoryId) => {
-                            const category = categories.find((cat) => cat.id === categoryId)
+                        <p className='text-sm font-medium text-gray-700 mb-2'>Danh mục đã chọn:</p>
+                        <div className='flex items-center gap-2'>
+                          {(() => {
+                            const category = categories.find((cat) => cat.id === productData.categoryId)
                             return category ? (
-                              <div
-                                key={categoryId}
-                                className='inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-md'
-                              >
+                              <div className='inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-md'>
                                 <span>{category.name}</span>
                                 <button
                                   type='button'
-                                  onClick={() => handleCategoryToggle(categoryId)}
+                                  onClick={() => handleCategorySelect(productData.categoryId!)}
                                   className='ml-1 text-green-600 hover:text-green-800'
                                 >
                                   <X className='w-3 h-3' />
                                 </button>
                               </div>
                             ) : null
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Origin & Certification */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-green-700 flex items-center gap-2'>
-                    <Shield className='w-5 h-5' />
-                    Xuất xứ & Chứng nhận
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className='space-y-4'>
-                  <div>
-                    <Label htmlFor='region' className='text-sm font-medium'>
-                      Vùng miền
-                    </Label>
-                    <Input
-                      id='region'
-                      placeholder='Ví dụ: Đồng bằng sông Cửu Long'
-                      value={productData.region}
-                      onChange={(e) => handleInputChange('region', e.target.value)}
-                      className='mt-1'
-                    />
-                  </div>
-
-                  <div>
-                    <Label className='text-sm font-medium'>Hình ảnh chứng nhận</Label>
-                    <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors cursor-pointer'>
-                      <Shield className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                      <p className='text-gray-600 text-sm mb-2'>Tải lên chứng nhận chất lượng</p>
-                      <input
-                        type='file'
-                        multiple
-                        accept='image/*'
-                        className='hidden'
-                        id='certificate-images'
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || [])
-                          handleMediaChange('certificateImages', files)
-                        }}
-                      />
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        onClick={() => document.getElementById('certificate-images')?.click()}
-                      >
-                        <Upload className='w-4 h-4 mr-2' />
-                        Chọn ảnh
-                      </Button>
-                    </div>
-                    {mediaData.certificateImages.length > 0 && (
-                      <div className='mt-4'>
-                        <p className='text-sm text-gray-600 mb-3'>Chứng nhận ({mediaData.certificateImages.length}):</p>
-                        <div className='grid grid-cols-2 gap-3'>
-                          {mediaData.certificateImages.map((file, index) => (
-                            <div key={index} className='relative group'>
-                              <div className='aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-gray-300 transition-colors'>
-                                <img
-                                  src={createPreviewUrl(file)}
-                                  alt={`Certificate ${index + 1}`}
-                                  className='w-full h-full object-cover'
-                                />
-                              </div>
-                              <button
-                                type='button'
-                                onClick={() => removeCertificateImage(index)}
-                                className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg'
-                                title='Xóa chứng nhận này'
-                              >
-                                <X className='w-3 h-3' />
-                              </button>
-                              <div className='absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity'>
-                                {index + 1}
-                              </div>
-                              <p className='text-xs text-gray-500 mt-1 truncate'>{file.name}</p>
-                              <p className='text-xs text-gray-400'>{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
-                            </div>
-                          ))}
+                          })()}
                         </div>
                       </div>
                     )}

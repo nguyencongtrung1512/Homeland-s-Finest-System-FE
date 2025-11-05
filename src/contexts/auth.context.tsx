@@ -1,8 +1,6 @@
 import { type ReactNode, createContext, useContext, useState } from 'react'
 import { logout as logoutAPI } from '../apis/auth.api'
-import { toast } from 'react-toastify'
 
-// kiểm tra quyền của user và ẩn/hiện các chức năng tương ứng dựa trên trạng thái isPermission
 interface User {
   roleName: string
   token: string
@@ -66,10 +64,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Gọi API logout trước khi clear auth để request có token
       await logoutAPI()
       clearAuth()
-      toast.success('Đăng xuất thành công!', {
-        position: 'top-right',
-        autoClose: 2000
-      })
     } catch {
       // Nếu API logout fail (có thể do token đã hết hạn), vẫn clear auth
       clearAuth()

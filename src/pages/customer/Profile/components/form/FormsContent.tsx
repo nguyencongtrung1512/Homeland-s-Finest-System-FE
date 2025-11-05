@@ -21,7 +21,7 @@ import type { FormStatus } from '../../../../../types/form.type'
 import { formApi } from '../../../../../apis/form.api'
 import Loading from '../../../../../components/Loading/loading'
 import EmptyState from '../../../../../components/EmptyState/emptyState'
-import { toast } from 'react-toastify'
+import { toast } from '../../../../../utils/toast'
 
 interface FormsContentProps {
   forms: FormDTO[]

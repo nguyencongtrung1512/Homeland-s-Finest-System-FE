@@ -1,4 +1,4 @@
-import type { is } from 'date-fns/locale'
+
 import axiosInstance from '../service/axiosInstance'
 
 const API_URL = `/BlogCategory`

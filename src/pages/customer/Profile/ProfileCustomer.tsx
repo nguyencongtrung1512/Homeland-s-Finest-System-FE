@@ -4,10 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '../../../components/ui/avatar'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import { Settings, FileText, MapPin, Gift, MessageSquare } from 'lucide-react'
+import { Settings, FileText, MapPin, Gift, MessageSquare, Wallet } from 'lucide-react'
 import type { Address, AddressCreateInput } from '../../../types/addressType'
 import type { Order, OrderStatus } from '../../../types/orderType'
-// Define the actual API response structure for user promotions
 interface UserPromotionResponse {
   promotionUserID: string
   promotionID: string
@@ -35,6 +34,7 @@ import AddressContent from './components/address/AddressContent'
 import PromotionsContent from './components/promotion/PromotionsContent'
 import FormsContent from './components/form/FormsContent'
 import AddressModal from './components/address/AddressModal'
+import WalletContent from './components/wallet/WalletContent'
 import type { FormDTO } from '../../../types/form.type'
 
 export default function Profile() {
@@ -48,6 +48,7 @@ export default function Profile() {
   const [promotionsLoading, setPromotionsLoading] = useState(false)
   const [forms, setForms] = useState<FormDTO[]>([])
   const [formsLoading, setFormsLoading] = useState(false)
+  const [walletBalance] = useState<number>(0) 
 
   // Khi vào trang, nếu có query tab=orders thì active tab đơn hàng
   useEffect(() => {
@@ -55,6 +56,8 @@ export default function Profile() {
     const tab = params.get('tab')
     if (tab === 'orders') {
       setActiveTab('orders')
+    } else if (tab === 'wallet') {
+      setActiveTab('wallet')
     } else if (tab === 'addresses') {
       setActiveTab('addresses')
     } else if (tab === 'profile') {
@@ -81,7 +84,6 @@ export default function Profile() {
 
     loadUserData()
   }, [authUser?.userId])
-
   // Load customer orders
   const loadCustomerOrders = useCallback(
     async (status?: OrderStatus) => {
@@ -357,16 +359,26 @@ export default function Profile() {
                     ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
                     : 'N/A'}
                 </motion.p>
-                {user?.userPoint !== undefined && (
-                  <motion.p
+                <div className='flex gap-4 mt-2'>
+                  {user?.userPoint !== undefined && (
+                    <motion.p
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.4, delay: 0.6, type: 'spring', stiffness: 200 }}
+                      className='text-sm font-semibold text-green-600'
+                    >
+                      Điểm tích lũy: {user.userPoint} điểm
+                    </motion.p>
+                  )}
+                  <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.4, delay: 0.6, type: 'spring', stiffness: 200 }}
-                    className='text-sm font-semibold text-green-600 mt-1'
+                    transition={{ duration: 0.4, delay: 0.7, type: 'spring', stiffness: 200 }}
+                    className='flex items-center gap-1'
                   >
-                    Điểm tích lũy: {user.userPoint} điểm
-                  </motion.p>
-                )}
+                   
+                  </motion.div>
+                </div>
               </motion.div>
             </div>
           </CardContent>
@@ -395,6 +407,7 @@ export default function Profile() {
                 {[
                   { id: 'profile', icon: Settings, label: 'Thông tin cá nhân' },
                   { id: 'orders', icon: FileText, label: 'Đơn hàng của tôi' },
+                  { id: 'wallet', icon: Wallet, label: 'Ví của tôi' },
                   { id: 'addresses', icon: MapPin, label: 'Sổ địa chỉ' },
                   { id: 'promotions', icon: Gift, label: 'Khuyến mãi của tôi' },
                   { id: 'forms', icon: MessageSquare, label: 'Khiếu nại của tôi' }
@@ -461,6 +474,22 @@ export default function Profile() {
                       loading={ordersLoading}
                       onRefreshOrders={() => loadCustomerOrders()}
                       onFilterByStatus={(status) => loadCustomerOrders(status as OrderStatus)}
+                    />
+                  </motion.div>
+                )}
+                {activeTab === 'wallet' && (
+                  <motion.div
+                    key='wallet'
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <WalletContent
+                      walletBalance={walletBalance}
+                      bankAccount={user?.bankAccount || null}
+                      customerName={user ? `${user.lastName} ${user.firstName}` : undefined}
+                      onUpdateProfile={() => setActiveTab('profile')}
                     />
                   </motion.div>
                 )}

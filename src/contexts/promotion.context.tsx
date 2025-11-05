@@ -1,5 +1,5 @@
 import { type ReactNode, createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { toast } from 'react-toastify'
+import { toast } from '../utils/toast'
 import {
   type PromotionDTO,
   type UserPromotionDetailDTO,

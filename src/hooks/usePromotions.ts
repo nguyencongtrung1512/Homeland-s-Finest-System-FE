@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { toast } from 'react-toastify'
+import { toast } from '../utils/toast'
 import {
   type CartPromotionDto,
   type DisplayPromotionToApply,

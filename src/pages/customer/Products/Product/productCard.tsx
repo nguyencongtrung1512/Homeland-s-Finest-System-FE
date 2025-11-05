@@ -3,7 +3,7 @@ import type { Product } from '../../../../types/productType'
 import path from '../../../../constants/path'
 
 export interface ProductCardData extends Product {
-  price?: number // Giá từ ProductVariant
+  price: number // Giá từ ProductVariant
   badge?: { text: string; color: string } // Badge cho hiển thị huy hiệu
 }
 

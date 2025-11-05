@@ -3,7 +3,7 @@ import { Leaf, ThumbsUp, User, Mail, Phone, Lock, Loader2, ChevronDownIcon, Eye,
 import { useState, useEffect } from 'react'
 import { registerCustomer } from '../../apis/auth.api'
 import { getProvinces, type Province } from '../../apis/province'
-import { toast } from 'react-toastify'
+import { toast } from '../../utils/toast'
 import { useNavigate } from 'react-router-dom'
 import { path } from '../../constants/path'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'

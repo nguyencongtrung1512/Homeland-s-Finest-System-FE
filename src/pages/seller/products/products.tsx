@@ -6,63 +6,30 @@ import { Badge } from '../../../components/ui/badge'
 import { Plus, Edit, Trash2, Eye } from 'lucide-react'
 import path from '../../../constants/path'
 import { productApi, type ProductListResponse } from '../../../apis/product.api'
-import { storeApi } from '../../../apis/store.api'
-import { useAuth } from '../../../contexts/auth.context'
 import type { Product } from '../../../types/productType'
+import ModalUpdateProduct from './modalUpdateProduct'
 
 function ProductsSeller() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [storeId, setStoreId] = useState<string | null>(null)
   const [pagination, setPagination] = useState({
     pageSize: 10,
     pageNumber: 1,
     totalItems: 0,
     totalPages: 0
   })
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false)
 
-  // Fetch store ID from authenticated user
-  const fetchStoreId = async () => {
-    try {
-      if (!user?.userId) {
-        setError('Không tìm thấy thông tin người dùng')
-        return
-      }
-
-      const response = await storeApi.getStoreBySellerId(user.userId)
-      console.log('response getStoreBySellerId', response)
-      if (response.status === 200 && response.data) {
-        setStoreId(response.data.id)
-        return response.data.id
-      } else {
-        setError('Không tìm thấy thông tin cửa hàng')
-        return null
-      }
-    } catch (err) {
-      console.error('Error fetching store ID:', err)
-      setError('Có lỗi xảy ra khi tải thông tin cửa hàng')
-      return null
-    }
-  }
-
-  // Fetch products from API
-  const fetchProducts = async (pageNumber: number = 1, pageSize: number = 10, currentStoreId?: string) => {
+  // Fetch products from API - GET /api/Product tự động filter theo seller đã đăng nhập
+  const fetchProducts = async (pageNumber: number = 1, pageSize: number = 10) => {
     try {
       setLoading(true)
       setError(null)
 
-      // Use provided storeId or the one from state
-      const targetStoreId = currentStoreId || storeId
-
-      if (!targetStoreId) {
-        setError('Không có thông tin cửa hàng')
-        return
-      }
-
-      const response: ProductListResponse = await productApi.getByStore(targetStoreId, {
+      const response: ProductListResponse = await productApi.getAll({
         pageNumber,
         pageSize,
         status: ''
@@ -85,24 +52,18 @@ function ProductsSeller() {
     }
   }
 
-  // Load store ID and products on component mount
+  // Load products on component mount
   useEffect(() => {
-    const initializeData = async () => {
-      const fetchedStoreId = await fetchStoreId()
-      if (fetchedStoreId) {
-        await fetchProducts(1, 10, fetchedStoreId)
-      }
-    }
-
-    initializeData()
-  }, [user?.userId])
+    fetchProducts(1, 10)
+  }, [])
 
   const handleCreateProduct = () => {
     navigate(`../${path.createProduct}`)
   }
 
-  const handleEditProduct = (productId: string) => {
-    navigate(`../${path.updateProductSeller.replace(':id', productId)}`)
+  const handleEditProduct = (product: Product) => {
+    setSelectedProduct(product)
+    setShowUpdateDialog(true)
   }
 
   const handleViewProduct = (productId: string) => {
@@ -193,7 +154,7 @@ function ProductsSeller() {
               <thead>
                 <tr className='border-b'>
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>Tên sản phẩm</th>
-                  <th className='text-left py-3 px-4 font-medium text-gray-700'>Loại sản phẩm</th>
+                  <th className='text-left py-3 px-4 font-medium text-gray-700'>Mô tả</th>
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>Trạng thái</th>
                   <th className='text-left py-3 px-4 font-medium text-gray-700'>Hành động</th>
                 </tr>
@@ -204,7 +165,7 @@ function ProductsSeller() {
                   return (
                     <tr key={product.id} className='border-b hover:bg-gray-50'>
                       <td className='py-3 px-4 text-gray-900'>{product.name}</td>
-                      <td className='py-3 px-4 text-gray-900'>{product.typeProduct}</td>
+                      <td className='py-3 px-4 text-gray-900'>{product.description}</td>
                       <td className='py-3 px-4'>
                         <Badge variant={statusInfo.variant} className={statusInfo.className}>
                           {statusInfo.text}
@@ -224,7 +185,7 @@ function ProductsSeller() {
                             title='Chỉnh sửa'
                             variant='ghost'
                             size='sm'
-                            onClick={() => handleEditProduct(product.id)}
+                            onClick={() => handleEditProduct(product)}
                           >
                             <Edit className='w-4 h-4' />
                           </Button>
@@ -287,6 +248,14 @@ function ProductsSeller() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal Update Product */}
+      <ModalUpdateProduct
+        open={showUpdateDialog}
+        onOpenChange={setShowUpdateDialog}
+        product={selectedProduct}
+        onSuccess={fetchProducts}
+      />
     </div>
   )
 }

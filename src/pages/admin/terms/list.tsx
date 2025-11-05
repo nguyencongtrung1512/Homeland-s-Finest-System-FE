@@ -30,7 +30,7 @@ import {
   type DocumentType,
   type CreateDocumentData
 } from '../../../apis/document.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 
 // Remove old Term interface, using DocumentType from API
 
@@ -101,15 +101,15 @@ function TermsManagement() {
   const getStatusConfig = (isPublished: boolean) => {
     return isPublished
       ? {
-          text: 'Đã xuất bản',
-          bgColor: 'bg-green-100',
-          textColor: 'text-green-600'
-        }
+        text: 'Đã xuất bản',
+        bgColor: 'bg-green-100',
+        textColor: 'text-green-600'
+      }
       : {
-          text: 'Bản nháp',
-          bgColor: 'bg-yellow-100',
-          textColor: 'text-yellow-600'
-        }
+        text: 'Bản nháp',
+        bgColor: 'bg-yellow-100',
+        textColor: 'text-yellow-600'
+      }
   }
 
   // Helper function to safely search in text
@@ -121,15 +121,15 @@ function TermsManagement() {
   // Filter documents based on search text and other filters
   const filteredDocuments = Array.isArray(documents)
     ? documents.filter((document) => {
-        // Search filter with safe null checks
-        const matchesSearch =
-          !searchText.trim() ||
-          safeSearch(document.title, searchText) ||
-          safeSearch(document.slug, searchText) ||
-          safeSearch(document.content, searchText)
+      // Search filter with safe null checks
+      const matchesSearch =
+        !searchText.trim() ||
+        safeSearch(document.title, searchText) ||
+        safeSearch(document.slug, searchText) ||
+        safeSearch(document.content, searchText)
 
-        return matchesSearch
-      })
+      return matchesSearch
+    })
     : []
 
   const handleAdd = () => {
@@ -794,9 +794,8 @@ function TermsManagement() {
                   <Label className='text-sm font-medium text-gray-700'>Trạng thái</Label>
                   <div className='mt-1'>
                     <div
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        selectedDocument.isPublished ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
-                      }`}
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedDocument.isPublished ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
+                        }`}
                     >
                       {selectedDocument.isPublished ? 'Đã xuất bản' : 'Bản nháp'}
                     </div>

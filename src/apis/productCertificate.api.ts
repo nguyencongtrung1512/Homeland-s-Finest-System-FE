@@ -32,9 +32,10 @@ export const productCertificateApi = {
       }
     })
   },
-  // Delete certificate (soft delete with status)
-  delete: async (id: string) => {
-    return await axiosInstance.delete<ProductCertificateResponse>(`${API_URL}/${id}`)
+
+  // Update certificate status
+  updateStatus: async (certificateId: string, status: string) => {
+    return await axiosInstance.put(`${API_URL}/${certificateId}`, { status })
   }
 }
 

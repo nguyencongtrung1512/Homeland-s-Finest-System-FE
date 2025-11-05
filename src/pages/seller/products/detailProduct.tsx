@@ -1,85 +1,61 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Package, Star, Eye, Calendar, MapPin, Tag, FileText, Award, Play, Image as ImageIcon, Archive, DollarSign, Layers } from 'lucide-react'
+import {
+  ArrowLeft,
+  Package,
+  Star,
+  Eye,
+  Calendar,
+  MapPin,
+  Tag,
+  FileText,
+  Award,
+  Play,
+  Image as ImageIcon,
+  Archive,
+  DollarSign,
+  Layers,
+  Plus,
+  Edit
+} from 'lucide-react'
 import { message } from 'antd'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs'
+import type { Product, VariantGroup, VariantOption } from '../../../types/productType'
 import { productApi } from '../../../apis/product.api'
-
-interface ProductCertificate {
-  id: string
-  productId: string
-  reviewedByStaffId: string
-  imageUrl: string
-  status: string
-  staffNotes: string
-  submittedDate: string
-  decisionDate: string
-  updatedAt: string | null
-}
-
-interface ProductDetail {
-  id: string
-  storeId: string
-  provinceId: number
-  editedById: string | null
-  name: string
-  description: string
-  productImages: string[]
-  productVideo: string | null
-  material: string
-  saleCount: number
-  rating: number
-  reviewCount: number
-  isActive: boolean
-  typeProduct: string
-  status: string
-  note: string
-  variants: any[]
-  productCategories: any[]
-  productCertificateDTOs: ProductCertificate[]
-}
+import ModalProductDetail from './modalProductDetail'
+import ModalVariantProduct from './modalVariantProduct'
+import ModalEditVariant from './modalEditVariant'
+import ModalEditProduct from './modalEditProduct'
+import ProductCertificate from './productCertificate'
+import ProductStoryComponent from './productStory'
 
 function DetailProductSeller() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const [product, setProduct] = useState<ProductDetail | null>(null)
+  const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
-  const [activeTab, setActiveTab] = useState('product-info')
 
-  // Mock data cho product variants (dữ liệu cứng)
-  const mockProductVariants = [
-    {
-      id: 1,
-      name: 'Gói 1kg',
-      price: 150000,
-      stock: 50,
-      unit: 'kg',
-      weight: '1kg',
-      dimensions: '20x15x10 cm'
-    },
-    {
-      id: 2,
-      name: 'Gói 2kg',
-      price: 280000,
-      stock: 30,
-      unit: 'kg',
-      weight: '2kg',
-      dimensions: '25x20x12 cm'
-    },
-    {
-      id: 3,
-      name: 'Gói 5kg',
-      price: 650000,
-      stock: 15,
-      unit: 'kg',
-      weight: '5kg',
-      dimensions: '35x25x15 cm'
-    }
-  ]
+  // States for Dialogs
+  const [showCreateDetailDialog, setShowCreateDetailDialog] = useState(false)
+  const [showCreateVariantDialog, setShowCreateVariantDialog] = useState(false)
+  const [variantParentId, setVariantParentId] = useState<string | undefined>(undefined)
+  const [selectedParentVariant, setSelectedParentVariant] = useState<VariantOption | null>(null)
+
+  // States for Edit Dialogs
+  const [showEditProductDialog, setShowEditProductDialog] = useState(false)
+  const [showEditVariantDialog, setShowEditVariantDialog] = useState(false)
+  const [editingVariant, setEditingVariant] = useState<VariantOption | null>(null)
+  const [editingParentVariant, setEditingParentVariant] = useState<VariantOption | null>(null)
+
+  // States for Edit Modes (for ProductCertificate and ProductStory)
+  const [editModes, setEditModes] = useState({
+    certificates: false,
+    story: false
+  })
 
   useEffect(() => {
     const fetchProductDetail = async () => {
@@ -113,7 +89,8 @@ function DetailProductSeller() {
     navigate(-1)
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Chưa có'
     try {
       const date = new Date(dateString)
       return date.toLocaleDateString('vi-VN', {
@@ -126,6 +103,30 @@ function DetailProductSeller() {
     } catch {
       return dateString
     }
+  }
+
+  // Lấy tất cả variant cha (cấp 1) từ variantGroups
+  const getParentVariants = (variantGroups: VariantGroup[]): VariantOption[] => {
+    const result: VariantOption[] = []
+    variantGroups.forEach((group) => {
+      result.push(...group.options)
+    })
+    return result
+  }
+
+  // Kiểm tra variant có phải là variant cha có con không
+  const hasChildVariants = (variant: VariantOption): boolean => {
+    return Array.isArray(variant.childVariantGroups) && variant.childVariantGroups.length > 0
+  }
+
+  // Lấy tất cả variant con từ một variant cha
+  const getChildVariants = (variant: VariantOption): VariantOption[] => {
+    if (!hasChildVariants(variant)) return []
+    const result: VariantOption[] = []
+    variant.childVariantGroups?.forEach((childGroup) => {
+      result.push(...childGroup.options)
+    })
+    return result
   }
 
   const getStatusBadge = (status: string, isActive: boolean) => {
@@ -158,6 +159,44 @@ function DetailProductSeller() {
     }
   }
 
+  const handleRefreshProduct = async () => {
+    if (!id) return
+    try {
+      const refreshResponse = await productApi.getById(id)
+      if (refreshResponse.status === 200 && refreshResponse.data) {
+        setProduct(refreshResponse.data)
+      }
+    } catch (error) {
+      console.error('Error refreshing product:', error)
+    }
+  }
+
+  // Handlers for edit modes
+  const handleToggleEditMode = (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => {
+    if (section === 'certificates') {
+      setEditModes((prev) => ({ ...prev, certificates: !prev.certificates }))
+    } else if (section === 'story') {
+      setEditModes((prev) => ({ ...prev, story: !prev.story }))
+    }
+  }
+
+  const handleCancelEdit = (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => {
+    if (section === 'certificates') {
+      setEditModes((prev) => ({ ...prev, certificates: false }))
+    } else if (section === 'story') {
+      setEditModes((prev) => ({ ...prev, story: false }))
+    }
+  }
+
+  const handleSaveSection = async (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => {
+    // ProductCertificate và ProductStory tự xử lý save, chỉ cần tắt edit mode
+    if (section === 'certificates') {
+      setEditModes((prev) => ({ ...prev, certificates: false }))
+    } else if (section === 'story') {
+      setEditModes((prev) => ({ ...prev, story: false }))
+    }
+  }
+
   if (loading) {
     return (
       <div className='p-6'>
@@ -178,6 +217,19 @@ function DetailProductSeller() {
     )
   }
 
+  // Lấy tất cả variant cha để hiển thị
+  const parentVariants = product?.variantGroups ? getParentVariants(product.variantGroups) : []
+
+  // Helper để lấy attributeType từ variantGroup dựa vào variant option
+  const getAttributeTypeForVariant = (variant: VariantOption): string | null => {
+    if (!product?.variantGroups) return null
+    for (const group of product.variantGroups) {
+      const found = group.options.find((opt) => opt.id === variant.id)
+      if (found) return group.attributeType
+    }
+    return null
+  }
+
   return (
     <div className='p-6 space-y-6'>
       {/* Header */}
@@ -196,26 +248,38 @@ function DetailProductSeller() {
           <h1 className='text-2xl font-bold text-gray-900'>Chi tiết sản phẩm</h1>
         </div>
         <div className='flex items-center gap-2'>
-          <Package className='text-green-600' size={20} />
-          <span className='text-sm text-gray-600'>ID: {product?.id.slice(0, 8)}...</span>
+          <Button
+            onClick={() => setShowEditProductDialog(true)}
+            className='bg-blue-600 hover:bg-blue-700 text-white'
+            variant='outline'
+            size='sm'
+          >
+            <Edit className='w-4 h-4 mr-2' />
+            Chỉnh sửa sản phẩm
+          </Button>
+          <Button
+            onClick={() => setShowCreateDetailDialog(true)}
+            className='bg-green-600 hover:bg-green-700 text-white'
+            variant='outline'
+            size='sm'
+          >
+            <Plus className='w-4 h-4 mr-2' />
+            Thêm Product Detail
+          </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-        <TabsList className='grid w-full grid-cols-2 mb-6'>
-          <TabsTrigger value='product-info' className='flex items-center gap-2'>
-            <Package className='w-4 h-4' />
-            Thông tin sản phẩm
-          </TabsTrigger>
-          <TabsTrigger value='variants' className='flex items-center gap-2'>
-            <Archive className='w-4 h-4' />
-            Loại sản phẩm
-          </TabsTrigger>
+      <Tabs defaultValue='info' className='w-full'>
+        <TabsList className='mb-6'>
+          <TabsTrigger value='info'>Thông tin sản phẩm</TabsTrigger>
+          <TabsTrigger value='certificates'>Chứng nhận</TabsTrigger>
+          <TabsTrigger value='story'>Câu chuyện</TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Product Information */}
-        <TabsContent value='product-info'>
+        {/* Tab 1: Thông tin sản phẩm */}
+        <TabsContent value='info' className='space-y-6'>
+
           <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
             {/* Left Column - Product Images */}
             <div className='lg:col-span-1'>
@@ -280,11 +344,7 @@ function DetailProductSeller() {
                         <span className='text-sm font-medium text-gray-700'>Video sản phẩm</span>
                       </div>
                       <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
-                        <video
-                          controls
-                          className='w-full h-full'
-                          poster={product.productImages?.[0]}
-                        >
+                        <video controls className='w-full h-full' poster={product.productImages?.[0]}>
                           <source src={product.productVideo} type='video/mp4' />
                           Trình duyệt của bạn không hỗ trợ video.
                         </video>
@@ -312,12 +372,12 @@ function DetailProductSeller() {
                       {product && getStatusBadge(product.status, product.isActive)}
                       <div className='flex items-center gap-1'>
                         <Star className='text-yellow-500 fill-current' size={16} />
-                        <span className='font-medium'>{product?.rating.toFixed(1)}</span>
-                        <span className='text-gray-600'>({product?.reviewCount} đánh giá)</span>
+                        <span className='font-medium'>{product?.rating?.toFixed(1) || '0.0'}</span>
+                        <span className='text-gray-600'>({product?.reviewCount || 0} đánh giá)</span>
                       </div>
                       <div className='flex items-center gap-1'>
                         <Eye size={16} className='text-gray-500' />
-                        <span className='text-gray-600'>{product?.saleCount} lượt bán</span>
+                        <span className='text-gray-600'>{product?.saleCount || 0} lượt bán</span>
                       </div>
                     </div>
                   </div>
@@ -338,8 +398,6 @@ function DetailProductSeller() {
                     <div className='space-y-3'>
                       <div className='flex items-center gap-2'>
                         <Calendar size={16} className='text-green-600' />
-                        <span className='text-sm font-medium text-gray-700'>Mã cửa hàng:</span>
-                        <span className='text-gray-900'>{product?.storeId.slice(0, 8)}...</span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <FileText size={16} className='text-green-600' />
@@ -350,22 +408,16 @@ function DetailProductSeller() {
                   </div>
 
                   {/* Product Categories */}
-                  {product?.productCategories && product.productCategories.length > 0 && (
+                  {product?.productCategories && (
                     <div>
                       <div className='flex items-center gap-2 mb-3'>
                         <Layers size={16} className='text-green-600' />
                         <span className='text-sm font-medium text-gray-700'>Danh mục sản phẩm:</span>
                       </div>
                       <div className='flex flex-wrap gap-2'>
-                        {product.productCategories.map((category, index) => (
-                          <Badge
-                            key={category.id || index}
-                            variant="outline"
-                            className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                          >
-                            {category.name}
-                          </Badge>
-                        ))}
+                        <Badge variant='outline' className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100'>
+                          {product.productCategories.name}
+                        </Badge>
                       </div>
                     </div>
                   )}
@@ -375,10 +427,18 @@ function DetailProductSeller() {
                     <p className='text-gray-700 leading-relaxed'>{product?.description}</p>
                   </div>
 
-                  {product?.note && (
+                  {product?.staffNote && (
                     <div>
-                      <h3 className='text-lg font-semibold text-gray-900 mb-2'>Ghi chú</h3>
-                      <p className='text-gray-700 leading-relaxed'>{product.note}</p>
+                      <h3 className='text-lg font-semibold text-gray-900 mb-2'>Ghi chú từ staff</h3>
+                      <p className='text-gray-700 leading-relaxed'>{product.staffNote}</p>
+                    </div>
+                  )}
+
+                  {/* Summary Price */}
+                  {product?.summaryPrice && (
+                    <div>
+                      <h3 className='text-lg font-semibold text-gray-900 mb-2'>Tóm tắt giá</h3>
+                      <p className='text-2xl font-bold text-green-600'>{product.summaryPrice}</p>
                     </div>
                   )}
                 </CardContent>
@@ -457,15 +517,15 @@ function DetailProductSeller() {
                 <CardContent>
                   <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                     <div className='text-center p-4 bg-green-50 rounded-lg'>
-                      <div className='text-2xl font-bold text-green-600'>{product?.saleCount}</div>
+                      <div className='text-2xl font-bold text-green-600'>{product?.saleCount || 0}</div>
                       <div className='text-sm text-gray-600'>Lượt bán</div>
                     </div>
                     <div className='text-center p-4 bg-yellow-50 rounded-lg'>
-                      <div className='text-2xl font-bold text-yellow-600'>{product?.rating.toFixed(1)}</div>
+                      <div className='text-2xl font-bold text-yellow-600'>{product?.rating?.toFixed(1) || '0.0'}</div>
                       <div className='text-sm text-gray-600'>Đánh giá trung bình</div>
                     </div>
                     <div className='text-center p-4 bg-blue-50 rounded-lg'>
-                      <div className='text-2xl font-bold text-blue-600'>{product?.reviewCount}</div>
+                      <div className='text-2xl font-bold text-blue-600'>{product?.reviewCount || 0}</div>
                       <div className='text-sm text-gray-600'>Số lượt đánh giá</div>
                     </div>
                   </div>
@@ -473,128 +533,563 @@ function DetailProductSeller() {
               </Card>
             </div>
           </div>
+
+          {/* Create Product Detail Button - Show if no variants */}
+          {parentVariants.length === 0 && (
+            <Card className='shadow-lg'>
+              <CardHeader>
+                <div className='flex items-center justify-between'>
+                  <CardTitle className='flex items-center gap-2 text-green-700'>
+                    <Archive size={20} />
+                    Loại sản phẩm
+                  </CardTitle>
+                  <Button
+                    onClick={() => {
+                      setSelectedParentVariant(null)
+                      setShowCreateVariantDialog(true)
+                    }}
+                    className='bg-green-600 hover:bg-green-700 text-white'
+                  >
+                    <Plus className='w-4 h-4 mr-2' />
+                    Tạo Product Variant
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className='text-center py-8 text-gray-500'>
+                  <Archive size={48} className='mx-auto mb-4 text-gray-400' />
+                  <p>Chưa có product variant. Hãy tạo product variant mới.</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Variants Display */}
+          {parentVariants.length > 0 && (
+            <Card className='shadow-lg'>
+              <CardHeader>
+                <div className='flex items-center justify-between'>
+                  <CardTitle className='flex items-center gap-2 text-green-700'>
+                    <Archive size={20} />
+                    Loại sản phẩm
+                  </CardTitle>
+                  <Button
+                    onClick={() => {
+                      setSelectedParentVariant(null)
+                      setShowCreateVariantDialog(true)
+                    }}
+                    className='bg-green-600 hover:bg-green-700 text-white'
+                    variant='outline'
+                    size='sm'
+                  >
+                    <Plus className='w-4 h-4 mr-2' />
+                    Thêm Product variant
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-6'>
+                  {parentVariants.map((parentVariant) => {
+                    const attributeType = getAttributeTypeForVariant(parentVariant)
+                    const hasChildren = hasChildVariants(parentVariant)
+                    const childVariants = getChildVariants(parentVariant)
+
+                    return (
+                      <div
+                        key={parentVariant.id}
+                        className='border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white'
+                      >
+                        {/* Variant Cha Header */}
+                        <div className='mb-4 pb-4 border-b border-gray-200'>
+                          <div className='flex items-center justify-between mb-4'>
+                            <h3 className='text-lg font-semibold text-gray-900'>Variant cha</h3>
+                            <Button
+                              onClick={() => {
+                                setEditingVariant(parentVariant)
+                                setEditingParentVariant(null)
+                                setShowEditVariantDialog(true)
+                              }}
+                              variant='outline'
+                              size='sm'
+                              className='flex items-center gap-2'
+                            >
+                              <Edit size={14} />
+                              Chỉnh sửa
+                            </Button>
+                          </div>
+                          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                            {/* Attribute Type */}
+                            {attributeType && (
+                              <div className='space-y-2'>
+                                <label className='text-sm font-medium text-gray-700'>Loại thuộc tính</label>
+                                <div className='p-3 bg-gray-50 rounded-lg border'>
+                                  <span className='text-gray-900 font-medium'>{attributeType}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Attribute Name */}
+                            {parentVariant.attributeName && (
+                              <div className='space-y-2'>
+                                <label className='text-sm font-medium text-gray-700'>Tên thuộc tính</label>
+                                <div className='p-3 bg-gray-50 rounded-lg border'>
+                                  <span className='text-gray-900 font-medium'>{parentVariant.attributeName}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Variant Name */}
+                            <div className='space-y-2'>
+                              <label className='text-sm font-medium text-gray-700'>Tên loại sản phẩm</label>
+                              <div className='p-3 bg-gray-50 rounded-lg border'>
+                                <span className='text-gray-900 font-medium'>{parentVariant.name}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          {parentVariant.description && (
+                            <div className='mt-4 space-y-2'>
+                              <label className='text-sm font-medium text-gray-700'>Mô tả</label>
+                              <div className='p-3 bg-gray-50 rounded-lg border'>
+                                <span className='text-gray-700'>{parentVariant.description}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Images */}
+                          {parentVariant.productImages && parentVariant.productImages.length > 0 && (
+                            <div className='mt-4 space-y-2'>
+                              <label className='text-sm font-medium text-gray-700'>Hình ảnh</label>
+                              <div className='flex gap-2 flex-wrap'>
+                                {parentVariant.productImages.map((image, idx) => (
+                                  <div key={idx} className='w-20 h-20 rounded-lg overflow-hidden border border-gray-200'>
+                                    <img
+                                      src={image}
+                                      alt={`${parentVariant.name} ${idx + 1}`}
+                                      className='w-full h-full object-cover'
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement
+                                        target.src = '/placeholder-image.png'
+                                      }}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* SKU Details - Chỉ hiển thị nếu KHÔNG có variant con */}
+                          {!hasChildren && (
+                            <div className='mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                              {/* Price */}
+                              {parentVariant.finalPrice !== null && (
+                                <div className='space-y-2'>
+                                  <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                    <DollarSign size={14} />
+                                    Giá bán (VNĐ)
+                                  </label>
+                                  <div className='p-3 bg-gray-50 rounded-lg border'>
+                                    <span className='text-green-600 font-bold'>
+                                      {parentVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
+                                    </span>
+                                    {parentVariant.basePrice !== null &&
+                                      parentVariant.basePrice !== parentVariant.finalPrice && (
+                                        <span className='ml-2 text-sm text-gray-500 line-through'>
+                                          {parentVariant.basePrice.toLocaleString('vi-VN')} VNĐ
+                                        </span>
+                                      )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Stock */}
+                              {parentVariant.quantity !== null && (
+                                <div className='space-y-2'>
+                                  <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                    <Package size={14} />
+                                    Số lượng tồn kho
+                                  </label>
+                                  <div className='p-3 bg-gray-50 rounded-lg border'>
+                                    <span
+                                      className={`font-medium ${parentVariant.quantity > 20 ? 'text-green-600' : parentVariant.quantity > 10 ? 'text-yellow-600' : 'text-red-600'}`}
+                                    >
+                                      {parentVariant.quantity} sản phẩm
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Weight */}
+                              {parentVariant.weight !== null && (
+                                <div className='space-y-2'>
+                                  <label className='text-sm font-medium text-gray-700'>Trọng lượng (g)</label>
+                                  <div className='p-3 bg-gray-50 rounded-lg border'>
+                                    <span className='text-gray-900'>{parentVariant.weight}g</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Dimensions */}
+                              {parentVariant.length !== null &&
+                                parentVariant.width !== null &&
+                                parentVariant.height !== null && (
+                                  <div className='space-y-2'>
+                                    <label className='text-sm font-medium text-gray-700'>Kích thước (cm)</label>
+                                    <div className='p-3 bg-gray-50 rounded-lg border'>
+                                      <span className='text-gray-900'>
+                                        {parentVariant.length}x{parentVariant.width}x{parentVariant.height} cm
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          )}
+
+                          {/* Stock Status Indicator - Chỉ hiển thị nếu KHÔNG có variant con */}
+                          {!hasChildren && parentVariant.quantity !== null && (
+                            <div className='mt-4 pt-4 border-t border-gray-200'>
+                              <div className='flex items-center justify-between'>
+                                <span className='text-sm text-gray-600'>Trạng thái kho:</span>
+                                <Badge
+                                  className={
+                                    parentVariant.quantity > 20
+                                      ? 'bg-green-100 text-green-800'
+                                      : parentVariant.quantity > 10
+                                        ? 'bg-yellow-100 text-yellow-800'
+                                        : 'bg-red-100 text-red-800'
+                                  }
+                                >
+                                  {parentVariant.quantity > 20
+                                    ? 'Còn nhiều'
+                                    : parentVariant.quantity > 10
+                                      ? 'Sắp hết'
+                                      : 'Ít hàng'}
+                                </Badge>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Variant Con - Hiển thị nếu có */}
+                        {hasChildren && childVariants.length > 0 && (
+                          <div className='mt-4 space-y-4'>
+                            <div className='flex items-center gap-2 mb-3'>
+                              <div className='h-px flex-1 bg-gray-200'></div>
+                              <span className='text-sm font-semibold text-gray-700 px-2'>
+                                Variant con ({childVariants.length})
+                              </span>
+                              <div className='h-px flex-1 bg-gray-200'></div>
+                            </div>
+                            <div className='space-y-3 pl-4 border-l-2 border-green-200'>
+                              {childVariants.map((childVariant) => (
+                                <div
+                                  key={childVariant.id}
+                                  className='border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors'
+                                >
+                                  <div className='flex items-center justify-between mb-3'>
+                                    <h4 className='text-sm font-semibold text-gray-700'>Variant con</h4>
+                                    <Button
+                                      onClick={() => {
+                                        setEditingVariant(childVariant)
+                                        setEditingParentVariant(parentVariant)
+                                        setShowEditVariantDialog(true)
+                                      }}
+                                      variant='outline'
+                                      size='sm'
+                                      className='flex items-center gap-2'
+                                    >
+                                      <Edit size={12} />
+                                      Chỉnh sửa
+                                    </Button>
+                                  </div>
+                                  <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                                    {/* Child Variant Name */}
+                                    <div className='space-y-2'>
+                                      <label className='text-sm font-medium text-gray-700'>Tên variant con</label>
+                                      <div className='p-2 bg-white rounded border'>
+                                        <span className='text-gray-900 text-sm'>{childVariant.name}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Child Attribute Name */}
+                                    {childVariant.attributeName && (
+                                      <div className='space-y-2'>
+                                        <label className='text-sm font-medium text-gray-700'>Tên thuộc tính</label>
+                                        <div className='p-2 bg-white rounded border'>
+                                          <span className='text-gray-900 text-sm'>{childVariant.attributeName}</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Child Price */}
+                                    {childVariant.finalPrice !== null && (
+                                      <div className='space-y-2'>
+                                        <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                          <DollarSign size={14} />
+                                          Giá bán (VNĐ)
+                                        </label>
+                                        <div className='p-2 bg-white rounded border'>
+                                          <span className='text-green-600 font-bold text-sm'>
+                                            {childVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
+                                          </span>
+                                          {childVariant.basePrice !== null &&
+                                            childVariant.basePrice !== childVariant.finalPrice && (
+                                              <span className='ml-2 text-xs text-gray-500 line-through'>
+                                                {childVariant.basePrice.toLocaleString('vi-VN')} VNĐ
+                                              </span>
+                                            )}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Child Stock */}
+                                    {childVariant.quantity !== null && (
+                                      <div className='space-y-2'>
+                                        <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                          <Package size={14} />
+                                          Số lượng tồn kho
+                                        </label>
+                                        <div className='p-2 bg-white rounded border'>
+                                          <span
+                                            className={`text-sm font-medium ${childVariant.quantity > 20 ? 'text-green-600' : childVariant.quantity > 10 ? 'text-yellow-600' : 'text-red-600'}`}
+                                          >
+                                            {childVariant.quantity} sản phẩm
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Child Weight */}
+                                    {childVariant.weight !== null && (
+                                      <div className='space-y-2'>
+                                        <label className='text-sm font-medium text-gray-700'>Trọng lượng (g)</label>
+                                        <div className='p-2 bg-white rounded border'>
+                                          <span className='text-gray-900 text-sm'>{childVariant.weight}g</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Child Dimensions */}
+                                    {childVariant.length !== null &&
+                                      childVariant.width !== null &&
+                                      childVariant.height !== null && (
+                                        <div className='space-y-2'>
+                                          <label className='text-sm font-medium text-gray-700'>Kích thước (cm)</label>
+                                          <div className='p-2 bg-white rounded border'>
+                                            <span className='text-gray-900 text-sm'>
+                                              {childVariant.length}x{childVariant.width}x{childVariant.height} cm
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                    {/* Child Images */}
+                                    {childVariant.productImages && childVariant.productImages.length > 0 && (
+                                      <div className='space-y-2 md:col-span-2 lg:col-span-3'>
+                                        <label className='text-sm font-medium text-gray-700'>Hình ảnh</label>
+                                        <div className='flex gap-2 flex-wrap'>
+                                          {childVariant.productImages.map((image, idx) => (
+                                            <div
+                                              key={idx}
+                                              className='w-16 h-16 rounded-lg overflow-hidden border border-gray-200'
+                                            >
+                                              <img
+                                                src={image}
+                                                alt={`${childVariant.name} ${idx + 1}`}
+                                                className='w-full h-full object-cover'
+                                                onError={(e) => {
+                                                  const target = e.target as HTMLImageElement
+                                                  target.src = '/placeholder-image.png'
+                                                }}
+                                              />
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Child Stock Status */}
+                                  {childVariant.quantity !== null && (
+                                    <div className='mt-3 pt-3 border-t border-gray-200'>
+                                      <div className='flex items-center justify-between'>
+                                        <span className='text-xs text-gray-600'>Trạng thái kho:</span>
+                                        <Badge
+                                          className={
+                                            childVariant.quantity > 20
+                                              ? 'bg-green-100 text-green-800 text-xs'
+                                              : childVariant.quantity > 10
+                                                ? 'bg-yellow-100 text-yellow-800 text-xs'
+                                                : 'bg-red-100 text-red-800 text-xs'
+                                          }
+                                        >
+                                          {childVariant.quantity > 20
+                                            ? 'Còn nhiều'
+                                            : childVariant.quantity > 10
+                                              ? 'Sắp hết'
+                                              : 'Ít hàng'}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Add Child Variant Button */}
+                        <div className='mt-4 pt-4 border-t border-gray-200'>
+                          <Button
+                            onClick={() => {
+                              setVariantParentId(parentVariant.id)
+                              setSelectedParentVariant(parentVariant)
+                              setShowCreateVariantDialog(true)
+                            }}
+                            variant='outline'
+                            size='sm'
+                            className='w-full'
+                          >
+                            <Plus className='w-4 h-4 mr-2' />
+                            {hasChildren ? 'Thêm variant con' : 'Tạo variant con'}
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Summary */}
+                {parentVariants.length > 0 && (
+                  <div className='mt-6 p-4 bg-green-50 rounded-lg border border-green-200'>
+                    <h3 className='text-lg font-semibold text-green-800 mb-2'>Tổng quan</h3>
+                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
+                      <div>
+                        <span className='text-green-700 font-medium'>Tổng số variant cha:</span>
+                        <span className='ml-2 text-green-900'>{parentVariants.length} loại</span>
+                      </div>
+                      <div>
+                        <span className='text-green-700 font-medium'>Tổng tồn kho:</span>
+                        <span className='ml-2 text-green-900'>
+                          {(() => {
+                            let total = 0
+                            parentVariants.forEach((pv) => {
+                              if (hasChildVariants(pv)) {
+                                const children = getChildVariants(pv)
+                                total += children.reduce((sum, cv) => sum + (cv.quantity || 0), 0)
+                              } else {
+                                total += pv.quantity || 0
+                              }
+                            })
+                            return `${total} sản phẩm`
+                          })()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className='text-green-700 font-medium'>Giá từ:</span>
+                        <span className='ml-2 text-green-900'>
+                          {(() => {
+                            const prices: number[] = []
+                            parentVariants.forEach((pv) => {
+                              if (hasChildVariants(pv)) {
+                                const children = getChildVariants(pv)
+                                children.forEach((cv) => {
+                                  if (cv.finalPrice !== null) prices.push(cv.finalPrice)
+                                })
+                              } else {
+                                if (pv.finalPrice !== null) prices.push(pv.finalPrice)
+                              }
+                            })
+                            return prices.length > 0
+                              ? `${Math.min(...prices).toLocaleString('vi-VN')} - ${Math.max(...prices).toLocaleString('vi-VN')} VNĐ`
+                              : 'Chưa có giá'
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
-        {/* Tab 2: Product Variants */}
-        <TabsContent value='variants'>
-          <Card className='shadow-lg'>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2 text-green-700'>
-                <Archive size={20} />
-                Loại sản phẩm
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-4'>
-                {mockProductVariants.map((variant) => (
-                  <div key={variant.id} className='border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow'>
-                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                      {/* Variant Name */}
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium text-gray-700'>Tên loại sản phẩm</label>
-                        <div className='p-3 bg-gray-50 rounded-lg border'>
-                          <span className='text-gray-900 font-medium'>{variant.name}</span>
-                        </div>
-                      </div>
+        {/* Tab 2: Chứng nhận */}
+        <TabsContent value='certificates' className='space-y-6'>
+          {id && (
+            <ProductCertificate
+              productId={id}
+              editModes={editModes}
+              onToggleEditMode={handleToggleEditMode}
+              onCancelEdit={handleCancelEdit}
+              onSaveSection={handleSaveSection}
+            />
+          )}
+        </TabsContent>
 
-                      {/* Price */}
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
-                          <DollarSign size={14} />
-                          Giá bán (VNĐ)
-                        </label>
-                        <div className='p-3 bg-gray-50 rounded-lg border'>
-                          <span className='text-green-600 font-bold'>
-                            {variant.price.toLocaleString('vi-VN')} VNĐ
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Stock */}
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
-                          <Package size={14} />
-                          Số lượng tồn kho
-                        </label>
-                        <div className='p-3 bg-gray-50 rounded-lg border'>
-                          <span className={`font-medium ${variant.stock > 20 ? 'text-green-600' : variant.stock > 10 ? 'text-yellow-600' : 'text-red-600'}`}>
-                            {variant.stock} {variant.unit}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Weight */}
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium text-gray-700'>Trọng lượng</label>
-                        <div className='p-3 bg-gray-50 rounded-lg border'>
-                          <span className='text-gray-900'>{variant.weight}</span>
-                        </div>
-                      </div>
-
-                      {/* Dimensions */}
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium text-gray-700'>Kích thước</label>
-                        <div className='p-3 bg-gray-50 rounded-lg border'>
-                          <span className='text-gray-900'>{variant.dimensions}</span>
-                        </div>
-                      </div>
-
-                      {/* Unit */}
-                      <div className='space-y-2'>
-                        <label className='text-sm font-medium text-gray-700'>Đơn vị</label>
-                        <div className='p-3 bg-gray-50 rounded-lg border'>
-                          <span className='text-gray-900'>{variant.unit}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stock Status Indicator */}
-                    <div className='mt-4 pt-4 border-t border-gray-200'>
-                      <div className='flex items-center justify-between'>
-                        <span className='text-sm text-gray-600'>Trạng thái kho:</span>
-                        <Badge
-                          className={
-                            variant.stock > 20
-                              ? 'bg-green-100 text-green-800'
-                              : variant.stock > 10
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
-                          }
-                        >
-                          {variant.stock > 20 ? 'Còn nhiều' : variant.stock > 10 ? 'Sắp hết' : 'Ít hàng'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Summary */}
-              <div className='mt-6 p-4 bg-green-50 rounded-lg border border-green-200'>
-                <h3 className='text-lg font-semibold text-green-800 mb-2'>Tổng quan</h3>
-                <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
-                  <div>
-                    <span className='text-green-700 font-medium'>Tổng số loại:</span>
-                    <span className='ml-2 text-green-900'>{mockProductVariants.length} loại</span>
-                  </div>
-                  <div>
-                    <span className='text-green-700 font-medium'>Tổng tồn kho:</span>
-                    <span className='ml-2 text-green-900'>
-                      {mockProductVariants.reduce((total, variant) => total + variant.stock, 0)} sản phẩm
-                    </span>
-                  </div>
-                  <div>
-                    <span className='text-green-700 font-medium'>Giá từ:</span>
-                    <span className='ml-2 text-green-900'>
-                      {Math.min(...mockProductVariants.map(v => v.price)).toLocaleString('vi-VN')} - {Math.max(...mockProductVariants.map(v => v.price)).toLocaleString('vi-VN')} VNĐ
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Tab 3: Câu chuyện */}
+        <TabsContent value='story' className='space-y-6'>
+          {id && (
+            <ProductStoryComponent
+              productId={id}
+              isEditMode={editModes.story}
+              onToggleEditMode={handleToggleEditMode}
+              onCancelEdit={handleCancelEdit}
+              onSaveSection={handleSaveSection}
+            />
+          )}
         </TabsContent>
       </Tabs>
+
+      {/* Modal Create Product Detail */}
+      <ModalProductDetail
+        open={showCreateDetailDialog}
+        onOpenChange={setShowCreateDetailDialog}
+        product={product}
+        parentId={id}
+        onSuccess={handleRefreshProduct}
+      />
+
+      {/* Modal Create Product Variant */}
+      <ModalVariantProduct
+        open={showCreateVariantDialog}
+        onOpenChange={(open) => {
+          setShowCreateVariantDialog(open)
+          if (!open) {
+            setVariantParentId(undefined) // Reset parentId when dialog closes
+            setSelectedParentVariant(null)
+          }
+        }}
+        product={product}
+        parentId={variantParentId || id}
+        selectedParentVariant={selectedParentVariant}
+        onSuccess={handleRefreshProduct}
+      />
+
+      {/* Modal Edit Variant */}
+      <ModalEditVariant
+        open={showEditVariantDialog}
+        onOpenChange={(open) => {
+          setShowEditVariantDialog(open)
+          if (!open) {
+            setEditingVariant(null)
+            setEditingParentVariant(null)
+          }
+        }}
+        product={product}
+        variant={editingVariant}
+        parentVariant={editingParentVariant}
+        onSuccess={handleRefreshProduct}
+      />
+
+      {/* Modal Edit Product */}
+      <ModalEditProduct
+        open={showEditProductDialog}
+        onOpenChange={setShowEditProductDialog}
+        product={product}
+        onSuccess={handleRefreshProduct}
+      />
     </div>
   )
 }
