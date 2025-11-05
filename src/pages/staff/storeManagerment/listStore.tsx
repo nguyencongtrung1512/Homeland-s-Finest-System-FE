@@ -44,15 +44,7 @@ interface StoreData {
   }
   createdDate: string
   products: number
-  status:
-    | 'Processing'
-    | 'ReviewedByStaff'
-    | 'Pending'
-    | 'Approved'
-    | 'Rejected'
-    | 'Inactive'
-    | 'ApprovedByStaff'
-    | 'RejectedByStaff'
+  status: 'Processing' | 'Pending' | 'Approved' | 'Rejected' | 'Denied'
 }
 
 function ListStore() {
@@ -95,15 +87,7 @@ function ListStore() {
       },
       createdDate: formatDate(apiStore.createdAt),
       products: 0,
-      status: apiStore.status as
-        | 'Processing'
-        | 'Pending'
-        | 'Approved'
-        | 'Rejected'
-        | 'Inactive'
-        | 'ApprovedByStaff'
-        | 'RejectedByStaff'
-        | 'ReviewedByStaff'
+      status: apiStore.status as 'Processing' | 'Pending' | 'Approved' | 'Rejected' | 'Denied'
     }
   }
 
@@ -198,11 +182,6 @@ function ListStore() {
         text: 'Đang xử lý',
         className: 'bg-blue-100 text-blue-700 hover:bg-blue-100'
       },
-      ReviewedByStaff: {
-        variant: 'default' as const,
-        text: 'Đã xem xét',
-        className: 'bg-green-100 text-green-700 hover:bg-green-100'
-      },
       Pending: {
         variant: 'default' as const,
         text: 'Chờ duyệt',
@@ -218,7 +197,7 @@ function ListStore() {
         text: 'Từ chối',
         className: 'bg-red-100 text-red-700 hover:bg-red-100'
       },
-      Inactive: {
+      Denied: {
         variant: 'default' as const,
         text: 'Không hoạt động',
         className: 'bg-gray-100 text-gray-700 hover:bg-gray-100'

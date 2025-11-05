@@ -1,26 +1,27 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Search, Filter, RefreshCw, Package, Eye, ArrowLeft, Calendar, Star, Tag } from 'lucide-react'
-import { productApi, type ProductListResponse } from '../../../apis/product.api'
+import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Badge } from '../../../components/ui/badge'
-import type { Product } from '../../../types'
 
-// Interface for query parameters
-interface ProductQueryParams {
-  pageSize?: number
-  pageNumber?: number
-  search?: string
-  categoryId?: string
-  status?: string
-  isActive?: boolean
-  sortBy?: string
-  sortOrder?: 'asc' | 'desc'
+// Interface for product from store API
+interface StoreProduct {
+  id: string
+  name: string
+  description: string | null
+  productImages: string[] | null
+  saleCount: number | null
+  rating: number | null
+  reviewCount: number | null
+  isActive: boolean
+  status: string
+  createdAt: string
 }
 
 interface ProductData {
@@ -33,16 +34,16 @@ interface ProductData {
   description: string
   category: string
   createdDate: string
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Processing'
-  rating: number
-  saleCount: number
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Confirmed' | 'Denied'
+  rating: number | null
+  saleCount: number | null
   isActive: boolean
 }
 
 function ListProductByStoreStaff() {
   const { storeId } = useParams<{ storeId: string }>()
   const navigate = useNavigate()
-  
+
   const [searchText, setSearchText] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -53,30 +54,38 @@ function ListProductByStoreStaff() {
   const [totalProducts, setTotalProducts] = useState(0)
   const [productCategories, setProductCategories] = useState<ProductCategoryItem[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
-  const [storeName] = useState('')
+  const [storeName, setStoreName] = useState('')
   const pageSize = 12
 
-  // Convert API Product to ProductData
-  const convertProduct = (apiProduct: Product): ProductData => {
+  // Convert Store Product to ProductData
+  const convertProduct = (storeProduct: StoreProduct): ProductData => {
     const formatDate = (dateString: string) => {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('vi-VN')
+      // Format: "19:23:34 22/10/2025" -> "22/10/2025"
+      if (dateString.includes(' ')) {
+        return dateString.split(' ')[1] || dateString
+      }
+      try {
+        const date = new Date(dateString)
+        return date.toLocaleDateString('vi-VN')
+      } catch {
+        return dateString
+      }
     }
 
     return {
-      key: apiProduct.id,
+      key: storeProduct.id,
       product: {
-        image: apiProduct.productImages?.[0] || '',
-        name: apiProduct.name,
-        id: apiProduct.id
+        image: storeProduct.productImages && storeProduct.productImages.length > 0 ? storeProduct.productImages[0] : '',
+        name: storeProduct.name,
+        id: storeProduct.id
       },
-      description: apiProduct.description,
-      category: 'N/A', // Will be populated from categories
-      createdDate: formatDate(apiProduct.createdAt),
-      status: apiProduct.status as 'Pending' | 'Approved' | 'Rejected' | 'Processing',
-      rating: apiProduct.rating || 0,
-      saleCount: apiProduct.saleCount || 0,
-      isActive: apiProduct.isActive
+      description: storeProduct.description || '',
+      category: 'N/A', // Not available in store product data
+      createdDate: formatDate(storeProduct.createdAt),
+      status: storeProduct.status as 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Confirmed' | 'Denied',
+      rating: storeProduct.rating,
+      saleCount: storeProduct.saleCount,
+      isActive: storeProduct.isActive
     }
   }
 
@@ -96,14 +105,14 @@ function ListProductByStoreStaff() {
         const activeCategories = response.data.filter((category: ProductCategoryItem) => category.isActive)
         setProductCategories(activeCategories)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Lỗi khi tải danh sách ngành hàng:', err)
     } finally {
       setCategoriesLoading(false)
     }
   }
 
-  // Fetch products by store
+  // Fetch products by store using getStoreById
   const fetchProductsByStore = async () => {
     if (!storeId) return
 
@@ -111,37 +120,54 @@ function ListProductByStoreStaff() {
       setLoading(true)
       setError(null)
 
-      const params: ProductQueryParams = {
-        pageSize: pageSize,
-        pageNumber: currentPage
-      }
+      const response = await storeApi.getStoreById(storeId)
 
-      // Add search filter
-      if (searchText.trim()) {
-        params.search = searchText.trim()
-      }
+      // Extract store info and products from response
+      const storeData: StoreResponse = response.data?.data || response.data || (response as unknown as StoreResponse)
 
-      // Add category filter
-      if (categoryFilter !== 'all') {
-        params.categoryId = categoryFilter
-      }
+      if (storeData) {
+        // Set store name
+        setStoreName(storeData.storeName || '')
 
-      // Add status filter
-      if (statusFilter !== 'all') {
-        params.status = statusFilter
-      }
+        // Extract products from storeData.products
+        let products: StoreProduct[] = []
+        if (Array.isArray(storeData.products)) {
+          products = storeData.products as StoreProduct[]
+        }
 
-      const response: ProductListResponse = await productApi.getByStore(storeId, params)
+        // Apply filters
+        let filteredProducts = products
 
-      if (response && response.data && Array.isArray(response.data)) {
-        const convertedProducts = response.data.map(convertProduct)
+        // Apply search filter
+        if (searchText.trim()) {
+          const searchLower = searchText.trim().toLowerCase()
+          filteredProducts = filteredProducts.filter(
+            (p) =>
+              p.name.toLowerCase().includes(searchLower) ||
+              (p.description && p.description.toLowerCase().includes(searchLower))
+          )
+        }
+
+        // Apply status filter
+        if (statusFilter !== 'all') {
+          filteredProducts = filteredProducts.filter((p) => p.status.toLowerCase() === statusFilter.toLowerCase())
+        }
+
+        // Note: Category filter is not available in store product data, so we skip it
+
+        // Convert to ProductData
+        const convertedProducts = filteredProducts.map(convertProduct)
         setProductData(convertedProducts)
-        setTotalProducts(response.pagination?.totalItems || convertedProducts.length)
+        setTotalProducts(convertedProducts.length)
       } else {
-        setError('Định dạng dữ liệu không đúng')
+        setError('Không thể tải thông tin cửa hàng')
       }
-    } catch (err: any) {
-      const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải danh sách sản phẩm'
+    } catch (err: unknown) {
+      console.error('Error fetching store products:', err)
+      const errorMessage =
+        (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (err as { message?: string })?.message ||
+        'Có lỗi xảy ra khi tải danh sách sản phẩm'
       setError(errorMessage)
       toast.error(errorMessage)
     } finally {
@@ -155,20 +181,21 @@ function ListProductByStoreStaff() {
 
   useEffect(() => {
     fetchProductsByStore()
-  }, [storeId, currentPage, categoryFilter, statusFilter])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId])
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchText, categoryFilter, statusFilter])
+    fetchProductsByStore()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText, statusFilter])
 
-  // Filter products for display
-  const filteredProducts = productData
-
-  // Calculate pagination
+  // Paginate products for display
   const totalFilteredProducts = totalProducts
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = Math.min(startIndex + pageSize, totalFilteredProducts)
+  const paginatedProducts = productData.slice(startIndex, endIndex)
 
   const handleFilter = () => {
     setCurrentPage(1)
@@ -181,7 +208,10 @@ function ListProductByStoreStaff() {
 
   // Render product card
   const renderProductCard = (product: ProductData) => {
-    const statusConfig = {
+    const statusConfig: Record<
+      'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Confirmed' | 'Denied',
+      { variant: 'default'; text: string; className: string }
+    > = {
       Pending: {
         variant: 'default' as const,
         text: 'Chờ duyệt',
@@ -194,13 +224,23 @@ function ListProductByStoreStaff() {
       },
       Rejected: {
         variant: 'default' as const,
-        text: 'Từ chối',
+        text: 'Từ chối xử lý',
         className: 'bg-red-100 text-red-700 hover:bg-red-100'
       },
       Processing: {
         variant: 'default' as const,
-        text: 'Đang xử lý',
+        text: 'Chờ xử lý',
         className: 'bg-blue-100 text-blue-700 hover:bg-blue-100'
+      },
+      Confirmed: {
+        variant: 'default' as const,
+        text: 'Xác nhận xử lý',
+        className: 'bg-green-100 text-green-700 hover:bg-green-100'
+      },
+      Denied: {
+        variant: 'default' as const,
+        text: 'Đã từ chối',
+        className: 'bg-red-100 text-red-700 hover:bg-red-100'
       }
     }
 
@@ -220,11 +260,7 @@ function ListProductByStoreStaff() {
           <div className='relative mb-4'>
             <div className='aspect-square rounded-lg overflow-hidden bg-gray-100'>
               {product.product.image ? (
-                <img
-                  src={product.product.image}
-                  alt={product.product.name}
-                  className='w-full h-full object-cover'
-                />
+                <img src={product.product.image} alt={product.product.name} className='w-full h-full object-cover' />
               ) : (
                 <div className='w-full h-full flex items-center justify-center'>
                   <Package size={48} className='text-gray-400' />
@@ -247,23 +283,21 @@ function ListProductByStoreStaff() {
 
           {/* Product Info */}
           <div className='space-y-3'>
-            <h3 className='text-lg font-semibold text-gray-900 line-clamp-2 min-h-[3.5rem]'>
-              {product.product.name}
-            </h3>
-            
-            <p className='text-sm text-gray-600 line-clamp-2 min-h-[2.5rem]'>
-              {product.description}
-            </p>
+            <h3 className='text-lg font-semibold text-gray-900 line-clamp-2 min-h-[3.5rem]'>{product.product.name}</h3>
+
+            <p className='text-sm text-gray-600 line-clamp-2 min-h-[2.5rem]'>{product.description}</p>
 
             {/* Stats */}
             <div className='flex items-center justify-between text-sm text-gray-600'>
               <div className='flex items-center gap-1'>
                 <Star size={14} className='text-yellow-500' />
-                <span>{product.rating.toFixed(1)}</span>
+                <span>
+                  {product.rating !== null && product.rating !== undefined ? product.rating.toFixed(1) : '0.0'}
+                </span>
               </div>
               <div className='flex items-center gap-1'>
                 <Tag size={14} className='text-gray-400' />
-                <span>{product.saleCount} đã bán</span>
+                <span>{product.saleCount || 0} đã bán</span>
               </div>
             </div>
 
@@ -291,11 +325,7 @@ function ListProductByStoreStaff() {
       {/* Header */}
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-4'>
-          <Button
-            variant='outline'
-            onClick={() => navigate('/staff/stores')}
-            className='flex items-center gap-2'
-          >
+          <Button variant='outline' onClick={() => navigate('/staff/stores')} className='flex items-center gap-2'>
             <ArrowLeft size={16} />
             Quay lại
           </Button>
@@ -393,7 +423,7 @@ function ListProductByStoreStaff() {
           <>
             {/* Products Grid */}
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
-              {filteredProducts.map(renderProductCard)}
+              {paginatedProducts.map(renderProductCard)}
             </div>
 
             {/* Pagination */}
@@ -416,7 +446,9 @@ function ListProductByStoreStaff() {
                 <Button
                   variant='outline'
                   size='sm'
-                  onClick={() => setCurrentPage((prev) => Math.min(Math.ceil(totalFilteredProducts / pageSize), prev + 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(Math.ceil(totalFilteredProducts / pageSize), prev + 1))
+                  }
                   disabled={currentPage >= Math.ceil(totalFilteredProducts / pageSize)}
                 >
                   Sau
