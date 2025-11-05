@@ -70,12 +70,66 @@ export interface ComboAdminParams {
   pageNumber?: number
 }
 
+// Interface cho Product Admin
+export interface AdminProduct {
+  id: string
+  parentId: string | null
+  storeId: string
+  provinceId: number
+  categoryId: string
+  name: string
+  description: string
+  productImages: string[]
+  videoPreviewUrl: string | null
+  videoPlayBackUrl: string | null
+  videoFallBackUrl: string | null
+  attributeName: string | null
+  attributeType: string | null
+  productType: string
+  material: string
+  hashtagIds: string[]
+  isActive: boolean
+  status: 'Pending' | 'Processing' | 'Confirmed' | 'Cancelled' | 'Rejected' | 'Denied' | 'Approved'
+  staffNote: string | null
+  approvedBy: string | null
+  assignedToId: string | null
+  price: number | null
+  saleCount: number | null
+  rating: number | null
+  reviewCount: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+// Interface cho Product Admin params
+export interface ProductAdminParams {
+  status?: 'Pending' | 'Processing' | 'Confirmed' | 'Cancelled' | 'Rejected' | 'Denied' | 'Approved'
+  staffId?: string
+  storeId?: string
+  pageSize?: number
+  pageNumber?: number
+  search?: string
+}
+
+// Interface cho Product Admin response
+export interface ProductAdminResponse {
+  status: number
+  message: string
+  data: AdminProduct[]
+  pagination?: {
+    pageSize: number
+    pageNumber: number
+    totalItems: number
+    totalPages: number
+  }
+}
+
 // API functions
 export const adminApi = {
   // Lấy danh sách tất cả staff
-  getAllStaff: async (): Promise<StaffListResponse> => {
+  getAllStaff: async (): Promise<any> => {
     const response = await axiosInstance.get(`${API_URL}/staff`)
-    return response.data
+    return response
   },
 
   // Gán staff cho store
@@ -142,5 +196,47 @@ export const adminApi = {
       console.error('getAllCombos API error:', error)
       throw error
     }
+  },
+
+  // Lấy danh sách sản phẩm cho admin
+  getProducts: async (params?: ProductAdminParams): Promise<any> => {
+    const queryParams = new URLSearchParams()
+
+    if (params?.status) {
+      queryParams.append('Status', params.status)
+    }
+
+    if (params?.staffId) {
+      queryParams.append('StaffId', params.staffId)
+    }
+
+    if (params?.storeId) {
+      queryParams.append('StoreId', params.storeId)
+    }
+
+    if (params?.pageSize) {
+      queryParams.append('PageSize', params.pageSize.toString())
+    }
+
+    if (params?.pageNumber) {
+      queryParams.append('PageNumber', params.pageNumber.toString())
+    }
+
+    if (params?.search) {
+      queryParams.append('Search', params.search)
+    }
+
+    const url = `${API_URL}/products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+
+    const response = await axiosInstance.get(url)
+    return response
+  },
+
+  // Gán nhân viên cho sản phẩm
+  reassignProduct: async (productId: string, newStaffId: string): Promise<AssignStaffResponse> => {
+    const response = await axiosInstance.patch(`${API_URL}/products/${productId}/reassign`, {
+      newStaffId
+    })
+    return response.data
   }
 }

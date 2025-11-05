@@ -148,16 +148,16 @@ function ManagerProduct() {
       key: 'createdAt',
       render: (date) => <span className='text-gray-700'>{formatDate(date)}</span>
     },
-    {
-      title: 'Đánh giá',
-      dataIndex: 'rating',
-      key: 'rating',
-      render: (rating, record) => (
-        <span className='text-gray-700'>
-          {rating.toFixed(1)} ⭐ ({record.reviewCount})
-        </span>
-      )
-    },
+    // {
+    //   title: 'Đánh giá',
+    //   dataIndex: 'rating',
+    //   key: 'rating',
+    //   render: (rating, record) => (
+    //     <span className='text-gray-700'>
+    //       {rating.toFixed(1)} ⭐ ({record.reviewCount})
+    //     </span>
+    //   )
+    // },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
