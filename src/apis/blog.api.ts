@@ -24,7 +24,7 @@ export interface BlogUser {
 export interface BlogItem {
   blogId: string
   userId: string
-  blogCategoryId: string[]
+  blogCategoryId: string
   title: string
   description: string
   content: string
@@ -62,16 +62,16 @@ export interface BlogParams {
 // Interface cho tạo Blog mới
 export interface CreateBlogInput {
   userId: string
-  blogCategoryId: string[]
+  blogCategoryId: string
   title: string
   description: string
   content: string
-  image: string
+  image: File | string // Có thể là File object hoặc string (URL)
 }
 
 // Interface cho cập nhật Blog
 export interface UpdateBlogInput {
-  blogCategoryId?: string[]
+  blogCategoryId?: string
   title?: string
   description?: string
   content?: string
@@ -124,16 +124,15 @@ export const createBlog = async (data: CreateBlogInput) => {
   // Tạo FormData để match với API requirement (multipart/form-data)
   const formData = new FormData()
   formData.append('UserId', data.userId)
-
-  // Xử lý array cho blogCategoryId
-  data.blogCategoryId.forEach((categoryId, index) => {
-    formData.append(`BlogCategoryId[${index}]`, categoryId)
-  })
-
+  formData.append('BlogCategoryId', data.blogCategoryId)
   formData.append('Title', data.title)
-  formData.append('Description', data.description)
-  formData.append('Content', data.content)
-  formData.append('Image', data.image)
+  formData.append('Description', data.description || '')
+  formData.append('Content', data.content || '')
+  
+  // Image - FormData sẽ tự động xử lý File object hoặc string
+  if (data.image) {
+    formData.append('Image', data.image)
+  }
 
   const response = await axiosInstance.post(API_URL, formData, {
     headers: {
@@ -172,10 +171,8 @@ function convertToFormData(data: UpdateBlogInput): FormData {
   if (data.description) formData.append('Description', data.description)
   if (data.content) formData.append('Content', data.content)
 
-  if (data.blogCategoryId && data.blogCategoryId.length > 0) {
-    data.blogCategoryId.forEach((categoryId, index) => {
-      formData.append(`BlogCategoryId[${index}]`, categoryId)
-    })
+  if (data.blogCategoryId) {
+    formData.append('BlogCategoryId', data.blogCategoryId)
   }
 
   if (data.image) formData.append('Image', data.image)
@@ -220,14 +217,28 @@ export const updateBlogActiveStatus = async (id: string, isActive: boolean) => {
   return response
 }
 
-// Function để xóa Blog
+// Function để xóa Blog (soft delete - set IsActive = false)
 export const deleteBlog = async (id: string) => {
-  const response = await axiosInstance.put(`/Blog/delete-blog/${id}`, null, {
-    headers: {
-      'Content-Type': 'application/json'
+  try {
+    // Thử PUT method trước (theo endpoint hiện tại)
+    const response = await axiosInstance.put(`/Blog/delete-blog/${id}`, null, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    return response
+  } catch (error: any) {
+    // Nếu PUT không work, thử DELETE method
+    if (error?.response?.status === 404 || error?.response?.status === 405) {
+      const response = await axiosInstance.delete(`/Blog/${id}`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      return response
     }
-  })
-  return response
+    throw error
+  }
 }
 
 // Export tất cả functions như một object để dễ sử dụng
