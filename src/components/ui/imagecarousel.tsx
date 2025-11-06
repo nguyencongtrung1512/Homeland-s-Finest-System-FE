@@ -1,5 +1,4 @@
-'use client'
-import React, { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 const classNames = (...classes: (string | boolean | undefined | null)[]): string => {
   return classes.filter(Boolean).join(' ')

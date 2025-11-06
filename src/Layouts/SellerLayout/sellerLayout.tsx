@@ -351,33 +351,8 @@ function SellerLayout() {
             />
           )}
 
-          {/* Main Content */}
-          {!isStoreApproved && store ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏪</div>
-              <h2 style={{ color: '#595959', marginBottom: '8px' }}>Cửa hàng chưa được phê duyệt</h2>
-              <p style={{ color: '#8c8c8c', marginBottom: '24px' }}>
-                Bạn chỉ có thể truy cập một số chức năng cơ bản cho đến khi cửa hàng được phê duyệt.
-              </p>
-              <div
-                style={{
-                  background: '#fafafa',
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  maxWidth: '500px',
-                  margin: '0 auto'
-                }}
-              >
-                <h4 style={{ margin: '0 0 8px 0', color: '#262626' }}>Trạng thái hiện tại:</h4>
-                <p style={{ margin: 0, color: '#595959' }}>
-                  <strong>{store.storeName}</strong> - {statusMessage?.message}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <Outlet />
-          )}
+          {/* Main Content - Always show outlet to allow viewing pages */}
+          <Outlet />
         </Content>
       </Layout>
 

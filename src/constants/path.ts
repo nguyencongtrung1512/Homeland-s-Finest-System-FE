@@ -36,7 +36,6 @@ export const path = {
   detailComboSeller: 'combo-management/detail-combo/:id',
   ordersSeller: 'order-management',
   myStorySeller: 'my-story',
-  createMyStorySeller: 'create-story',
   detailMyStorySeller: 'detailMyStory/:storyId',
   chatWithCustomerSeller: 'chat',
   financeSeller: 'finance',

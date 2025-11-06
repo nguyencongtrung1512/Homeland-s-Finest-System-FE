@@ -16,7 +16,6 @@ import SellerLayout from './Layouts/SellerLayout/sellerLayout'
 import ProductsSeller from './pages/seller/products/products'
 import CreateProduct from './pages/seller/products/createProduct'
 import OrderManagement from './pages/seller/order/order'
-import CreateMyStory from './pages/seller/mystory/createMyStory'
 import ChatWithCustomer from './pages/seller/ChatWithCustomer/ChatWithCustomer'
 import FinanceManagement from './pages/seller/finance/finance'
 import SetupStore from './pages/seller/setupStore/setupStore'
@@ -202,10 +201,6 @@ export default function useRouteElements() {
             {
               path: path.myStorySeller,
               element: <MyStory />
-            },
-            {
-              path: path.createMyStorySeller,
-              element: <CreateMyStory />
             },
             {
               path: path.chatWithCustomerSeller,
