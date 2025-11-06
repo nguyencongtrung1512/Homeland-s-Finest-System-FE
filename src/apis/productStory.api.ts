@@ -5,7 +5,7 @@ const API_URL = `/ProductStory`
 
 export const productStoryApi = {
   getByProductId: async (productId: string) => {
-    return await axiosInstance.get<ProductStoryResponse>(`${API_URL}/by-product/${productId}`)
+    return await axiosInstance.get<any>(`${API_URL}/by-product/${productId}`)
   },
 
   create: async (data: {

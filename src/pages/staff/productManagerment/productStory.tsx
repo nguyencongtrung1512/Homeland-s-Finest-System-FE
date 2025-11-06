@@ -19,7 +19,6 @@ function ProductStoryComponent({ productId }: ProductStoryProps) {
     try {
       setLoading(true)
       const response = await productStoryApi.getByProductId(productId)
-      console.log('📖 Product stories response:', response)
 
       if (response.status === 200) {
         if (response.data) {

@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCart } from '../../../../../contexts/cart.context'
 import { useAuth } from '../../../../../contexts/auth.context'
-import { useProductDetailContext } from '../productsDetail'
 import {
   Dialog,
   DialogContent,
@@ -14,10 +13,10 @@ import {
 import { Button } from '../../../../../components/ui/button'
 import { useProductDetail } from '../../../../../hooks/useProductDetail'
 
-// ✅ Type definitions
 interface VariantOption {
   id: string
   name: string
+  attributeName?: string
   description: string | null
   productImages: string[] | null
   basePrice: number
@@ -39,7 +38,7 @@ interface VariantGroup {
   options: VariantOption[]
 }
 
-interface Product {
+interface ProductWithVariants {
   id: string
   storeId: string
   storeName: string
@@ -55,9 +54,10 @@ interface Product {
   isActive: boolean
   typeProduct: string | null
   status: string | null
+  summaryPrice?: string
   variantGroups: VariantGroup[]
-  productCategories: any
-  productCertificateDTOs: any[]
+  productCategories: unknown
+  productCertificateDTOs: unknown[]
 }
 
 // ✅ Selection state type: { groupAttributeType: optionId }
@@ -78,16 +78,65 @@ function ProductGallery() {
   const { addToCart } = useCart()
   const { isAuthenticated } = useAuth()
 
+  // ✅ Collect all images from product and all variants (recursive)
+  const allImages = useMemo(() => {
+    if (!product) return []
+
+    const productData = product as unknown as ProductWithVariants
+    const imageSet = new Set<string>()
+
+    // Add product images
+    if (productData.productImages && productData.productImages.length > 0) {
+      productData.productImages.forEach((img) => {
+        if (img) imageSet.add(img)
+      })
+    }
+
+    // Helper function to collect images from variant options recursively
+    const collectVariantImages = (options: VariantOption[]) => {
+      options.forEach((option) => {
+        if (option.productImages && option.productImages.length > 0) {
+          option.productImages.forEach((img) => {
+            if (img) imageSet.add(img)
+          })
+        }
+
+        // Recursively collect from child variant groups
+        if (option.childVariantGroups && option.childVariantGroups.length > 0) {
+          option.childVariantGroups.forEach((childGroup) => {
+            collectVariantImages(childGroup.options)
+          })
+        }
+      })
+    }
+
+    // Collect from all variant groups
+    if (productData.variantGroups && productData.variantGroups.length > 0) {
+      productData.variantGroups.forEach((group) => {
+        collectVariantImages(group.options)
+      })
+    }
+
+    return Array.from(imageSet)
+  }, [product])
+
+  // ✅ Get product data with variants
+  const getProductData = (): ProductWithVariants | null => {
+    if (!product) return null
+    return product as unknown as ProductWithVariants
+  }
+
   // ✅ Get deepest selected variant
   const getCurrentVariant = (): VariantOption | null => {
-    if (!product?.variantGroups || product.variantGroups.length === 0) {
+    const productData = getProductData()
+    if (!productData?.variantGroups || productData.variantGroups.length === 0) {
       return null
     }
 
     let currentOption: VariantOption | null = null
 
     // Level 1: Find selected option in main groups
-    for (const group of product.variantGroups) {
+    for (const group of productData.variantGroups) {
       const selectedId = selectedVariants[group.attributeType]
       if (selectedId) {
         currentOption = group.options.find((opt) => opt.id === selectedId) || null
@@ -119,11 +168,12 @@ function ProductGallery() {
 
   // ✅ Auto-select first option in each group on mount
   useEffect(() => {
-    if (product?.variantGroups && product.variantGroups.length > 0) {
+    const productData = getProductData()
+    if (productData?.variantGroups && productData.variantGroups.length > 0) {
       const initialSelection: VariantSelection = {}
 
       // Select first option in level 1
-      const firstGroup = product.variantGroups[0]
+      const firstGroup = productData.variantGroups[0]
       if (firstGroup.options.length > 0) {
         const firstOption = firstGroup.options[0]
         initialSelection[firstGroup.attributeType] = firstOption.id
@@ -139,7 +189,20 @@ function ProductGallery() {
 
       setSelectedVariants(initialSelection)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product])
+
+  // ✅ Auto-switch to first image of selected variant when variant changes
+  useEffect(() => {
+    if (currentVariant?.productImages && currentVariant.productImages.length > 0 && allImages.length > 0) {
+      const firstVariantImage = currentVariant.productImages[0]
+      const imageIndex = allImages.findIndex((img) => img === firstVariantImage)
+      if (imageIndex !== -1) {
+        setSelectedImage(imageIndex)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentVariant?.id])
 
   const handleAddToCart = async () => {
     if (!currentVariant) {
@@ -224,9 +287,11 @@ function ProductGallery() {
     return null
   }
 
-  // ✅ Display images: from selected variant or product
-  const displayImages = currentVariant?.productImages || product.productImages || []
-  const mainImage = displayImages.length > 0 ? displayImages[selectedImage] : '/images/placeholder.jpg'
+  // ✅ Main image from all images collection
+  const mainImage =
+    allImages.length > 0 && selectedImage < allImages.length ? allImages[selectedImage] : '/images/placeholder.jpg'
+
+  const productData = getProductData()
 
   return (
     <>
@@ -248,16 +313,15 @@ function ProductGallery() {
                 />
               </div>
 
-              {/* Thumbnail Images */}
-              {displayImages.length > 1 && (
+              {/* Thumbnail Images - All images from product and variants */}
+              {allImages.length > 0 && (
                 <div className='grid grid-cols-6 gap-2'>
-                  {displayImages.map((image, index) => (
+                  {allImages.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedImage(index)}
-                      className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-colors ${
-                        selectedImage === index ? 'border-orange-500' : 'border-transparent hover:border-gray-300'
-                      }`}
+                      className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-colors ${selectedImage === index ? 'border-orange-500' : 'border-transparent hover:border-gray-300'
+                        }`}
                     >
                       <img
                         src={image}
@@ -316,32 +380,43 @@ function ProductGallery() {
               {/* Price */}
               <div className='bg-gray-50 px-5 py-4 rounded'>
                 <div className='flex items-center gap-4'>
-                  {currentVariant?.basePrice && currentVariant.basePrice > currentPrice && (
-                    <div className='text-gray-400 line-through text-base'>
-                      ₫{currentVariant.basePrice.toLocaleString('vi-VN')}
-                    </div>
-                  )}
-                  <div className='text-3xl font-medium text-orange-500'>₫{currentPrice.toLocaleString('vi-VN')}</div>
-                  {currentVariant?.basePrice && currentVariant.basePrice > currentPrice && (
-                    <div className='bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium'>
-                      -{Math.round(((currentVariant.basePrice - currentPrice) / currentVariant.basePrice) * 100)}% GIẢM
-                    </div>
+                  {currentPrice === 0 && productData?.summaryPrice ? (
+                    <div className='text-3xl font-medium text-orange-500'>{productData.summaryPrice}</div>
+                  ) : (
+                    <>
+                      {currentVariant?.basePrice && currentVariant.basePrice > currentPrice && (
+                        <div className='text-gray-400 line-through text-base'>
+                          ₫{currentVariant.basePrice.toLocaleString('vi-VN')}
+                        </div>
+                      )}
+                      <div className='text-3xl font-medium text-orange-500'>
+                        ₫{currentPrice.toLocaleString('vi-VN')}
+                      </div>
+                      {currentVariant?.basePrice && currentVariant.basePrice > currentPrice && (
+                        <div className='bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium'>
+                          -{Math.round(((currentVariant.basePrice - currentPrice) / currentVariant.basePrice) * 100)}%
+                          GIẢM
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
 
               {/* ✅ Variant Groups (Level 1) */}
-              {product.variantGroups && product.variantGroups.length > 0 && (
+              {productData?.variantGroups && productData.variantGroups.length > 0 && (
                 <div className='space-y-5'>
-                  {product.variantGroups.map((group, groupIndex) => (
+                  {productData.variantGroups.map((group, groupIndex) => (
                     <div key={groupIndex}>
                       {/* Group Label */}
                       <div className='flex items-center gap-5 mb-3'>
-                        <span className='text-gray-600 min-w-[100px]'>{group.attributeType}</span>
+                        <span className='text-gray-600 w-[120px] flex-shrink-0'>{group.attributeType}</span>
                         <div className='flex flex-wrap gap-2'>
                           {group.options.map((option) => {
                             const isSelected = selectedVariants[group.attributeType] === option.id
                             const isDisabled = !option.isActive || option.quantity === 0
+                            const variantImage =
+                              option.productImages && option.productImages.length > 0 ? option.productImages[0] : null
 
                             return (
                               <button
@@ -349,17 +424,27 @@ function ProductGallery() {
                                 onClick={() => handleVariantSelect(group.attributeType, option.id, option)}
                                 disabled={isDisabled}
                                 className={`
-                                  min-w-[80px] px-4 py-2 border rounded text-sm transition-all
-                                  ${
-                                    isSelected
-                                      ? 'border-orange-500 text-orange-500 bg-orange-50'
-                                      : 'border-gray-300 text-gray-700 hover:border-orange-300'
+                                  flex items-center gap-2 px-3 py-2 border rounded text-sm transition-all
+                                  ${isSelected
+                                    ? 'border-orange-500 text-orange-500 bg-orange-50'
+                                    : 'border-gray-300 text-gray-700 hover:border-orange-300'
                                   }
                                   ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
                                   relative
                                 `}
                               >
-                                {option.name}
+                                {variantImage && (
+                                  <img
+                                    src={variantImage}
+                                    alt={option.name}
+                                    className='w-8 h-8 object-cover rounded border border-gray-200'
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement
+                                      target.style.display = 'none'
+                                    }}
+                                  />
+                                )}
+                                <span>{option.attributeName || option.name}</span>
                                 {isSelected && (
                                   <svg
                                     className='absolute bottom-0 right-0 w-4 h-4 text-orange-500'
@@ -388,14 +473,18 @@ function ProductGallery() {
                         const selectedParent = getSelectedParentOption(group)
                         if (selectedParent?.childVariantGroups && selectedParent.childVariantGroups.length > 0) {
                           return selectedParent.childVariantGroups.map((childGroup, childIndex) => (
-                            <div key={childIndex} className='ml-[100px] mt-3'>
+                            <div key={childIndex} className=' mt-10 mb-10'>
                               <div className='flex items-center gap-5 mb-3'>
-                                <span className='text-gray-600 min-w-[100px]'>{childGroup.attributeType}</span>
+                                <span className='text-gray-600 w-[120px] flex-shrink-0'>{childGroup.attributeType}</span>
                                 <div className='flex flex-wrap gap-2'>
                                   {childGroup.options.map((childOption) => {
                                     const isChildSelected =
                                       selectedVariants[childGroup.attributeType] === childOption.id
                                     const isChildDisabled = !childOption.isActive || childOption.quantity === 0
+                                    const childVariantImage =
+                                      childOption.productImages && childOption.productImages.length > 0
+                                        ? childOption.productImages[0]
+                                        : null
 
                                     return (
                                       <button
@@ -403,17 +492,27 @@ function ProductGallery() {
                                         onClick={() => handleVariantSelect(childGroup.attributeType, childOption.id)}
                                         disabled={isChildDisabled}
                                         className={`
-                                          min-w-[80px] px-4 py-2 border rounded text-sm transition-all
-                                          ${
-                                            isChildSelected
-                                              ? 'border-orange-500 text-orange-500 bg-orange-50'
-                                              : 'border-gray-300 text-gray-700 hover:border-orange-300'
+                                          flex items-center gap-2 px-3 py-2 border rounded text-sm transition-all
+                                          ${isChildSelected
+                                            ? 'border-orange-500 text-orange-500 bg-orange-50'
+                                            : 'border-gray-300 text-gray-700 hover:border-orange-300'
                                           }
                                           ${isChildDisabled ? 'opacity-40 cursor-not-allowed' : ''}
                                           relative
                                         `}
                                       >
-                                        {childOption.name}
+                                        {childVariantImage && (
+                                          <img
+                                            src={childVariantImage}
+                                            alt={childOption.name}
+                                            className='w-8 h-8 object-cover rounded border border-gray-200'
+                                            onError={(e) => {
+                                              const target = e.target as HTMLImageElement
+                                              target.style.display = 'none'
+                                            }}
+                                          />
+                                        )}
+                                        <span>{childOption.attributeName || childOption.name}</span>
                                         {isChildSelected && (
                                           <svg
                                             className='absolute bottom-0 right-0 w-4 h-4 text-orange-500'
@@ -502,7 +601,7 @@ function ProductGallery() {
                           d='M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z'
                         />
                       </svg>
-                      {!product.isActive || currentStock === 0 ? 'Hết hàng' : 'Thêm Vào Giỏ Hàng'}
+                      {!product.isActive || currentStock === 0 ? 'Thêm Vào Giỏ Hàng' : 'Thêm Vào Giỏ Hàng'}
                     </>
                   )}
                 </button>
@@ -512,7 +611,7 @@ function ProductGallery() {
                   disabled={!product.isActive || currentStock === 0 || !currentVariant}
                   className='flex-1 bg-orange-500 text-white py-3 px-6 rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-normal'
                 >
-                  {!product.isActive || currentStock === 0 ? 'Hết hàng' : 'Mua Ngay'}
+                  {!product.isActive || currentStock === 0 ? 'Mua Ngay' : 'Mua Ngay'}
                 </button>
               </div>
 
