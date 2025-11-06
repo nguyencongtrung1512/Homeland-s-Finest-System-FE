@@ -303,7 +303,7 @@ function HelpCenter() {
         </div>
 
         {/* Tabs */}
-        <div className='flex space-x-8 border-b border-gray-200 mb-6'>
+        <div className='flex space-x-8 pb-3 border-b border-gray-200 mb-6'>
           {[
             { key: 'all', label: 'Tất cả' },
             { key: 'pending', label: 'Đang chờ xử lý' },
@@ -312,7 +312,7 @@ function HelpCenter() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 text-sm font-medium transition-colors ${activeTab === tab.key
+              className={`pb-3 px-3 text-sm font-medium transition-colors ${activeTab === tab.key
                 ? 'text-green-600 border-b-2 border-green-600'
                 : 'text-gray-600 hover:text-gray-900'
                 }`}
