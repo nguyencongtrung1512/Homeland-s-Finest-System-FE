@@ -160,7 +160,7 @@ export default function Carousel() {
     }
   }
 
-  const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const dragThreshold = 75
     const dragOffset = info.offset.x
     if (dragOffset > dragThreshold) {
@@ -210,11 +210,10 @@ export default function Carousel() {
                 <button
                   key={index}
                   onClick={() => changeSlide(index)}
-                  className={`h-2 rounded-full transition-all duration-300 focus:outline-none ${
-                    activeIndex === index
-                      ? 'w-6 bg-pink-400'
-                      : 'w-2 bg-gray-300 dark:bg-neutral-600 hover:bg-gray-400 dark:hover:bg-neutral-500'
-                  }`}
+                  className={`h-2 rounded-full transition-all duration-300 focus:outline-none ${activeIndex === index
+                    ? 'w-6 bg-pink-400'
+                    : 'w-2 bg-gray-300 dark:bg-neutral-600 hover:bg-gray-400 dark:hover:bg-neutral-500'
+                    }`}
                   aria-label={`Go to slide ${index + 1}`}
                 />
               ))}
