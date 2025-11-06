@@ -8,7 +8,8 @@ import {
   type DisplayUserPromotionToApply,
   type PromotionFilter,
   type PromotionSort,
-  type PromotionStats
+  type PromotionStats,
+  type PaginatedApiResponse
 } from '../types/promotionType'
 import { promotionApi } from '../apis/promotion.api'
 
@@ -243,16 +244,56 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
     setError(null)
 
     try {
-      const response = await promotionApi.getCartAppliedPromotions(cartId)
-      setAppliedPromotions(response.data)
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Không thể tải promotions đã áp dụng'
+      // Fetch applied promotions from all three APIs
+      const [globalResponse, storeResponse, userResponse] = await Promise.all([
+        promotionApi.getGlobalPromotions(cartId, 0, 1),
+        promotionApi.getStorePromotions(cartId, 0, 1),
+        promotionApi.getCartUserPromotionsWithUsage(cartId, 0, 1)
+      ])
+
+      // Combine all applied promotions
+      const appliedPromotions: CartPromotionDto[] = [
+        ...(globalResponse.data?.applied || []),
+        ...(storeResponse.data?.applied || []),
+        ...(userResponse.data?.applied || [])
+      ].map((promotion) => {
+        // Handle different promotion types
+        const promo = 'promotion' in promotion ? promotion.promotion : promotion
+
+        return {
+          cartPromotionId: promo.id,
+          promotionId: promo.id,
+          type: promo.type,
+          title: promo.title,
+          description: promo.description,
+          discountType: promo.discountType,
+          discountValue: promo.discountValue,
+          discountAmount: promo.discountValue, // Assuming discountAmount = discountValue for now
+          minValueDiscount: promo.minValueDiscount || 0,
+          appliedAt: new Date().toISOString(),
+          expiredAt: promo.endDate,
+          minutesLeft: 0,
+          secondsLeft: 0,
+          status: 'Reserved' as const,
+          isExpired: false,
+          isExpiringSoon: false,
+          discountDisplayText:
+            promo.discountType === 'percentage'
+              ? `Giảm ${promo.discountValue}%`
+              : `Giảm ${promo.discountValue.toLocaleString('vi-VN')}₫`,
+          timeLeftDisplayText: 'Còn hiệu lực'
+        }
+      })
+
+      setAppliedPromotions(appliedPromotions)
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Không thể tải promotions đã áp dụng'
       setError(errorMessage)
       console.error('Error fetching applied promotions:', err)
     } finally {
       setLoading({ applied: false })
     }
-  }, [])
+  }, [setLoading])
 
   const fetchAvailablePromotions = useCallback(async (cartId: string) => {
     if (!cartId) return
@@ -263,14 +304,14 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
     try {
       const promotions = await promotionApi.getAllAvailablePromotionsForCart(cartId)
       setAvailablePromotions(promotions)
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Không thể tải promotions có sẵn'
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Không thể tải promotions có sẵn'
       setError(errorMessage)
       console.error('Error fetching available promotions:', err)
     } finally {
       setLoading({ available: false })
     }
-  }, [])
+  }, [setLoading])
 
   const fetchUserPromotions = useCallback(
     async (userId: string, pageNumber: number = 1) => {
@@ -281,21 +322,22 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         const response = await promotionApi.getUserPromotions(userId, pagination.pageSize, pageNumber)
-        setUserPromotions(response.data)
+        const paginatedResponse = response as unknown as PaginatedApiResponse<UserPromotionDetailDTO[]>
+        setUserPromotions(paginatedResponse.data)
         setPagination({
-          pageNumber: response.pagination.pageNumber,
-          pageSize: response.pagination.pageSize,
-          totalItems: response.pagination.totalItems
+          pageNumber: paginatedResponse.pagination?.pageNumber || pageNumber,
+          pageSize: paginatedResponse.pagination?.pageSize || pagination.pageSize,
+          totalItems: paginatedResponse.pagination?.totalItems || paginatedResponse.data.length
         })
-      } catch (err: any) {
-        const errorMessage = err?.message || 'Không thể tải promotions của user'
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Không thể tải promotions của user'
         setError(errorMessage)
         console.error('Error fetching user promotions:', err)
       } finally {
         setLoading({ user: false })
       }
     },
-    [pagination.pageSize]
+    [pagination.pageSize, setLoading, setPagination]
   )
 
   const fetchAdminPromotions = useCallback(
@@ -314,21 +356,22 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
           currentSort
         )
 
-        setAdminPromotions(response.data)
+        const paginatedResponse = response as unknown as PaginatedApiResponse<PromotionDTO[]>
+        setAdminPromotions(paginatedResponse.data)
         setPagination({
-          pageNumber: response.pagination.pageNumber,
-          pageSize: response.pagination.pageSize,
-          totalItems: response.pagination.totalItems
+          pageNumber: paginatedResponse.pagination?.pageNumber || pageNumber,
+          pageSize: paginatedResponse.pagination?.pageSize || pagination.pageSize,
+          totalItems: paginatedResponse.pagination?.totalItems || paginatedResponse.data.length
         })
-      } catch (err: any) {
-        const errorMessage = err?.message || 'Không thể tải promotions admin'
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Không thể tải promotions admin'
         setError(errorMessage)
         console.error('Error fetching admin promotions:', err)
       } finally {
         setLoading({ admin: false })
       }
     },
-    [filters, sort, pagination.pageSize]
+    [filters, sort, pagination.pageSize, setLoading, setPagination]
   )
 
   const fetchSellerPromotions = useCallback(
@@ -350,21 +393,22 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
           currentSort
         )
 
-        setSellerPromotions(response.data)
+        const paginatedResponse = response as unknown as PaginatedApiResponse<PromotionDTO[]>
+        setSellerPromotions(paginatedResponse.data)
         setPagination({
-          pageNumber: response.pagination.pageNumber,
-          pageSize: response.pagination.pageSize,
-          totalItems: response.pagination.totalItems
+          pageNumber: paginatedResponse.pagination?.pageNumber || pageNumber,
+          pageSize: paginatedResponse.pagination?.pageSize || pagination.pageSize,
+          totalItems: paginatedResponse.pagination?.totalItems || paginatedResponse.data.length
         })
-      } catch (err: any) {
-        const errorMessage = err?.message || 'Không thể tải promotions của seller'
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Không thể tải promotions của seller'
         setError(errorMessage)
         console.error('Error fetching seller promotions:', err)
       } finally {
         setLoading({ seller: false })
       }
     },
-    [filters, sort, pagination.pageSize]
+    [filters, sort, pagination.pageSize, setLoading, setPagination]
   )
 
   const applyPromotion = useCallback(
@@ -373,7 +417,7 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
       setError(null)
 
       try {
-        const response = await promotionApi.applyPromotionToCart({ cartId, promotionId })
+        await promotionApi.applyPromotionToCart({ cartId, promotionId })
 
         // Refresh applied promotions
         await fetchAppliedPromotions(cartId)
@@ -384,8 +428,8 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
         })
 
         return true
-      } catch (err: any) {
-        const errorMessage = err?.message || 'Không thể áp dụng Mã khuyến mãi '
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Không thể áp dụng Mã khuyến mãi '
         setError(errorMessage)
         toast.error(errorMessage, {
           position: 'top-right',
@@ -396,7 +440,7 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
         setLoading({ applying: false })
       }
     },
-    [fetchAppliedPromotions]
+    [fetchAppliedPromotions, setLoading]
   )
 
   const removePromotion = useCallback(
@@ -416,8 +460,8 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
         })
 
         return true
-      } catch (err: any) {
-        const errorMessage = err?.message || 'Không thể hủy áp dụng Mã khuyến mãi '
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Không thể hủy áp dụng Mã khuyến mãi '
         setError(errorMessage)
         toast.error(errorMessage, {
           position: 'top-right',
@@ -428,7 +472,7 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
         setLoading({ removing: false })
       }
     },
-    [fetchAppliedPromotions]
+    [fetchAppliedPromotions, setLoading]
   )
 
   const claimPromotion = useCallback(
@@ -437,7 +481,7 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
       setError(null)
 
       try {
-        await promotionApi.claimPromotion({ promotionID: promotionId, userID: userId })
+        await promotionApi.claimPromotion(promotionId, userId)
 
         // Refresh user promotions
         await fetchUserPromotions(userId)
@@ -448,8 +492,8 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
         })
 
         return true
-      } catch (err: any) {
-        const errorMessage = err?.message || 'Không thể nhận Mã khuyến mãi '
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Không thể nhận Mã khuyến mãi '
         setError(errorMessage)
         toast.error(errorMessage, {
           position: 'top-right',
@@ -460,7 +504,7 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
         setLoading({ user: false })
       }
     },
-    [fetchUserPromotions]
+    [fetchUserPromotions, setLoading]
   )
 
   const refreshPromotions = useCallback(
@@ -492,10 +536,10 @@ export const PromotionProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await promotionApi.getPromotionStats()
       setStats(response.data)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching promotion stats:', err)
     }
-  }, [])
+  }, [setStats])
 
   // ========================================
   // AUTO REFRESH EXPIRED PROMOTIONS

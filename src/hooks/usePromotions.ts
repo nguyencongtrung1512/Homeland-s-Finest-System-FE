@@ -14,7 +14,9 @@ import {
   type PromotionSort,
   type PromotionAdminRequest,
   type PromotionSellerRequest,
-  type PaginationState
+  type PaginationState,
+  type PaginatedApiResponse,
+  type PromotionDetailDTO
 } from '../types/promotionType'
 import { promotionApi } from '../apis/promotion.api'
 
@@ -114,9 +116,9 @@ export const usePromotions = (cartId: string): UsePromotionsReturn => {
 
       // ✅ Fetch với usage info mặc định
       const [globalResponse, storeResponse, userResponse] = await Promise.all([
-        promotionApi.getGlobalPromotions(cartId, 0, 1),  // API đã có usage info
-        promotionApi.getStorePromotions(cartId, 0, 1),   // API đã có usage info  
-        promotionApi.getCartUserPromotionsWithUsage(cartId, 0, 1)     // API đã có usage info
+        promotionApi.getGlobalPromotions(cartId, 0, 1), // API đã có usage info
+        promotionApi.getStorePromotions(cartId, 0, 1), // API đã có usage info
+        promotionApi.getCartUserPromotionsWithUsage(cartId, 0, 1) // API đã có usage info
       ])
 
       setAvailablePromotions({
@@ -424,11 +426,12 @@ export const useUserPromotions = (userId: string) => {
 
       try {
         const response = await promotionApi.getUserPromotions(userId, pagination.pageSize, pageNumber)
-        setUserPromotions(response.data)
+        const paginatedResponse = response as unknown as PaginatedApiResponse<UserPromotionDetailDTO[]>
+        setUserPromotions(paginatedResponse.data)
         setPagination({
-          pageNumber: response.pagination.pageNumber,
-          pageSize: response.pagination.pageSize,
-          totalItems: response.pagination.totalItems
+          pageNumber: paginatedResponse.pagination?.pageNumber || pageNumber,
+          pageSize: paginatedResponse.pagination?.pageSize || pagination.pageSize,
+          totalItems: paginatedResponse.pagination?.totalItems || paginatedResponse.data.length
         })
       } catch (err: unknown) {
         console.error('Error fetching user promotions:', err)
@@ -445,8 +448,8 @@ export const useUserPromotions = (userId: string) => {
     async (promotionId: string): Promise<boolean> => {
       setLoading(true)
       try {
-        await promotionApi.claimPromotion({ promotionID: promotionId, userID: userId })
-        await fetchUserPromotions()
+        await promotionApi.claimPromotion(promotionId, userId)
+        await fetchUserPromotions(pagination.pageNumber)
 
         toast.success('Nhận Mã khuyến mãi  thành công!', {
           position: 'top-right',
@@ -465,7 +468,7 @@ export const useUserPromotions = (userId: string) => {
         setLoading(false)
       }
     },
-    [userId, fetchUserPromotions]
+    [userId, fetchUserPromotions, pagination.pageNumber]
   )
 
   useEffect(() => {
@@ -535,12 +538,19 @@ export const useAdminPromotions = () => {
           currentSort
         )
 
-        setAdminPromotions(response.data)
+        const paginatedResponse = response as unknown as PaginatedApiResponse<PromotionDTO[]>
+        setAdminPromotions(paginatedResponse.data)
         setPagination({
-          pageNumber: response.pagination.pageNumber,
-          pageSize: response.pagination.pageSize,
-          totalItems: response.pagination.totalItems,
-          totalPages: Math.ceil(response.pagination.totalItems / response.pagination.pageSize) || 1
+          pageNumber: paginatedResponse.pagination?.pageNumber || pageNumber,
+          pageSize: paginatedResponse.pagination?.pageSize || pagination.pageSize,
+          totalItems: paginatedResponse.pagination?.totalItems || paginatedResponse.data.length,
+          totalPages:
+            paginatedResponse.pagination?.totalPages ||
+            Math.ceil(
+              (paginatedResponse.pagination?.totalItems || paginatedResponse.data.length) /
+              (paginatedResponse.pagination?.pageSize || pagination.pageSize || 1)
+            ) ||
+            1
         })
       } catch (err: unknown) {
         console.error('Error fetching admin promotions:', err)
@@ -572,7 +582,7 @@ export const useAdminPromotions = () => {
         setLoading(false)
       }
     },
-    [fetchAdminPromotions]
+    [fetchAdminPromotions, pagination.pageNumber]
   )
 
   const updatePromotion = useCallback(
@@ -599,7 +609,7 @@ export const useAdminPromotions = () => {
         setLoading(false)
       }
     },
-    [fetchAdminPromotions]
+    [fetchAdminPromotions, pagination.pageNumber]
   )
 
   const deletePromotion = useCallback(
@@ -626,7 +636,7 @@ export const useAdminPromotions = () => {
         setLoading(false)
       }
     },
-    [fetchAdminPromotions]
+    [fetchAdminPromotions, pagination.pageNumber]
   )
 
   const togglePromotionStatus = useCallback(
@@ -653,7 +663,7 @@ export const useAdminPromotions = () => {
         setLoading(false)
       }
     },
-    [fetchAdminPromotions]
+    [fetchAdminPromotions, pagination.pageNumber]
   )
 
   const getPromotionById = useCallback(async (id: string) => {
@@ -735,11 +745,20 @@ export const useSellerPromotions = () => {
           totalItems = response.data.length
           totalPages = Math.ceil(totalItems / pageSize) || 1
           console.log('🔍 Hook: Processing direct array response')
-        } else if (response.data?.items && Array.isArray(response.data.items)) {
+        } else if (
+          response.data &&
+          typeof response.data === 'object' &&
+          'items' in response.data &&
+          Array.isArray((response.data as { items: PromotionDTO[] }).items)
+        ) {
           // Response data có wrapper với items/pagination
-          items = response.data.items
-          totalPages = response.data.pagination?.totalPages || 1
-          totalItems = response.data.pagination?.totalItems || response.data.items.length
+          const wrappedData = response.data as {
+            items: PromotionDTO[]
+            pagination?: { totalPages?: number; totalItems?: number }
+          }
+          items = wrappedData.items
+          totalPages = wrappedData.pagination?.totalPages || 1
+          totalItems = wrappedData.pagination?.totalItems || wrappedData.items.length
           console.log('🔍 Hook: Processing wrapped response')
         } else {
           console.warn('🔍 Hook: Unexpected response structure:', response.data)
@@ -823,7 +842,7 @@ export const useSellerPromotions = () => {
     }
   }, [])
 
-  const getPromotionDetail = useCallback(async (id: string): Promise<any> => {
+  const getPromotionDetail = useCallback(async (id: string): Promise<PromotionDetailDTO | null> => {
     setLoading(true)
     try {
       const response = await promotionApi.getPromotionDetail(id)
@@ -885,11 +904,12 @@ export const useSellerPromotionsWithId = (sellerId: string) => {
           currentSort
         )
 
-        setSellerPromotions(response.data)
+        const paginatedResponse = response as unknown as PaginatedApiResponse<PromotionDTO[]>
+        setSellerPromotions(paginatedResponse.data)
         setPagination({
-          pageNumber: response.pagination.pageNumber,
-          pageSize: response.pagination.pageSize,
-          totalItems: response.pagination.totalItems
+          pageNumber: paginatedResponse.pagination?.pageNumber || pageNumber,
+          pageSize: paginatedResponse.pagination?.pageSize || pagination.pageSize,
+          totalItems: paginatedResponse.pagination?.totalItems || paginatedResponse.data.length
         })
       } catch (err: unknown) {
         console.error('Error fetching seller promotions:', err)
@@ -970,8 +990,16 @@ export const useSellerPromotionsWithId = (sellerId: string) => {
 // usePromotionStats Hook
 // ========================================
 
+interface PromotionStats {
+  totalPromotions: number
+  activePromotions: number
+  expiredPromotions: number
+  totalUsage: number
+  [key: string]: unknown
+}
+
 export const usePromotionStats = () => {
-  const [stats, setStats] = useState<any>(null)
+  const [stats, setStats] = useState<PromotionStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

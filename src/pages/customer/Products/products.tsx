@@ -48,14 +48,7 @@ function Products() {
 
   const productCardData: ProductCardData[] = products.map((product) => ({
     ...product,
-    badge:
-      product.typeProduct === 'Traditional'
-        ? { text: 'Truyền thống', color: 'bg-orange-500' }
-        : product.typeProduct === 'Premium'
-          ? { text: 'Cao cấp', color: 'bg-purple-600' }
-          : product.typeProduct === 'Fresh'
-            ? { text: 'Tươi ngon', color: 'bg-green-500' }
-            : { text: 'Đặc sản', color: 'bg-blue-500' }
+    price: product.summaryPrice ? parseFloat(product.summaryPrice) : 0
   }))
 
   const handleAddCombo = async (comboId: string) => {

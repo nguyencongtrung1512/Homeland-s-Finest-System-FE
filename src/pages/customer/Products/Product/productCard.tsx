@@ -27,11 +27,6 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
       {/* Ảnh */}
       <div className='relative h-40 w-full rounded-lg overflow-hidden'>
         <img src={product.productImages[0]} alt='' className='w-full h-full object-cover' />
-        {product.badge && (
-          <span className={`absolute top-2 left-2 px-2 py-1 text-xs text-white rounded ${product.badge.color}`}>
-            {product.badge.text}
-          </span>
-        )}
       </div>
 
       {/* Nội dung */}
