@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/button'
 import Loading from '../../../components/Loading/loading'
 import { storeStoryApi } from '../../../apis/storeStory.api'
 import type { StoreStory } from '../../../types/storeStoryType'
-import { X, Edit } from 'lucide-react'
+import { Edit } from 'lucide-react'
 import CreateMyStory from './createMyStory'
 
 interface StoryDetailModalProps {
@@ -27,6 +27,9 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
     // Extract data from contents array
     const contents = story.contents || []
 
+    // Debug: Log all contents to see structure
+    console.log('All story contents:', JSON.stringify(contents, null, 2))
+
     // Sort contents by order
     const sortedContents = [...contents].sort((a, b) => a.order - b.order)
 
@@ -37,27 +40,54 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
     // Find image contents
     const imageContents = sortedContents.filter((c) => c.contentType?.toLowerCase() === 'image')
 
-    // Extract text fields by order
-    // Order 1: TextIntro, Order 3: TextExpanded, Order 5: TextClosing
-    const textIntro = textContents.find((c) => c.order === 1)
-    const textExpanded = textContents.find((c) => c.order === 3)
-    const textClosing = textContents.find((c) => c.order === 5)
+    console.log(
+      'Text contents:',
+      textContents.map((c) => ({ order: c.order, data: c.contentData?.substring(0, 50) }))
+    )
+    console.log(
+      'Video contents:',
+      videoContents.map((c) => ({ order: c.order, playback: c.videoPlayBackUrl, preview: c.videoPreviewUrl }))
+    )
+    console.log(
+      'Image contents:',
+      imageContents.map((c) => ({ order: c.order, urls: c.imageUrls?.length || 0 }))
+    )
 
-    // Extract video fields by order
-    // Order 2: VideoOpener, Order 4: VideoProcess, Order 5: VideoTestimonial
-    const videoOpener = videoContents.find((c) => c.order === 2)
-    const videoProcess = videoContents.find((c) => c.order === 4)
-    const videoTestimonial = videoContents.find((c) => c.order === 5)
+    // Extract text fields by order and position
+    // Text contents should be in order: TextIntro (order 1), TextExpanded (order 3), TextClosing (last text)
+    // Try to find by order first, then fallback to position
+    const textIntro = textContents.find((c) => c.order === 1) || textContents[0]
+    const textExpanded = textContents.find((c) => c.order === 3) || textContents[1]
+    // TextClosing is the last text content (usually highest order or last in array)
+    const textClosing =
+      textContents.find((c) => c.order === 6) ||
+      textContents.find((c) => c.order === 5) ||
+      textContents[textContents.length - 1]
 
-    // Extract image fields by order
-    // Order 2: SingleImage, Order 3: GalleryImages
-    const singleImage = imageContents.find((c) => c.order === 2)
-    const galleryImages = imageContents.find((c) => c.order === 3)
+    // Extract video fields by order and position
+    // Video contents should be in order: VideoOpener (order 2), VideoProcess (order 4), VideoTestimonial (last video)
+    // Try to find by order first, then fallback to position
+    const videoOpener = videoContents.find((c) => c.order === 2) || videoContents[0]
+    const videoProcess = videoContents.find((c) => c.order === 4) || videoContents[1]
+    // VideoTestimonial is the last video content (usually highest order or last in array)
+    const videoTestimonial =
+      videoContents.find((c) => c.order === 7) ||
+      videoContents.find((c) => c.order === 6) ||
+      videoContents.find((c) => c.order === 5) ||
+      videoContents[videoContents.length - 1]
+
+    // Extract image fields by order and position
+    // Image contents: SingleImage (order 2), GalleryImages (order 3)
+    // Try to find by order first, then fallback to position
+    const singleImage = imageContents.find((c) => c.order === 2) || imageContents[0]
+    const galleryImages = imageContents.find((c) => c.order === 3) || imageContents[1]
 
     // Get video URLs (prefer playback, fallback to preview, then fallback)
     const getVideoUrl = (content: (typeof videoContents)[0] | undefined) => {
       if (!content) return null
-      return content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
+      const url = content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
+      console.log('Getting video URL for content:', { order: content.order, url })
+      return url
     }
 
     // Get single image URL
@@ -72,7 +102,7 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
       return content.imageUrls
     }
 
-    return {
+    const initialData = {
       Title: story.title || '',
       TextIntro: textIntro?.contentData || '',
       TextExpanded: textExpanded?.contentData || '',
@@ -89,6 +119,10 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
       VideoTestimonialUrl: getVideoUrl(videoTestimonial),
       ThumbnailUrl: story.thumbnailUrl || null
     }
+
+    console.log('Extracted initial data:', initialData)
+
+    return initialData
   }
 
   const handleEditSuccess = () => {
@@ -239,13 +273,14 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='max-w-4xl md:max-w-4xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle className='text-2xl font-bold text-green-700 flex items-center justify-between'>
             <span>Chi tiết câu chuyện</span>
-            <button onClick={() => onOpenChange(false)} className='text-gray-400 hover:text-gray-600 transition-colors'>
-              <X className='w-5 h-5' />
-            </button>
+            <button
+              onClick={() => onOpenChange(false)}
+              className='text-gray-400 hover:text-gray-600 transition-colors'
+            ></button>
           </DialogTitle>
           <DialogDescription>Xem thông tin chi tiết về câu chuyện của bạn</DialogDescription>
         </DialogHeader>

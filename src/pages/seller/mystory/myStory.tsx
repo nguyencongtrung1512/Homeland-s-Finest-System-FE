@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { Card, CardContent } from '../../../components/ui/card'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '../../../components/ui/button'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
@@ -10,6 +9,7 @@ import type { StoreStory } from '../../../types/storeStoryType'
 import { Plus, FileText } from 'lucide-react'
 import StoryDetailModal from './detail'
 import CreateMyStory from './createMyStory'
+import ImageCarousel, { type CarouselItem } from '../../../components/ui/imagecarousel'
 
 function MyStory() {
   const { user } = useAuth()
@@ -20,6 +20,11 @@ function MyStory() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null)
+
+  // Debug: Log when showCreateDialog changes
+  useEffect(() => {
+    console.log('showCreateDialog changed:', showCreateDialog)
+  }, [showCreateDialog])
 
   // Fetch store ID and store stories
   useEffect(() => {
@@ -70,6 +75,26 @@ function MyStory() {
     }
   }
 
+  // Convert store stories to carousel items
+  const carouselItems: CarouselItem[] = useMemo(() => {
+    return storeStories.map((story) => ({
+      id: story.id,
+      name: story.title,
+      title: 'Câu chuyện cửa hàng',
+      img: story.thumbnailUrl || 'https://i.pinimg.com/736x/05/01/bc/0501bcd327d9df915e83154bbf9456e3.jpg',
+      onClick: () => {
+        setSelectedStoryId(story.id)
+        setShowDetailDialog(true)
+      }
+    }))
+  }, [storeStories])
+
+  // Handle title click to show detail
+  const handleTitleClick = (item: CarouselItem) => {
+    setSelectedStoryId(item.id)
+    setShowDetailDialog(true)
+  }
+
   // Show loading state
   if (loading) {
     return (
@@ -94,6 +119,14 @@ function MyStory() {
     )
   }
 
+  // Handle create button click
+  const handleCreateClick = () => {
+    console.log('handleCreateClick called')
+    console.log('Current showCreateDialog:', showCreateDialog)
+    setShowCreateDialog(true)
+    console.log('After setShowCreateDialog(true)')
+  }
+
   // Show empty state if no stories
   if (storeStories.length === 0) {
     return (
@@ -103,12 +136,14 @@ function MyStory() {
             <h1 className='text-3xl font-bold text-green-700'>Câu chuyện của bạn</h1>
             <p className='text-gray-600 mt-2'>Chưa có câu chuyện nào được tạo</p>
           </div>
-          <Button className='bg-green-600 hover:bg-green-700 text-white' onClick={() => setShowCreateDialog(true)}>
+          <Button className='bg-green-600 hover:bg-green-700 text-white' onClick={handleCreateClick} type='button'>
             <Plus className='w-4 h-4 mr-2' />
             Tạo câu chuyện mới
           </Button>
         </div>
         <EmptyState />
+        {/* Create Story Dialog - Must be rendered even in empty state */}
+        <CreateMyStory open={showCreateDialog} onOpenChange={setShowCreateDialog} onSuccess={handleRefreshStories} />
       </div>
     )
   }
@@ -126,39 +161,17 @@ function MyStory() {
             </div>
           </div>
         </div>
-        <Button className='bg-green-600 hover:bg-green-700 text-white' onClick={() => setShowCreateDialog(true)}>
+        <Button className='bg-green-600 hover:bg-green-700 text-white' onClick={handleCreateClick} type='button'>
           <Plus className='w-4 h-4 mr-2' />
           Tạo câu chuyện mới
         </Button>
       </div>
 
-      <div className='max-w-6xl lg:mx-0 mx-auto'>
-        {/* Stories Grid */}
+      <div className='max-w-7xl mx-auto'>
+        {/* Stories Carousel */}
         {storeStories.length > 0 ? (
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-            {storeStories.map((story) => (
-              <Card key={story.id} className='hover:shadow-lg transition-shadow'>
-                <CardContent className='p-6'>
-                  <div className='space-y-4'>
-                    {/* Story Title */}
-                    <h3 className='text-lg font-semibold text-gray-900 line-clamp-2'>{story.title}</h3>
-
-                    {/* Story Thumbnail */}
-                    {story.thumbnailUrl && (
-                      <div
-                        className='aspect-video rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity'
-                        onClick={() => {
-                          setSelectedStoryId(story.id)
-                          setShowDetailDialog(true)
-                        }}
-                      >
-                        <img src={story.thumbnailUrl} alt={story.title} className='w-full h-full object-cover' />
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className='mb-8'>
+            <ImageCarousel items={carouselItems} onItemClick={handleTitleClick} />
           </div>
         ) : (
           <div className='text-center py-12'>
@@ -167,7 +180,7 @@ function MyStory() {
             </div>
             <h3 className='text-xl font-semibold text-gray-900 mb-2'>Chưa có câu chuyện nào</h3>
             <p className='text-gray-600 mb-6'>Hãy tạo câu chuyện đầu tiên để chia sẻ về cửa hàng của bạn</p>
-            <Button className='bg-green-600 hover:bg-green-700 text-white' onClick={() => setShowCreateDialog(true)}>
+            <Button className='bg-green-600 hover:bg-green-700 text-white' onClick={handleCreateClick} type='button'>
               <Plus className='w-4 h-4 mr-2' />
               Tạo câu chuyện đầu tiên
             </Button>

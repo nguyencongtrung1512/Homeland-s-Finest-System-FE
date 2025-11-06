@@ -233,13 +233,25 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
       if (isEditMode && storyId) {
         // Update existing story
         const response = await storeStoryApi.update(storyId, storyPayload)
-        const message = response?.message || 'Câu chuyện đã được cập nhật thành công.'
-        toast.success(message)
+        // Lấy message từ backend, kiểm tra cả response.message và response.data?.message
+        let successMessage = 'Câu chuyện đã được cập nhật thành công.'
+        if (response?.data?.message) {
+          successMessage = response.data.message
+        } else if (response?.message) {
+          successMessage = response.message
+        }
+        toast.success(successMessage)
       } else {
         // Create new story
         const response = await storeStoryApi.create(storyPayload)
-        const message = response?.message || 'Câu chuyện của hàng đã được tạo thành công.'
-        toast.success(message)
+        // Lấy message từ backend, kiểm tra cả response.message và response.data?.message
+        let successMessage = 'Câu chuyện của hàng đã được tạo thành công.'
+        if (response?.data?.message) {
+          successMessage = response.data.message
+        } else if (response?.message) {
+          successMessage = response.message
+        }
+        toast.success(successMessage)
       }
 
       // Reset form
@@ -275,10 +287,61 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
     } catch (error: unknown) {
       console.error('Error creating story:', error)
       let errorMessage = 'Có lỗi xảy ra khi tạo câu chuyện. Vui lòng thử lại.'
+
       if (error && typeof error === 'object') {
-        const err = error as { response?: { data?: { message?: string } }; message?: string }
-        errorMessage = err?.response?.data?.message || err?.message || errorMessage
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = error as any
+
+        // Kiểm tra message từ backend
+        if (err?.message) {
+          errorMessage = err.message
+        } else if (err?.response?.data?.message) {
+          errorMessage = err.response.data.message
+        }
+        // Kiểm tra errors array từ backend (validation errors)
+        else if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+          errorMessage = err.errors.join(', ')
+        } else if (
+          err?.response?.data?.errors &&
+          Array.isArray(err.response.data.errors) &&
+          err.response.data.errors.length > 0
+        ) {
+          errorMessage = err.response.data.errors.join(', ')
+        }
+        // Kiểm tra errors object từ backend (validation errors theo field)
+        else if (err?.errors && typeof err.errors === 'object' && !Array.isArray(err.errors)) {
+          const errorMessages: string[] = []
+          Object.keys(err.errors).forEach((field) => {
+            const fieldErrors = err.errors[field]
+            if (Array.isArray(fieldErrors)) {
+              errorMessages.push(...fieldErrors)
+            } else if (typeof fieldErrors === 'string') {
+              errorMessages.push(fieldErrors)
+            }
+          })
+          if (errorMessages.length > 0) {
+            errorMessage = errorMessages.join(', ')
+          }
+        } else if (
+          err?.response?.data?.errors &&
+          typeof err.response.data.errors === 'object' &&
+          !Array.isArray(err.response.data.errors)
+        ) {
+          const errorMessages: string[] = []
+          Object.keys(err.response.data.errors).forEach((field) => {
+            const fieldErrors = err.response.data.errors[field]
+            if (Array.isArray(fieldErrors)) {
+              errorMessages.push(...fieldErrors)
+            } else if (typeof fieldErrors === 'string') {
+              errorMessages.push(fieldErrors)
+            }
+          })
+          if (errorMessages.length > 0) {
+            errorMessage = errorMessages.join(', ')
+          }
+        }
       }
+
       toast.error(errorMessage)
     } finally {
       setLoading(false)

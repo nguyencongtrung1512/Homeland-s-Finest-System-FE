@@ -5,7 +5,6 @@ import {
   Package,
   Star,
   Eye,
-  Calendar,
   MapPin,
   Tag,
   FileText,
@@ -16,7 +15,8 @@ import {
   DollarSign,
   Layers,
   UserPlus,
-  User
+  User,
+  ChevronDown
 } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -36,13 +36,17 @@ import { toast } from '../../../utils/toast'
 import { Store } from 'lucide-react'
 import ProductCertificate from '../../staff/productManagerment/productCertificate'
 import ProductStoryComponent from '../../staff/productManagerment/productStory'
+import ProductImageCarousel from '../../../components/ui/product-image-carousel'
+import { motion, AnimatePresence } from 'motion/react'
 
 function DetailProductAdmin() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+
+  // States for expanded variants (collapse/expand)
+  const [expandedVariants, setExpandedVariants] = useState<Set<string>>(new Set())
 
   // States for assigned staff
   const [assignedStaffId, setAssignedStaffId] = useState<string | null>(null)
@@ -380,10 +384,33 @@ function DetailProductAdmin() {
     return null
   }
 
+  // Handler toggle expanded variant
+  const toggleVariantExpanded = (variantId: string) => {
+    setExpandedVariants((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(variantId)) {
+        newSet.delete(variantId)
+      } else {
+        newSet.add(variantId)
+      }
+      return newSet
+    })
+  }
+
   return (
-    <div className='p-6 space-y-6'>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className='p-6 space-y-6'
+    >
       {/* Header */}
-      <div className='flex items-center justify-between'>
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className='flex items-center justify-between'
+      >
         <div className='flex items-center gap-3'>
           <Button
             variant='ghost'
@@ -397,158 +424,177 @@ function DetailProductAdmin() {
           <div className='h-6 w-px bg-gray-300'></div>
           <h1 className='text-2xl font-bold text-gray-900'>Chi tiết sản phẩm</h1>
         </div>
-      </div>
-     
+      </motion.div>
+
 
       {/* Assign Staff Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className='flex items-center gap-2'>
-            <UserPlus size={20} className='text-green-600' />
-            <h3 className='text-lg font-semibold text-gray-900'>Gán nhân viên xử lý</h3>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className='space-y-4'>
-            {assignedStaffId ? (
-              <div className='space-y-3'>
-                <div className='flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200'>
-                  <User size={20} className='text-green-600' />
-                  <div className='flex-1'>
-                    <div className='text-sm font-medium text-gray-700 mb-1'>Nhân viên đã được gán:</div>
-                    <div className='text-lg font-semibold text-green-900'>
-                      {loadingStaff ? 'Đang tải...' : assignedStaffName || assignedStaffId.slice(0, 8) + '...'}
-                    </div>
-                  </div>
-                </div>
-                {product?.staffNote && (
-                  <div className='p-4 bg-yellow-50 rounded-lg border border-yellow-200'>
-                    <div className='text-sm font-medium text-yellow-800 mb-2'>Ghi chú từ nhân viên:</div>
-                    <div className='text-gray-900 whitespace-pre-wrap'>{product.staffNote}</div>
-                  </div>
-                )}
-                <Button onClick={handleOpenAssignModal} variant='outline' className='w-full'>
-                  <UserPlus size={16} className='mr-2' />
-                  Thay đổi nhân viên
-                </Button>
-              </div>
-            ) : (
-              <div className='space-y-3'>
-                <div className='p-4 bg-gray-50 rounded-lg border border-gray-200 text-center'>
-                  <User size={24} className='text-gray-400 mx-auto mb-2' />
-                  <div className='text-sm text-gray-600 mb-3'>Chưa có nhân viên được gán</div>
-                </div>
-                <Button onClick={handleOpenAssignModal} className='w-full bg-green-600 hover:bg-green-700 text-white'>
-                  <UserPlus size={16} className='mr-2' />
-                  Gán nhân viên
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
- {/* Store Info Card */}
- {product?.storeId && (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
         <Card>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
-              <Store size={20} className='text-blue-600' />
-              <h3 className='text-lg font-semibold text-gray-900'>Thông tin cửa hàng</h3>
+              <UserPlus size={20} className='text-green-600' />
+              <h3 className='text-lg font-semibold text-gray-900'>Gán nhân viên xử lý</h3>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loadingStore ? (
-              <div className='flex items-center justify-center py-4'>
-                <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600'></div>
-              </div>
-            ) : storeInfo ? (
-              <div className='space-y-4'>
-                <div className='flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200'>
-                  <Store size={24} className='text-blue-600' />
-                  <div className='flex-1'>
-                    <div className='text-sm font-medium text-gray-700 mb-1'>Tên cửa hàng:</div>
-                    <div className='text-lg font-semibold text-blue-900'>{storeInfo.storeName}</div>
-                  </div>
-                </div>
-
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                  {/* Địa chỉ */}
-                  <div className='space-y-2'>
-                    <div className='text-sm font-medium text-gray-700'>Địa chỉ:</div>
-                    <div className='text-gray-900'>
-                      {storeInfo.address && (
-                        <div>
-                          {storeInfo.address}
-                          {storeInfo.ward && `, ${storeInfo.ward}`}
-                          {storeInfo.district && `, ${storeInfo.district}`}
-                          {storeInfo.province && `, ${storeInfo.province}`}
-                        </div>
-                      )}
+            <div className='space-y-4'>
+              {assignedStaffId ? (
+                <div className='space-y-3'>
+                  <div className='flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200'>
+                    <User size={20} className='text-green-600' />
+                    <div className='flex-1'>
+                      <div className='text-sm font-medium text-gray-700 mb-1'>Nhân viên đã được gán:</div>
+                      <div className='text-lg font-semibold text-green-900'>
+                        {loadingStaff ? 'Đang tải...' : assignedStaffName || assignedStaffId.slice(0, 8) + '...'}
+                      </div>
                     </div>
                   </div>
-
-                  {/* Trạng thái */}
-                  <div className='space-y-2'>
-                    <div className='text-sm font-medium text-gray-700'>Trạng thái:</div>
-                    <div>
-                      {storeInfo.status === 'Approved' || storeInfo.status === 'Active' ? (
-                        <Badge className='bg-green-100 text-green-800'>Đã duyệt</Badge>
-                      ) : storeInfo.status === 'Pending' || storeInfo.status === 'Processing' ? (
-                        <Badge className='bg-yellow-100 text-yellow-800'>Đang xử lý</Badge>
-                      ) : storeInfo.status === 'Rejected' ? (
-                        <Badge className='bg-red-100 text-red-800'>Từ chối</Badge>
-                      ) : (
-                        <Badge className='bg-gray-100 text-gray-800'>{storeInfo.status}</Badge>
-                      )}
+                  {product?.staffNote && (
+                    <div className='p-4 bg-yellow-50 rounded-lg border border-yellow-200'>
+                      <div className='text-sm font-medium text-yellow-800 mb-2'>Ghi chú từ nhân viên:</div>
+                      <div className='text-gray-900 whitespace-pre-wrap'>{product.staffNote}</div>
                     </div>
-                  </div>
-
-                  {/* Thông tin seller */}
-                  {storeInfo.sellerInfo?.userInfo && (
-                    <>
-                      <div className='space-y-2'>
-                        <div className='text-sm font-medium text-gray-700'>Người bán:</div>
-                        <div className='text-gray-900'>
-                          {`${storeInfo.sellerInfo.userInfo.firstName || ''} ${storeInfo.sellerInfo.userInfo.lastName || ''}`.trim() || 'Chưa có thông tin'}
-                        </div>
-                      </div>
-
-                      <div className='space-y-2'>
-                        <div className='text-sm font-medium text-gray-700'>Email:</div>
-                        <div className='text-gray-900'>{storeInfo.sellerInfo.userInfo.email}</div>
-                      </div>
-                    </>
                   )}
+                  <Button onClick={handleOpenAssignModal} variant='outline' className='w-full'>
+                    <UserPlus size={16} className='mr-2' />
+                    Thay đổi nhân viên
+                  </Button>
                 </div>
-
-                {/* Mô tả cửa hàng */}
-                {storeInfo.description && (
-                  <div className='space-y-2'>
-                    <div className='text-sm font-medium text-gray-700'>Mô tả:</div>
-                    <div className='text-gray-900 whitespace-pre-wrap'>{storeInfo.description}</div>
+              ) : (
+                <div className='space-y-3'>
+                  <div className='p-4 bg-gray-50 rounded-lg border border-gray-200 text-center'>
+                    <User size={24} className='text-gray-400 mx-auto mb-2' />
+                    <div className='text-sm text-gray-600 mb-3'>Chưa có nhân viên được gán</div>
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className='text-center py-4 text-gray-500'>Không thể tải thông tin cửa hàng</div>
-            )}
+                  <Button onClick={handleOpenAssignModal} className='w-full bg-green-600 hover:bg-green-700 text-white'>
+                    <UserPlus size={16} className='mr-2' />
+                    Gán nhân viên
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
+      </motion.div>
+      {/* Store Info Card */}
+      {product?.storeId && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'>
+                <Store size={20} className='text-blue-600' />
+                <h3 className='text-lg font-semibold text-gray-900'>Thông tin cửa hàng</h3>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingStore ? (
+                <div className='flex items-center justify-center py-4'>
+                  <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600'></div>
+                </div>
+              ) : storeInfo ? (
+                <div className='space-y-4'>
+                  <div className='flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200'>
+                    <Store size={24} className='text-blue-600' />
+                    <div className='flex-1'>
+                      <div className='text-sm font-medium text-gray-700 mb-1'>Tên cửa hàng:</div>
+                      <div className='text-lg font-semibold text-blue-900'>{storeInfo.storeName}</div>
+                    </div>
+                  </div>
+
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    {/* Địa chỉ */}
+                    <div className='space-y-2'>
+                      <div className='text-sm font-medium text-gray-700'>Địa chỉ:</div>
+                      <div className='text-gray-900'>
+                        {storeInfo.address && (
+                          <div>
+                            {storeInfo.address}
+                            {storeInfo.ward && `, ${storeInfo.ward}`}
+                            {storeInfo.district && `, ${storeInfo.district}`}
+                            {storeInfo.province && `, ${storeInfo.province}`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Trạng thái */}
+                    <div className='space-y-2'>
+                      <div className='text-sm font-medium text-gray-700'>Trạng thái:</div>
+                      <div>
+                        {storeInfo.status === 'Approved' || storeInfo.status === 'Active' ? (
+                          <Badge className='bg-green-100 text-green-800'>Đã duyệt</Badge>
+                        ) : storeInfo.status === 'Pending' || storeInfo.status === 'Processing' ? (
+                          <Badge className='bg-yellow-100 text-yellow-800'>Đang xử lý</Badge>
+                        ) : storeInfo.status === 'Rejected' ? (
+                          <Badge className='bg-red-100 text-red-800'>Từ chối</Badge>
+                        ) : (
+                          <Badge className='bg-gray-100 text-gray-800'>{storeInfo.status}</Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Thông tin seller */}
+                    {storeInfo.sellerInfo?.userInfo && (
+                      <>
+                        <div className='space-y-2'>
+                          <div className='text-sm font-medium text-gray-700'>Người bán:</div>
+                          <div className='text-gray-900'>
+                            {`${storeInfo.sellerInfo.userInfo.firstName || ''} ${storeInfo.sellerInfo.userInfo.lastName || ''}`.trim() || 'Chưa có thông tin'}
+                          </div>
+                        </div>
+
+                        <div className='space-y-2'>
+                          <div className='text-sm font-medium text-gray-700'>Email:</div>
+                          <div className='text-gray-900'>{storeInfo.sellerInfo.userInfo.email}</div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Mô tả cửa hàng */}
+                  {storeInfo.description && (
+                    <div className='space-y-2'>
+                      <div className='text-sm font-medium text-gray-700'>Mô tả:</div>
+                      <div className='text-gray-900 whitespace-pre-wrap'>{storeInfo.description}</div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className='text-center py-4 text-gray-500'>Không thể tải thông tin cửa hàng</div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
       {/* Tabs */}
-      <Tabs defaultValue='info' className='w-full'>
-        <TabsList className='mb-6'>
-          <TabsTrigger value='info'>Thông tin sản phẩm</TabsTrigger>
-          <TabsTrigger value='certificates'>Chứng nhận</TabsTrigger>
-          <TabsTrigger value='story'>Câu chuyện</TabsTrigger>
-        </TabsList>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+      >
+        <Tabs defaultValue='info' className='w-full'>
+          <TabsList className='mb-6'>
+            <TabsTrigger value='info'>Thông tin sản phẩm</TabsTrigger>
+            <TabsTrigger value='certificates'>Chứng nhận</TabsTrigger>
+            <TabsTrigger value='story'>Câu chuyện</TabsTrigger>
+          </TabsList>
 
-        {/* Tab 1: Thông tin sản phẩm */}
-        <TabsContent value='info' className='space-y-6'>
-
-          <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-            {/* Left Column - Product Images */}
-            <div className='lg:col-span-1'>
+          {/* Tab 1: Thông tin sản phẩm */}
+          <TabsContent value='info' className='space-y-6'>
+            {/* Product Images - Full Width Horizontal */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.4 }}
+            >
               <Card className='shadow-lg'>
                 <CardHeader>
                   <CardTitle className='flex items-center gap-2'>
@@ -557,59 +603,23 @@ function DetailProductAdmin() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Main Image */}
-                  <div className='mb-4'>
-                    <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden'>
-                      {product?.productImages && product.productImages.length > 0 ? (
-                        <img
-                          src={product.productImages[selectedImageIndex]}
-                          alt={product.name}
-                          className='w-full h-full object-cover'
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.src = '/placeholder-image.png'
-                          }}
-                        />
-                      ) : (
-                        <div className='w-full h-full flex items-center justify-center'>
-                          <ImageIcon size={48} className='text-gray-400' />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Thumbnail Images */}
-                  {product?.productImages && product.productImages.length > 1 && (
-                    <div className='grid grid-cols-4 gap-2'>
-                      {product.productImages.map((image, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setSelectedImageIndex(index)}
-                          className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 ${selectedImageIndex === index ? 'border-green-600' : 'border-transparent'
-                            }`}
-                        >
-                          <img
-                            src={image}
-                            alt={`${product.name} ${index + 1}`}
-                            className='w-full h-full object-cover'
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement
-                              target.src = '/placeholder-image.png'
-                            }}
-                          />
-                        </button>
-                      ))}
+                  {/* Product Image Carousel */}
+                  {product?.productImages && product.productImages.length > 0 ? (
+                    <ProductImageCarousel images={product.productImages} productName={product.name} height='320px' />
+                  ) : (
+                    <div className='w-full h-[350px] flex items-center justify-center bg-gray-100 rounded-lg'>
+                      <ImageIcon size={48} className='text-gray-400' />
                     </div>
                   )}
 
                   {/* Product Video */}
                   {product?.productVideo && (
-                    <div className='mt-4'>
+                    <div className='mt-6'>
                       <div className='flex items-center gap-2 mb-2'>
                         <Play size={16} className='text-green-600' />
                         <span className='text-sm font-medium text-gray-700'>Video sản phẩm</span>
                       </div>
-                      <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
+                      <div className='h-[350px] bg-gray-100 rounded-lg overflow-hidden'>
                         <video controls className='w-full h-full' poster={product.productImages?.[0]}>
                           <source src={product.productVideo} type='video/mp4' />
                           Trình duyệt của bạn không hỗ trợ video.
@@ -619,606 +629,689 @@ function DetailProductAdmin() {
                   )}
                 </CardContent>
               </Card>
-            </div>
+            </motion.div>
 
-            {/* Right Column - Product Information */}
-            <div className='lg:col-span-2 space-y-6'>
+            <div className='space-y-6'>
               {/* Basic Information */}
-              <Card className='shadow-lg'>
-                <CardHeader>
-                  <CardTitle className='flex items-center gap-2'>
-                    <Package size={20} className='text-green-600' />
-                    Thông tin cơ bản
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className='space-y-4'>
-                  <div>
-                    <h2 className='text-2xl font-bold text-gray-900 mb-2'>{product?.name}</h2>
-                    <div className='flex items-center gap-4 mb-4'>
-                      {product && getStatusBadge(product.status, product.isActive)}
-                      <div className='flex items-center gap-1'>
-                        <Star className='text-yellow-500 fill-current' size={16} />
-                        <span className='font-medium'>{product?.rating?.toFixed(1) || '0.0'}</span>
-                        <span className='text-gray-600'>({product?.reviewCount || 0} đánh giá)</span>
-                      </div>
-                      <div className='flex items-center gap-1'>
-                        <Eye size={16} className='text-gray-500' />
-                        <span className='text-gray-600'>{product?.saleCount || 0} lượt bán</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                    <div className='space-y-3'>
-                      <div className='flex items-center gap-2'>
-                        <Tag size={16} className='text-green-600' />
-                        <span className='text-sm font-medium text-gray-700'>Loại sản phẩm:</span>
-                        <span className='text-gray-900'>{product?.typeProduct}</span>
-                      </div>
-                      <div className='flex items-center gap-2'>
-                        <MapPin size={16} className='text-green-600' />
-                        <span className='text-sm font-medium text-gray-700'>Xuất xứ:</span>
-                        <span className='text-gray-900'>{product?.material}</span>
-                      </div>
-                    </div>
-                    <div className='space-y-3'>
-                      <div className='flex items-center gap-2'>
-                        <Calendar size={16} className='text-green-600' />
-                      </div>
-                      <div className='flex items-center gap-2'>
-                        <FileText size={16} className='text-green-600' />
-                        <span className='text-sm font-medium text-gray-700'>Mã tỉnh:</span>
-                        <span className='text-gray-900'>{product?.provinceId}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Product Categories */}
-                  {product?.productCategories && (
-                    <div>
-                      <div className='flex items-center gap-2 mb-3'>
-                        <Layers size={16} className='text-green-600' />
-                        <span className='text-sm font-medium text-gray-700'>Danh mục sản phẩm:</span>
-                      </div>
-                      <div className='flex flex-wrap gap-2'>
-                        <Badge variant='outline' className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100'>
-                          {product.productCategories.name}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <h3 className='text-lg font-semibold text-gray-900 mb-2'>Mô tả sản phẩm</h3>
-                    <p className='text-gray-700 leading-relaxed'>{product?.description}</p>
-                  </div>
-
-                  {product?.staffNote && (
-                    <div>
-                      <h3 className='text-lg font-semibold text-gray-900 mb-2'>Ghi chú từ staff</h3>
-                      <p className='text-gray-700 leading-relaxed'>{product.staffNote}</p>
-                    </div>
-                  )}
-
-                  {/* Summary Price */}
-                  {product?.summaryPrice && (
-                    <div>
-                      <h3 className='text-lg font-semibold text-gray-900 mb-2'>Tóm tắt giá</h3>
-                      <p className='text-2xl font-bold text-green-600'>{product.summaryPrice}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Certificates */}
-              {product?.productCertificateDTOs && product.productCertificateDTOs.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.5 }}
+              >
                 <Card className='shadow-lg'>
                   <CardHeader>
                     <CardTitle className='flex items-center gap-2'>
-                      <Award size={20} className='text-green-600' />
-                      Chứng nhận sản phẩm
+                      <Package size={20} className='text-green-600' />
+                      Thông tin cơ bản
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className='space-y-4'>
-                      {product.productCertificateDTOs.map((certificate) => (
-                        <div key={certificate.id} className='border border-gray-200 rounded-lg p-4'>
-                          <div className='flex items-start justify-between mb-3'>
-                            <div className='flex items-center gap-2'>
-                              <Award size={16} className='text-green-600' />
-                              <span className='font-medium text-gray-900'>Chứng nhận #{certificate.id.slice(0, 8)}</span>
+                    <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+                      {/* Left Column */}
+                      <div className='space-y-4'>
+                        <div>
+                          <h2 className='text-2xl font-bold text-gray-900 mb-3'>{product?.name}</h2>
+                          <div className='flex flex-wrap items-center gap-4 mb-4'>
+                            {product && getStatusBadge(product.status, product.isActive)}
+                            <div className='flex items-center gap-1'>
+                              <Star className='text-yellow-500 fill-current' size={16} />
+                              <span className='font-medium'>{product?.rating?.toFixed(1) || '0.0'}</span>
+                              <span className='text-gray-600'>({product?.reviewCount || 0} đánh giá)</span>
                             </div>
-                            {getCertificateStatusBadge(certificate.status)}
-                          </div>
-
-                          <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-3'>
-                            <div>
-                              <span className='text-sm text-gray-600'>Ngày nộp:</span>
-                              <p className='font-medium'>{formatDate(certificate.submittedDate)}</p>
-                            </div>
-                            <div>
-                              <span className='text-sm text-gray-600'>Ngày quyết định:</span>
-                              <p className='font-medium'>{formatDate(certificate.decisionDate)}</p>
+                            <div className='flex items-center gap-1'>
+                              <Eye size={16} className='text-gray-500' />
+                              <span className='text-gray-600'>{product?.saleCount || 0} lượt bán</span>
                             </div>
                           </div>
-
-                          {certificate.staffNotes && (
-                            <div className='mb-3'>
-                              <span className='text-sm text-gray-600'>Ghi chú từ staff:</span>
-                              <p className='text-gray-900'>{certificate.staffNotes}</p>
-                            </div>
-                          )}
-
-                          {certificate.imageUrl && (
-                            <div>
-                              <span className='text-sm text-gray-600 block mb-2'>Hình ảnh chứng nhận:</span>
-                              <div className='w-32 h-32 bg-gray-100 rounded-lg overflow-hidden'>
-                                <img
-                                  src={certificate.imageUrl}
-                                  alt='Chứng nhận'
-                                  className='w-full h-full object-cover'
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.src = '/placeholder-image.png'
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          )}
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* Statistics */}
-              <Card className='shadow-lg'>
-                <CardHeader>
-                  <CardTitle className='flex items-center gap-2'>
-                    <Star size={20} className='text-green-600' />
-                    Thống kê
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                    <div className='text-center p-4 bg-green-50 rounded-lg'>
-                      <div className='text-2xl font-bold text-green-600'>{product?.saleCount || 0}</div>
-                      <div className='text-sm text-gray-600'>Lượt bán</div>
-                    </div>
-                    <div className='text-center p-4 bg-yellow-50 rounded-lg'>
-                      <div className='text-2xl font-bold text-yellow-600'>{product?.rating?.toFixed(1) || '0.0'}</div>
-                      <div className='text-sm text-gray-600'>Đánh giá trung bình</div>
-                    </div>
-                    <div className='text-center p-4 bg-blue-50 rounded-lg'>
-                      <div className='text-2xl font-bold text-blue-600'>{product?.reviewCount || 0}</div>
-                      <div className='text-sm text-gray-600'>Số lượt đánh giá</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* No variants message */}
-          {parentVariants.length === 0 && (
-            <Card className='shadow-lg'>
-              <CardHeader>
-                <CardTitle className='flex items-center gap-2 text-green-700'>
-                  <Archive size={20} />
-                  Loại sản phẩm
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className='text-center py-8 text-gray-500'>
-                  <Archive size={48} className='mx-auto mb-4 text-gray-400' />
-                  <p>Chưa có product variant.</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Variants Display */}
-          {parentVariants.length > 0 && (
-            <Card className='shadow-lg'>
-              <CardHeader>
-                <CardTitle className='flex items-center gap-2 text-green-700'>
-                  <Archive size={20} />
-                  Loại sản phẩm
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className='space-y-6'>
-                  {parentVariants.map((parentVariant) => {
-                    const attributeType = getAttributeTypeForVariant(parentVariant)
-                    const hasChildren = hasChildVariants(parentVariant)
-                    const childVariants = getChildVariants(parentVariant)
-
-                    return (
-                      <div
-                        key={parentVariant.id}
-                        className='border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white'
-                      >
-                        {/* Variant Cha Header */}
-                        <div className='mb-4 pb-4 border-b border-gray-200'>
-                          <h3 className='text-lg font-semibold text-gray-900 mb-4'>Variant cha</h3>
-                          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                            {/* Attribute Type */}
-                            {attributeType && (
-                              <div className='space-y-2'>
-                                <label className='text-sm font-medium text-gray-700'>Loại thuộc tính</label>
-                                <div className='p-3 bg-gray-50 rounded-lg border'>
-                                  <span className='text-gray-900 font-medium'>{attributeType}</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Attribute Name */}
-                            {parentVariant.attributeName && (
-                              <div className='space-y-2'>
-                                <label className='text-sm font-medium text-gray-700'>Tên thuộc tính</label>
-                                <div className='p-3 bg-gray-50 rounded-lg border'>
-                                  <span className='text-gray-900 font-medium'>{parentVariant.attributeName}</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Variant Name */}
-                            <div className='space-y-2'>
-                              <label className='text-sm font-medium text-gray-700'>Tên loại sản phẩm</label>
-                              <div className='p-3 bg-gray-50 rounded-lg border'>
-                                <span className='text-gray-900 font-medium'>{parentVariant.name}</span>
-                              </div>
+                        <div className='grid grid-cols-2 gap-4'>
+                          <div className='flex items-center gap-2'>
+                            <Tag size={16} className='text-green-600 flex-shrink-0' />
+                            <div>
+                              <span className='text-sm text-gray-600 block'>Loại sản phẩm</span>
+                              <span className='text-sm font-medium text-gray-900'>{product?.typeProduct}</span>
                             </div>
                           </div>
-
-                          {/* Description */}
-                          {parentVariant.description && (
-                            <div className='mt-4 space-y-2'>
-                              <label className='text-sm font-medium text-gray-700'>Mô tả</label>
-                              <div className='p-3 bg-gray-50 rounded-lg border'>
-                                <span className='text-gray-700'>{parentVariant.description}</span>
-                              </div>
+                          <div className='flex items-center gap-2'>
+                            <MapPin size={16} className='text-green-600 flex-shrink-0' />
+                            <div>
+                              <span className='text-sm text-gray-600 block'>Xuất xứ</span>
+                              <span className='text-sm font-medium text-gray-900'>{product?.material}</span>
                             </div>
-                          )}
-
-                          {/* Images */}
-                          {parentVariant.productImages && parentVariant.productImages.length > 0 && (
-                            <div className='mt-4 space-y-2'>
-                              <label className='text-sm font-medium text-gray-700'>Hình ảnh</label>
-                              <div className='flex gap-2 flex-wrap'>
-                                {parentVariant.productImages.map((image, idx) => (
-                                  <div key={idx} className='w-20 h-20 rounded-lg overflow-hidden border border-gray-200'>
-                                    <img
-                                      src={image}
-                                      alt={`${parentVariant.name} ${idx + 1}`}
-                                      className='w-full h-full object-cover'
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement
-                                        target.src = '/placeholder-image.png'
-                                      }}
-                                    />
-                                  </div>
-                                ))}
-                              </div>
+                          </div>
+                          <div className='flex items-center gap-2'>
+                            <FileText size={16} className='text-green-600 flex-shrink-0' />
+                            <div>
+                              <span className='text-sm text-gray-600 block'>Mã tỉnh</span>
+                              <span className='text-sm font-medium text-gray-900'>{product?.provinceId}</span>
                             </div>
-                          )}
-
-                          {/* SKU Details - Chỉ hiển thị nếu KHÔNG có variant con */}
-                          {!hasChildren && (
-                            <div className='mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                              {/* Price */}
-                              {parentVariant.finalPrice !== null && (
-                                <div className='space-y-2'>
-                                  <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
-                                    <DollarSign size={14} />
-                                    Giá bán (VNĐ)
-                                  </label>
-                                  <div className='p-3 bg-gray-50 rounded-lg border'>
-                                    <span className='text-green-600 font-bold'>
-                                      {parentVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
-                                    </span>
-                                    {parentVariant.basePrice !== null &&
-                                      parentVariant.basePrice !== parentVariant.finalPrice && (
-                                        <span className='ml-2 text-sm text-gray-500 line-through'>
-                                          {parentVariant.basePrice.toLocaleString('vi-VN')} VNĐ
-                                        </span>
-                                      )}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Stock */}
-                              {parentVariant.quantity !== null && (
-                                <div className='space-y-2'>
-                                  <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
-                                    <Package size={14} />
-                                    Số lượng tồn kho
-                                  </label>
-                                  <div className='p-3 bg-gray-50 rounded-lg border'>
-                                    <span
-                                      className={`font-medium ${parentVariant.quantity > 20 ? 'text-green-600' : parentVariant.quantity > 10 ? 'text-yellow-600' : 'text-red-600'}`}
-                                    >
-                                      {parentVariant.quantity} sản phẩm
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Weight */}
-                              {parentVariant.weight !== null && (
-                                <div className='space-y-2'>
-                                  <label className='text-sm font-medium text-gray-700'>Trọng lượng (g)</label>
-                                  <div className='p-3 bg-gray-50 rounded-lg border'>
-                                    <span className='text-gray-900'>{parentVariant.weight}g</span>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Dimensions */}
-                              {parentVariant.length !== null &&
-                                parentVariant.width !== null &&
-                                parentVariant.height !== null && (
-                                  <div className='space-y-2'>
-                                    <label className='text-sm font-medium text-gray-700'>Kích thước (cm)</label>
-                                    <div className='p-3 bg-gray-50 rounded-lg border'>
-                                      <span className='text-gray-900'>
-                                        {parentVariant.length}x{parentVariant.width}x{parentVariant.height} cm
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-                            </div>
-                          )}
-
-                          {/* Stock Status Indicator - Chỉ hiển thị nếu KHÔNG có variant con */}
-                          {!hasChildren && parentVariant.quantity !== null && (
-                            <div className='mt-4 pt-4 border-t border-gray-200'>
-                              <div className='flex items-center justify-between'>
-                                <span className='text-sm text-gray-600'>Trạng thái kho:</span>
+                          </div>
+                          {product?.productCategories && (
+                            <div className='flex items-center gap-2'>
+                              <Layers size={16} className='text-green-600 flex-shrink-0' />
+                              <div>
+                                <span className='text-sm text-gray-600 block'>Danh mục</span>
                                 <Badge
-                                  className={
-                                    parentVariant.quantity > 20
-                                      ? 'bg-green-100 text-green-800'
-                                      : parentVariant.quantity > 10
-                                        ? 'bg-yellow-100 text-yellow-800'
-                                        : 'bg-red-100 text-red-800'
-                                  }
+                                  variant='outline'
+                                  className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100 text-xs'
                                 >
-                                  {parentVariant.quantity > 20
-                                    ? 'Còn nhiều'
-                                    : parentVariant.quantity > 10
-                                      ? 'Sắp hết'
-                                      : 'Ít hàng'}
+                                  {product.productCategories.name}
                                 </Badge>
                               </div>
                             </div>
                           )}
                         </div>
 
-                        {/* Variant Con - Hiển thị nếu có */}
-                        {hasChildren && childVariants.length > 0 && (
-                          <div className='mt-4 space-y-4'>
-                            <div className='flex items-center gap-2 mb-3'>
-                              <div className='h-px flex-1 bg-gray-200'></div>
-                              <span className='text-sm font-semibold text-gray-700 px-2'>
-                                Variant con ({childVariants.length})
-                              </span>
-                              <div className='h-px flex-1 bg-gray-200'></div>
+                        {/* Summary Price */}
+                        {product?.summaryPrice && (
+                          <div className='pt-4 border-t'>
+                            <span className='text-sm text-gray-600 block mb-1'>Tóm tắt giá</span>
+                            <p className='text-2xl font-bold text-green-600'>{product.summaryPrice}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Column */}
+                      <div className='space-y-4'>
+                        <div>
+                          <h3 className='text-lg font-semibold text-gray-900 mb-2'>Mô tả sản phẩm</h3>
+                          <p className='text-gray-700 leading-relaxed'>{product?.description}</p>
+                        </div>
+
+                        {product?.staffNote && (
+                          <div>
+                            <h3 className='text-lg font-semibold text-gray-900 mb-2'>Ghi chú từ staff</h3>
+                            <p className='text-gray-700 leading-relaxed'>{product.staffNote}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Certificates */}
+              {product?.productCertificateDTOs && product.productCertificateDTOs.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.6 }}
+                >
+                  <Card className='shadow-lg'>
+                    <CardHeader>
+                      <CardTitle className='flex items-center gap-2'>
+                        <Award size={20} className='text-green-600' />
+                        Chứng nhận sản phẩm
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className='space-y-4'>
+                        {product.productCertificateDTOs.map((certificate) => (
+                          <div key={certificate.id} className='border border-gray-200 rounded-lg p-4'>
+                            <div className='flex items-start justify-between mb-3'>
+                              <div className='flex items-center gap-2'>
+                                <Award size={16} className='text-green-600' />
+                                <span className='font-medium text-gray-900'>Chứng nhận #{certificate.id.slice(0, 8)}</span>
+                              </div>
+                              {getCertificateStatusBadge(certificate.status)}
                             </div>
-                            <div className='space-y-3 pl-4 border-l-2 border-green-200'>
-                              {childVariants.map((childVariant) => (
-                                <div
-                                  key={childVariant.id}
-                                  className='border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors'
-                                >
-                                  <h4 className='text-sm font-semibold text-gray-700 mb-3'>Variant con</h4>
-                                  <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                                    {/* Child Variant Name */}
-                                    <div className='space-y-2'>
-                                      <label className='text-sm font-medium text-gray-700'>Tên variant con</label>
-                                      <div className='p-2 bg-white rounded border'>
-                                        <span className='text-gray-900 text-sm'>{childVariant.name}</span>
-                                      </div>
+
+                            <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-3'>
+                              <div>
+                                <span className='text-sm text-gray-600'>Ngày nộp:</span>
+                                <p className='font-medium'>{formatDate(certificate.submittedDate)}</p>
+                              </div>
+                              <div>
+                                <span className='text-sm text-gray-600'>Ngày quyết định:</span>
+                                <p className='font-medium'>{formatDate(certificate.decisionDate)}</p>
+                              </div>
+                            </div>
+
+                            {certificate.staffNotes && (
+                              <div className='mb-3'>
+                                <span className='text-sm text-gray-600'>Ghi chú từ staff:</span>
+                                <p className='text-gray-900'>{certificate.staffNotes}</p>
+                              </div>
+                            )}
+
+                            {certificate.imageUrl && (
+                              <div>
+                                <span className='text-sm text-gray-600 block mb-2'>Hình ảnh chứng nhận:</span>
+                                <div className='w-32 h-32 bg-gray-100 rounded-lg overflow-hidden'>
+                                  <img
+                                    src={certificate.imageUrl}
+                                    alt='Chứng nhận'
+                                    className='w-full h-full object-cover'
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement
+                                      target.src = '/placeholder-image.png'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {/* Statistics */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.7 }}
+              >
+                <Card className='shadow-lg'>
+                  <CardHeader>
+                    <CardTitle className='flex items-center gap-2'>
+                      <Star size={20} className='text-green-600' />
+                      Thống kê
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                      <div className='text-center p-4 bg-green-50 rounded-lg'>
+                        <div className='text-2xl font-bold text-green-600'>{product?.saleCount || 0}</div>
+                        <div className='text-sm text-gray-600'>Lượt bán</div>
+                      </div>
+                      <div className='text-center p-4 bg-yellow-50 rounded-lg'>
+                        <div className='text-2xl font-bold text-yellow-600'>{product?.rating?.toFixed(1) || '0.0'}</div>
+                        <div className='text-sm text-gray-600'>Đánh giá trung bình</div>
+                      </div>
+                      <div className='text-center p-4 bg-blue-50 rounded-lg'>
+                        <div className='text-2xl font-bold text-blue-600'>{product?.reviewCount || 0}</div>
+                        <div className='text-sm text-gray-600'>Số lượt đánh giá</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+            {/* No variants message */}
+            {parentVariants.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, delay: 0.8 }}
+              >
+                <Card className='shadow-lg'>
+                  <CardHeader>
+                    <CardTitle className='flex items-center gap-2 text-green-700'>
+                      <Archive size={20} />
+                      Loại sản phẩm
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='text-center py-8 text-gray-500'>
+                      <Archive size={48} className='mx-auto mb-4 text-gray-400' />
+                      <p>Chưa có product variant.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Variants Display */}
+            {parentVariants.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.8 }}
+              >
+                <Card className='shadow-lg'>
+                  <CardHeader>
+                    <CardTitle className='flex items-center gap-2 text-green-700'>
+                      <Archive size={20} />
+                      Loại sản phẩm
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='space-y-6'>
+                      {parentVariants.map((parentVariant, index) => {
+                        const attributeType = getAttributeTypeForVariant(parentVariant)
+                        const hasChildren = hasChildVariants(parentVariant)
+                        const childVariants = getChildVariants(parentVariant)
+
+                        return (
+                          <motion.div
+                            key={parentVariant.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: 0.9 + index * 0.1 }}
+                            className='border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white'
+                          >
+                            {/* Variant Cha Header */}
+                            <div className='mb-4 pb-4 border-b border-gray-200'>
+                              <h3 className='text-lg font-semibold text-gray-900 mb-4'>Variant cha</h3>
+                              <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                                {/* Attribute Type */}
+                                {attributeType && (
+                                  <div className='space-y-2'>
+                                    <label className='text-sm font-medium text-gray-700'>Loại thuộc tính</label>
+                                    <div className='p-3 bg-gray-50 rounded-lg border'>
+                                      <span className='text-gray-900 font-medium'>{attributeType}</span>
                                     </div>
-
-                                    {/* Child Attribute Name */}
-                                    {childVariant.attributeName && (
-                                      <div className='space-y-2'>
-                                        <label className='text-sm font-medium text-gray-700'>Tên thuộc tính</label>
-                                        <div className='p-2 bg-white rounded border'>
-                                          <span className='text-gray-900 text-sm'>{childVariant.attributeName}</span>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Child Price */}
-                                    {childVariant.finalPrice !== null && (
-                                      <div className='space-y-2'>
-                                        <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
-                                          <DollarSign size={14} />
-                                          Giá bán (VNĐ)
-                                        </label>
-                                        <div className='p-2 bg-white rounded border'>
-                                          <span className='text-green-600 font-bold text-sm'>
-                                            {childVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
-                                          </span>
-                                          {childVariant.basePrice !== null &&
-                                            childVariant.basePrice !== childVariant.finalPrice && (
-                                              <span className='ml-2 text-xs text-gray-500 line-through'>
-                                                {childVariant.basePrice.toLocaleString('vi-VN')} VNĐ
-                                              </span>
-                                            )}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Child Stock */}
-                                    {childVariant.quantity !== null && (
-                                      <div className='space-y-2'>
-                                        <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
-                                          <Package size={14} />
-                                          Số lượng tồn kho
-                                        </label>
-                                        <div className='p-2 bg-white rounded border'>
-                                          <span
-                                            className={`text-sm font-medium ${childVariant.quantity > 20 ? 'text-green-600' : childVariant.quantity > 10 ? 'text-yellow-600' : 'text-red-600'}`}
-                                          >
-                                            {childVariant.quantity} sản phẩm
-                                          </span>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Child Weight */}
-                                    {childVariant.weight !== null && (
-                                      <div className='space-y-2'>
-                                        <label className='text-sm font-medium text-gray-700'>Trọng lượng (g)</label>
-                                        <div className='p-2 bg-white rounded border'>
-                                          <span className='text-gray-900 text-sm'>{childVariant.weight}g</span>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Child Dimensions */}
-                                    {childVariant.length !== null &&
-                                      childVariant.width !== null &&
-                                      childVariant.height !== null && (
-                                        <div className='space-y-2'>
-                                          <label className='text-sm font-medium text-gray-700'>Kích thước (cm)</label>
-                                          <div className='p-2 bg-white rounded border'>
-                                            <span className='text-gray-900 text-sm'>
-                                              {childVariant.length}x{childVariant.width}x{childVariant.height} cm
-                                            </span>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                    {/* Child Images */}
-                                    {childVariant.productImages && childVariant.productImages.length > 0 && (
-                                      <div className='space-y-2 md:col-span-2 lg:col-span-3'>
-                                        <label className='text-sm font-medium text-gray-700'>Hình ảnh</label>
-                                        <div className='flex gap-2 flex-wrap'>
-                                          {childVariant.productImages.map((image, idx) => (
-                                            <div
-                                              key={idx}
-                                              className='w-16 h-16 rounded-lg overflow-hidden border border-gray-200'
-                                            >
-                                              <img
-                                                src={image}
-                                                alt={`${childVariant.name} ${idx + 1}`}
-                                                className='w-full h-full object-cover'
-                                                onError={(e) => {
-                                                  const target = e.target as HTMLImageElement
-                                                  target.src = '/placeholder-image.png'
-                                                }}
-                                              />
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
                                   </div>
+                                )}
 
-                                  {/* Child Stock Status */}
-                                  {childVariant.quantity !== null && (
-                                    <div className='mt-3 pt-3 border-t border-gray-200'>
-                                      <div className='flex items-center justify-between'>
-                                        <span className='text-xs text-gray-600'>Trạng thái kho:</span>
-                                        <Badge
-                                          className={
-                                            childVariant.quantity > 20
-                                              ? 'bg-green-100 text-green-800 text-xs'
-                                              : childVariant.quantity > 10
-                                                ? 'bg-yellow-100 text-yellow-800 text-xs'
-                                                : 'bg-red-100 text-red-800 text-xs'
-                                          }
-                                        >
-                                          {childVariant.quantity > 20
-                                            ? 'Còn nhiều'
-                                            : childVariant.quantity > 10
-                                              ? 'Sắp hết'
-                                              : 'Ít hàng'}
-                                        </Badge>
+                                {/* Attribute Name */}
+                                {parentVariant.attributeName && (
+                                  <div className='space-y-2'>
+                                    <label className='text-sm font-medium text-gray-700'>Tên thuộc tính</label>
+                                    <div className='p-3 bg-gray-50 rounded-lg border'>
+                                      <span className='text-gray-900 font-medium'>{parentVariant.attributeName}</span>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Variant Name */}
+                                <div className='space-y-2'>
+                                  <label className='text-sm font-medium text-gray-700'>Tên loại sản phẩm</label>
+                                  <div className='p-3 bg-gray-50 rounded-lg border'>
+                                    <span className='text-gray-900 font-medium'>{parentVariant.name}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Description */}
+                              {parentVariant.description && (
+                                <div className='mt-4 space-y-2'>
+                                  <label className='text-sm font-medium text-gray-700'>Mô tả</label>
+                                  <div className='p-3 bg-gray-50 rounded-lg border'>
+                                    <span className='text-gray-700'>{parentVariant.description}</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Images */}
+                              {parentVariant.productImages && parentVariant.productImages.length > 0 && (
+                                <div className='mt-4 space-y-2'>
+                                  <label className='text-sm font-medium text-gray-700'>Hình ảnh</label>
+                                  <div className='flex gap-2 flex-wrap'>
+                                    {parentVariant.productImages.map((image, idx) => (
+                                      <div key={idx} className='w-20 h-20 rounded-lg overflow-hidden border border-gray-200'>
+                                        <img
+                                          src={image}
+                                          alt={`${parentVariant.name} ${idx + 1}`}
+                                          className='w-full h-full object-cover'
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement
+                                            target.src = '/placeholder-image.png'
+                                          }}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* SKU Details - Chỉ hiển thị nếu KHÔNG có variant con */}
+                              {!hasChildren && (
+                                <div className='mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                                  {/* Price */}
+                                  {parentVariant.finalPrice !== null && (
+                                    <div className='space-y-2'>
+                                      <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                        <DollarSign size={14} />
+                                        Giá bán (VNĐ)
+                                      </label>
+                                      <div className='p-3 bg-gray-50 rounded-lg border'>
+                                        <span className='text-green-600 font-bold'>
+                                          {parentVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
+                                        </span>
+                                        {parentVariant.basePrice !== null &&
+                                          parentVariant.basePrice !== parentVariant.finalPrice && (
+                                            <span className='ml-2 text-sm text-gray-500 line-through'>
+                                              {parentVariant.basePrice.toLocaleString('vi-VN')} VNĐ
+                                            </span>
+                                          )}
                                       </div>
                                     </div>
                                   )}
+
+                                  {/* Stock */}
+                                  {parentVariant.quantity !== null && (
+                                    <div className='space-y-2'>
+                                      <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                        <Package size={14} />
+                                        Số lượng tồn kho
+                                      </label>
+                                      <div className='p-3 bg-gray-50 rounded-lg border'>
+                                        <span
+                                          className={`font-medium ${parentVariant.quantity > 20 ? 'text-green-600' : parentVariant.quantity > 10 ? 'text-yellow-600' : 'text-red-600'}`}
+                                        >
+                                          {parentVariant.quantity} sản phẩm
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Weight */}
+                                  {parentVariant.weight !== null && (
+                                    <div className='space-y-2'>
+                                      <label className='text-sm font-medium text-gray-700'>Trọng lượng (g)</label>
+                                      <div className='p-3 bg-gray-50 rounded-lg border'>
+                                        <span className='text-gray-900'>{parentVariant.weight}g</span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Dimensions */}
+                                  {parentVariant.length !== null &&
+                                    parentVariant.width !== null &&
+                                    parentVariant.height !== null && (
+                                      <div className='space-y-2'>
+                                        <label className='text-sm font-medium text-gray-700'>Kích thước (cm)</label>
+                                        <div className='p-3 bg-gray-50 rounded-lg border'>
+                                          <span className='text-gray-900'>
+                                            {parentVariant.length}x{parentVariant.width}x{parentVariant.height} cm
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
                                 </div>
-                              ))}
+                              )}
+
+                              {/* Stock Status Indicator - Chỉ hiển thị nếu KHÔNG có variant con */}
+                              {!hasChildren && parentVariant.quantity !== null && (
+                                <div className='mt-4 pt-4 border-t border-gray-200'>
+                                  <div className='flex items-center justify-between'>
+                                    <span className='text-sm text-gray-600'>Trạng thái kho:</span>
+                                    <Badge
+                                      className={
+                                        parentVariant.quantity > 20
+                                          ? 'bg-green-100 text-green-800'
+                                          : parentVariant.quantity > 10
+                                            ? 'bg-yellow-100 text-yellow-800'
+                                            : 'bg-red-100 text-red-800'
+                                      }
+                                    >
+                                      {parentVariant.quantity > 20
+                                        ? 'Còn nhiều'
+                                        : parentVariant.quantity > 10
+                                          ? 'Sắp hết'
+                                          : 'Ít hàng'}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        )}
 
-                      </div>
-                    )
-                  })}
-                </div>
+                            {/* ChevronDown để expand/collapse variant con */}
+                            {hasChildren && childVariants.length > 0 && (
+                              <div className='mt-4 pt-4 border-t border-gray-200'>
+                                <button
+                                  onClick={() => toggleVariantExpanded(parentVariant.id)}
+                                  className='w-full flex items-center justify-center gap-2 py-2 text-gray-600 hover:text-green-600 transition-colors cursor-pointer'
+                                >
+                                  <span className='text-sm font-medium'>
+                                    {expandedVariants.has(parentVariant.id) ? 'Variant con' : 'Variant con'} ({childVariants.length})
+                                  </span>
+                                  <motion.div
+                                    animate={{ rotate: expandedVariants.has(parentVariant.id) ? 180 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <ChevronDown size={20} className='text-gray-500' />
+                                  </motion.div>
+                                </button>
+                              </div>
+                            )}
 
-                {/* Summary */}
-                {parentVariants.length > 0 && (
-                  <div className='mt-6 p-4 bg-green-50 rounded-lg border border-green-200'>
-                    <h3 className='text-lg font-semibold text-green-800 mb-2'>Tổng quan</h3>
-                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
-                      <div>
-                        <span className='text-green-700 font-medium'>Tổng số variant cha:</span>
-                        <span className='ml-2 text-green-900'>{parentVariants.length} loại</span>
-                      </div>
-                      <div>
-                        <span className='text-green-700 font-medium'>Tổng tồn kho:</span>
-                        <span className='ml-2 text-green-900'>
-                          {(() => {
-                            let total = 0
-                            parentVariants.forEach((pv) => {
-                              if (hasChildVariants(pv)) {
-                                const children = getChildVariants(pv)
-                                total += children.reduce((sum, cv) => sum + (cv.quantity || 0), 0)
-                              } else {
-                                total += pv.quantity || 0
-                              }
-                            })
-                            return `${total} sản phẩm`
-                          })()}
-                        </span>
-                      </div>
-                      <div>
-                        <span className='text-green-700 font-medium'>Giá từ:</span>
-                        <span className='ml-2 text-green-900'>
-                          {(() => {
-                            const prices: number[] = []
-                            parentVariants.forEach((pv) => {
-                              if (hasChildVariants(pv)) {
-                                const children = getChildVariants(pv)
-                                children.forEach((cv) => {
-                                  if (cv.finalPrice !== null) prices.push(cv.finalPrice)
-                                })
-                              } else {
-                                if (pv.finalPrice !== null) prices.push(pv.finalPrice)
-                              }
-                            })
-                            return prices.length > 0
-                              ? `${Math.min(...prices).toLocaleString('vi-VN')} - ${Math.max(...prices).toLocaleString('vi-VN')} VNĐ`
-                              : 'Chưa có giá'
-                          })()}
-                        </span>
-                      </div>
+                            {/* Variant Con - Hiển thị nếu có và đã expand */}
+                            <AnimatePresence>
+                              {hasChildren && childVariants.length > 0 && expandedVariants.has(parentVariant.id) && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                  className='mt-4 space-y-4 overflow-hidden'
+                                >
+                                  <div className='flex items-center gap-2 mb-3'>
+                                    <div className='h-px flex-1 bg-gray-200'></div>
+                                  </div>
+                                  <div className='space-y-3 pl-4 border-l-2 border-green-200'>
+                                    {childVariants.map((childVariant) => (
+                                      <div
+                                        key={childVariant.id}
+                                        className='border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors'
+                                      >
+                                        <h4 className='text-sm font-semibold text-gray-700 mb-3'>Variant con</h4>
+                                        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                                          {/* Child Variant Name */}
+                                          <div className='space-y-2'>
+                                            <label className='text-sm font-medium text-gray-700'>Tên variant con</label>
+                                            <div className='p-2 bg-white rounded border'>
+                                              <span className='text-gray-900 text-sm'>{childVariant.name}</span>
+                                            </div>
+                                          </div>
+
+                                          {/* Child Attribute Name */}
+                                          {childVariant.attributeName && (
+                                            <div className='space-y-2'>
+                                              <label className='text-sm font-medium text-gray-700'>Tên thuộc tính</label>
+                                              <div className='p-2 bg-white rounded border'>
+                                                <span className='text-gray-900 text-sm'>{childVariant.attributeName}</span>
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Child Price */}
+                                          {childVariant.finalPrice !== null && (
+                                            <div className='space-y-2'>
+                                              <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                                <DollarSign size={14} />
+                                                Giá bán (VNĐ)
+                                              </label>
+                                              <div className='p-2 bg-white rounded border'>
+                                                <span className='text-green-600 font-bold text-sm'>
+                                                  {childVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
+                                                </span>
+                                                {childVariant.basePrice !== null &&
+                                                  childVariant.basePrice !== childVariant.finalPrice && (
+                                                    <span className='ml-2 text-xs text-gray-500 line-through'>
+                                                      {childVariant.basePrice.toLocaleString('vi-VN')} VNĐ
+                                                    </span>
+                                                  )}
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Child Stock */}
+                                          {childVariant.quantity !== null && (
+                                            <div className='space-y-2'>
+                                              <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                                <Package size={14} />
+                                                Số lượng tồn kho
+                                              </label>
+                                              <div className='p-2 bg-white rounded border'>
+                                                <span
+                                                  className={`text-sm font-medium ${childVariant.quantity > 20 ? 'text-green-600' : childVariant.quantity > 10 ? 'text-yellow-600' : 'text-red-600'}`}
+                                                >
+                                                  {childVariant.quantity} sản phẩm
+                                                </span>
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Child Weight */}
+                                          {childVariant.weight !== null && (
+                                            <div className='space-y-2'>
+                                              <label className='text-sm font-medium text-gray-700'>Trọng lượng (g)</label>
+                                              <div className='p-2 bg-white rounded border'>
+                                                <span className='text-gray-900 text-sm'>{childVariant.weight}g</span>
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Child Dimensions */}
+                                          {childVariant.length !== null &&
+                                            childVariant.width !== null &&
+                                            childVariant.height !== null && (
+                                              <div className='space-y-2'>
+                                                <label className='text-sm font-medium text-gray-700'>Kích thước (cm)</label>
+                                                <div className='p-2 bg-white rounded border'>
+                                                  <span className='text-gray-900 text-sm'>
+                                                    {childVariant.length}x{childVariant.width}x{childVariant.height} cm
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            )}
+
+                                          {/* Child Images */}
+                                          {childVariant.productImages && childVariant.productImages.length > 0 && (
+                                            <div className='space-y-2 md:col-span-2 lg:col-span-3'>
+                                              <label className='text-sm font-medium text-gray-700'>Hình ảnh</label>
+                                              <div className='flex gap-2 flex-wrap'>
+                                                {childVariant.productImages.map((image, idx) => (
+                                                  <div
+                                                    key={idx}
+                                                    className='w-16 h-16 rounded-lg overflow-hidden border border-gray-200'
+                                                  >
+                                                    <img
+                                                      src={image}
+                                                      alt={`${childVariant.name} ${idx + 1}`}
+                                                      className='w-full h-full object-cover'
+                                                      onError={(e) => {
+                                                        const target = e.target as HTMLImageElement
+                                                        target.src = '/placeholder-image.png'
+                                                      }}
+                                                    />
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Child Stock Status */}
+                                        {childVariant.quantity !== null && (
+                                          <div className='mt-3 pt-3 border-t border-gray-200'>
+                                            <div className='flex items-center justify-between'>
+                                              <span className='text-xs text-gray-600'>Trạng thái kho:</span>
+                                              <Badge
+                                                className={
+                                                  childVariant.quantity > 20
+                                                    ? 'bg-green-100 text-green-800 text-xs'
+                                                    : childVariant.quantity > 10
+                                                      ? 'bg-yellow-100 text-yellow-800 text-xs'
+                                                      : 'bg-red-100 text-red-800 text-xs'
+                                                }
+                                              >
+                                                {childVariant.quantity > 20
+                                                  ? 'Còn nhiều'
+                                                  : childVariant.quantity > 10
+                                                    ? 'Sắp hết'
+                                                    : 'Ít hàng'}
+                                              </Badge>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
+                          </motion.div>
+                        )
+                      })}
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
 
-        {/* Tab 2: Chứng nhận */}
-        <TabsContent value='certificates' className='space-y-6'>
-          {id && <ProductCertificate productId={id} />}
-        </TabsContent>
+                    {/* Summary */}
+                    {parentVariants.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.4, delay: 1.0 + parentVariants.length * 0.1 }}
+                        className='mt-6 p-4 bg-green-50 rounded-lg border border-green-200'
+                      >
+                        <h3 className='text-lg font-semibold text-green-800 mb-2'>Tổng quan</h3>
+                        <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
+                          <div>
+                            <span className='text-green-700 font-medium'>Tổng số variant cha:</span>
+                            <span className='ml-2 text-green-900'>{parentVariants.length} loại</span>
+                          </div>
+                          <div>
+                            <span className='text-green-700 font-medium'>Tổng tồn kho:</span>
+                            <span className='ml-2 text-green-900'>
+                              {(() => {
+                                let total = 0
+                                parentVariants.forEach((pv) => {
+                                  if (hasChildVariants(pv)) {
+                                    const children = getChildVariants(pv)
+                                    total += children.reduce((sum, cv) => sum + (cv.quantity || 0), 0)
+                                  } else {
+                                    total += pv.quantity || 0
+                                  }
+                                })
+                                return `${total} sản phẩm`
+                              })()}
+                            </span>
+                          </div>
+                          <div>
+                            <span className='text-green-700 font-medium'>Giá từ:</span>
+                            <span className='ml-2 text-green-900'>
+                              {(() => {
+                                const prices: number[] = []
+                                parentVariants.forEach((pv) => {
+                                  if (hasChildVariants(pv)) {
+                                    const children = getChildVariants(pv)
+                                    children.forEach((cv) => {
+                                      if (cv.finalPrice !== null) prices.push(cv.finalPrice)
+                                    })
+                                  } else {
+                                    if (pv.finalPrice !== null) prices.push(pv.finalPrice)
+                                  }
+                                })
+                                return prices.length > 0
+                                  ? `${Math.min(...prices).toLocaleString('vi-VN')} - ${Math.max(...prices).toLocaleString('vi-VN')} VNĐ`
+                                  : 'Chưa có giá'
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </TabsContent>
 
-        {/* Tab 3: Câu chuyện */}
-        <TabsContent value='story' className='space-y-6'>
-          {id && <ProductStoryComponent productId={id} />}
-        </TabsContent>
-      </Tabs>
+          {/* Tab 2: Chứng nhận */}
+          <TabsContent value='certificates' className='space-y-6'>
+            {id && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <ProductCertificate productId={id} />
+              </motion.div>
+            )}
+          </TabsContent>
+
+          {/* Tab 3: Câu chuyện */}
+          <TabsContent value='story' className='space-y-6'>
+            {id && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <ProductStoryComponent productId={id} />
+              </motion.div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </motion.div>
 
       {/* Assign Staff Modal */}
       <Dialog open={showAssignModal} onOpenChange={handleCloseAssignModal}>
@@ -1315,7 +1408,7 @@ function DetailProductAdmin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   )
 }
 

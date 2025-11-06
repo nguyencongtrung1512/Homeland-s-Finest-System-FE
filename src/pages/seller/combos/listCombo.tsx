@@ -63,7 +63,7 @@ function ComboSeller() {
       setAllCombos(response)
       setCurrentPage(1)
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải danh sách combo'
+      const errorMessage = err instanceof Error ? err.message : ''
       setError(errorMessage)
     } finally {
       setLoading(false)

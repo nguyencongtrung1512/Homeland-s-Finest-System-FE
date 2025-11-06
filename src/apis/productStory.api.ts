@@ -43,10 +43,13 @@ export const productStoryApi = {
   update: async (
     storyId: string,
     data: ProductStoryUpdateInput & {
-      thumbnail?: File
       storyDetail?: string
-      storyVideo?: File
-      storyImages?: File[]
+      newThumbnail?: File
+      removeExistingThumbnail?: boolean
+      newStoryVideo?: File
+      removeExistingStoryVideo?: boolean
+      newStoryImages?: File[]
+      removeExistingStoryImages?: boolean
     }
   ) => {
     const formData = new FormData()
@@ -54,26 +57,34 @@ export const productStoryApi = {
       formData.append('Title', data.title)
     }
 
-    if (data.thumbnailUrl) {
-      formData.append('ThumbnailUrl', data.thumbnailUrl)
-    }
-
     if (data.storyDetail) {
       formData.append('StoryDetail', data.storyDetail)
     }
 
-    if (data.thumbnail) {
-      formData.append('Thumbnail', data.thumbnail)
+    // Handle Thumbnail
+    if (data.newThumbnail) {
+      formData.append('NewThumbnail', data.newThumbnail)
+      formData.append('RemoveExistingThumbnail', String(data.removeExistingThumbnail ?? true))
+    } else {
+      formData.append('RemoveExistingThumbnail', String(data.removeExistingThumbnail ?? false))
     }
 
-    if (data.storyVideo) {
-      formData.append('StoryVideo', data.storyVideo)
+    // Handle Story Video
+    if (data.newStoryVideo) {
+      formData.append('NewStoryVideo', data.newStoryVideo)
+      formData.append('RemoveExistingStoryVideo', String(data.removeExistingStoryVideo ?? true))
+    } else {
+      formData.append('RemoveExistingStoryVideo', String(data.removeExistingStoryVideo ?? false))
     }
 
-    if (data.storyImages && data.storyImages.length > 0) {
-      data.storyImages.forEach((image) => {
-        formData.append('StoryImages', image)
+    // Handle Story Images
+    if (data.newStoryImages && data.newStoryImages.length > 0) {
+      data.newStoryImages.forEach((image) => {
+        formData.append('NewStoryImages', image)
       })
+      formData.append('RemoveExistingStoryImages', String(data.removeExistingStoryImages ?? true))
+    } else {
+      formData.append('RemoveExistingStoryImages', String(data.removeExistingStoryImages ?? false))
     }
 
     return await axiosInstance.put<ProductStoryResponse>(`${API_URL}/${storyId}`, formData, {
