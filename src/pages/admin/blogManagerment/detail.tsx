@@ -34,6 +34,7 @@ import {
 } from '../../../components/ui/alert-dialog'
 import { formatDate } from '../../../utils/formatDate'
 import { toast } from '../../../utils/toast'
+import { resolveImageUrl } from '../../../utils/image'
 
 function BlogByCategory() {
   const { id } = useParams<{ id: string }>()
@@ -97,14 +98,16 @@ function BlogByCategory() {
     if (!blogToDelete) return
 
     try {
-      const response = await blogApi.delete(blogToDelete)
-      if (response.status === 200 || response.status === 204) {
+      const response: any = await blogApi.delete(blogToDelete)
+      // Axios interceptor đã return response.data, nên response là { status, message, data }
+      // Backend trả về status: 204 (SUCCESS_DELETE_CODE) hoặc 200 trong body
+      if (response?.status === 204 || response?.status === 200) {
         toast.success('Xóa blog thành công!')
         loadCategoryDetail()
         setIsDeleteDialogOpen(false)
         setBlogToDelete(null)
       } else {
-        toast.error('Có lỗi xảy ra khi xóa blog')
+        toast.error(response?.message || 'Có lỗi xảy ra khi xóa blog')
       }
     } catch (error: any) {
       console.error('Error deleting blog:', error)
@@ -279,10 +282,14 @@ function BlogByCategory() {
                           {blog.image && (
                             <div className='mt-3'>
                               <img
-                                src={blog.image}
+                                src={resolveImageUrl(blog.image)}
                                 alt={blog.title}
                                 className='w-20 h-20 object-cover rounded-md'
-                              />{' '}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.src = 'https://via.placeholder.com/80x80?text=No+Image'
+                                }}
+                              />
                             </div>
                           )}
                         </div>
@@ -349,9 +356,13 @@ function BlogByCategory() {
               {selectedBlog.image && (
                 <div className='my-4'>
                   <img
-                    src={selectedBlog.image}
+                    src={resolveImageUrl(selectedBlog.image)}
                     alt={selectedBlog.title}
                     className='w-full max-h-[300px] object-cover rounded-md'
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.src = 'https://via.placeholder.com/600x300?text=No+Image'
+                    }}
                   />
                 </div>
               )}

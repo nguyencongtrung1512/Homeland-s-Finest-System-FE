@@ -11,7 +11,7 @@ export interface BlogUser {
   role: string
   firstName: string
   lastName: string
-  avatar: string
+  avatar: File | string
   isActive: boolean
   note: string
   dateOfBirth: string
@@ -28,7 +28,7 @@ export interface BlogItem {
   title: string
   description: string
   content: string
-  image: string
+  image: File | string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -219,26 +219,16 @@ export const updateBlogActiveStatus = async (id: string, isActive: boolean) => {
 
 // Function để xóa Blog (soft delete - set IsActive = false)
 export const deleteBlog = async (id: string) => {
-  try {
-    // Thử PUT method trước (theo endpoint hiện tại)
-    const response = await axiosInstance.put(`/Blog/delete-blog/${id}`, null, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    return response
-  } catch (error: any) {
-    // Nếu PUT không work, thử DELETE method
-    if (error?.response?.status === 404 || error?.response?.status === 405) {
-      const response = await axiosInstance.delete(`/Blog/${id}`, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      return response
-    }
-    throw error
-  }
+  // Controller: [Route("api/[controller]")] => /api/Blog
+  // Action: [HttpPut("delete-blog/{id:guid}")] => route tương đối
+  // Route đầy đủ: /api/Blog/delete-blog/{id}
+  // API_URL = '/Blog', base URL đã có /api, nên endpoint là /Blog/delete-blog/{id}
+  const endpoint = `${API_URL}/delete-blog/${id}`
+  console.log('Delete blog endpoint:', endpoint)
+  const response = await axiosInstance.put(endpoint, null, {
+    headers: { 'Content-Type': 'application/json' }
+  })
+  return response
 }
 
 // Export tất cả functions như một object để dễ sử dụng
