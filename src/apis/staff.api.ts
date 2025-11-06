@@ -381,6 +381,19 @@ export const staffApi = {
     return response.data
   },
 
+  // Cập nhật trạng thái sản phẩm (Confirmed, Rejected, Approved, Denied)
+  updateProductStatus: async (
+    productId: string,
+    status: 'Confirmed' | 'Rejected' | 'Approved' | 'Denied',
+    note: string
+  ): Promise<any> => {
+    const response = await axiosInstance.put(`${API_URL}/product/${productId}/update-status`, {
+      status,
+      note
+    })
+    return response.data
+  },
+
   // Lấy danh sách form được giao cho staff
   getMyForms: async (): Promise<any> => {
     const response = await axiosInstance.get(`${API_URL}/my-forms`)

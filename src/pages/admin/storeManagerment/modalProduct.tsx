@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { X, Package, Star, Calendar, ShoppingCart } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
@@ -11,9 +12,9 @@ interface Product {
   name: string
   description: string
   productImages: string[]
-  saleCount: number
-  rating: number
-  reviewCount: number
+  saleCount: number | null
+  rating: number | null
+  reviewCount: number | null
   isActive: boolean
   status: string
   createdAt: string
@@ -27,6 +28,13 @@ interface ProductModalProps {
 }
 
 const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, storeName }) => {
+  const navigate = useNavigate()
+
+  const handleProductClick = (productId: string) => {
+    onClose() // Đóng modal trước khi navigate
+    navigate(`/admin/productManagement/detail-product/${productId}`)
+  }
+
   const formatDate = (dateString: string): string => {
     try {
       const date = new Date(dateString)
@@ -45,7 +53,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, 
     if (!isActive) {
       return <Badge variant="destructive">Không hoạt động</Badge>
     }
-    
+
     switch (status?.toLowerCase()) {
       case 'active':
         return <Badge variant="default" className="bg-green-500">Hoạt động</Badge>
@@ -58,7 +66,13 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, 
     }
   }
 
-  const renderStars = (rating: number) => {
+  const renderStars = (rating: number | null) => {
+    if (rating === null || rating === undefined) {
+      return Array.from({ length: 5 }, (_, i) => (
+        <Star key={i} className="w-4 h-4 text-gray-300" />
+      ))
+    }
+
     const stars = []
     const fullStars = Math.floor(rating)
     const hasHalfStar = rating % 1 !== 0
@@ -89,7 +103,11 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, 
           {products && products.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
               {products.map((product) => (
-                <Card key={product.id} className="border hover:shadow-md transition-shadow">
+                <Card
+                  key={product.id}
+                  className="border hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleProductClick(product.id)}
+                >
                   <CardContent className="p-4">
                     {/* Product Image */}
                     <div className="aspect-square mb-3 bg-gray-100 rounded-lg overflow-hidden">
@@ -131,7 +149,10 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, 
                           {renderStars(product.rating)}
                         </div>
                         <span className="text-xs text-gray-500">
-                          {product.rating.toFixed(1)} ({product.reviewCount} đánh giá)
+                          {product.rating !== null && product.rating !== undefined
+                            ? product.rating.toFixed(1)
+                            : '0.0'}{' '}
+                          ({product.reviewCount || 0} đánh giá)
                         </span>
                       </div>
 
@@ -139,7 +160,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, 
                       <div className="flex items-center justify-between text-xs text-gray-500">
                         <div className="flex items-center gap-1">
                           <ShoppingCart className="w-3 h-3" />
-                          <span>{product.saleCount} đã bán</span>
+                          <span>{product.saleCount || 0} đã bán</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />

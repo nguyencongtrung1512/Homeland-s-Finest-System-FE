@@ -16,7 +16,8 @@ import {
   DollarSign,
   Layers,
   Plus,
-  Edit
+  Edit,
+  CircleFadingArrowUp
 } from 'lucide-react'
 import { message } from 'antd'
 import { Button } from '../../../components/ui/button'
@@ -24,7 +25,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Badge } from '../../../components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs'
 import type { Product, VariantGroup, VariantOption } from '../../../types/productType'
+import type { ProductCertificateType } from '../../../types/productCertificateType'
+import type { ProductStory } from '../../../types/productStoryType'
 import { productApi } from '../../../apis/product.api'
+import { productCertificateApi } from '../../../apis/productCertificate.api'
+import { productStoryApi } from '../../../apis/productStory.api'
 import ModalProductDetail from './modalProductDetail'
 import ModalVariantProduct from './modalVariantProduct'
 import ModalEditVariant from './modalEditVariant'
@@ -57,6 +62,11 @@ function DetailProductSeller() {
     story: false
   })
 
+  // States for validation
+  const [certificates, setCertificates] = useState<ProductCertificateType[]>([])
+  const [stories, setStories] = useState<ProductStory[]>([])
+  const [checkingValidation, setCheckingValidation] = useState(false)
+
   useEffect(() => {
     const fetchProductDetail = async () => {
       if (!id) {
@@ -84,6 +94,46 @@ function DetailProductSeller() {
 
     fetchProductDetail()
   }, [id, navigate])
+
+  // Fetch certificates and stories for validation
+  useEffect(() => {
+    const fetchValidationData = async () => {
+      if (!id) return
+
+      try {
+        setCheckingValidation(true)
+        // Fetch certificates
+        const certResponse = await productCertificateApi.getByProductId(id)
+        const certData = certResponse.data?.data || certResponse.data || []
+        setCertificates(Array.isArray(certData) ? certData : [])
+
+        // Fetch stories - API returns single story or array
+        const storyResponse = await productStoryApi.getByProductId(id)
+        if (storyResponse.status === 200 && storyResponse.data) {
+          // Response có thể là single story object hoặc array
+          const storyData = storyResponse.data
+          if (Array.isArray(storyData)) {
+            setStories(storyData)
+          } else {
+            setStories([storyData])
+          }
+        } else {
+          setStories([])
+        }
+      } catch (error) {
+        console.error('Error fetching validation data:', error)
+        // Set empty arrays on error
+        setCertificates([])
+        setStories([])
+      } finally {
+        setCheckingValidation(false)
+      }
+    }
+
+    if (product) {
+      fetchValidationData()
+    }
+  }, [id, product])
 
   const handleBack = () => {
     navigate(-1)
@@ -166,8 +216,101 @@ function DetailProductSeller() {
       if (refreshResponse.status === 200 && refreshResponse.data) {
         setProduct(refreshResponse.data)
       }
+      // Refresh certificates and stories
+      const certResponse = await productCertificateApi.getByProductId(id)
+      const certData = certResponse.data?.data || certResponse.data || []
+      setCertificates(Array.isArray(certData) ? certData : [])
+
+      const storyResponse = await productStoryApi.getByProductId(id)
+      if (storyResponse.status === 200 && storyResponse.data) {
+        const storyData = storyResponse.data
+        if (Array.isArray(storyData)) {
+          setStories(storyData)
+        } else {
+          setStories([storyData])
+        }
+      } else {
+        setStories([])
+      }
     } catch (error) {
       console.error('Error refreshing product:', error)
+    }
+  }
+
+  // Kiểm tra điều kiện submit
+  const canSubmit = (): boolean => {
+    if (!product) return false
+
+    // Kiểm tra thông tin sản phẩm
+    const hasProductInfo = !!(
+      product.name &&
+      product.name.trim() !== '' &&
+      product.description &&
+      product.description.trim() !== '' &&
+      product.productImages &&
+      product.productImages.length > 0 &&
+      product.provinceId &&
+      product.productCategories &&
+      product.productCategories.id &&
+      product.material &&
+      product.material.trim() !== ''
+    )
+
+    // Kiểm tra chứng nhận (có ít nhất 1 chứng nhận)
+    const hasCertificates = certificates.length > 0
+
+    // Kiểm tra câu chuyện (có ít nhất 1 story với title và contents)
+    const hasStory = stories.some(
+      (story) => story.title && story.title.trim() !== '' && story.contents && story.contents.length > 0
+    )
+
+    return hasProductInfo && hasCertificates && hasStory
+  }
+
+  // Handler submit product
+  const handleSubmit = async () => {
+    if (!id) return
+
+    if (!canSubmit()) {
+      message.warning('Vui lòng điền đầy đủ thông tin sản phẩm, chứng nhận và câu chuyện trước khi gửi')
+      return
+    }
+
+    try {
+      setCheckingValidation(true)
+      const response = await productApi.submit(id)
+      if (response.status === 200) {
+        message.success('Gửi sản phẩm thành công')
+        await handleRefreshProduct()
+      } else {
+        message.error('Không thể gửi sản phẩm')
+      }
+    } catch (error) {
+      console.error('Error submitting product:', error)
+      message.error('Có lỗi xảy ra khi gửi sản phẩm')
+    } finally {
+      setCheckingValidation(false)
+    }
+  }
+
+  // Handler cancel product
+  const handleCancel = async () => {
+    if (!id) return
+
+    try {
+      setCheckingValidation(true)
+      const response = await productApi.cancel(id)
+      if (response.status === 200) {
+        message.success('Hủy sản phẩm thành công')
+        await handleRefreshProduct()
+      } else {
+        message.error('Không thể hủy sản phẩm')
+      }
+    } catch (error) {
+      console.error('Error canceling product:', error)
+      message.error('Có lỗi xảy ra khi hủy sản phẩm')
+    } finally {
+      setCheckingValidation(false)
     }
   }
 
@@ -268,6 +411,55 @@ function DetailProductSeller() {
           </Button>
         </div>
       </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className='flex items-center gap-2'>
+            <CircleFadingArrowUp size={20} className='text-green-600' />
+            Xác nhận xử lý sản phẩm
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-medium text-gray-700'>Trạng thái:</span>
+              {product && getStatusBadge(product.status, product.isActive)}
+            </div>
+            <div className='flex items-center gap-2'>
+              {/* Hiển thị button Submit khi status là Draft */}
+              {product?.status?.toLowerCase() === 'draft' && (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!canSubmit() || checkingValidation}
+                  className='bg-green-600 hover:bg-green-700 text-white'
+                >
+                  <CircleFadingArrowUp size={16} className='mr-2' />
+                  Gửi sản phẩm
+                </Button>
+              )}
+              {/* Hiển thị button Cancel khi status là Pending */}
+              {product?.status?.toLowerCase() === 'pending' && (
+                <Button
+                  onClick={handleCancel}
+                  disabled={checkingValidation}
+                  variant='destructive'
+                  className='bg-red-600 hover:bg-red-700 text-white'
+                >
+                  Hủy sản phẩm
+                </Button>
+              )}
+            </div>
+          </div>
+          {/* Hiển thị thông báo khi không đủ điều kiện submit */}
+          {product?.status?.toLowerCase() === 'draft' && !canSubmit() && (
+            <div className='mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg'>
+              <p className='text-sm text-yellow-800'>
+                <strong>Lưu ý:</strong> Vui lòng điền đầy đủ thông tin sản phẩm, chứng nhận và câu chuyện để có thể gửi
+                sản phẩm.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Tabs */}
       <Tabs defaultValue='info' className='w-full'>

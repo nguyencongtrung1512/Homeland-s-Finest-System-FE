@@ -29,6 +29,7 @@ function UpdateBlogByCategory() {
   const [blogDetail, setBlogDetail] = useState<any>(null)
   const [categoryId, setCategoryId] = useState('')
   const [isActive, setIsActive] = useState<boolean>(true)
+  const [titleError, setTitleError] = useState<string>('')
 
   useEffect(() => {
     if (id) {
@@ -52,13 +53,9 @@ function UpdateBlogByCategory() {
 
         setIsActive(typeof blogData.isActive === 'boolean' ? blogData.isActive : true)
 
-        // Lấy categoryId đầu tiên từ mảng blogCategoryId
-        // if (blogData.blogCategoryId && blogData.blogCategoryId.length > 0) {
-        //   setCategoryId(blogData.blogCategoryId[0])
-        // }
-
-        if (Array.isArray(blogData.blogCategoryId) && blogData.blogCategoryId.length > 0) {
-          setCategoryId(blogData.blogCategoryId[0])
+        // Lấy categoryId (bây giờ là string, không phải array)
+        if (blogData.blogCategoryId) {
+          setCategoryId(blogData.blogCategoryId)
         }
       }
     } catch (error) {
@@ -66,6 +63,26 @@ function UpdateBlogByCategory() {
       toast.error('Không thể tải thông tin blog')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const validateTitle = (title: string): string => {
+    if (!title || !title.trim()) {
+      return 'Tiêu đề là bắt buộc.'
+    }
+    const trimmedTitle = title.trim()
+    if (trimmedTitle.length < 10 || trimmedTitle.length > 100) {
+      return 'Tiêu đề phải từ 10 đến 100 ký tự.'
+    }
+    return ''
+  }
+
+  const handleTitleChange = (value: string) => {
+    setTitle(value)
+    if (value.trim().length > 0) {
+      setTitleError(validateTitle(value))
+    } else {
+      setTitleError('')
     }
   }
 
@@ -89,7 +106,15 @@ function UpdateBlogByCategory() {
       return
     }
 
-    if (!title || !description || !content) {
+    // Validate title
+    const titleValidationError = validateTitle(title)
+    if (titleValidationError) {
+      setTitleError(titleValidationError)
+      toast.error(titleValidationError)
+      return
+    }
+
+    if (!description || !content) {
       toast.error('Vui lòng điền đầy đủ thông tin')
       return
     }
@@ -101,15 +126,17 @@ function UpdateBlogByCategory() {
       const formData = new FormData()
 
       // Thêm các trường với tên viết hoa đầu tiên
-      formData.append('Title', title)
+      formData.append('Title', title.trim())
       formData.append('Description', description)
       formData.append('Content', content)
 
-      // Xử lý blogCategoryId như một mảng
-      formData.append('BlogCategoryId[0]', categoryId)
+      // Xử lý blogCategoryId như một string đơn giản
+      if (categoryId) {
+        formData.append('BlogCategoryId', categoryId)
+      }
 
       // QUAN TRỌNG: gửi IsActive luôn (string 'true'/'false' cho form-data)
-      formData.append('IsActive', String(isActive));
+      formData.append('IsActive', String(isActive))
 
       // Nếu có ảnh mới, thêm vào formData
       if (image) {
@@ -129,9 +156,14 @@ function UpdateBlogByCategory() {
       } else {
         toast.error('Có lỗi xảy ra khi cập nhật blog')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating blog:', error)
-      toast.error('Có lỗi xảy ra khi cập nhật blog')
+      const errorMessage = error?.response?.data?.message || error?.message || 'Có lỗi xảy ra khi cập nhật blog'
+      toast.error(errorMessage)
+      // Show field-specific errors if available
+      if (error?.response?.data?.errors?.Title) {
+        setTitleError(error.response.data.errors.Title[0] || error.response.data.errors.Title)
+      }
     } finally {
       setLoading(false)
     }
@@ -189,14 +221,22 @@ function UpdateBlogByCategory() {
           <CardContent>
             <form onSubmit={handleSubmit} className='space-y-6'>
               <div className='space-y-2'>
-                <Label htmlFor='title'>Tiêu đề</Label>
+                <Label htmlFor='title'>
+                  Tiêu đề <span className='text-destructive'>*</span>
+                </Label>
                 <Input
                   id='title'
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder='Nhập tiêu đề blog'
-                  required
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  placeholder='Nhập tiêu đề blog (10-100 ký tự)'
+                  className={titleError ? 'border-destructive' : ''}
                 />
+                {titleError && <p className='text-sm text-destructive'>{titleError}</p>}
+                {!titleError && title && (
+                  <p className='text-xs text-muted-foreground'>
+                    Độ dài: {title.trim().length}/100 ký tự
+                  </p>
+                )}
               </div>
 
               <div className='space-y-2'>

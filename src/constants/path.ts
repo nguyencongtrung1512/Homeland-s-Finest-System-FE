@@ -77,6 +77,7 @@ export const path = {
   STORE_DETAIL_ADMIN: 'storeManagement/store-detail/:storeId',
   COMBO_MANAGEMENT_ADMIN: 'comboManagement',
   PRODUCT_MANAGEMENT_ADMIN: 'productManagement',
+  PRODUCT_DETAIL_ADMIN: 'productManagement/detail-product/:id',
   ACCOUNT_MANAGEMENT_ADMIN: 'accountManagement',
   SELLER_MANAGEMENT_ADMIN: 'sellerManagement', //đang phát triển
   STAFF_MANAGEMENT_ADMIN: 'staffManagement', //đang phát triển

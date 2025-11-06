@@ -1,81 +1,79 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Check, XCircle, Package, FileText, Award, Video, ImageIcon, Layers, DollarSign, Star, ShoppingCart, Store } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { toast } from '../../../utils/toast'
+import {
+  ArrowLeft,
+  Package,
+  Star,
+  Eye,
+  Calendar,
+  MapPin,
+  Tag,
+  FileText,
+  Award,
+  Play,
+  Image as ImageIcon,
+  Archive,
+  DollarSign,
+  Layers,
+  CheckCircle,
+  XCircle,
+  AlertCircle
+} from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from '../../../components/ui/alert-dialog'
-import { productApi, type ProductResponse } from '../../../apis/product.api'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
+import { Textarea } from '../../../components/ui/textarea'
+import { Label } from '../../../components/ui/label'
+import type { Product, VariantGroup, VariantOption } from '../../../types/productType'
+import { productApi } from '../../../apis/product.api'
 import { staffApi } from '../../../apis/staff.api'
-import { getProvinceById } from '../../../apis/province'
-import type { Product, VariantGroup } from '../../../types'
-
-// Extended interface to match API response
-interface ProductDetail extends Omit<Product, 'editedById' | 'variantGroups' | 'productCategories' | 'productCertificateDTOs'> {
-  variants?: unknown[]
-  productCategories?: Product['productCategories']
-  productCertificateDTOs?: Product['productCertificateDTOs']
-  variantGroups?: VariantGroup[]
-  editedById?: string | null
-}
+import { toast } from '../../../utils/toast'
+import ProductCertificate from './productCertificate'
+import ProductStoryComponent from './productStory'
 
 function DetailProductStaff() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const [product, setProduct] = useState<ProductDetail | null>(null)
+  const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
-  const [updating, setUpdating] = useState(false)
-  const [provinceName, setProvinceName] = useState<string>('')
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 
-  // States cho dialog xác nhận
-  const [showApproveDialog, setShowApproveDialog] = useState(false)
-  const [showRejectDialog, setShowRejectDialog] = useState(false)
-  const [approveNote, setApproveNote] = useState('')
-  const [rejectNote, setRejectNote] = useState('')
+  // States for action modal
+  const [showActionModal, setShowActionModal] = useState(false)
+  const [actionType, setActionType] = useState<'Confirmed' | 'Rejected' | 'Approved' | 'Denied' | null>(null)
+  const [actionNote, setActionNote] = useState('')
+  const [processingAction, setProcessingAction] = useState(false)
 
-  // Fetch product details
   useEffect(() => {
     const fetchProductDetail = async () => {
       if (!id) {
-        toast.error('Không tìm thấy ID sản phẩm', {
-          position: 'top-right',
-          autoClose: 3000
-        })
+        toast.error('Không tìm thấy ID sản phẩm')
         navigate(-1)
         return
       }
 
       try {
         setLoading(true)
-        console.log('🔍 DEBUG - Fetching product detail for ID:', id)
-
-        const response: ProductResponse = await productApi.getById(id)
-        console.log('🔍 DEBUG - Product detail response:', response)
+        const response = await productApi.getById(id)
 
         if (response.status === 200 && response.data) {
-          setProduct(response.data as ProductDetail)
+          setProduct(response.data)
         } else {
-          toast.error('Không thể tải thông tin sản phẩm', {
-            position: 'top-right',
-            autoClose: 3000
-          })
+          const errorMessage =
+            (response as { data?: { message?: string }; message?: string })?.data?.message ||
+            (response as { message?: string })?.message ||
+            'Không thể tải thông tin sản phẩm'
+          toast.error(errorMessage)
         }
       } catch (error) {
-        console.error('❌ DEBUG - Error fetching product detail:', error)
-        toast.error('Có lỗi xảy ra khi tải thông tin sản phẩm', {
-          position: 'top-right',
-          autoClose: 3000
-        })
+        console.error('Error fetching product detail:', error)
+        const errorMessage =
+          (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+          (error as { message?: string })?.message ||
+          'Có lỗi xảy ra khi tải thông tin sản phẩm'
+        toast.error(errorMessage)
       } finally {
         setLoading(false)
       }
@@ -84,150 +82,12 @@ function DetailProductStaff() {
     fetchProductDetail()
   }, [id, navigate])
 
-  // Fetch province name when product is loaded
-  useEffect(() => {
-    const fetchProvinceName = async () => {
-      if (!product?.provinceId) {
-        setProvinceName('')
-        return
-      }
-
-      try {
-        const provinces = await getProvinceById(product.provinceId.toString())
-        console.log('🔍 DEBUG - Province response:', provinces)
-        if (provinces) {
-          setProvinceName(provinces[0].name)
-        } else {
-          setProvinceName('Không tìm thấy')
-        }
-      } catch (error) {
-        console.error('❌ DEBUG - Error fetching province name:', error)
-        setProvinceName('Hà Nôiij')
-      }
-    }
-
-    fetchProvinceName()
-  }, [product?.provinceId])
-
   const handleBack = () => {
     navigate(-1)
   }
 
-  // Mở dialog approve
-  const openApproveDialog = () => {
-    setApproveNote('')
-    setShowApproveDialog(true)
-  }
-
-  // Mở dialog reject
-  const openRejectDialog = () => {
-    setRejectNote('')
-    setShowRejectDialog(true)
-  }
-
-  // Xác nhận approve
-  const confirmApprove = async () => {
-    if (!product?.id) return
-
-    if (!approveNote.trim()) {
-      toast.warning('Vui lòng nhập ghi chú!', {
-        position: 'top-right',
-        autoClose: 3000
-      })
-      return
-    }
-
-    try {
-      setUpdating(true)
-      console.log('🔍 DEBUG - Approving product:', product.id)
-
-      const response = await staffApi.reviewProduct(product.id, {
-        status: 'Approved',
-        staffNote: approveNote.trim()
-      })
-
-      if (response) {
-        toast.success('Sản phẩm đã được duyệt thành công', {
-          position: 'top-right',
-          autoClose: 3000
-        })
-        setShowApproveDialog(false)
-        setApproveNote('')
-
-        // Refresh product data
-        const updatedProduct = await productApi.getById(product.id)
-        if (updatedProduct.status === 200) {
-          setProduct(updatedProduct.data as ProductDetail)
-        }
-      } else {
-        toast.error('Có lỗi xảy ra khi duyệt sản phẩm', {
-          position: 'top-right',
-          autoClose: 3000
-        })
-      }
-    } catch (error) {
-      console.error('❌ DEBUG - Error approving product:', error)
-      toast.error('Có lỗi xảy ra khi duyệt sản phẩm', {
-        position: 'top-right',
-        autoClose: 3000
-      })
-    } finally {
-      setUpdating(false)
-    }
-  }
-
-  // Xác nhận reject
-  const confirmReject = async () => {
-    if (!product?.id) return
-
-    if (!rejectNote.trim()) {
-      toast.warning('Vui lòng nhập lý do từ chối!', {
-        position: 'top-right',
-        autoClose: 3000
-      })
-      return
-    }
-
-    try {
-      setUpdating(true)
-      console.log('🔍 DEBUG - Rejecting product:', product.id)
-
-      const response = await staffApi.reviewProduct(product.id, {
-        status: 'Rejected',
-        staffNote: rejectNote.trim()
-      })
-
-      if (response) {
-        toast.success('Sản phẩm đã được từ chối', {
-          position: 'top-right',
-          autoClose: 3000
-        })
-        setShowRejectDialog(false)
-        setRejectNote('')
-
-        // Refresh product data
-        const updatedProduct = await productApi.getById(product.id)
-        if (updatedProduct.status === 200) {
-          setProduct(updatedProduct.data as ProductDetail)
-        }
-      } else {
-        toast.error('Có lỗi xảy ra khi từ chối sản phẩm', {
-          position: 'top-right',
-          autoClose: 3000
-        })
-      }
-    } catch (error) {
-      console.error('❌ DEBUG - Error rejecting product:', error)
-      toast.error('Có lỗi xảy ra khi từ chối sản phẩm', {
-        position: 'top-right',
-        autoClose: 3000
-      })
-    } finally {
-      setUpdating(false)
-    }
-  }
-
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Chưa có'
     try {
       const date = new Date(dateString)
       return date.toLocaleDateString('vi-VN', {
@@ -242,10 +102,38 @@ function DetailProductStaff() {
     }
   }
 
-  const getStatusTag = (status: string) => {
+  // Lấy tất cả variant cha (cấp 1) từ variantGroups
+  const getParentVariants = (variantGroups: VariantGroup[]): VariantOption[] => {
+    const result: VariantOption[] = []
+    variantGroups.forEach((group) => {
+      result.push(...group.options)
+    })
+    return result
+  }
+
+  // Kiểm tra variant có phải là variant cha có con không
+  const hasChildVariants = (variant: VariantOption): boolean => {
+    return Array.isArray(variant.childVariantGroups) && variant.childVariantGroups.length > 0
+  }
+
+  // Lấy tất cả variant con từ một variant cha
+  const getChildVariants = (variant: VariantOption): VariantOption[] => {
+    if (!hasChildVariants(variant)) return []
+    const result: VariantOption[] = []
+    variant.childVariantGroups?.forEach((childGroup) => {
+      result.push(...childGroup.options)
+    })
+    return result
+  }
+
+  const getStatusBadge = (status: string, isActive: boolean) => {
+    if (!isActive) {
+      return <Badge className='bg-red-100 text-red-800'>Tạm dừng</Badge>
+    }
+
     switch (status?.toLowerCase()) {
       case 'pending':
-        return <Badge className='bg-orange-100 text-orange-800'>Chờ duyệt</Badge>
+        return <Badge className='bg-yellow-100 text-yellow-800'>Chờ duyệt</Badge>
       case 'approved':
         return <Badge className='bg-green-100 text-green-800'>Đã duyệt</Badge>
       case 'rejected':
@@ -255,73 +143,124 @@ function DetailProductStaff() {
     }
   }
 
-  const getCertificateStatusTag = (status: string) => {
+  const getCertificateStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'pending':
-        return <Badge className='bg-yellow-100 text-yellow-800'>Chờ xử lý</Badge>
       case 'approved':
         return <Badge className='bg-green-100 text-green-800'>Đã duyệt</Badge>
+      case 'pending':
+        return <Badge className='bg-yellow-100 text-yellow-800'>Chờ duyệt</Badge>
       case 'rejected':
         return <Badge className='bg-red-100 text-red-800'>Từ chối</Badge>
       default:
         return <Badge className='bg-gray-100 text-gray-800'>{status}</Badge>
     }
   }
+
+  // Refresh product data
+  const handleRefreshProduct = async () => {
+    if (!id) return
+    try {
+      const refreshResponse = await productApi.getById(id)
+      if (refreshResponse.status === 200 && refreshResponse.data) {
+        setProduct(refreshResponse.data)
+      }
+    } catch (error) {
+      console.error('Error refreshing product:', error)
+    }
+  }
+
+  // Handle action button click
+  const handleActionClick = (type: 'Confirmed' | 'Rejected' | 'Approved' | 'Denied') => {
+    setActionType(type)
+    setActionNote('')
+    setShowActionModal(true)
+  }
+
+  // Handle confirm action
+  const handleConfirmAction = async () => {
+    if (!id || !actionType) return
+
+    try {
+      setProcessingAction(true)
+      const response = await staffApi.updateProductStatus(id, actionType, actionNote || '')
+
+      // Lấy thông báo từ backend response
+      const successMessage =
+        (response as { data?: { message?: string }; message?: string })?.data?.message ||
+        (response as { message?: string })?.message ||
+        'Cập nhật trạng thái thành công'
+
+      toast.success(successMessage)
+      setShowActionModal(false)
+      setActionNote('')
+      setActionType(null)
+      await handleRefreshProduct()
+    } catch (error) {
+      console.error('Error updating product status:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (error as { response?: { data?: { errors?: string[] }; errors?: string[] } })?.response?.data?.errors?.join(
+          ', '
+        ) ||
+        (error as { message?: string })?.message ||
+        'Có lỗi xảy ra khi cập nhật trạng thái'
+      toast.error(errorMessage)
+    } finally {
+      setProcessingAction(false)
+    }
+  }
+
+  // Check if product status is Pending, Processing, or Rejected - can be processed
+  const canProcess = () => {
+    if (!product) return false
+    const status = product.status?.toLowerCase()
+    return status === 'pending' || status === 'processing' || status === 'rejected'
+  }
+
+  // Check if product status is Confirmed
+  const isConfirmed = () => {
+    if (!product) return false
+    return product.status?.toLowerCase() === 'confirmed'
+  }
+
+
 
   if (loading) {
     return (
-      <div className='space-y-6'>
-        <div className='flex items-center justify-between'>
-          <Button
-            variant='ghost'
-            size='sm'
-            onClick={handleBack}
-            className='flex items-center gap-2 text-gray-600 hover:text-gray-900'
-          >
-            <ArrowLeft size={16} />
-            Quay lại quản lý sản phẩm
-          </Button>
-          <h1 className='text-2xl font-bold text-gray-900'>Chi tiết sản phẩm</h1>
-          <div></div>
+      <div className='p-6'>
+        <div className='flex items-center justify-center h-64'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-green-600'></div>
         </div>
-        <Card className='shadow-lg p-8'>
-          <div className='text-center'>
-            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4'></div>
-            <p className='text-gray-600'>Đang tải thông tin sản phẩm...</p>
-          </div>
-        </Card>
       </div>
     )
   }
 
   if (!product) {
     return (
-      <div className='space-y-6'>
-        <div className='flex items-center justify-between'>
-          <Button
-            variant='ghost'
-            size='sm'
-            onClick={handleBack}
-            className='flex items-center gap-2 text-gray-600 hover:text-gray-900'
-          >
-            <ArrowLeft size={16} />
-            Quay lại quản lý sản phẩm
-          </Button>
-          <h1 className='text-2xl font-bold text-gray-900'>Chi tiết sản phẩm</h1>
-          <div></div>
+      <div className='p-6'>
+        <div className='flex items-center justify-center h-64'>
+          <div className='text-gray-600'>Không tìm thấy thông tin sản phẩm</div>
         </div>
-        <Card className='shadow-lg p-8'>
-          <div className='text-center'>
-            <p className='text-gray-600'>Không tìm thấy thông tin sản phẩm</p>
-          </div>
-        </Card>
       </div>
     )
   }
 
+  // Lấy tất cả variant cha để hiển thị
+  const parentVariants = product?.variantGroups ? getParentVariants(product.variantGroups) : []
+
+  // Helper để lấy attributeType từ variantGroup dựa vào variant option
+  const getAttributeTypeForVariant = (variant: VariantOption): string | null => {
+    if (!product?.variantGroups) return null
+    for (const group of product.variantGroups) {
+      const found = group.options.find((opt) => opt.id === variant.id)
+      if (found) return group.attributeType
+    }
+    return null
+  }
+
   return (
-    <div className='space-y-6'>
-      {/* Header with Back Button */}
+    <div className='p-6 space-y-6'>
+      {/* Header */}
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-3'>
           <Button
@@ -331,588 +270,814 @@ function DetailProductStaff() {
             className='flex items-center gap-2 text-gray-600 hover:text-gray-900'
           >
             <ArrowLeft size={16} />
-            Quay lại quản lý sản phẩm
+            Quay lại
           </Button>
+          <div className='h-6 w-px bg-gray-300'></div>
+          <h1 className='text-2xl font-bold text-gray-900'>Chi tiết sản phẩm</h1>
         </div>
-        <h1 className='text-2xl font-bold text-gray-900'>Chi tiết sản phẩm</h1>
-        <div></div>
       </div>
-
-      {/* Product Status and Actions */}
-      <Card className='shadow-lg'>
+      {/* Action Card */}
+      <Card>
         <CardHeader>
-          <div className='flex items-center justify-between'>
-            <div className='flex items-center gap-4'>
-              <h2 className='text-xl font-bold text-gray-900'>{product.name}</h2>
-              {getStatusTag(product.status)}
-              <Badge variant={product.isActive ? 'default' : 'secondary'}>
-                {product.isActive ? 'Hoạt động' : 'Tạm dừng'}
-              </Badge>
-            </div>
-
-            {/* Staff Actions */}
-            {(product.status === 'Pending' || product.status === 'Rejected') && (
-              <div className='flex gap-3'>
+          <CardTitle>
+            <h3 className='text-lg font-semibold text-gray-900'>Hành động</h3>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className='space-y-4'>
+            {/* Show initial actions if status is Pending or Rejected */}
+            {canProcess() && (
+              <div className='flex flex-wrap gap-3'>
                 <Button
-                  onClick={openApproveDialog}
-                  disabled={updating}
+                  onClick={() => handleActionClick('Confirmed')}
                   className='bg-green-600 hover:bg-green-700 text-white'
+                  size='lg'
                 >
-                  <Check size={16} className='mr-2' />
-                  {product.status === 'Rejected' ? 'Duyệt lại' : 'Duyệt sản phẩm'}
+                  <CheckCircle className='w-5 h-5 mr-2' />
+                  Chấp nhận xử lý
                 </Button>
                 <Button
-                  onClick={openRejectDialog}
-                  disabled={updating}
-                  className='bg-red-600 hover:bg-red-700 text-white'
+                  onClick={() => handleActionClick('Rejected')}
+                  variant='destructive'
+                  size='lg'
+                  className='bg-red-600 hover:bg-red-700'
                 >
-                  <XCircle size={16} className='mr-2' />
-                  {product.status === 'Rejected' ? 'Từ chối lại' : 'Từ chối'}
+                  <XCircle className='w-5 h-5 mr-2' />
+                  Từ chối xử lý
                 </Button>
+              </div>
+            )}
+
+            {/* Show final actions if status is Confirmed */}
+            {isConfirmed() && (
+              <div className='flex flex-wrap gap-3'>
+                <Button
+                  onClick={() => handleActionClick('Approved')}
+                  className='bg-green-600 hover:bg-green-700 text-white'
+                  size='lg'
+                >
+                  <CheckCircle className='w-5 h-5 mr-2' />
+                  Chấp nhận
+                </Button>
+                <Button
+                  onClick={() => handleActionClick('Denied')}
+                  variant='destructive'
+                  size='lg'
+                  className='bg-red-600 hover:bg-red-700'
+                >
+                  <XCircle className='w-5 h-5 mr-2' />
+                  Từ chối
+                </Button>
+              </div>
+            )}
+
+            {/* Show message if already processed */}
+            {!canProcess() && !isConfirmed() && (
+              <div className='flex items-center gap-2 text-gray-600'>
+                <AlertCircle className='w-5 h-5' />
+                <span>
+                  Sản phẩm đã được xử lý. Trạng thái hiện tại: <strong>{product?.status}</strong>
+                </span>
               </div>
             )}
           </div>
-        </CardHeader>
+        </CardContent>
       </Card>
 
-      {/* Product Information */}
-      <div className='space-y-6'>
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Package className='w-5 h-5 text-blue-600' />
-              Thông tin sản phẩm
-            </CardTitle>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div>
-              <label className='text-sm font-medium text-gray-600'>Tên sản phẩm</label>
-              <p className='mt-1 text-gray-900 font-medium'>{product.name}</p>
-            </div>
+      {/* Tabs */}
+      <Tabs defaultValue='info' className='w-full'>
+        <TabsList className='mb-6'>
+          <TabsTrigger value='info'>Thông tin sản phẩm</TabsTrigger>
+          <TabsTrigger value='certificates'>Chứng nhận</TabsTrigger>
+          <TabsTrigger value='story'>Câu chuyện</TabsTrigger>
+        </TabsList>
 
-            <div>
-              <label className='text-sm font-medium text-gray-600'>Mô tả</label>
-              <p className='mt-1 text-gray-900 whitespace-pre-wrap'>{product.description}</p>
-            </div>
+        {/* Tab 1: Thông tin sản phẩm */}
+        <TabsContent value='info' className='space-y-6'>
 
-            <div className='grid grid-cols-2 gap-4'>
-              <div>
-                <label className='text-sm font-medium text-gray-600'>Nhà sản xuất</label>
-                <p className='mt-1 text-gray-900'>{product.material || 'Chưa cập nhật'}</p>
-              </div>
-              <div>
-                <label className='text-sm font-medium text-gray-600'>Loại sản phẩm</label>
-                <p className='mt-1 text-gray-900'>{product.typeProduct || 'Chưa xác định'}</p>
-              </div>
-            </div>
-
-            <div className='grid grid-cols-2 gap-4'>
-              <div>
-                <label className='text-sm font-medium text-gray-600'>Tỉnh/Thành phố</label>
-                <p className='mt-1 text-gray-900 font-medium'>
-                  {provinceName || (product.provinceId ? 'Đang tải...' : 'Chưa có')}
-                </p>
-                {product.provinceId && <p className='mt-1 text-xs text-gray-500'>ID: {product.provinceId}</p>}
-              </div>
-              <div>
-                <label className='text-sm font-medium text-gray-600'>Store ID</label>
-                <p className='mt-1 text-gray-900 font-mono text-xs'>{product.storeId}</p>
-              </div>
-            </div>
-
-            {product.storeName && (
-              <div>
-                <label className='text-sm font-medium text-gray-600 flex items-center gap-2'>
-                  <Store className='w-4 h-4' />
-                  Tên cửa hàng
-                </label>
-                <p className='mt-1 text-gray-900 font-medium'>{product.storeName}</p>
-              </div>
-            )}
-
-            {product.summaryPrice && (
-              <div>
-                <label className='text-sm font-medium text-gray-600 flex items-center gap-2'>
-                  <DollarSign className='w-4 h-4' />
-                  Tóm tắt giá
-                </label>
-                <p className='mt-1 text-gray-900 font-medium text-lg'>{product.summaryPrice}</p>
-              </div>
-            )}
-
-            <div className='grid grid-cols-3 gap-4'>
-              <div>
-                <label className='text-sm font-medium text-gray-600 flex items-center gap-2'>
-                  <Star className='w-4 h-4 text-yellow-500' />
-                  Đánh giá
-                </label>
-                <p className='mt-1 text-gray-900 font-medium'>{product.rating?.toFixed(1) || '0.0'}</p>
-              </div>
-              <div>
-                <label className='text-sm font-medium text-gray-600 flex items-center gap-2'>
-                  <ShoppingCart className='w-4 h-4 text-blue-500' />
-                  Đã bán
-                </label>
-                <p className='mt-1 text-gray-900 font-medium'>{product.saleCount || 0}</p>
-              </div>
-              <div>
-                <label className='text-sm font-medium text-gray-600'>Số đánh giá</label>
-                <p className='mt-1 text-gray-900 font-medium'>{product.reviewCount || 0}</p>
-              </div>
-            </div>
-
-            {product.editedById && (
-              <div>
-                <label className='text-sm font-medium text-gray-600'>Được chỉnh sửa bởi</label>
-                <p className='mt-1 text-gray-900 font-mono text-xs'>{product.editedById}</p>
-              </div>
-            )}
-
-            {product.staffNote && (
-              <div>
-                <label className='text-sm font-medium text-gray-600'>Ghi chú từ Staff</label>
-                <div className='mt-1 bg-gray-50 rounded-lg p-3 border'>
-                  <p className='text-gray-900'>{product.staffNote}</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Media Section */}
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-          {/* Product Images */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <ImageIcon className='w-5 h-5 text-purple-600' />
-                Hình ảnh sản phẩm
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {product.productImages && product.productImages.length > 0 ? (
-                <div className='grid grid-cols-2 gap-4'>
-                  {product.productImages.map((image, index) => (
-                    <div key={index} className='aspect-square bg-gray-100 rounded-lg overflow-hidden'>
-                      <img
-                        src={image}
-                        alt={`Product ${index + 1}`}
-                        className='w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer'
-                        onClick={() => window.open(image, '_blank')}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className='text-center py-8'>
-                  <ImageIcon className='w-12 h-12 text-gray-400 mx-auto mb-4' />
-                  <p className='text-gray-500'>Không có hình ảnh</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Product Video */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <Video className='w-5 h-5 text-red-600' />
-                Video sản phẩm
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {product.productVideo ? (
-                <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
-                  <video src={product.productVideo} controls className='w-full h-full object-cover' />
-                </div>
-              ) : (
-                <div className='text-center py-8'>
-                  <Video className='w-12 h-12 text-gray-400 mx-auto mb-4' />
-                  <p className='text-gray-500'>Không có video</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Categories */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <FileText className='w-5 h-5 text-indigo-600' />
-              Danh mục sản phẩm
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {product.productCategories ? (
-              <div className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
-                <div className='flex items-center justify-between mb-2'>
-                  <h3 className='font-medium text-gray-900'>{product.productCategories.name}</h3>
-                  <Badge variant={product.productCategories.isActive ? 'default' : 'secondary'}>
-                    {product.productCategories.isActive ? 'Hoạt động' : 'Tạm dừng'}
-                  </Badge>
-                </div>
-                <p className='text-sm text-gray-600 mb-3'>{product.productCategories.description}</p>
-                <div className='grid grid-cols-2 gap-4 text-xs text-gray-500'>
-                  <div>
-                    <span className='font-medium'>Ngày tạo:</span> {formatDate(product.productCategories.createdAt)}
-                  </div>
-                  <div>
-                    <span className='font-medium'>Cập nhật:</span> {formatDate(product.productCategories.updatedAt)}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className='text-center py-8'>
-                <FileText className='w-12 h-12 text-gray-400 mx-auto mb-4' />
-                <p className='text-gray-500'>Chưa có danh mục nào</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Variant Groups */}
-        {product.variantGroups && product.variantGroups.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <Layers className='w-5 h-5 text-teal-600' />
-                Biến thể sản phẩm
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-6'>
-                {product.variantGroups.map((variantGroup: VariantGroup, groupIndex: number) => (
-                  <div key={groupIndex} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
-                    <div className='mb-4'>
-                      <h3 className='font-semibold text-gray-900 text-lg flex items-center gap-2'>
-                        <Package className='w-4 h-4' />
-                        {variantGroup.attributeType || `Nhóm biến thể #${groupIndex + 1}`}
-                      </h3>
-                    </div>
-                    <div className='space-y-4'>
-                      {variantGroup.options && variantGroup.options.length > 0 ? (
-                        variantGroup.options.map((option, optionIndex: number) => (
-                          <div
-                            key={optionIndex}
-                            className='border border-gray-300 rounded-lg p-4 bg-white hover:shadow-md transition-shadow'
-                          >
-                            <div className='flex items-start justify-between mb-3'>
-                              <div className='flex-1'>
-                                <h4 className='font-medium text-gray-900 mb-1'>{option.name || `Biến thể #${optionIndex + 1}`}</h4>
-                                {option.attributeName && (
-                                  <p className='text-sm text-gray-600 mb-2'>{option.attributeName}</p>
-                                )}
-                                {option.description && (
-                                  <p className='text-sm text-gray-700 mb-3'>{option.description}</p>
-                                )}
-                              </div>
-                              <Badge variant={option.isActive ? 'default' : 'secondary'}>
-                                {option.isActive ? 'Hoạt động' : 'Tạm dừng'}
-                              </Badge>
-                            </div>
-
-                            <div className='grid grid-cols-2 md:grid-cols-4 gap-4 mb-3 text-sm'>
-                              {option.basePrice !== null && option.basePrice !== undefined && (
-                                <div>
-                                  <label className='text-gray-600 font-medium'>Giá gốc:</label>
-                                  <p className='text-gray-900 font-semibold'>
-                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(option.basePrice)}
-                                  </p>
-                                </div>
-                              )}
-                              {option.finalPrice !== null && option.finalPrice !== undefined && (
-                                <div>
-                                  <label className='text-gray-600 font-medium'>Giá cuối:</label>
-                                  <p className='text-gray-900 font-semibold text-red-600'>
-                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(option.finalPrice)}
-                                  </p>
-                                </div>
-                              )}
-                              {option.quantity !== null && option.quantity !== undefined && (
-                                <div>
-                                  <label className='text-gray-600 font-medium'>Số lượng:</label>
-                                  <p className='text-gray-900'>{option.quantity}</p>
-                                </div>
-                              )}
-                              {option.weight !== null && option.weight !== undefined && (
-                                <div>
-                                  <label className='text-gray-600 font-medium'>Trọng lượng (kg):</label>
-                                  <p className='text-gray-900'>{option.weight}</p>
-                                </div>
-                              )}
-                            </div>
-
-                            {(option.length || option.width || option.height) && (
-                              <div className='grid grid-cols-3 gap-4 mb-3 text-sm'>
-                                {option.length !== null && option.length !== undefined && (
-                                  <div>
-                                    <label className='text-gray-600 font-medium'>Chiều dài (cm):</label>
-                                    <p className='text-gray-900'>{option.length}</p>
-                                  </div>
-                                )}
-                                {option.width !== null && option.width !== undefined && (
-                                  <div>
-                                    <label className='text-gray-600 font-medium'>Chiều rộng (cm):</label>
-                                    <p className='text-gray-900'>{option.width}</p>
-                                  </div>
-                                )}
-                                {option.height !== null && option.height !== undefined && (
-                                  <div>
-                                    <label className='text-gray-600 font-medium'>Chiều cao (cm):</label>
-                                    <p className='text-gray-900'>{option.height}</p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            <div className='grid grid-cols-3 gap-4 mb-3 text-sm'>
-                              {option.saleCount !== null && option.saleCount !== undefined && (
-                                <div>
-                                  <label className='text-gray-600 font-medium'>Đã bán:</label>
-                                  <p className='text-gray-900'>{option.saleCount}</p>
-                                </div>
-                              )}
-                              {option.rating !== null && option.rating !== undefined && (
-                                <div>
-                                  <label className='text-gray-600 font-medium flex items-center gap-1'>
-                                    <Star className='w-3 h-3 text-yellow-500' />
-                                    Đánh giá:
-                                  </label>
-                                  <p className='text-gray-900'>{option.rating.toFixed(1)}</p>
-                                </div>
-                              )}
-                              {option.reviewCount !== null && option.reviewCount !== undefined && (
-                                <div>
-                                  <label className='text-gray-600 font-medium'>Số đánh giá:</label>
-                                  <p className='text-gray-900'>{option.reviewCount}</p>
-                                </div>
-                              )}
-                            </div>
-
-                            {option.productImages && option.productImages.length > 0 && (
-                              <div className='mt-3'>
-                                <label className='text-gray-600 font-medium mb-2 block'>Hình ảnh biến thể:</label>
-                                <div className='grid grid-cols-3 gap-2'>
-                                  {option.productImages.map((img: string, imgIndex: number) => (
-                                    <div key={imgIndex} className='aspect-square bg-gray-100 rounded-lg overflow-hidden'>
-                                      <img
-                                        src={img}
-                                        alt={`Variant ${optionIndex + 1} - Image ${imgIndex + 1}`}
-                                        className='w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer'
-                                        onClick={() => window.open(img, '_blank')}
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Nested child variant groups */}
-                            {option.childVariantGroups && option.childVariantGroups.length > 0 && (
-                              <div className='mt-4 pt-4 border-t border-gray-300'>
-                                <label className='text-gray-700 font-medium mb-2 block'>Nhóm biến thể con:</label>
-                                <div className='space-y-2'>
-                                  {option.childVariantGroups.map((childGroup: VariantGroup, childIndex: number) => (
-                                    <div key={childIndex} className='ml-4 p-2 bg-gray-100 rounded text-sm'>
-                                      <p className='font-medium text-gray-800'>{childGroup.attributeType}</p>
-                                      {childGroup.options && childGroup.options.length > 0 && (
-                                        <p className='text-gray-600 text-xs mt-1'>
-                                          {childGroup.options.length} tùy chọn
-                                        </p>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+            {/* Left Column - Product Images */}
+            <div className='lg:col-span-1'>
+              <Card className='shadow-lg'>
+                <CardHeader>
+                  <CardTitle className='flex items-center gap-2'>
+                    <ImageIcon size={20} className='text-green-600' />
+                    Hình ảnh sản phẩm
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Main Image */}
+                  <div className='mb-4'>
+                    <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden'>
+                      {product?.productImages && product.productImages.length > 0 ? (
+                        <img
+                          src={product.productImages[selectedImageIndex]}
+                          alt={product.name}
+                          className='w-full h-full object-cover'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.src = '/placeholder-image.png'
+                          }}
+                        />
                       ) : (
-                        <p className='text-gray-500 text-sm'>Không có tùy chọn nào trong nhóm này</p>
+                        <div className='w-full h-full flex items-center justify-center'>
+                          <ImageIcon size={48} className='text-gray-400' />
+                        </div>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Certificates */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Award className='w-5 h-5 text-yellow-600' />
-              Chứng nhận sản phẩm
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {product.productCertificateDTOs && product.productCertificateDTOs.length > 0 ? (
-              <div className='grid gap-4'>
-                {product.productCertificateDTOs.map((cert, index: number) => (
-                  <div key={index} className='border border-gray-200 rounded-lg p-4 bg-gray-50'>
-                    <div className='flex items-start justify-between mb-4'>
-                      <div>
-                        <h3 className='font-medium text-gray-900 mb-2'>Chứng nhận #{index + 1}</h3>
-                        {getCertificateStatusTag(cert.status)}
-                      </div>
-                    </div>
-
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-sm'>
-                      <div>
-                        <label className='font-medium text-gray-600'>Ngày nộp:</label>
-                        <p className='text-gray-900'>{formatDate(cert.submittedDate)}</p>
-                      </div>
-
-                      {cert.decisionDate && (
-                        <div>
-                          <label className='font-medium text-gray-600'>Ngày quyết định:</label>
-                          <p className='text-gray-900'>{formatDate(cert.decisionDate)}</p>
-                        </div>
-                      )}
-
-                      {cert.reviewedByStaffId && (
-                        <div>
-                          <label className='font-medium text-gray-600'>Staff xử lý:</label>
-                          <p className='text-gray-900 font-mono text-xs'>{cert.reviewedByStaffId}</p>
-                        </div>
-                      )}
-
-                      {cert.updatedAt && (
-                        <div>
-                          <label className='font-medium text-gray-600'>Cập nhật lần cuối:</label>
-                          <p className='text-gray-900'>{formatDate(cert.updatedAt)}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {cert.staffNotes && (
-                      <div className='mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200'>
-                        <label className='font-medium text-blue-800'>Ghi chú từ Staff:</label>
-                        <p className='text-blue-700 mt-1'>{cert.staffNotes}</p>
-                      </div>
-                    )}
-
-                    {cert.imageUrl && (
-                      <div className='mt-4'>
-                        <label className='font-medium text-gray-600'>Hình ảnh chứng nhận:</label>
-                        <div className='mt-2 w-32 h-32 bg-gray-100 rounded-lg overflow-hidden'>
+                  {/* Thumbnail Images */}
+                  {product?.productImages && product.productImages.length > 1 && (
+                    <div className='grid grid-cols-4 gap-2'>
+                      {product.productImages.map((image, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setSelectedImageIndex(index)}
+                          className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 ${selectedImageIndex === index ? 'border-green-600' : 'border-transparent'
+                            }`}
+                        >
                           <img
-                            src={cert.imageUrl}
-                            alt={`Certificate ${index + 1}`}
-                            className='w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer'
-                            onClick={() => window.open(cert.imageUrl, '_blank')}
+                            src={image}
+                            alt={`${product.name} ${index + 1}`}
+                            className='w-full h-full object-cover'
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = '/placeholder-image.png'
+                            }}
                           />
-                        </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Product Video */}
+                  {product?.productVideo && (
+                    <div className='mt-4'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <Play size={16} className='text-green-600' />
+                        <span className='text-sm font-medium text-gray-700'>Video sản phẩm</span>
                       </div>
-                    )}
+                      <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
+                        <video controls className='w-full h-full' poster={product.productImages?.[0]}>
+                          <source src={product.productVideo} type='video/mp4' />
+                          Trình duyệt của bạn không hỗ trợ video.
+                        </video>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column - Product Information */}
+            <div className='lg:col-span-2 space-y-6'>
+              {/* Basic Information */}
+              <Card className='shadow-lg'>
+                <CardHeader>
+                  <CardTitle className='flex items-center gap-2'>
+                    <Package size={20} className='text-green-600' />
+                    Thông tin cơ bản
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className='space-y-4'>
+                  <div>
+                    <h2 className='text-2xl font-bold text-gray-900 mb-2'>{product?.name}</h2>
+                    <div className='flex items-center gap-4 mb-4'>
+                      {product && getStatusBadge(product.status, product.isActive)}
+                      <div className='flex items-center gap-1'>
+                        <Star className='text-yellow-500 fill-current' size={16} />
+                        <span className='font-medium'>{product?.rating?.toFixed(1) || '0.0'}</span>
+                        <span className='text-gray-600'>({product?.reviewCount || 0} đánh giá)</span>
+                      </div>
+                      <div className='flex items-center gap-1'>
+                        <Eye size={16} className='text-gray-500' />
+                        <span className='text-gray-600'>{product?.saleCount || 0} lượt bán</span>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className='text-center py-8'>
-                <Award className='w-12 h-12 text-gray-400 mx-auto mb-4' />
-                <p className='text-gray-500'>Chưa có chứng nhận nào</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Dialog Xác nhận Duyệt */}
-      <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className='flex items-center gap-2'>
-              <Check className='text-green-600' size={24} />
-              {product.status === 'Rejected' ? 'Xác nhận duyệt lại sản phẩm' : 'Xác nhận duyệt sản phẩm'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              <div className='space-y-4 mt-4'>
-                <p>
-                  Bạn có chắc chắn muốn {product.status === 'Rejected' ? 'duyệt lại' : 'duyệt'} sản phẩm{' '}
-                  <strong>{product.name}</strong>?
-                </p>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <div className='space-y-3'>
+                      <div className='flex items-center gap-2'>
+                        <Tag size={16} className='text-green-600' />
+                        <span className='text-sm font-medium text-gray-700'>Loại sản phẩm:</span>
+                        <span className='text-gray-900'>{product?.typeProduct}</span>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <MapPin size={16} className='text-green-600' />
+                        <span className='text-sm font-medium text-gray-700'>Xuất xứ:</span>
+                        <span className='text-gray-900'>{product?.material}</span>
+                      </div>
+                    </div>
+                    <div className='space-y-3'>
+                      <div className='flex items-center gap-2'>
+                        <Calendar size={16} className='text-green-600' />
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <FileText size={16} className='text-green-600' />
+                        <span className='text-sm font-medium text-gray-700'>Mã tỉnh:</span>
+                        <span className='text-gray-900'>{product?.provinceId}</span>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className='space-y-2'>
-                  <label className='text-sm font-medium text-gray-700'>
-                    Ghi chú <span className='text-red-500'>*</span>
-                  </label>
-                  <textarea
-                    value={approveNote}
-                    onChange={(e) => setApproveNote(e.target.value)}
-                    placeholder={
-                      product.status === 'Rejected'
-                        ? 'Nhập ghi chú về việc duyệt lại sản phẩm này...'
-                        : 'Nhập ghi chú về việc duyệt sản phẩm này...'
-                    }
-                    className='w-full min-h-24 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none'
-                  />
+                  {/* Product Categories */}
+                  {product?.productCategories && (
+                    <div>
+                      <div className='flex items-center gap-2 mb-3'>
+                        <Layers size={16} className='text-green-600' />
+                        <span className='text-sm font-medium text-gray-700'>Danh mục sản phẩm:</span>
+                      </div>
+                      <div className='flex flex-wrap gap-2'>
+                        <Badge variant='outline' className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100'>
+                          {product.productCategories.name}
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <h3 className='text-lg font-semibold text-gray-900 mb-2'>Mô tả sản phẩm</h3>
+                    <p className='text-gray-700 leading-relaxed'>{product?.description}</p>
+                  </div>
+
+                  {product?.staffNote && (
+                    <div>
+                      <h3 className='text-lg font-semibold text-gray-900 mb-2'>Ghi chú từ staff</h3>
+                      <p className='text-gray-700 leading-relaxed'>{product.staffNote}</p>
+                    </div>
+                  )}
+
+                  {/* Summary Price */}
+                  {product?.summaryPrice && (
+                    <div>
+                      <h3 className='text-lg font-semibold text-gray-900 mb-2'>Tóm tắt giá</h3>
+                      <p className='text-2xl font-bold text-green-600'>{product.summaryPrice}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Certificates */}
+              {product?.productCertificateDTOs && product.productCertificateDTOs.length > 0 && (
+                <Card className='shadow-lg'>
+                  <CardHeader>
+                    <CardTitle className='flex items-center gap-2'>
+                      <Award size={20} className='text-green-600' />
+                      Chứng nhận sản phẩm
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='space-y-4'>
+                      {product.productCertificateDTOs.map((certificate) => (
+                        <div key={certificate.id} className='border border-gray-200 rounded-lg p-4'>
+                          <div className='flex items-start justify-between mb-3'>
+                            <div className='flex items-center gap-2'>
+                              <Award size={16} className='text-green-600' />
+                              <span className='font-medium text-gray-900'>Chứng nhận #{certificate.id.slice(0, 8)}</span>
+                            </div>
+                            {getCertificateStatusBadge(certificate.status)}
+                          </div>
+
+                          <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-3'>
+                            <div>
+                              <span className='text-sm text-gray-600'>Ngày nộp:</span>
+                              <p className='font-medium'>{formatDate(certificate.submittedDate)}</p>
+                            </div>
+                            <div>
+                              <span className='text-sm text-gray-600'>Ngày quyết định:</span>
+                              <p className='font-medium'>{formatDate(certificate.decisionDate)}</p>
+                            </div>
+                          </div>
+
+                          {certificate.staffNotes && (
+                            <div className='mb-3'>
+                              <span className='text-sm text-gray-600'>Ghi chú từ staff:</span>
+                              <p className='text-gray-900'>{certificate.staffNotes}</p>
+                            </div>
+                          )}
+
+                          {certificate.imageUrl && (
+                            <div>
+                              <span className='text-sm text-gray-600 block mb-2'>Hình ảnh chứng nhận:</span>
+                              <div className='w-32 h-32 bg-gray-100 rounded-lg overflow-hidden'>
+                                <img
+                                  src={certificate.imageUrl}
+                                  alt='Chứng nhận'
+                                  className='w-full h-full object-cover'
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    target.src = '/placeholder-image.png'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Statistics */}
+              <Card className='shadow-lg'>
+                <CardHeader>
+                  <CardTitle className='flex items-center gap-2'>
+                    <Star size={20} className='text-green-600' />
+                    Thống kê
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                    <div className='text-center p-4 bg-green-50 rounded-lg'>
+                      <div className='text-2xl font-bold text-green-600'>{product?.saleCount || 0}</div>
+                      <div className='text-sm text-gray-600'>Lượt bán</div>
+                    </div>
+                    <div className='text-center p-4 bg-yellow-50 rounded-lg'>
+                      <div className='text-2xl font-bold text-yellow-600'>{product?.rating?.toFixed(1) || '0.0'}</div>
+                      <div className='text-sm text-gray-600'>Đánh giá trung bình</div>
+                    </div>
+                    <div className='text-center p-4 bg-blue-50 rounded-lg'>
+                      <div className='text-2xl font-bold text-blue-600'>{product?.reviewCount || 0}</div>
+                      <div className='text-sm text-gray-600'>Số lượt đánh giá</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* No variants message */}
+          {parentVariants.length === 0 && (
+            <Card className='shadow-lg'>
+              <CardHeader>
+                <CardTitle className='flex items-center gap-2 text-green-700'>
+                  <Archive size={20} />
+                  Loại sản phẩm
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='text-center py-8 text-gray-500'>
+                  <Archive size={48} className='mx-auto mb-4 text-gray-400' />
+                  <p>Chưa có product variant.</p>
                 </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={updating}>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmApprove}
-              disabled={updating || !approveNote.trim()}
-              className='bg-green-600 hover:bg-green-700'
-            >
-              {updating ? 'Đang xử lý...' : product.status === 'Rejected' ? 'Xác nhận duyệt lại' : 'Xác nhận duyệt'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              </CardContent>
+            </Card>
+          )}
 
-      {/* Dialog Xác nhận Từ chối */}
-      <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className='flex items-center gap-2'>
-              <XCircle className='text-red-600' size={24} />
-              {product.status === 'Rejected' ? 'Xác nhận từ chối lại sản phẩm' : 'Xác nhận từ chối sản phẩm'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              <div className='space-y-4 mt-4'>
-                <p>
-                  Bạn có chắc chắn muốn {product.status === 'Rejected' ? 'từ chối lại' : 'từ chối'} sản phẩm{' '}
-                  <strong>{product.name}</strong>?
-                </p>
+          {/* Variants Display */}
+          {parentVariants.length > 0 && (
+            <Card className='shadow-lg'>
+              <CardHeader>
+                <CardTitle className='flex items-center gap-2 text-green-700'>
+                  <Archive size={20} />
+                  Loại sản phẩm
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-6'>
+                  {parentVariants.map((parentVariant) => {
+                    const attributeType = getAttributeTypeForVariant(parentVariant)
+                    const hasChildren = hasChildVariants(parentVariant)
+                    const childVariants = getChildVariants(parentVariant)
 
-                <div className='space-y-2'>
-                  <label className='text-sm font-medium text-gray-700'>
-                    Lý do từ chối <span className='text-red-500'>*</span>
-                  </label>
-                  <textarea
-                    value={rejectNote}
-                    onChange={(e) => setRejectNote(e.target.value)}
-                    placeholder={
-                      product.status === 'Rejected'
-                        ? 'Nhập lý do từ chối lại sản phẩm này...'
-                        : 'Nhập lý do từ chối sản phẩm này...'
-                    }
-                    className='w-full min-h-24 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none'
-                  />
-                  {!rejectNote.trim() && <p className='text-xs text-red-500'>Vui lòng nhập lý do từ chối</p>}
+                    return (
+                      <div
+                        key={parentVariant.id}
+                        className='border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white'
+                      >
+                        {/* Variant Cha Header */}
+                        <div className='mb-4 pb-4 border-b border-gray-200'>
+                          <h3 className='text-lg font-semibold text-gray-900 mb-4'>Variant cha</h3>
+                          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                            {/* Attribute Type */}
+                            {attributeType && (
+                              <div className='space-y-2'>
+                                <label className='text-sm font-medium text-gray-700'>Loại thuộc tính</label>
+                                <div className='p-3 bg-gray-50 rounded-lg border'>
+                                  <span className='text-gray-900 font-medium'>{attributeType}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Attribute Name */}
+                            {parentVariant.attributeName && (
+                              <div className='space-y-2'>
+                                <label className='text-sm font-medium text-gray-700'>Tên thuộc tính</label>
+                                <div className='p-3 bg-gray-50 rounded-lg border'>
+                                  <span className='text-gray-900 font-medium'>{parentVariant.attributeName}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Variant Name */}
+                            <div className='space-y-2'>
+                              <label className='text-sm font-medium text-gray-700'>Tên loại sản phẩm</label>
+                              <div className='p-3 bg-gray-50 rounded-lg border'>
+                                <span className='text-gray-900 font-medium'>{parentVariant.name}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          {parentVariant.description && (
+                            <div className='mt-4 space-y-2'>
+                              <label className='text-sm font-medium text-gray-700'>Mô tả</label>
+                              <div className='p-3 bg-gray-50 rounded-lg border'>
+                                <span className='text-gray-700'>{parentVariant.description}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Images */}
+                          {parentVariant.productImages && parentVariant.productImages.length > 0 && (
+                            <div className='mt-4 space-y-2'>
+                              <label className='text-sm font-medium text-gray-700'>Hình ảnh</label>
+                              <div className='flex gap-2 flex-wrap'>
+                                {parentVariant.productImages.map((image, idx) => (
+                                  <div key={idx} className='w-20 h-20 rounded-lg overflow-hidden border border-gray-200'>
+                                    <img
+                                      src={image}
+                                      alt={`${parentVariant.name} ${idx + 1}`}
+                                      className='w-full h-full object-cover'
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement
+                                        target.src = '/placeholder-image.png'
+                                      }}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* SKU Details - Chỉ hiển thị nếu KHÔNG có variant con */}
+                          {!hasChildren && (
+                            <div className='mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                              {/* Price */}
+                              {parentVariant.finalPrice !== null && (
+                                <div className='space-y-2'>
+                                  <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                    <DollarSign size={14} />
+                                    Giá bán (VNĐ)
+                                  </label>
+                                  <div className='p-3 bg-gray-50 rounded-lg border'>
+                                    <span className='text-green-600 font-bold'>
+                                      {parentVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
+                                    </span>
+                                    {parentVariant.basePrice !== null &&
+                                      parentVariant.basePrice !== parentVariant.finalPrice && (
+                                        <span className='ml-2 text-sm text-gray-500 line-through'>
+                                          {parentVariant.basePrice.toLocaleString('vi-VN')} VNĐ
+                                        </span>
+                                      )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Stock */}
+                              {parentVariant.quantity !== null && (
+                                <div className='space-y-2'>
+                                  <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                    <Package size={14} />
+                                    Số lượng tồn kho
+                                  </label>
+                                  <div className='p-3 bg-gray-50 rounded-lg border'>
+                                    <span
+                                      className={`font-medium ${parentVariant.quantity > 20 ? 'text-green-600' : parentVariant.quantity > 10 ? 'text-yellow-600' : 'text-red-600'}`}
+                                    >
+                                      {parentVariant.quantity} sản phẩm
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Weight */}
+                              {parentVariant.weight !== null && (
+                                <div className='space-y-2'>
+                                  <label className='text-sm font-medium text-gray-700'>Trọng lượng (g)</label>
+                                  <div className='p-3 bg-gray-50 rounded-lg border'>
+                                    <span className='text-gray-900'>{parentVariant.weight}g</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Dimensions */}
+                              {parentVariant.length !== null &&
+                                parentVariant.width !== null &&
+                                parentVariant.height !== null && (
+                                  <div className='space-y-2'>
+                                    <label className='text-sm font-medium text-gray-700'>Kích thước (cm)</label>
+                                    <div className='p-3 bg-gray-50 rounded-lg border'>
+                                      <span className='text-gray-900'>
+                                        {parentVariant.length}x{parentVariant.width}x{parentVariant.height} cm
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          )}
+
+                          {/* Stock Status Indicator - Chỉ hiển thị nếu KHÔNG có variant con */}
+                          {!hasChildren && parentVariant.quantity !== null && (
+                            <div className='mt-4 pt-4 border-t border-gray-200'>
+                              <div className='flex items-center justify-between'>
+                                <span className='text-sm text-gray-600'>Trạng thái kho:</span>
+                                <Badge
+                                  className={
+                                    parentVariant.quantity > 20
+                                      ? 'bg-green-100 text-green-800'
+                                      : parentVariant.quantity > 10
+                                        ? 'bg-yellow-100 text-yellow-800'
+                                        : 'bg-red-100 text-red-800'
+                                  }
+                                >
+                                  {parentVariant.quantity > 20
+                                    ? 'Còn nhiều'
+                                    : parentVariant.quantity > 10
+                                      ? 'Sắp hết'
+                                      : 'Ít hàng'}
+                                </Badge>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Variant Con - Hiển thị nếu có */}
+                        {hasChildren && childVariants.length > 0 && (
+                          <div className='mt-4 space-y-4'>
+                            <div className='flex items-center gap-2 mb-3'>
+                              <div className='h-px flex-1 bg-gray-200'></div>
+                              <span className='text-sm font-semibold text-gray-700 px-2'>
+                                Variant con ({childVariants.length})
+                              </span>
+                              <div className='h-px flex-1 bg-gray-200'></div>
+                            </div>
+                            <div className='space-y-3 pl-4 border-l-2 border-green-200'>
+                              {childVariants.map((childVariant) => (
+                                <div
+                                  key={childVariant.id}
+                                  className='border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors'
+                                >
+                                  <h4 className='text-sm font-semibold text-gray-700 mb-3'>Variant con</h4>
+                                  <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                                    {/* Child Variant Name */}
+                                    <div className='space-y-2'>
+                                      <label className='text-sm font-medium text-gray-700'>Tên variant con</label>
+                                      <div className='p-2 bg-white rounded border'>
+                                        <span className='text-gray-900 text-sm'>{childVariant.name}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Child Attribute Name */}
+                                    {childVariant.attributeName && (
+                                      <div className='space-y-2'>
+                                        <label className='text-sm font-medium text-gray-700'>Tên thuộc tính</label>
+                                        <div className='p-2 bg-white rounded border'>
+                                          <span className='text-gray-900 text-sm'>{childVariant.attributeName}</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Child Price */}
+                                    {childVariant.finalPrice !== null && (
+                                      <div className='space-y-2'>
+                                        <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                          <DollarSign size={14} />
+                                          Giá bán (VNĐ)
+                                        </label>
+                                        <div className='p-2 bg-white rounded border'>
+                                          <span className='text-green-600 font-bold text-sm'>
+                                            {childVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
+                                          </span>
+                                          {childVariant.basePrice !== null &&
+                                            childVariant.basePrice !== childVariant.finalPrice && (
+                                              <span className='ml-2 text-xs text-gray-500 line-through'>
+                                                {childVariant.basePrice.toLocaleString('vi-VN')} VNĐ
+                                              </span>
+                                            )}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Child Stock */}
+                                    {childVariant.quantity !== null && (
+                                      <div className='space-y-2'>
+                                        <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                          <Package size={14} />
+                                          Số lượng tồn kho
+                                        </label>
+                                        <div className='p-2 bg-white rounded border'>
+                                          <span
+                                            className={`text-sm font-medium ${childVariant.quantity > 20 ? 'text-green-600' : childVariant.quantity > 10 ? 'text-yellow-600' : 'text-red-600'}`}
+                                          >
+                                            {childVariant.quantity} sản phẩm
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Child Weight */}
+                                    {childVariant.weight !== null && (
+                                      <div className='space-y-2'>
+                                        <label className='text-sm font-medium text-gray-700'>Trọng lượng (g)</label>
+                                        <div className='p-2 bg-white rounded border'>
+                                          <span className='text-gray-900 text-sm'>{childVariant.weight}g</span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Child Dimensions */}
+                                    {childVariant.length !== null &&
+                                      childVariant.width !== null &&
+                                      childVariant.height !== null && (
+                                        <div className='space-y-2'>
+                                          <label className='text-sm font-medium text-gray-700'>Kích thước (cm)</label>
+                                          <div className='p-2 bg-white rounded border'>
+                                            <span className='text-gray-900 text-sm'>
+                                              {childVariant.length}x{childVariant.width}x{childVariant.height} cm
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                    {/* Child Images */}
+                                    {childVariant.productImages && childVariant.productImages.length > 0 && (
+                                      <div className='space-y-2 md:col-span-2 lg:col-span-3'>
+                                        <label className='text-sm font-medium text-gray-700'>Hình ảnh</label>
+                                        <div className='flex gap-2 flex-wrap'>
+                                          {childVariant.productImages.map((image, idx) => (
+                                            <div
+                                              key={idx}
+                                              className='w-16 h-16 rounded-lg overflow-hidden border border-gray-200'
+                                            >
+                                              <img
+                                                src={image}
+                                                alt={`${childVariant.name} ${idx + 1}`}
+                                                className='w-full h-full object-cover'
+                                                onError={(e) => {
+                                                  const target = e.target as HTMLImageElement
+                                                  target.src = '/placeholder-image.png'
+                                                }}
+                                              />
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Child Stock Status */}
+                                  {childVariant.quantity !== null && (
+                                    <div className='mt-3 pt-3 border-t border-gray-200'>
+                                      <div className='flex items-center justify-between'>
+                                        <span className='text-xs text-gray-600'>Trạng thái kho:</span>
+                                        <Badge
+                                          className={
+                                            childVariant.quantity > 20
+                                              ? 'bg-green-100 text-green-800 text-xs'
+                                              : childVariant.quantity > 10
+                                                ? 'bg-yellow-100 text-yellow-800 text-xs'
+                                                : 'bg-red-100 text-red-800 text-xs'
+                                          }
+                                        >
+                                          {childVariant.quantity > 20
+                                            ? 'Còn nhiều'
+                                            : childVariant.quantity > 10
+                                              ? 'Sắp hết'
+                                              : 'Ít hàng'}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                      </div>
+                    )
+                  })}
                 </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={updating}>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmReject}
-              disabled={updating || !rejectNote.trim()}
-              className='bg-red-600 hover:bg-red-700'
+
+                {/* Summary */}
+                {parentVariants.length > 0 && (
+                  <div className='mt-6 p-4 bg-green-50 rounded-lg border border-green-200'>
+                    <h3 className='text-lg font-semibold text-green-800 mb-2'>Tổng quan</h3>
+                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
+                      <div>
+                        <span className='text-green-700 font-medium'>Tổng số variant cha:</span>
+                        <span className='ml-2 text-green-900'>{parentVariants.length} loại</span>
+                      </div>
+                      <div>
+                        <span className='text-green-700 font-medium'>Tổng tồn kho:</span>
+                        <span className='ml-2 text-green-900'>
+                          {(() => {
+                            let total = 0
+                            parentVariants.forEach((pv) => {
+                              if (hasChildVariants(pv)) {
+                                const children = getChildVariants(pv)
+                                total += children.reduce((sum, cv) => sum + (cv.quantity || 0), 0)
+                              } else {
+                                total += pv.quantity || 0
+                              }
+                            })
+                            return `${total} sản phẩm`
+                          })()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className='text-green-700 font-medium'>Giá từ:</span>
+                        <span className='ml-2 text-green-900'>
+                          {(() => {
+                            const prices: number[] = []
+                            parentVariants.forEach((pv) => {
+                              if (hasChildVariants(pv)) {
+                                const children = getChildVariants(pv)
+                                children.forEach((cv) => {
+                                  if (cv.finalPrice !== null) prices.push(cv.finalPrice)
+                                })
+                              } else {
+                                if (pv.finalPrice !== null) prices.push(pv.finalPrice)
+                              }
+                            })
+                            return prices.length > 0
+                              ? `${Math.min(...prices).toLocaleString('vi-VN')} - ${Math.max(...prices).toLocaleString('vi-VN')} VNĐ`
+                              : 'Chưa có giá'
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Tab 2: Chứng nhận */}
+        <TabsContent value='certificates' className='space-y-6'>
+          {id && <ProductCertificate productId={id} />}
+        </TabsContent>
+
+        {/* Tab 3: Câu chuyện */}
+        <TabsContent value='story' className='space-y-6'>
+          {id && <ProductStoryComponent productId={id} />}
+        </TabsContent>
+      </Tabs>
+
+      {/* Action Modal */}
+      <Dialog open={showActionModal} onOpenChange={setShowActionModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === 'Confirmed' && 'Chấp nhận xử lý'}
+              {actionType === 'Rejected' && 'Từ chối xử lý'}
+              {actionType === 'Approved' && 'Chấp nhận sản phẩm'}
+              {actionType === 'Denied' && 'Từ chối sản phẩm'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className='space-y-4 py-4'>
+            <div>
+              <Label htmlFor='action-note'>Ghi chú (tùy chọn)</Label>
+              <Textarea
+                id='action-note'
+                value={actionNote}
+                onChange={(e) => setActionNote(e.target.value)}
+                placeholder='Nhập ghi chú cho hành động này...'
+                className='mt-2 min-h-[100px]'
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setShowActionModal(false)
+                setActionNote('')
+                setActionType(null)
+              }}
+              disabled={processingAction}
             >
-              {updating ? 'Đang xử lý...' : product.status === 'Rejected' ? 'Xác nhận từ chối lại' : 'Xác nhận từ chối'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleConfirmAction}
+              disabled={processingAction}
+              className={
+                actionType === 'Rejected' || actionType === 'Denied'
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'bg-green-600 hover:bg-green-700'
+              }
+            >
+              {processingAction ? 'Đang xử lý...' : 'Xác nhận'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
