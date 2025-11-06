@@ -52,6 +52,38 @@ function BlogCategoryList() {
     isActive: true
   })
 
+  // Validation states
+  const [nameError, setNameError] = useState<string>('')
+
+  // Validation function - khớp với backend validation
+  const validateName = (name: string): string => {
+    // Required
+    if (!name || !name.trim()) {
+      return 'Tên danh mục là bắt buộc.'
+    }
+
+    const trimmedName = name.trim()
+
+    // StringLength(20, MinimumLength = 10)
+    if (trimmedName.length < 10 || trimmedName.length > 20) {
+      return 'Tên danh mục phải từ 10 đến 20 ký tự.'
+    }
+
+    // RegularExpression: ^(?=.{10,20}$)\p{Lu}(?:\p{L}+)(?: \p{L}+)*$
+    // Bắt đầu bằng chữ in hoa, chỉ gồm chữ cái và khoảng trắng
+    const nameRegex = /^(?=.{10,20}$)\p{Lu}(?:\p{L}+)(?: \p{L}+)*$/u
+    if (!nameRegex.test(trimmedName)) {
+      return 'Tên danh mục chỉ gồm chữ cái và bắt đầu bằng chữ in hoa.'
+    }
+
+    return ''
+  }
+
+  // Check if form is valid
+  const isFormValid = (): boolean => {
+    return validateName(formData.name) === ''
+  }
+
   // Function to display notifications with react-toastify
   const showNotification = (type: 'success' | 'error', message: string) => {
     if (type === 'success') {
@@ -111,23 +143,46 @@ function BlogCategoryList() {
 
   // Create category
   const handleCreate = async () => {
+    // Validate before submit
+    const error = validateName(formData.name)
+    if (error) {
+      setNameError(error)
+      showNotification('error', error)
+      return
+    }
+
     try {
       const response = await blogCategoryApi.create(formData)
       if (response.status === 201 || response.status === 200) {
         setIsCreateDialogOpen(false)
         setFormData({ name: '', isActive: true })
+        setNameError('')
         loadAllCategories() // Reload all
         showNotification('success', 'Tạo danh mục thành công!')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating category:', error)
-      showNotification('error', 'Có lỗi xảy ra khi tạo danh mục!')
+      // Show backend validation error if available
+      const errorMessage = error?.data?.message || error?.message || 'Có lỗi xảy ra khi tạo danh mục!'
+      showNotification('error', errorMessage)
+      // If backend returns field-specific error, show it
+      if (error?.data?.errors?.Name) {
+        setNameError(error.data.errors.Name[0] || error.data.errors.Name)
+      }
     }
   }
 
   // Update category
   const handleUpdate = async () => {
     if (!selectedCategory) return
+
+    // Validate before submit
+    const error = validateName(formData.name)
+    if (error) {
+      setNameError(error)
+      showNotification('error', error)
+      return
+    }
 
     try {
       const updateData: UpdateBlogCategoryInput = {
@@ -143,15 +198,22 @@ function BlogCategoryList() {
         setIsEditDialogOpen(false)
         setSelectedCategory(null)
         setFormData({ name: '', isActive: true })
+        setNameError('')
         loadAllCategories() // Reload all
         showNotification('success', 'Cập nhật danh mục thành công!')
       } else {
         console.log('Unexpected update response status:', response.status)
         showNotification('error', 'Cập nhật thất bại với status: ' + response.status)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating category:', error)
-      showNotification('error', 'Có lỗi xảy ra khi cập nhật danh mục!')
+      // Show backend validation error if available
+      const errorMessage = error?.data?.message || error?.message || 'Có lỗi xảy ra khi cập nhật danh mục!'
+      showNotification('error', errorMessage)
+      // If backend returns field-specific error, show it
+      if (error?.data?.errors?.Name) {
+        setNameError(error.data.errors.Name[0] || error.data.errors.Name)
+      }
     }
   }
 
@@ -162,7 +224,38 @@ function BlogCategoryList() {
       name: category.name,
       isActive: category.isActive
     })
+    setNameError('') // Reset error when opening dialog
     setIsEditDialogOpen(true)
+  }
+
+  // Handle name change with real-time validation
+  const handleNameChange = (value: string) => {
+    setFormData({ ...formData, name: value })
+    // Real-time validation (only show error if user has started typing)
+    if (value.trim().length > 0) {
+      setNameError(validateName(value))
+    } else {
+      setNameError('')
+    }
+  }
+
+  // Reset form when create dialog closes
+  const handleCreateDialogClose = (open: boolean) => {
+    setIsCreateDialogOpen(open)
+    if (!open) {
+      setFormData({ name: '', isActive: true })
+      setNameError('')
+    }
+  }
+
+  // Reset form when edit dialog closes
+  const handleEditDialogClose = (open: boolean) => {
+    setIsEditDialogOpen(open)
+    if (!open) {
+      setSelectedCategory(null)
+      setFormData({ name: '', isActive: true })
+      setNameError('')
+    }
   }
 
   // Navigate to detail page
@@ -269,7 +362,7 @@ function BlogCategoryList() {
                 </Button>
               </div>
 
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <Dialog open={isCreateDialogOpen} onOpenChange={handleCreateDialogClose}>
                 <DialogTrigger asChild>
                   <Button variant='green'>
                     <Plus className='h-4 w-4 mr-2' />
@@ -285,13 +378,23 @@ function BlogCategoryList() {
                   </DialogHeader>
                   <div className='space-y-4'>
                     <div>
-                      <label className='text-sm font-medium text-foreground'>Tên danh mục</label>
+                      <label className='text-sm font-medium text-foreground'>
+                        Tên danh mục <span className='text-destructive'>*</span>
+                      </label>
                       <Input
                         value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder='Nhập tên danh mục'
-                        className='mt-1 bg-input border-border'
+                        onChange={(e) => handleNameChange(e.target.value)}
+                        placeholder='Nhập tên danh mục (10-20 ký tự, bắt đầu bằng chữ in hoa)'
+                        className={`mt-1 bg-input border-border ${nameError ? 'border-destructive' : ''}`}
                       />
+                      {nameError && (
+                        <p className='mt-1 text-sm text-destructive'>{nameError}</p>
+                      )}
+                      {!nameError && formData.name && (
+                        <p className='mt-1 text-xs text-muted-foreground'>
+                          Độ dài: {formData.name.trim().length}/20 ký tự
+                        </p>
+                      )}
                     </div>
                     <div className='flex items-center space-x-2'>
                       <Switch
@@ -307,7 +410,7 @@ function BlogCategoryList() {
                     </Button>
                     <Button
                       onClick={handleCreate}
-                      disabled={!formData.name.trim()}
+                      disabled={!isFormValid()}
                       className='bg-primary hover:bg-primary/90'
                     >
                       Tạo
@@ -418,7 +521,7 @@ function BlogCategoryList() {
         </div>
 
         {/* Edit Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogClose}>
           <DialogContent className='bg-card border-border'>
             <DialogHeader>
               <DialogTitle className='text-foreground'>Chỉnh sửa danh mục</DialogTitle>
@@ -426,13 +529,23 @@ function BlogCategoryList() {
             </DialogHeader>
             <div className='space-y-4'>
               <div>
-                <label className='text-sm font-medium text-foreground'>Tên danh mục</label>
+                <label className='text-sm font-medium text-foreground'>
+                  Tên danh mục <span className='text-destructive'>*</span>
+                </label>
                 <Input
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder='Nhập tên danh mục'
-                  className='mt-1 bg-input border-border'
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder='Nhập tên danh mục (10-20 ký tự, bắt đầu bằng chữ in hoa)'
+                  className={`mt-1 bg-input border-border ${nameError ? 'border-destructive' : ''}`}
                 />
+                {nameError && (
+                  <p className='mt-1 text-sm text-destructive'>{nameError}</p>
+                )}
+                {!nameError && formData.name && (
+                  <p className='mt-1 text-xs text-muted-foreground'>
+                    Độ dài: {formData.name.trim().length}/20 ký tự
+                  </p>
+                )}
               </div>
               <div className='flex items-center space-x-2'>
                 <Switch
@@ -446,26 +559,12 @@ function BlogCategoryList() {
               <Button variant='outline' onClick={() => setIsEditDialogOpen(false)} className='border-border'>
                 Hủy
               </Button>
-              <Button onClick={handleUpdate} disabled={!formData.name.trim()} variant='green'>
+              <Button onClick={handleUpdate} disabled={!isFormValid()} variant='green'>
                 Cập nhật
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Toast Container */}
-        <ToastContainer
-          position='top-right'
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme='dark'
-        />
       </div>
     </div>
   )

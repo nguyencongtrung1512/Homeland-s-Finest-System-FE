@@ -33,6 +33,7 @@ import {
   AlertDialogTitle
 } from '../../../components/ui/alert-dialog'
 import { formatDate } from '../../../utils/formatDate'
+import { toast } from '../../../utils/toast'
 
 function BlogByCategory() {
   const { id } = useParams<{ id: string }>()
@@ -97,13 +98,18 @@ function BlogByCategory() {
 
     try {
       const response = await blogApi.delete(blogToDelete)
-      if (response.status === 200) {
+      if (response.status === 200 || response.status === 204) {
+        toast.success('Xóa blog thành công!')
         loadCategoryDetail()
         setIsDeleteDialogOpen(false)
         setBlogToDelete(null)
+      } else {
+        toast.error('Có lỗi xảy ra khi xóa blog')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting blog:', error)
+      const errorMessage = error?.response?.data?.message || error?.message || 'Có lỗi xảy ra khi xóa blog'
+      toast.error(errorMessage)
     }
   }
 

@@ -109,25 +109,88 @@ function SideBar({ isCollapsed }: SideBarProps) {
 
       {/* Navigation Menu */}
       <nav className={cn('flex-1 space-y-2 transition-all duration-300', isCollapsed ? 'p-2' : 'p-4')}>
-        {menuItems.map((item) => (
-          <Button
-            key={item.key}
-            variant={location.pathname === item.key ? 'default' : 'ghost'}
-            className={cn(
-              'h-10 transition-all duration-300',
-              isCollapsed ? 'w-full justify-center px-2' : 'w-full justify-start gap-3 px-3',
-              location.pathname === item.key
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-            )}
-            onClick={() => handleMenuClick(item.key)}
-            title={isCollapsed ? item.label : undefined}
-          >
-            {item.icon}
-            {!isCollapsed && item.label}
-          </Button>
-        ))}
+        {menuItems.map((item) => {
+          const itemFullPath = item.key.startsWith('/')
+            ? item.key
+            : `${path.BASE_ADMIN}${item.key.startsWith('/') ? '' : '/'}${item.key}`
+
+          // Nếu là base admin ('/admin') chỉ active khi exact match.
+          const isBaseAdmin = itemFullPath === path.BASE_ADMIN
+          const isActive = isBaseAdmin
+            ? location.pathname === itemFullPath
+            : location.pathname === itemFullPath ||
+              (itemFullPath !== '/' && location.pathname.startsWith(itemFullPath + '/'))
+
+          return (
+            <button
+              key={item.key}
+              type='button'
+              onClick={() => handleMenuClick(item.key)}
+              title={isCollapsed ? item.label : undefined}
+              // thêm class admin-menu-item để override styles và 'active' khi đang chọn
+              className={cn(
+                'admin-menu-item flex items-center h-10 w-full transition-all duration-300 rounded-md px-3 outline-none',
+                isCollapsed ? 'justify-center px-2' : 'justify-start gap-3',
+                isActive ? 'active text-white' : 'text-gray-700'
+              )}
+              data-key={item.key}
+            >
+              <span className='admin-menu-icon mr-2'>{item.icon}</span>
+              {!isCollapsed && <span className='truncate'>{item.label}</span>}
+            </button>
+          )
+        })}
       </nav>
+
+      {/* Styles: hover + active màu "xanh da trời" (sky-blue) giống seller sidebar */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+      /* color: #38bdf8 (sky-400) */
+      .admin-menu-item {
+        background: transparent;
+      }
+
+      .admin-menu-item .admin-menu-icon svg {
+        color: #0f172a; /* default icon color */
+        transition: color 0.2s ease, transform 0.2s ease;
+      }
+
+      .admin-menu-item:hover {
+        background-color: rgba(56,189,248,0.12); /* nhẹ nhàng sky-blue hover */
+        transform: translateX(6px);
+        box-shadow: 0 6px 18px rgba(56,189,248,0.12);
+      }
+
+      .admin-menu-item:hover .admin-menu-icon svg {
+        color: #06b6d4; /* sky/cyan icon tint on hover */
+        transform: scale(1.06);
+      }
+
+      .admin-menu-item.active,
+      .admin-menu-item.active:hover {
+        background-color: #38bdf8 !important; /* chính màu sky-blue */
+        color: #ffffff !important;
+        font-weight: 600;
+      }
+
+      .admin-menu-item.active .admin-menu-icon svg {
+        color: #ffffff !important;
+      }
+
+      /* Khi collapsed (chỉ icon), giảm translate để không overflow */
+      .w-16 .admin-menu-item:hover {
+        transform: translateX(2px);
+      }
+
+      /* chuyển màu text khi hover (khi chưa active) */
+      .admin-menu-item:not(.active):hover span {
+        color: #075985 !important; /* dark-sky tint for label */
+      }
+
+      `
+        }}
+      />
     </div>
   )
 }

@@ -29,6 +29,7 @@ function CreateBlogByCategory() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [categoryName, setCategoryName] = useState('')
+  const [titleError, setTitleError] = useState<string>('')
 
   useEffect(() => {
     if (categoryId) {
@@ -56,6 +57,26 @@ function CreateBlogByCategory() {
     }
   }
 
+  const validateTitle = (title: string): string => {
+    if (!title || !title.trim()) {
+      return 'Tiêu đề là bắt buộc.'
+    }
+    const trimmedTitle = title.trim()
+    if (trimmedTitle.length < 10 || trimmedTitle.length > 100) {
+      return 'Tiêu đề phải từ 10 đến 100 ký tự.'
+    }
+    return ''
+  }
+
+  const handleTitleChange = (value: string) => {
+    setTitle(value)
+    if (value.trim().length > 0) {
+      setTitleError(validateTitle(value))
+    } else {
+      setTitleError('')
+    }
+  }
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -76,7 +97,15 @@ function CreateBlogByCategory() {
       return
     }
 
-    if (!title || !description || !content) {
+    // Validate title
+    const titleValidationError = validateTitle(title)
+    if (titleValidationError) {
+      setTitleError(titleValidationError)
+      toast.error(titleValidationError)
+      return
+    }
+
+    if (!description || !content) {
       toast.error('Vui lòng điền đầy đủ thông tin')
       return
     }
@@ -88,14 +117,20 @@ function CreateBlogByCategory() {
 
     setLoading(true)
     try {
+      if (!image || !(image instanceof File)) {
+        toast.error('Vui lòng chọn ảnh hợp lệ')
+        setLoading(false)
+        return
+      }
+
       const response = await blogApi.create({
         userId,
-        blogCategoryId: [categoryId], // ✅ Truyền mảng
-        title,
+        blogCategoryId: categoryId,
+        title: title.trim(),
         description,
         content,
-        image // ⚠️ trong blog.api.ts sửa `image: string` → `image: File`
-      } as any)
+        image
+      })
 
       if (response.status === 200 || response.status === 201) {
         toast.success('Tạo blog thành công!')
@@ -103,9 +138,14 @@ function CreateBlogByCategory() {
       } else {
         toast.error('Có lỗi xảy ra khi tạo blog')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating blog:', error)
-      toast.error('Có lỗi xảy ra khi tạo blog')
+      const errorMessage = error?.response?.data?.message || error?.message || 'Có lỗi xảy ra khi tạo blog'
+      toast.error(errorMessage)
+      // Show field-specific errors if available
+      if (error?.response?.data?.errors?.Title) {
+        setTitleError(error.response.data.errors.Title[0] || error.response.data.errors.Title)
+      }
     } finally {
       setLoading(false)
     }
@@ -151,14 +191,22 @@ function CreateBlogByCategory() {
           <CardContent>
             <form onSubmit={handleSubmit} className='space-y-6'>
               <div className='space-y-2'>
-                <Label htmlFor='title'>Tiêu đề</Label>
+                <Label htmlFor='title'>
+                  Tiêu đề <span className='text-destructive'>*</span>
+                </Label>
                 <Input
                   id='title'
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder='Nhập tiêu đề blog'
-                  required
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  placeholder='Nhập tiêu đề blog (10-100 ký tự)'
+                  className={titleError ? 'border-destructive' : ''}
                 />
+                {titleError && <p className='text-sm text-destructive'>{titleError}</p>}
+                {!titleError && title && (
+                  <p className='text-xs text-muted-foreground'>
+                    Độ dài: {title.trim().length}/100 ký tự
+                  </p>
+                )}
               </div>
 
               <div className='space-y-2'>
