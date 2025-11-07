@@ -330,9 +330,18 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                 id='update-name'
                 placeholder='Nhập tên sản phẩm'
                 value={productData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value.length <= 200) {
+                    handleInputChange('name', value)
+                  }
+                }}
+                maxLength={200}
                 className='mt-1'
               />
+              <p className='text-xs text-gray-500 mt-1 text-right'>
+                {productData.name?.length || 0}/200 ký tự
+              </p>
             </div>
 
             {/* Material */}
@@ -344,9 +353,18 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                 id='update-material'
                 placeholder='Nhập material (ví dụ: string)'
                 value={productData.material}
-                onChange={(e) => handleInputChange('material', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value.length <= 200) {
+                    handleInputChange('material', value)
+                  }
+                }}
+                maxLength={200}
                 className='mt-1'
               />
+              <p className='text-xs text-gray-500 mt-1 text-right'>
+                {productData.material?.length || 0}/200 ký tự
+              </p>
             </div>
 
             {/* Province ID */}
@@ -402,10 +420,19 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                 id='update-description'
                 placeholder='Nhập mô tả sản phẩm'
                 value={productData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value.length <= 2000) {
+                    handleInputChange('description', value)
+                  }
+                }}
+                maxLength={2000}
                 className='mt-1'
                 rows={4}
               />
+              <p className='text-xs text-gray-500 mt-1 text-right'>
+                {productData.description?.length || 0}/2000 ký tự
+              </p>
             </div>
 
             {/* Active Status */}

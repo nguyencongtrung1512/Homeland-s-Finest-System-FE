@@ -255,7 +255,12 @@ export default function ModalProductDetail({
                 type='text'
                 placeholder='Ví dụ: Gạo ST25 Premium...'
                 value={productDetailData.name}
-                onChange={(e) => handleDetailInputChange('name', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value.length <= 200) {
+                    handleDetailInputChange('name', value)
+                  }
+                }}
                 onBlur={(e) => {
                   // Capitalize chữ cái đầu và trim khi blur
                   let trimmedValue = e.target.value.trim()
@@ -264,10 +269,11 @@ export default function ModalProductDetail({
                     handleDetailInputChange('name', trimmedValue)
                   }
                 }}
+                maxLength={200}
                 className='mt-1'
               />
-              <p className='text-xs text-gray-500 mt-1'>
-                💡 Chữ cái đầu sẽ tự động in hoa. Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt).
+              <p className='text-xs text-gray-500 mt-1 text-right'>
+                {productDetailData.name?.length || 0}/200 ký tự
               </p>
             </div>
 
@@ -279,11 +285,17 @@ export default function ModalProductDetail({
                 id='detail-description'
                 placeholder='Ví dụ: Gạo ST25 là loại gạo thơm ngon, được trồng tại Sóc Trăng. Sản phẩm không sử dụng hóa chất, đảm bảo an toàn cho sức khỏe...'
                 value={productDetailData.description}
-                onChange={(e) => handleDetailInputChange('description', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value.length <= 2000) {
+                    handleDetailInputChange('description', value)
+                  }
+                }}
+                maxLength={2000}
                 className='mt-1 min-h-[120px]'
               />
-              <p className='text-xs text-gray-500 mt-1'>
-                💡 Mô tả chi tiết về sản phẩm. Cho phép chữ cái, số, khoảng trắng và dấu câu (.,!?:;-) - không ký tự đặc biệt khác.
+              <p className='text-xs text-gray-500 mt-1 text-right'>
+                {productDetailData.description?.length || 0}/2000 ký tự
               </p>
             </div>
 
@@ -296,7 +308,12 @@ export default function ModalProductDetail({
                 type='text'
                 placeholder='Ví dụ: Việt Nam, Sóc Trăng'
                 value={productDetailData.material}
-                onChange={(e) => handleDetailInputChange('material', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value.length <= 200) {
+                    handleDetailInputChange('material', value)
+                  }
+                }}
                 onBlur={(e) => {
                   // Format lại khi blur để đảm bảo format đúng theo "Việt Nam, Sóc Trăng"
                   if (e.target.value.trim()) {
@@ -304,10 +321,11 @@ export default function ModalProductDetail({
                     handleDetailInputChange('material', formatted)
                   }
                 }}
+                maxLength={200}
                 className='mt-1'
               />
-              <p className='text-xs text-gray-500 mt-1'>
-                💡 Định dạng: "Tỉnh/Thành phố, Địa danh". Cho phép chữ cái, số, khoảng trắng và dấu phẩy (không ký tự đặc biệt khác). Ví dụ: Việt Nam, Sóc Trăng
+              <p className='text-xs text-gray-500 mt-1 text-right'>
+                {productDetailData.material?.length || 0}/200 ký tự
               </p>
             </div>
           </div>

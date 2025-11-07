@@ -349,9 +349,6 @@ export default function ModalEditVariant({
                 onChange={(e) => handleVariantInputChange('attributeName', e.target.value)}
                 className='mt-1'
               />
-              <p className='text-xs text-gray-500 mt-1'>
-                💡 Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt).
-              </p>
             </div>
 
             {/* Price - Chỉ hiển thị cho variant con */}
@@ -377,11 +374,6 @@ export default function ModalEditVariant({
                   }}
                   className='mt-1'
                 />
-                {variantData.basePrice > 0 && (
-                  <p className='text-xs text-gray-500 mt-1'>
-                    Giá trị: {variantData.basePrice.toLocaleString('vi-VN')} VNĐ
-                  </p>
-                )}
               </div>
             )}
 
@@ -420,16 +412,11 @@ export default function ModalEditVariant({
                   }}
                   className='mt-1'
                 />
-                <div className='mt-1 space-y-1'>
-                  <p className='text-xs text-gray-500'>
-                    Chỉ nhập số, không được nhập số âm, chữ hoặc ký tự đặc biệt
+                {originalQuantity !== null && (
+                  <p className='text-xs text-blue-600 mt-1'>
+                    Số lượng hiện tại trong kho: {originalQuantity.toLocaleString('vi-VN')}
                   </p>
-                  {originalQuantity !== null && (
-                    <p className='text-xs text-blue-600'>
-                      Số lượng hiện tại trong kho: {originalQuantity.toLocaleString('vi-VN')}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
             )}
 
@@ -442,9 +429,18 @@ export default function ModalEditVariant({
                 id='edit-description'
                 placeholder='Mô tả về loại sản phẩm...'
                 value={variantData.description}
-                onChange={(e) => handleVariantInputChange('description', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value.length <= 2000) {
+                    handleVariantInputChange('description', value)
+                  }
+                }}
+                maxLength={2000}
                 className='mt-1 min-h-[100px]'
               />
+              <p className='text-xs text-gray-500 mt-1 text-right'>
+                {variantData.description?.length || 0}/2000 ký tự
+              </p>
             </div>
           </div>
 

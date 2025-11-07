@@ -517,7 +517,12 @@ function CreateProduct() {
                       id='name'
                       placeholder='Ví dụ: Gạo ST25 Premium...'
                       value={productData.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (value.length <= 200) {
+                          handleInputChange('name', value)
+                        }
+                      }}
                       onBlur={(e) => {
                         // Capitalize chữ cái đầu và trim khi blur
                         let trimmedValue = e.target.value.trim()
@@ -526,10 +531,11 @@ function CreateProduct() {
                           handleInputChange('name', trimmedValue)
                         }
                       }}
+                      maxLength={200}
                       className='mt-1'
                     />
-                    <p className='text-xs text-gray-500 mt-1'>
-                      💡 Chữ cái đầu sẽ tự động in hoa. Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt).
+                    <p className='text-xs text-gray-500 mt-1 text-right'>
+                      {productData.name?.length || 0}/200 ký tự
                     </p>
                   </div>
 
@@ -541,11 +547,17 @@ function CreateProduct() {
                       id='description'
                       placeholder='Ví dụ: Gạo ST25 là loại gạo thơm ngon, được trồng tại Sóc Trăng. Sản phẩm không sử dụng hóa chất, đảm bảo an toàn cho sức khỏe...'
                       value={productData.description}
-                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (value.length <= 2000) {
+                          handleInputChange('description', value)
+                        }
+                      }}
+                      maxLength={2000}
                       className='mt-1 min-h-[120px]'
                     />
-                    <p className='text-xs text-gray-500 mt-1'>
-                      💡 Mô tả chi tiết về sản phẩm. Cho phép chữ cái, số, khoảng trắng và dấu câu (.,!?:;-) - không ký tự đặc biệt khác.
+                    <p className='text-xs text-gray-500 mt-1 text-right'>
+                      {productData.description?.length || 0}/2000 ký tự
                     </p>
                   </div>
 
@@ -557,7 +569,12 @@ function CreateProduct() {
                       id='material'
                       placeholder='Ví dụ: Việt Nam, Sóc Trăng'
                       value={productData.material}
-                      onChange={(e) => handleInputChange('material', e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (value.length <= 200) {
+                          handleInputChange('material', value)
+                        }
+                      }}
                       onBlur={(e) => {
                         // Format lại khi blur để đảm bảo format đúng theo "Việt Nam, Sóc Trăng"
                         if (e.target.value.trim()) {
@@ -565,10 +582,11 @@ function CreateProduct() {
                           handleInputChange('material', formatted)
                         }
                       }}
+                      maxLength={200}
                       className='mt-1'
                     />
-                    <p className='text-xs text-gray-500 mt-1'>
-                      💡 Định dạng: "Tỉnh/Thành phố, Địa danh". Cho phép chữ cái, số, khoảng trắng và dấu phẩy (không ký tự đặc biệt khác). Ví dụ: Việt Nam, Sóc Trăng
+                    <p className='text-xs text-gray-500 mt-1 text-right'>
+                      {productData.material?.length || 0}/200 ký tự
                     </p>
                   </div>
                 </CardContent>
