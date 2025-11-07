@@ -16,17 +16,13 @@ export interface UpdateComboRequest {
 
 export interface CreateComboItemRequest {
   productVariantId: string
-  comboItemName: string
-  price: number
   quantity: number
 }
 
 export interface UpdateComboItemRequest {
   productVariantId: string
-  comboItemName: string
-  price: number
   quantity: number
-  isActive: boolean
+  isActive?: boolean
 }
 
 export interface ComboResponse {
