@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
-import { Shield, Calendar, User, FileText, Clock, Package } from 'lucide-react'
+import { Shield, Calendar, User, FileText, Clock, Package, ZoomIn, Image as ImageIcon } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import { productCertificateApi } from '../../../apis/productCertificate.api'
 import type { ProductCertificateType } from '../../../types/productCertificateType'
+import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 
 interface ProductCertificateProps {
   productId: string
@@ -13,6 +14,11 @@ interface ProductCertificateProps {
 function ProductCertificate({ productId }: ProductCertificateProps) {
   const [certificates, setCertificates] = useState<ProductCertificateType[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // States for image preview
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0)
 
   const fetchCertificates = async () => {
     try {
@@ -21,6 +27,13 @@ function ProductCertificate({ productId }: ProductCertificateProps) {
 
       // Thử cả hai cách để xem cái nào work
       const certificatesData = response.data.data || response.data || []
+      
+      // Debug: Log để kiểm tra dữ liệu từ BE
+      console.log('Certificate data from BE:', certificatesData)
+      certificatesData.forEach((cert: ProductCertificateType, index: number) => {
+        console.log(`Certificate ${index + 1} imageUrl:`, cert.imageUrl, 'Type:', typeof cert.imageUrl)
+      })
+      
       setCertificates(certificatesData)
     } catch {
       toast.error('Không thể tải danh sách chứng nhận')
@@ -67,6 +80,29 @@ function ProductCertificate({ productId }: ProductCertificateProps) {
     ) : (
       <Badge className='bg-gray-100 text-gray-800'>Không hoạt động</Badge>
     )
+  }
+
+  // Validate imageUrl - check nhiều trường hợp
+  const isValidImageUrl = (url: string | null | undefined): boolean => {
+    if (!url) return false
+    if (typeof url !== 'string') return false
+    const trimmed = url.trim()
+    return trimmed.length > 0 && (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/'))
+  }
+
+  // Handle image preview
+  const handleImagePreview = (imageUrl: string) => {
+    if (isValidImageUrl(imageUrl)) {
+      setPreviewImages([imageUrl])
+      setPreviewInitialIndex(0)
+      setImagePreviewOpen(true)
+    }
+  }
+
+  const handleCloseImagePreview = () => {
+    setImagePreviewOpen(false)
+    setPreviewImages([])
+    setPreviewInitialIndex(0)
   }
 
   return (
@@ -163,22 +199,39 @@ function ProductCertificate({ productId }: ProductCertificateProps) {
                       </div>
                     )}
 
-                    {cert.imageUrl && (
-                      <div className='mt-4'>
-                        <span className='text-sm font-medium text-gray-700 mb-2 block'>Hình ảnh chứng nhận:</span>
-                        <div className='w-full max-w-md'>
+                    {/* Certificate Images Section - Always show label, conditionally show image */}
+                    <div className='mt-4'>
+                      <span className='text-sm font-medium text-gray-700 mb-2 block'>Hình ảnh chứng nhận:</span>
+                      {isValidImageUrl(cert.imageUrl) ? (
+                        <div 
+                          className='relative w-full max-w-md h-64 bg-gray-100 rounded-lg overflow-hidden cursor-pointer group hover:ring-2 ring-green-500 transition-all'
+                          onClick={() => handleImagePreview(cert.imageUrl!)}
+                        >
                           <img
                             src={cert.imageUrl}
-                            alt='Certificate'
-                            className='w-full h-auto rounded-lg border border-gray-200 object-cover'
+                            alt='Chứng nhận'
+                            className='w-full h-full object-contain transition-transform duration-300 group-hover:scale-105'
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
                               target.src = '/placeholder-image.png'
                             }}
                           />
+                          <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity duration-300 flex items-center justify-center'>
+                            <div className='opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-2 text-white'>
+                              <ZoomIn className='w-6 h-6' />
+                              <span className='text-sm font-medium'>Click để xem lớn</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className='w-full max-w-md h-32 flex items-center justify-center bg-gray-100 rounded-lg border border-gray-200'>
+                          <div className='flex flex-col items-center gap-2 text-gray-400'>
+                            <ImageIcon size={32} />
+                            <span className='text-sm'>Không có hình ảnh</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -191,6 +244,15 @@ function ProductCertificate({ productId }: ProductCertificateProps) {
           </div>
         </div>
       </CardContent>
+      
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreviewOpen}
+        onClose={handleCloseImagePreview}
+        images={previewImages}
+        initialIndex={previewInitialIndex}
+        alt='Certificate image'
+      />
     </Card>
   )
 }
