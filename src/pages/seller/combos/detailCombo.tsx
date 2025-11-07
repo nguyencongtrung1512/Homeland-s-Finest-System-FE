@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { ArrowLeft, Package, FileText, Clock, CheckCircle, XCircle, Upload, Edit } from 'lucide-react'
+import ThreeDCard from '../../../components/ui/threed-card'
 import {
   getComboById,
   submitCombo,
@@ -513,9 +515,19 @@ function DetailComboSeller() {
       : baseStatusMessage
 
   return (
-    <div className='p-6'>
+    <motion.div
+      className='p-6'
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       {/* Header */}
-      <div className='flex items-center justify-between mb-6'>
+      <motion.div
+        className='flex items-center justify-between mb-6'
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <div className='flex items-center gap-4'>
           <Button variant='ghost' onClick={handleBack}>
             <ArrowLeft className='w-4 h-4 mr-2' />
@@ -527,212 +539,280 @@ function DetailComboSeller() {
           {statusInfo.icon}
           <span className='ml-1'>{statusInfo.text}</span>
         </Badge>
-      </div>
-      <Card className='border-0 shadow-sm p-2'>
-        <CardHeader>
-          <CardTitle>Hành động</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className='space-y-3'>
-            {/* Thông báo trạng thái - luôn hiển thị */}
-            <div className={`text-sm px-4 py-2 rounded-md ${statusMessage.className}`}>{statusMessage.message}</div>
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className='mb-6'
+      >
+        <Card className='border-0 shadow-sm p-2'>
+          <CardHeader>
+            <CardTitle>Hành động</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='space-y-3'>
+              {/* Thông báo trạng thái - luôn hiển thị */}
+              <motion.div
+                className={`text-sm px-4 py-2 rounded-md ${statusMessage.className}`}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {statusMessage.message}
+              </motion.div>
 
-            {/* Các nút hành động */}
-            <div className='flex items-center gap-4'>
-              {/* Button Gửi duyệt: chỉ hiển thị khi Draft hoặc Rejected */}
-              {/* Button sẽ bị disable nếu chưa đủ 2 items active */}
-              {canSubmitStatus(combo.status) && (
-                <Button
-                  onClick={handleSubmit}
-                  variant='outline'
-                  className='border-green-600 text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                  disabled={activeItemsCount < 2}
-                  title={
-                    activeItemsCount >= 2
-                      ? 'Gửi duyệt combo'
-                      : `Cần có ít nhất 2 sản phẩm active để gửi duyệt. Hiện tại có ${activeItemsCount} sản phẩm.`
-                  }
-                >
-                  <Upload className='w-4 h-4 mr-2' />
-                  Gửi duyệt
-                  {activeItemsCount < 2 && <span className='ml-2 text-xs'>({activeItemsCount}/2)</span>}
-                </Button>
-              )}
+              {/* Các nút hành động */}
+              <div className='flex items-center gap-4'>
+                {/* Button Gửi duyệt: chỉ hiển thị khi Draft hoặc Rejected */}
+                {/* Button sẽ bị disable nếu chưa đủ 2 items active */}
+                {canSubmitStatus(combo.status) && (
+                  <Button
+                    onClick={handleSubmit}
+                    variant='outline'
+                    className='border-green-600 text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                    disabled={activeItemsCount < 2}
+                    title={
+                      activeItemsCount >= 2
+                        ? 'Gửi duyệt combo'
+                        : `Cần có ít nhất 2 sản phẩm active để gửi duyệt. Hiện tại có ${activeItemsCount} sản phẩm.`
+                    }
+                  >
+                    <Upload className='w-4 h-4 mr-2' />
+                    Gửi duyệt
+                    {activeItemsCount < 2 && <span className='ml-2 text-xs'>({activeItemsCount}/2)</span>}
+                  </Button>
+                )}
 
-              {/* Button Hủy: chỉ hiển thị khi Pending hoặc Processing */}
-              {canCancelStatus(combo.status) && (
-                <Button
-                  onClick={handleCancel}
-                  variant='outline'
-                  className='border-orange-600 text-orange-700 hover:bg-orange-50'
-                  title='Hủy combo'
-                >
-                  <XCircle className='w-4 h-4 mr-2' />
-                  Hủy
-                </Button>
-              )}
+                {/* Button Hủy: chỉ hiển thị khi Pending hoặc Processing */}
+                {canCancelStatus(combo.status) && (
+                  <Button
+                    onClick={handleCancel}
+                    variant='outline'
+                    className='border-orange-600 text-orange-700 hover:bg-orange-50'
+                    title='Hủy combo'
+                  >
+                    <XCircle className='w-4 h-4 mr-2' />
+                    Hủy
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+          </CardContent>
+        </Card>
+      </motion.div>
+      <motion.div
+        className='grid grid-cols-1 lg:grid-cols-3 gap-6'
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+      >
         {/* Main Info */}
         <div className='lg:col-span-2 space-y-6'>
-          {/* Combo Image */}
-          <Card>
-            <CardContent className='p-0'>
-              {combo.thumbnailUrl ? (
-                <img src={combo.thumbnailUrl} alt={combo.name} className='w-full h-64 object-cover rounded-t-lg' />
-              ) : (
-                <div className='w-full h-64 bg-gray-200 rounded-t-lg flex items-center justify-center'>
-                  <Package className='w-16 h-16 text-gray-400' />
+          {/* Combo Image with 3D Card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className='flex justify-center'
+          >
+            {combo.thumbnailUrl ? (
+              <ThreeDCard
+                className='w-full max-w-2xl'
+                backgroundImage={combo.thumbnailUrl}
+                maxRotation={8}
+                glowOpacity={0.3}
+                enableGlow={true}
+                enableShadow={true}
+                enableParallax={true}
+              >
+                <div className='w-full h-96 flex items-center justify-center relative z-10'>
+                  <img src={combo.thumbnailUrl} alt={combo.name} className='w-full h-full object-contain rounded-lg' />
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </ThreeDCard>
+            ) : (
+              <ThreeDCard
+                className='w-full max-w-2xl'
+                backgroundImage={null}
+                maxRotation={8}
+                glowOpacity={0.2}
+                enableGlow={false}
+                enableShadow={true}
+                enableParallax={true}
+              >
+                <div className='w-full h-64 flex flex-col items-center justify-center text-white relative z-10'>
+                  <Package className='w-16 h-16 mb-2 opacity-80' />
+                  <p className='text-sm opacity-70'>Chưa có ảnh combo</p>
+                </div>
+              </ThreeDCard>
+            )}
+          </motion.div>
 
           {/* Combo Items */}
-          <ComboItemsManager
-            items={combo.comboItems}
-            canEdit={canEdit}
-            comboStatus={combo.status}
-            onAddItem={handleAddItem}
-            onUpdateItem={handleUpdateItem}
-            onRemoveItem={handleRemoveItem}
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+          >
+            <ComboItemsManager
+              items={combo.comboItems}
+              canEdit={canEdit}
+              comboStatus={combo.status}
+              onAddItem={handleAddItem}
+              onUpdateItem={handleUpdateItem}
+              onRemoveItem={handleRemoveItem}
+            />
+          </motion.div>
         </div>
 
         {/* Sidebar */}
-        <div className='space-y-6'>
+        <motion.div
+          className='space-y-6'
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
           {/* Status & Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Thông tin combo</CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='flex items-center justify-between'>
-                <span className='text-sm font-medium text-gray-700'>Trạng thái:</span>
-                <Badge variant='secondary' className={statusInfo.className}>
-                  {statusInfo.text}
-                </Badge>
-              </div>
-
-              <div className='space-y-2'>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Thông tin combo</CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-4'>
                 <div className='flex items-center justify-between'>
-                  <span className='text-sm font-medium text-gray-700'>Tổng giá gốc:</span>
-                  <span className='text-lg font-semibold text-gray-600'>{totalPrice.toLocaleString()}₫</span>
+                  <span className='text-sm font-medium text-gray-700'>Trạng thái:</span>
+                  <Badge variant='secondary' className={statusInfo.className}>
+                    {statusInfo.text}
+                  </Badge>
                 </div>
+
                 <div className='space-y-2'>
-                  <div className='flex items-center justify-between min-h-[40px]'>
-                    <Label htmlFor='finalPrice' className='text-sm font-medium text-gray-700 flex-shrink-0'>
-                      Giá cuối cùng:
-                    </Label>
-                    <div className='flex items-center gap-2 flex-1 justify-end'>
-                      {isEditingFinalPrice ? (
-                        <>
-                          <Input
-                            id='finalPrice'
-                            type='number'
-                            value={finalPrice}
-                            onChange={(e) => setFinalPrice(Number(e.target.value))}
-                            className='w-32 h-8'
-                            min='0'
-                            disabled={savingFinalPrice || !canEdit}
-                            autoFocus
-                          />
-                          <Button
-                            size='sm'
-                            onClick={handleUpdateFinalPrice}
-                            disabled={savingFinalPrice || !canEdit}
-                            className='bg-green-600 hover:bg-green-700 h-8 flex-shrink-0'
-                          >
-                            <Save className='w-3 h-3 mr-1' />
-                            Lưu
-                          </Button>
-                          <Button
-                            size='sm'
-                            variant='outline'
-                            onClick={() => {
-                              isEditingRef.current = false
-                              setIsEditingFinalPrice(false)
-                              setFinalPrice(combo.totalFinalPrice || 0)
-                            }}
-                            disabled={savingFinalPrice}
-                            className='h-8 flex-shrink-0'
-                          >
-                            Hủy
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <span className='text-lg font-semibold text-green-600 min-w-[100px] text-right'>
-                            {combo.totalFinalPrice.toLocaleString()}₫
-                          </span>
-                          {canEdit && (
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium text-gray-700'>Tổng giá gốc:</span>
+                    <span className='text-lg font-semibold text-gray-600'>{totalPrice.toLocaleString()}₫</span>
+                  </div>
+                  <div className='space-y-2'>
+                    <div className='flex items-center justify-between min-h-[40px]'>
+                      <Label htmlFor='finalPrice' className='text-sm font-medium text-gray-700 flex-shrink-0'>
+                        Giá cuối cùng:
+                      </Label>
+                      <div className='flex items-center gap-2 flex-1 justify-end'>
+                        {isEditingFinalPrice ? (
+                          <>
+                            <Input
+                              id='finalPrice'
+                              type='number'
+                              value={finalPrice}
+                              onChange={(e) => setFinalPrice(Number(e.target.value))}
+                              className='w-32 h-8'
+                              min='0'
+                              disabled={savingFinalPrice || !canEdit}
+                              autoFocus
+                            />
                             <Button
                               size='sm'
-                              variant='ghost'
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                isEditingRef.current = true
-                                setIsEditingFinalPrice(true)
+                              onClick={handleUpdateFinalPrice}
+                              disabled={savingFinalPrice || !canEdit}
+                              className='bg-green-600 hover:bg-green-700 h-8 flex-shrink-0'
+                            >
+                              <Save className='w-3 h-3 mr-1' />
+                              Lưu
+                            </Button>
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              onClick={() => {
+                                isEditingRef.current = false
+                                setIsEditingFinalPrice(false)
                                 setFinalPrice(combo.totalFinalPrice || 0)
                               }}
-                              className='h-6 px-2 flex-shrink-0'
-                              type='button'
+                              disabled={savingFinalPrice}
+                              className='h-8 flex-shrink-0'
                             >
-                              <Edit className='w-3 h-3' />
+                              Hủy
                             </Button>
-                          )}
-                        </>
-                      )}
+                          </>
+                        ) : (
+                          <>
+                            <span className='text-lg font-semibold text-green-600 min-w-[100px] text-right'>
+                              {combo.totalFinalPrice.toLocaleString()}₫
+                            </span>
+                            {canEdit && (
+                              <Button
+                                size='sm'
+                                variant='ghost'
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  isEditingRef.current = true
+                                  setIsEditingFinalPrice(true)
+                                  setFinalPrice(combo.totalFinalPrice || 0)
+                                }}
+                                className='h-6 px-2 flex-shrink-0'
+                                type='button'
+                              >
+                                <Edit className='w-3 h-3' />
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className='flex items-center justify-between'>
-                <span className='text-sm font-medium text-gray-700'>Tổng số lượng:</span>
-                <span className='text-lg font-semibold text-gray-900'>{totalItems}</span>
-              </div>
-
-              <div className='flex items-center justify-between'>
-                <span className='text-sm font-medium text-gray-700'>Sản phẩm hoạt động:</span>
-                <span className='text-lg font-semibold text-gray-900'>{activeItemsCount}</span>
-              </div>
-
-              {combo.createdAt && (
                 <div className='flex items-center justify-between'>
-                  <span className='text-sm font-medium text-gray-700'>Ngày tạo:</span>
-                  <span className='text-sm text-gray-600'>{combo.createdAt}</span>
+                  <span className='text-sm font-medium text-gray-700'>Tổng số lượng:</span>
+                  <span className='text-lg font-semibold text-gray-900'>{totalItems}</span>
                 </div>
-              )}
 
-              {combo.updatedAt && (
-                <div className='flex items-center justify-between'>
-                  <span className='text-sm font-medium text-gray-700'>Cập nhật lần cuối:</span>
-                  <span className='text-sm text-gray-600'>{combo.updatedAt}</span>
+                {/* <div className='flex items-center justify-between'>
+                  <span className='text-sm font-medium text-gray-700'>Sản phẩm hoạt động:</span>
+                  <span className='text-lg font-semibold text-gray-900'>{activeItemsCount}</span>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                {combo.createdAt && (
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium text-gray-700'>Ngày tạo:</span>
+                    <span className='text-sm text-gray-600'>{combo.createdAt}</span>
+                  </div>
+                )}
+
+                {combo.updatedAt && (
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium text-gray-700'>Cập nhật lần cuối:</span>
+                    <span className='text-sm text-gray-600'>{combo.updatedAt}</span>
+                  </div>
+                )} */}
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Description */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <FileText className='w-5 h-5' />
-                Mô tả
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className='text-sm text-gray-600'>{combo.description}</p>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className='flex items-center gap-2'>
+                  <FileText className='w-5 h-5' />
+                  Mô tả
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className='text-sm text-gray-600'>{combo.description}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Staff Note */}
-          {combo.staffNote && (
+          {/* {combo.staffNote && (
             <Card>
               <CardHeader>
                 <CardTitle className='flex items-center gap-2'>
@@ -744,10 +824,10 @@ function DetailComboSeller() {
                 <p className='text-sm text-gray-600'>{combo.staffNote}</p>
               </CardContent>
             </Card>
-          )}
-        </div>
-      </div>
-    </div>
+          )} */}
+        </motion.div>
+      </motion.div>
+    </motion.div>
   )
 }
 
