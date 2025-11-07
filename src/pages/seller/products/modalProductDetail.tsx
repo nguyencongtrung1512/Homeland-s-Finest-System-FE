@@ -8,6 +8,7 @@ import { Upload, Video, Image as ImageIcon, Trash2, X, Loader2 } from 'lucide-re
 import { productApi, type ProductCreateFormData } from '../../../apis/product.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { toast } from '../../../utils/toast'
+import { sanitizeLettersOnly, sanitizeDescriptionLettersOnly, sanitizeMaterialLettersOnly, capitalizeFirstLetter, formatMaterial } from '../../../utils/validation'
 import type { Product } from '../../../types/productType'
 
 interface ModalProductDetailProps {
@@ -84,9 +85,23 @@ export default function ModalProductDetail({
   }
 
   const handleDetailInputChange = (field: string, value: string) => {
+    let processedValue: string = value
+    
+    // Xử lý validation và format cho từng field
+    if (field === 'name') {
+      // Tên sản phẩm: Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt)
+      processedValue = sanitizeLettersOnly(value)
+    } else if (field === 'description') {
+      // Mô tả: Cho phép chữ, số, khoảng trắng và dấu câu cơ bản (không ký tự đặc biệt khác)
+      processedValue = sanitizeDescriptionLettersOnly(value)
+    } else if (field === 'material') {
+      // Xuất xứ: Cho phép chữ cái, số, khoảng trắng và dấu phẩy (không ký tự đặc biệt khác)
+      processedValue = sanitizeMaterialLettersOnly(value)
+    }
+    
     setProductDetailData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: processedValue
     }))
   }
 
@@ -130,8 +145,20 @@ export default function ModalProductDetail({
 
       const response = await productApi.createDetail(formData)
 
-      if (response.status === 200 && response.data) {
-        toast.success('Tạo sản phẩm chi tiết thành công!')
+      // Debug: Log response để kiểm tra structure
+      console.log('CreateProductDetail Response:', response)
+
+      // Axios interceptor trả về response.data, nên response chính là {status, message, data}
+      // Chấp nhận cả status 200 (OK) và 201 (Created)
+      // Kiểm tra cả response.status (từ backend body) và response.data
+      const isSuccess = 
+        response && 
+        (response.status === 200 || response.status === 201) && 
+        response.data
+
+      if (isSuccess) {
+        const successMessage = response?.message || 'Tạo sản phẩm chi tiết thành công!'
+        toast.success(successMessage)
         onOpenChange(false)
         // Reset form
         setProductDetailData({
@@ -147,7 +174,18 @@ export default function ModalProductDetail({
         // Call success callback
         onSuccess()
       } else {
-        toast.error('Không thể tạo sản phẩm chi tiết')
+        // Log để debug
+        console.error('CreateProductDetail failed:', {
+          response,
+          hasStatus: !!response?.status,
+          status: response?.status,
+          hasData: !!response?.data,
+          message: response?.message
+        })
+        
+        // Nếu không có data hoặc status không phải 200/201, hiển thị message từ response nếu có
+        const errorMessage = response?.message || 'Không thể tạo sản phẩm chi tiết'
+        toast.error(errorMessage)
       }
     } catch (error: unknown) {
       console.error('Error creating product detail:', error)
@@ -214,11 +252,23 @@ export default function ModalProductDetail({
               </Label>
               <Input
                 id='detail-name'
-                placeholder='Nhập tên sản phẩm...'
+                type='text'
+                placeholder='Ví dụ: Gạo ST25 Premium...'
                 value={productDetailData.name}
                 onChange={(e) => handleDetailInputChange('name', e.target.value)}
+                onBlur={(e) => {
+                  // Capitalize chữ cái đầu và trim khi blur
+                  let trimmedValue = e.target.value.trim()
+                  if (trimmedValue) {
+                    trimmedValue = capitalizeFirstLetter(trimmedValue)
+                    handleDetailInputChange('name', trimmedValue)
+                  }
+                }}
                 className='mt-1'
               />
+              <p className='text-xs text-gray-500 mt-1'>
+                💡 Chữ cái đầu sẽ tự động in hoa. Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt).
+              </p>
             </div>
 
             <div>
@@ -227,11 +277,14 @@ export default function ModalProductDetail({
               </Label>
               <Textarea
                 id='detail-description'
-                placeholder='Mô tả chi tiết về sản phẩm...'
+                placeholder='Ví dụ: Gạo ST25 là loại gạo thơm ngon, được trồng tại Sóc Trăng. Sản phẩm không sử dụng hóa chất, đảm bảo an toàn cho sức khỏe...'
                 value={productDetailData.description}
                 onChange={(e) => handleDetailInputChange('description', e.target.value)}
-                className='mt-1 min-h-[100px]'
+                className='mt-1 min-h-[120px]'
               />
+              <p className='text-xs text-gray-500 mt-1'>
+                💡 Mô tả chi tiết về sản phẩm. Cho phép chữ cái, số, khoảng trắng và dấu câu (.,!?:;-) - không ký tự đặc biệt khác.
+              </p>
             </div>
 
             <div>
@@ -240,11 +293,22 @@ export default function ModalProductDetail({
               </Label>
               <Input
                 id='detail-material'
-                placeholder='Nhập material...'
+                type='text'
+                placeholder='Ví dụ: Việt Nam, Sóc Trăng'
                 value={productDetailData.material}
                 onChange={(e) => handleDetailInputChange('material', e.target.value)}
+                onBlur={(e) => {
+                  // Format lại khi blur để đảm bảo format đúng theo "Việt Nam, Sóc Trăng"
+                  if (e.target.value.trim()) {
+                    const formatted = formatMaterial(e.target.value.trim())
+                    handleDetailInputChange('material', formatted)
+                  }
+                }}
                 className='mt-1'
               />
+              <p className='text-xs text-gray-500 mt-1'>
+                💡 Định dạng: "Tỉnh/Thành phố, Địa danh". Cho phép chữ cái, số, khoảng trắng và dấu phẩy (không ký tự đặc biệt khác). Ví dụ: Việt Nam, Sóc Trăng
+              </p>
             </div>
           </div>
 

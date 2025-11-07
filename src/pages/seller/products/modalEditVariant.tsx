@@ -7,6 +7,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Loader2 } from 'lucide-react'
 import { productVariantApi, type UpdateVariantRequest } from '../../../apis/productVariant.api'
 import { toast } from '../../../utils/toast'
+import { handlePriceInput, validateQuantity, formatQuantity, parseVietnameseNumber, sanitizeAttribute } from '../../../utils/validation'
 import type { Product, VariantOption } from '../../../types/productType'
 
 interface ModalEditVariantProps {
@@ -44,21 +45,38 @@ export default function ModalEditVariant({
     isActive: true
   })
 
+  // State để lưu giá trị hiển thị (formatted) cho price và quantity
+  const [displayPrice, setDisplayPrice] = useState('')
+  const [displayQuantity, setDisplayQuantity] = useState('')
+  
+  // Lưu số lượng ban đầu để validate không vượt quá
+  const [originalQuantity, setOriginalQuantity] = useState<number | null>(null)
+
   // Load data khi mở dialog
   useEffect(() => {
     if (open && variant) {
+      const basePrice = variant.basePrice || 0
+      const quantity = variant.quantity || 0
+      
       setVariantData({
         attributeName: variant.attributeName || '',
         attributeType: '', // Sẽ lấy từ getAttributeTypeForVariant()
         description: variant.description || '',
-        basePrice: variant.basePrice || 0,
-        quantity: variant.quantity || 0,
+        basePrice: basePrice,
+        quantity: quantity,
         length: variant.length || 0,
         width: variant.width || 0,
         height: variant.height || 0,
         weight: variant.weight || 0,
         isActive: variant.isActive ?? true
       })
+      
+      // Set display values với format
+      setDisplayPrice(basePrice > 0 ? basePrice.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '')
+      setDisplayQuantity(quantity > 0 ? quantity.toString() : '')
+      
+      // Lưu số lượng ban đầu để validate
+      setOriginalQuantity(quantity)
     }
   }, [open, variant])
 
@@ -80,10 +98,52 @@ export default function ModalEditVariant({
   }
 
   const handleVariantInputChange = (field: string, value: string | number | boolean) => {
+    let processedValue: string | number | boolean = value
+    
+    // Validate và sanitize cho attributeName
+    if (typeof value === 'string') {
+      if (field === 'attributeName') {
+        // Chỉ cho phép chữ cái, số, khoảng trắng - không cho phép ký tự đặc biệt
+        processedValue = sanitizeAttribute(value)
+      }
+    }
+    
     setVariantData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: processedValue
     }))
+  }
+
+  // Handler cho price input với format VN
+  const handlePriceChange = (value: string) => {
+    // Khi đang gõ, chỉ loại bỏ ký tự không hợp lệ, KHÔNG format real-time
+    // Format sẽ được thực hiện khi blur
+    const cleaned = value.replace(/[^\d.,]/g, '')
+    setDisplayPrice(cleaned)
+    
+    // Parse số để lưu vào state (nhưng không hiển thị format khi đang gõ)
+    const numeric = parseVietnameseNumber(cleaned)
+    setVariantData((prev) => ({
+      ...prev,
+      basePrice: numeric
+    }))
+  }
+
+  // Handler cho quantity input với validation
+  const handleQuantityChange = (value: string) => {
+    // Validate với maxQuantity = originalQuantity (không được vượt quá số lượng ban đầu)
+    const validation = validateQuantity(value, originalQuantity)
+    
+    if (validation.valid) {
+      setDisplayQuantity(formatQuantity(validation.numeric))
+      setVariantData((prev) => ({
+        ...prev,
+        quantity: validation.numeric
+      }))
+    } else {
+      // Vẫn hiển thị giá trị đã nhập nhưng sẽ validate khi blur
+      setDisplayQuantity(value)
+    }
   }
 
   const handleUpdateVariant = async () => {
@@ -115,12 +175,23 @@ export default function ModalEditVariant({
           return
         }
         if (variantData.basePrice <= 0) {
-          toast.error('Vui lòng nhập giá bán hợp lệ')
+          toast.error('Vui lòng nhập giá bán hợp lệ (lớn hơn 0)')
           return
         }
-        if (variantData.quantity < 0) {
-          toast.error('Vui lòng nhập số lượng tồn kho hợp lệ')
+        
+        // Validate quantity với đầy đủ rules (không vượt quá số lượng ban đầu)
+        const quantityValidation = validateQuantity(displayQuantity || variantData.quantity.toString(), originalQuantity)
+        if (!quantityValidation.valid) {
+          toast.error(quantityValidation.error || 'Vui lòng nhập số lượng tồn kho hợp lệ')
           return
+        }
+        
+        // Cập nhật quantity từ validation result
+        if (quantityValidation.numeric !== variantData.quantity) {
+          setVariantData((prev) => ({
+            ...prev,
+            quantity: quantityValidation.numeric
+          }))
         }
       }
 
@@ -231,6 +302,9 @@ export default function ModalEditVariant({
         weight: 0,
         isActive: true
       })
+      setDisplayPrice('')
+      setDisplayQuantity('')
+      setOriginalQuantity(null)
     }
   }
 
@@ -270,11 +344,14 @@ export default function ModalEditVariant({
               </Label>
               <Input
                 id='edit-attribute-name'
-                placeholder='Ví dụ: Đỏ, 100ml, X, XL...'
+                placeholder='Ví dụ: Đỏ, Xanh, XL, Lớn...'
                 value={variantData.attributeName}
                 onChange={(e) => handleVariantInputChange('attributeName', e.target.value)}
                 className='mt-1'
               />
+              <p className='text-xs text-gray-500 mt-1'>
+                💡 Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt).
+              </p>
             </div>
 
             {/* Price - Chỉ hiển thị cho variant con */}
@@ -285,12 +362,26 @@ export default function ModalEditVariant({
                 </Label>
                 <Input
                   id='edit-price'
-                  type='number'
-                  placeholder='Nhập giá bán...'
-                  value={variantData.basePrice || ''}
-                  onChange={(e) => handleVariantInputChange('basePrice', Number(e.target.value))}
+                  type='text'
+                  placeholder='Nhập giá bán (ví dụ: 100000 hoặc 100.000)...'
+                  value={displayPrice}
+                  onChange={(e) => handlePriceChange(e.target.value)}
+                  onBlur={(e) => {
+                    // Format lại khi blur
+                    const { formatted, numeric } = handlePriceInput(e.target.value, true)
+                    setDisplayPrice(formatted)
+                    setVariantData((prev) => ({
+                      ...prev,
+                      basePrice: numeric
+                    }))
+                  }}
                   className='mt-1'
                 />
+                {variantData.basePrice > 0 && (
+                  <p className='text-xs text-gray-500 mt-1'>
+                    Giá trị: {variantData.basePrice.toLocaleString('vi-VN')} VNĐ
+                  </p>
+                )}
               </div>
             )}
 
@@ -302,12 +393,43 @@ export default function ModalEditVariant({
                 </Label>
                 <Input
                   id='edit-quantity'
-                  type='number'
+                  type='text'
                   placeholder='Nhập số lượng tồn kho...'
-                  value={variantData.quantity || ''}
-                  onChange={(e) => handleVariantInputChange('quantity', Number(e.target.value))}
+                  value={displayQuantity}
+                  onChange={(e) => handleQuantityChange(e.target.value)}
+                  onBlur={(e) => {
+                    // Validate và format lại khi blur
+                    const validation = validateQuantity(e.target.value, originalQuantity)
+                    if (validation.valid) {
+                      setDisplayQuantity(formatQuantity(validation.numeric))
+                      setVariantData((prev) => ({
+                        ...prev,
+                        quantity: validation.numeric
+                      }))
+                    } else {
+                      toast.error(validation.error || 'Số lượng không hợp lệ')
+                      // Reset về giá trị hợp lệ cuối cùng hoặc original
+                      setDisplayQuantity(
+                        variantData.quantity > 0
+                          ? variantData.quantity.toString()
+                          : originalQuantity !== null
+                            ? originalQuantity.toString()
+                            : ''
+                      )
+                    }
+                  }}
                   className='mt-1'
                 />
+                <div className='mt-1 space-y-1'>
+                  <p className='text-xs text-gray-500'>
+                    Chỉ nhập số, không được nhập số âm, chữ hoặc ký tự đặc biệt
+                  </p>
+                  {originalQuantity !== null && (
+                    <p className='text-xs text-blue-600'>
+                      Số lượng hiện tại trong kho: {originalQuantity.toLocaleString('vi-VN')}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 

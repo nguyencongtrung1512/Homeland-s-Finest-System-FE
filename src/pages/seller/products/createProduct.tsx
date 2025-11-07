@@ -12,6 +12,7 @@ import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/p
 import { useAuth } from '../../../contexts/auth.context'
 import { Upload, ChevronRight, Trash2, Video, Image as ImageIcon, Package, FileImage, Loader2, X } from 'lucide-react'
 import { toast } from '../../../utils/toast'
+import { capitalizeFirstLetter, formatMaterial, sanitizeLettersOnly, sanitizeDescriptionLettersOnly, sanitizeMaterialLettersOnly } from '../../../utils/validation'
 
 function CreateProduct() {
   const navigate = useNavigate()
@@ -122,9 +123,26 @@ function CreateProduct() {
   }
 
   const handleInputChange = (field: string, value: string | boolean | string[]) => {
+    let processedValue: string | boolean | string[] = value
+
+    // Xử lý validation và format cho từng field
+    if (typeof value === 'string') {
+      if (field === 'name') {
+        // Tên sản phẩm: Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt)
+        processedValue = sanitizeLettersOnly(value)
+      } else if (field === 'description') {
+        // Mô tả: Cho phép chữ, số, khoảng trắng và dấu câu cơ bản (không ký tự đặc biệt khác)
+        processedValue = sanitizeDescriptionLettersOnly(value)
+      } else if (field === 'material') {
+        // Xuất xứ: Cho phép chữ cái, số, khoảng trắng và dấu phẩy (không ký tự đặc biệt khác)
+        // Format sẽ được thực hiện khi blur
+        processedValue = sanitizeMaterialLettersOnly(value)
+      }
+    }
+
     setProductData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: processedValue
     }))
   }
 
@@ -497,11 +515,22 @@ function CreateProduct() {
                     </Label>
                     <Input
                       id='name'
-                      placeholder='Nhập tên sản phẩm...'
+                      placeholder='Ví dụ: Gạo ST25 Premium...'
                       value={productData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
+                      onBlur={(e) => {
+                        // Capitalize chữ cái đầu và trim khi blur
+                        let trimmedValue = e.target.value.trim()
+                        if (trimmedValue) {
+                          trimmedValue = capitalizeFirstLetter(trimmedValue)
+                          handleInputChange('name', trimmedValue)
+                        }
+                      }}
                       className='mt-1'
                     />
+                    <p className='text-xs text-gray-500 mt-1'>
+                      💡 Chữ cái đầu sẽ tự động in hoa. Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt).
+                    </p>
                   </div>
 
                   <div>
@@ -510,11 +539,14 @@ function CreateProduct() {
                     </Label>
                     <Textarea
                       id='description'
-                      placeholder='Mô tả chi tiết về sản phẩm của bạn...'
+                      placeholder='Ví dụ: Gạo ST25 là loại gạo thơm ngon, được trồng tại Sóc Trăng. Sản phẩm không sử dụng hóa chất, đảm bảo an toàn cho sức khỏe...'
                       value={productData.description}
                       onChange={(e) => handleInputChange('description', e.target.value)}
                       className='mt-1 min-h-[120px]'
                     />
+                    <p className='text-xs text-gray-500 mt-1'>
+                      💡 Mô tả chi tiết về sản phẩm. Cho phép chữ cái, số, khoảng trắng và dấu câu (.,!?:;-) - không ký tự đặc biệt khác.
+                    </p>
                   </div>
 
                   <div>
@@ -523,11 +555,21 @@ function CreateProduct() {
                     </Label>
                     <Input
                       id='material'
-                      placeholder='Nhập xuất xứ hoặc nguyên liệu sản phẩm...'
+                      placeholder='Ví dụ: Việt Nam, Sóc Trăng'
                       value={productData.material}
                       onChange={(e) => handleInputChange('material', e.target.value)}
+                      onBlur={(e) => {
+                        // Format lại khi blur để đảm bảo format đúng theo "Việt Nam, Sóc Trăng"
+                        if (e.target.value.trim()) {
+                          const formatted = formatMaterial(e.target.value.trim())
+                          handleInputChange('material', formatted)
+                        }
+                      }}
                       className='mt-1'
                     />
+                    <p className='text-xs text-gray-500 mt-1'>
+                      💡 Định dạng: "Tỉnh/Thành phố, Địa danh". Cho phép chữ cái, số, khoảng trắng và dấu phẩy (không ký tự đặc biệt khác). Ví dụ: Việt Nam, Sóc Trăng
+                    </p>
                   </div>
                 </CardContent>
               </Card>

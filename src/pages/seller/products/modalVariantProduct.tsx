@@ -7,6 +7,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Upload, Image as ImageIcon, X, Loader2 } from 'lucide-react'
 import { productVariantApi, type CreateVariantRequest } from '../../../apis/productVariant.api'
 import { toast } from '../../../utils/toast'
+import { handlePriceInput, validateQuantity, formatQuantity, parseVietnameseNumber, sanitizeAttribute } from '../../../utils/validation'
 import type { Product, VariantOption } from '../../../types/productType'
 
 interface ModalVariantProductProps {
@@ -39,6 +40,10 @@ export default function ModalVariantProduct({
     weight: 0,
     description: ''
   })
+
+  // State để lưu giá trị hiển thị (formatted) cho price và quantity
+  const [displayPrice, setDisplayPrice] = useState('')
+  const [displayQuantity, setDisplayQuantity] = useState('')
 
   const [variantImages, setVariantImages] = useState<File[]>([])
 
@@ -112,10 +117,53 @@ export default function ModalVariantProduct({
   }
 
   const handleVariantInputChange = (field: string, value: string | number) => {
+    let processedValue: string | number = value
+    
+    // Validate và sanitize cho attributeType và attributeName
+    if (typeof value === 'string') {
+      if (field === 'attributeType' || field === 'attributeName') {
+        // Chỉ cho phép chữ cái, số, khoảng trắng - không cho phép ký tự đặc biệt
+        processedValue = sanitizeAttribute(value)
+      }
+    }
+    
     setVariantData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: processedValue
     }))
+  }
+
+  // Handler cho price input với format VN
+  const handlePriceChange = (value: string) => {
+    // Khi đang gõ, chỉ loại bỏ ký tự không hợp lệ, KHÔNG format real-time
+    // Format sẽ được thực hiện khi blur
+    const cleaned = value.replace(/[^\d.,]/g, '')
+    setDisplayPrice(cleaned)
+    
+    // Parse số để lưu vào state (nhưng không hiển thị format khi đang gõ)
+    const numeric = parseVietnameseNumber(cleaned)
+    setVariantData((prev) => ({
+      ...prev,
+      price: numeric
+    }))
+  }
+
+  // Handler cho quantity input với validation
+  const handleQuantityChange = (value: string) => {
+    // Validate ngay khi nhập
+    const validation = validateQuantity(value)
+    
+    if (validation.valid) {
+      setDisplayQuantity(formatQuantity(validation.numeric))
+      setVariantData((prev) => ({
+        ...prev,
+        quantity: validation.numeric
+      }))
+    } else {
+      // Vẫn hiển thị giá trị đã nhập nhưng hiển thị error
+      setDisplayQuantity(value)
+      // Chỉ hiển thị error khi blur hoặc submit, không hiển thị ngay khi đang gõ
+    }
   }
 
   const handleCreateProductVariant = async () => {
@@ -139,13 +187,23 @@ export default function ModalVariantProduct({
 
       // Validate price và quantity cho cả variant cha và variant con
       if (variantData.price <= 0) {
-        toast.error('Vui lòng nhập giá bán hợp lệ')
+        toast.error('Vui lòng nhập giá bán hợp lệ (lớn hơn 0)')
         return
       }
 
-      if (variantData.quantity < 0) {
-        toast.error('Vui lòng nhập số lượng tồn kho hợp lệ')
+      // Validate quantity với đầy đủ rules
+      const quantityValidation = validateQuantity(displayQuantity || variantData.quantity.toString())
+      if (!quantityValidation.valid) {
+        toast.error(quantityValidation.error || 'Vui lòng nhập số lượng tồn kho hợp lệ')
         return
+      }
+      
+      // Cập nhật quantity từ validation result
+      if (quantityValidation.numeric !== variantData.quantity) {
+        setVariantData((prev) => ({
+          ...prev,
+          quantity: quantityValidation.numeric
+        }))
       }
 
       // Prepare form data theo cấu trúc API yêu cầu
@@ -240,6 +298,8 @@ export default function ModalVariantProduct({
         weight: 0,
         description: ''
       })
+      setDisplayPrice('')
+      setDisplayQuantity('')
       setVariantImages([])
       setHasAutoAttributeType(false)
     }
@@ -282,6 +342,9 @@ export default function ModalVariantProduct({
                   onChange={(e) => handleVariantInputChange('attributeType', e.target.value)}
                   className='mt-1'
                 />
+                <p className='text-xs text-gray-500 mt-1'>
+                  💡 Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt).
+                </p>
               </div>
             )}
 
@@ -292,11 +355,14 @@ export default function ModalVariantProduct({
               </Label>
               <Input
                 id='variant-attribute-name'
-                placeholder='Ví dụ: Đỏ, 100ml, X, XL...'
+                placeholder='Ví dụ: Đỏ, Xanh, XL, Lớn...'
                 value={variantData.attributeName}
                 onChange={(e) => handleVariantInputChange('attributeName', e.target.value)}
                 className='mt-1'
               />
+              <p className='text-xs text-gray-500 mt-1'>
+                💡 Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt).
+              </p>
             </div>
 
             {/* Price - Hiển thị cho cả variant cha và variant con */}
@@ -306,12 +372,26 @@ export default function ModalVariantProduct({
               </Label>
               <Input
                 id='variant-price'
-                type='number'
-                placeholder='Nhập giá bán...'
-                value={variantData.price || ''}
-                onChange={(e) => handleVariantInputChange('price', Number(e.target.value))}
+                type='text'
+                placeholder='Nhập giá bán (ví dụ: 100000 hoặc 100.000)...'
+                value={displayPrice}
+                onChange={(e) => handlePriceChange(e.target.value)}
+                onBlur={(e) => {
+                  // Format lại khi blur
+                  const { formatted, numeric } = handlePriceInput(e.target.value, true)
+                  setDisplayPrice(formatted)
+                  setVariantData((prev) => ({
+                    ...prev,
+                    price: numeric
+                  }))
+                }}
                 className='mt-1'
               />
+              {variantData.price > 0 && (
+                <p className='text-xs text-gray-500 mt-1'>
+                  Giá trị: {variantData.price.toLocaleString('vi-VN')} VNĐ
+                </p>
+              )}
             </div>
 
             {/* Quantity - Hiển thị cho cả variant cha và variant con */}
@@ -321,12 +401,30 @@ export default function ModalVariantProduct({
               </Label>
               <Input
                 id='variant-quantity'
-                type='number'
+                type='text'
                 placeholder='Nhập số lượng tồn kho...'
-                value={variantData.quantity || ''}
-                onChange={(e) => handleVariantInputChange('quantity', Number(e.target.value))}
+                value={displayQuantity}
+                onChange={(e) => handleQuantityChange(e.target.value)}
+                onBlur={(e) => {
+                  // Validate và format lại khi blur
+                  const validation = validateQuantity(e.target.value)
+                  if (validation.valid) {
+                    setDisplayQuantity(formatQuantity(validation.numeric))
+                    setVariantData((prev) => ({
+                      ...prev,
+                      quantity: validation.numeric
+                    }))
+                  } else {
+                    toast.error(validation.error || 'Số lượng không hợp lệ')
+                    // Reset về giá trị hợp lệ cuối cùng hoặc 0
+                    setDisplayQuantity(variantData.quantity > 0 ? variantData.quantity.toString() : '')
+                  }
+                }}
                 className='mt-1'
               />
+              <p className='text-xs text-gray-500 mt-1'>
+                Chỉ nhập số, không được nhập số âm, chữ hoặc ký tự đặc biệt
+              </p>
             </div>
 
             {/* Description */}

@@ -7,6 +7,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Upload, Image as ImageIcon, X, Loader2, Video } from 'lucide-react'
 import { productApi } from '../../../apis/product.api'
 import { toast } from '../../../utils/toast'
+import { sanitizeLettersOnly, sanitizeDescriptionLettersOnly, sanitizeMaterialLettersOnly, capitalizeFirstLetter, formatMaterial } from '../../../utils/validation'
 import type { Product } from '../../../types/productType'
 
 interface ModalEditProductProps {
@@ -72,9 +73,25 @@ export default function ModalEditProduct({
   }
 
   const handleInputChange = (field: string, value: string | boolean) => {
+    let processedValue: string | boolean = value
+    
+    // Xử lý validation và format cho từng field
+    if (typeof value === 'string') {
+      if (field === 'name') {
+        // Tên sản phẩm: Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt)
+        processedValue = sanitizeLettersOnly(value)
+      } else if (field === 'description') {
+        // Mô tả: Cho phép chữ, số, khoảng trắng và dấu câu cơ bản (không ký tự đặc biệt khác)
+        processedValue = sanitizeDescriptionLettersOnly(value)
+      } else if (field === 'material') {
+        // Xuất xứ: Cho phép chữ cái, số, khoảng trắng và dấu phẩy (không ký tự đặc biệt khác)
+        processedValue = sanitizeMaterialLettersOnly(value)
+      }
+    }
+    
     setProductData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: processedValue
     }))
   }
 
@@ -236,11 +253,22 @@ export default function ModalEditProduct({
               </Label>
               <Input
                 id='edit-product-name'
-                placeholder='Nhập tên sản phẩm...'
+                placeholder='Ví dụ: Gạo ST25 Premium...'
                 value={productData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
+                onBlur={(e) => {
+                  // Capitalize chữ cái đầu và trim khi blur
+                  let trimmedValue = e.target.value.trim()
+                  if (trimmedValue) {
+                    trimmedValue = capitalizeFirstLetter(trimmedValue)
+                    handleInputChange('name', trimmedValue)
+                  }
+                }}
                 className='mt-1'
               />
+              <p className='text-xs text-gray-500 mt-1'>
+                💡 Chỉ cho phép chữ cái, số và khoảng trắng (không ký tự đặc biệt).
+              </p>
             </div>
 
             {/* Material */}
@@ -250,11 +278,21 @@ export default function ModalEditProduct({
               </Label>
               <Input
                 id='edit-product-material'
-                placeholder='Nhập xuất xứ...'
+                placeholder='Ví dụ: Việt Nam, Sóc Trăng'
                 value={productData.material}
                 onChange={(e) => handleInputChange('material', e.target.value)}
+                onBlur={(e) => {
+                  // Format lại khi blur để đảm bảo format đúng theo "Việt Nam, Sóc Trăng"
+                  if (e.target.value.trim()) {
+                    const formatted = formatMaterial(e.target.value.trim())
+                    handleInputChange('material', formatted)
+                  }
+                }}
                 className='mt-1'
               />
+              <p className='text-xs text-gray-500 mt-1'>
+                💡 Cho phép chữ cái, số, khoảng trắng và dấu phẩy (không ký tự đặc biệt khác). Ví dụ: Việt Nam, Sóc Trăng
+              </p>
             </div>
 
             {/* Description */}
@@ -264,11 +302,14 @@ export default function ModalEditProduct({
               </Label>
               <Textarea
                 id='edit-product-description'
-                placeholder='Mô tả về sản phẩm...'
+                placeholder='Ví dụ: Gạo ST25 là loại gạo thơm ngon, được trồng tại Sóc Trăng...'
                 value={productData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                className='mt-1 min-h-[100px]'
+                className='mt-1 min-h-[120px]'
               />
+              <p className='text-xs text-gray-500 mt-1'>
+                💡 Cho phép chữ cái, số, khoảng trắng và dấu câu (.,!?:;-) - không ký tự đặc biệt khác.
+              </p>
             </div>
 
             {/* Category ID */}
