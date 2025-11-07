@@ -101,22 +101,25 @@ function ImageCard({
 }
 
 export default function ProductImageCarousel({ images, productName, height = '400px' }: ProductImageCarouselProps) {
+  // Validate and normalize images array from BE
+  const normalizedImages = Array.isArray(images) ? images.filter((img) => img && typeof img === 'string') : []
+  
   // Hooks must be called before any early returns
   const [activeIndex, setActiveIndex] = useState(
-    images && images.length > 0 ? Math.floor(images.length / 2) : 0
+    normalizedImages && normalizedImages.length > 0 ? Math.floor(normalizedImages.length / 2) : 0
   )
   const [isPaused, setIsPaused] = useState(false)
   const autoplayIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const autoplayDelay = 5000 // Tăng thời gian autoplay cho product images
 
   const goToNext = useCallback(() => {
-    if (images && images.length > 0) {
-      setActiveIndex((prev) => (prev + 1) % images.length)
+    if (normalizedImages && normalizedImages.length > 0) {
+      setActiveIndex((prev) => (prev + 1) % normalizedImages.length)
     }
-  }, [images])
+  }, [normalizedImages])
 
   useEffect(() => {
-    if (!isPaused && images && images.length > 1) {
+    if (!isPaused && normalizedImages && normalizedImages.length > 1) {
       autoplayIntervalRef.current = setInterval(goToNext, autoplayDelay)
     }
     return () => {
@@ -124,10 +127,10 @@ export default function ProductImageCarousel({ images, productName, height = '40
         clearInterval(autoplayIntervalRef.current)
       }
     }
-  }, [isPaused, goToNext, images, autoplayDelay])
+  }, [isPaused, goToNext, normalizedImages, autoplayDelay])
 
-  // Early return after hooks
-  if (!images || images.length === 0) {
+  // Early return after hooks - Handle empty or invalid images from BE
+  if (!normalizedImages || normalizedImages.length === 0) {
     return (
       <div className='w-full flex items-center justify-center bg-gray-100 rounded-lg' style={{ height }}>
         <div className='text-gray-400'>Không có hình ảnh</div>
@@ -136,12 +139,12 @@ export default function ProductImageCarousel({ images, productName, height = '40
   }
 
   const changeSlide = (newIndex: number) => {
-    const newSafeIndex = (newIndex + images.length) % images.length
+    const newSafeIndex = (newIndex + normalizedImages.length) % normalizedImages.length
     setActiveIndex(newSafeIndex)
     if (autoplayIntervalRef.current) {
       clearInterval(autoplayIntervalRef.current)
     }
-    if (!isPaused && images.length > 1) {
+    if (!isPaused && normalizedImages.length > 1) {
       autoplayIntervalRef.current = setInterval(goToNext, autoplayDelay)
     }
   }
@@ -166,50 +169,60 @@ export default function ProductImageCarousel({ images, productName, height = '40
           dragElastic={0.2}
           onDragEnd={onDragEnd}
         >
-          {images.map((imageUrl, index) => (
+          {normalizedImages.map((imageUrl, index) => (
             <ImageCard
               key={index}
               imageUrl={imageUrl}
               index={index}
               activeIndex={activeIndex}
-              totalImages={images.length}
+              totalImages={normalizedImages.length}
               productName={productName}
             />
           ))}
         </motion.div>
       </div>
 
-      {images.length > 1 && (
-        <div className='flex items-center justify-center gap-6 mt-6'>
-          <button
-            onClick={() => changeSlide(activeIndex - 1)}
-            className='p-2 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-300 dark:border-white/10 text-gray-700 dark:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-green-500'
-            aria-label='Previous image'
-          >
-            <ChevronLeftIcon className='w-6 h-6' />
-          </button>
+      {normalizedImages.length > 1 && (
+        <div className='mt-6 space-y-3'>
+          {/* Navigation Controls */}
+          <div className='flex items-center justify-center gap-6'>
+            <button
+              onClick={() => changeSlide(activeIndex - 1)}
+              className='p-2 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-300 dark:border-white/10 text-gray-700 dark:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-green-500'
+              aria-label='Previous image'
+            >
+              <ChevronLeftIcon className='w-6 h-6' />
+            </button>
 
-          <div className='flex items-center justify-center gap-2'>
-            {images.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => changeSlide(index)}
-                className={`h-2 rounded-full transition-all duration-300 focus:outline-none ${activeIndex === index
-                  ? 'w-6 bg-green-500'
-                  : 'w-2 bg-gray-300 dark:bg-neutral-600 hover:bg-gray-400 dark:hover:bg-neutral-500'
-                  }`}
-                aria-label={`Go to image ${index + 1}`}
-              />
-            ))}
+            <div className='flex items-center justify-center gap-2'>
+              {normalizedImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => changeSlide(index)}
+                  className={`h-2 rounded-full transition-all duration-300 focus:outline-none ${activeIndex === index
+                    ? 'w-6 bg-green-500'
+                    : 'w-2 bg-gray-300 dark:bg-neutral-600 hover:bg-gray-400 dark:hover:bg-neutral-500'
+                    }`}
+                  aria-label={`Go to image ${index + 1}`}
+                />
+              ))}
+            </div>
+
+            <button
+              onClick={() => changeSlide(activeIndex + 1)}
+              className='p-2 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-300 dark:border-white/10 text-gray-700 dark:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-green-500'
+              aria-label='Next image'
+            >
+              <ChevronRightIcon className='w-6 h-6' />
+            </button>
           </div>
 
-          <button
-            onClick={() => changeSlide(activeIndex + 1)}
-            className='p-2 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-300 dark:border-white/10 text-gray-700 dark:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-green-500'
-            aria-label='Next image'
-          >
-            <ChevronRightIcon className='w-6 h-6' />
-          </button>
+          {/* Image Counter */}
+          <div className='flex items-center justify-center'>
+            <span className='text-sm text-gray-600 dark:text-gray-400 font-medium'>
+              {activeIndex + 1} / {normalizedImages.length}
+            </span>
+          </div>
         </div>
       )}
     </div>

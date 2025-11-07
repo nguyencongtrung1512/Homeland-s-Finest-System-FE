@@ -17,7 +17,9 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  ZoomIn,
+  Maximize2
 } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -33,6 +35,7 @@ import { toast } from '../../../utils/toast'
 import ProductCertificate from './productCertificate'
 import ProductStoryComponent from './productStory'
 import ProductImageCarousel from '../../../components/ui/product-image-carousel'
+import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 import { motion, AnimatePresence } from 'motion/react'
 
 function DetailProductStaff() {
@@ -49,6 +52,11 @@ function DetailProductStaff() {
   const [actionType, setActionType] = useState<'Confirmed' | 'Rejected' | 'Approved' | 'Denied' | null>(null)
   const [actionNote, setActionNote] = useState('')
   const [processingAction, setProcessingAction] = useState(false)
+
+  // States for image preview
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0)
 
   useEffect(() => {
     const fetchProductDetail = async () => {
@@ -225,6 +233,24 @@ function DetailProductStaff() {
   const isConfirmed = () => {
     if (!product) return false
     return product.status?.toLowerCase() === 'confirmed'
+  }
+
+  // Handle image preview
+  const handleImagePreview = (imageUrl: string, allImages?: string[], index?: number) => {
+    if (allImages && index !== undefined) {
+      setPreviewImages(allImages)
+      setPreviewInitialIndex(index)
+    } else {
+      setPreviewImages([imageUrl])
+      setPreviewInitialIndex(0)
+    }
+    setImagePreviewOpen(true)
+  }
+
+  const handleCloseImagePreview = () => {
+    setImagePreviewOpen(false)
+    setPreviewImages([])
+    setPreviewInitialIndex(0)
   }
 
 
@@ -406,12 +432,37 @@ function DetailProductStaff() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Product Image Carousel */}
-                  {product?.productImages && product.productImages.length > 0 ? (
-                    <ProductImageCarousel images={product.productImages} productName={product.name} height='320px' />
+                  {/* Product Image Gallery - Using Carousel for Better Preview */}
+                  {/* Ensure productImages is array from BE */}
+                  {product?.productImages && 
+                   Array.isArray(product.productImages) && 
+                   product.productImages.length > 0 ? (
+                    <div className='space-y-4'>
+                      {/* Product Image Carousel */}
+                      <div className='relative'>
+                        <ProductImageCarousel 
+                          images={product.productImages} 
+                          productName={product.name} 
+                          height='450px' 
+                        />
+                        {/* Fullscreen Preview Button */}
+                        <button
+                          onClick={() => handleImagePreview(product.productImages[0], product.productImages, 0)}
+                          className='absolute top-4 right-4 z-10 bg-black/60 hover:bg-black/80 text-white rounded-full p-3 transition-all flex items-center gap-2 shadow-lg'
+                          title='Xem ảnh lớn'
+                        >
+                          <Maximize2 className='w-5 h-5' />
+                          <span className='text-sm font-medium hidden sm:inline'>Xem lớn</span>
+                        </button>
+                      </div>
+                      <p className='text-xs text-gray-500 text-center'>
+                        Kéo hoặc dùng nút để xem các ảnh khác | Click nút "Xem lớn" để xem fullscreen ({product.productImages.length} ảnh)
+                      </p>
+                    </div>
                   ) : (
                     <div className='w-full h-[350px] flex items-center justify-center bg-gray-100 rounded-lg'>
                       <ImageIcon size={48} className='text-gray-400' />
+                      <span className='ml-2 text-gray-500 text-sm'>Không có hình ảnh từ server</span>
                     </div>
                   )}
 
@@ -581,16 +632,25 @@ function DetailProductStaff() {
                             {certificate.imageUrl && (
                               <div>
                                 <span className='text-sm text-gray-600 block mb-2'>Hình ảnh chứng nhận:</span>
-                                <div className='w-32 h-32 bg-gray-100 rounded-lg overflow-hidden'>
+                                <div 
+                                  className='relative w-full max-w-md h-64 bg-gray-100 rounded-lg overflow-hidden cursor-pointer group hover:ring-2 ring-green-500 transition-all'
+                                  onClick={() => handleImagePreview(certificate.imageUrl!)}
+                                >
                                   <img
                                     src={certificate.imageUrl}
                                     alt='Chứng nhận'
-                                    className='w-full h-full object-cover'
+                                    className='w-full h-full object-contain transition-transform duration-300 group-hover:scale-105'
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement
                                       target.src = '/placeholder-image.png'
                                     }}
                                   />
+                                  <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity duration-300 flex items-center justify-center'>
+                                    <div className='opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-2 text-white'>
+                                      <ZoomIn className='w-6 h-6' />
+                                      <span className='text-sm font-medium'>Click để xem lớn</span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -1165,6 +1225,15 @@ function DetailProductStaff() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreviewOpen}
+        onClose={handleCloseImagePreview}
+        images={previewImages}
+        initialIndex={previewInitialIndex}
+        alt={product?.name || 'Product image'}
+      />
     </motion.div>
   )
 }

@@ -212,60 +212,65 @@ function ListStore() {
     return (
       <Card
         key={store.key}
-        className='h-full hover:shadow-lg transition-all duration-300 border-2 hover:border-green-300'
+        className='h-full hover:shadow-lg transition-all duration-300 border-2 hover:border-green-300 flex flex-col overflow-hidden'
       >
-        <CardContent className='p-2'>
+        <CardContent className='p-4 flex flex-col flex-1 min-h-0'>
           {/* Header with Avatar and Store Info */}
-          <div className='flex items-start gap-4 mb-4'>
-            <div className='relative'>
+          <div className='flex items-start gap-3 mb-4 min-w-0'>
+            <div className='relative flex-shrink-0'>
               <Avatar className='h-14 w-14 bg-gradient-to-br from-green-500 to-green-600'>
-                <AvatarFallback className='text-white font-semibold'>{store.store.avatar}</AvatarFallback>
+                <AvatarFallback className='text-white font-semibold text-sm'>{store.store.avatar}</AvatarFallback>
               </Avatar>
               <div className='absolute -bottom-1 -right-1 bg-white rounded-full p-1 border-2 border-gray-200'>
                 <Store size={14} className='text-green-600' />
               </div>
             </div>
-            <div className='flex-1 min-w-0'>
-              <h3 className='text-lg font-semibold text-gray-900 truncate mb-1'>{store.store.name}</h3>
-              <Badge variant={config.variant} className={config.className}>
+            <div className='flex-1 min-w-0 overflow-hidden'>
+              <h3 
+                className='text-base font-semibold text-gray-900 mb-1.5 line-clamp-2 break-words' 
+                title={store.store.name}
+              >
+                {store.store.name}
+              </h3>
+              <Badge variant={config.variant} className={`${config.className} text-xs`}>
                 {config.text}
               </Badge>
             </div>
           </div>
 
           {/* Store Details */}
-          <div className='space-y-3 mb-6'>
-            <div className='flex items-center gap-2 text-sm text-gray-600'>
-              <User size={14} className='text-gray-400' />
-              <span>{store.owner.name}</span>
+          <div className='space-y-2.5 mb-4 flex-1'>
+            <div className='flex items-center gap-2 text-sm text-gray-600 min-w-0'>
+              <User size={14} className='text-gray-400 flex-shrink-0' />
+              <span className='truncate' title={store.owner.name}>{store.owner.name}</span>
             </div>
-            <div className='flex items-center gap-2 text-sm text-gray-600'>
-              <Calendar size={14} className='text-gray-400' />
-              <span>Ngày tham gia: {store.createdDate}</span>
+            <div className='flex items-center gap-2 text-sm text-gray-600 min-w-0'>
+              <Calendar size={14} className='text-gray-400 flex-shrink-0' />
+              <span className='truncate'>Ngày tham gia: {store.createdDate}</span>
             </div>
-            <div className='flex items-center gap-2 text-sm text-gray-600'>
-              <Package size={14} className='text-gray-400' />
-              <span>{store.products} sản phẩm</span>
+            <div className='flex items-center gap-2 text-sm text-gray-600 min-w-0'>
+              <Package size={14} className='text-gray-400 flex-shrink-0' />
+              <span className='truncate'>{store.products} sản phẩm</span>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className='grid grid-cols-2 gap-2 '>
+          <div className='grid grid-cols-2 gap-2 mt-auto'>
             <Button
               variant='outline'
               onClick={() => navigate(`/staff/store-detail/${store.store.id}/list-product`)}
-              className='flex items-center justify-center gap-2 border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300'
+              className='flex items-center justify-center gap-1.5 border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300 text-xs px-2 py-1.5 h-auto'
             >
-              <Package size={16} />
-              Xem sản phẩm
+              <Package size={14} className='flex-shrink-0' />
+              <span className='truncate'>Xem sản phẩm</span>
             </Button>
             <Button
               variant='outline'
               onClick={() => navigate(`/staff/store-detail/${store.store.id}`)}
-              className='flex items-center justify-center gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300'
+              className='flex items-center justify-center gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 text-xs px-2 py-1.5 h-auto'
             >
-              <ExternalLink size={16} />
-              Thăm cửa hàng
+              <ExternalLink size={14} className='flex-shrink-0' />
+              <span className='truncate'>Thăm cửa hàng</span>
             </Button>
           </div>
         </CardContent>
@@ -369,7 +374,7 @@ function ListStore() {
         ) : (
           <>
             {/* Cards Grid */}
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5'>
               {paginatedStores.map(renderStoreCard)}
             </div>
 
