@@ -25,6 +25,7 @@ import { useAuth } from '../../../contexts/auth.context'
 import {
   type PromotionDTO,
   type PromotionSellerDTO,
+  type PromotionDetailDTO,
   type PromotionSellerRequest,
   type PromotionFilter,
   type PromotionSort,
@@ -41,7 +42,7 @@ const SellerPromotionList: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(10)
-  const [selectedPromotion, setSelectedPromotion] = useState<PromotionSellerDTO | null>(null)
+  const [selectedPromotion, setSelectedPromotion] = useState<PromotionDetailDTO | PromotionSellerDTO | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view')
 

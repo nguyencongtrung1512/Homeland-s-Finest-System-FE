@@ -262,15 +262,15 @@ export const productApi = {
   },
 
   // Submit product (for seller)
-  submit: async (id: string): Promise<ProductResponse> => {
+  submit: async (id: string): Promise<any> => {
     const response = await axiosInstance.put(`${API_URL}/${id}/submit`)
-    return response as unknown as ProductResponse
+    return response
   },
 
   // Cancel product (for seller)
-  cancel: async (id: string): Promise<ProductResponse> => {
+  cancel: async (id: string): Promise<any> => {
     const response = await axiosInstance.put(`${API_URL}/${id}/cancel`)
-    return response as unknown as ProductResponse
+    return response
   }
 }
 

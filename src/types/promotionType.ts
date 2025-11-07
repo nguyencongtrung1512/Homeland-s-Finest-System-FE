@@ -127,6 +127,17 @@ export interface ApiResponse<T> {
   data: T
 }
 
+export interface PaginationInfo {
+  pageNumber: number
+  pageSize: number
+  totalItems: number
+  totalPages?: number
+}
+
+export interface PaginatedApiResponse<T> extends ApiResponse<T> {
+  pagination: PaginationInfo
+}
+
 export interface PaginationState {
   pageNumber: number
   pageSize: number

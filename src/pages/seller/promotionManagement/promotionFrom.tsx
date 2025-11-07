@@ -31,7 +31,12 @@ import {
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { useAuth } from '../../../contexts/auth.context'
-import { type PromotionSellerDTO, type PromotionSellerRequest, type DiscountType } from '../../../types/promotionType'
+import {
+  type PromotionSellerDTO,
+  type PromotionDetailDTO,
+  type PromotionSellerRequest,
+  type DiscountType
+} from '../../../types/promotionType'
 import { storeApi } from '../../../apis/store.api'
 import { productApi } from '../../../apis/product.api'
 import { type Product } from '../../../types/productType'
@@ -39,7 +44,7 @@ import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 
 interface PromotionDetailModalProps {
-  promotion: PromotionSellerDTO | null
+  promotion: PromotionDetailDTO | PromotionSellerDTO | null
   isOpen: boolean
   onClose: () => void
   mode?: 'view' | 'edit' | 'create'

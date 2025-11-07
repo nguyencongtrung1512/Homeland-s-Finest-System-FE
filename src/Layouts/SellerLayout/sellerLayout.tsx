@@ -7,10 +7,14 @@ import { useAuth } from '../../contexts/auth.context'
 import { useStore } from '../../contexts/store.context'
 import { toast } from '../../utils/toast'
 import { useState } from 'react'
-import { getUserById, type User } from '../../apis/user.api'
+import { getUserById, updateUser, type User } from '../../apis/user.api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
 import GlowCard from '../../components/ui/spotlight-card'
 import { formatDate } from '../../utils/formatDate'
+import { Edit, Save, X, Upload } from 'lucide-react'
 
 const { Header, Content } = Layout
 
@@ -21,6 +25,18 @@ function SellerLayout() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [userInfo, setUserInfo] = useState<User | null>(null)
   const [loadingUserInfo, setLoadingUserInfo] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editForm, setEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    gender: '',
+    dateOfBirth: ''
+  })
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const handleLogout = async () => {
     try {
@@ -44,6 +60,16 @@ function SellerLayout() {
     try {
       const userData = await getUserById(user.userId)
       setUserInfo(userData)
+      // Initialize form với dữ liệu hiện tại
+      setEditForm({
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        email: userData.email || '',
+        phoneNumber: userData.phoneNumber || '',
+        gender: userData.gender || '',
+        dateOfBirth: userData.dateOfBirth ? userData.dateOfBirth.split('T')[0] : ''
+      })
+      setAvatarPreview(userData.avatar || null)
     } catch (error) {
       console.error('Error fetching user info:', error)
       toast.error('Không thể tải thông tin cá nhân')
@@ -55,6 +81,83 @@ function SellerLayout() {
   const handleCloseProfileModal = () => {
     setIsProfileModalOpen(false)
     setUserInfo(null)
+    setIsEditMode(false)
+    setAvatarFile(null)
+    setAvatarPreview(null)
+  }
+
+  const handleEditClick = () => {
+    setIsEditMode(true)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false)
+    setAvatarFile(null)
+    if (userInfo) {
+      setEditForm({
+        firstName: userInfo.firstName || '',
+        lastName: userInfo.lastName || '',
+        email: userInfo.email || '',
+        phoneNumber: userInfo.phoneNumber || '',
+        gender: userInfo.gender || '',
+        dateOfBirth: userInfo.dateOfBirth ? userInfo.dateOfBirth.split('T')[0] : ''
+      })
+      setAvatarPreview(userInfo.avatar || null)
+    }
+  }
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Kích thước file không được vượt quá 5MB')
+        return
+      }
+      if (!file.type.startsWith('image/')) {
+        toast.error('File phải là hình ảnh')
+        return
+      }
+      setAvatarFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleUpdateProfile = async () => {
+    if (!user?.userId || !userInfo) {
+      toast.error('Không tìm thấy thông tin người dùng')
+      return
+    }
+
+    setIsUpdating(true)
+    try {
+      await updateUser(user.userId, {
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        email: editForm.email,
+        phoneNumber: editForm.phoneNumber,
+        gender: editForm.gender || undefined,
+        dateOfBirth: editForm.dateOfBirth || undefined,
+        avatar: avatarFile || avatarPreview || undefined,
+        role: userInfo.role
+      })
+
+      toast.success('Cập nhật thông tin thành công')
+      setIsEditMode(false)
+      // Refresh user info
+      const updatedUserData = await getUserById(user.userId)
+      setUserInfo(updatedUserData)
+      setAvatarFile(null)
+    } catch (error: unknown) {
+      console.error('Error updating profile:', error)
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(errorMessage || 'Có lỗi xảy ra khi cập nhật thông tin')
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   const items: MenuProps['items'] = [
@@ -248,33 +351,8 @@ function SellerLayout() {
             />
           )}
 
-          {/* Main Content */}
-          {!isStoreApproved && store ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏪</div>
-              <h2 style={{ color: '#595959', marginBottom: '8px' }}>Cửa hàng chưa được phê duyệt</h2>
-              <p style={{ color: '#8c8c8c', marginBottom: '24px' }}>
-                Bạn chỉ có thể truy cập một số chức năng cơ bản cho đến khi cửa hàng được phê duyệt.
-              </p>
-              <div
-                style={{
-                  background: '#fafafa',
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  maxWidth: '500px',
-                  margin: '0 auto'
-                }}
-              >
-                <h4 style={{ margin: '0 0 8px 0', color: '#262626' }}>Trạng thái hiện tại:</h4>
-                <p style={{ margin: 0, color: '#595959' }}>
-                  <strong>{store.storeName}</strong> - {statusMessage?.message}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <Outlet />
-          )}
+          {/* Main Content - Always show outlet to allow viewing pages */}
+          <Outlet />
         </Content>
       </Layout>
 
@@ -284,9 +362,24 @@ function SellerLayout() {
           <GlowCard glowColor='green' customSize={true} width='100%' className='max-w-2xl mx-auto'>
             <div style={{ padding: '24px' }}>
               <DialogHeader>
-                <DialogTitle style={{ fontSize: '24px', fontWeight: '600', marginBottom: '24px', color: '#262626' }}>
-                  Thông tin cá nhân
-                </DialogTitle>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '24px'
+                  }}
+                >
+                  <DialogTitle style={{ fontSize: '24px', fontWeight: '600', color: '#262626', margin: 0 }}>
+                    Thông tin cá nhân
+                  </DialogTitle>
+                  {!isEditMode && userInfo && (
+                    <Button onClick={handleEditClick} variant='outline' size='sm'>
+                      <Edit className='w-4 h-4 mr-2' />
+                      Chỉnh sửa
+                    </Button>
+                  )}
+                </div>
               </DialogHeader>
 
               {loadingUserInfo ? (
@@ -297,100 +390,233 @@ function SellerLayout() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {/* Avatar Section */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
-                    {userInfo.avatar ? (
-                      <img
-                        src={userInfo.avatar}
-                        alt='Avatar'
-                        style={{
-                          width: '80px',
-                          height: '80px',
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                          border: '2px solid #16a34a'
-                        }}
-                      />
-                    ) : (
-                      <Avatar size={80} icon={<UserOutlined />} style={{ backgroundColor: '#16a34a' }} />
-                    )}
+                    <div style={{ position: 'relative' }}>
+                      {avatarPreview ? (
+                        <img
+                          src={avatarPreview}
+                          alt='Avatar'
+                          style={{
+                            width: '80px',
+                            height: '80px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: '2px solid #16a34a'
+                          }}
+                        />
+                      ) : (
+                        <Avatar size={80} icon={<UserOutlined />} style={{ backgroundColor: '#16a34a' }} />
+                      )}
+                      {isEditMode && (
+                        <label
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            right: 0,
+                            background: '#16a34a',
+                            color: 'white',
+                            borderRadius: '50%',
+                            width: '28px',
+                            height: '28px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            border: '2px solid white'
+                          }}
+                        >
+                          <Upload className='w-4 h-4' />
+                          <input
+                            type='file'
+                            accept='image/*'
+                            onChange={handleAvatarChange}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                      )}
+                    </div>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#262626' }}>
-                        {userInfo.firstName && userInfo.lastName
-                          ? `${userInfo.firstName} ${userInfo.lastName}`
-                          : userInfo.email}
-                      </h3>
-                      <p style={{ margin: '4px 0 0 0', color: '#8c8c8c', fontSize: '14px' }}>{userInfo.role}</p>
+                      {isEditMode ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <div style={{ flex: 1 }}>
+                              <Label htmlFor='firstName' className='text-xs text-gray-600'>
+                                Họ
+                              </Label>
+                              <Input
+                                id='firstName'
+                                value={editForm.firstName}
+                                onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                                placeholder='Nhập họ'
+                                className='mt-1'
+                              />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <Label htmlFor='lastName' className='text-xs text-gray-600'>
+                                Tên
+                              </Label>
+                              <Input
+                                id='lastName'
+                                value={editForm.lastName}
+                                onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                                placeholder='Nhập tên'
+                                className='mt-1'
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#262626' }}>
+                            {userInfo.firstName && userInfo.lastName
+                              ? `${userInfo.firstName} ${userInfo.lastName}`
+                              : userInfo.email}
+                          </h3>
+                          <p style={{ margin: '4px 0 0 0', color: '#8c8c8c', fontSize: '14px' }}>{userInfo.role}</p>
+                        </>
+                      )}
                     </div>
                   </div>
 
                   {/* User Information Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>Email</p>
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
-                        {userInfo.email || 'N/A'}
-                      </p>
-                    </div>
+                  {isEditMode ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div>
+                        <Label htmlFor='email' className='text-xs text-gray-600'>
+                          Email
+                        </Label>
+                        <Input
+                          id='email'
+                          type='email'
+                          value={editForm.email}
+                          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                          placeholder='Nhập email'
+                          className='mt-1'
+                        />
+                      </div>
 
-                    <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
-                        Số điện thoại
-                      </p>
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
-                        {userInfo.phoneNumber || 'N/A'}
-                      </p>
-                    </div>
+                      <div>
+                        <Label htmlFor='phoneNumber' className='text-xs text-gray-600'>
+                          Số điện thoại
+                        </Label>
+                        <Input
+                          id='phoneNumber'
+                          value={editForm.phoneNumber}
+                          onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                          placeholder='Nhập số điện thoại'
+                          className='mt-1'
+                        />
+                      </div>
 
-                    <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>Giới tính</p>
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
-                        {userInfo.gender === 'Male'
-                          ? 'Nam'
-                          : userInfo.gender === 'Female'
-                            ? 'Nữ'
-                            : userInfo.gender || 'N/A'}
-                      </p>
-                    </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                        <div>
+                          <Label htmlFor='gender' className='text-xs text-gray-600'>
+                            Giới tính
+                          </Label>
+                          <select
+                            id='gender'
+                            value={editForm.gender}
+                            onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                            className='mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm'
+                          >
+                            <option value=''>Chọn giới tính</option>
+                            <option value='Male'>Nam</option>
+                            <option value='Female'>Nữ</option>
+                          </select>
+                        </div>
 
-                    <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>Ngày sinh</p>
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
-                        {userInfo.dateOfBirth ? new Date(userInfo.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}
-                      </p>
-                    </div>
+                        <div>
+                          <Label htmlFor='dateOfBirth' className='text-xs text-gray-600'>
+                            Ngày sinh
+                          </Label>
+                          <Input
+                            id='dateOfBirth'
+                            type='date'
+                            value={editForm.dateOfBirth}
+                            onChange={(e) => setEditForm({ ...editForm, dateOfBirth: e.target.value })}
+                            className='mt-1'
+                          />
+                        </div>
+                      </div>
 
-                    {userInfo.bankAccount && (
+
+
+                      {/* Action Buttons */}
+                      <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                        <Button onClick={handleCancelEdit} variant='outline' className='flex-1' disabled={isUpdating}>
+                          <X className='w-4 h-4 mr-2' />
+                          Hủy
+                        </Button>
+                        <Button
+                          onClick={handleUpdateProfile}
+                          className='flex-1 bg-green-600 hover:bg-green-700'
+                          disabled={isUpdating}
+                        >
+                          <Save className='w-4 h-4 mr-2' />
+                          {isUpdating ? 'Đang lưu...' : 'Lưu thay đổi'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                       <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
-                        <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
-                          Số tài khoản
-                        </p>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>Email</p>
                         <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
-                          {userInfo.bankAccount}
+                          {userInfo.email || 'N/A'}
                         </p>
                       </div>
-                    )}
 
-                    <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>Trạng thái</p>
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
-                        {userInfo.isActive ? (
-                          <span style={{ color: '#16a34a' }}>Hoạt động</span>
-                        ) : (
-                          <span style={{ color: '#dc2626' }}>Không hoạt động</span>
-                        )}
-                      </p>
-                    </div>
-
-                    {userInfo.createdAt !== undefined && (
                       <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
                         <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
-                          Ngày tham gia
+                          Số điện thoại
                         </p>
                         <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
-                          {formatDate(userInfo.createdAt)}
+                          {userInfo.phoneNumber || 'N/A'}
                         </p>
                       </div>
-                    )}
-                  </div>
+
+                      <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>Giới tính</p>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
+                          {userInfo.gender === 'Male'
+                            ? 'Nam'
+                            : userInfo.gender === 'Female'
+                              ? 'Nữ'
+                              : userInfo.gender || 'N/A'}
+                        </p>
+                      </div>
+
+                      <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>Ngày sinh</p>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
+                          {userInfo.dateOfBirth ? new Date(userInfo.dateOfBirth).toLocaleDateString('vi-VN') : 'N/A'}
+                        </p>
+                      </div>
+
+
+
+                      <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>Trạng thái</p>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
+                          {userInfo.isActive ? (
+                            <span style={{ color: '#16a34a' }}>Hoạt động</span>
+                          ) : (
+                            <span style={{ color: '#dc2626' }}>Không hoạt động</span>
+                          )}
+                        </p>
+                      </div>
+
+                      {userInfo.createdAt !== undefined && (
+                        <div style={{ padding: '12px', background: 'rgba(22, 163, 74, 0.05)', borderRadius: '8px' }}>
+                          <p style={{ margin: 0, fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>
+                            Ngày tham gia
+                          </p>
+                          <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#262626' }}>
+                            {formatDate(userInfo.createdAt)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#8c8c8c' }}>

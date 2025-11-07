@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Upload } from 'lucide-react'
+import { ArrowLeft, Upload, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
@@ -13,6 +13,7 @@ import ReactQuill from 'react-quill-new'
 import 'react-quill-new/dist/quill.snow.css'
 import { blogCategoryApi } from '../../../apis/categoryBlog.api'
 import { blogApi } from '../../../apis/blog.api'
+import { n8nApi } from '../../../apis/n8n.api'
 
 function CreateBlogByCategory() {
   const { id } = useParams<{ id: string }>()
@@ -30,10 +31,22 @@ function CreateBlogByCategory() {
   const [loading, setLoading] = useState(false)
   const [categoryName, setCategoryName] = useState('')
   const [titleError, setTitleError] = useState<string>('')
+  
+  // N8N suggestion states
+  const [suggestionLoading, setSuggestionLoading] = useState(false)
+  const [suggestedContent, setSuggestedContent] = useState<string>('')
+  const suggestionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (categoryId) {
       loadCategoryDetail()
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (suggestionTimeoutRef.current) {
+        clearTimeout(suggestionTimeoutRef.current)
+      }
     }
   }, [categoryId])
 
@@ -74,6 +87,47 @@ function CreateBlogByCategory() {
       setTitleError(validateTitle(value))
     } else {
       setTitleError('')
+    }
+
+    // Clear previous timeout
+    if (suggestionTimeoutRef.current) {
+      clearTimeout(suggestionTimeoutRef.current)
+    }
+
+    // Reset suggestion if title is too short
+    if (value.trim().length < 10) {
+      setSuggestedContent('')
+      return
+    }
+
+    // Debounce: Wait 1.5 seconds after user stops typing before calling n8n
+    suggestionTimeoutRef.current = setTimeout(async () => {
+      if (value.trim().length >= 10) {
+        await fetchSuggestion(value.trim())
+      }
+    }, 1500)
+  }
+
+  const fetchSuggestion = async (topic: string) => {
+    if (!topic || topic.trim().length < 10) return
+
+    setSuggestionLoading(true)
+    setSuggestedContent('')
+    try {
+      const suggestion = await n8nApi.getBlogSuggestion(topic)
+      setSuggestedContent(suggestion)
+    } catch (error: any) {
+      console.error('Error fetching suggestion:', error)
+      // Don't show error toast, just silently fail
+    } finally {
+      setSuggestionLoading(false)
+    }
+  }
+
+  const handleUseSuggestion = () => {
+    if (suggestedContent) {
+      setContent(suggestedContent)
+      toast.success('Đã áp dụng nội dung gợi ý!')
     }
   }
 
@@ -191,16 +245,31 @@ function CreateBlogByCategory() {
           <CardContent>
             <form onSubmit={handleSubmit} className='space-y-6'>
               <div className='space-y-2'>
-                <Label htmlFor='title'>
-                  Tiêu đề <span className='text-destructive'>*</span>
-                </Label>
-                <Input
-                  id='title'
-                  value={title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder='Nhập tiêu đề blog (10-100 ký tự)'
-                  className={titleError ? 'border-destructive' : ''}
-                />
+                <div className='flex items-center justify-between'>
+                  <Label htmlFor='title'>
+                    Tiêu đề <span className='text-destructive'>*</span>
+                  </Label>
+                  {suggestionLoading && (
+                    <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                      <Loader2 className='h-4 w-4 animate-spin' />
+                      <span>Đang tạo gợi ý...</span>
+                    </div>
+                  )}
+                </div>
+                <div className='relative'>
+                  <Input
+                    id='title'
+                    value={title}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    placeholder='Nhập tiêu đề blog (10-100 ký tự)'
+                    className={titleError ? 'border-destructive' : ''}
+                  />
+                  {suggestionLoading && (
+                    <div className='absolute right-3 top-1/2 -translate-y-1/2'>
+                      <Loader2 className='h-4 w-4 animate-spin text-primary' />
+                    </div>
+                  )}
+                </div>
                 {titleError && <p className='text-sm text-destructive'>{titleError}</p>}
                 {!titleError && title && (
                   <p className='text-xs text-muted-foreground'>
@@ -208,6 +277,39 @@ function CreateBlogByCategory() {
                   </p>
                 )}
               </div>
+
+              {/* N8N Suggestion Card */}
+              {suggestedContent && (
+                <Card className='bg-blue-50 border-blue-200'>
+                  <CardHeader className='pb-3'>
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center gap-2'>
+                        <Sparkles className='h-4 w-4 text-blue-600' />
+                        <CardTitle className='text-sm font-medium text-blue-900'>
+                          Gợi ý nội dung từ AI
+                        </CardTitle>
+                      </div>
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        onClick={handleUseSuggestion}
+                        className='h-7 text-xs'
+                      >
+                        Áp dụng
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='prose prose-sm max-w-none'>
+                      <div
+                        className='text-sm text-gray-700 whitespace-pre-wrap max-h-96 overflow-y-auto'
+                        dangerouslySetInnerHTML={{ __html: suggestedContent.replace(/\n/g, '<br>') }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               <div className='space-y-2'>
                 <Label htmlFor='description'>Mô tả ngắn</Label>

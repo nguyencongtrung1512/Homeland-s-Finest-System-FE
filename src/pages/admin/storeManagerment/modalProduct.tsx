@@ -5,25 +5,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../compo
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
+import type { Product } from '../../../types/productType'
 
-// Interface cho Product từ API response
-interface Product {
-  id: string
-  name: string
-  description: string
-  productImages: string[]
-  saleCount: number | null
-  rating: number | null
-  reviewCount: number | null
-  isActive: boolean
-  status: string
-  createdAt: string
+// Extended Product type với createdAt (có thể có trong một số API response)
+export interface ProductWithCreatedAt extends Product {
+  createdAt?: string
 }
 
 interface ProductModalProps {
   isOpen: boolean
   onClose: () => void
-  products: Product[]
+  products: ProductWithCreatedAt[]
   storeName: string
 }
 
@@ -66,7 +58,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, 
     }
   }
 
-  const renderStars = (rating: number | null) => {
+  const renderStars = (rating: number | null | undefined) => {
     if (rating === null || rating === undefined) {
       return Array.from({ length: 5 }, (_, i) => (
         <Star key={i} className="w-4 h-4 text-gray-300" />
@@ -162,10 +154,12 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, 
                           <ShoppingCart className="w-3 h-3" />
                           <span>{product.saleCount || 0} đã bán</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{formatDate(product.createdAt)}</span>
-                        </div>
+                        {product.createdAt && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            <span>{formatDate(product.createdAt)}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Product ID */}

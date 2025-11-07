@@ -30,9 +30,8 @@ import { adminApi, type Staff, type StatusStoreRequest } from '../../../apis/adm
 import { getAllCombos } from '../../../apis/combo.api'
 import { type Combo } from '../../../types/combo.type'
 import { toast } from 'react-toastify'
-import ProductModal from './modalProduct'
+import ProductModal, { type ProductWithCreatedAt } from './modalProduct'
 import { exportStoreToExcel } from './excelExport'
-import type { Product } from '../../../types'
 
 function StoreDetailAdmin() {
   const { storeId } = useParams<{ storeId: string }>()
@@ -816,7 +815,7 @@ function StoreDetailAdmin() {
       <ProductModal
         isOpen={productModalOpen}
         onClose={() => setProductModalOpen(false)}
-        products={store?.products as Product[] || []}
+        products={(store?.products as ProductWithCreatedAt[]) || []}
         storeName={store?.storeName || ''}
       />
 

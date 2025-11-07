@@ -109,20 +109,7 @@ export const useProductMutations = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const createProduct = async (data: any) => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await productApi.create(data)
-      return response
-    } catch (err: any) {
-      setError(err.message || 'Failed to create product')
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }
-
+ 
   const updateProduct = async (id: string, data: any) => {
     try {
       setLoading(true)
@@ -182,7 +169,6 @@ export const useProductMutations = () => {
   return {
     loading,
     error,
-    createProduct,
     updateProduct,
     deleteProduct,
     updateProductStatus,

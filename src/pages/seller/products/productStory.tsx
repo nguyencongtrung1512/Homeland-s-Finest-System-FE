@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -26,6 +26,9 @@ interface StoryEditData {
   // Add file storage for actual files
   imageFiles: File[]
   videoFile: File | null
+  // Track original images/video from server (to distinguish old vs new)
+  originalImages: string[]
+  originalVideo: string
 }
 
 function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCancelEdit }: ProductStoryProps) {
@@ -37,7 +40,9 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
     images: [],
     video: '',
     imageFiles: [],
-    videoFile: null
+    videoFile: null,
+    originalImages: [],
+    originalVideo: ''
   })
 
   // Fix: Add setters for upload states
@@ -137,26 +142,85 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
         // Update existing story
         const storyId = stories[0].id
 
+        // Determine which images are new (blob URLs or files) vs old (server URLs)
+        const currentImages = editData.images || []
+        const originalImages = editData.originalImages || []
+
+        // Images that are still from server (not blob URLs) = kept images
+        const keptImages = currentImages.filter((img) => !img.startsWith('blob:') && originalImages.includes(img))
+
+        // Check if we have new image files uploaded
+        const hasNewImageFiles = editData.imageFiles && editData.imageFiles.length > 0
+
+        // If user removed some original images but kept some, we still need to replace
+        // because API doesn't support partial removal - it's all or nothing
+        const hasPartialRemoval =
+          originalImages.length > 0 && keptImages.length > 0 && keptImages.length < originalImages.length
+
+        // Determine video status
+        const hasOriginalVideo = editData.originalVideo && editData.originalVideo.length > 0
+        const hasNewVideoFile = editData.videoFile !== null
+        const currentVideoIsOriginal = editData.video === editData.originalVideo && hasOriginalVideo
+        const hasRemovedVideo = hasOriginalVideo && !currentVideoIsOriginal && !hasNewVideoFile
+
         // Prepare data for API call
-        const updateData: any = {
+        const updateData: {
+          title: string
+          storyDetail: string
+          newThumbnail?: File
+          removeExistingThumbnail?: boolean
+          newStoryVideo?: File
+          removeExistingStoryVideo?: boolean
+          newStoryImages?: File[]
+          removeExistingStoryImages?: boolean
+        } = {
           title: editData.title,
           storyDetail: editData.content
         }
 
-        // Add files if they exist
-        if (editData.imageFiles && editData.imageFiles.length > 0) {
-          updateData.storyImages = editData.imageFiles
+        // Handle Story Images
+        // Logic:
+        // - If user uploads new files → replace all (RemoveExisting = true)
+        // - If user removes some/all original images → replace all (RemoveExisting = true)
+        // - If user keeps all original images and no new files → keep existing (RemoveExisting = false)
+        if (hasNewImageFiles || hasPartialRemoval || keptImages.length === 0) {
+          // If we have new files OR removed some/all originals, send new files and remove existing
+          if (hasNewImageFiles) {
+            updateData.newStoryImages = editData.imageFiles
+          }
+          updateData.removeExistingStoryImages = true
+        } else {
+          // Keep all existing images, no new files, no removals
+          updateData.removeExistingStoryImages = false
         }
 
-        if (editData.videoFile) {
-          updateData.storyVideo = editData.videoFile
+        // Handle Story Video
+        if (hasNewVideoFile && editData.videoFile) {
+          // New video file uploaded - replace existing
+          updateData.newStoryVideo = editData.videoFile
+          updateData.removeExistingStoryVideo = true
+        } else if (hasRemovedVideo) {
+          // Video was removed but no new one uploaded
+          updateData.removeExistingStoryVideo = true
+        } else {
+          // Keep existing video
+          updateData.removeExistingStoryVideo = false
         }
+
+        // Note: Thumbnail is not currently handled in the UI, but API supports it
+        // If needed in future, add similar logic for thumbnail
 
         await productStoryApi.update(storyId, updateData)
         toast.success('Cập nhật câu chuyện thành công!')
       } else {
         // Create new story
-        const createData: any = {
+        const createData: {
+          productId: string
+          title: string
+          storyDetail?: string
+          storyVideo?: File
+          storyImages?: File[]
+        } = {
           productId: productId,
           title: editData.title,
           storyDetail: editData.content
@@ -177,8 +241,8 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
 
       await fetchStories() // Refresh data after save
       onToggleEditMode('story') // Exit edit mode
-    } catch (error) {
-      console.error('❌ Error saving story:', error)
+    } catch (err) {
+      console.error('❌ Error saving story:', err)
       toast.error('Có lỗi xảy ra khi lưu câu chuyện')
     }
   }
@@ -200,7 +264,9 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
       setEditData({
         ...processedData,
         imageFiles: [],
-        videoFile: null
+        videoFile: null,
+        originalImages: processedData.images,
+        originalVideo: processedData.video
       })
     } else {
       // Reset to default when no story exists
@@ -210,7 +276,9 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
         images: [],
         video: '',
         imageFiles: [],
-        videoFile: null
+        videoFile: null,
+        originalImages: [],
+        originalVideo: ''
       })
     }
   }
@@ -257,7 +325,9 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
         setEditData({
           ...processedData,
           imageFiles: [], // New files start empty
-          videoFile: null
+          videoFile: null,
+          originalImages: processedData.images, // Store original images from server
+          originalVideo: processedData.video // Store original video from server
         })
       } else {
         // Reset to default when creating new story
@@ -267,7 +337,9 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
           images: [],
           video: '',
           imageFiles: [],
-          videoFile: null
+          videoFile: null,
+          originalImages: [],
+          originalVideo: ''
         })
       }
     }
@@ -285,6 +357,7 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
         URL.revokeObjectURL(editData.video)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Fetch stories when component mounts or productId changes
@@ -292,8 +365,8 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
     if (productId) {
       fetchStories()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId])
-
 
   // Process ProductStory data to match component's expected format
   const processStoryData = (story: ProductStory): StoryEditData => {
@@ -326,7 +399,7 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
             images.push(content.contentData)
           }
         }
-      } catch (error) {
+      } catch {
         // If not JSON, treat as single media file
         if (content.contentData.includes('.mp4') || content.contentData.includes('.mov')) {
           video = content.contentData
@@ -342,7 +415,9 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
       images,
       video,
       imageFiles: [], // New files start empty
-      videoFile: null
+      videoFile: null,
+      originalImages: images, // Store original images
+      originalVideo: video // Store original video
     }
   }
 
@@ -361,8 +436,8 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
           setStories([])
         }
       }
-    } catch (error) {
-      console.error('❌ Error fetching stories:', error)
+    } catch (err) {
+      console.error('❌ Error fetching stories:', err)
       toast.error('Không thể tải danh sách câu chuyện')
     } finally {
       setLoading(false)
@@ -557,8 +632,8 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
             {currentStory ? (
               <>
                 <div>
-                  <h3 className='text-xl font-semibold text-gray-900 mb-3'>{currentStory.title}</h3>
-                  <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>{currentStory.content}</p>
+                  <h3 className='text-xl font-semibold text-gray-900 mb-3'> Tiêu đề: {currentStory.title}</h3>
+                  <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>Nội dung: {currentStory.content}</p>
                 </div>
 
                 {/* Story Images */}

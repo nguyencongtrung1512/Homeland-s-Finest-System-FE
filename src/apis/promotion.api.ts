@@ -622,7 +622,6 @@ export const getPromotionById = async (id: string): Promise<ApiResponse<Promotio
   return axiosInstance.get(`/Admin/Promotion/${id}`)
 }
 
-
 // ========================================
 // EXPORT ALL FUNCTIONS
 // ========================================
