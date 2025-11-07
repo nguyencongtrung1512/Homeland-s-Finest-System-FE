@@ -61,8 +61,22 @@ export const updateComboShell = async (comboId: string, comboData: UpdateComboRe
     formData.append('Description', comboData.description)
   }
 
-  if (comboData.thumbnailFile) {
-    formData.append('ThumbnailFile', comboData.thumbnailFile)
+  // Chỉ gửi FinalPrice nếu được chỉ định (không gửi trong modal chỉnh sửa từ listCombo)
+  if (comboData.finalPrice !== undefined) {
+    formData.append('FinalPrice', comboData.finalPrice.toString())
+  }
+
+  // Logic xử lý ảnh thumbnail
+  if (comboData.removeThumbnail) {
+    // Người dùng muốn xóa ảnh hiện tại
+    formData.append('RemoveExistingImage', 'true')
+  } else if (comboData.thumbnailFile) {
+    // Có file ảnh mới → thay thế ảnh cũ bằng ảnh mới
+    formData.append('NewThumbnailFile', comboData.thumbnailFile)
+    formData.append('RemoveExistingImage', 'true')
+  } else {
+    // Không có file mới, không xóa → giữ nguyên ảnh cũ
+    formData.append('RemoveExistingImage', 'false')
   }
 
   const response = await axiosInstance.put<ComboResponse>(`${API_URL}/${comboId}`, formData, {

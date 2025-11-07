@@ -30,6 +30,35 @@ export interface ProductResponse {
   data: Product
 }
 
+// Product for combo response type
+export interface ProductForCombo {
+  id: string
+  name: string
+  thumbnailUrl: string
+  categoryName: string
+}
+
+export interface ProductForComboResponse {
+  status: number
+  message: string
+  data: ProductForCombo[]
+}
+
+// Product SKU response type
+export interface ProductSku {
+  id: string
+  name: string
+  finalPrice: number
+  quantity: number
+  isActive: boolean
+}
+
+export interface ProductSkuResponse {
+  status: number
+  message: string
+  data: ProductSku[]
+}
+
 // Form Data interface for creating product with files
 export interface ProductCreateFormData {
   storeId: string
@@ -184,10 +213,10 @@ export const productApi = {
     return response
   },
 
-  // Delete product
-  delete: async (id: string): Promise<ApiResponse<null>> => {
-    const response = await axiosInstance.delete(`${API_URL}/${id}`)
-    return response as unknown as ApiResponse<null>
+  // Delete product (soft delete - sets IsActive to false)
+  delete: async (id: string): Promise<any> => {
+    const response = await axiosInstance.put(`${API_URL}/delete/${id}`)
+    return response
   },
 
   // Get products by store
@@ -271,6 +300,18 @@ export const productApi = {
   cancel: async (id: string): Promise<any> => {
     const response = await axiosInstance.put(`${API_URL}/${id}/cancel`)
     return response
+  },
+
+  // Get products for combo
+  getForCombo: async (): Promise<ProductForComboResponse> => {
+    const response = await axiosInstance.get(`${API_URL}/for-combo`)
+    return response as unknown as ProductForComboResponse
+  },
+
+  // Get product SKUs by product ID
+  getSkus: async (id: string): Promise<ProductSkuResponse> => {
+    const response = await axiosInstance.get(`${API_URL}/${id}/skus`)
+    return response as unknown as ProductSkuResponse
   }
 }
 

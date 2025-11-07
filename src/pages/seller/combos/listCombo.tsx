@@ -2,14 +2,25 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
-import { Plus, Edit, Trash2, Eye, RefreshCw, XCircle } from 'lucide-react'
-import { toast } from 'react-toastify'
+import { Plus, Edit, Eye, RefreshCw, PauseCircle, PlayCircle } from 'lucide-react'
+import { toast } from '../../../utils/toast'
 import path from '../../../constants/path'
-import { getAllCombos, submitCombo, cancelCombo } from '../../../apis/combo.api'
+import { getAllCombos, updateComboShell } from '../../../apis/combo.api'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../../../components/ui/alert-dialog'
 import { storeApi } from '../../../apis/store.api'
 import { useAuth } from '../../../contexts/auth.context'
 import { useState, useEffect, useCallback } from 'react'
 import type { Combo, ComboParams } from '../../../types/combo.type'
+import UpdateComboModal from './updateCombo'
 
 function ComboSeller() {
   const navigate = useNavigate()
@@ -20,15 +31,20 @@ function ComboSeller() {
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
+  const [selectedCombo, setSelectedCombo] = useState<Combo | null>(null)
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [comboToToggle, setComboToToggle] = useState<Combo | null>(null)
+  const [showToggleDialog, setShowToggleDialog] = useState(false)
+  const [toggling, setToggling] = useState(false)
 
   const pagination =
     allCombos.length > 0
       ? {
-          pageNumber: currentPage,
-          pageSize: pageSize,
-          totalItems: allCombos.length,
-          totalPages: Math.ceil(allCombos.length / pageSize)
-        }
+        pageNumber: currentPage,
+        pageSize: pageSize,
+        totalItems: allCombos.length,
+        totalPages: Math.ceil(allCombos.length / pageSize)
+      }
       : null
 
   const combos = allCombos.slice((currentPage - 1) * pageSize, currentPage * pageSize)
@@ -95,18 +111,65 @@ function ComboSeller() {
     navigate(`../${path.createComboSeller}`)
   }
 
-  const handleEditCombo = (comboId: string) => {
-    navigate(`../${path.updateComboSeller.replace(':id', comboId)}`)
+  const handleEditCombo = (combo: Combo) => {
+    setSelectedCombo(combo)
+    setShowUpdateModal(true)
+  }
+
+  const handleUpdateSuccess = () => {
+    fetchCombos()
   }
 
   const handleViewCombo = (comboId: string) => {
     navigate(`../${path.detailComboSeller.replace(':id', comboId)}`)
   }
 
+  const handleToggleActive = (combo: Combo) => {
+    setComboToToggle(combo)
+    setShowToggleDialog(true)
+  }
+
+  const confirmToggleActive = async () => {
+    if (!comboToToggle) return
+
+    setToggling(true)
+    try {
+      // Chỉ cập nhật isActive, giữ nguyên các field khác
+      const updateData = {
+        name: comboToToggle.name,
+        description: comboToToggle.description || '',
+        isActive: !comboToToggle.isActive
+      }
+
+      const response = await updateComboShell(comboToToggle.id, updateData)
+
+      if (response && (response.status === 200 || response.status === 201 || response.status === 202)) {
+        toast.success(
+          comboToToggle.isActive
+            ? 'Đã dừng hoạt động combo. Combo sẽ không được bán cho đến khi được mở lại.'
+            : 'Đã kích hoạt combo. Combo có thể được bán trở lại.'
+        )
+        await fetchCombos()
+        setShowToggleDialog(false)
+        setComboToToggle(null)
+      } else {
+        toast.error(response?.message || 'Có lỗi xảy ra khi cập nhật trạng thái combo')
+      }
+    } catch (error) {
+      const errorMessage =
+        error && typeof error === 'object' && 'message' in error
+          ? (error as { message?: string }).message
+          : 'Có lỗi xảy ra khi cập nhật trạng thái combo'
+      toast.error(errorMessage)
+    } finally {
+      setToggling(false)
+    }
+  }
+
   const getStatusBadge = (status: string, isActive: boolean) => {
     if (!isActive) {
       return {
-        text: 'Đã xóa',
+        text: 'Dừng hoạt động',
         className: 'bg-gray-100 text-gray-800 hover:bg-gray-100'
       }
     }
@@ -157,46 +220,6 @@ function ComboSeller() {
 
   const calculateTotalPrice = (comboItems: { finalPrice: number; quantity: number }[]) => {
     return comboItems.reduce((total, item) => total + item.finalPrice * item.quantity, 0)
-  }
-
-  const canSubmitStatus = (status: string) => status === 'Draft' || status === 'Rejected' || status === 'Approved'
-  const canCancelStatus = (status: string) => status !== 'Rejected' && status !== 'Confirmed'
-
-  const handleSubmitCombo = async (comboId: string) => {
-    try {
-      const res = await submitCombo(comboId)
-      if (res.status === 200) {
-        const newStatus = res.data?.status
-        if (newStatus === 'Pending') {
-          toast.success('Đã gửi duyệt. Combo đang chờ Admin phân công.')
-        } else if (newStatus === 'Processing') {
-          toast.success('Đã gửi duyệt. Combo đang được Staff xử lý.')
-        } else {
-          toast.success('Đã gửi duyệt combo.')
-        }
-        await fetchCombos()
-      } else {
-        toast.error(res.message || 'Gửi duyệt combo thất bại')
-      }
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Gửi duyệt combo thất bại'
-      toast.error(msg)
-    }
-  }
-
-  const handleCancelCombo = async (comboId: string) => {
-    try {
-      const res = await cancelCombo(comboId)
-      if (res.status === 200) {
-        toast.success('Đã hủy combo thành công.')
-        await fetchCombos()
-      } else {
-        toast.error(res.message || 'Hủy combo thất bại')
-      }
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Hủy combo thất bại'
-      toast.error(msg)
-    }
   }
 
   return (
@@ -286,47 +309,26 @@ function ComboSeller() {
                             >
                               <Eye className='w-4 h-4' />
                             </Button>
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              onClick={() => handleEditCombo(combo.id)}
-                              title='Chỉnh sửa'
-                            >
+                            <Button variant='ghost' size='sm' onClick={() => handleEditCombo(combo)} title='Chỉnh sửa'>
                               <Edit className='w-4 h-4' />
                             </Button>
-
-                            {canSubmitStatus(combo.status) && (
-                              <Button
-                                variant='ghost'
-                                size='sm'
-                                title={activeItemsCount >= 2 ? 'Gửi duyệt' : 'Cần ≥ 2 sản phẩm active'}
-                                onClick={() => handleSubmitCombo(combo.id)}
-                                disabled={activeItemsCount < 2}
-                                className='text-green-600 hover:text-green-700 disabled:opacity-50'
-                              >
-                                <RefreshCw className='w-4 h-4' />
-                              </Button>
-                            )}
-
-                            {canCancelStatus(combo.status) && (
-                              <Button
-                                variant='ghost'
-                                size='sm'
-                                title='Hủy combo'
-                                onClick={() => handleCancelCombo(combo.id)}
-                                className='text-orange-600 hover:text-orange-700'
-                              >
-                                <XCircle className='w-4 h-4' />
-                              </Button>
-                            )}
-
                             <Button
                               variant='ghost'
                               size='sm'
-                              className='text-red-600 hover:text-red-700'
-                              title='Xóa combo'
+                              className={
+                                combo.isActive
+                                  ? 'text-red-600 hover:text-red-700'
+                                  : 'text-green-600 hover:text-green-700'
+                              }
+                              onClick={() => handleToggleActive(combo)}
+                              title={combo.isActive ? 'Dừng hoạt động' : 'Kích hoạt'}
+                              disabled={toggling}
                             >
-                              <Trash2 className='w-4 h-4' />
+                              {combo.isActive ? (
+                                <PauseCircle className='w-4 h-4' />
+                              ) : (
+                                <PlayCircle className='w-4 h-4' />
+                              )}
                             </Button>
                           </div>
                         </td>
@@ -366,6 +368,58 @@ function ComboSeller() {
           )}
         </CardContent>
       </Card>
+
+      {/* Update Combo Modal */}
+      <UpdateComboModal
+        open={showUpdateModal}
+        onOpenChange={setShowUpdateModal}
+        combo={selectedCombo}
+        onSuccess={handleUpdateSuccess}
+      />
+
+      {/* Toggle Active Confirmation Dialog */}
+      <AlertDialog open={showToggleDialog} onOpenChange={setShowToggleDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {comboToToggle?.isActive ? 'Xác nhận dừng hoạt động combo' : 'Xác nhận kích hoạt combo'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {comboToToggle?.isActive ? (
+                <>
+                  Combo <strong>{comboToToggle.name}</strong> sẽ bị dừng hoạt động.
+                  <br />
+                  <br />
+                  Combo sẽ <strong>không được bán</strong> cho đến khi bạn mở lại.
+                  <br />
+                  Bạn có chắc chắn muốn dừng hoạt động combo này?
+                </>
+              ) : (
+                <>
+                  Combo <strong>{comboToToggle?.name}</strong> sẽ được kích hoạt trở lại.
+                  <br />
+                  <br />
+                  Combo sẽ <strong>có thể được bán</strong> sau khi được kích hoạt.
+                  <br />
+                  Bạn có chắc chắn muốn kích hoạt combo này?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={toggling} onClick={() => setComboToToggle(null)}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmToggleActive}
+              disabled={toggling}
+              className={comboToToggle?.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
+            >
+              {toggling ? 'Đang xử lý...' : comboToToggle?.isActive ? 'Dừng hoạt động' : 'Kích hoạt'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

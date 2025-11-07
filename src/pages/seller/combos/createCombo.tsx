@@ -90,10 +90,9 @@ function CreateComboSeller() {
 
       const response = await createComboShell(comboData)
 
-      if (response.status === 200) {
+      if (response.status === 201) {
         toast.success('Tạo combo thành công! Bạn có thể thêm sản phẩm vào combo.')
-        // Navigate to edit page to add items
-        navigate(`../${path.updateComboSeller.replace(':id', response.data.id)}`)
+        navigate(`../${path.detailComboSeller.replace(':id', response.data.id)}`)
       } else {
         toast.error(response.message || 'Có lỗi xảy ra khi tạo combo')
       }

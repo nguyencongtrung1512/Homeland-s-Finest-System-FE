@@ -3,11 +3,20 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../../components/ui/dialog'
 import { Plus, Edit, Trash2, Eye } from 'lucide-react'
 import path from '../../../constants/path'
 import { productApi, type ProductListResponse } from '../../../apis/product.api'
 import type { Product } from '../../../types/productType'
 import ModalUpdateProduct from './modalUpdateProduct'
+import { toast } from '../../../utils/toast'
 
 function ProductsSeller() {
   const navigate = useNavigate()
@@ -22,6 +31,9 @@ function ProductsSeller() {
   })
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [showUpdateDialog, setShowUpdateDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Fetch products from API - GET /api/Product tự động filter theo seller đã đăng nhập
   const fetchProducts = async (pageNumber: number = 1, pageSize: number = 10) => {
@@ -72,6 +84,44 @@ function ProductsSeller() {
 
   const handlePageChange = (newPage: number) => {
     fetchProducts(newPage, pagination.pageSize)
+  }
+
+  const handleDeleteClick = (product: Product) => {
+    setProductToDelete(product)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!productToDelete) return
+
+    try {
+      setIsDeleting(true)
+      const response = await productApi.delete(productToDelete.id)
+      
+      if (response && (response.status === 200 || response.status === 202)) {
+        toast.success(response?.message || 'Xóa sản phẩm thành công')
+        setShowDeleteDialog(false)
+        setProductToDelete(null)
+        // Refresh product list
+        await fetchProducts(pagination.pageNumber, pagination.pageSize)
+      } else {
+        toast.error(response?.message || 'Không thể xóa sản phẩm')
+      }
+    } catch (error: unknown) {
+      console.error('Error deleting product:', error)
+      const errorMessage =
+        error && typeof error === 'object' && 'message' in error
+          ? String(error.message)
+          : 'Có lỗi xảy ra khi xóa sản phẩm'
+      toast.error(errorMessage)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false)
+    setProductToDelete(null)
   }
 
   const getStatusBadge = (status: string, isActive: boolean) => {
@@ -189,7 +239,13 @@ function ProductsSeller() {
                           >
                             <Edit className='w-4 h-4' />
                           </Button>
-                          <Button variant='ghost' size='sm' className='text-red-600 hover:text-red-700'>
+                          <Button
+                            title='Xóa sản phẩm'
+                            variant='ghost'
+                            size='sm'
+                            className='text-red-600 hover:text-red-700 hover:bg-red-50'
+                            onClick={() => handleDeleteClick(product)}
+                          >
                             <Trash2 className='w-4 h-4' />
                           </Button>
                         </div>
@@ -256,6 +312,35 @@ function ProductsSeller() {
         product={selectedProduct}
         onSuccess={fetchProducts}
       />
+
+      {/* Dialog xác nhận xóa sản phẩm */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa sản phẩm</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa sản phẩm <strong>{productToDelete?.name}</strong> không?
+              <br />
+              <span className='text-sm text-gray-500 mt-2 block'>
+                Sản phẩm sẽ bị vô hiệu hóa và không còn hiển thị trên hệ thống. Hành động này có thể ảnh hưởng đến các đơn hàng liên quan.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant='outline' onClick={handleDeleteCancel} disabled={isDeleting}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              variant='destructive'
+              className='bg-red-600 hover:bg-red-700 text-white'
+            >
+              {isDeleting ? 'Đang xóa...' : 'Xác nhận xóa'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
