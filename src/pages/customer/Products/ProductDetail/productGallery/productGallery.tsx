@@ -12,6 +12,7 @@ import {
 } from '../../../../../components/ui/dialog'
 import { Button } from '../../../../../components/ui/button'
 import { useProductDetail } from '../../../../../hooks/useProductDetail'
+import ProductImageCarousel from '../../../../../components/ui/product-caroseu'
 
 interface VariantOption {
   id: string
@@ -192,14 +193,30 @@ function ProductGallery() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product])
 
+  // ✅ Ensure selectedImage is always valid
+  useEffect(() => {
+    if (allImages.length > 0 && selectedImage >= allImages.length) {
+      setSelectedImage(0)
+    } else if (allImages.length === 0) {
+      setSelectedImage(0)
+    }
+  }, [allImages.length, selectedImage])
+
   // ✅ Auto-switch to first image of selected variant when variant changes
   useEffect(() => {
-    if (currentVariant?.productImages && currentVariant.productImages.length > 0 && allImages.length > 0) {
+    if (allImages.length === 0) {
+      return
+    }
+    if (currentVariant?.productImages && currentVariant.productImages.length > 0) {
       const firstVariantImage = currentVariant.productImages[0]
       const imageIndex = allImages.findIndex((img) => img === firstVariantImage)
       if (imageIndex !== -1) {
         setSelectedImage(imageIndex)
+      } else if (selectedImage >= allImages.length) {
+        setSelectedImage(0)
       }
+    } else if (selectedImage >= allImages.length) {
+      setSelectedImage(0)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentVariant?.id])
@@ -287,53 +304,35 @@ function ProductGallery() {
     return null
   }
 
-  // ✅ Main image from all images collection
-  const mainImage =
-    allImages.length > 0 && selectedImage < allImages.length ? allImages[selectedImage] : '/images/placeholder.jpg'
+  // ✅ Default image for fallback
+  const defaultImageUrl = 'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
 
   const productData = getProductData()
 
   return (
     <>
-      <div className='bg-white'>
+      <div id='product-gallery' className='bg-white'>
         <div className='max-w-7xl mx-auto px-6 py-8'>
-          <div className='grid grid-cols-1 lg:grid-cols-2 gap-12'>
-            {/* Image Gallery */}
-            <div className='space-y-4'>
-              {/* Main Image */}
-              <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200'>
-                <img
-                  src={mainImage}
-                  alt={product.name}
-                  className='w-full h-full object-cover'
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.src = 'https://via.placeholder.com/600x600?text=No+Image'
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 auto-rows-min'>
+            {/* Image Gallery - Product Carousel */}
+            <div className='space-y-3'>
+              {allImages.length > 0 ? (
+                <ProductImageCarousel
+                  images={allImages}
+                  productName={product.name}
+                  selectedIndex={selectedImage}
+                  onImageSelect={(index) => {
+                    setSelectedImage(index)
                   }}
+                  defaultImage={defaultImageUrl}
                 />
-              </div>
-
-              {/* Thumbnail Images - All images from product and variants */}
-              {allImages.length > 0 && (
-                <div className='grid grid-cols-6 gap-2'>
-                  {allImages.map((image, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedImage(index)}
-                      className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-colors ${selectedImage === index ? 'border-orange-500' : 'border-transparent hover:border-gray-300'
-                        }`}
-                    >
-                      <img
-                        src={image}
-                        alt={`${product.name} ${index + 1}`}
-                        className='w-full h-full object-cover'
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = 'https://via.placeholder.com/100x100?text=No+Image'
-                        }}
-                      />
-                    </button>
-                  ))}
+              ) : (
+                <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center'>
+                  <img
+                    src={defaultImageUrl}
+                    alt={product.name}
+                    className='w-full h-full object-cover'
+                  />
                 </div>
               )}
             </div>
@@ -346,13 +345,13 @@ function ProductGallery() {
 
                 <div className='flex items-center gap-4 mb-3'>
                   <div className='flex items-center gap-1'>
-                    <span className='text-orange-500 text-lg font-medium border-b border-orange-500'>
+                    <span className='text-green-500 text-lg font-medium border-b border-green-500'>
                       {product.rating.toFixed(1)}
                     </span>
                     {[...Array(5)].map((_, i) => (
                       <svg
                         key={i}
-                        className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'text-orange-400' : 'text-gray-300'}`}
+                        className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'text-green-500' : 'text-gray-300'}`}
                         fill='currentColor'
                         viewBox='0 0 20 20'
                       >
@@ -381,7 +380,7 @@ function ProductGallery() {
               <div className='bg-gray-50 px-5 py-4 rounded'>
                 <div className='flex items-center gap-4'>
                   {currentPrice === 0 && productData?.summaryPrice ? (
-                    <div className='text-3xl font-medium text-orange-500'>{productData.summaryPrice}</div>
+                    <div className='text-3xl font-medium text-green-600'>{productData.summaryPrice}</div>
                   ) : (
                     <>
                       {currentVariant?.basePrice && currentVariant.basePrice > currentPrice && (
@@ -389,11 +388,11 @@ function ProductGallery() {
                           ₫{currentVariant.basePrice.toLocaleString('vi-VN')}
                         </div>
                       )}
-                      <div className='text-3xl font-medium text-orange-500'>
+                      <div className='text-3xl font-medium text-green-600'>
                         ₫{currentPrice.toLocaleString('vi-VN')}
                       </div>
                       {currentVariant?.basePrice && currentVariant.basePrice > currentPrice && (
-                        <div className='bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium'>
+                        <div className='bg-green-600 text-white px-2 py-1 rounded text-xs font-medium'>
                           -{Math.round(((currentVariant.basePrice - currentPrice) / currentVariant.basePrice) * 100)}%
                           GIẢM
                         </div>
@@ -426,8 +425,8 @@ function ProductGallery() {
                                 className={`
                                   flex items-center gap-2 px-3 py-2 border rounded text-sm transition-all
                                   ${isSelected
-                                    ? 'border-orange-500 text-orange-500 bg-orange-50'
-                                    : 'border-gray-300 text-gray-700 hover:border-orange-300'
+                                    ? 'border-green-500 text-green-600 bg-green-50'
+                                    : 'border-gray-300 text-gray-700 hover:border-green-300'
                                   }
                                   ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
                                   relative
@@ -447,7 +446,7 @@ function ProductGallery() {
                                 <span>{option.attributeName || option.name}</span>
                                 {isSelected && (
                                   <svg
-                                    className='absolute bottom-0 right-0 w-4 h-4 text-orange-500'
+                                    className='absolute bottom-0 right-0 w-4 h-4 text-green-600'
                                     fill='currentColor'
                                     viewBox='0 0 20 20'
                                   >
@@ -494,8 +493,8 @@ function ProductGallery() {
                                         className={`
                                           flex items-center gap-2 px-3 py-2 border rounded text-sm transition-all
                                           ${isChildSelected
-                                            ? 'border-orange-500 text-orange-500 bg-orange-50'
-                                            : 'border-gray-300 text-gray-700 hover:border-orange-300'
+                                            ? 'border-green-500 text-green-600 bg-green-50'
+                                            : 'border-gray-300 text-gray-700 hover:border-green-300'
                                           }
                                           ${isChildDisabled ? 'opacity-40 cursor-not-allowed' : ''}
                                           relative
@@ -515,7 +514,7 @@ function ProductGallery() {
                                         <span>{childOption.attributeName || childOption.name}</span>
                                         {isChildSelected && (
                                           <svg
-                                            className='absolute bottom-0 right-0 w-4 h-4 text-orange-500'
+                                            className='absolute bottom-0 right-0 w-4 h-4 text-green-600'
                                             fill='currentColor'
                                             viewBox='0 0 20 20'
                                           >
@@ -584,11 +583,11 @@ function ProductGallery() {
                 <button
                   onClick={handleAddToCart}
                   disabled={!product.isActive || currentStock === 0 || !currentVariant || isAddingToCart}
-                  className='flex-1 border border-orange-500 text-orange-500 bg-orange-50 py-3 px-6 rounded hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-normal'
+                  className='flex-1 border border-green-600 text-green-600 bg-green-50 py-3 px-6 rounded hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-normal'
                 >
                   {isAddingToCart ? (
                     <>
-                      <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500'></div>
+                      <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-green-600'></div>
                       Đang thêm...
                     </>
                   ) : (
@@ -609,7 +608,7 @@ function ProductGallery() {
                 <button
                   onClick={handleBuyNow}
                   disabled={!product.isActive || currentStock === 0 || !currentVariant}
-                  className='flex-1 bg-orange-500 text-white py-3 px-6 rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-normal'
+                  className='flex-1 bg-green-600 text-white py-3 px-6 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-normal'
                 >
                   {!product.isActive || currentStock === 0 ? 'Mua Ngay' : 'Mua Ngay'}
                 </button>
@@ -624,6 +623,7 @@ function ProductGallery() {
               )}
             </div>
           </div>
+
         </div>
       </div>
 
@@ -638,7 +638,7 @@ function ProductGallery() {
             <Button variant='outline' onClick={() => setShowLoginModal(false)}>
               Hủy
             </Button>
-            <Button className='bg-orange-500 hover:bg-orange-600' onClick={() => navigate('/login')}>
+            <Button className='bg-green-600 hover:bg-green-700' onClick={() => navigate('/login')}>
               Đăng nhập
             </Button>
           </DialogFooter>
