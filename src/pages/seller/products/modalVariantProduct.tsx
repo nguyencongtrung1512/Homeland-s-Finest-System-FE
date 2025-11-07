@@ -43,6 +43,7 @@ export default function ModalVariantProduct({
   const [variantImages, setVariantImages] = useState<File[]>([])
 
   const [hasAutoAttributeType, setHasAutoAttributeType] = useState(false)
+  const [attributeTypeError, setAttributeTypeError] = useState<string>('')
 
   // Auto-set attributeType when dialog opens (chỉ khi variant cha đã có con)
   useEffect(() => {
@@ -98,6 +99,24 @@ export default function ModalVariantProduct({
     }
   }, [open, product, selectedParentVariant])
 
+  // Helper function to find parent variant's attributeType
+  const getParentVariantAttributeType = (): string | null => {
+    if (!product?.variantGroups || !selectedParentVariant) {
+      return null
+    }
+
+    // Tìm variant cha trong product.variantGroups
+    for (const group of product.variantGroups) {
+      const foundVariant = group.options.find((option) => option.id === selectedParentVariant.id)
+      if (foundVariant) {
+        // Trả về attributeType của VariantGroup chứa variant cha
+        return group.attributeType
+      }
+    }
+
+    return null
+  }
+
   // Helper functions
   const createPreviewUrl = (file: File): string => {
     return URL.createObjectURL(file)
@@ -112,10 +131,39 @@ export default function ModalVariantProduct({
   }
 
   const handleVariantInputChange = (field: string, value: string | number) => {
+    // Clear error when user starts typing
+    if (field === 'attributeType') {
+      setAttributeTypeError('')
+    }
+
     setVariantData((prev) => ({
       ...prev,
       [field]: value
     }))
+  }
+
+  // Validate attributeType không trùng với variant cha
+  const validateAttributeType = (attributeType: string): boolean => {
+    // Chỉ validate khi tạo variant con (có selectedParentVariant)
+    if (!selectedParentVariant) {
+      return true
+    }
+
+    const parentAttributeType = getParentVariantAttributeType()
+    if (!parentAttributeType) {
+      return true
+    }
+
+    // So sánh không phân biệt hoa thường
+    if (attributeType.trim().toLowerCase() === parentAttributeType.trim().toLowerCase()) {
+      setAttributeTypeError(
+        `Loại thuộc tính không được trùng với loại thuộc tính của variant cha (${parentAttributeType})`
+      )
+      return false
+    }
+
+    setAttributeTypeError('')
+    return true
   }
 
   const handleCreateProductVariant = async () => {
@@ -134,6 +182,12 @@ export default function ModalVariantProduct({
 
       if (!variantData.attributeType.trim()) {
         toast.error('Vui lòng nhập loại thuộc tính (ví dụ: Màu sắc, Dung tích)')
+        return
+      }
+
+      // Validate attributeType không trùng với variant cha
+      if (selectedParentVariant && !validateAttributeType(variantData.attributeType)) {
+        toast.error(attributeTypeError || 'Loại thuộc tính không được trùng với loại thuộc tính của variant cha')
         return
       }
 
@@ -242,6 +296,7 @@ export default function ModalVariantProduct({
       })
       setVariantImages([])
       setHasAutoAttributeType(false)
+      setAttributeTypeError('')
     }
   }
 
@@ -265,10 +320,23 @@ export default function ModalVariantProduct({
                   id='variant-attribute-type'
                   placeholder='Ví dụ: Màu sắc, Dung tích, Kích thước...'
                   value={variantData.attributeType}
-                  onChange={(e) => handleVariantInputChange('attributeType', e.target.value)}
-                  className='mt-1 bg-gray-100'
+                  onChange={(e) => {
+                    handleVariantInputChange('attributeType', e.target.value)
+                    // Validate real-time khi người dùng nhập (ngay cả khi readOnly bị override)
+                    if (selectedParentVariant) {
+                      validateAttributeType(e.target.value)
+                    }
+                  }}
+                  className={`mt-1 bg-gray-100 ${attributeTypeError ? 'border-red-500' : ''}`}
                   readOnly
                 />
+                {attributeTypeError && <p className='mt-1 text-sm text-red-500'>{attributeTypeError}</p>}
+                {selectedParentVariant && (
+                  <p className='mt-1 text-xs text-gray-500'>
+                    Loại thuộc tính của variant cha:{' '}
+                    <span className='font-medium'>{getParentVariantAttributeType()}</span>
+                  </p>
+                )}
               </div>
             ) : (
               <div>
@@ -279,9 +347,28 @@ export default function ModalVariantProduct({
                   id='variant-attribute-type'
                   placeholder='Ví dụ: Màu sắc, Dung tích, Kích thước...'
                   value={variantData.attributeType}
-                  onChange={(e) => handleVariantInputChange('attributeType', e.target.value)}
-                  className='mt-1'
+                  onChange={(e) => {
+                    handleVariantInputChange('attributeType', e.target.value)
+                    // Validate real-time khi người dùng nhập
+                    if (selectedParentVariant) {
+                      validateAttributeType(e.target.value)
+                    }
+                  }}
+                  onBlur={() => {
+                    // Validate khi người dùng rời khỏi input
+                    if (selectedParentVariant && variantData.attributeType.trim()) {
+                      validateAttributeType(variantData.attributeType)
+                    }
+                  }}
+                  className={`mt-1 ${attributeTypeError ? 'border-red-500' : ''}`}
                 />
+                {attributeTypeError && <p className='mt-1 text-sm text-red-500'>{attributeTypeError}</p>}
+                {selectedParentVariant && (
+                  <p className='mt-1 text-xs text-gray-500'>
+                    Loại thuộc tính của variant cha:{' '}
+                    <span className='font-medium'>{getParentVariantAttributeType()}</span>
+                  </p>
+                )}
               </div>
             )}
 
