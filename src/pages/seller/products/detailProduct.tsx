@@ -17,7 +17,8 @@ import {
   Plus,
   Edit,
   CircleFadingArrowUp,
-  ChevronDown
+  ChevronDown,
+  Trash2
 } from 'lucide-react'
 import { message } from 'antd'
 import { Button } from '../../../components/ui/button'
@@ -80,6 +81,7 @@ function DetailProductSeller() {
   // States for confirmation dialogs
   const [showSubmitConfirmDialog, setShowSubmitConfirmDialog] = useState(false)
   const [showCancelConfirmDialog, setShowCancelConfirmDialog] = useState(false)
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false)
 
   // States for expanded variants (collapse/expand)
   const [expandedVariants, setExpandedVariants] = useState<Set<string>>(new Set())
@@ -357,6 +359,38 @@ function DetailProductSeller() {
     }
   }
 
+  // Handler mở modal xác nhận xóa
+  const handleOpenDeleteConfirm = () => {
+    setShowDeleteConfirmDialog(true)
+  }
+
+  // Handler xóa sản phẩm (sau khi xác nhận)
+  const handleDelete = async () => {
+    if (!id) return
+
+    try {
+      setCheckingValidation(true)
+      setShowDeleteConfirmDialog(false)
+      const response = await productApi.delete(id)
+      if (response && (response.status === 200 || response.status === 202)) {
+        toast.success(response?.message || 'Xóa sản phẩm thành công')
+        // Navigate back to product list after successful deletion
+        navigate('/seller/product-management')
+      } else {
+        toast.error(response?.message || 'Không thể xóa sản phẩm')
+      }
+    } catch (error: unknown) {
+      console.error('Error deleting product:', error)
+      const errorMessage =
+        error && typeof error === 'object' && 'message' in error
+          ? String(error.message)
+          : 'Có lỗi xảy ra khi xóa sản phẩm'
+      toast.error(errorMessage)
+    } finally {
+      setCheckingValidation(false)
+    }
+  }
+
   // Handler toggle expanded variant
   const toggleVariantExpanded = (variantId: string) => {
     setExpandedVariants((prev) => {
@@ -474,6 +508,16 @@ function DetailProductSeller() {
           >
             <Plus className='w-4 h-4 mr-2' />
             Thêm Product Detail
+          </Button>
+          <Button
+            onClick={handleOpenDeleteConfirm}
+            className='bg-red-600 hover:bg-red-700 text-white'
+            variant='outline'
+            size='sm'
+            disabled={checkingValidation}
+          >
+            <Trash2 className='w-4 h-4 mr-2' />
+            Xóa sản phẩm
           </Button>
         </div>
       </motion.div>
@@ -1455,6 +1499,35 @@ function DetailProductSeller() {
               className='bg-red-600 hover:bg-red-700 text-white'
             >
               {checkingValidation ? 'Đang xử lý...' : 'Xác nhận hủy'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal xác nhận xóa sản phẩm */}
+      <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa sản phẩm</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa sản phẩm <strong>{product?.name}</strong> không? 
+              <br />
+              <span className='text-sm text-gray-500 mt-2 block'>
+                Sản phẩm sẽ bị vô hiệu hóa và không còn hiển thị trên hệ thống. Hành động này có thể ảnh hưởng đến các đơn hàng liên quan.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setShowDeleteConfirmDialog(false)} disabled={checkingValidation}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={checkingValidation}
+              variant='destructive'
+              className='bg-red-600 hover:bg-red-700 text-white'
+            >
+              {checkingValidation ? 'Đang xóa...' : 'Xác nhận xóa'}
             </Button>
           </DialogFooter>
         </DialogContent>

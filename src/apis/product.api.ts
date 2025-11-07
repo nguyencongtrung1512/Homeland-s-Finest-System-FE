@@ -213,10 +213,10 @@ export const productApi = {
     return response
   },
 
-  // Delete product
-  delete: async (id: string): Promise<ApiResponse<null>> => {
-    const response = await axiosInstance.delete(`${API_URL}/${id}`)
-    return response as unknown as ApiResponse<null>
+  // Delete product (soft delete - sets IsActive to false)
+  delete: async (id: string): Promise<any> => {
+    const response = await axiosInstance.put(`${API_URL}/delete/${id}`)
+    return response
   },
 
   // Get products by store

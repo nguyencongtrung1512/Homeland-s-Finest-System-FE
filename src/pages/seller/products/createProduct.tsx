@@ -65,6 +65,54 @@ function CreateProduct() {
     return URL.createObjectURL(file)
   }
 
+  // Helper function to validate image file
+  const validateImageFile = (file: File): { valid: boolean; error?: string } => {
+    // Check file type - only allow image types
+    const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+    if (!validImageTypes.includes(file.type.toLowerCase())) {
+      return {
+        valid: false,
+        error: `File "${file.name}" không phải là file ảnh hợp lệ. Chỉ chấp nhận PNG, JPG, JPEG, WEBP, GIF.`
+      }
+    }
+
+    // Check file size - max 5MB
+    const maxSizeInBytes = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSizeInBytes) {
+      const fileSizeInMB = (file.size / (1024 * 1024)).toFixed(2)
+      return {
+        valid: false,
+        error: `File "${file.name}" có kích thước ${fileSizeInMB}MB, vượt quá giới hạn 5MB.`
+      }
+    }
+
+    return { valid: true }
+  }
+
+  // Helper function to validate video file
+  const validateVideoFile = (file: File): { valid: boolean; error?: string } => {
+    // Check file type - only allow video types
+    const validVideoTypes = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm']
+    if (!validVideoTypes.includes(file.type.toLowerCase())) {
+      return {
+        valid: false,
+        error: `File "${file.name}" không phải là file video hợp lệ. Chỉ chấp nhận MP4, MOV, AVI, WEBM.`
+      }
+    }
+
+    // Check file size - max 50MB
+    const maxSizeInBytes = 50 * 1024 * 1024 // 50MB
+    if (file.size > maxSizeInBytes) {
+      const fileSizeInMB = (file.size / (1024 * 1024)).toFixed(2)
+      return {
+        valid: false,
+        error: `File "${file.name}" có kích thước ${fileSizeInMB}MB, vượt quá giới hạn 50MB.`
+      }
+    }
+
+    return { valid: true }
+  }
+
   // Helper function to remove image from array
   const removeProductImage = (indexToRemove: number) => {
     setMediaData((prev) => ({
@@ -87,20 +135,66 @@ function CreateProduct() {
     }))
   }
 
-  // Helper function to add more images to existing array
+  // Helper function to add more images to existing array with validation
   const addProductImages = (newFiles: File[]) => {
-    setMediaData((prev) => ({
-      ...prev,
-      productImages: [...prev.productImages, ...newFiles]
-    }))
+    const validFiles: File[] = []
+    const errors: string[] = []
+
+    newFiles.forEach((file) => {
+      const validation = validateImageFile(file)
+      if (validation.valid) {
+        validFiles.push(file)
+      } else {
+        errors.push(validation.error || 'File không hợp lệ')
+      }
+    })
+
+    // Show errors if any
+    if (errors.length > 0) {
+      errors.forEach((error) => toast.error(error))
+    }
+
+    // Only add valid files
+    if (validFiles.length > 0) {
+      setMediaData((prev) => ({
+        ...prev,
+        productImages: [...prev.productImages, ...validFiles]
+      }))
+      if (validFiles.length < newFiles.length) {
+        toast.warning(`Đã thêm ${validFiles.length}/${newFiles.length} ảnh hợp lệ.`)
+      }
+    }
   }
 
-  // Helper function to add more certificate images
+  // Helper function to add more certificate images with validation
   const addCertificateImages = (newFiles: File[]) => {
-    setMediaData((prev) => ({
-      ...prev,
-      certificateImages: [...prev.certificateImages, ...newFiles]
-    }))
+    const validFiles: File[] = []
+    const errors: string[] = []
+
+    newFiles.forEach((file) => {
+      const validation = validateImageFile(file)
+      if (validation.valid) {
+        validFiles.push(file)
+      } else {
+        errors.push(validation.error || 'File không hợp lệ')
+      }
+    })
+
+    // Show errors if any
+    if (errors.length > 0) {
+      errors.forEach((error) => toast.error(error))
+    }
+
+    // Only add valid files
+    if (validFiles.length > 0) {
+      setMediaData((prev) => ({
+        ...prev,
+        certificateImages: [...prev.certificateImages, ...validFiles]
+      }))
+      if (validFiles.length < newFiles.length) {
+        toast.warning(`Đã thêm ${validFiles.length}/${newFiles.length} ảnh hợp lệ.`)
+      }
+    }
   }
 
   const handleMediaChange = (field: string, value: File | File[] | null) => {
@@ -110,6 +204,17 @@ function CreateProduct() {
     } else if (field === 'certificateImages' && Array.isArray(value)) {
       // Add new certificate images to existing array
       addCertificateImages(value)
+    } else if (field === 'productVideo' && value instanceof File) {
+      // Validate video file before setting
+      const validation = validateVideoFile(value)
+      if (validation.valid) {
+        setMediaData((prev) => ({
+          ...prev,
+          [field]: value
+        }))
+      } else {
+        toast.error(validation.error || 'Video không hợp lệ')
+      }
     } else {
       setMediaData((prev) => ({
         ...prev,
@@ -199,9 +304,43 @@ function CreateProduct() {
         return
       }
 
+      if (!productData.description.trim()) {
+        toast.error('Vui lòng nhập mô tả chi tiết')
+        return
+      }
+
       if (!productData.material.trim()) {
         toast.error('Vui lòng nhập xuất xứ / material')
         return
+      }
+
+      // Validate product images - required and at least 1 image
+      if (!mediaData.productImages || mediaData.productImages.length === 0) {
+        toast.error('Vui lòng thêm ít nhất một hình ảnh sản phẩm')
+        return
+      }
+
+      // Validate each image file before submit (double check)
+      const imageValidationErrors: string[] = []
+      mediaData.productImages.forEach((file) => {
+        const validation = validateImageFile(file)
+        if (!validation.valid && validation.error) {
+          imageValidationErrors.push(validation.error)
+        }
+      })
+
+      if (imageValidationErrors.length > 0) {
+        imageValidationErrors.forEach((error) => toast.error(error))
+        return
+      }
+
+      // Validate video if provided
+      if (mediaData.productVideo) {
+        const videoValidation = validateVideoFile(mediaData.productVideo)
+        if (!videoValidation.valid) {
+          toast.error(videoValidation.error || 'Video không hợp lệ')
+          return
+        }
       }
 
       // Validation: Chỉ validate các trường bắt buộc theo API
@@ -423,7 +562,7 @@ function CreateProduct() {
                       onDrop={(e) => {
                         e.preventDefault()
                         e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                        const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'))
+                        const files = Array.from(e.dataTransfer.files)
                         if (files.length > 0) {
                           addProductImages(files)
                         }
@@ -556,7 +695,7 @@ function CreateProduct() {
                       onDrop={(e) => {
                         e.preventDefault()
                         e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                        const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('video/'))
+                        const files = Array.from(e.dataTransfer.files)
                         if (files.length > 0) {
                           handleMediaChange('productVideo', files[0])
                         }
@@ -574,7 +713,9 @@ function CreateProduct() {
                         id='product-video'
                         onChange={(e) => {
                           const file = e.target.files?.[0] || null
-                          handleMediaChange('productVideo', file)
+                          if (file) {
+                            handleMediaChange('productVideo', file)
+                          }
                           e.target.value = ''
                         }}
                       />
