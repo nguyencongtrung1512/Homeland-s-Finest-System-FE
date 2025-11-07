@@ -18,30 +18,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Plus, Edit, Trash2, Package, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from '../../../utils/toast'
-import { getVariantsBySellerId } from '../../../apis/combo.api'
-import { useAuth } from '../../../contexts/auth.context'
+import { productApi } from '../../../apis/product.api'
 import type { ComboItem, CreateComboItemRequest, UpdateComboItemRequest } from '../../../types/combo.type'
-
-// Interface cho variant response từ API
-interface VariantResponse {
-  productVariantId: string
-  productName: string
-  variantName: string
-  quantity: number
-  basePrice?: number
-  finalPrice?: number
-  isActive: boolean
-  imageUrl?: string
-  createdAt: string
-  updatedAt: string
-  availableQuantity?: number
-  reservedCod?: number
-  reservedCombo?: number
-  length?: number
-  width?: number
-  height?: number
-  weight?: number
-}
+import type { ProductForCombo, ProductSku } from '../../../apis/product.api'
 
 interface ComboItemsManagerProps {
   items: ComboItem[]
@@ -60,57 +39,106 @@ function ComboItemsManager({
   onUpdateItem,
   onRemoveItem
 }: ComboItemsManagerProps) {
-  const { user } = useAuth()
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
   const [editingItem, setEditingItem] = useState<ComboItem | null>(null)
   const [saving, setSaving] = useState(false)
-  const [variants, setVariants] = useState<VariantResponse[]>([])
-  const [loadingVariants, setLoadingVariants] = useState(false)
+  const [products, setProducts] = useState<ProductForCombo[]>([])
+  const [skus, setSkus] = useState<ProductSku[]>([])
+  const [editSkus, setEditSkus] = useState<ProductSku[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [loadingSkus, setLoadingSkus] = useState(false)
+  const [loadingEditSkus, setLoadingEditSkus] = useState(false)
+  const [selectedProductId, setSelectedProductId] = useState<string>('')
+  const [selectedEditProductId, setSelectedEditProductId] = useState<string>('')
 
   // Form data for new item
   const [newItemData, setNewItemData] = useState<CreateComboItemRequest>({
     productVariantId: '',
-    comboItemName: '',
-    price: 0,
     quantity: 1
   })
 
   // Form data for editing item
   const [editItemData, setEditItemData] = useState<UpdateComboItemRequest>({
     productVariantId: '',
-    comboItemName: '',
-    price: 0,
     quantity: 1,
     isActive: true
   })
 
-  // Load variants when component mounts
+  // Load products when component mounts
   useEffect(() => {
-    const loadVariants = async () => {
-      if (!user?.userId) return
-
-      setLoadingVariants(true)
+    const loadProducts = async () => {
+      setLoadingProducts(true)
       try {
-        const variantsData = await getVariantsBySellerId(user.userId)
-        setVariants(variantsData as unknown as VariantResponse[])
+        const response = await productApi.getForCombo()
+        setProducts(response.data || [])
       } catch {
         toast.error('Không thể tải danh sách sản phẩm')
       } finally {
-        setLoadingVariants(false)
+        setLoadingProducts(false)
       }
     }
 
-    loadVariants()
-  }, [user?.userId])
+    loadProducts()
+  }, [])
+
+  // Load SKUs when product is selected (for add dialog)
+  useEffect(() => {
+    const loadSkus = async () => {
+      if (!selectedProductId || !showAddDialog) {
+        if (!selectedProductId) {
+          setSkus([])
+        }
+        return
+      }
+
+      setLoadingSkus(true)
+      try {
+        const response = await productApi.getSkus(selectedProductId)
+        setSkus(response.data || [])
+      } catch {
+        toast.error('Không thể tải danh sách SKU')
+        setSkus([])
+      } finally {
+        setLoadingSkus(false)
+      }
+    }
+
+    loadSkus()
+  }, [selectedProductId, showAddDialog])
+
+  // Load SKUs when product is selected (for edit dialog)
+  useEffect(() => {
+    const loadSkusForEdit = async () => {
+      if (!selectedEditProductId || !showEditDialog) {
+        if (!selectedEditProductId) {
+          setEditSkus([])
+        }
+        return
+      }
+
+      setLoadingEditSkus(true)
+      try {
+        const response = await productApi.getSkus(selectedEditProductId)
+        setEditSkus(response.data || [])
+      } catch {
+        toast.error('Không thể tải danh sách SKU')
+        setEditSkus([])
+      } finally {
+        setLoadingEditSkus(false)
+      }
+    }
+
+    loadSkusForEdit()
+  }, [selectedEditProductId, showEditDialog])
 
   const handleNewItemChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setNewItemData((prev) => ({
       ...prev,
-      [name]: name === 'basePrice' || name === 'finalPrice' || name === 'quantity' ? Number(value) : value
+      [name]: name === 'quantity' ? Number(value) : value
     }))
   }
 
@@ -118,56 +146,66 @@ function ComboItemsManager({
     const { name, value } = e.target
     setEditItemData((prev) => ({
       ...prev,
-      [name]: name === 'basePrice' || name === 'finalPrice' || name === 'quantity' ? Number(value) : value
+      [name]: name === 'quantity' ? Number(value) : value
     }))
   }
 
-  const handleVariantSelect = (variantId: string, isEdit = false) => {
-    const selectedVariant = variants.find((v) => v.productVariantId === variantId)
-    if (!selectedVariant) return
-
-    const variantData = {
-      productVariantId: variantId,
-      comboItemName: `${selectedVariant.productName || 'Sản phẩm'} - ${selectedVariant.variantName}`,
-      basePrice: selectedVariant.basePrice || 0,
-      finalPrice: selectedVariant.finalPrice || selectedVariant.basePrice || 0,
-      quantity: 1
+  const handleProductSelect = (productId: string, isEdit = false) => {
+    if (isEdit) {
+      setSelectedEditProductId(productId)
+      setEditItemData((prev) => ({
+        ...prev,
+        productVariantId: '' // Reset variant when product changes
+      }))
+    } else {
+      setSelectedProductId(productId)
+      setNewItemData((prev) => ({
+        ...prev,
+        productVariantId: '' // Reset variant when product changes
+      }))
     }
+  }
 
+  const handleSkuSelect = (skuId: string, isEdit = false) => {
     if (isEdit) {
       setEditItemData((prev) => ({
         ...prev,
-        ...variantData,
-        isActive: prev.isActive
+        productVariantId: skuId
       }))
     } else {
-      setNewItemData({
-        ...variantData,
-        price: 0
-      })
+      setNewItemData((prev) => ({
+        ...prev,
+        productVariantId: skuId
+      }))
     }
   }
 
   const handleAddItem = async () => {
-    if (!newItemData.productVariantId || !newItemData.comboItemName) {
-      toast.error('Vui lòng điền đầy đủ thông tin sản phẩm')
+    if (!selectedProductId) {
+      toast.error('Vui lòng chọn sản phẩm')
       return
     }
 
-    if (newItemData.price <= 0 || newItemData.quantity <= 0) {
-      toast.error('Giá và số lượng phải lớn hơn 0')
+    if (!newItemData.productVariantId) {
+      toast.error('Vui lòng chọn SKU')
+      return
+    }
+
+    if (newItemData.quantity <= 0) {
+      toast.error('Số lượng phải lớn hơn 0')
       return
     }
 
     setSaving(true)
     try {
       await onAddItem(newItemData)
+      toast.success('Thêm sản phẩm vào combo thành công')
       setNewItemData({
         productVariantId: '',
-        comboItemName: '',
-        price: 0,
         quantity: 1
       })
+      setSelectedProductId('')
+      setSkus([])
       setShowAddDialog(false)
     } catch {
       toast.error('Có lỗi xảy ra khi thêm sản phẩm')
@@ -179,13 +217,18 @@ function ComboItemsManager({
   const handleUpdateItem = async () => {
     if (!editingItem) return
 
-    if (!editItemData.productVariantId || !editItemData.comboItemName) {
-      toast.error('Vui lòng điền đầy đủ thông tin sản phẩm')
+    if (!selectedEditProductId) {
+      toast.error('Vui lòng chọn sản phẩm')
       return
     }
 
-    if (editItemData.price <= 0 || editItemData.quantity <= 0) {
-      toast.error('Giá và số lượng phải lớn hơn 0')
+    if (!editItemData.productVariantId) {
+      toast.error('Vui lòng chọn SKU')
+      return
+    }
+
+    if (editItemData.quantity <= 0) {
+      toast.error('Số lượng phải lớn hơn 0')
       return
     }
 
@@ -194,6 +237,8 @@ function ComboItemsManager({
       await onUpdateItem(editingItem.id, editItemData)
       setShowEditDialog(false)
       setEditingItem(null)
+      setSelectedEditProductId('')
+      setSkus([])
       // Không hiển thị toast ở đây vì updateCombo sẽ hiển thị
     } catch (error) {
       console.error('Error updating item:', error)
@@ -224,17 +269,46 @@ function ComboItemsManager({
     }
   }
 
-  const openEditDialog = (item: ComboItem) => {
+  const openEditDialog = async (item: ComboItem) => {
     setEditingItem(item)
+
+    // Reset product selection - user will need to select product again
+    // This is because we don't have productId in ComboItem
+    setSelectedEditProductId('')
     setEditItemData({
       productVariantId: item.productVariantId,
-      comboItemName: item.comboItemName,
-      price: item.price,
       quantity: item.quantity,
       isActive: item.isActive
     })
+    setEditSkus([])
+
     setShowEditDialog(true)
   }
+
+  // Reset states when dialogs close
+  useEffect(() => {
+    if (!showAddDialog) {
+      setSelectedProductId('')
+      setNewItemData({
+        productVariantId: '',
+        quantity: 1
+      })
+      setSkus([])
+    }
+  }, [showAddDialog])
+
+  useEffect(() => {
+    if (!showEditDialog) {
+      setSelectedEditProductId('')
+      setEditingItem(null)
+      setEditItemData({
+        productVariantId: '',
+        quantity: 1,
+        isActive: true
+      })
+      setEditSkus([])
+    }
+  }, [showEditDialog])
 
   const activeItemsCount = items.filter((item) => item.isActive).length
   const totalItemsCount = items.length
@@ -315,76 +389,79 @@ function ComboItemsManager({
                 </DialogHeader>
                 <div className='space-y-4'>
                   <div className='space-y-2'>
-                    <Label htmlFor='productVariantId'>Chọn sản phẩm *</Label>
+                    <Label htmlFor='productId'>Chọn sản phẩm *</Label>
                     <Select
-                      value={newItemData.productVariantId}
-                      onValueChange={(value) => handleVariantSelect(value, false)}
-                      disabled={loadingVariants}
+                      value={selectedProductId}
+                      onValueChange={(value) => handleProductSelect(value, false)}
+                      disabled={loadingProducts}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={loadingVariants ? 'Đang tải...' : 'Chọn sản phẩm'} />
+                        <SelectValue placeholder={loadingProducts ? 'Đang tải...' : 'Chọn sản phẩm'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {!variants || variants.length === 0 ? (
+                        {!products || products.length === 0 ? (
                           <div className='p-4 text-center text-gray-500'>
-                            {loadingVariants ? 'Đang tải sản phẩm...' : 'Không có sản phẩm nào'}
+                            {loadingProducts ? 'Đang tải sản phẩm...' : 'Không có sản phẩm nào'}
                           </div>
                         ) : (
-                          (() => {
-                            console.log('Rendering variants for dropdown:', variants)
-                            const filteredVariants = variants.filter((variant) => variant && variant.productVariantId)
-                            console.log('Filtered variants for dropdown:', filteredVariants)
-                            return filteredVariants.map((variant) => (
-                              <SelectItem key={variant.productVariantId} value={variant.productVariantId}>
-                                <div className='flex items-center gap-2'>
-                                  {variant.imageUrl && (
-                                    <img
-                                      src={variant.imageUrl}
-                                      alt={variant.variantName}
-                                      className='w-8 h-8 object-cover rounded'
-                                    />
-                                  )}
-                                  <div>
-                                    <div className='font-medium'>{variant.productName || 'Sản phẩm'}</div>
-                                    <div className='text-sm text-gray-500'>{variant.variantName || 'Variant'}</div>
-                                    <div className='text-sm text-green-600 font-semibold'>
-                                      {(variant.finalPrice || variant.basePrice || 0).toLocaleString()}₫
-                                    </div>
-                                  </div>
+                          products.map((product) => (
+                            <SelectItem key={product.id} value={product.id}>
+                              <div className='flex items-center gap-2'>
+                                {product.thumbnailUrl && (
+                                  <img
+                                    src={product.thumbnailUrl}
+                                    alt={product.name}
+                                    className='w-8 h-8 object-cover rounded'
+                                  />
+                                )}
+                                <div>
+                                  <div className='font-medium'>{product.name}</div>
+                                  <div className='text-sm text-gray-500'>{product.categoryName}</div>
                                 </div>
-                              </SelectItem>
-                            ))
-                          })()
+                              </div>
+                            </SelectItem>
+                          ))
                         )}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className='space-y-2'>
-                    <Label htmlFor='comboItemName'>Tên hiển thị *</Label>
-                    <Input
-                      id='comboItemName'
-                      name='comboItemName'
-                      value={newItemData.comboItemName}
-                      onChange={handleNewItemChange}
-                      placeholder='Tên sẽ tự động điền khi chọn sản phẩm'
-                    />
-                  </div>
-
-                  <div className='grid grid-cols-2 gap-4'>
+                  {selectedProductId && (
                     <div className='space-y-2'>
-                      <Label htmlFor='price'>Giá *</Label>
-                      <Input
-                        id='price'
-                        name='price'
-                        type='number'
-                        value={newItemData.price}
-                        onChange={handleNewItemChange}
-                        placeholder='0'
-                        min='0'
-                      />
+                      <Label htmlFor='skuId'>Chọn SKU *</Label>
+                      <Select
+                        value={newItemData.productVariantId}
+                        onValueChange={(value) => handleSkuSelect(value, false)}
+                        disabled={loadingSkus || !selectedProductId}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={loadingSkus ? 'Đang tải SKU...' : 'Chọn SKU'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {loadingSkus ? (
+                            <div className='p-4 text-center text-gray-500'>Đang tải SKU...</div>
+                          ) : !skus || skus.length === 0 ? (
+                            <div className='p-4 text-center text-gray-500'>Không có SKU nào</div>
+                          ) : (
+                            skus
+                              .filter((sku) => sku.isActive)
+                              .map((sku) => (
+                                <SelectItem key={sku.id} value={sku.id}>
+                                  <div className='flex items-center justify-between'>
+                                    <div>
+                                      <div className='font-medium'>{sku.name}</div>
+                                      <div className='text-sm text-gray-500'>
+                                        Tồn kho: {sku.quantity} | Giá: {sku.finalPrice.toLocaleString()}₫
+                                      </div>
+                                    </div>
+                                  </div>
+                                </SelectItem>
+                              ))
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
+                  )}
 
                   <div className='space-y-2'>
                     <Label htmlFor='quantity'>Số lượng *</Label>
@@ -501,73 +578,79 @@ function ComboItemsManager({
             </DialogHeader>
             <div className='space-y-4'>
               <div className='space-y-2'>
-                <Label htmlFor='edit-productVariantId'>Chọn sản phẩm *</Label>
+                <Label htmlFor='edit-productId'>Chọn sản phẩm *</Label>
                 <Select
-                  value={editItemData.productVariantId}
-                  onValueChange={(value) => handleVariantSelect(value, true)}
-                  disabled={loadingVariants}
+                  value={selectedEditProductId}
+                  onValueChange={(value) => handleProductSelect(value, true)}
+                  disabled={loadingProducts}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={loadingVariants ? 'Đang tải...' : 'Chọn sản phẩm'} />
+                    <SelectValue placeholder={loadingProducts ? 'Đang tải...' : 'Chọn sản phẩm'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {!variants || variants.length === 0 ? (
+                    {!products || products.length === 0 ? (
                       <div className='p-4 text-center text-gray-500'>
-                        {loadingVariants ? 'Đang tải sản phẩm...' : 'Không có sản phẩm nào'}
+                        {loadingProducts ? 'Đang tải sản phẩm...' : 'Không có sản phẩm nào'}
                       </div>
                     ) : (
-                      variants
-                        .filter((variant) => variant && variant.productVariantId)
-                        .map((variant) => (
-                          <SelectItem key={variant.productVariantId} value={variant.productVariantId}>
-                            <div className='flex items-center gap-2'>
-                              {variant.imageUrl && (
-                                <img
-                                  src={variant.imageUrl}
-                                  alt={variant.variantName}
-                                  className='w-8 h-8 object-cover rounded'
-                                />
-                              )}
-                              <div>
-                                <div className='font-medium'>{variant.productName || 'Sản phẩm'}</div>
-                                <div className='text-sm text-gray-500'>{variant.variantName || 'Variant'}</div>
-                                <div className='text-sm text-green-600 font-semibold'>
-                                  {(variant.finalPrice || variant.basePrice || 0).toLocaleString()}₫
-                                </div>
-                              </div>
+                      products.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          <div className='flex items-center gap-2'>
+                            {product.thumbnailUrl && (
+                              <img
+                                src={product.thumbnailUrl}
+                                alt={product.name}
+                                className='w-8 h-8 object-cover rounded'
+                              />
+                            )}
+                            <div>
+                              <div className='font-medium'>{product.name}</div>
+                              <div className='text-sm text-gray-500'>{product.categoryName}</div>
                             </div>
-                          </SelectItem>
-                        ))
+                          </div>
+                        </SelectItem>
+                      ))
                     )}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className='space-y-2'>
-                <Label htmlFor='edit-comboItemName'>Tên hiển thị *</Label>
-                <Input
-                  id='edit-comboItemName'
-                  name='comboItemName'
-                  value={editItemData.comboItemName}
-                  onChange={handleEditItemChange}
-                  placeholder='Tên sẽ tự động điền khi chọn sản phẩm'
-                />
-              </div>
-
-              <div className='grid grid-cols-2 gap-4'>
+              {selectedEditProductId && (
                 <div className='space-y-2'>
-                  <Label htmlFor='edit-price'>Giá *</Label>
-                  <Input
-                    id='edit-price'
-                    name='price'
-                    type='number'
-                    value={editItemData.price}
-                    onChange={handleEditItemChange}
-                    placeholder='0'
-                    min='0'
-                  />
+                  <Label htmlFor='edit-skuId'>Chọn SKU *</Label>
+                  <Select
+                    value={editItemData.productVariantId}
+                    onValueChange={(value) => handleSkuSelect(value, true)}
+                    disabled={loadingEditSkus || !selectedEditProductId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingEditSkus ? 'Đang tải SKU...' : 'Chọn SKU'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingEditSkus ? (
+                        <div className='p-4 text-center text-gray-500'>Đang tải SKU...</div>
+                      ) : !editSkus || editSkus.length === 0 ? (
+                        <div className='p-4 text-center text-gray-500'>Không có SKU nào</div>
+                      ) : (
+                        editSkus
+                          .filter((sku) => sku.isActive)
+                          .map((sku) => (
+                            <SelectItem key={sku.id} value={sku.id}>
+                              <div className='flex items-center justify-between'>
+                                <div>
+                                  <div className='font-medium'>{sku.name}</div>
+                                  <div className='text-sm text-gray-500'>
+                                    Tồn kho: {sku.quantity} | Giá: {sku.finalPrice.toLocaleString()}₫
+                                  </div>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
+              )}
 
               <div className='space-y-2'>
                 <Label htmlFor='edit-quantity'>Số lượng *</Label>

@@ -2,10 +2,20 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
-import { Plus, Edit, Trash2, Eye, RefreshCw } from 'lucide-react'
-import { toast } from 'react-toastify'
+import { Plus, Edit, Eye, RefreshCw, PauseCircle, PlayCircle } from 'lucide-react'
+import { toast } from '../../../utils/toast'
 import path from '../../../constants/path'
-import { getAllCombos} from '../../../apis/combo.api'
+import { getAllCombos, updateComboShell } from '../../../apis/combo.api'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../../../components/ui/alert-dialog'
 import { storeApi } from '../../../apis/store.api'
 import { useAuth } from '../../../contexts/auth.context'
 import { useState, useEffect, useCallback } from 'react'
@@ -23,6 +33,9 @@ function ComboSeller() {
   const pageSize = 10
   const [selectedCombo, setSelectedCombo] = useState<Combo | null>(null)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [comboToToggle, setComboToToggle] = useState<Combo | null>(null)
+  const [showToggleDialog, setShowToggleDialog] = useState(false)
+  const [toggling, setToggling] = useState(false)
 
   const pagination =
     allCombos.length > 0
@@ -111,10 +124,52 @@ function ComboSeller() {
     navigate(`../${path.detailComboSeller.replace(':id', comboId)}`)
   }
 
+  const handleToggleActive = (combo: Combo) => {
+    setComboToToggle(combo)
+    setShowToggleDialog(true)
+  }
+
+  const confirmToggleActive = async () => {
+    if (!comboToToggle) return
+
+    setToggling(true)
+    try {
+      // Chỉ cập nhật isActive, giữ nguyên các field khác
+      const updateData = {
+        name: comboToToggle.name,
+        description: comboToToggle.description || '',
+        isActive: !comboToToggle.isActive
+      }
+
+      const response = await updateComboShell(comboToToggle.id, updateData)
+
+      if (response && (response.status === 200 || response.status === 201 || response.status === 202)) {
+        toast.success(
+          comboToToggle.isActive
+            ? 'Đã dừng hoạt động combo. Combo sẽ không được bán cho đến khi được mở lại.'
+            : 'Đã kích hoạt combo. Combo có thể được bán trở lại.'
+        )
+        await fetchCombos()
+        setShowToggleDialog(false)
+        setComboToToggle(null)
+      } else {
+        toast.error(response?.message || 'Có lỗi xảy ra khi cập nhật trạng thái combo')
+      }
+    } catch (error) {
+      const errorMessage =
+        error && typeof error === 'object' && 'message' in error
+          ? (error as { message?: string }).message
+          : 'Có lỗi xảy ra khi cập nhật trạng thái combo'
+      toast.error(errorMessage)
+    } finally {
+      setToggling(false)
+    }
+  }
+
   const getStatusBadge = (status: string, isActive: boolean) => {
     if (!isActive) {
       return {
-        text: 'Đã xóa',
+        text: 'Dừng hoạt động',
         className: 'bg-gray-100 text-gray-800 hover:bg-gray-100'
       }
     }
@@ -260,10 +315,20 @@ function ComboSeller() {
                             <Button
                               variant='ghost'
                               size='sm'
-                              className='text-red-600 hover:text-red-700'
-                              title='Xóa combo'
+                              className={
+                                combo.isActive
+                                  ? 'text-red-600 hover:text-red-700'
+                                  : 'text-green-600 hover:text-green-700'
+                              }
+                              onClick={() => handleToggleActive(combo)}
+                              title={combo.isActive ? 'Dừng hoạt động' : 'Kích hoạt'}
+                              disabled={toggling}
                             >
-                              <Trash2 className='w-4 h-4' />
+                              {combo.isActive ? (
+                                <PauseCircle className='w-4 h-4' />
+                              ) : (
+                                <PlayCircle className='w-4 h-4' />
+                              )}
                             </Button>
                           </div>
                         </td>
@@ -311,6 +376,50 @@ function ComboSeller() {
         combo={selectedCombo}
         onSuccess={handleUpdateSuccess}
       />
+
+      {/* Toggle Active Confirmation Dialog */}
+      <AlertDialog open={showToggleDialog} onOpenChange={setShowToggleDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {comboToToggle?.isActive ? 'Xác nhận dừng hoạt động combo' : 'Xác nhận kích hoạt combo'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {comboToToggle?.isActive ? (
+                <>
+                  Combo <strong>{comboToToggle.name}</strong> sẽ bị dừng hoạt động.
+                  <br />
+                  <br />
+                  Combo sẽ <strong>không được bán</strong> cho đến khi bạn mở lại.
+                  <br />
+                  Bạn có chắc chắn muốn dừng hoạt động combo này?
+                </>
+              ) : (
+                <>
+                  Combo <strong>{comboToToggle?.name}</strong> sẽ được kích hoạt trở lại.
+                  <br />
+                  <br />
+                  Combo sẽ <strong>có thể được bán</strong> sau khi được kích hoạt.
+                  <br />
+                  Bạn có chắc chắn muốn kích hoạt combo này?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={toggling} onClick={() => setComboToToggle(null)}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmToggleActive}
+              disabled={toggling}
+              className={comboToToggle?.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
+            >
+              {toggling ? 'Đang xử lý...' : comboToToggle?.isActive ? 'Dừng hoạt động' : 'Kích hoạt'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

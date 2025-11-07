@@ -1,35 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import React, { useState, useEffect } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { Badge } from '../../../components/ui/badge'
-import { Switch } from '../../../components/ui/switch'
-import { ArrowLeft, Save, Upload, X } from 'lucide-react'
+import { Save, Upload, X } from 'lucide-react'
 import { toast } from '../../../utils/toast'
-import {
-  getComboById,
-  updateComboShell,
-  addItemToCombo,
-  updateComboItem,
-  removeItemFromCombo
-} from '../../../apis/combo.api'
-import ComboItemsManager from './ComboItemsManager'
-import type {
-  Combo,
-  CreateComboItemRequest,
-  UpdateComboItemRequest,
-  UpdateComboRequest
-} from '../../../types/combo.type'
+import { getComboById, updateComboShell } from '../../../apis/combo.api'
+import type { Combo, UpdateComboRequest } from '../../../types/combo.type'
 
-function UpdateComboSeller() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+interface UpdateComboModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  combo: Combo | null
+  onSuccess: () => void
+}
 
+function UpdateComboModal({ open, onOpenChange, combo: initialCombo, onSuccess }: UpdateComboModalProps) {
   const [combo, setCombo] = useState<Combo | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -38,35 +27,50 @@ function UpdateComboSeller() {
   })
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [removeThumbnail, setRemoveThumbnail] = useState(false)
 
-  const fetchCombo = useCallback(async () => {
-    if (!id) return
-
-    setLoading(true)
-    try {
-      const response = await getComboById(id)
-      if (response.data) {
-        const comboData = response.data
-        setCombo(comboData)
-        setFormData({
-          name: comboData.name,
-          description: comboData.description || ''
-        })
-        if (comboData.thumbnailUrl) {
-          setPreviewUrl(comboData.thumbnailUrl)
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching combo:', error)
-      toast.error('Không thể tải thông tin combo')
-    } finally {
-      setLoading(false)
-    }
-  }, [id])
-
+  // Fetch combo data when modal opens
   useEffect(() => {
+    const fetchCombo = async () => {
+      if (!open || !initialCombo?.id) return
+
+      setLoading(true)
+      try {
+        const response = await getComboById(initialCombo.id)
+        if (response.data) {
+          const comboData = response.data
+          setCombo(comboData)
+          setFormData({
+            name: comboData.name,
+            description: comboData.description || ''
+          })
+          if (comboData.thumbnailUrl) {
+            setPreviewUrl(comboData.thumbnailUrl)
+          }
+          setRemoveThumbnail(false)
+          setThumbnailFile(null)
+        }
+      } catch (error) {
+        console.error('Error fetching combo:', error)
+        toast.error('Không thể tải thông tin combo')
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchCombo()
-  }, [fetchCombo])
+  }, [open, initialCombo?.id])
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      setCombo(null)
+      setFormData({ name: '', description: '' })
+      setThumbnailFile(null)
+      setPreviewUrl(null)
+      setRemoveThumbnail(false)
+    }
+  }, [open])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -90,6 +94,7 @@ function UpdateComboSeller() {
       }
 
       setThumbnailFile(file)
+      setRemoveThumbnail(false) // Reset removeThumbnail khi có file mới
       const url = URL.createObjectURL(file)
       setPreviewUrl(url)
     }
@@ -97,12 +102,12 @@ function UpdateComboSeller() {
 
   const removeFile = () => {
     setThumbnailFile(null)
+    setRemoveThumbnail(true)
     if (previewUrl && !combo?.thumbnailUrl) {
       URL.revokeObjectURL(previewUrl)
     }
-    setPreviewUrl(combo?.thumbnailUrl || null)
+    setPreviewUrl(null)
   }
-
 
   const handleSaveComboShell = async () => {
     if (!combo || !formData.name.trim()) {
@@ -115,29 +120,29 @@ function UpdateComboSeller() {
       const updateData: UpdateComboRequest = {
         name: formData.name.trim(),
         description: formData.description.trim(),
+        // Giữ nguyên isActive (toggle isActive được xử lý riêng trong listCombo.tsx)
         isActive: combo.isActive,
-        thumbnailFile: thumbnailFile || undefined
+        thumbnailFile: thumbnailFile || undefined,
+        removeThumbnail: removeThumbnail || undefined
       }
 
       const response = await updateComboShell(combo.id, updateData)
 
       if (response) {
-        setCombo({
-          ...response.data as unknown as Combo,
-          isActive: (response.data as unknown as Combo).isActive ?? true
-        })
         toast.success('Cập nhật thông tin combo thành công')
 
         if (response.data?.status === 'Pending') {
           toast.info('Combo đã được gửi duyệt do có thay đổi')
         }
 
-        await fetchCombo()
+        onSuccess()
+        onOpenChange(false)
       }
     } catch (error) {
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string } }; message?: string }
-        const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Có lỗi xảy ra khi cập nhật combo'
+        const errorMessage =
+          axiosError.response?.data?.message || axiosError.message || 'Có lỗi xảy ra khi cập nhật combo'
         toast.error(errorMessage)
       } else {
         toast.error('Có lỗi xảy ra khi cập nhật combo')
@@ -147,278 +152,26 @@ function UpdateComboSeller() {
     }
   }
 
-
-  const handleAddItem = async (itemData: CreateComboItemRequest) => {
-    if (!combo) return
-
-    setSaving(true)
-    try {
-      const response = await addItemToCombo(combo.id, itemData)
-
-      if (response) {
-        setCombo({
-          ...response,
-          isActive: response.isActive ?? true
-        })
-        toast.success('Thêm sản phẩm vào combo thành công')
-
-        if (response.status === 'Pending') {
-          toast.info('Combo đã được gửi duyệt do có đủ 2 sản phẩm')
-        }
-
-        await fetchCombo()
-      }
-    } catch (error) {
-
-      let errorMessage = 'Có lỗi xảy ra khi thêm sản phẩm'
-
-      if (error && typeof error === 'object') {
-        // Kiểm tra axios error structure
-        if ('response' in error) {
-          const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string }
-
-          if (axiosError.response?.data?.message) {
-            errorMessage = axiosError.response.data.message
-          } else if (axiosError.response?.data?.error) {
-            errorMessage = axiosError.response.data.error
-          } else if (axiosError.message) {
-            errorMessage = axiosError.message
-          }
-        } else if ('message' in error) {
-          errorMessage = (error as Error).message
-        }
-      }
-
-      toast.error(errorMessage)
-      throw error
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleUpdateItem = async (itemId: string, itemData: UpdateComboItemRequest) => {
-    if (!combo) return
-
-    setSaving(true)
-    try {
-      const response = await updateComboItem(combo.id, itemId, itemData)
-
-      if (response) {
-        setCombo({
-          ...response,
-          isActive: response.isActive ?? true
-        })
-        toast.success('Cập nhật sản phẩm thành công')
-
-        if (response.status === 'Pending') {
-          toast.info('Combo đã được gửi duyệt do có thay đổi')
-        } else if (response.status === 'Draft') {
-          toast.info('Combo đã chuyển về trạng thái nháp')
-        }
-
-        await fetchCombo()
-      }
-    } catch (error) {
-      console.error('Error updating item:', error)
-
-      let errorMessage = 'Có lỗi xảy ra khi cập nhật sản phẩm'
-
-      if (error && typeof error === 'object') {
-        if ('response' in error) {
-          const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string }
-
-          if (axiosError.response?.data?.message) {
-            errorMessage = axiosError.response.data.message
-          } else if (axiosError.response?.data?.error) {
-            errorMessage = axiosError.response.data.error
-          } else if (axiosError.message) {
-            errorMessage = axiosError.message
-          }
-        } else if ('message' in error) {
-          errorMessage = (error as Error).message
-        }
-      }
-
-      toast.error(errorMessage)
-      throw error
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleRemoveItem = async (itemId: string) => {
-    if (!combo) return
-
-    // Tìm item để lấy thông tin cần thiết cho API
-    const itemToRemove = combo.comboItems.find((item) => item.id === itemId)
-    if (!itemToRemove) {
-      toast.error('Không tìm thấy sản phẩm cần xóa')
-      return
-    }
-
-    setSaving(true)
-    try {
-      // Gửi thông tin item với isActive: false để xóa
-      const itemData: UpdateComboItemRequest = {
-        productVariantId: itemToRemove.productVariantId,
-        comboItemName: itemToRemove.comboItemName,
-        price: itemToRemove.price,
-        quantity: itemToRemove.quantity,
-        isActive: false
-      }
-      const response = await removeItemFromCombo(combo.id, itemId, itemData)
-
-      if (response) {
-        setCombo({
-          ...response.data as unknown as Combo,
-          isActive: (response.data as unknown as Combo).isActive ?? true
-        })
-        toast.success('Xóa sản phẩm thành công')
-
-        if (response.data?.status === 'Draft') {
-          toast.info('Combo đã chuyển về trạng thái nháp')
-        }
-
-        await fetchCombo()
-
-
-      }
-    } catch (error) {
-      console.error('Error removing item:', error)
-
-      let errorMessage = 'Có lỗi xảy ra khi xóa sản phẩm'
-
-      if (error && typeof error === 'object') {
-        // Kiểm tra axios error structure
-        if ('response' in error) {
-          const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string }
-
-          // Lấy message từ response.data.message
-          if (axiosError.response?.data?.message) {
-            errorMessage = axiosError.response.data.message
-          } else if (axiosError.response?.data?.error) {
-            errorMessage = axiosError.response.data.error
-          } else if (axiosError.message) {
-            errorMessage = axiosError.message
-          }
-        } else if ('message' in error) {
-          errorMessage = (error as Error).message
-        }
-      }
-
-      toast.error(errorMessage)
-      throw error
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleBack = () => {
-    navigate('/seller/combo-management')
-  }
-
-  const getStatusBadge = (status: string, isActive: boolean) => {
-    if (!isActive) {
-      return {
-        text: 'Đã xóa',
-        className: 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-      }
-    }
-
-    switch (status) {
-      case 'Draft':
-        return {
-          text: 'Nháp',
-          className: 'bg-blue-100 text-blue-800 hover:bg-blue-100'
-        }
-      case 'Pending':
-        return {
-          text: 'Chờ duyệt',
-          className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
-        }
-      case 'Approved':
-        return {
-          text: 'Đã duyệt',
-          className: 'bg-green-100 text-green-800 hover:bg-green-100'
-        }
-      case 'Rejected':
-        return {
-          text: 'Bị từ chối',
-          className: 'bg-red-100 text-red-800 hover:bg-red-100'
-        }
-      default:
-        return {
-          text: 'Đã duyệt',
-          className: 'bg-green-100 text-green-800 hover:bg-green-100'
-        }
-    }
-  }
-
   const canEdit = combo?.status === 'Draft' || combo?.status === 'Rejected' || combo?.status === 'Pending'
 
-  if (loading) {
-    return (
-      <div className='p-6'>
-        <div className='flex justify-center items-center py-12'>
-          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-600'></div>
-          <span className='ml-2 text-gray-600'>Đang tải...</span>
-        </div>
-      </div>
-    )
-  }
-
-  if (!combo) {
-    return (
-      <div className='p-6'>
-        <div className='text-center py-12'>
-          <h2 className='text-2xl font-semibold text-gray-900 mb-4'>Không tìm thấy combo</h2>
-          <p className='text-gray-600 mb-6'>Combo bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
-          <Button onClick={handleBack} className='bg-green-600 hover:bg-green-700'>
-            <ArrowLeft className='w-4 h-4 mr-2' />
-            Quay lại
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  const statusInfo = getStatusBadge(combo.status, combo.isActive)
-
   return (
-    <div className='p-6'>
-      {/* Header */}
-      <div className='flex items-center justify-between mb-6'>
-        <div className='flex items-center gap-4'>
-          <Button variant='ghost' onClick={handleBack}>
-            <ArrowLeft className='w-4 h-4 mr-2' />
-            Quay lại
-          </Button>
-          <h1 className='text-2xl font-semibold text-gray-900'>Chỉnh sửa Combo</h1>
-        </div>
-        <div className='flex items-center gap-4'>
-          <Badge variant='secondary' className={statusInfo.className}>
-            {statusInfo.text}
-          </Badge>
-          {combo?.status === 'Approved' && (
-            <div className='text-sm text-green-600 bg-green-50 px-3 py-1 rounded'>
-              Combo đã được duyệt, không thể chỉnh sửa
-            </div>
-          )}
-          {combo?.status === 'Pending' && (
-            <div className='text-sm text-yellow-600 bg-yellow-50 px-3 py-1 rounded'>
-              Combo đang chờ duyệt, vẫn có thể chỉnh sửa
-            </div>
-          )}
-        </div>
-      </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
+        <DialogHeader>
+          <DialogTitle>Chỉnh sửa Combo</DialogTitle>
+        </DialogHeader>
 
-      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        {/* Combo Shell Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Thông tin Combo</CardTitle>
-          </CardHeader>
-          <CardContent className='space-y-6'>
+        {loading ? (
+          <div className='flex justify-center items-center py-12'>
+            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-600'></div>
+            <span className='ml-2 text-gray-600'>Đang tải...</span>
+          </div>
+        ) : !combo ? (
+          <div className='text-center py-12'>
+            <p className='text-gray-600'>Không tìm thấy thông tin combo</p>
+          </div>
+        ) : (
+          <div className='space-y-6'>
             {/* Tên combo */}
             <div className='space-y-2'>
               <Label htmlFor='name'>Tên combo *</Label>
@@ -450,25 +203,8 @@ function UpdateComboSeller() {
               <p className='text-sm text-gray-500'>{formData.description.length}/500 ký tự</p>
             </div>
 
-            {/* Trạng thái hoạt động */}
-            <div className='space-y-2'>
-              <div className='flex items-center justify-between'>
-                <Label htmlFor='isActive'>Trạng thái hoạt động</Label>
-                <Switch
-                  id='isActive'
-                  checked={combo?.isActive ?? true}
-                  onCheckedChange={(checked) => {
-                    if (combo) {
-                      setCombo({ ...combo, isActive: checked })
-                    }
-                  }}
-                  disabled={!canEdit}
-                />
-              </div>
-              <p className='text-sm text-gray-500'>
-                {combo?.isActive ? 'Combo đang hoạt động' : 'Combo đã bị vô hiệu hóa'}
-              </p>
-            </div>
+            {/* Trạng thái hoạt động - Đã được di chuyển sang nút toggle trong listCombo.tsx */}
+            {/* Chức năng toggle isActive được xử lý riêng để tránh nhầm lẫn với việc chỉnh sửa thông tin cơ bản */}
 
             {/* Upload ảnh */}
             <div className='space-y-2'>
@@ -524,32 +260,39 @@ function UpdateComboSeller() {
               )}
             </div>
 
+            {/* Status warning */}
+            {combo?.status === 'Approved' && (
+              <div className='text-sm text-green-600 bg-green-50 px-3 py-2 rounded'>
+                Combo đã được duyệt, không thể chỉnh sửa
+              </div>
+            )}
+            {combo?.status === 'Pending' && (
+              <div className='text-sm text-yellow-600 bg-yellow-50 px-3 py-2 rounded'>
+                Combo đang chờ duyệt, vẫn có thể chỉnh sửa
+              </div>
+            )}
+
             {/* Save Button */}
             {canEdit && (
-              <Button
-                onClick={handleSaveComboShell}
-                disabled={saving || !formData.name.trim()}
-                className='w-full bg-green-600 hover:bg-green-700'
-              >
-                <Save className='w-4 h-4 mr-2' />
-                {saving ? 'Đang lưu...' : 'Lưu thông tin combo'}
-              </Button>
+              <div className='flex justify-end gap-2 pt-4'>
+                <Button variant='outline' onClick={() => onOpenChange(false)} disabled={saving}>
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleSaveComboShell}
+                  disabled={saving || !formData.name.trim()}
+                  className='bg-green-600 hover:bg-green-700'
+                >
+                  <Save className='w-4 h-4 mr-2' />
+                  {saving ? 'Đang lưu...' : 'Lưu thông tin combo'}
+                </Button>
+              </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Combo Items */}
-        <ComboItemsManager
-          items={combo.comboItems}
-          canEdit={canEdit}
-          comboStatus={combo.status}
-          onAddItem={handleAddItem}
-          onUpdateItem={handleUpdateItem}
-          onRemoveItem={handleRemoveItem}
-        />
-      </div>
-    </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 
-export default UpdateComboSeller
+export default UpdateComboModal

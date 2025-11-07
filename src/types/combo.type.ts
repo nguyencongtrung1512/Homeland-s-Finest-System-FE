@@ -12,6 +12,8 @@ export interface UpdateComboRequest {
   description?: string
   isActive: boolean
   thumbnailFile?: File
+  finalPrice?: number
+  removeThumbnail?: boolean
 }
 
 export interface CreateComboItemRequest {
