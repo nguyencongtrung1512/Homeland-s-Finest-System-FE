@@ -26,6 +26,7 @@ export interface PromotionDTO {
   usedQuantity: number
   maxPerUser: number
   isActive: boolean
+  isPrivate?: boolean // Chỉ dùng cho type User
   storeId?: string
   createdAt: string
   updatedAt: string
@@ -99,6 +100,7 @@ export interface PromotionAdminRequest {
   maxQuantity?: number
   maxPerUser: number
   isActive: boolean
+  isPrivate?: boolean // Chỉ dùng cho type User
   userIds: string[] // Chỉ dùng cho type User
 }
 
@@ -241,6 +243,7 @@ export interface PromotionFormData {
   maxQuantity?: number
   maxPerUser: number
   isActive: boolean
+  isPrivate?: boolean // For User type promotions
   userIds?: string[] // For User type promotions
 }
 

@@ -62,6 +62,7 @@ interface Order {
   totalDiscount: number
   shipPrice: number
   finalPrice: number
+  isFreeship?: boolean
   note?: string
   orderItems: OrderItem[]
   orderItemsWithCombo: OrderItemWithCombo[]
@@ -103,6 +104,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       totalDiscount: apiOrder?.totalDiscount || 0,
       shipPrice: apiOrder?.shipPrice || 0,
       finalPrice: apiOrder?.finalPrice || 0,
+      isFreeship: apiOrder?.isFreeship || false,
       note: apiOrder?.note || undefined,
       orderItems: (apiOrder?.orderItems || []).map((item: any) => ({
         id: item?.id || '',
@@ -465,6 +467,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                   <div className='flex items-center gap-2 mb-2'>
                     <MapPin className='h-4 w-4 text-green-600' />
                     <h3 className='font-semibold text-gray-900 text-sm'>Thông tin giao hàng</h3>
+                    {order.isFreeship && (
+                      <Badge className='bg-green-100 text-green-700 border-0 text-xs ml-auto'>Miễn phí ship</Badge>
+                    )}
                   </div>
                   <div className='space-y-1'>
                     <p className='text-xs text-gray-600'>Người nhận</p>
@@ -473,6 +478,14 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                     <p className='font-medium text-gray-900 text-sm'>{order.fromPhone || 'N/A'}</p>
                     <p className='text-xs text-gray-600 mt-2'>Địa chỉ giao hàng</p>
                     <p className='font-medium text-gray-900 text-sm'>{order.toAddress}</p>
+                    <p className='text-xs text-gray-600 mt-2'>Phí vận chuyển</p>
+                    <p className='font-medium text-gray-900 text-sm'>
+                      {order.isFreeship ? (
+                        <span className='text-green-600'>Miễn phí</span>
+                      ) : (
+                        formatPrice(order.shipPrice)
+                      )}
+                    </p>
                     {order.note && order.status !== 'Cancel' && order.status !== 'Returned' && (
                       <>
                         <p className='text-xs text-gray-600 mt-2'>Ghi chú</p>

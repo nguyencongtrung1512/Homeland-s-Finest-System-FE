@@ -49,6 +49,11 @@ export const createPromotionAdmin = async (data: PromotionAdminRequest): Promise
   formData.append('MaxPerUser', data.maxPerUser.toString())
   formData.append('IsActive', data.isActive.toString())
 
+  // Add isPrivate for User type promotions (only when type is User)
+  if (data.type === 'User') {
+    formData.append('IsPrivate', (data.isPrivate ?? true).toString())
+  }
+
   // Add userIds for User type promotions (only when type is User)
   if (data.type === 'User' && data.userIds && data.userIds.length > 0) {
     data.userIds.forEach((userId) => {
@@ -92,6 +97,11 @@ export const updatePromotionAdmin = async (
 
   formData.append('MaxPerUser', data.maxPerUser.toString())
   formData.append('IsActive', data.isActive.toString())
+
+  // Add isPrivate for User type promotions (only when type is User)
+  if (data.type === 'User') {
+    formData.append('IsPrivate', (data.isPrivate ?? true).toString())
+  }
 
   // Add userIds for User type promotions (only when type is User)
   if (data.type === 'User' && data.userIds && data.userIds.length > 0) {

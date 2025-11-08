@@ -24,6 +24,7 @@ interface Order {
   statusColor: string
   statusBgColor: string
   statusText: string
+  isFreeship?: boolean
   products: {
     id?: string
     productInventoryId?: string // Add this field for navigation
@@ -192,6 +193,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     storeId: apiOrder?.storeId || '',
     date: apiOrder?.createdAt,
     ...statusInfo,
+    isFreeship: apiOrder?.isFreeship || false,
     products,
     total: formatPrice(apiOrder?.finalPrice),
     totalAmount: apiOrder?.finalPrice || 0,
@@ -492,6 +494,9 @@ export default function OrdersContent({
                   <div className='flex items-center gap-3 mb-2'>
                     <span className='font-medium text-gray-900'>Mã đơn hàng: {order.id}</span>
                     <Badge className={`${order.statusBgColor} ${order.statusColor} border-0`}>{order.status}</Badge>
+                    {order.isFreeship && (
+                      <Badge className='bg-green-100 text-green-700 border-0 text-xs'>Miễn phí ship</Badge>
+                    )}
                   </div>
                   <p className='text-sm text-gray-600'>{order.date}</p>
                   <p className={`text-sm ${order.statusColor} mt-1`}>{order.statusText}</p>
