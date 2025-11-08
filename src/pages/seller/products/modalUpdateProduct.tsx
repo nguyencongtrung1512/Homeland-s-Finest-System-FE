@@ -44,6 +44,27 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
     removeExistingVideo: false
   })
 
+  // Validation errors
+  const [nameError, setNameError] = useState<string>('')
+  const [materialError, setMaterialError] = useState<string>('')
+  const [descriptionError, setDescriptionError] = useState<string>('')
+
+  // Constants for validation
+  const MAX_NAME_LENGTH = 20
+  const MAX_MATERIAL_LENGTH = 20
+  const MAX_DESCRIPTION_WORDS = 500
+  const MAX_IMAGES = 10
+  const MIN_NAME_LENGTH = 1
+
+  // Helper function to count words
+  const countWords = (text: string): number => {
+    if (!text || text.trim().length === 0) return 0
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length
+  }
+
   // Fetch store ID and province ID
   useEffect(() => {
     const fetchStoreId = async () => {
@@ -139,13 +160,76 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
   }
 
   const addNewImages = (newFiles: File[]) => {
-    setMediaData((prev) => ({
-      ...prev,
-      newProductImages: [...prev.newProductImages, ...newFiles]
-    }))
+    const currentCount = existingImageUrls.length + mediaData.newProductImages.length
+    const availableSlots = MAX_IMAGES - currentCount
+
+    if (availableSlots <= 0) {
+      toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+      return
+    }
+
+    // Limit number of files that can be added
+    const filesToAdd = newFiles.slice(0, availableSlots)
+
+    if (filesToAdd.length < newFiles.length) {
+      toast.error(`Chỉ có thể thêm tối đa ${availableSlots} ảnh nữa.`)
+    }
+
+    // Validate file types and sizes
+    const validFiles: File[] = []
+    filesToAdd.forEach((file) => {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error(`File ${file.name} không phải là hình ảnh.`)
+        return
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`File ${file.name} quá lớn. Tối đa 5MB.`)
+        return
+      }
+
+      validFiles.push(file)
+    })
+
+    if (validFiles.length > 0) {
+      setMediaData((prev) => ({
+        ...prev,
+        newProductImages: [...prev.newProductImages, ...validFiles]
+      }))
+    }
   }
 
   const handleInputChange = (field: string, value: string | boolean) => {
+    // Clear errors when user starts typing
+    if (field === 'name') {
+      setNameError('')
+      const stringValue = value as string
+      if (stringValue.length > MAX_NAME_LENGTH) {
+        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự.`)
+        return
+      }
+    }
+
+    if (field === 'material') {
+      setMaterialError('')
+      const stringValue = value as string
+      if (stringValue.length > MAX_MATERIAL_LENGTH) {
+        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự.`)
+        return
+      }
+    }
+
+    if (field === 'description') {
+      setDescriptionError('')
+      const stringValue = value as string
+      const wordCount = countWords(stringValue)
+      if (wordCount > MAX_DESCRIPTION_WORDS) {
+        setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+      }
+    }
+
     setProductData((prev) => ({
       ...prev,
       [field]: value
@@ -179,6 +263,47 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
       // Validation
       if (!productData.name.trim()) {
         toast.error('Vui lòng nhập tên sản phẩm')
+        setNameError('Vui lòng nhập tên sản phẩm')
+        return
+      }
+
+      if (productData.name.trim().length < MIN_NAME_LENGTH) {
+        toast.error('Tên sản phẩm phải có ít nhất 1 ký tự')
+        setNameError('Tên sản phẩm phải có ít nhất 1 ký tự')
+        return
+      }
+
+      if (productData.name.trim().length > MAX_NAME_LENGTH) {
+        toast.error(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự`)
+        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự`)
+        return
+      }
+
+      // Validate material
+      if (productData.material && productData.material.length > MAX_MATERIAL_LENGTH) {
+        toast.error(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
+        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
+        return
+      }
+
+      // Validate description
+      const descriptionWordCount = countWords(productData.description)
+      if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
+        toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+        setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+        return
+      }
+
+      // Validate images count
+      const totalImages = existingImageUrls.length + mediaData.newProductImages.length
+      if (totalImages > MAX_IMAGES) {
+        toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+        return
+      }
+
+      // Validate video (only one video allowed)
+      if (mediaData.newProductVideo && fetchedProduct?.productVideo && !mediaData.removeExistingVideo) {
+        toast.error('Chỉ được tối đa 1 video. Vui lòng xóa video cũ trước khi thêm video mới.')
         return
       }
 
@@ -304,6 +429,9 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
         newProductVideo: null,
         removeExistingVideo: false
       })
+      setNameError('')
+      setMaterialError('')
+      setDescriptionError('')
     }
   }
 
@@ -323,30 +451,46 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
           <div className='space-y-6 mt-4'>
             {/* Product Name */}
             <div>
-              <Label htmlFor='update-name' className='text-sm font-medium'>
-                Tên sản phẩm <span className='text-red-500'>*</span>
-              </Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label htmlFor='update-name' className='text-sm font-medium'>
+                  Tên sản phẩm <span className='text-red-500'>*</span>
+                </Label>
+                <span
+                  className={`text-xs ${productData.name.length > MAX_NAME_LENGTH ? 'text-red-500' : 'text-gray-500'}`}
+                >
+                  {productData.name.length} / {MAX_NAME_LENGTH} ký tự
+                </span>
+              </div>
               <Input
                 id='update-name'
                 placeholder='Nhập tên sản phẩm'
                 value={productData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                className='mt-1'
+                className={`mt-1 ${nameError ? 'border-red-500' : ''}`}
               />
+              {nameError && <p className='mt-1 text-sm text-red-500'>{nameError}</p>}
             </div>
 
             {/* Material */}
             <div>
-              <Label htmlFor='update-material' className='text-sm font-medium'>
-                Material
-              </Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label htmlFor='update-material' className='text-sm font-medium'>
+                  Material
+                </Label>
+                <span
+                  className={`text-xs ${productData.material.length > MAX_MATERIAL_LENGTH ? 'text-red-500' : 'text-gray-500'}`}
+                >
+                  {productData.material.length} / {MAX_MATERIAL_LENGTH} ký tự
+                </span>
+              </div>
               <Input
                 id='update-material'
                 placeholder='Nhập material (ví dụ: string)'
                 value={productData.material}
                 onChange={(e) => handleInputChange('material', e.target.value)}
-                className='mt-1'
+                className={`mt-1 ${materialError ? 'border-red-500' : ''}`}
               />
+              {materialError && <p className='mt-1 text-sm text-red-500'>{materialError}</p>}
             </div>
 
             {/* Province ID */}
@@ -395,17 +539,26 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
 
             {/* Description */}
             <div>
-              <Label htmlFor='update-description' className='text-sm font-medium'>
-                Mô tả sản phẩm
-              </Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label htmlFor='update-description' className='text-sm font-medium'>
+                  Mô tả sản phẩm
+                </Label>
+                <span
+                  className={`text-xs ${countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'
+                    }`}
+                >
+                  {countWords(productData.description)} / {MAX_DESCRIPTION_WORDS} từ
+                </span>
+              </div>
               <Textarea
                 id='update-description'
                 placeholder='Nhập mô tả sản phẩm'
                 value={productData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                className='mt-1'
+                className={`mt-1 ${descriptionError ? 'border-red-500' : ''}`}
                 rows={4}
               />
+              {descriptionError && <p className='mt-1 text-sm text-red-500'>{descriptionError}</p>}
             </div>
 
             {/* Active Status */}
@@ -438,7 +591,12 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             {/* Existing Images */}
             {existingImageUrls.length > 0 && (
               <div>
-                <Label className='text-sm font-medium mb-2 block'>Ảnh hiện tại</Label>
+                <div className='flex items-center justify-between mb-2'>
+                  <Label className='text-sm font-medium'>Ảnh hiện tại</Label>
+                  <span className='text-xs text-gray-500'>
+                    {existingImageUrls.length + mediaData.newProductImages.length} / {MAX_IMAGES} ảnh
+                  </span>
+                </div>
                 <div className='grid grid-cols-3 gap-4 mt-2'>
                   {existingImageUrls.map((imageUrl, index) => (
                     <div key={index} className='relative group'>
@@ -459,49 +617,69 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
 
             {/* New Product Images */}
             <div>
-              <Label className='text-sm font-medium mb-2 block'>Ảnh sản phẩm mới</Label>
-              <div className='grid grid-cols-3 gap-4'>
-                {/* Existing new images */}
-                {mediaData.newProductImages.map((file, index) => (
-                  <div key={index} className='relative group'>
-                    <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden border'>
-                      <img
-                        src={createPreviewUrl(file)}
-                        alt={`New ${index + 1}`}
-                        className='w-full h-full object-cover'
-                      />
-                    </div>
-                    <button
-                      onClick={() => removeNewImage(index)}
-                      className='absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity'
-                    >
-                      <X className='w-4 h-4' />
-                    </button>
-                  </div>
-                ))}
-
-                {/* Add image button */}
-                <label className='aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-green-600 hover:bg-green-50 transition-colors'>
-                  <Upload className='w-8 h-8 text-gray-400 mb-2' />
-                  <span className='text-sm text-gray-600 text-center px-2'>Thêm ảnh</span>
-                  <input
-                    type='file'
-                    accept='image/*'
-                    multiple
-                    className='hidden'
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files.length > 0) {
-                        handleMediaChange('newProductImages', Array.from(e.target.files))
-                      }
-                    }}
-                  />
-                </label>
+              <div className='flex items-center justify-between mb-2'>
+                <Label className='text-sm font-medium'>Ảnh sản phẩm mới</Label>
+                <span className='text-xs text-gray-500'>
+                  {existingImageUrls.length + mediaData.newProductImages.length} / {MAX_IMAGES} ảnh
+                </span>
               </div>
+              {existingImageUrls.length + mediaData.newProductImages.length < MAX_IMAGES ? (
+                <div className='grid grid-cols-3 gap-4'>
+                  {/* Existing new images */}
+                  {mediaData.newProductImages.map((file, index) => (
+                    <div key={index} className='relative group'>
+                      <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden border'>
+                        <img
+                          src={createPreviewUrl(file)}
+                          alt={`New ${index + 1}`}
+                          className='w-full h-full object-cover'
+                        />
+                      </div>
+                      <button
+                        onClick={() => removeNewImage(index)}
+                        className='absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity'
+                      >
+                        <X className='w-4 h-4' />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Add image button */}
+                  <label className='aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-green-600 hover:bg-green-50 transition-colors'>
+                    <Upload className='w-8 h-8 text-gray-400 mb-2' />
+                    <span className='text-sm text-gray-600 text-center px-2'>Thêm ảnh</span>
+                    <input
+                      type='file'
+                      accept='image/*'
+                      multiple
+                      className='hidden'
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          handleMediaChange('newProductImages', Array.from(e.target.files))
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              ) : (
+                <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'>
+                  <p className='text-sm text-amber-600'>
+                    Đã đạt giới hạn tối đa {MAX_IMAGES} hình ảnh. Vui lòng xóa ảnh cũ để thêm ảnh mới.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Remove Existing Video */}
             <div>
-              <Label className='text-sm font-medium mb-2 block'>Video sản phẩm</Label>
+              <div className='flex items-center justify-between mb-2'>
+                <Label className='text-sm font-medium'>Video sản phẩm</Label>
+                <span className='text-xs text-gray-500'>
+                  {(fetchedProduct?.productVideo && !mediaData.removeExistingVideo) || mediaData.newProductVideo
+                    ? '1 / 1 video'
+                    : '0 / 1 video'}
+                </span>
+              </div>
               {fetchedProduct?.productVideo && !mediaData.removeExistingVideo && (
                 <div className='mt-2 mb-4'>
                   <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border'>
@@ -541,7 +719,13 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                       className='hidden'
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
-                          handleMediaChange('newProductVideo', e.target.files[0])
+                          const file = e.target.files[0]
+                          // Validate video file size (50MB max)
+                          if (file.size > 50 * 1024 * 1024) {
+                            toast.error('Video quá lớn. Tối đa 50MB.')
+                            return
+                          }
+                          handleMediaChange('newProductVideo', file)
                         }
                       }}
                     />
@@ -575,7 +759,13 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                       className='hidden'
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
-                          handleMediaChange('newProductVideo', e.target.files[0])
+                          const file = e.target.files[0]
+                          // Validate video file size (50MB max)
+                          if (file.size > 50 * 1024 * 1024) {
+                            toast.error('Video quá lớn. Tối đa 50MB.')
+                            return
+                          }
+                          handleMediaChange('newProductVideo', file)
                         }
                       }}
                     />

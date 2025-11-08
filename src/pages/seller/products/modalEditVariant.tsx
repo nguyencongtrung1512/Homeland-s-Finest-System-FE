@@ -31,6 +31,26 @@ export default function ModalEditVariant({
   // Xác định xem có phải variant cha không
   const isParentVariant = !parentVariant
 
+  // Validation errors
+  const [attributeNameError, setAttributeNameError] = useState<string>('')
+  const [descriptionError, setDescriptionError] = useState<string>('')
+  const [priceError, setPriceError] = useState<string>('')
+  const [quantityError, setQuantityError] = useState<string>('')
+
+  // Constants for validation
+  const MAX_ATTRIBUTE_NAME_LENGTH = 10
+  const MAX_DESCRIPTION_WORDS = 20
+  const MIN_ATTRIBUTE_NAME_LENGTH = 1
+
+  // Helper function to count words
+  const countWords = (text: string): number => {
+    if (!text || text.trim().length === 0) return 0
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length
+  }
+
   const [variantData, setVariantData] = useState({
     attributeName: '',
     attributeType: '',
@@ -80,6 +100,52 @@ export default function ModalEditVariant({
   }
 
   const handleVariantInputChange = (field: string, value: string | number | boolean) => {
+    // Clear errors when user starts typing
+    if (field === 'attributeName') {
+      setAttributeNameError('')
+      const stringValue = value as string
+      if (stringValue.length > MAX_ATTRIBUTE_NAME_LENGTH) {
+        setAttributeNameError(`Tên thuộc tính chỉ được tối đa ${MAX_ATTRIBUTE_NAME_LENGTH} ký tự.`)
+        return
+      }
+    }
+
+    if (field === 'description') {
+      setDescriptionError('')
+      const stringValue = value as string
+      const wordCount = countWords(stringValue)
+      if (wordCount > MAX_DESCRIPTION_WORDS) {
+        setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+      }
+    }
+
+    if (field === 'basePrice') {
+      setPriceError('')
+      const numValue = value as number
+      if (numValue < 0) {
+        setPriceError('Giá bán không được là số âm')
+        return
+      }
+    }
+
+    if (field === 'quantity') {
+      setQuantityError('')
+      const numValue = value as number
+      if (numValue < 0) {
+        setQuantityError('Số lượng tồn kho không được là số âm')
+        return
+      }
+    }
+
+    // Prevent negative values for numeric fields
+    if (
+      typeof value === 'number' &&
+      value < 0 &&
+      (field === 'length' || field === 'width' || field === 'height' || field === 'weight')
+    ) {
+      return
+    }
+
     setVariantData((prev) => ({
       ...prev,
       [field]: value
@@ -106,20 +172,72 @@ export default function ModalEditVariant({
         // Variant cha: chỉ validate attributeName và description
         if (!variantData.attributeName.trim()) {
           toast.error('Vui lòng nhập tên thuộc tính')
+          setAttributeNameError('Vui lòng nhập tên thuộc tính')
+          return
+        }
+
+        if (variantData.attributeName.trim().length < MIN_ATTRIBUTE_NAME_LENGTH) {
+          toast.error('Tên thuộc tính phải có ít nhất 1 ký tự')
+          setAttributeNameError('Tên thuộc tính phải có ít nhất 1 ký tự')
+          return
+        }
+
+        if (variantData.attributeName.trim().length > MAX_ATTRIBUTE_NAME_LENGTH) {
+          toast.error(`Tên thuộc tính chỉ được tối đa ${MAX_ATTRIBUTE_NAME_LENGTH} ký tự`)
+          setAttributeNameError(`Tên thuộc tính chỉ được tối đa ${MAX_ATTRIBUTE_NAME_LENGTH} ký tự`)
+          return
+        }
+
+        // Validate description word count
+        const descriptionWordCount = countWords(variantData.description)
+        if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
+          toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+          setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
           return
         }
       } else {
         // Variant con: validate đầy đủ
         if (!variantData.attributeName.trim()) {
           toast.error('Vui lòng nhập tên thuộc tính')
+          setAttributeNameError('Vui lòng nhập tên thuộc tính')
           return
         }
-        if (variantData.basePrice <= 0) {
-          toast.error('Vui lòng nhập giá bán hợp lệ')
+
+        if (variantData.attributeName.trim().length < MIN_ATTRIBUTE_NAME_LENGTH) {
+          toast.error('Tên thuộc tính phải có ít nhất 1 ký tự')
+          setAttributeNameError('Tên thuộc tính phải có ít nhất 1 ký tự')
           return
         }
+
+        if (variantData.attributeName.trim().length > MAX_ATTRIBUTE_NAME_LENGTH) {
+          toast.error(`Tên thuộc tính chỉ được tối đa ${MAX_ATTRIBUTE_NAME_LENGTH} ký tự`)
+          setAttributeNameError(`Tên thuộc tính chỉ được tối đa ${MAX_ATTRIBUTE_NAME_LENGTH} ký tự`)
+          return
+        }
+
+        if (variantData.basePrice < 0) {
+          toast.error('Giá bán không được là số âm')
+          setPriceError('Giá bán không được là số âm')
+          return
+        }
+
+        if (variantData.basePrice === 0) {
+          toast.error('Vui lòng nhập giá bán hợp lệ (lớn hơn 0)')
+          setPriceError('Vui lòng nhập giá bán hợp lệ (lớn hơn 0)')
+          return
+        }
+
         if (variantData.quantity < 0) {
-          toast.error('Vui lòng nhập số lượng tồn kho hợp lệ')
+          toast.error('Số lượng tồn kho không được là số âm')
+          setQuantityError('Số lượng tồn kho không được là số âm')
+          return
+        }
+
+        // Validate description word count
+        const descriptionWordCount = countWords(variantData.description)
+        if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
+          toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+          setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
           return
         }
       }
@@ -231,6 +349,10 @@ export default function ModalEditVariant({
         weight: 0,
         isActive: true
       })
+      setAttributeNameError('')
+      setDescriptionError('')
+      setPriceError('')
+      setQuantityError('')
     }
   }
 
@@ -254,27 +376,31 @@ export default function ModalEditVariant({
                 <Label htmlFor='edit-attribute-type' className='text-sm font-medium'>
                   Loại thuộc tính
                 </Label>
-                <Input
-                  id='edit-attribute-type'
-                  value={attributeType}
-                  className='mt-1 bg-gray-100'
-                  readOnly
-                />
+                <Input id='edit-attribute-type' value={attributeType} className='mt-1 bg-gray-100' readOnly />
               </div>
             )}
 
             {/* Attribute Name */}
             <div>
-              <Label htmlFor='edit-attribute-name' className='text-sm font-medium'>
-                Tên thuộc tính <span className='text-red-500'>*</span>
-              </Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label htmlFor='edit-attribute-name' className='text-sm font-medium'>
+                  Tên thuộc tính <span className='text-red-500'>*</span>
+                </Label>
+                <span
+                  className={`text-xs ${variantData.attributeName.length > MAX_ATTRIBUTE_NAME_LENGTH ? 'text-red-500' : 'text-gray-500'
+                    }`}
+                >
+                  {variantData.attributeName.length} / {MAX_ATTRIBUTE_NAME_LENGTH} ký tự
+                </span>
+              </div>
               <Input
                 id='edit-attribute-name'
                 placeholder='Ví dụ: Đỏ, 100ml, X, XL...'
                 value={variantData.attributeName}
                 onChange={(e) => handleVariantInputChange('attributeName', e.target.value)}
-                className='mt-1'
+                className={`mt-1 ${attributeNameError ? 'border-red-500' : ''}`}
               />
+              {attributeNameError && <p className='mt-1 text-sm text-red-500'>{attributeNameError}</p>}
             </div>
 
             {/* Price - Chỉ hiển thị cho variant con */}
@@ -286,11 +412,19 @@ export default function ModalEditVariant({
                 <Input
                   id='edit-price'
                   type='number'
+                  min='0'
+                  step='1000'
                   placeholder='Nhập giá bán...'
                   value={variantData.basePrice || ''}
-                  onChange={(e) => handleVariantInputChange('basePrice', Number(e.target.value))}
-                  className='mt-1'
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : Number(e.target.value)
+                    if (value >= 0) {
+                      handleVariantInputChange('basePrice', value)
+                    }
+                  }}
+                  className={`mt-1 ${priceError ? 'border-red-500' : ''}`}
                 />
+                {priceError && <p className='mt-1 text-sm text-red-500'>{priceError}</p>}
               </div>
             )}
 
@@ -303,26 +437,42 @@ export default function ModalEditVariant({
                 <Input
                   id='edit-quantity'
                   type='number'
+                  min='0'
                   placeholder='Nhập số lượng tồn kho...'
                   value={variantData.quantity || ''}
-                  onChange={(e) => handleVariantInputChange('quantity', Number(e.target.value))}
-                  className='mt-1'
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : Number(e.target.value)
+                    if (value >= 0) {
+                      handleVariantInputChange('quantity', value)
+                    }
+                  }}
+                  className={`mt-1 ${quantityError ? 'border-red-500' : ''}`}
                 />
+                {quantityError && <p className='mt-1 text-sm text-red-500'>{quantityError}</p>}
               </div>
             )}
 
             {/* Description */}
             <div>
-              <Label htmlFor='edit-description' className='text-sm font-medium'>
-                Mô tả
-              </Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label htmlFor='edit-description' className='text-sm font-medium'>
+                  Mô tả
+                </Label>
+                <span
+                  className={`text-xs ${countWords(variantData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'
+                    }`}
+                >
+                  {countWords(variantData.description)} / {MAX_DESCRIPTION_WORDS} từ
+                </span>
+              </div>
               <Textarea
                 id='edit-description'
                 placeholder='Mô tả về loại sản phẩm...'
                 value={variantData.description}
                 onChange={(e) => handleVariantInputChange('description', e.target.value)}
-                className='mt-1 min-h-[100px]'
+                className={`mt-1 min-h-[100px] ${descriptionError ? 'border-red-500' : ''}`}
               />
+              {descriptionError && <p className='mt-1 text-sm text-red-500'>{descriptionError}</p>}
             </div>
           </div>
 
@@ -342,9 +492,15 @@ export default function ModalEditVariant({
                   <Input
                     id='edit-length'
                     type='number'
+                    min='0'
                     placeholder='cm'
                     value={variantData.length || ''}
-                    onChange={(e) => handleVariantInputChange('length', Number(e.target.value))}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value)
+                      if (value >= 0) {
+                        handleVariantInputChange('length', value)
+                      }
+                    }}
                     className='mt-1'
                   />
                 </div>
@@ -357,9 +513,15 @@ export default function ModalEditVariant({
                   <Input
                     id='edit-width'
                     type='number'
+                    min='0'
                     placeholder='cm'
                     value={variantData.width || ''}
-                    onChange={(e) => handleVariantInputChange('width', Number(e.target.value))}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value)
+                      if (value >= 0) {
+                        handleVariantInputChange('width', value)
+                      }
+                    }}
                     className='mt-1'
                   />
                 </div>
@@ -372,9 +534,15 @@ export default function ModalEditVariant({
                   <Input
                     id='edit-height'
                     type='number'
+                    min='0'
                     placeholder='cm'
                     value={variantData.height || ''}
-                    onChange={(e) => handleVariantInputChange('height', Number(e.target.value))}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value)
+                      if (value >= 0) {
+                        handleVariantInputChange('height', value)
+                      }
+                    }}
                     className='mt-1'
                   />
                 </div>
@@ -388,9 +556,15 @@ export default function ModalEditVariant({
                 <Input
                   id='edit-weight'
                   type='number'
+                  min='0'
                   placeholder='gram'
                   value={variantData.weight || ''}
-                  onChange={(e) => handleVariantInputChange('weight', Number(e.target.value))}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : Number(e.target.value)
+                    if (value >= 0) {
+                      handleVariantInputChange('weight', value)
+                    }
+                  }}
                   className='mt-1'
                 />
               </div>
@@ -416,11 +590,7 @@ export default function ModalEditVariant({
           <Button variant='outline' onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Hủy
           </Button>
-          <Button
-            onClick={handleUpdateVariant}
-            disabled={isSubmitting}
-            className='bg-green-600 hover:bg-green-700'
-          >
+          <Button onClick={handleUpdateVariant} disabled={isSubmitting} className='bg-green-600 hover:bg-green-700'>
             {isSubmitting ? (
               <>
                 <Loader2 className='w-4 h-4 mr-2 animate-spin' />
@@ -435,4 +605,3 @@ export default function ModalEditVariant({
     </Dialog>
   )
 }
-

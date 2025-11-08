@@ -11,7 +11,7 @@ import {
 import { Alert, AlertDescription } from '../../../../../components/ui/alert'
 import { Label } from '../../../../../components/ui/label'
 import { cancelOrder } from '../../../../../apis/order.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../../../utils/toast'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 
 interface CancelOrderModalProps {
@@ -29,8 +29,6 @@ export default function CancelOrderModal({
   onClose,
   orderId,
   userId,
-  orderStatus,
-  onContinuePayment,
   isProcessingPayment
 }: CancelOrderModalProps) {
   const [selectedReason, setSelectedReason] = useState('')
@@ -46,7 +44,6 @@ export default function CancelOrderModal({
     'Khác'
   ]
 
-  const isPendingPayment = orderStatus === 'PendingPayment'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,21 +96,6 @@ export default function CancelOrderModal({
       handleCancel()
     }
   }
-
-  const handleContinuePayment = async () => {
-    if (!onContinuePayment) {
-      return
-    }
-    try {
-      setIsContinuingPayment(true)
-      await onContinuePayment()
-    } catch (error) {
-      console.error('Error continuing payment:', error)
-    } finally {
-      setIsContinuingPayment(false)
-    }
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className='sm:max-w-[500px] max-h-[90vh] overflow-hidden'>
@@ -135,13 +117,6 @@ export default function CancelOrderModal({
               </AlertDescription>
             </Alert>
 
-            {isPendingPayment && (
-              <Alert className='mb-4 border-orange-200 bg-orange-50 text-orange-700'>
-                <AlertDescription>
-                  Đơn hàng của bạn đang chờ thanh toán. Bạn có thể tiếp tục thanh toán ngay hoặc chọn lý do để hủy đơn.
-                </AlertDescription>
-              </Alert>
-            )}
 
             {/* Reason Selection */}
             <div className='space-y-4'>
@@ -169,23 +144,6 @@ export default function CancelOrderModal({
           </div>
 
           <DialogFooter className='gap-2 sm:gap-0'>
-            {isPendingPayment && onContinuePayment && (
-              <Button
-                type='button'
-                onClick={handleContinuePayment}
-                disabled={isLoading || isProcessingPayment || isContinuingPayment}
-                className='w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white'
-              >
-                {isProcessingPayment || isContinuingPayment ? (
-                  <>
-                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                    Đang mở thanh toán...
-                  </>
-                ) : (
-                  'Tiếp tục thanh toán'
-                )}
-              </Button>
-            )}
             <Button
               type='button'
               variant='outline'

@@ -5,7 +5,6 @@ import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { productApi, type ProductCreateFormData } from '../../../apis/product.api'
 import { storeApi } from '../../../apis/store.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
@@ -16,7 +15,6 @@ import { toast } from '../../../utils/toast'
 function CreateProduct() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('product-info')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [storeId, setStoreId] = useState<string | null>(null)
   const [provinceId, setProvinceId] = useState<string | null>(null)
@@ -24,6 +22,16 @@ function CreateProduct() {
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<ProductCategoryItem[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
+
+  // Validation constants
+  const MAX_NAME_WORDS = 20
+  const MAX_DESCRIPTION_WORDS = 500
+  const MAX_MATERIAL_WORDS = 10
+
+  // Error states
+  const [nameError, setNameError] = useState('')
+  const [descriptionError, setDescriptionError] = useState('')
+  const [materialError, setMaterialError] = useState('')
 
   const [productData, setProductData] = useState({
     name: '',
@@ -37,34 +45,16 @@ function CreateProduct() {
     productVideo: null as File | null,
     certificateImages: [] as File[]
   })
-  //   {
-  //     id: 1,
-  //     name: '',
-  //     price: 0,
-  //     stock: 0,
-  //     unit: '',
-  //     weight: '',
-  //     dimensions: ''
-  //   }
-  // ])
-
-  // State for managing variant form visibility
-  // const [showVariantForm, setShowVariantForm] = useState(false)
-  // const [editingVariant, setEditingVariant] = useState<number | null>(null)
-  // const [newVariant, setNewVariant] = useState({
-  //   name: '',
-  //   price: 0,
-  //   stock: 0,
-  //   unit: '',
-  //   weight: '',
-  //   dimensions: ''
-  // })
-
-  // Helper function to create preview URL
   const createPreviewUrl = (file: File): string => {
     return URL.createObjectURL(file)
   }
 
+  const countWords = (text: string): number => {
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length
+  }
   // Helper function to validate image file
   const validateImageFile = (file: File): { valid: boolean; error?: string } => {
     // Check file type - only allow image types
@@ -76,8 +66,7 @@ function CreateProduct() {
       }
     }
 
-    // Check file size - max 5MB
-    const maxSizeInBytes = 5 * 1024 * 1024 // 5MB
+    const maxSizeInBytes = 5 * 1024 * 1024
     if (file.size > maxSizeInBytes) {
       const fileSizeInMB = (file.size / (1024 * 1024)).toFixed(2)
       return {
@@ -126,6 +115,32 @@ function CreateProduct() {
       ...prev,
       [field]: value
     }))
+
+    // Real-time validation
+    if (typeof value === 'string') {
+      if (field === 'name') {
+        const wordCount = countWords(value)
+        if (wordCount > MAX_NAME_WORDS) {
+          setNameError(`Tên sản phẩm không được vượt quá ${MAX_NAME_WORDS} từ (hiện tại: ${wordCount} từ)`)
+        } else {
+          setNameError('')
+        }
+      } else if (field === 'description') {
+        const wordCount = countWords(value)
+        if (wordCount > MAX_DESCRIPTION_WORDS) {
+          setDescriptionError(`Mô tả không được vượt quá ${MAX_DESCRIPTION_WORDS} từ (hiện tại: ${wordCount} từ)`)
+        } else {
+          setDescriptionError('')
+        }
+      } else if (field === 'material') {
+        const wordCount = countWords(value)
+        if (wordCount > MAX_MATERIAL_WORDS) {
+          setMaterialError(`Xuất xứ không được vượt quá ${MAX_MATERIAL_WORDS} từ (hiện tại: ${wordCount} từ)`)
+        } else {
+          setMaterialError('')
+        }
+      }
+    }
   }
 
   const handleCategorySelect = (categoryId: string) => {
@@ -289,9 +304,59 @@ function CreateProduct() {
   }, [user?.userId, fetchStoreId])
 
   const handleCreateProduct = async () => {
-    try {
-      setIsSubmitting(true)
+    setIsSubmitting(true)
 
+    // Validation before submit
+    let hasError = false
+
+    // Validate name
+    if (!productData.name.trim()) {
+      setNameError('Tên sản phẩm không được để trống')
+      hasError = true
+    } else {
+      const nameWordCount = countWords(productData.name)
+      if (nameWordCount > MAX_NAME_WORDS) {
+        setNameError(`Tên sản phẩm không được vượt quá ${MAX_NAME_WORDS} từ (hiện tại: ${nameWordCount} từ)`)
+        hasError = true
+      } else if (nameWordCount < 1) {
+        setNameError('Tên sản phẩm phải có ít nhất 1 từ')
+        hasError = true
+      }
+    }
+
+    // Validate description
+    if (productData.description.trim()) {
+      const descriptionWordCount = countWords(productData.description)
+      if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
+        setDescriptionError(
+          `Mô tả không được vượt quá ${MAX_DESCRIPTION_WORDS} từ (hiện tại: ${descriptionWordCount} từ)`
+        )
+        hasError = true
+      }
+    }
+
+    // Validate material
+    if (!productData.material.trim()) {
+      setMaterialError('Xuất xứ không được để trống')
+      hasError = true
+    } else {
+      const materialWordCount = countWords(productData.material)
+      if (materialWordCount > MAX_MATERIAL_WORDS) {
+        setMaterialError(`Xuất xứ không được vượt quá ${MAX_MATERIAL_WORDS} từ (hiện tại: ${materialWordCount} từ)`)
+        hasError = true
+      } else if (materialWordCount < 1) {
+        setMaterialError('Xuất xứ phải có ít nhất 1 từ')
+        hasError = true
+      }
+    }
+
+    if (hasError) {
+      setIsSubmitting(false)
+      toast.error('Vui lòng kiểm tra lại thông tin')
+      return
+    }
+
+    try {
       // Check if storeId and provinceId are available
       if (!storeId || !provinceId) {
         toast.error('Không tìm thấy thông tin cửa hàng. Vui lòng thử lại.')
@@ -428,8 +493,6 @@ function CreateProduct() {
       setIsSubmitting(false)
     }
   }
-
-  // Show loading state while fetching store ID
   if (loading) {
     return (
       <div className='p-6'>
@@ -439,8 +502,6 @@ function CreateProduct() {
       </div>
     )
   }
-
-  // Show error state if can't fetch store ID
   if (error) {
     return (
       <div className='p-6'>
@@ -470,171 +531,183 @@ function CreateProduct() {
         <h1 className='text-2xl font-semibold text-gray-900'>Tạo sản phẩm mới</h1>
         <p className='text-gray-600 mt-1'>Thêm sản phẩm mới vào cửa hàng của bạn</p>
       </div>
+      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+        {/* Left Column - Main Content */}
+        <div className='lg:col-span-2 space-y-6'>
+          {/* Basic Information */}
+          <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
+            <CardHeader className='bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100'>
+              <CardTitle className='text-green-700 flex items-center gap-2'>
+                <Package className='w-5 h-5' />
+                Thông tin cơ bản
+              </CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div>
+                <Label htmlFor='name' className='text-sm font-medium'>
+                  Tên sản phẩm <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  id='name'
+                  placeholder='Nhập tên sản phẩm...'
+                  value={productData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  className={`mt-1 transition-all duration-200 ${nameError ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500 focus:border-green-500'}`}
+                />
+                <div className='flex justify-between items-center mt-1'>
+                  {nameError && <p className='text-red-500 text-xs'>{nameError}</p>}
+                  <p
+                    className={`text-xs ${countWords(productData.name) > MAX_NAME_WORDS ? 'text-red-500' : 'text-gray-500'}`}
+                  >
+                    {countWords(productData.name)}/{MAX_NAME_WORDS} từ
+                  </p>
+                </div>
+              </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-        <TabsList className='grid w-full grid-cols-2 mb-6'>
-          <TabsTrigger value='product-info' className='flex items-center gap-2'>
-            <Package className='w-4 h-4' />
-            Thông tin sản phẩm
-          </TabsTrigger>
-        </TabsList>
+              <div>
+                <Label htmlFor='description' className='text-sm font-medium'>
+                  Mô tả chi tiết <span className='text-red-500'>*</span>
+                </Label>
+                <Textarea
+                  id='description'
+                  placeholder='Mô tả chi tiết về sản phẩm của bạn...'
+                  value={productData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  className={`mt-1 min-h-[120px] transition-all duration-200 ${descriptionError ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500 focus:border-green-500'}`}
+                />
+                <div className='flex justify-between items-center mt-1'>
+                  {descriptionError && <p className='text-red-500 text-xs'>{descriptionError}</p>}
+                  <p
+                    className={`text-xs ${countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'}`}
+                  >
+                    {countWords(productData.description)}/{MAX_DESCRIPTION_WORDS} từ
+                  </p>
+                </div>
+              </div>
 
-        {/* Tab 1: Product Information (Combined) */}
-        <TabsContent value='product-info'>
-          <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-            {/* Left Column - Main Content */}
-            <div className='lg:col-span-2 space-y-6'>
-              {/* Basic Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-green-700'>Thông tin cơ bản</CardTitle>
-                </CardHeader>
-                <CardContent className='space-y-4'>
-                  <div>
-                    <Label htmlFor='name' className='text-sm font-medium'>
-                      Tên sản phẩm <span className='text-red-500'>*</span>
-                    </Label>
-                    <Input
-                      id='name'
-                      placeholder='Nhập tên sản phẩm...'
-                      value={productData.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
-                      className='mt-1'
-                    />
-                  </div>
+              <div>
+                <Label htmlFor='material' className='text-sm font-medium'>
+                  Xuất xứ / Material <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  id='material'
+                  placeholder='Nhập xuất xứ hoặc nguyên liệu sản phẩm...'
+                  value={productData.material}
+                  onChange={(e) => handleInputChange('material', e.target.value)}
+                  className={`mt-1 transition-all duration-200 ${materialError ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500 focus:border-green-500'}`}
+                />
+                <div className='flex justify-between items-center mt-1'>
+                  {materialError && <p className='text-red-500 text-xs'>{materialError}</p>}
+                  <p
+                    className={`text-xs ${countWords(productData.material) > MAX_MATERIAL_WORDS ? 'text-red-500' : 'text-gray-500'}`}
+                  >
+                    {countWords(productData.material)}/{MAX_MATERIAL_WORDS} từ
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                  <div>
-                    <Label htmlFor='description' className='text-sm font-medium'>
-                      Mô tả chi tiết <span className='text-red-500'>*</span>
-                    </Label>
-                    <Textarea
-                      id='description'
-                      placeholder='Mô tả chi tiết về sản phẩm của bạn...'
-                      value={productData.description}
-                      onChange={(e) => handleInputChange('description', e.target.value)}
-                      className='mt-1 min-h-[120px]'
-                    />
-                  </div>
+          {/* Media Section */}
+          <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
+            <CardHeader className='bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100'>
+              <CardTitle className='text-green-700 flex items-center gap-2'>
+                <FileImage className='w-5 h-5' />
+                Hình ảnh & Video
+              </CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-6'>
+              {/* Product Images */}
+              <div>
+                <Label className='text-sm font-medium'>
+                  Hình ảnh sản phẩm <span className='text-red-500'>*</span>
+                </Label>
 
-                  <div>
-                    <Label htmlFor='material' className='text-sm font-medium'>
-                      Xuất xứ / Material <span className='text-red-500'>*</span>
-                    </Label>
-                    <Input
-                      id='material'
-                      placeholder='Nhập xuất xứ hoặc nguyên liệu sản phẩm...'
-                      value={productData.material}
-                      onChange={(e) => handleInputChange('material', e.target.value)}
-                      className='mt-1'
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+                {/* Upload Area */}
+                <div
+                  className='mt-2 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-400 hover:bg-green-50 transition-all duration-200 cursor-pointer bg-gradient-to-br from-white to-gray-50'
+                  onClick={() => document.getElementById('product-images')?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                    const files = Array.from(e.dataTransfer.files)
+                    if (files.length > 0) {
+                      addProductImages(files)
+                    }
+                  }}
+                >
+                  <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                  <p className='text-gray-600 mb-2'>
+                    {mediaData.productImages.length > 0 ? 'Thêm ảnh khác' : 'Kéo thả hoặc click để tải ảnh lên'}
+                  </p>
+                  <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
+                  <input
+                    type='file'
+                    multiple
+                    accept='image/*'
+                    className='hidden'
+                    id='product-images'
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || [])
+                      if (files.length > 0) {
+                        addProductImages(files)
+                      }
+                      // Reset input value to allow selecting same files again
+                      e.target.value = ''
+                    }}
+                  />
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    className='mt-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 hover:border-green-300 hover:from-green-100 hover:to-emerald-100 text-green-700 hover:text-green-800 font-medium transition-all duration-200 shadow-sm hover:shadow-md'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      document.getElementById('product-images')?.click()
+                    }}
+                  >
+                    <Upload className='w-4 h-4 mr-2' />
+                    {mediaData.productImages.length > 0 ? 'Thêm ảnh' : 'Chọn ảnh'}
+                  </Button>
+                </div>
 
-              {/* Media Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-green-700 flex items-center gap-2'>
-                    <FileImage className='w-5 h-5' />
-                    Hình ảnh & Video
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className='space-y-6'>
-                  {/* Product Images */}
-                  <div>
-                    <Label className='text-sm font-medium'>
-                      Hình ảnh sản phẩm <span className='text-red-500'>*</span>
-                    </Label>
-
-                    {/* Upload Area */}
-                    <div
-                      className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
-                      onClick={() => document.getElementById('product-images')?.click()}
-                      onDragOver={(e) => {
-                        e.preventDefault()
-                        e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
-                      }}
-                      onDragLeave={(e) => {
-                        e.preventDefault()
-                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault()
-                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                        const files = Array.from(e.dataTransfer.files)
-                        if (files.length > 0) {
-                          addProductImages(files)
-                        }
-                      }}
-                    >
-                      <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                      <p className='text-gray-600 mb-2'>
-                        {mediaData.productImages.length > 0 ? 'Thêm ảnh khác' : 'Kéo thả hoặc click để tải ảnh lên'}
-                      </p>
-                      <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
-                      <input
-                        type='file'
-                        multiple
-                        accept='image/*'
-                        className='hidden'
-                        id='product-images'
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || [])
-                          if (files.length > 0) {
-                            addProductImages(files)
-                          }
-                          // Reset input value to allow selecting same files again
-                          e.target.value = ''
-                        }}
-                      />
+                {/* Image Preview Grid */}
+                {mediaData.productImages.length > 0 && (
+                  <div className='mt-6'>
+                    <div className='flex items-center justify-between mb-4'>
+                      <p className='text-sm font-medium text-gray-700'>Đã chọn {mediaData.productImages.length} ảnh</p>
                       <Button
                         type='button'
                         variant='outline'
                         size='sm'
-                        className='mt-3'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          document.getElementById('product-images')?.click()
-                        }}
+                        onClick={() => setMediaData((prev) => ({ ...prev, productImages: [] }))}
+                        className='text-red-600 hover:text-red-700 hover:bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200 hover:border-red-300 font-medium transition-all duration-200 shadow-sm hover:shadow-md'
                       >
-                        <Upload className='w-4 h-4 mr-2' />
-                        {mediaData.productImages.length > 0 ? 'Thêm ảnh' : 'Chọn ảnh'}
+                        <Trash2 className='w-4 h-4 mr-1' />
+                        Xóa tất cả
                       </Button>
                     </div>
 
-                    {/* Image Preview Grid */}
-                    {mediaData.productImages.length > 0 && (
-                      <div className='mt-6'>
-                        <div className='flex items-center justify-between mb-4'>
-                          <p className='text-sm font-medium text-gray-700'>
-                            Đã chọn {mediaData.productImages.length} ảnh
-                          </p>
-                          <Button
-                            type='button'
-                            variant='outline'
-                            size='sm'
-                            onClick={() => setMediaData((prev) => ({ ...prev, productImages: [] }))}
-                            className='text-red-600 hover:text-red-700 hover:bg-red-50'
-                          >
-                            <Trash2 className='w-4 h-4 mr-1' />
-                            Xóa tất cả
-                          </Button>
-                        </div>
-
-                        <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'>
-                          {mediaData.productImages.map((file, index) => (
-                            <div key={`${file.name}-${index}`} className='relative group'>
-                              <div className='aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-gray-300 transition-colors'>
-                                <img
-                                  src={createPreviewUrl(file)}
-                                  alt={`Product ${index + 1}`}
-                                  className='w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform'
-                                  onClick={() => {
-                                    // Open image in new tab for full view
-                                    const newWindow = window.open()
-                                    if (newWindow) {
-                                      newWindow.document.write(`
+                    <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'>
+                      {mediaData.productImages.map((file, index) => (
+                        <div key={`${file.name}-${index}`} className='relative group'>
+                          <div className='aspect-square rounded-xl overflow-hidden border-2 border-gray-200 hover:border-green-300 transition-all duration-300 shadow-sm hover:shadow-md group'>
+                            <img
+                              src={createPreviewUrl(file)}
+                              alt={`Product ${index + 1}`}
+                              className='w-full h-full object-cover cursor-pointer hover:scale-110 transition-transform duration-300 group-hover:brightness-105'
+                              onClick={() => {
+                                const newWindow = window.open()
+                                if (newWindow) {
+                                  newWindow.document.write(`
                                         <html>
                                           <head><title>${file.name}</title></head>
                                           <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;">
@@ -642,234 +715,244 @@ function CreateProduct() {
                                           </body>
                                         </html>
                                       `)
-                                    }
-                                  }}
-                                />
-                              </div>
+                                }
+                              }}
+                            />
+                          </div>
 
-                              {/* Remove button */}
-                              <button
-                                type='button'
-                                onClick={() => removeProductImage(index)}
-                                className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg'
-                                title='Xóa ảnh này'
-                              >
-                                <X className='w-3 h-3' />
-                              </button>
+                          {/* Remove button */}
+                          <button
+                            type='button'
+                            onClick={() => removeProductImage(index)}
+                            className='absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-110'
+                            title='Xóa ảnh này'
+                          >
+                            <X className='w-4 h-4' />
+                          </button>
 
-                              {/* Image index */}
-                              <div className='absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity'>
-                                {index + 1}
-                              </div>
+                          {/* Image index */}
+                          <div className='absolute top-2 left-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-md'>
+                            #{index + 1}
+                          </div>
 
-                              {/* File name */}
-                              <p className='text-xs text-gray-500 mt-2 truncate' title={file.name}>
-                                {file.name}
-                              </p>
-
-                              {/* File size */}
-                              <p className='text-xs text-gray-400'>{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
-                            </div>
-                          ))}
+                          {/* File info */}
+                          <div className='mt-2 p-2 bg-gray-50 rounded-lg'>
+                            {/* File name */}
+                            <p className='text-xs text-gray-600 font-medium truncate' title={file.name}>
+                              📷 {file.name}
+                            </p>
+                            {/* File size */}
+                            <p className='text-xs text-gray-500 mt-1'>💾 {(file.size / (1024 * 1024)).toFixed(1)} MB</p>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Product Video */}
-                  <div>
-                    <Label className='text-sm font-medium'>
-                      Video sản phẩm <span className='text-red-500'>*</span>
-                    </Label>
-                    <div
-                      className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
-                      onClick={() => document.getElementById('product-video')?.click()}
-                      onDragOver={(e) => {
-                        e.preventDefault()
-                        e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
-                      }}
-                      onDragLeave={(e) => {
-                        e.preventDefault()
-                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault()
-                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                        const files = Array.from(e.dataTransfer.files)
-                        if (files.length > 0) {
-                          handleMediaChange('productVideo', files[0])
-                        }
-                      }}
-                    >
-                      <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                      <p className='text-gray-600 mb-2'>
-                        {mediaData.productVideo ? 'Thay đổi video' : 'Kéo thả hoặc click để tải video lên'}
-                      </p>
-                      <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
-                      <input
-                        type='file'
-                        accept='video/*'
-                        className='hidden'
-                        id='product-video'
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null
-                          if (file) {
-                            handleMediaChange('productVideo', file)
-                          }
-                          e.target.value = ''
-                        }}
-                      />
+              {/* Product Video */}
+              <div>
+                <Label className='text-sm font-medium'>
+                  Video sản phẩm <span className='text-red-500'>*</span>
+                </Label>
+                <div
+                  className='mt-2 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-400 hover:bg-green-50 transition-all duration-200 cursor-pointer bg-gradient-to-br from-white to-gray-50'
+                  onClick={() => document.getElementById('product-video')?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                    const files = Array.from(e.dataTransfer.files)
+                    if (files.length > 0) {
+                      handleMediaChange('productVideo', files[0])
+                    }
+                  }}
+                >
+                  <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                  <p className='text-gray-600 mb-2'>
+                    {mediaData.productVideo ? 'Thay đổi video' : 'Kéo thả hoặc click để tải video lên'}
+                  </p>
+                  <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
+                  <input
+                    type='file'
+                    accept='video/*'
+                    className='hidden'
+                    id='product-video'
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null
+                      if (file) {
+                        handleMediaChange('productVideo', file)
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    className='mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 hover:border-blue-300 hover:from-blue-100 hover:to-indigo-100 text-blue-700 hover:text-blue-800 font-medium transition-all duration-200 shadow-sm hover:shadow-md'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      document.getElementById('product-video')?.click()
+                    }}
+                  >
+                    <Upload className='w-4 h-4 mr-2' />
+                    {mediaData.productVideo ? 'Thay đổi video' : 'Chọn video'}
+                  </Button>
+                </div>
+
+                {mediaData.productVideo && (
+                  <div className='mt-6'>
+                    <div className='flex items-center justify-between mb-4'>
+                      <p className='text-sm font-medium text-gray-700'>Video đã chọn:</p>
                       <Button
                         type='button'
                         variant='outline'
                         size='sm'
-                        className='mt-3'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          document.getElementById('product-video')?.click()
-                        }}
+                        onClick={() => handleMediaChange('productVideo', null)}
+                        className='text-red-600 hover:text-red-700 hover:bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200 hover:border-red-300 font-medium transition-all duration-200 shadow-sm hover:shadow-md'
                       >
-                        <Upload className='w-4 h-4 mr-2' />
-                        {mediaData.productVideo ? 'Thay đổi video' : 'Chọn video'}
+                        <Trash2 className='w-4 h-4 mr-1' />
+                        Xóa video
                       </Button>
                     </div>
 
-                    {mediaData.productVideo && (
-                      <div className='mt-6'>
-                        <div className='flex items-center justify-between mb-4'>
-                          <p className='text-sm font-medium text-gray-700'>Video đã chọn:</p>
-                          <Button
-                            type='button'
-                            variant='outline'
-                            size='sm'
-                            onClick={() => handleMediaChange('productVideo', null)}
-                            className='text-red-600 hover:text-red-700 hover:bg-red-50'
-                          >
-                            <Trash2 className='w-4 h-4 mr-1' />
-                            Xóa video
-                          </Button>
+                    <div className='relative group max-w-2xl'>
+                      <div className='aspect-video rounded-xl overflow-hidden border-2 border-gray-200 bg-black shadow-lg group-hover:shadow-xl transition-all duration-300'>
+                        <video
+                          src={createPreviewUrl(mediaData.productVideo)}
+                          controls
+                          className='w-full h-full object-contain group-hover:brightness-105 transition-all duration-300'
+                          preload='metadata'
+                        />
+                      </div>
+
+                      <div className='mt-4 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 shadow-sm'>
+                        <p
+                          className='text-sm font-semibold text-gray-800 truncate mb-2'
+                          title={mediaData.productVideo.name}
+                        >
+                          🎬 {mediaData.productVideo.name}
+                        </p>
+                        <div className='flex items-center gap-4 text-xs text-gray-600'>
+                          <span className='flex items-center gap-1'>
+                            💾 Kích thước: {(mediaData.productVideo.size / (1024 * 1024)).toFixed(1)} MB
+                          </span>
+                          <span className='flex items-center gap-1'>⏱️ Thời lượng: Video</span>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-                        <div className='relative group max-w-2xl'>
-                          <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200 bg-black'>
-                            <video
-                              src={createPreviewUrl(mediaData.productVideo)}
-                              controls
-                              className='w-full h-full object-contain'
-                              preload='metadata'
-                            />
-                          </div>
+        {/* Right Column - Sidebar */}
+        <div className='space-y-6'>
+          {/* Category */}
+          <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
+            <CardHeader className='bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100'>
+              <CardTitle className='text-green-700 flex items-center gap-2'>
+                <Package className='w-5 h-5' />
+                Phân loại
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <Label htmlFor='category' className='text-sm font-medium'>
+                  Danh mục sản phẩm <span className='text-red-500'>*</span>
+                </Label>
 
-                          <div className='mt-3 p-3 bg-gray-50 rounded-lg'>
-                            <p
-                              className='text-sm font-medium text-gray-700 truncate'
-                              title={mediaData.productVideo.name}
+                {categoriesLoading ? (
+                  <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
+                    <Loader2 className='w-4 h-4 animate-spin mr-2' />
+                    <span className='text-sm text-gray-500'>Đang tải danh mục...</span>
+                  </div>
+                ) : categories.length === 0 ? (
+                  <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
+                    <span className='text-sm text-gray-500'>Không có danh mục nào</span>
+                  </div>
+                ) : (
+                  <div className='mt-1 space-y-2 max-h-60 overflow-y-auto border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-br from-white to-gray-50'>
+                    {categories.map((category) => (
+                      <div
+                        key={category.id}
+                        className={`flex items-start space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                          productData.categoryId === category.id
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 shadow-sm'
+                            : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-300 hover:shadow-sm'
+                        }`}
+                        onClick={() => handleCategorySelect(category.id)}
+                      >
+                        <div className='flex items-center'>
+                          <input
+                            type='radio'
+                            name='category'
+                            checked={productData.categoryId === category.id}
+                            onChange={() => handleCategorySelect(category.id)}
+                            className='w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500'
+                          />
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <p className='text-sm font-medium text-gray-900'>{category.name}</p>
+                          {category.description && <p className='text-xs text-gray-500 mt-1'>{category.description}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Show selected category */}
+                {productData.categoryId && (
+                  <div className='mt-3'>
+                    <p className='text-sm font-medium text-gray-700 mb-2'>Danh mục đã chọn:</p>
+                    <div className='flex items-center gap-2'>
+                      {(() => {
+                        const category = categories.find((cat) => cat.id === productData.categoryId)
+                        return category ? (
+                          <div className='inline-flex items-center px-3 py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 text-sm font-medium rounded-full border border-green-200 shadow-sm'>
+                            <span className='font-semibold'>{category.name}</span>
+                            <button
+                              type='button'
+                              onClick={() => handleCategorySelect(productData.categoryId!)}
+                              className='ml-2 text-green-600 hover:text-green-800 hover:bg-green-200 rounded-full p-1 transition-all duration-150'
                             >
-                              📹 {mediaData.productVideo.name}
-                            </p>
-                            <p className='text-xs text-gray-500 mt-1'>
-                              Kích thước: {(mediaData.productVideo.size / (1024 * 1024)).toFixed(1)} MB
-                            </p>
+                              <X className='w-3 h-3' />
+                            </button>
                           </div>
-                        </div>
-                      </div>
-                    )}
+                        ) : null
+                      })()}
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Right Column - Sidebar */}
-            <div className='space-y-6'>
-              {/* Category */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-green-700'>Phân loại</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div>
-                    <Label htmlFor='category' className='text-sm font-medium'>
-                      Danh mục sản phẩm <span className='text-red-500'>*</span>
-                    </Label>
-
-                    {categoriesLoading ? (
-                      <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
-                        <Loader2 className='w-4 h-4 animate-spin mr-2' />
-                        <span className='text-sm text-gray-500'>Đang tải danh mục...</span>
-                      </div>
-                    ) : categories.length === 0 ? (
-                      <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
-                        <span className='text-sm text-gray-500'>Không có danh mục nào</span>
-                      </div>
-                    ) : (
-                      <div className='mt-1 space-y-2 max-h-60 overflow-y-auto border rounded-md p-3'>
-                        {categories.map((category) => (
-                          <div
-                            key={category.id}
-                            className={`flex items-start space-x-3 p-2 rounded-md cursor-pointer transition-colors ${productData.categoryId === category.id
-                              ? 'bg-green-50 border border-green-200'
-                              : 'hover:bg-gray-50 border border-transparent'
-                              }`}
-                            onClick={() => handleCategorySelect(category.id)}
-                          >
-                            <div className='flex items-center'>
-                              <input
-                                type='radio'
-                                name='category'
-                                checked={productData.categoryId === category.id}
-                                onChange={() => handleCategorySelect(category.id)}
-                                className='w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500'
-                              />
-                            </div>
-                            <div className='flex-1 min-w-0'>
-                              <p className='text-sm font-medium text-gray-900'>{category.name}</p>
-                              {category.description && (
-                                <p className='text-xs text-gray-500 mt-1'>{category.description}</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Show selected category */}
-                    {productData.categoryId && (
-                      <div className='mt-3'>
-                        <p className='text-sm font-medium text-gray-700 mb-2'>Danh mục đã chọn:</p>
-                        <div className='flex items-center gap-2'>
-                          {(() => {
-                            const category = categories.find((cat) => cat.id === productData.categoryId)
-                            return category ? (
-                              <div className='inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-md'>
-                                <span>{category.name}</span>
-                                <button
-                                  type='button'
-                                  onClick={() => handleCategorySelect(productData.categoryId!)}
-                                  className='ml-1 text-green-600 hover:text-green-800'
-                                >
-                                  <X className='w-3 h-3' />
-                                </button>
-                              </div>
-                            ) : null
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Action Buttons */}
       <div className='flex justify-start gap-4 mt-8'>
-        <Button variant='outline' onClick={handleCancel} className='px-6' disabled={isSubmitting}>
+        <Button
+          variant='outline'
+          onClick={handleCancel}
+          className='px-6 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200'
+          disabled={isSubmitting}
+        >
           Hủy bỏ
         </Button>
         <Button
-          className='bg-green-600 hover:bg-green-700 text-white px-6'
+          className='bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105'
           onClick={handleCreateProduct}
           disabled={isSubmitting}
         >

@@ -53,6 +53,20 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
+  // Constants for validation
+  const MAX_TITLE_WORDS = 50
+  const MAX_CONTENT_WORDS = 500
+  const MAX_IMAGES = 3
+
+  // Helper function to count words
+  const countWords = (text: string): number => {
+    if (!text || text.trim().length === 0) return 0
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length
+  }
+
   // Handle image upload - just store files and create preview URLs
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -60,10 +74,29 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
 
     setUploadingImages(true) // Set loading state
 
+    // Check current image count
+    const currentImageCount = editData.images.length
+    const availableSlots = MAX_IMAGES - currentImageCount
+
+    if (availableSlots <= 0) {
+      toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+      setUploadingImages(false)
+      if (imageInputRef.current) {
+        imageInputRef.current.value = ''
+      }
+      return
+    }
+
     const validFiles: File[] = []
     const previewUrls: string[] = []
 
     Array.from(files).forEach((file) => {
+      // Check if we've reached the limit
+      if (currentImageCount + validFiles.length >= MAX_IMAGES) {
+        toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh. Đã dừng upload.`)
+        return
+      }
+
       // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
         toast.error(`File ${file.name} quá lớn. Tối đa 5MB.`)
@@ -86,7 +119,6 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
         images: [...prev.images, ...previewUrls],
         imageFiles: [...prev.imageFiles, ...validFiles]
       }))
-      toast.success(`Đã chọn ${validFiles.length} hình ảnh!`)
     }
 
     // Reset input
@@ -125,9 +157,6 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
       video: videoUrl,
       videoFile: file
     }))
-
-    toast.success('Đã chọn video!')
-
     // Reset input
     if (videoInputRef.current) {
       videoInputRef.current.value = ''
@@ -136,8 +165,46 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
     setUploadingVideo(false) // Reset loading state
   }
 
+  // Handle title change
+  const handleTitleChange = (value: string) => {
+    setEditData((prev) => ({ ...prev, title: value }))
+  }
+
+  // Handle content change
+  const handleContentChange = (value: string) => {
+    setEditData((prev) => ({ ...prev, content: value }))
+  }
+
   const handleSave = async () => {
     try {
+      // Validate title
+      const titleWordCount = countWords(editData.title)
+      if (titleWordCount === 0) {
+        toast.error('Vui lòng nhập tiêu đề câu chuyện.')
+        return
+      }
+      if (titleWordCount > MAX_TITLE_WORDS) {
+        toast.error(`Tiêu đề chỉ được tối đa ${MAX_TITLE_WORDS} từ.`)
+        return
+      }
+
+      // Validate content
+      const contentWordCount = countWords(editData.content)
+      if (contentWordCount === 0) {
+        toast.error('Vui lòng nhập nội dung câu chuyện.')
+        return
+      }
+      if (contentWordCount > MAX_CONTENT_WORDS) {
+        toast.error(`Nội dung chỉ được tối đa ${MAX_CONTENT_WORDS} từ.`)
+        return
+      }
+
+      // Validate images count
+      if (editData.images.length > MAX_IMAGES) {
+        toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+        return
+      }
+
       if (stories.length > 0) {
         // Update existing story
         const storyId = stories[0].id
@@ -285,20 +352,40 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
 
   const removeImage = (index: number) => {
     const imageToRemove = editData.images[index]
+    if (!imageToRemove) return
+
+    // Check if the removed image is a blob URL (newly uploaded file)
+    const isBlobUrl = imageToRemove.startsWith('blob:')
 
     // Clean up object URL if it's a blob
-    if (imageToRemove && imageToRemove.startsWith('blob:')) {
+    if (isBlobUrl) {
       URL.revokeObjectURL(imageToRemove)
+      // Find the corresponding file index in imageFiles
+      // Count how many blob URLs appear before this index
+      let blobUrlIndex = 0
+      for (let i = 0; i < index; i++) {
+        if (editData.images[i] && editData.images[i].startsWith('blob:')) {
+          blobUrlIndex++
+        }
+      }
+      // Remove the corresponding file from imageFiles
+      const newFiles = editData.imageFiles.filter((_, i) => i !== blobUrlIndex)
+      const newImages = editData.images.filter((_, i) => i !== index)
+
+      setEditData((prev) => ({
+        ...prev,
+        images: newImages,
+        imageFiles: newFiles
+      }))
+    } else {
+      // If it's a server URL, just remove from images array
+      // Don't remove from imageFiles since it wasn't a new upload
+      const newImages = editData.images.filter((_, i) => i !== index)
+      setEditData((prev) => ({
+        ...prev,
+        images: newImages
+      }))
     }
-
-    const newImages = editData.images.filter((_, i) => i !== index)
-    const newFiles = editData.imageFiles.filter((_, i) => i !== index)
-
-    setEditData((prev) => ({
-      ...prev,
-      images: newImages,
-      imageFiles: newFiles
-    }))
   }
 
   const removeVideo = () => {
@@ -438,7 +525,6 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
       }
     } catch (err) {
       console.error('❌ Error fetching stories:', err)
-      toast.error('Không thể tải danh sách câu chuyện')
     } finally {
       setLoading(false)
     }
@@ -489,26 +575,42 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
           // Edit mode for story
           <div className='space-y-6'>
             <div>
-              <Label htmlFor='storyTitle' className='text-sm font-medium'>
-                Tiêu đề câu chuyện
-              </Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label htmlFor='storyTitle' className='text-sm font-medium'>
+                  Tiêu đề câu chuyện
+                </Label>
+                <span
+                  className={`text-xs ${countWords(editData.title) > MAX_TITLE_WORDS ? 'text-red-500' : 'text-gray-500'
+                    }`}
+                >
+                  {countWords(editData.title)} / {MAX_TITLE_WORDS} từ
+                </span>
+              </div>
               <Input
                 id='storyTitle'
                 value={editData.title}
-                onChange={(e) => setEditData((prev) => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => handleTitleChange(e.target.value)}
                 placeholder='Nhập tiêu đề cho câu chuyện sản phẩm'
                 className='mt-1'
               />
             </div>
 
             <div>
-              <Label htmlFor='storyContent' className='text-sm font-medium'>
-                Nội dung câu chuyện
-              </Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label htmlFor='storyContent' className='text-sm font-medium'>
+                  Nội dung câu chuyện
+                </Label>
+                <span
+                  className={`text-xs ${countWords(editData.content) > MAX_CONTENT_WORDS ? 'text-red-500' : 'text-gray-500'
+                    }`}
+                >
+                  {countWords(editData.content)} / {MAX_CONTENT_WORDS} từ
+                </span>
+              </div>
               <Textarea
                 id='storyContent'
                 value={editData.content}
-                onChange={(e) => setEditData((prev) => ({ ...prev, content: e.target.value }))}
+                onChange={(e) => handleContentChange(e.target.value)}
                 placeholder='Kể câu chuyện về sản phẩm, nguồn gốc, quy trình sản xuất...'
                 className='mt-1 min-h-[150px]'
               />
@@ -516,7 +618,14 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
 
             {/* Story Images */}
             <div>
-              <Label className='text-sm font-medium'>Hình ảnh minh họa</Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label className='text-sm font-medium'>Hình ảnh minh họa</Label>
+                <span
+                  className={`text-xs ${editData.images.length > MAX_IMAGES ? 'text-red-500' : 'text-gray-500'}`}
+                >
+                  {editData.images.length} / {MAX_IMAGES} ảnh
+                </span>
+              </div>
               <div className='mt-2 space-y-4'>
                 {/* Current Story Images */}
                 {editData.images && editData.images.length > 0 && (
@@ -545,42 +654,52 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
                 )}
 
                 {/* Upload New Story Images */}
-                <div className='space-y-3'>
-                  <div
-                    className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
-                    onClick={() => imageInputRef.current?.click()}
-                  >
-                    <Image className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                    <p className='text-gray-600 mb-1'>Thêm hình ảnh cho câu chuyện</p>
-                    <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
+                {editData.images.length < MAX_IMAGES && (
+                  <div className='space-y-3'>
+                    <div
+                      className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                      onClick={() => imageInputRef.current?.click()}
+                    >
+                      <Image className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                      <p className='text-gray-600 mb-1'>Thêm hình ảnh cho câu chuyện</p>
+                      <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
+                    </div>
+
+                    <Button
+                      type='button'
+                      variant='outline'
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={uploadingImages || editData.images.length >= MAX_IMAGES}
+                      className='w-full'
+                    >
+                      <Upload className='w-4 h-4 mr-2' />
+                      {uploadingImages ? 'Đang upload...' : 'Chọn hình ảnh'}
+                    </Button>
+
+                    <input
+                      ref={imageInputRef}
+                      type='file'
+                      accept='image/*'
+                      multiple
+                      onChange={handleImageUpload}
+                      className='hidden'
+                    />
                   </div>
-
-                  <Button
-                    type='button'
-                    variant='outline'
-                    onClick={() => imageInputRef.current?.click()}
-                    disabled={uploadingImages}
-                    className='w-full'
-                  >
-                    <Upload className='w-4 h-4 mr-2' />
-                    {uploadingImages ? 'Đang upload...' : 'Chọn hình ảnh'}
-                  </Button>
-
-                  <input
-                    ref={imageInputRef}
-                    type='file'
-                    accept='image/*'
-                    multiple
-                    onChange={handleImageUpload}
-                    className='hidden'
-                  />
-                </div>
+                )}
+                {editData.images.length >= MAX_IMAGES && (
+                  <p className='text-sm text-amber-600 text-center py-2'>
+                    Đã đạt giới hạn tối đa {MAX_IMAGES} hình ảnh. Vui lòng xóa ảnh cũ để thêm ảnh mới.
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Story Video */}
             <div>
-              <Label className='text-sm font-medium'>Video câu chuyện</Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label className='text-sm font-medium'>Video câu chuyện</Label>
+                <span className='text-xs text-gray-500'>{editData.video ? '1 / 1 video' : '0 / 1 video'}</span>
+              </div>
               <div className='mt-2 space-y-4'>
                 {editData.video && (
                   <div>
@@ -594,35 +713,59 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
                   </div>
                 )}
 
-                <div className='space-y-3'>
-                  <div
-                    className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
-                    onClick={() => videoInputRef.current?.click()}
-                  >
-                    <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                    <p className='text-gray-600 mb-1'>Thêm video cho câu chuyện</p>
-                    <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
+                {!editData.video && (
+                  <div className='space-y-3'>
+                    <div
+                      className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                      onClick={() => videoInputRef.current?.click()}
+                    >
+                      <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                      <p className='text-gray-600 mb-1'>Thêm video cho câu chuyện</p>
+                      <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
+                    </div>
+
+                    <Button
+                      type='button'
+                      variant='outline'
+                      onClick={() => videoInputRef.current?.click()}
+                      disabled={uploadingVideo}
+                      className='w-full'
+                    >
+                      <Upload className='w-4 h-4 mr-2' />
+                      {uploadingVideo ? 'Đang upload...' : 'Chọn video'}
+                    </Button>
+
+                    <input
+                      ref={videoInputRef}
+                      type='file'
+                      accept='video/*'
+                      onChange={handleVideoUpload}
+                      className='hidden'
+                    />
                   </div>
+                )}
+                {editData.video && (
+                  <div className='space-y-3'>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      onClick={() => videoInputRef.current?.click()}
+                      disabled={uploadingVideo}
+                      className='w-full'
+                    >
+                      <Upload className='w-4 h-4 mr-2' />
+                      {uploadingVideo ? 'Đang upload...' : 'Thay thế video'}
+                    </Button>
 
-                  <Button
-                    type='button'
-                    variant='outline'
-                    onClick={() => videoInputRef.current?.click()}
-                    disabled={uploadingVideo}
-                    className='w-full'
-                  >
-                    <Upload className='w-4 h-4 mr-2' />
-                    {uploadingVideo ? 'Đang upload...' : 'Chọn video'}
-                  </Button>
-
-                  <input
-                    ref={videoInputRef}
-                    type='file'
-                    accept='video/*'
-                    onChange={handleVideoUpload}
-                    className='hidden'
-                  />
-                </div>
+                    <input
+                      ref={videoInputRef}
+                      type='file'
+                      accept='video/*'
+                      onChange={handleVideoUpload}
+                      className='hidden'
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

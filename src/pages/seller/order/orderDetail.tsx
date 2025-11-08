@@ -18,7 +18,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 
 interface OrderItemWithCombo {
   id: string
@@ -250,7 +250,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
       NotYet: 'Chưa xử lí',
       Processing: 'Chờ xác nhận',
       Confirmed: 'Đã xác nhận',
-      Shipping: 'Đang giao',
+      ReadyToPick: 'Đang giao',
       Delivered: 'Đã giao',
       Cancel: 'Đã hủy',
       Returned: 'Đã trả hàng'
@@ -452,10 +452,11 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                             <h4 className='font-semibold text-gray-900 text-sm'>{promotion.title}</h4>
                             <Badge
                               variant='outline'
-                              className={`text-xs ${promotion.promotionType === 'Product'
-                                ? 'border-blue-200 text-blue-700 bg-blue-50'
-                                : 'border-purple-200 text-purple-700 bg-purple-50'
-                                }`}
+                              className={`text-xs ${
+                                promotion.promotionType === 'Product'
+                                  ? 'border-blue-200 text-blue-700 bg-blue-50'
+                                  : 'border-purple-200 text-purple-700 bg-purple-50'
+                              }`}
                             >
                               {promotion.promotionType === 'Product' ? 'Sản phẩm' : 'Toàn cửa hàng'}
                             </Badge>
@@ -543,12 +544,13 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                         return (
                           <div key={history.id} className='flex items-start gap-4 relative'>
                             <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${isCurrent
-                                ? 'bg-green-600'
-                                : isCompleted
-                                  ? 'bg-gray-400'
-                                  : 'bg-white border-2 border-gray-300'
-                                }`}
+                              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
+                                isCurrent
+                                  ? 'bg-green-600'
+                                  : isCompleted
+                                    ? 'bg-gray-400'
+                                    : 'bg-white border-2 border-gray-300'
+                              }`}
                             >
                               {isCurrent ? (
                                 <Package className='h-5 w-5 text-white' />
