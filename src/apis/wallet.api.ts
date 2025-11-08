@@ -1,54 +1,26 @@
 import axiosInstance from '../service/axiosInstance'
+import type { WalletResponse, WalletData } from '../types/walletType'
 
 const API_URL = '/Wallet'
 
-export interface WalletBalanceResponse {
-  status: number
-  message: string
-  data: {
-    userId: string
-    availableBalance: number
-    totalBalance: number
-    pendingBalance: number
-  }
-}
-
 /**
  * Lấy số dư khả dụng của user
- * @param userId - ID của user
- * @returns Promise<WalletBalanceResponse>
+ * @returns Promise<WalletData>
  */
-export const getWalletBalance = async (userId: string): Promise<WalletBalanceResponse['data']> => {
-  try {
-    const response = await axiosInstance.get<WalletBalanceResponse>(`${API_URL}/${userId}/balance`)
-    return response.data.data
-  } catch (error) {
-    console.error('Error fetching wallet balance:', error)
-    // Trả về giá trị mặc định nếu API không tồn tại hoặc có lỗi
-    return {
-      userId,
-      availableBalance: 0,
-      totalBalance: 0,
-      pendingBalance: 0
-    }
-  }
+export const getWalletBalance = async (): Promise<WalletData> => {
+    const response = await axiosInstance.get<WalletData>(`${API_URL}/my-Wallet`)
+    return response.data
 }
 
-/**
- * Lấy lịch sử giao dịch wallet
- * @param userId - ID của user
- * @param params - Tham số phân trang
- * @returns Promise<any>
- */
+
 export const getWalletTransactions = async (
-  userId: string,
   params?: {
     pageSize?: number
     pageNumber?: number
   }
 ) => {
   try {
-    const response = await axiosInstance.get(`${API_URL}/${userId}/transactions`, {
+    const response = await axiosInstance.get(`${API_URL}/my-wallet-history`, {
       params: {
         PageSize: params?.pageSize || 10,
         PageNumber: params?.pageNumber || 1
@@ -65,4 +37,3 @@ export default {
   getWalletBalance,
   getWalletTransactions
 }
-

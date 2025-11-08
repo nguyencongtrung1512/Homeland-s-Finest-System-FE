@@ -48,7 +48,6 @@ export default function Profile() {
   const [promotionsLoading, setPromotionsLoading] = useState(false)
   const [forms, setForms] = useState<FormDTO[]>([])
   const [formsLoading, setFormsLoading] = useState(false)
-  const [walletBalance] = useState<number>(0) 
 
   // Khi vào trang, nếu có query tab=orders thì active tab đơn hàng
   useEffect(() => {
@@ -376,7 +375,7 @@ export default function Profile() {
                     transition={{ duration: 0.4, delay: 0.7, type: 'spring', stiffness: 200 }}
                     className='flex items-center gap-1'
                   >
-                   
+
                   </motion.div>
                 </div>
               </motion.div>
@@ -486,7 +485,6 @@ export default function Profile() {
                     transition={{ duration: 0.3 }}
                   >
                     <WalletContent
-                      walletBalance={walletBalance}
                       bankAccount={user?.bankAccount || null}
                       customerName={user ? `${user.lastName} ${user.firstName}` : undefined}
                       onUpdateProfile={() => setActiveTab('profile')}

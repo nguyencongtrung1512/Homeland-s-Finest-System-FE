@@ -48,7 +48,7 @@ function Products() {
 
   const productCardData: ProductCardData[] = products.map((product) => ({
     ...product,
-    price: product.summaryPrice ? parseFloat(product.summaryPrice) : 0
+    price: product.price
   }))
 
   const handleAddCombo = async (comboId: string) => {

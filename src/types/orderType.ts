@@ -1,18 +1,25 @@
-// Order Status Enum
+// Order Status Enum - Khớp với backend enum
 export type OrderStatus =
-  | 'NotYet' // Chưa xác nhận
-  | 'Processing' // Chờ xác nhận
-  | 'Confirmed' // Đã xác nhận bên seller   
-  | 'Shipping' // Đang giao
-  | 'Delivered' // Đã giao hàng thành công
-  | 'Canceled' // Đã hủy
-  | 'Returned' // Customer trả hàng 
-  | 'Returning' // Shipper đang trả hàng
-  | 'Refunded' // Seller hoàn tiền
-  | 'Paid' // Đã thanh toán
+  | 'NotYet' // Chờ xử lý
   | 'PendingPayment' // Chờ thanh toán
+  | 'Processing' // Sau khi thanh toán xong
+  | 'Confirmed' // Đã xác nhận
+  | 'Cancel' // Đã hủy
+  | 'ReadyToPick' // Sẵn sàng lấy hàng
+  | 'Picking' // Đang lấy hàng
+  | 'Picked' // Đã lấy hàng
+  | 'Storing' // Đang lưu kho
+  | 'Transporting' // Đang vận chuyển
+  | 'Sorting' // Đang phân loại
+  | 'Delivering' // Đang giao hàng
+  | 'Delivered' // Đã giao hàng thành công
   | 'Complaining' // Đang phản hồi
   | 'Complained' // Đã phản hồi
+  | 'DeliveryFail' // Giao hàng thất bại
+  | 'Returning' // Đang trả hàng (Hủy trước khi xác nhận)
+  | 'Returned' // Đã trả hàng
+  | 'Paid' // Đã thanh toán
+  | 'Refunded' // Đã hoàn tiền
 
 // Promotion interface
 export interface OrderPromotion {
@@ -45,25 +52,23 @@ export interface Transaction {
   orderStatus: string
 }
 
-// Order Item interface (simplified for actual API response)
+// Order Item interface
 export interface OrderItem {
   id: string
+  orderId: string
+  productId: string
+  productVariantId: string
+  length: number
+  width: number
+  height: number
+  weight: number
   orderItemName: string
   orderItemImageUrl: string
+  basePrice: number
+  commission: number
+  finalPrice: number
   quantity: number
   totalPrice: number
-  // Optional fields that may not be present in all responses
-  orderId?: string
-  productId?: string
-  productVariantId?: string
-  length?: number
-  width?: number
-  height?: number
-  weight?: number
-  basePrice?: number
-  commission?: number
-  finalPrice?: number
-  promotions?: OrderPromotion[]
 }
 
 // Order Item with Combo interface
@@ -72,7 +77,7 @@ export interface OrderItemWithCombo {
   orderId: string
   productId: string
   productVariantId: string
-  comboId: string
+  comboItemId: string
   comboName: string
   orderItemName: string
   orderItemImageUrl: string
@@ -83,8 +88,8 @@ export interface OrderItemWithCombo {
   basePrice: number
   commission: number
   finalPrice: number
-  totalPrice: number
   quantity: number
+  totalPrice: number
   isActive: boolean
 }
 
@@ -105,7 +110,7 @@ export interface Order {
   fromAddress: string
   paymentType: string
   userId: string
-  toAddressId?: string
+  toAddressId: string
   toName: string
   toAddress: string
   totalLength: number
@@ -113,9 +118,10 @@ export interface Order {
   totalHeight: number
   totalWeight: number
   status: OrderStatus
-  isPayOut: boolean
+  isFreeship: boolean
   shipPrice: number
   totalOrder: number
+  totalCommission: number
   totalDiscount: number
   finalPrice: number
   payoutDate: string | null
@@ -189,4 +195,4 @@ export interface UpdateOrderStatusInput {
   note?: string
 }
 
-export type PaymentMethod = 'COD' | 'Banking'
+export type PaymentMethod = 'COD' | 'Banking' | 'MyWallet'

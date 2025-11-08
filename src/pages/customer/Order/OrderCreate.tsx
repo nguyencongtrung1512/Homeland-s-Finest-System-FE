@@ -5,7 +5,9 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../contexts/auth.context'
 import { cancelOrder, getOrderDetail } from '../../../apis/order.api'
 import { purchaseOrder } from '../../../apis/transaction.api'
+import { getWalletBalance } from '../../../apis/wallet.api'
 import type { Order } from '../../../types/orderType'
+import type { WalletData } from '../../../types/walletType'
 import { toast } from 'react-toastify'
 import CancelOrderDialog from '../../../components/CancelOrderDialog/CancelOrderDialog'
 
@@ -29,6 +31,8 @@ function OrderCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [walletBalance, setWalletBalance] = useState<WalletData | null>(null)
+  const [isLoadingWallet, setIsLoadingWallet] = useState(false)
   const buyNowProduct = location.state?.product
   const existingOrder: Order = location.state?.order
   const existingOrders: Order[] = useMemo(() => location.state?.orders || [], [location.state?.orders])
@@ -57,6 +61,28 @@ function OrderCreate() {
         })
     }
   }, [existingOrder, existingOrders, orderId])
+
+  // Load wallet balance when payment method is MyWallet
+  useEffect(() => {
+    const loadWalletBalance = async () => {
+      if (paymentMethod === 'MyWallet') {
+        setIsLoadingWallet(true)
+        try {
+          const walletData = await getWalletBalance()
+          setWalletBalance(walletData)
+        } catch (error) {
+          console.error('Error loading wallet balance:', error)
+          toast.error('Không thể tải số dư ví. Vui lòng thử lại.')
+        } finally {
+          setIsLoadingWallet(false)
+        }
+      } else {
+        setWalletBalance(null)
+      }
+    }
+
+    loadWalletBalance()
+  }, [paymentMethod])
 
   const cartItems: CartItem[] = buyNowProduct
     ? [
@@ -221,6 +247,31 @@ function OrderCreate() {
 
           navigate(`/cart/invoice?orderId=${orderIdsParam}&status=pending&type=banking&multiple=true`)
         }
+      } else if (paymentMethod === 'MyWallet') {
+        // MyWallet: Thanh toán bằng ví
+        if (!walletBalance) {
+          toast.error('Không thể tải thông tin ví. Vui lòng thử lại.')
+          return
+        }
+
+        // Kiểm tra số dư
+        if (walletBalance.availableBalance < total) {
+          toast.error(
+            `Số dư không đủ! Số dư hiện tại: ${walletBalance.availableBalance.toLocaleString('vi-VN')}₫. Tổng thanh toán: ${total.toLocaleString('vi-VN')}₫`
+          )
+          return
+        }
+
+        // Gọi API thanh toán bằng wallet
+        await purchaseOrder({ orderIds })
+
+        toast.success(`Thanh toán thành công từ ví! Đã thanh toán ${ordersToProcess.length} đơn hàng.`)
+
+        // Join all orderIds with comma for multiple orders
+        const orderIdsParam = orderIds.join(',')
+        console.log('🔍 DEBUG OrderCreate: MyWallet redirect with orderIds:', orderIdsParam)
+
+        navigate(`/cart/invoice?orderId=${orderIdsParam}&status=success&type=wallet&multiple=true`)
       }
     } catch (error: unknown) {
       console.error('Error processing payment:', error)
@@ -521,8 +572,43 @@ function OrderCreate() {
                 <div className='mb-4 p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200'>
                   <p className='text-xs text-gray-600 mb-1'>Phương thức thanh toán:</p>
                   <p className='text-sm font-semibold text-gray-900'>
-                    {paymentMethod === 'COD' ? '💵 Thanh toán khi nhận hàng (COD)' : '💳 Chuyển khoản ngân hàng'}
+                    {paymentMethod === 'COD'
+                      ? '💵 Thanh toán khi nhận hàng (COD)'
+                      : paymentMethod === 'Banking'
+                        ? '💳 Chuyển khoản ngân hàng'
+                        : '💼 Thanh toán bằng ví của tôi'}
                   </p>
+                  {paymentMethod === 'MyWallet' && (
+                    <div className='mt-2 pt-2 border-t border-blue-200'>
+                      {isLoadingWallet ? (
+                        <div className='flex items-center gap-2 text-xs text-gray-600'>
+                          <Loader2 className='w-3 h-3 animate-spin' />
+                          <span>Đang tải số dư...</span>
+                        </div>
+                      ) : walletBalance ? (
+                        <div className='space-y-1'>
+                          <div className='flex justify-between text-xs'>
+                            <span className='text-gray-600'>Số dư khả dụng:</span>
+                            <span
+                              className={`font-semibold ${walletBalance.availableBalance >= total
+                                ? 'text-green-600'
+                                : 'text-red-600'
+                                }`}
+                            >
+                              {walletBalance.availableBalance.toLocaleString('vi-VN')}₫
+                            </span>
+                          </div>
+                          {walletBalance.availableBalance < total && (
+                            <p className='text-xs text-red-600'>
+                              ⚠️ Số dư không đủ để thanh toán
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className='text-xs text-red-600'>Không thể tải số dư ví</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Action buttons */}
@@ -531,9 +617,11 @@ function OrderCreate() {
                     onClick={handlePayment}
                     disabled={
                       isSubmitting ||
-                      (existingOrders.length === 0 && createdOrders.length === 0 && !order && !existingOrder)
+                      isLoadingWallet ||
+                      (existingOrders.length === 0 && createdOrders.length === 0 && !order && !existingOrder) ||
+                      (paymentMethod === 'MyWallet' && walletBalance !== null && walletBalance.availableBalance < total)
                     }
-                    className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all'
+                    className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all disabled:bg-gray-400 disabled:cursor-not-allowed'
                   >
                     {isSubmitting ? (
                       <>
@@ -546,14 +634,20 @@ function OrderCreate() {
                         {existingOrders.length > 0 || createdOrders.length > 0
                           ? paymentMethod === 'COD'
                             ? 'Đặt hàng'
-                            : 'Thanh toán'
+                            : paymentMethod === 'MyWallet'
+                              ? 'Thanh toán bằng ví'
+                              : 'Thanh toán'
                           : order || existingOrder
                             ? paymentMethod === 'COD'
                               ? 'Đặt hàng'
-                              : 'Thanh toán'
+                              : paymentMethod === 'MyWallet'
+                                ? 'Thanh toán bằng ví'
+                                : 'Thanh toán'
                             : paymentMethod === 'COD'
                               ? 'Đặt hàng ngay'
-                              : 'Thanh toán ngay'}
+                              : paymentMethod === 'MyWallet'
+                                ? 'Thanh toán bằng ví'
+                                : 'Thanh toán ngay'}
                       </>
                     )}
                   </Button>

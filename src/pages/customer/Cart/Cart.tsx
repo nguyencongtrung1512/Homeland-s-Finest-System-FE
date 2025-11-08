@@ -1,7 +1,7 @@
 // Cart component
 import { Button } from '../../../components/ui/button'
-import { Plus, Minus, ShoppingCart, Trash2, Store, MapPin, Edit, Trash, Gift, Tag } from 'lucide-react'
-import { useState, useEffect, useCallback } from 'react'
+import { Plus, Minus, ShoppingCart, Trash2, Store, MapPin, Edit, Trash, Gift, Tag, Wallet, Loader2 } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
 import { useAuth } from '../../../contexts/auth.context'
@@ -15,8 +15,10 @@ import {
 import { toast } from '../../../utils/toast'
 import { createOrder } from '../../../apis/order.api'
 import { addressApi } from '../../../apis/address.api'
+import { getWalletBalance } from '../../../apis/wallet.api'
 import type { CartData, CartItem as APICartItem } from '../../../types/cartType'
 import type { Address, AddressCreateInput } from '../../../types/addressType'
+import type { WalletData } from '../../../types/walletType'
 
 // Import Promotion Components
 import { PromotionModal } from '../../../components/Promotion'
@@ -33,7 +35,7 @@ import {
   AlertDialogTitle
 } from '../../../components/ui/alert-dialog'
 
-type PaymentMethod = 'COD' | 'Banking'
+type PaymentMethod = 'COD' | 'Banking' | 'MyWallet'
 
 interface ComboGroup {
   comboId: string
@@ -73,6 +75,10 @@ export default function Cart() {
   const [shippingFee, setShippingFee] = useState(0)
   const [storeShippingFees, setStoreShippingFees] = useState<Record<string, number>>({})
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false)
+  const [walletBalance, setWalletBalance] = useState<WalletData | null>(null)
+  const [isLoadingWallet, setIsLoadingWallet] = useState(false)
+  const isInitialLoad = useRef(true) // Track if this is the first load
+  const updateQuantityTimeoutRef = useRef<NodeJS.Timeout | null>(null) // For debouncing quantity update notifications
 
   // Address management states
   const [showAddressModal, setShowAddressModal] = useState(false)
@@ -241,6 +247,11 @@ export default function Cart() {
     }
   }, [cartData, selectedAddress, selectedItems])
 
+  // Reset initial load flag when user changes
+  useEffect(() => {
+    isInitialLoad.current = true
+  }, [user?.userId])
+
   useEffect(() => {
     reloadCartData()
     loadUserAddresses()
@@ -249,6 +260,57 @@ export default function Cart() {
   useEffect(() => {
     calculateShipping()
   }, [calculateShipping])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (updateQuantityTimeoutRef.current) {
+        clearTimeout(updateQuantityTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Load wallet balance when payment method is MyWallet
+  useEffect(() => {
+    const loadWalletBalance = async () => {
+      if (selectedPaymentMethod === 'MyWallet') {
+        setIsLoadingWallet(true)
+        setWalletBalance(null) // Reset before loading
+        try {
+          const walletData = await getWalletBalance()
+          console.log('[LoadWalletBalance] walletData:', walletData)
+          console.log('[LoadWalletBalance] walletData type:', typeof walletData)
+          console.log('[LoadWalletBalance] walletData availableBalance:', walletData?.availableBalance)
+
+          // Validate walletData
+          if (walletData && typeof walletData === 'object' && 'availableBalance' in walletData) {
+            console.log('[LoadWalletBalance] Setting wallet balance:', walletData)
+            setWalletBalance(walletData)
+          } else {
+            console.error('[LoadWalletBalance] Invalid wallet data structure:', walletData)
+            toast.error('Dữ liệu ví không hợp lệ')
+            setWalletBalance(null)
+          }
+        } catch (error: unknown) {
+          console.error('[LoadWalletBalance] Error loading wallet balance:', error)
+          const errorMessage =
+            (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            (error as { message?: string })?.message ||
+            'Không thể tải số dư ví'
+          console.error('[LoadWalletBalance] Error message:', errorMessage)
+          toast.error(errorMessage)
+          setWalletBalance(null)
+        } finally {
+          setIsLoadingWallet(false)
+        }
+      } else {
+        // Clear wallet balance when switching to other payment methods
+        setWalletBalance(null)
+      }
+    }
+
+    loadWalletBalance()
+  }, [selectedPaymentMethod])
 
   // Address management handlers
   const handleAddAddress = () => {
@@ -372,16 +434,43 @@ export default function Cart() {
     }
   }
 
+  // Initialize selectedItems only on first load, preserve selection state on reload
   useEffect(() => {
     if (cartData) {
-      const initialSelectedItems: Record<string, boolean> = {}
+      // Get all current item IDs from cart
+      const currentItemIds = new Set<string>()
       cartData.carts.forEach((store) => {
         store.items.forEach((item) => {
-          initialSelectedItems[item.id] = true
+          currentItemIds.add(item.id)
         })
       })
-      setSelectedItems(initialSelectedItems)
-      setSelectAll(true)
+
+      // If this is the first load, initialize all items as selected
+      if (isInitialLoad.current) {
+        const initialSelectedItems: Record<string, boolean> = {}
+        currentItemIds.forEach((itemId) => {
+          initialSelectedItems[itemId] = true
+        })
+        setSelectedItems(initialSelectedItems)
+        setSelectAll(true)
+        isInitialLoad.current = false
+      } else {
+        // On reload, preserve existing selections and update for new/removed items
+        setSelectedItems((prev) => {
+          const updated: Record<string, boolean> = {}
+
+          // Preserve existing selections for items that still exist
+          currentItemIds.forEach((itemId) => {
+            updated[itemId] = prev[itemId] ?? true // Keep existing selection, default to true for new items
+          })
+
+          // Update selectAll based on updated selection state
+          const allSelected = Array.from(currentItemIds).every((itemId) => updated[itemId])
+          setSelectAll(allSelected)
+
+          return updated
+        })
+      }
     }
   }, [cartData])
 
@@ -396,8 +485,23 @@ export default function Cart() {
       await updateCartItem(itemId, newQuantity)
       await refreshCart()
       await reloadCartData()
-      toast.success('Cập nhật số lượng thành công')
+
+      // Clear previous timeout to debounce notifications
+      if (updateQuantityTimeoutRef.current) {
+        clearTimeout(updateQuantityTimeoutRef.current)
+      }
+
+      // Only show notification after user stops updating for 500ms
+      updateQuantityTimeoutRef.current = setTimeout(() => {
+        toast.success('Cập nhật số lượng thành công', 2000) // Shorter duration
+        updateQuantityTimeoutRef.current = null
+      }, 500)
     } catch (error) {
+      // Clear timeout on error
+      if (updateQuantityTimeoutRef.current) {
+        clearTimeout(updateQuantityTimeoutRef.current)
+        updateQuantityTimeoutRef.current = null
+      }
       console.error('Error updating quantity:', error)
       toast.error('Có lỗi xảy ra khi cập nhật số lượng')
     }
@@ -721,6 +825,11 @@ export default function Cart() {
   const subtotal = getSelectedTotal()
   const totalDiscount = getTotalDiscount()
   const finalTotal = Math.max(0, subtotal + shippingFee - totalDiscount)
+
+  // Check if wallet balance is sufficient
+  // Only check when MyWallet is selected and balance is loaded
+  const isWalletBalanceSufficient =
+    selectedPaymentMethod === 'MyWallet' && walletBalance ? walletBalance.availableBalance >= finalTotal : false
 
   return (
     <div className='min-h-screen bg-gray-50 py-8'>
@@ -1051,9 +1160,22 @@ export default function Cart() {
               <button
                 onClick={handleCreateOrder}
                 className='w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                disabled={getSelectedCount() === 0 || !selectedPaymentMethod || !selectedAddress || isSubmitting}
+                disabled={
+                  getSelectedCount() === 0 ||
+                  !selectedPaymentMethod ||
+                  !selectedAddress ||
+                  isSubmitting ||
+                  isLoadingWallet ||
+                  (selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient)
+                }
               >
-                {isSubmitting ? 'Đang tạo đơn hàng...' : `Mua hàng (${getSelectedCount()})`}
+                {isSubmitting
+                  ? 'Đang tạo đơn hàng...'
+                  : isLoadingWallet
+                    ? 'Đang kiểm tra số dư...'
+                    : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
+                      ? 'Số dư không đủ'
+                      : `Mua hàng (${getSelectedCount()})`}
               </button>
 
               <button
@@ -1210,6 +1332,63 @@ export default function Cart() {
                 <div className='flex-1'>
                   <p className='font-medium text-gray-900'>💳 Chuyển khoản ngân hàng</p>
                   <p className='text-sm text-gray-500'>Thanh toán qua chuyển khoản ngân hàng</p>
+                </div>
+              </label>
+
+              <label
+                className={`flex items-center gap-3 p-4 border rounded-lg transition-all ${selectedPaymentMethod === 'MyWallet' && walletBalance && !isWalletBalanceSufficient
+                  ? 'border-red-300 bg-red-50'
+                  : selectedPaymentMethod === 'MyWallet'
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                  } cursor-pointer`}
+              >
+                <input
+                  type='radio'
+                  name='paymentMethod'
+                  value='MyWallet'
+                  checked={selectedPaymentMethod === 'MyWallet'}
+                  onChange={(e) => {
+                    setSelectedPaymentMethod(e.target.value as PaymentMethod)
+                  }}
+                  className='w-4 h-4 text-green-600'
+                />
+                <div className='flex-1'>
+                  <div className='flex items-center justify-between'>
+                    <div>
+                      <p className='font-medium text-gray-900 flex items-center gap-2'>
+                        <Wallet className='w-4 h-4' />
+                        Thanh toán bằng ví của tôi
+                      </p>
+                      {isLoadingWallet ? (
+                        <div className='flex items-center gap-2 text-xs text-gray-500 mt-1'>
+                          <Loader2 className='w-3 h-3 animate-spin' />
+                          <span>Đang tải số dư...</span>
+                        </div>
+                      ) : walletBalance && walletBalance.availableBalance !== undefined ? (
+                        <div className='mt-1'>
+                          <p className='text-sm text-gray-500'>
+                            Số dư khả dụng:{' '}
+                            <span
+                              className={`font-semibold ${isWalletBalanceSufficient ? 'text-green-600' : 'text-red-600'
+                                }`}
+                            >
+                              {walletBalance.availableBalance.toLocaleString('vi-VN')}₫
+                            </span>
+                          </p>
+                          {!isWalletBalanceSufficient && (
+                            <p className='text-xs text-red-600 mt-1'>
+                              ⚠️ Số dư không đủ. Tổng đơn hàng: {finalTotal.toLocaleString('vi-VN')}₫
+                            </p>
+                          )}
+                        </div>
+                      ) : selectedPaymentMethod === 'MyWallet' && !isLoadingWallet ? (
+                        <p className='text-sm text-red-500 mt-1'>Không thể tải số dư ví</p>
+                      ) : (
+                        <p className='text-sm text-gray-500 mt-1'>Thanh toán từ số dư ví của bạn</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </label>
             </div>
