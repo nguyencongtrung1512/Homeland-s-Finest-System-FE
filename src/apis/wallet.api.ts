@@ -1,5 +1,5 @@
 import axiosInstance from '../service/axiosInstance'
-import type { WalletResponse, WalletData } from '../types/walletType'
+import type { WalletData } from '../types/walletType'
 
 const API_URL = '/Wallet'
 

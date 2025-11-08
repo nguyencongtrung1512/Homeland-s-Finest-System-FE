@@ -13,7 +13,7 @@ function FeaturedProducts() {
           storeName: 'Cửa hàng Nông sản Yên Bái',
           provinceId: 1,
           editedById: 'user-1',
-          summaryPrice: '450.000₫',
+          summaryPrice: 450000,
           name: 'Trà Shan Tuyết Cổ Thụ',
           description:
             'Trà Shan Tuyết cổ thụ được hái từ những cây trà cổ thụ hàng trăm năm tuổi tại vùng núi cao Yên Bái, mang hương vị đặc trưng và tinh tế.',
@@ -49,7 +49,7 @@ function FeaturedProducts() {
           storeName: 'Cửa hàng Cà phê Tây Nguyên',
           provinceId: 2,
           editedById: 'user-1',
-          summaryPrice: '320.000₫',
+          summaryPrice: 320000,
           name: 'Cà Phê Robusta Đặc Biệt',
           description:
             'Cà phê Robusta được trồng và chế biến theo phương pháp truyền thống tại nông trại Ea Kar, Đắk Lắk với hương vị đậm đà đặc trưng.',
@@ -83,7 +83,7 @@ function FeaturedProducts() {
           storeName: 'Cửa hàng Gốm Bát Tràng',
           provinceId: 3,
           editedById: 'user-1',
-          summaryPrice: '1.250.000₫',
+          summaryPrice: 1250000,
           name: 'Bộ Ấm Chén Gốm Bát Tràng',
           description:
             'Bộ ấm chén gốm Bát Tràng được làm thủ công bởi các nghệ nhân lành nghề, mang đậm nét văn hóa truyền thống Việt Nam.',
@@ -117,7 +117,7 @@ function FeaturedProducts() {
           storeName: 'Cửa hàng Đặc sản Phú Quốc',
           provinceId: 4,
           editedById: 'user-1',
-          summaryPrice: '180.000₫',
+          summaryPrice: 180000,
           name: 'Nước Mắm Phú Quốc',
           description:
             'Nước mắm Phú Quốc được ủ chín từ cá cơm tươi ngon theo công thức truyền thống, mang hương vị đậm đà đặc trưng của biển.',
