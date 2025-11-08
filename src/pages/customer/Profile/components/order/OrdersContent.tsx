@@ -20,7 +20,15 @@ interface Order {
   id: string
   storeId: string
   date: string
-  status: 'Chưa xác nhận' | 'Chờ xác nhận' | 'Đã xác nhận' | 'Đang giao' | 'Đã giao' | 'Đã hủy' | 'Trả hàng'
+  status:
+  | 'Chưa xác nhận'
+  | 'Chờ thanh toán'
+  | 'Chờ xác nhận'
+  | 'Đã xác nhận'
+  | 'Đang giao'
+  | 'Đã giao'
+  | 'Đã hủy'
+  | 'Trả hàng'
   statusColor: string
   statusBgColor: string
   statusText: string
@@ -86,6 +94,13 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusColor: 'text-yellow-700',
           statusBgColor: 'bg-yellow-50',
           statusText: 'Đang chờ xác nhận đơn hàng'
+        }
+      case 'PendingPayment':
+        return {
+          status: 'Chờ thanh toán' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Bạn đã khởi tạo thanh toán, vui lòng hoàn tất'
         }
       case 'Processing':
         return {
@@ -185,7 +200,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
       .replace('₫', 'đ')
   }
 
-
   const orderHistories = apiOrder?.orderHistories || []
 
   return {
@@ -239,6 +253,7 @@ export default function OrdersContent({
     null
   )
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
+  const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('')
   const [confirmingOrderId, setConfirmingOrderId] = useState<string>('') // Thêm state để track loading
   const [processingPaymentOrderId, setProcessingPaymentOrderId] = useState<string>('') // State để track payment loading
   const [submittingComplaintOrderId, setSubmittingComplaintOrderId] = useState<string>('') // State để track complaint loading
@@ -265,10 +280,10 @@ export default function OrdersContent({
     setSelectedFilter(filterKey)
     setCurrentPage(1)
 
-
     const apiStatusMap: { [key: string]: string | undefined } = {
       all: undefined,
       'Chưa xác nhận': 'NotYet',
+      'Chờ thanh toán': 'PendingPayment',
       'Chờ xác nhận': 'Processing',
       'Đã xác nhận': 'Confirmed',
       'Đang giao': 'Shipping',
@@ -304,27 +319,40 @@ export default function OrdersContent({
     }
   }
 
-  const handlePayment = async (orderId: string) => {
+  const handlePayment = async (orderId: string): Promise<boolean> => {
+    setProcessingPaymentOrderId(orderId)
     try {
-      setProcessingPaymentOrderId(orderId)
-
-      // Call purchase API to create transaction
       const transactions = await purchaseOrder({ orderIds: [orderId] })
       const transaction = transactions[0]
 
+      if (!transaction) {
+        toast.error('Không nhận được thông tin giao dịch')
+        return false
+      }
+
       if (transaction.paymentMethod === 'COD') {
         toast.success('Đơn hàng COD đã được xác nhận! Chờ giao hàng.')
-        // Refresh orders to show updated status
         onRefreshOrders()
-      } else if (transaction.paymentMethod === 'Banking') {
-        toast.success('Đang chuyển đến trang thanh toán...')
-        // Redirect to payment URL
+        return true
+      }
+
+      if (transaction.paymentMethod === 'Banking') {
+        if (transaction.orderStatus === 'PendingPayment') {
+          toast.info('Đơn hàng đang chờ bạn hoàn tất thanh toán.')
+        } else {
+          toast.success('Đang chuyển đến trang thanh toán...')
+        }
         if (transaction.checkoutUrl) {
           window.location.href = transaction.checkoutUrl
-        } else {
-          toast.error('Không tìm thấy URL thanh toán')
+          return true
         }
+        toast.error('Không tìm thấy URL thanh toán')
+        return false
       }
+
+      toast.success('Thanh toán đã được xử lý!')
+      onRefreshOrders()
+      return true
     } catch (error) {
       console.error('Lỗi khi xử lý thanh toán:', error)
       const errorMessage =
@@ -332,6 +360,7 @@ export default function OrdersContent({
         (error as Error).message ||
         'Có lỗi xảy ra khi xử lý thanh toán'
       toast.error(errorMessage)
+      return false
     } finally {
       setProcessingPaymentOrderId('') // Kết thúc loading
     }
@@ -374,8 +403,6 @@ export default function OrdersContent({
     }
   }
 
-
-
   const handleCloseReportModal = () => {
     setShowReportModal(false)
     setSelectedProduct(null)
@@ -383,12 +410,15 @@ export default function OrdersContent({
 
   const handleOpenCancelModal = (orderId: string) => {
     setSelectedOrderId(orderId)
+    const targetOrder = apiOrders?.find((item) => item.id === orderId)
+    setSelectedOrderStatus(targetOrder?.status || '')
     setShowCancelModal(true)
   }
 
   const handleCloseCancelModal = () => {
     setShowCancelModal(false)
     setSelectedOrderId('')
+    setSelectedOrderStatus('')
     onRefreshOrders()
   }
 
@@ -422,21 +452,24 @@ export default function OrdersContent({
     setSelectedOrderId('')
   }
 
-  const handleBuyAgain = (order: Order) => {
+  const handleContinuePaymentFromModal = async () => {
+    if (!selectedOrderId || selectedOrderStatus !== 'PendingPayment') {
+      return
+    }
+    const success = await handlePayment(selectedOrderId)
+    if (success) {
+      setShowCancelModal(false)
+    }
+  }
 
+  const handleBuyAgain = (order: Order) => {
     const firstProduct = order.products[0]
 
-
     if (firstProduct?.productInventoryId) {
-
       const navigationPath = path.productDetail.replace(':id', firstProduct.productInventoryId)
 
-
-
       navigate(navigationPath)
-
     } else {
-
       toast.error('Không thể tìm thấy thông tin sản phẩm để mua lại.')
     }
   }
@@ -467,6 +500,7 @@ export default function OrdersContent({
         {[
           { key: 'all', label: 'Tất cả' },
           { key: 'Chưa xác nhận', label: 'Chưa xác nhận' },
+          { key: 'Chờ thanh toán', label: 'Chờ thanh toán' },
           { key: 'Chờ xác nhận', label: 'Chờ xác nhận' },
           { key: 'Đã xác nhận', label: 'Đã xác nhận' },
           { key: 'Đang giao', label: 'Đang giao' },
@@ -548,7 +582,7 @@ export default function OrdersContent({
 
               {/* Action Buttons */}
               <div className='flex gap-2 pt-4'>
-                {order.status === 'Chưa xác nhận' && (
+                {(order.status === 'Chưa xác nhận' || order.status === 'Chờ thanh toán') && (
                   <Button
                     size='sm'
                     onClick={() => handlePayment(order.id)}
@@ -560,12 +594,14 @@ export default function OrdersContent({
                         <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
                         Đang xử lý...
                       </>
+                    ) : order.status === 'Chờ thanh toán' ? (
+                      'Tiếp tục thanh toán'
                     ) : (
                       'Thanh toán'
                     )}
                   </Button>
                 )}
-                {order.status === 'Chờ xác nhận' && (
+                {(order.status === 'Chờ xác nhận' || order.status === 'Chờ thanh toán') && (
                   <Button
                     variant='outline'
                     size='sm'
@@ -679,8 +715,8 @@ export default function OrdersContent({
                 key={page}
                 onClick={() => goToPage(page)}
                 className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${currentPage === page
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
               >
                 {page}
@@ -707,6 +743,9 @@ export default function OrdersContent({
         onClose={handleCloseCancelModal}
         orderId={selectedOrderId}
         userId={user?.userId || ''}
+        orderStatus={selectedOrderStatus}
+        onContinuePayment={handleContinuePaymentFromModal}
+        isProcessingPayment={processingPaymentOrderId === selectedOrderId}
       />
 
       <OrderDetailModal isOpen={showOrderDetailModal} onClose={handleCloseOrderDetailModal} orderId={selectedOrderId} />
@@ -717,7 +756,7 @@ export default function OrdersContent({
         isOpen={showComplaintModal}
         onClose={handleCloseComplaintModal}
         orderId={selectedOrderId}
-        storeId={orders.find(order => order.id === selectedOrderId)?.storeId || ''}
+        storeId={orders.find((order) => order.id === selectedOrderId)?.storeId || ''}
         userId={user?.userId || ''}
         onSubmit={handleComplaint}
         isLoading={submittingComplaintOrderId === selectedOrderId}

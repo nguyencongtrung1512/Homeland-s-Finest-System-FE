@@ -19,11 +19,23 @@ interface CancelOrderModalProps {
   onClose: () => void
   orderId: string
   userId: string
+  orderStatus?: string
+  onContinuePayment?: () => Promise<void> | void
+  isProcessingPayment?: boolean
 }
 
-export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: CancelOrderModalProps) {
+export default function CancelOrderModal({
+  isOpen,
+  onClose,
+  orderId,
+  userId,
+  orderStatus,
+  onContinuePayment,
+  isProcessingPayment
+}: CancelOrderModalProps) {
   const [selectedReason, setSelectedReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isContinuingPayment, setIsContinuingPayment] = useState(false)
 
   const cancelReasons = [
     'Muốn thay đổi địa chỉ giao hàng',
@@ -33,6 +45,8 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
     'Đặt nhầm, không muốn mua nữa',
     'Khác'
   ]
+
+  const isPendingPayment = orderStatus === 'PendingPayment'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,12 +90,27 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
 
   const handleCancel = () => {
     setSelectedReason('')
+    setIsContinuingPayment(false)
     onClose()
   }
 
   const handleOpenChange = (open: boolean) => {
     if (!open && !isLoading) {
       handleCancel()
+    }
+  }
+
+  const handleContinuePayment = async () => {
+    if (!onContinuePayment) {
+      return
+    }
+    try {
+      setIsContinuingPayment(true)
+      await onContinuePayment()
+    } catch (error) {
+      console.error('Error continuing payment:', error)
+    } finally {
+      setIsContinuingPayment(false)
     }
   }
 
@@ -105,6 +134,14 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
                 <strong>Lưu ý:</strong> Thao tác này sẽ hủy tất cả các sản phẩm có trong đơn hàng và không thể hoàn tác.
               </AlertDescription>
             </Alert>
+
+            {isPendingPayment && (
+              <Alert className='mb-4 border-orange-200 bg-orange-50 text-orange-700'>
+                <AlertDescription>
+                  Đơn hàng của bạn đang chờ thanh toán. Bạn có thể tiếp tục thanh toán ngay hoặc chọn lý do để hủy đơn.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Reason Selection */}
             <div className='space-y-4'>
@@ -132,11 +169,28 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
           </div>
 
           <DialogFooter className='gap-2 sm:gap-0'>
+            {isPendingPayment && onContinuePayment && (
+              <Button
+                type='button'
+                onClick={handleContinuePayment}
+                disabled={isLoading || isProcessingPayment || isContinuingPayment}
+                className='w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white'
+              >
+                {isProcessingPayment || isContinuingPayment ? (
+                  <>
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    Đang mở thanh toán...
+                  </>
+                ) : (
+                  'Tiếp tục thanh toán'
+                )}
+              </Button>
+            )}
             <Button
               type='button'
               variant='outline'
               onClick={handleCancel}
-              disabled={isLoading}
+              disabled={isLoading || isProcessingPayment || isContinuingPayment}
               className='w-full sm:w-auto'
             >
               Không phải bây giờ
@@ -144,7 +198,7 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
             <Button
               type='submit'
               variant='destructive'
-              disabled={isLoading || !selectedReason}
+              disabled={isLoading || !selectedReason || isProcessingPayment || isContinuingPayment}
               className='w-full sm:w-auto'
             >
               {isLoading ? (

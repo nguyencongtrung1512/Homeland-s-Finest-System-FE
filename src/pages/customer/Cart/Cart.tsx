@@ -78,7 +78,8 @@ export default function Cart() {
   const [walletBalance, setWalletBalance] = useState<WalletData | null>(null)
   const [isLoadingWallet, setIsLoadingWallet] = useState(false)
   const isInitialLoad = useRef(true) // Track if this is the first load
-  const updateQuantityTimeoutRef = useRef<NodeJS.Timeout | null>(null) // For debouncing quantity update notifications
+  const quantityUpdateTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const pendingQuantityUpdates = useRef<Record<string, number>>({})
 
   // Address management states
   const [showAddressModal, setShowAddressModal] = useState(false)
@@ -261,12 +262,14 @@ export default function Cart() {
     calculateShipping()
   }, [calculateShipping])
 
-  // Cleanup timeout on unmount
+  // Cleanup quantity update timers on unmount
   useEffect(() => {
     return () => {
-      if (updateQuantityTimeoutRef.current) {
-        clearTimeout(updateQuantityTimeoutRef.current)
-      }
+      Object.values(quantityUpdateTimers.current).forEach((timer) => {
+        clearTimeout(timer)
+      })
+      quantityUpdateTimers.current = {}
+      pendingQuantityUpdates.current = {}
     }
   }, [])
 
@@ -478,33 +481,73 @@ export default function Cart() {
     return new Intl.NumberFormat('vi-VN').format(price)
   }
 
-  const updateQuantity = async (itemId: string, newQuantity: number) => {
+  const updateQuantity = (itemId: string, newQuantity: number) => {
     if (!user?.userId || newQuantity < 1) return
 
-    try {
-      await updateCartItem(itemId, newQuantity)
-      await refreshCart()
-      await reloadCartData()
+    setCartData((prev) => {
+      if (!prev) return prev
 
-      // Clear previous timeout to debounce notifications
-      if (updateQuantityTimeoutRef.current) {
-        clearTimeout(updateQuantityTimeoutRef.current)
-      }
+      let targetComboId: string | null = null
 
-      // Only show notification after user stops updating for 500ms
-      updateQuantityTimeoutRef.current = setTimeout(() => {
-        toast.success('Cập nhật số lượng thành công', 2000) // Shorter duration
-        updateQuantityTimeoutRef.current = null
-      }, 500)
-    } catch (error) {
-      // Clear timeout on error
-      if (updateQuantityTimeoutRef.current) {
-        clearTimeout(updateQuantityTimeoutRef.current)
-        updateQuantityTimeoutRef.current = null
+      prev.carts.forEach((store) => {
+        store.items.forEach((item) => {
+          if (item.id === itemId && item.isCombo && item.comboId) {
+            targetComboId = item.comboId
+          }
+        })
+      })
+
+      const updatedCarts = prev.carts.map((store) => {
+        const updatedItems = store.items.map((item) => {
+          if (item.id === itemId || (targetComboId && item.comboId === targetComboId)) {
+            const unitPrice = item.unitPrice ?? (item.quantity ? item.totalPrice / item.quantity : 0)
+            const updatedTotalPrice = unitPrice * newQuantity
+            return {
+              ...item,
+              quantity: newQuantity,
+              totalPrice: updatedTotalPrice
+            }
+          }
+          return item
+        })
+
+        return {
+          ...store,
+          items: updatedItems
+        }
+      })
+
+      return {
+        ...prev,
+        carts: updatedCarts
       }
-      console.error('Error updating quantity:', error)
-      toast.error('Có lỗi xảy ra khi cập nhật số lượng')
+    })
+
+    pendingQuantityUpdates.current[itemId] = newQuantity
+
+    if (quantityUpdateTimers.current[itemId]) {
+      clearTimeout(quantityUpdateTimers.current[itemId])
     }
+
+    quantityUpdateTimers.current[itemId] = setTimeout(async () => {
+      try {
+        const quantityToUpdate = pendingQuantityUpdates.current[itemId]
+        await updateCartItem(itemId, quantityToUpdate)
+        await refreshCart({ silent: true })
+        await reloadCartData()
+
+      } catch (error) {
+        console.error('Error updating quantity:', error)
+        toast.error('Có lỗi xảy ra khi cập nhật số lượng')
+        await reloadCartData()
+      } finally {
+        if (quantityUpdateTimers.current[itemId]) {
+          clearTimeout(quantityUpdateTimers.current[itemId])
+          delete quantityUpdateTimers.current[itemId]
+        }
+        delete pendingQuantityUpdates.current[itemId]
+      }
+    }, 2000)
   }
 
   const removeItem = async (itemId: string) => {

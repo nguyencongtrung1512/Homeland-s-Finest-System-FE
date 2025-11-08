@@ -119,6 +119,7 @@ export interface Order {
   totalWeight: number
   status: OrderStatus
   isFreeship: boolean
+  isPayOut?: boolean
   shipPrice: number
   totalOrder: number
   totalCommission: number
