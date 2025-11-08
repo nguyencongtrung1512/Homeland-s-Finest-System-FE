@@ -4,6 +4,7 @@ export type FormType =
   | 'SupportPayment'
   | 'SupportTechnical'
   | 'ComplaintContent'
+  | 'ComplaintOrder'
   | 'RequestInformation'
   | 'ReportSeller'
   | 'FeedbackSuggestion'
