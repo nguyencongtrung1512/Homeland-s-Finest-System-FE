@@ -57,7 +57,7 @@ export const path = {
   transactionsStaff: 'transactions',
   reportsStaff: 'formReport',
   reportDetailStaff: 'formReport/:formId',
-  blogStaff: 'blog',
+  blogStaff: 'blogManagerment',
   complianceStaff: 'compliance',
   productCategoryStaff: 'product-category',
   comboStaff: 'combo-management',

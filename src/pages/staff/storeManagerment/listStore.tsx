@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Filter, RefreshCw, Store, Package, ExternalLink, Calendar, User } from 'lucide-react'
+import { Search, Filter, RefreshCw, Store, Package, ExternalLink, Calendar, User, FileCheck } from 'lucide-react'
 import { storeApi } from '../../../apis/store.api'
 
 // Interface cho Store response thực tế từ API
@@ -30,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../../../components/ui/badge'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { useNavigate } from 'react-router-dom'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 interface StoreData {
   key: string
@@ -226,8 +227,8 @@ function ListStore() {
               </div>
             </div>
             <div className='flex-1 min-w-0 overflow-hidden'>
-              <h3 
-                className='text-base font-semibold text-gray-900 mb-1.5 line-clamp-2 break-words' 
+              <h3
+                className='text-base font-semibold text-gray-900 mb-1.5 line-clamp-2 break-words'
                 title={store.store.name}
               >
                 {store.store.name}
@@ -281,21 +282,33 @@ function ListStore() {
   return (
     <div className='space-y-6 p-6'>
       {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Quản lí cửa hàng</h1>
-          <p className='text-gray-600 mt-1'>Xem xét và phê duyệt tất cả cửa hàng ({totalStores} cửa hàng)</p>
-        </div>
-        <Button
-          onClick={fetchAllStores}
-          disabled={loading}
-          variant='outline'
-          className='flex items-center gap-2 bg-transparent'
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Đang tải...' : 'Làm mới'}
-        </Button>
-      </div>
+      <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent className=''>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <FileCheck size={24} className='text-white' />
+              <h2 className='text-3xl font-bold text-white m-0'>Quản lí cửa hàng</h2>
+            </div>
+            <ShimmerBorder
+              className='cursor-pointer'
+              color='#ffffff'
+              animationDuration='3s'
+              contentClassName='bg-transparent'
+            >
+              <Button
+                onClick={fetchAllStores}
+                disabled={loading}
+                variant='outline'
+                className='flex items-center gap-2 bg-white/10 border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </ShimmerBorder>
+          </div>
+          <p className='text-white/90 ml-9'>Xem xét và phê duyệt tất cả cửa hàng ({totalStores} cửa hàng)</p>
+        </CardContent>
+      </Card>
 
       {/* Search and Filters */}
       <Card>
