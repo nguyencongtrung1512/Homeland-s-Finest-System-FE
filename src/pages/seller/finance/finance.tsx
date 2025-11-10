@@ -492,12 +492,7 @@ function FinanceManagement() {
             <h1 className='text-2xl sm:text-3xl font-bold text-green-700 mb-2'>Quản lý tài chính</h1>
             <p className='text-sm sm:text-base text-gray-600'>Theo dõi doanh thu và quản lý tài chính của bạn</p>
           </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            variant='outline'
-            className='w-full sm:w-auto'
-          >
+          <Button onClick={handleRefresh} disabled={refreshing} variant='outline' className='w-full sm:w-auto'>
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Đang tải...' : 'Làm mới'}
           </Button>
@@ -505,12 +500,7 @@ function FinanceManagement() {
       </motion.div>
 
       {/* 1. Số dư hiện tại (Real-time) */}
-      <motion.div
-        className='mb-6 sm:mb-8'
-        variants={containerVariants}
-        initial='hidden'
-        animate='visible'
-      >
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
         <h2 className='text-lg sm:text-xl font-semibold text-gray-900 mb-4'>Số dư hiện tại</h2>
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6'>
           {/* Available Balance */}
@@ -627,12 +617,7 @@ function FinanceManagement() {
       </motion.div>
 
       {/* 2. Thống kê lịch sử (Cumulative) */}
-      <motion.div
-        className='mb-6 sm:mb-8'
-        variants={containerVariants}
-        initial='hidden'
-        animate='visible'
-      >
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
         <h2 className='text-lg sm:text-xl font-semibold text-gray-900 mb-4'>Thống kê lịch sử</h2>
         <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6'>
           {/* Total Revenue */}
@@ -694,12 +679,7 @@ function FinanceManagement() {
       </motion.div>
 
       {/* 3. Derived (Tính toán) */}
-      <motion.div
-        className='mb-6 sm:mb-8'
-        variants={containerVariants}
-        initial='hidden'
-        animate='visible'
-      >
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
         <div className='flex items-center gap-2 mb-4'>
           <h2 className='text-lg sm:text-xl font-semibold text-gray-900'>Thống kê tính toán</h2>
           <button
@@ -742,11 +722,7 @@ function FinanceManagement() {
       </motion.div>
 
       {/* Transaction History */}
-      <motion.div
-        variants={containerVariants}
-        initial='hidden'
-        animate='visible'
-      >
+      <motion.div variants={containerVariants} initial='hidden' animate='visible'>
         <Card className='mb-6 sm:mb-8'>
           <CardContent className='p-4 sm:p-6'>
             <div className='flex items-center justify-between mb-4 sm:mb-6'>
@@ -892,11 +868,7 @@ function FinanceManagement() {
       </motion.div>
 
       {/* Payment Information */}
-      <motion.div
-        variants={itemVariants}
-        initial='hidden'
-        animate='visible'
-      >
+      <motion.div variants={itemVariants} initial='hidden' animate='visible'>
         <Card>
           <CardContent className='p-4 sm:p-6'>
             <h2 className='text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6'>Thông tin thanh toán</h2>
@@ -984,8 +956,6 @@ function FinanceManagement() {
                 </div>
               </div>
             </div>
-
-
 
             {/* Current Balance Info */}
             <div className='bg-gray-50 p-4 rounded-lg border border-gray-200'>
@@ -1087,7 +1057,6 @@ function FinanceManagement() {
                 </div>
               </div>
             </div>
-
             {/* Available Balance */}
             <div className='bg-green-50 p-4 rounded-lg border border-green-200'>
               <div className='flex justify-between items-center'>
@@ -1097,7 +1066,6 @@ function FinanceManagement() {
                 </span>
               </div>
             </div>
-
             {/* Amount Input */}
             <div>
               <label className='text-sm font-medium text-gray-700 mb-2 block'>Số tiền muốn rút (₫)</label>
@@ -1119,7 +1087,6 @@ function FinanceManagement() {
                 Số tiền tối thiểu: 50,000 ₫ | Số tiền tối đa: {walletDataDisplay.availableBalance.toLocaleString()} ₫
               </p>
             </div>
-
             {/* Quick Amount Buttons */}
             <div>
               <label className='text-sm font-medium text-gray-700 mb-2 block'>Chọn nhanh:</label>
@@ -1144,7 +1111,6 @@ function FinanceManagement() {
                 Rút toàn bộ
               </Button>
             </div>
-
             {/* Withdraw Amount Preview */}
             {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
               <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
@@ -1156,8 +1122,7 @@ function FinanceManagement() {
                 </div>
               </div>
             )}
-
-            Z            {/* Info Notice */}
+            Z {/* Info Notice */}
             <div className='bg-gray-50 p-3 rounded-lg border border-gray-200'>
               <div className='flex items-start gap-2'>
                 <Info className='w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0' />
@@ -1176,7 +1141,6 @@ function FinanceManagement() {
                 </div>
               </div>
             </div>
-
             {/* Action Buttons */}
             <div className='flex gap-3 pt-4'>
               <Button

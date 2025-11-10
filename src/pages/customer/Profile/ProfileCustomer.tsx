@@ -27,7 +27,7 @@ import { getCustomerOrders } from '../../../apis/order.api'
 import { promotionApi } from '../../../apis/promotion.api'
 import { formApi } from '../../../apis/form.api'
 import { useAuth } from '../../../contexts/auth.context'
-import { getUserById, type User } from '../../../apis/user.api'
+import { getUserById, updateUser, type User } from '../../../apis/user.api'
 import ProfileContent from './components/profile/ProfileContent'
 import OrdersContent from './components/order/OrdersContent'
 import AddressContent from './components/address/AddressContent'
@@ -35,6 +35,9 @@ import PromotionsContent from './components/promotion/PromotionsContent'
 import FormsContent from './components/form/FormsContent'
 import AddressModal from './components/address/AddressModal'
 import WalletContent from './components/wallet/WalletContent'
+import AvatarUploadModal from './components/profile/AvatarUploadModal'
+import { Camera } from 'lucide-react'
+import { toast } from '../../../utils/toast'
 import type { FormDTO } from '../../../types/form.type'
 
 export default function Profile() {
@@ -168,6 +171,7 @@ export default function Profile() {
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
 
   // Load addresses from API
   const loadAddresses = useCallback(async () => {
@@ -305,6 +309,20 @@ export default function Profile() {
 
   const displayName = user ? `${user.lastName} ${user.firstName}` : 'Người dùng'
 
+  const handleAvatarSave = async (file: File) => {
+    if (!authUser?.userId) return
+
+    try {
+      await updateUser(authUser.userId, { avatar: file })
+      // Reload user data
+      const updatedUser = await getUserById(authUser.userId)
+      setUser(updatedUser)
+    } catch (error) {
+      console.error('Error updating avatar:', error)
+      throw error
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -325,14 +343,28 @@ export default function Profile() {
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ duration: 0.6, delay: 0.2, type: 'spring', stiffness: 200 }}
+                className='relative group'
               >
                 <Avatar className='w-20 h-20'>
                   <img
                     src={user?.avatar || 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'}
                     alt='Profile'
                     className='w-full h-full object-cover rounded-full'
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.src = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+                    }}
                   />
                 </Avatar>
+                <motion.button
+                  onClick={() => setShowAvatarModal(true)}
+                  className='absolute bottom-0 right-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-green-700 transition-colors shadow-lg opacity-0 group-hover:opacity-100'
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Camera className='w-4 h-4' />
+                </motion.button>
               </motion.div>
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
@@ -549,6 +581,14 @@ export default function Profile() {
         onSave={handleSaveAddress}
         existingAddresses={addresses}
         userId={authUser?.userId}
+      />
+
+      {/* Avatar Upload Modal */}
+      <AvatarUploadModal
+        isOpen={showAvatarModal}
+        onClose={() => setShowAvatarModal(false)}
+        onSave={handleAvatarSave}
+        currentAvatar={user?.avatar || null}
       />
     </motion.div>
   )

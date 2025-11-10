@@ -11,24 +11,26 @@ import { confirmOrderReceived } from '../../../../../apis/order.api'
 import { purchaseOrder } from '../../../../../apis/transaction.api'
 import { formApi } from '../../../../../apis/form.api'
 import { path } from '../../../../../constants/path'
-import type { Order as APIOrder } from '../../../../../types/orderType'
+import type { Order as APIOrder, OrderStatus } from '../../../../../types/orderType'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../../../../contexts/auth.context'
 import type { CreateFormRequest, FormType } from '../../../../../types/form.type'
+
+const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
 interface Order {
   id: string
   storeId: string
   date: string
+  originalStatus: OrderStatus // Lưu status gốc từ API
   status:
   | 'Chưa xác nhận'
   | 'Chờ thanh toán'
-  | 'Chờ xác nhận'
   | 'Đã xác nhận'
-  | 'Đang giao'
-  | 'Đã giao'
+  | 'Vận chuyển'
+  | 'Hoàn thành'
+  | 'Trả hàng/Hoàn tiền'
   | 'Đã hủy'
-  | 'Trả hàng'
   statusColor: string
   statusBgColor: string
   statusText: string
@@ -86,8 +88,9 @@ interface OrdersContentProps {
 }
 
 const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
-  const getUIStatus = (apiStatus: string) => {
+  const getUIStatus = (apiStatus: OrderStatus) => {
     switch (apiStatus) {
+      // Chưa xác nhận
       case 'NotYet':
         return {
           status: 'Chưa xác nhận' as const,
@@ -95,6 +98,14 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-yellow-50',
           statusText: 'Đang chờ xác nhận đơn hàng'
         }
+      case 'Processing':
+        return {
+          status: 'Chưa xác nhận' as const,
+          statusColor: 'text-yellow-700',
+          statusBgColor: 'bg-yellow-50',
+          statusText: 'Đang chờ xác nhận đơn hàng'
+        }
+      // Chờ thanh toán
       case 'PendingPayment':
         return {
           status: 'Chờ thanh toán' as const,
@@ -102,13 +113,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-orange-50',
           statusText: 'Bạn đã khởi tạo thanh toán, vui lòng hoàn tất'
         }
-      case 'Processing':
-        return {
-          status: 'Chờ xác nhận' as const,
-          statusColor: 'text-blue-700',
-          statusBgColor: 'bg-blue-50',
-          statusText: 'Đang chờ xác nhận đơn hàng'
-        }
+      // Đã xác nhận
       case 'Confirmed':
         return {
           status: 'Đã xác nhận' as const,
@@ -116,20 +121,136 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-green-50',
           statusText: 'Đơn hàng đã được xác nhận'
         }
-      case 'Shipping':
+      case 'ReadyToPick':
         return {
-          status: 'Đang giao' as const,
-          statusColor: 'text-blue-700',
-          statusBgColor: 'bg-blue-50',
-          statusText: 'Đang trên đường đến với bạn'
-        }
-      case 'Delivered':
-        return {
-          status: 'Đã giao' as const,
+          status: 'Đã xác nhận' as const,
           statusColor: 'text-green-700',
           statusBgColor: 'bg-green-50',
-          statusText: 'Đã về đến nhà bạn rồi'
+          statusText: 'Đang chuẩn bị hàng'
         }
+      case 'Picking':
+        return {
+          status: 'Đã xác nhận' as const,
+          statusColor: 'text-green-700',
+          statusBgColor: 'bg-green-50',
+          statusText: 'Đang trên đường lấy hàng'
+        }
+      case 'Picked':
+        return {
+          status: 'Đã xác nhận' as const,
+          statusColor: 'text-green-700',
+          statusBgColor: 'bg-green-50',
+          statusText: 'Shipper đã lấy hàng'
+        }
+      // Vận chuyển
+      case 'Storing':
+        return {
+          status: 'Vận chuyển' as const,
+          statusColor: 'text-blue-700',
+          statusBgColor: 'bg-blue-50',
+          statusText: 'Đang lưu kho'
+        }
+      case 'Transporting':
+        return {
+          status: 'Vận chuyển' as const,
+          statusColor: 'text-blue-700',
+          statusBgColor: 'bg-blue-50',
+          statusText: 'Đang vận chuyển'
+        }
+      case 'Sorting':
+        return {
+          status: 'Vận chuyển' as const,
+          statusColor: 'text-blue-700',
+          statusBgColor: 'bg-blue-50',
+          statusText: 'Đang phân loại'
+        }
+      case 'Delivering':
+        return {
+          status: 'Vận chuyển' as const,
+          statusColor: 'text-blue-700',
+          statusBgColor: 'bg-blue-50',
+          statusText: 'Đang giao hàng'
+        }
+      // Hoàn thành
+      case 'Delivered':
+        return {
+          status: 'Hoàn thành' as const,
+          statusColor: 'text-green-700',
+          statusBgColor: 'bg-green-50',
+          statusText: 'Đã giao hàng thành công'
+        }
+      case 'Paid':
+        return {
+          status: 'Hoàn thành' as const,
+          statusColor: 'text-green-700',
+          statusBgColor: 'bg-green-50',
+          statusText: 'Đã thanh toán'
+        }
+      // Trả hàng/Hoàn tiền
+      case 'Returning':
+        return {
+          status: 'Trả hàng/Hoàn tiền' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Đang trả hàng'
+        }
+      case 'Returned':
+        return {
+          status: 'Trả hàng/Hoàn tiền' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Đã trả hàng'
+        }
+      case 'Refunded':
+        return {
+          status: 'Trả hàng/Hoàn tiền' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Đã hoàn tiền'
+        }
+      case 'DeliveryFail':
+        return {
+          status: 'Trả hàng/Hoàn tiền' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Giao hàng thất bại'
+        }
+      case 'Exception':
+        return {
+          status: 'Trả hàng/Hoàn tiền' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Gặp sự cố'
+        }
+      case 'Damaged':
+        return {
+          status: 'Trả hàng/Hoàn tiền' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Hàng hư hỏng'
+        }
+      case 'Lost':
+        return {
+          status: 'Trả hàng/Hoàn tiền' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Thất lạc'
+        }
+      case 'Complaining':
+        return {
+          status: 'Trả hàng/Hoàn tiền' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Đang phản hồi'
+        }
+      case 'Complained':
+        return {
+          status: 'Trả hàng/Hoàn tiền' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Đã phản hồi'
+        }
+      // Đã hủy
       case 'Cancel':
         return {
           status: 'Đã hủy' as const,
@@ -137,16 +258,9 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-red-50',
           statusText: 'Đơn hàng đã bị hủy'
         }
-      case 'Returned':
-        return {
-          status: 'Trả hàng' as const,
-          statusColor: 'text-orange-700',
-          statusBgColor: 'bg-orange-50',
-          statusText: 'Đơn hàng đã được trả lại'
-        }
       default:
         return {
-          status: 'Chờ xác nhận' as const,
+          status: 'Chưa xác nhận' as const,
           statusColor: 'text-gray-700',
           statusBgColor: 'bg-gray-50',
           statusText: 'Đơn hàng đang chờ xử lý'
@@ -154,14 +268,14 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     }
   }
 
-  const statusInfo = getUIStatus(apiOrder?.status || '')
+  const statusInfo = getUIStatus(apiOrder?.status || 'NotYet')
 
   const products = [
     ...(apiOrder?.orderItems || []).map((item) => ({
       id: item?.id || '',
       productInventoryId: item?.productVariantId || '', // Use productVariantId instead
       name: item?.orderItemName || 'Sản phẩm không xác định',
-      image: item?.orderItemImageUrl || '/src/assets/react.svg',
+      image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
       quantity: (item?.quantity || 0).toString(),
       price: item?.totalPrice || 0,
       finalPrice: item?.totalPrice || 0,
@@ -176,7 +290,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
       id: item?.id || '',
       productInventoryId: item?.productVariantId || '',
       name: `${item?.comboName || 'Combo'} - ${item?.orderItemName || 'Sản phẩm không xác định'}`,
-      image: item?.orderItemImageUrl || '/src/assets/react.svg',
+      image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
       quantity: (item?.quantity || 0).toString(),
       price: item?.finalPrice || 0,
       finalPrice: item?.finalPrice || 0,
@@ -206,6 +320,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     id: apiOrder?.id || '',
     storeId: apiOrder?.storeId || '',
     date: apiOrder?.createdAt,
+    originalStatus: apiOrder?.status || 'NotYet',
     ...statusInfo,
     isFreeship: apiOrder?.isFreeship || false,
     products,
@@ -271,40 +386,51 @@ export default function OrdersContent({
     }
   }, [apiOrders])
 
+  // Map các status API vào các tab
+  const getStatusesForTab = (tabKey: string): OrderStatus[] => {
+    switch (tabKey) {
+      case 'Chưa xác nhận':
+        return ['NotYet', 'Processing']
+      case 'Chờ thanh toán':
+        return ['PendingPayment']
+      case 'Đã xác nhận':
+        return ['Confirmed', 'ReadyToPick', 'Picking', 'Picked']
+      case 'Vận chuyển':
+        return ['Storing', 'Transporting', 'Sorting', 'Delivering']
+      case 'Hoàn thành':
+        return ['Delivered', 'Paid']
+      case 'Trả hàng/Hoàn tiền':
+        return [
+          'Returning',
+          'Returned',
+          'Refunded',
+          'DeliveryFail',
+          'Exception',
+          'Damaged',
+          'Lost',
+          'Complaining',
+          'Complained'
+        ]
+      case 'Đã hủy':
+        return ['Cancel']
+      default:
+        return []
+    }
+  }
+
   const filteredOrders = useMemo(() => {
     if (selectedFilter === 'all') return orders
-    return orders.filter((order) => order.status === selectedFilter)
+
+    const statusesForTab = getStatusesForTab(selectedFilter)
+    return orders.filter((order) => statusesForTab.includes(order.originalStatus))
   }, [orders, selectedFilter])
 
   const handleFilterChange = (filterKey: string) => {
     setSelectedFilter(filterKey)
     setCurrentPage(1)
-
-    const apiStatusMap: { [key: string]: string | undefined } = {
-      all: undefined,
-      'Chưa xác nhận': 'NotYet',
-      'Chờ thanh toán': 'PendingPayment',
-      'Chờ xác nhận': 'Processing',
-      'Đã xác nhận': 'Confirmed',
-      'Đang giao': 'Shipping',
-      'Đã giao': 'Delivered',
-      'Đã hủy': 'Cancel',
-      'Trả hàng': 'Returned'
-    }
-    // const tap = [
-    //   { key: 'all', label: 'Tất cả' },
-    //   { key: 'NotYet', label: 'Chưa xác nhận' },
-    //   { key: 'Processing', label: 'Vận chuyển' },
-    //   { key: 'Confirmed', label: 'Đã xác nhận' },
-    //   { key: 'Shipping', label: 'Chờ giao hàng' },
-    //   { key: 'Delivered', label: 'Hoàn thành' },
-    //   { key: 'Cancel', label: 'Đã hủy' },
-    //   { key: 'Returned', label: 'Trả hàng/Hoàn tiền' },
-    // ]
-
-    const apiStatus = apiStatusMap[filterKey]
+    // Không gọi onFilterByStatus nữa vì sẽ get all và filter ở frontend
     if (onFilterByStatus) {
-      onFilterByStatus(apiStatus || '')
+      onFilterByStatus('') // Gửi empty để get all
     }
   }
 
@@ -506,22 +632,20 @@ export default function OrdersContent({
         </Button>
       </div>
 
-      <div className='flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg'>
+      <div className='flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg overflow-x-auto'>
         {[
           { key: 'all', label: 'Tất cả' },
           { key: 'Chưa xác nhận', label: 'Chưa xác nhận' },
           { key: 'Chờ thanh toán', label: 'Chờ thanh toán' },
-          { key: 'Chờ xác nhận', label: 'Chờ xác nhận' },
           { key: 'Đã xác nhận', label: 'Đã xác nhận' },
-          { key: 'Đang giao', label: 'Đang giao' },
-          { key: 'Đã giao', label: 'Đã giao' },
-          { key: 'Đã hủy', label: 'Đã hủy' },
-          { key: 'Trả hàng', label: 'Trả hàng' }
+          { key: 'Vận chuyển', label: 'Vận chuyển' },
+          { key: 'Hoàn thành', label: 'Hoàn thành' },
+          { key: 'Trả hàng/Hoàn tiền', label: 'Trả hàng/Hoàn tiền' }
         ].map((filter) => (
           <button
             key={filter.key}
             onClick={() => handleFilterChange(filter.key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
               }`}
           >
             {filter.label}
@@ -558,7 +682,17 @@ export default function OrdersContent({
               <div className='space-y-3 mb-4'>
                 {order.products.map((product, index) => (
                   <div key={index} className='flex items-center gap-4'>
-                    <img src={product.image} alt={product.name} className='w-16 h-16 object-cover rounded-lg border' />
+                    <img
+                      src={product.image || DEFAULT_PRODUCT_IMAGE}
+                      alt={product.name}
+                      className='w-16 h-16 object-cover rounded-lg border'
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        if (target.src !== DEFAULT_PRODUCT_IMAGE) {
+                          target.src = DEFAULT_PRODUCT_IMAGE
+                        }
+                      }}
+                    />
                     <div className='flex-1'>
                       <div className='flex items-center gap-2 mb-1'>
                         <h4 className='font-medium text-gray-900'>{product.name}</h4>
@@ -591,36 +725,40 @@ export default function OrdersContent({
               </div>
 
               {/* Action Buttons */}
-              <div className='flex gap-2 pt-4'>
-                {(order.status === 'Chưa xác nhận' || order.status === 'Chờ thanh toán') && (
-                  <Button
-                    size='sm'
-                    onClick={() => handlePayment(order.id)}
-                    disabled={processingPaymentOrderId === order.id}
-                    className='bg-green-600 hover:bg-green-700 text-white disabled:opacity-50'
-                  >
-                    {processingPaymentOrderId === order.id ? (
-                      <>
-                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
-                        Đang xử lý...
-                      </>
-                    ) : order.status === 'Chờ thanh toán' ? (
-                      'Tiếp tục thanh toán'
-                    ) : (
-                      'Thanh toán'
-                    )}
-                  </Button>
-                )}
-                {(order.status === 'Chờ xác nhận' || order.status === 'Chờ thanh toán') && (
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handleOpenCancelModal(order.id)}
-                    className='text-red-600 border-red-600 hover:bg-red-50'
-                  >
-                    Hủy đơn hàng
-                  </Button>
-                )}
+              <div className='flex gap-2 pt-4 flex-wrap'>
+                {(order.originalStatus === 'NotYet' ||
+                  order.originalStatus === 'Processing' ||
+                  order.originalStatus === 'PendingPayment') && (
+                    <Button
+                      size='sm'
+                      onClick={() => handlePayment(order.id)}
+                      disabled={processingPaymentOrderId === order.id}
+                      className='bg-green-600 hover:bg-green-700 text-white disabled:opacity-50'
+                    >
+                      {processingPaymentOrderId === order.id ? (
+                        <>
+                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                          Đang xử lý...
+                        </>
+                      ) : order.originalStatus === 'PendingPayment' ? (
+                        'Tiếp tục thanh toán'
+                      ) : (
+                        'Thanh toán'
+                      )}
+                    </Button>
+                  )}
+                {(order.originalStatus === 'NotYet' ||
+                  order.originalStatus === 'Processing' ||
+                  order.originalStatus === 'PendingPayment') && (
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleOpenCancelModal(order.id)}
+                      className='text-red-600 border-red-600 hover:bg-red-50'
+                    >
+                      Hủy đơn hàng
+                    </Button>
+                  )}
                 {order.canConfirmReceived && (
                   <Button
                     size='sm'
@@ -638,7 +776,7 @@ export default function OrdersContent({
                     )}
                   </Button>
                 )}
-                {order.status === 'Đã giao' && (
+                {order.originalStatus === 'Delivered' && (
                   <>
                     <Button
                       variant='outline'
@@ -646,7 +784,7 @@ export default function OrdersContent({
                       onClick={() =>
                         handleOpenReviewModal({
                           name: order.products[0]?.name || '',
-                          image: order.products[0]?.image || ''
+                          image: order.products[0]?.image || DEFAULT_PRODUCT_IMAGE
                         })
                       }
                       className='text-green-600 border-green-600 hover:bg-green-50'
@@ -671,7 +809,7 @@ export default function OrdersContent({
                     </Button>
                   </>
                 )}
-                {order.status === 'Đã hủy' && (
+                {order.originalStatus === 'Cancel' && (
                   <Button
                     variant='outline'
                     size='sm'
@@ -725,8 +863,8 @@ export default function OrdersContent({
                 key={page}
                 onClick={() => goToPage(page)}
                 className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${currentPage === page
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
               >
                 {page}

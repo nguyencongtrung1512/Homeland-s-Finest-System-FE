@@ -6,13 +6,13 @@ import { Label } from '../../../../../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select'
 import { Calendar } from '../../../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../../../components/ui/popover'
-import { ShimmerStyles, ShimmerBorder } from '../../../../../components/ui/shimmer'
+import { ShimmerBorder } from '../../../../../components/ui/shimmer'
 import { useAuth } from '../../../../../contexts/auth.context'
 import { getUserById, updateUser, type User as UserType } from '../../../../../apis/user.api'
 import { getProvinces, type Province } from '../../../../../apis/province'
 import { changePassword } from '../../../../../apis/auth.api'
 import { toast } from '../../../../../utils/toast'
-import { MapPin, CreditCard, Building2, Camera, User, CalendarIcon, ChevronDown, ChevronUp } from 'lucide-react'
+import { MapPin, CreditCard, Building2, User, CalendarIcon, ChevronDown, ChevronUp } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
@@ -54,12 +54,12 @@ export default function ProfileContent() {
     confirmPassword: '',
     note: ''
   })
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [provinces, setProvinces] = useState<Province[]>([])
   const [loadingProvinces, setLoadingProvinces] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
   const [showPasswordSection, setShowPasswordSection] = useState(false)
   const [showBankingSection, setShowBankingSection] = useState(false)
+  const [showPersonalInfoSection, setShowPersonalInfoSection] = useState(true)
   const [updatingPersonalInfo, setUpdatingPersonalInfo] = useState(false)
   const [updatingBankingInfo, setUpdatingBankingInfo] = useState(false)
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined)
@@ -117,11 +117,6 @@ export default function ProfileContent() {
         })
 
         setDateOfBirth(parsedDate)
-
-        // Set avatar preview if user has existing avatar
-        if (userData.avatar) {
-          setAvatarPreview(userData.avatar)
-        }
       } catch (error) {
         console.error('Error loading user data:', error)
         toast.error('Không thể tải thông tin người dùng')
@@ -138,35 +133,6 @@ export default function ProfileContent() {
       ...prev,
       [field]: value
     }))
-  }
-
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast.error('Vui lòng chọn file ảnh hợp lệ')
-        return
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Kích thước file không được vượt quá 5MB')
-        return
-      }
-
-      setFormData((prev) => ({
-        ...prev,
-        avatar: file
-      }))
-
-      // Create preview URL
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setAvatarPreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
   }
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -321,216 +287,169 @@ export default function ProfileContent() {
       transition={{ duration: 0.5, ease: 'easeOut' }}
       className='max-w-5xl mx-auto px-4 sm:px-6 lg:px-8'
     >
-      <ShimmerStyles />
-      <motion.h2
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        className='text-lg font-semibold text-gray-900 mb-6'
+      {/* Personal Information Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className='mb-6'
       >
-        Thông tin cá nhân
-      </motion.h2>
-
-      {/* Main Layout: Info on left, Avatar on right */}
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 items-stretch'>
-        {/* Profile Form - Left Side */}
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.2, ease: 'easeOut' }}
-          className='lg:col-span-2 h-full'
-        >
-          <ShimmerBorder className='h-full'>
-            <div className='p-6'>
-              <div className='grid grid-cols-2 gap-6'>
-                <div>
-                  <Label htmlFor='firstName'>Họ</Label>
-                  <Input
-                    id='firstName'
-                    value={formData.firstName}
-                    onChange={(e) => handleInputChange('firstName', e.target.value)}
-                    className='mt-1'
-                  />
-                </div>
-                <div>
-                  <Label htmlFor='lastName'>Tên</Label>
-                  <Input
-                    id='lastName'
-                    value={formData.lastName}
-                    onChange={(e) => handleInputChange('lastName', e.target.value)}
-                    className='mt-1'
-                  />
-                </div>
-                <div>
-                  <Label htmlFor='email'>Email</Label>
-                  <Input
-                    id='email'
-                    type='email'
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    className='mt-1'
-                  />
-                </div>
-                <div>
-                  <Label htmlFor='phoneNumber'>Số điện thoại</Label>
-                  <Input
-                    id='phoneNumber'
-                    value={formData.phoneNumber}
-                    onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                    className='mt-1'
-                  />
-                </div>
-                <div>
-                  <Label htmlFor='gender'>Giới tính</Label>
-                  <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
-                    <SelectTrigger className='mt-1'>
-                      <SelectValue placeholder='Chọn giới tính' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='Male'>Nam</SelectItem>
-                      <SelectItem value='Female'>Nữ</SelectItem>
-                      <SelectItem value='Other'>Khác</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor='provinceId'>Tỉnh/Thành phố</Label>
-                  <div className='relative'>
-                    <MapPin className='absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10' />
-                    <Select
-                      value={formData.provinceId}
-                      onValueChange={(value) => handleInputChange('provinceId', value)}
-                      disabled={loadingProvinces}
-                    >
-                      <SelectTrigger className='mt-1 pl-10'>
-                        <SelectValue placeholder={loadingProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {provinces.map((province) => (
-                          <SelectItem key={province.id} value={province.id.toString()}>
-                            {province.name} - {province.region}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor='dateOfBirth'>Ngày sinh</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant='outline' className='w-full justify-start text-left font-normal mt-1'>
-                        <CalendarIcon className='mr-2 h-4 w-4' />
-                        {dateOfBirth ? format(dateOfBirth, 'dd/MM/yyyy', { locale: vi }) : 'Chọn ngày sinh'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className='w-auto p-0' align='start'>
-                      <Calendar
-                        mode='single'
-                        selected={dateOfBirth}
-                        onSelect={handleDateSelect}
-                        initialFocus
-                        locale={vi}
-                        fromYear={1950}
-                        toYear={new Date().getFullYear()}
-                        captionLayout='dropdown'
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.6 }}
-                className='mt-6'
-              >
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Button
-                    className='bg-green-600 hover:bg-green-700 text-white'
-                    onClick={handleUpdatePersonalInfo}
-                    disabled={updatingPersonalInfo}
-                  >
-                    {updatingPersonalInfo ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
-                  </Button>
-                </motion.div>
-              </motion.div>
-            </div>
-          </ShimmerBorder>
-        </motion.div>
-
-        {/* Avatar Section - Right Side */}
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.3, ease: 'easeOut' }}
-          className='lg:col-span-1 h-full'
-        >
-          <ShimmerBorder className='h-full'>
-            <div className='p-6 h-full flex flex-col'>
-              <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center'>
+        <ShimmerBorder>
+          <div className='rounded-lg'>
+            <motion.button
+              onClick={() => setShowPersonalInfoSection(!showPersonalInfoSection)}
+              className='w-full p-6 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-t-lg'
+              whileHover={{ backgroundColor: '#f9fafb' }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <h3 className='text-lg font-semibold text-gray-900 flex items-center'>
                 <User className='w-5 h-5 mr-2 text-green-600' />
-                Ảnh đại diện
+                Cập nhật thông tin cá nhân
               </h3>
-
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.5, ease: 'easeOut' }}
-                className='flex items-center justify-center'
-              >
-                <motion.div className='relative group' whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
-                  <motion.div
-                    className='w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center'
-                    whileHover={{ borderColor: '#10b981' }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {avatarPreview ? (
-                      <motion.img
-                        src={avatarPreview || undefined}
-                        alt='Avatar preview'
-                        className='w-full h-full object-cover'
-                        initial={{ scale: 1.2 }}
-                        animate={{ scale: 1 }}
-                        transition={{ duration: 0.3 }}
-                      />
-                    ) : (
-                      <User className='w-16 h-16 text-gray-400' />
-                    )}
-                  </motion.div>
-
-                  {/* Camera Button */}
-                  <motion.label
-                    htmlFor='avatar-upload'
-                    className='absolute bottom-0 right-0 w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-green-700 transition-colors shadow-lg'
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Camera className='w-5 h-5' />
-                    <input
-                      id='avatar-upload'
-                      type='file'
-                      accept='image/*'
-                      onChange={handleAvatarChange}
-                      className='hidden'
-                    />
-                  </motion.label>
-                </motion.div>
+              <motion.div animate={{ rotate: showPersonalInfoSection ? 180 : 0 }} transition={{ duration: 0.3 }}>
+                {showPersonalInfoSection ? (
+                  <ChevronUp className='w-5 h-5 text-gray-500' />
+                ) : (
+                  <ChevronDown className='w-5 h-5 text-gray-500' />
+                )}
               </motion.div>
+            </motion.button>
 
-              <div className='mt-4 text-center'>
-                <div className='text-xs text-gray-500 space-y-1'>
-                  <p>• Định dạng: JPG, PNG, GIF</p>
-                  <p>• Kích thước tối đa: 5MB</p>
-                  <p>• Khuyến nghị: ảnh vuông, độ phân giải cao</p>
-                </div>
-              </div>
-            </div>
-          </ShimmerBorder>
-        </motion.div>
-      </div>
+            <AnimatePresence>
+              {showPersonalInfoSection && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className='overflow-hidden'
+                >
+                  <div className='px-6 py-6 border-t'>
+                    <p className='text-sm text-gray-600 mb-6'>
+                      Cập nhật thông tin cá nhân của bạn để có trải nghiệm tốt hơn
+                    </p>
+
+                    <div className='grid grid-cols-2 gap-6'>
+                      <div>
+                        <Label htmlFor='firstName'>Họ</Label>
+                        <Input
+                          id='firstName'
+                          value={formData.firstName}
+                          onChange={(e) => handleInputChange('firstName', e.target.value)}
+                          className='mt-1'
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor='lastName'>Tên</Label>
+                        <Input
+                          id='lastName'
+                          value={formData.lastName}
+                          onChange={(e) => handleInputChange('lastName', e.target.value)}
+                          className='mt-1'
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor='email'>Email</Label>
+                        <Input
+                          id='email'
+                          type='email'
+                          value={formData.email}
+                          onChange={(e) => handleInputChange('email', e.target.value)}
+                          className='mt-1'
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor='phoneNumber'>Số điện thoại</Label>
+                        <Input
+                          id='phoneNumber'
+                          value={formData.phoneNumber}
+                          onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                          className='mt-1'
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor='gender'>Giới tính</Label>
+                        <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
+                          <SelectTrigger className='mt-1'>
+                            <SelectValue placeholder='Chọn giới tính' />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value='Male'>Nam</SelectItem>
+                            <SelectItem value='Female'>Nữ</SelectItem>
+                            <SelectItem value='Other'>Khác</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor='provinceId'>Tỉnh/Thành phố</Label>
+                        <div className='relative'>
+                          <MapPin className='absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10' />
+                          <Select
+                            value={formData.provinceId}
+                            onValueChange={(value) => handleInputChange('provinceId', value)}
+                            disabled={loadingProvinces}
+                          >
+                            <SelectTrigger className='mt-1 pl-10'>
+                              <SelectValue placeholder={loadingProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {provinces.map((province) => (
+                                <SelectItem key={province.id} value={province.id.toString()}>
+                                  {province.name} - {province.region}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor='dateOfBirth'>Ngày sinh</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant='outline' className='w-full justify-start text-left font-normal mt-1'>
+                              <CalendarIcon className='mr-2 h-4 w-4' />
+                              {dateOfBirth ? format(dateOfBirth, 'dd/MM/yyyy', { locale: vi }) : 'Chọn ngày sinh'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className='w-auto p-0' align='start'>
+                            <Calendar
+                              mode='single'
+                              selected={dateOfBirth}
+                              onSelect={handleDateSelect}
+                              initialFocus
+                              locale={vi}
+                              fromYear={1950}
+                              toYear={new Date().getFullYear()}
+                              captionLayout='dropdown'
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className='mt-6 flex items-center gap-2'
+                    >
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button
+                          className='bg-green-600 hover:bg-green-700 text-white'
+                          onClick={handleUpdatePersonalInfo}
+                          disabled={updatingPersonalInfo}
+                        >
+                          {updatingPersonalInfo ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
+                        </Button>
+                      </motion.div>
+                    </motion.div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </ShimmerBorder>
+      </motion.div>
 
       {/* Banking Information Section */}
       <motion.div
