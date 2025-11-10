@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { ArrowUpDown, ChevronDown, Eye, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { ArrowUpDown, ChevronDown, Eye, Loader2, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 import { Button } from '../../../components/ui/button'
 import {
@@ -17,6 +18,33 @@ import { useAuth } from '../../../contexts/auth.context'
 import type { Order, OrderStatus } from '../../../types/orderType'
 import { toast } from 'react-toastify'
 import OrderDetail from './orderDetail'
+
+// Status text mapping - moved outside component to avoid re-renders
+const statusTextMap: Record<string, string> = {
+  NotYet: 'Chưa xử lí',
+  PendingPayment: 'Chờ thanh toán',
+  Processing: 'Chờ xác nhận',
+  Confirmed: 'Đã xác nhận',
+  Cancel: 'Đã hủy',
+  ReadyToPick: 'Đang chuẩn bị hàng',
+  Picking: 'Đang trên đường lấy hàng',
+  Picked: 'Đã lấy hàng',
+  Storing: 'Đang lưu kho',
+  Transporting: 'Đang vận chuyển',
+  Sorting: 'Đang phân loại',
+  Delivering: 'Đang giao hàng',
+  Delivered: 'Đã giao hàng thành công',
+  DeliveryFail: 'Giao hàng thất bại',
+  Returning: 'Đang trả hàng',
+  Returned: 'Đã trả hàng',
+  Refunded: 'Đã hoàn tiền',
+  Complaining: 'Đang phản hồi',
+  Complained: 'Đã phản hồi',
+  Paid: 'Đã thanh toán',
+  Exception: 'Gặp sự cố',
+  Damaged: 'Hàng hư hỏng',
+  Lost: 'Thất lạc'
+}
 
 function OrderManagement() {
   const { user } = useAuth()
@@ -39,17 +67,8 @@ function OrderManagement() {
   })
   const [isOrderDetailModalOpen, setIsOrderDetailModalOpen] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
-
-  const tabs = [
-    { key: 'all', label: 'Tất cả' },
-    { key: 'NotYet', label: 'Chưa xác nhận' },
-    { key: 'Processing', label: 'Chờ xác nhận' },
-    { key: 'Confirmed', label: 'Đã xác nhận' },
-    { key: 'Shipping', label: 'Đang giao' },
-    { key: 'Delivered', label: 'Đã giao' },
-    { key: 'Cancel', label: 'Đã hủy' },
-    { key: 'Returned', label: 'Đã trả hàng' }
-  ]
+  const [allOrders, setAllOrders] = useState<Order[]>([]) // Store all orders for counting
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A'
@@ -57,25 +76,30 @@ function OrderManagement() {
     return dateString
   }
 
+  const getStatusText = (status: string) => {
+    return statusTextMap[status] || status
+  }
+
+  // Create tabs from statusTextMap
+  const tabs = useMemo(() => {
+    const statusTabs = Object.keys(statusTextMap).map((key) => ({
+      key: key as OrderStatus,
+      label: statusTextMap[key]
+    }))
+    return [{ key: 'all' as const, label: 'Tất cả' }, ...statusTabs]
+  }, [])
+
+  // Count orders by status
+  const orderCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: allOrders.length }
+    allOrders.forEach((order) => {
+      counts[order.status] = (counts[order.status] || 0) + 1
+    })
+    return counts
+  }, [allOrders])
+
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'NotYet':
-        return <Badge className='bg-orange-100 text-orange-800 hover:bg-orange-100'>Chưa xử lí</Badge>
-      case 'Processing':
-        return <Badge className='bg-blue-100 text-blue-800 hover:bg-blue-100'>Chờ xác nhận</Badge>
-      case 'Confirmed':
-        return <Badge className='bg-green-100 text-green-800 hover:bg-green-100'>Đã xác nhận</Badge>
-      case 'Shipping':
-        return <Badge className='bg-purple-100 text-purple-800 hover:bg-purple-100'>Đang giao</Badge>
-      case 'Delivered':
-        return <Badge className='bg-green-100 text-green-800 hover:bg-green-100'>Đã giao</Badge>
-      case 'Cancel':
-        return <Badge className='bg-red-100 text-red-800 hover:bg-red-100'>Đã hủy</Badge>
-      case 'Returned':
-        return <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>Đã trả hàng</Badge>
-      default:
-        return <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>{status}</Badge>
-    }
+    return <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>{getStatusText(status)}</Badge>
   }
 
   // Filter orders by search term
@@ -173,6 +197,18 @@ function OrderManagement() {
     { key: 'actions', label: 'Hành động' }
   ]
 
+  // Fetch all orders for counting
+  const fetchAllOrders = useCallback(async () => {
+    if (!user?.userId) return
+
+    try {
+      const allOrdersData = await getCustomerOrders(user.userId, { pageSize: 0 })
+      setAllOrders(allOrdersData)
+    } catch (err) {
+      console.error('Error fetching all orders:', err)
+    }
+  }, [user?.userId])
+
   const fetchOrders = useCallback(
     async (status?: OrderStatus) => {
       if (!user?.userId) {
@@ -198,30 +234,189 @@ function OrderManagement() {
     [user?.userId]
   )
 
+  // Fetch all orders on mount
+  useEffect(() => {
+    fetchAllOrders()
+  }, [fetchAllOrders])
+
   useEffect(() => {
     const status = activeTab === 'all' ? undefined : (activeTab as OrderStatus)
     fetchOrders(status)
     setCurrentPage(1) // Reset to first page when tab changes
+    setIsMobileMenuOpen(false) // Close mobile menu when tab changes
   }, [activeTab, fetchOrders])
+
+  // Handle desktop tab scrolling
+  const handleDesktopTabScroll = (direction: 'left' | 'right') => {
+    const tabContainer = document.getElementById('desktop-tabs-container')
+    if (!tabContainer) return
+
+    const scrollAmount = 200
+    const currentScroll = tabContainer.scrollLeft
+    const newScroll = direction === 'right' ? currentScroll + scrollAmount : currentScroll - scrollAmount
+    tabContainer.scrollTo({ left: newScroll, behavior: 'smooth' })
+  }
+
+  // Check if tabs can scroll
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  useEffect(() => {
+    const tabContainer = document.getElementById('desktop-tabs-container')
+    if (!tabContainer) return
+
+    const checkScroll = () => {
+      setCanScrollLeft(tabContainer.scrollLeft > 0)
+      setCanScrollRight(tabContainer.scrollLeft < tabContainer.scrollWidth - tabContainer.clientWidth - 1)
+    }
+
+    checkScroll()
+    tabContainer.addEventListener('scroll', checkScroll)
+    window.addEventListener('resize', checkScroll)
+
+    return () => {
+      tabContainer.removeEventListener('scroll', checkScroll)
+      window.removeEventListener('resize', checkScroll)
+    }
+  }, [orders])
 
   return (
     <div className='p-6'>
       <div className='mb-6'>
         <h1 className='text-2xl font-bold text-green-700 mb-6'>Quản lý Đơn hàng</h1>
 
-        <div className='flex space-x-8 border-b border-gray-200 mb-6'>
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 text-sm font-medium transition-colors ${activeTab === tab.key
-                ? 'text-orange-600 border-b-2 border-orange-600'
-                : 'text-gray-600 hover:text-gray-900'
-                }`}
+        {/* Desktop Tabs */}
+        <div className='hidden lg:block relative mb-6'>
+          <div className='flex items-center border-b border-gray-200'>
+            {/* Scroll Left Button */}
+            {canScrollLeft && (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='absolute left-0 z-10 h-full px-2 bg-white/80 backdrop-blur-sm'
+                onClick={() => handleDesktopTabScroll('left')}
+              >
+                <ChevronLeft className='h-4 w-4' />
+              </Button>
+            )}
+
+            {/* Tabs Container */}
+            <div
+              id='desktop-tabs-container'
+              className='flex space-x-2 overflow-x-auto scrollbar-hide scroll-smooth px-8'
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {tab.label}
+              {tabs.map((tab) => {
+                const count = orderCounts[tab.key] || 0
+                const isActive = activeTab === tab.key
+                return (
+                  <motion.button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`relative pb-3 text-sm font-medium px-4 transition-all duration-300 whitespace-nowrap ${isActive ? 'text-orange-600' : 'text-gray-600 hover:text-gray-900'}`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <span className='flex items-center gap-2'>
+                      {tab.label}
+                      <span
+                        className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}
+                      >
+                        {count}
+                      </span>
+                    </span>
+                    {isActive && (
+                      <motion.div
+                        className='absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-orange-500 to-orange-600'
+                        layoutId='activeTab'
+                        initial={false}
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                  </motion.button>
+                )
+              })}
+            </div>
+
+            {/* Scroll Right Button */}
+            {canScrollRight && (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='absolute right-0 z-10 h-full px-2 bg-white/80 backdrop-blur-sm'
+                onClick={() => handleDesktopTabScroll('right')}
+              >
+                <ChevronRight className='h-4 w-4' />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Tabs */}
+        <div className='lg:hidden mb-6'>
+          <div className='flex items-center justify-between border-b border-gray-200 pb-3'>
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className='flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors'
+            >
+              {isMobileMenuOpen ? <X className='h-5 w-5' /> : <Menu className='h-5 w-5' />}
+              <span className='font-medium'>
+                {tabs.find((t) => t.key === activeTab)?.label || 'Tất cả'}
+                <span className='ml-2 text-xs text-gray-500'>({orderCounts[activeTab] || 0})</span>
+              </span>
             </button>
-          ))}
+          </div>
+
+          {/* Mobile Dropdown Menu */}
+          <AnimatePresence>
+            {isMobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className='overflow-hidden'
+              >
+                <motion.div
+                  initial={{ y: -20 }}
+                  animate={{ y: 0 }}
+                  exit={{ y: -20 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className='bg-white border border-gray-200 rounded-lg shadow-lg mt-2 max-h-[70vh] overflow-y-auto'
+                >
+                  {tabs.map((tab, index) => {
+                    const count = orderCounts[tab.key] || 0
+                    const isActive = activeTab === tab.key
+                    return (
+                      <motion.button
+                        key={tab.key}
+                        onClick={() => {
+                          setActiveTab(tab.key)
+                          setIsMobileMenuOpen(false)
+                        }}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.03, duration: 0.2 }}
+                        className={`w-full text-left px-4 py-3 flex items-center justify-between transition-all duration-200 ${isActive
+                          ? 'bg-gradient-to-r from-orange-50 to-orange-100 text-orange-700 font-medium'
+                          : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        whileHover={{ x: 4 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <span>{tab.label}</span>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${isActive ? 'bg-orange-200 text-orange-800' : 'bg-gray-100 text-gray-600'}`}
+                        >
+                          {count}
+                        </span>
+                      </motion.button>
+                    )
+                  })}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -325,7 +520,6 @@ function OrderManagement() {
                                 onClick={() => handleViewOrderDetail(order.id)}
                               >
                                 <Eye className='w-4 h-4 mr-1' />
-
                               </Button>
                             </TableCell>
                           )}
@@ -346,7 +540,8 @@ function OrderManagement() {
               </div>
               <div className='flex items-center justify-between space-x-2 py-4'>
                 <div className='flex-1 text-sm text-muted-foreground'>
-                  Hiển thị {startIndex + 1}-{Math.min(endIndex, sortedOrders.length)} trong {sortedOrders.length} đơn hàng
+                  Hiển thị {startIndex + 1}-{Math.min(endIndex, sortedOrders.length)} trong {sortedOrders.length} đơn
+                  hàng
                 </div>
 
                 {/* Pagination Controls */}

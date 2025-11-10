@@ -2,26 +2,31 @@
 export type OrderStatus =
   | 'NotYet' // Chờ xử lý
   | 'PendingPayment' // Chờ thanh toán
-  | 'Processing' // Sau khi thanh toán xong
+  | 'Processing' // Chờ xác nhận
   | 'Confirmed' // Đã xác nhận
   | 'Cancel' // Đã hủy
-  | 'ReadyToPick' // Sẵn sàng lấy hàng
-  | 'Picking' // Đang lấy hàng
-  | 'Picked' // Đã lấy hàng
+  | 'ReadyToPick' // Đang chuân bị hàng
+  | 'Picking' // Đang trên đường lấy hàng
+  | 'Picked' // Shipper đã lấy hàng - đơn hàng không thể hủy
   | 'Storing' // Đang lưu kho
   | 'Transporting' // Đang vận chuyển
   | 'Sorting' // Đang phân loại
   | 'Delivering' // Đang giao hàng
+  | 'Storing' // Đang lưu kho
+  | 'Transporting' // Đang vận chuyển
+  | 'Sorting' // Đang phân loại
   | 'Delivered' // Đã giao hàng thành công
-  | 'Complaining' // Đang phản hồi
-  | 'Complained' // Đã phản hồi
   | 'DeliveryFail' // Giao hàng thất bại
   | 'Returning' // Đang trả hàng (Hủy trước khi xác nhận)
-  | 'Returned' // Đã trả hàng
-  | 'Paid' // Đã thanh toán
   | 'Refunded' // Đã hoàn tiền
+  | 'Complaining' // Đang phản hồi
+  | 'Paid' // Đã thanh toán
+  | 'Complained' // Đã phản hồi
+  | 'Exception' // Gặp sự cố
+  | 'Damaged' // Hàng hư hỏng
+  | 'Lost' // Thất lạc
+  | 'Returned' // Đã trả hàng
 
-// Promotion interface
 export interface OrderPromotion {
   orderId: string
   promotionId: string

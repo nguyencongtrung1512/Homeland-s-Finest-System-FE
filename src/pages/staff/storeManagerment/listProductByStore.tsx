@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Search, Filter, RefreshCw, Package, Eye, ArrowLeft, Calendar, Star, Tag } from 'lucide-react'
+import { Search, Filter, Package, Eye, Calendar, Star, Tag, ChevronLeft } from 'lucide-react'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { toast } from '../../../utils/toast'
-import { Card, CardContent } from '../../../components/ui/card'
+import { Card as ShadcnCard, CardContent, Card } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
@@ -196,7 +196,9 @@ function ListProductByStoreStaff() {
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = Math.min(startIndex + pageSize, totalFilteredProducts)
   const paginatedProducts = productData.slice(startIndex, endIndex)
-
+  const handleBack = () => {
+    navigate(-1)
+  }
   const handleFilter = () => {
     setCurrentPage(1)
     fetchProductsByStore()
@@ -323,29 +325,23 @@ function ListProductByStoreStaff() {
   return (
     <div className='space-y-6 p-6'>
       {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-4'>
-          <Button variant='outline' onClick={() => navigate('/staff/stores')} className='flex items-center gap-2'>
-            <ArrowLeft size={16} />
-            Quay lại
-          </Button>
-          <div>
-            <h1 className='text-3xl font-bold text-gray-900'>Danh sách sản phẩm</h1>
-            <p className='text-gray-600 mt-1'>
-              {storeName ? `Cửa hàng: ${storeName}` : 'Xem và quản lý sản phẩm của cửa hàng'}
-            </p>
+      <ShadcnCard className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <Button
+                variant='outline'
+                onClick={handleBack}
+                size='icon'
+                className='flex items-center justify-center w-10 h-10 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white rounded-full'
+              >
+                <ChevronLeft size={20} />
+              </Button>
+              <h2 className='text-3xl font-bold text-white m-0'>Danh sách sản phẩm - cửa hàng {storeName}</h2>
+            </div>
           </div>
-        </div>
-        <Button
-          onClick={fetchProductsByStore}
-          disabled={loading}
-          variant='outline'
-          className='flex items-center gap-2 bg-transparent'
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Đang tải...' : 'Làm mới'}
-        </Button>
-      </div>
+        </CardContent>
+      </ShadcnCard>
 
       {/* Search and Filters */}
       <Card>

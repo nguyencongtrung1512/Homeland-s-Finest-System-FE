@@ -291,6 +291,16 @@ export default function OrdersContent({
       'Đã hủy': 'Cancel',
       'Trả hàng': 'Returned'
     }
+    // const tap = [
+    //   { key: 'all', label: 'Tất cả' },
+    //   { key: 'NotYet', label: 'Chưa xác nhận' },
+    //   { key: 'Processing', label: 'Vận chuyển' },
+    //   { key: 'Confirmed', label: 'Đã xác nhận' },
+    //   { key: 'Shipping', label: 'Chờ giao hàng' },
+    //   { key: 'Delivered', label: 'Hoàn thành' },
+    //   { key: 'Cancel', label: 'Đã hủy' },
+    //   { key: 'Returned', label: 'Trả hàng/Hoàn tiền' },
+    // ]
 
     const apiStatus = apiStatusMap[filterKey]
     if (onFilterByStatus) {

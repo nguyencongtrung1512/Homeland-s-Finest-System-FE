@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Filter, RefreshCw, Store, Package, ExternalLink, Calendar, User, FileCheck } from 'lucide-react'
+import { Search, Filter, RefreshCw, Store, Package, ExternalLink, Calendar, User } from 'lucide-react'
 import { storeApi } from '../../../apis/store.api'
 
 // Interface cho Store response thực tế từ API
@@ -267,6 +267,7 @@ function ListStore() {
             </Button>
             <Button
               variant='outline'
+              title='Xem chi tiết cửa hàng'
               onClick={() => navigate(`/staff/store-detail/${store.store.id}`)}
               className='flex items-center justify-center gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 text-xs px-2 py-1.5 h-auto'
             >
@@ -286,7 +287,6 @@ function ListStore() {
         <CardContent className=''>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
-              <FileCheck size={24} className='text-white' />
               <h2 className='text-3xl font-bold text-white m-0'>Quản lí cửa hàng</h2>
             </div>
             <ShimmerBorder
@@ -306,7 +306,7 @@ function ListStore() {
               </Button>
             </ShimmerBorder>
           </div>
-          <p className='text-white/90 ml-9'>Xem xét và phê duyệt tất cả cửa hàng ({totalStores} cửa hàng)</p>
+          <p className='text-white/90'>Xem xét và phê duyệt tất cả cửa hàng ({totalStores} cửa hàng)</p>
         </CardContent>
       </Card>
 

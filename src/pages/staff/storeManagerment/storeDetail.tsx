@@ -10,8 +10,7 @@ import {
   Mail,
   Phone,
   CreditCard,
-  Upload as UploadIcon,
-  FileCheck
+  Upload as UploadIcon
 } from 'lucide-react'
 import { Card as ShadcnCard, CardContent } from '../../../components/ui/card'
 import { Button as ShadcnButton } from '../../../components/ui/button'
@@ -232,7 +231,6 @@ function StaffStoreDetail() {
         <CardContent>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
-              <FileCheck size={24} className='text-white' />
               <h2 className='text-3xl font-bold text-white m-0'>Chi tiết cửa hàng</h2>
             </div>
             <ShadcnButton

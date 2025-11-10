@@ -8,17 +8,11 @@ const API_URL = '/Wallet'
  * @returns Promise<WalletData>
  */
 export const getWalletBalance = async (): Promise<WalletData> => {
-    const response = await axiosInstance.get<WalletData>(`${API_URL}/my-Wallet`)
-    return response.data
+  const response = await axiosInstance.get<WalletData>(`${API_URL}/my-Wallet`)
+  return response.data
 }
 
-
-export const getWalletTransactions = async (
-  params?: {
-    pageSize?: number
-    pageNumber?: number
-  }
-) => {
+export const getWalletTransactions = async (params?: { pageSize?: number; pageNumber?: number }) => {
   try {
     const response = await axiosInstance.get(`${API_URL}/my-wallet-history`, {
       params: {
@@ -33,7 +27,124 @@ export const getWalletTransactions = async (
   }
 }
 
+/**
+ * Interface cho response của deposit API
+ */
+export interface DepositResponse {
+  success: boolean
+  message: string
+  amountDeposited: number
+  currentAvailable: number
+  currentDebt: number
+}
+
+/**
+ * Interface cho response của pay debt API
+ */
+export interface PayDebtResponse {
+  success: boolean
+  message: string
+  amountPaid: number
+  remainingDebt: number
+  currentAvailable: number
+}
+
+/**
+ * Interface cho response của withdrawal API
+ */
+export interface WithdrawalResponse {
+  id: string
+  walletId: string
+  orderId: string
+  userId: string
+  userEmail: string
+  userPhoneNumber: string
+  type: string
+  amount: number
+  bankAccount: string
+  bankName: string
+  accountHolderName: string
+  status: string
+  processedBy: string
+  processNote: string
+  processedAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * Nạp tiền vào tài khoản
+ * @param amount Số tiền muốn nạp
+ * @returns Promise<DepositResponse>
+ */
+export const depositMoney = async (amount: number): Promise<DepositResponse> => {
+  try {
+    const response = await axiosInstance.post<{
+      status: number
+      message: string
+      data: DepositResponse
+    }>(`${API_URL}/deposit`, amount, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    return response.data.data
+  } catch (error) {
+    console.error('Error depositing money:', error)
+    throw error
+  }
+}
+
+/**
+ * Trả nợ (pay debt)
+ * @param amount Số tiền muốn trả
+ * @returns Promise<PayDebtResponse>
+ */
+export const payDebt = async (amount: number): Promise<PayDebtResponse> => {
+  try {
+    const response = await axiosInstance.post<{
+      status: number
+      message: string
+      data: PayDebtResponse
+    }>(`${API_URL}/pay-debt`, amount, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    return response.data.data
+  } catch (error) {
+    console.error('Error paying debt:', error)
+    throw error
+  }
+}
+
+/**
+ * Rút tiền (withdrawal)
+ * @param amount Số tiền muốn rút
+ * @returns Promise<WithdrawalResponse>
+ */
+export const withdrawal = async (amount: number): Promise<WithdrawalResponse> => {
+  try {
+    const response = await axiosInstance.post<{
+      status: number
+      message: string
+      data: WithdrawalResponse
+    }>(`${API_URL}/withdrawal`, amount, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    return response.data.data
+  } catch (error) {
+    console.error('Error creating withdrawal request:', error)
+    throw error
+  }
+}
+
 export default {
   getWalletBalance,
-  getWalletTransactions
+  getWalletTransactions,
+  depositMoney,
+  payDebt,
+  withdrawal
 }
