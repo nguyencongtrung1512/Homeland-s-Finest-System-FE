@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Calendar } from '../../../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../../../components/ui/popover'
 import { ShimmerBorder } from '../../../../../components/ui/shimmer'
+import ProfileCard3D from '../../../../../components/ui/ProfileCard3D'
 import { useAuth } from '../../../../../contexts/auth.context'
 import { getUserById, updateUser, type User as UserType } from '../../../../../apis/user.api'
 import { getProvinces, type Province } from '../../../../../apis/province'
@@ -36,7 +37,7 @@ const convertDateFormat = (dateString: string): string => {
 
 export default function ProfileContent() {
   const { user: authUser } = useAuth()
-  const [, setUser] = useState<UserType | null>(null)
+  const [user, setUser] = useState<UserType | null>(null)
   const [loading, setLoading] = useState(true)
   const [formData, setFormData] = useState({
     firstName: '',
@@ -287,6 +288,16 @@ export default function ProfileContent() {
       transition={{ duration: 0.5, ease: 'easeOut' }}
       className='max-w-5xl mx-auto px-4 sm:px-6 lg:px-8'
     >
+      {/* Profile Card 3D */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className='mb-8'
+      >
+        <ProfileCard3D user={user} className='rounded-lg overflow-hidden' />
+      </motion.div>
+
       {/* Personal Information Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}

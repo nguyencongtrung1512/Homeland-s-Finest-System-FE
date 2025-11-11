@@ -37,7 +37,6 @@ import AddressModal from './components/address/AddressModal'
 import WalletContent from './components/wallet/WalletContent'
 import AvatarUploadModal from './components/profile/AvatarUploadModal'
 import { Camera } from 'lucide-react'
-import { toast } from '../../../utils/toast'
 import type { FormDTO } from '../../../types/form.type'
 
 export default function Profile() {
