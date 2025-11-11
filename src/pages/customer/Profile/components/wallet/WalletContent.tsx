@@ -8,8 +8,9 @@ import { Wallet, CreditCard, AlertCircle, CheckCircle2, ArrowRight, User, Refres
 import { Alert, AlertDescription } from '../../../../../components/ui/alert'
 import ThreeDCard from '../../../../../components/ui/threed-card'
 import Loading from '../../../../../components/Loading/loading'
-import { getWalletBalance } from '../../../../../apis/wallet.api'
-import type { WalletData } from '../../../../../types/walletType'
+import { getWalletBalance, getWalletTransactions, withdrawal } from '../../../../../apis/wallet.api'
+import type { WalletData, WalletTransactionDTO } from '../../../../../types/walletType'
+import { toast } from '../../../../../utils/toast'
 
 interface WalletContentProps {
   walletBalance?: number
@@ -25,11 +26,15 @@ export default function WalletContent({
   onUpdateProfile
 }: WalletContentProps) {
   const [walletData, setWalletData] = useState<WalletData | null>(null)
+  const [transactions, setTransactions] = useState<WalletTransactionDTO[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingTransactions, setLoadingTransactions] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [withdrawAmount, setWithdrawAmount] = useState<string>('')
   const [isConfirming, setIsConfirming] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [transactionPage] = useState(1)
+  const [transactionPageSize] = useState(10)
 
   // Fetch wallet data
   const fetchWalletData = async () => {
@@ -50,15 +55,38 @@ export default function WalletContent({
     }
   }
 
+  // Fetch transaction history
+  const fetchTransactions = async (page: number = 1, pageSize: number = 10) => {
+    try {
+      setLoadingTransactions(true)
+      const response = await getWalletTransactions({ pageNumber: page, pageSize })
+      // API có thể trả về data trực tiếp hoặc trong response.data
+      const transactionData = response.data || response
+      if (Array.isArray(transactionData)) {
+        setTransactions(transactionData)
+      } else if (transactionData?.items || transactionData?.data) {
+        setTransactions(transactionData.items || transactionData.data || [])
+      } else {
+        setTransactions([])
+      }
+    } catch (err: unknown) {
+      console.error('Error fetching transactions:', err)
+      // Không hiển thị error toast vì đây là optional data
+      setTransactions([])
+    } finally {
+      setLoadingTransactions(false)
+    }
+  }
+
   useEffect(() => {
     fetchWalletData()
+    fetchTransactions(transactionPage, transactionPageSize)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Use data from API or fallback to props
   const walletBalance = walletData?.availableBalance ?? propWalletBalance ?? 0
   const customerName = walletData?.userFullName ?? propCustomerName
-  const pendingBalance = walletData?.pendingBalance ?? 0
-  const debtBalance = walletData?.debtBalance ?? 0
 
   const handleWithdraw = () => {
     if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
@@ -85,16 +113,51 @@ export default function WalletContent({
   }
 
   const handleConfirmWithdraw = async () => {
-    setIsConfirming(true)
-    // TODO: Call API to withdraw money
-    setTimeout(() => {
-      alert('Yêu cầu rút tiền đã được gửi thành công! Chúng tôi sẽ xử lý trong vòng 3-5 ngày làm việc.')
+    if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
+      toast.error('Vui lòng nhập số tiền hợp lệ')
+      return
+    }
+
+    const amount = parseFloat(withdrawAmount)
+    if (amount > walletBalance) {
+      toast.error('Số tiền rút không được vượt quá số dư khả dụng')
+      return
+    }
+
+    if (amount < 50000) {
+      toast.error('Số tiền rút tối thiểu là 50,000 ₫')
+      return
+    }
+
+    try {
+      setIsConfirming(true)
+      await withdrawal(amount)
+
+      toast.success('Yêu cầu rút tiền đã được gửi thành công! Chúng tôi sẽ xử lý trong vòng 10-15 phút.', {
+        position: 'top-right',
+        autoClose: 5000
+      })
+
       setShowConfirmModal(false)
       setIsConfirming(false)
       setWithdrawAmount('')
-      // Refresh wallet data after withdrawal
-      fetchWalletData()
-    }, 1500)
+
+      // Refresh wallet data and transactions after withdrawal
+      await fetchWalletData()
+      await fetchTransactions(transactionPage, transactionPageSize)
+    } catch (error: unknown) {
+      console.error('Error withdrawing money:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (error as { message?: string })?.message ||
+        'Có lỗi xảy ra khi tạo yêu cầu rút tiền'
+
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+      setIsConfirming(false)
+    }
   }
 
   const hasBankAccount = bankAccount && bankAccount.trim() !== ''
@@ -171,20 +234,8 @@ export default function WalletContent({
               </div>
             </div>
 
-            {/* Additional Balance Info */}
-            <div className='grid grid-cols-2 gap-4 w-full mt-4'>
-              <div className='bg-white/10 rounded-lg p-4 backdrop-blur-sm'>
-                <div className='text-xs text-green-100/80 mb-1'>Số dư đang chờ</div>
-                <div className='text-lg font-semibold text-white'>{pendingBalance.toLocaleString('vi-VN')} ₫</div>
-              </div>
-              <div className='bg-white/10 rounded-lg p-4 backdrop-blur-sm'>
-                <div className='text-xs text-green-100/80 mb-1'>Số nợ</div>
-                <div className='text-lg font-semibold text-white'>{debtBalance.toLocaleString('vi-VN')} ₫</div>
-              </div>
-            </div>
-
             {/* Revenue Info (if available) */}
-            {walletData && (walletData.netRevenue > 0 || walletData.grossRevenue > 0) && (
+            {/* {walletData && (walletData.netRevenue > 0 || walletData.grossRevenue > 0) && (
               <div className='grid grid-cols-2 gap-4 w-full mt-2'>
                 <div className='bg-white/10 rounded-lg p-4 backdrop-blur-sm'>
                   <div className='text-xs text-green-100/80 mb-1'>Doanh thu ròng</div>
@@ -199,7 +250,7 @@ export default function WalletContent({
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </ThreeDCard>
@@ -348,7 +399,7 @@ export default function WalletContent({
                       </div>
                       <div className='flex justify-between text-sm'>
                         <span className='text-gray-600'>Thời gian xử lý:</span>
-                        <span className='font-semibold'>3-5 ngày làm việc</span>
+                        <span className='font-semibold'>10-15 phút</span>
                       </div>
                     </div>
                     <p className='text-sm text-gray-500'>
@@ -383,17 +434,34 @@ export default function WalletContent({
       )}
 
       {/* Transaction History */}
-      {walletData && walletData.walletTransactionDTOs && walletData.walletTransactionDTOs.length > 0 && (
-        <Card>
-          <CardHeader>
+      <Card>
+        <CardHeader>
+          <div className='flex items-center justify-between'>
             <CardTitle className='flex items-center gap-2'>
               <History className='w-5 h-5 text-blue-600' />
-              Lịch sử giao dịch gần nhất
+              Lịch sử giao dịch
             </CardTitle>
-          </CardHeader>
-          <CardContent>
+            <Button
+              onClick={() => fetchTransactions(transactionPage, transactionPageSize)}
+              variant='outline'
+              size='sm'
+              disabled={loadingTransactions}
+              className='flex items-center gap-2'
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingTransactions ? 'animate-spin' : ''}`} />
+              Làm mới
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingTransactions ? (
+            <div className='flex justify-center items-center py-8'>
+              <RefreshCw className='w-6 h-6 animate-spin text-gray-400' />
+              <span className='ml-2 text-gray-500'>Đang tải lịch sử giao dịch...</span>
+            </div>
+          ) : transactions.length > 0 ? (
             <div className='space-y-3'>
-              {walletData.walletTransactionDTOs.slice(0, 10).map((transaction) => {
+              {transactions.map((transaction) => {
                 const isPositive = transaction.amount > 0
                 const statusColors = {
                   Completed: 'bg-green-100 text-green-800',
@@ -435,9 +503,14 @@ export default function WalletContent({
                 )
               })}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className='text-center py-8 text-gray-500'>
+              <History className='w-12 h-12 mx-auto mb-2 text-gray-300' />
+              <p>Chưa có giao dịch nào</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Information Card */}
       <Card className='bg-gray-50'>
@@ -445,7 +518,7 @@ export default function WalletContent({
           <h4 className='font-semibold text-gray-900 mb-2'>Lưu ý quan trọng:</h4>
           <ul className='text-sm text-gray-600 space-y-1 list-disc list-inside'>
             <li>Số tiền rút tối thiểu: 50,000 ₫</li>
-            <li>Thời gian xử lý yêu cầu rút tiền: 3-5 ngày làm việc</li>
+            <li>Thời gian xử lý yêu cầu rút tiền: 10-15 phút</li>
             <li>Vui lòng đảm bảo thông tin tài khoản ngân hàng chính xác</li>
             <li>Phí giao dịch: Miễn phí</li>
           </ul>
