@@ -209,10 +209,24 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       NotYet: 'Chưa xác nhận',
       Processing: 'Chờ xác nhận',
       Confirmed: 'Đã xác nhận',
-      Shipping: 'Đang giao',
-      Delivered: 'Đã giao',
-      Cancel: 'Đã hủy',
-      Returned: 'Đã trả hàng'
+      ReadyToPick: 'Đang chuẩn bị hàng',
+      Picking: 'Đang trên đường lấy hàng',
+      Picked: 'Shipper đã lấy hàng',
+      Storing: 'Đang lưu kho',
+      Transporting: 'Đang vận chuyển',
+      Sorting: 'Đang phân loại',
+      Delivering: 'Đang giao hàng',
+      Delivered: 'Đã giao hàng thành công',
+      DeliveryFail: 'Giao hàng thất bại',
+      Returning: 'Đang trả hàng',
+      Returned: 'Đã trả hàng',
+      Refunded: 'Đã hoàn tiền',
+      Complaining: 'Đang phản hồi',
+      Complained: 'Đã phản hồi',
+      Paid: 'Đã giao hàng thành công',
+      Exception: 'Gặp sự cố',
+      Damaged: 'Hàng hư hỏng',
+      Lost: 'Thất lạc'
     }
     return statusTextMap[status] || status
   }
@@ -431,10 +445,11 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                             <h4 className='font-semibold text-gray-900 text-sm'>{promotion.title}</h4>
                             <Badge
                               variant='outline'
-                              className={`text-xs ${promotion.promotionType === 'Product'
-                                ? 'border-blue-200 text-blue-700 bg-blue-50'
-                                : 'border-purple-200 text-purple-700 bg-purple-50'
-                                }`}
+                              className={`text-xs ${
+                                promotion.promotionType === 'Product'
+                                  ? 'border-blue-200 text-blue-700 bg-blue-50'
+                                  : 'border-purple-200 text-purple-700 bg-purple-50'
+                              }`}
                             >
                               {promotion.promotionType === 'Product' ? 'Sản phẩm' : 'Toàn cửa hàng'}
                             </Badge>
@@ -533,12 +548,13 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                         return (
                           <div key={history.id} className='flex items-start gap-4 relative'>
                             <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${isCurrent
-                                ? 'bg-green-600'
-                                : isCompleted
-                                  ? 'bg-gray-400'
-                                  : 'bg-white border-2 border-gray-300'
-                                }`}
+                              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
+                                isCurrent
+                                  ? 'bg-green-600'
+                                  : isCompleted
+                                    ? 'bg-gray-400'
+                                    : 'bg-white border-2 border-gray-300'
+                              }`}
                             >
                               {isCurrent ? (
                                 <Package className='h-5 w-5 text-white' />
@@ -560,11 +576,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                   </div>
                 </div>
               )}
-
-              {/* Action Buttons */}
-              {/* <div className='flex gap-3 pt-2'>
-                <Button className='flex-1 bg-green-600 hover:bg-green-700 text-white'>Tỉi báo cáo</Button>
-              </div> */}
             </div>
           ) : null}
         </div>

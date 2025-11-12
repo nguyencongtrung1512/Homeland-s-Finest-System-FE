@@ -185,7 +185,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           status: 'Hoàn thành' as const,
           statusColor: 'text-green-700',
           statusBgColor: 'bg-green-50',
-          statusText: 'Đã thanh toán'
+          statusText: 'Đã giao hàng thành công'
         }
       // Trả hàng/Hoàn tiền
       case 'Returning':

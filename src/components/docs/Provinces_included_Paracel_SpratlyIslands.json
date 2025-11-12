@@ -100449,10 +100449,8 @@
       "properties": {
         "Name": "Hà Nội",
         "Region": "Miền Bắc",
-        "Note": "Thủ đô ngàn năm văn hiến",
-        "description": "Thủ đô ngàn năm văn hiến",
-        "details": "Hà Nội là thủ đô của Việt Nam, nơi hội tụ tinh hoa văn hóa và những đặc sản nổi tiếng khắp cả nước"
-      },
+        "Note": "Thủ đô ngàn năm văn hiến"
+        },
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
