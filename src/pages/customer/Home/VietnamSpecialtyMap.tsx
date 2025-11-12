@@ -150,9 +150,9 @@ function VietnamSpecialtyMap() {
       <div className='lg:w-1/3 bg-[#D1FAE5] w-full h-full flex flex-col items-center justify-center p-8 lg:p-12 relative overflow-hidden'>
         <div className='text-center mb-12 relative z-10'>
           <div className='inline-flex items-center gap-3 mb-4'>
-            <h1 className='text-4xl lg:text-5xl font-bold bg-gradient-to-r from-green-600 via-green-500 to-red-700 bg-clip-text text-transparent'>
+            <h2 className='text-4xl lg:text-5xl font-bold bg-gradient-to-r from-green-600 via-green-500 to-red-700 bg-clip-text text-transparent'>
               Đặc sản Việt Nam
-            </h1>
+            </h2>
           </div>
           <p className='text-lg text-gray-600 font-medium'>Khám phá hương vị đặc trưng 63 tỉnh thành</p>
           <div className='w-24 h-1 bg-gradient-to-r from-green-500 to-yellow-500 mx-auto rounded-full'></div>

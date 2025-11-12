@@ -15,13 +15,14 @@ import {
   AlertDialogTrigger
 } from '../../../../../components/ui/alert-dialog'
 
-import { MessageSquare, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react'
+import { MessageSquare, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Edit } from 'lucide-react'
 import type { FormDTO } from '../../../../../types/form.type'
-import type { FormStatus } from '../../../../../types/form.type'
+import type { FormStatus, FormType } from '../../../../../types/form.type'
 import { formApi } from '../../../../../apis/form.api'
 import Loading from '../../../../../components/Loading/loading'
 import EmptyState from '../../../../../components/EmptyState/emptyState'
 import { toast } from '../../../../../utils/toast'
+import UpdateFormModal from './UpdateFormModal'
 
 interface FormsContentProps {
   forms: FormDTO[]
@@ -32,6 +33,9 @@ interface FormsContentProps {
 const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
   const [selectedStatus, setSelectedStatus] = useState<FormStatus | 'all'>('all')
   const [cancellingFormId, setCancellingFormId] = useState<string | null>(null)
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [selectedForm, setSelectedForm] = useState<FormDTO | null>(null)
+  const [updatingFormId, setUpdatingFormId] = useState<string | null>(null)
 
   const getStatusIcon = (status: FormStatus) => {
     switch (status) {
@@ -79,6 +83,18 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
         return 'Chờ xử lý'
       case 'Processing':
         return 'Đang xử lý'
+      case 'DeniedByAdmin':
+        return 'Bị từ chối'
+      case 'DeniedByStaff':
+        return 'Đang xử lý'
+      case 'ApprovedByStaff':
+        return 'Đang xử lý'
+      case 'ApprovedByAdmin':
+        return 'Đã xử lí'
+      case 'Rejected':
+        return 'Đã từ chối'
+      case 'Confirmed':
+        return 'Đang xử lý'
       case 'Cancel':
         return 'Đã hủy'
       default:
@@ -96,6 +112,8 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
         return 'Hỗ trợ kỹ thuật'
       case 'ComplaintContent':
         return 'Khiếu nại nội dung'
+      case 'ComplaintOrder':
+        return 'Khiếu nại đơn hàng'
       case 'RequestInformation':
         return 'Yêu cầu thông tin'
       case 'ReportSeller':
@@ -148,6 +166,65 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
       })
     } finally {
       setCancellingFormId(null)
+    }
+  }
+
+  const handleOpenUpdateModal = (form: FormDTO) => {
+    setSelectedForm(form)
+    setShowUpdateModal(true)
+  }
+
+  const handleCloseUpdateModal = () => {
+    setShowUpdateModal(false)
+    setSelectedForm(null)
+  }
+
+  const handleUpdateForm = async (
+    formId: string,
+    data: { type: FormType; subject: string; description: string; images?: File[] }
+  ) => {
+    try {
+      setUpdatingFormId(formId)
+      const form = forms.find((f) => f.id === formId)
+      if (!form) {
+        toast.error('Không tìm thấy khiếu nại')
+        return
+      }
+
+      await formApi.updateForm(formId, {
+        storeId: form.storeId,
+        orderId: form.orderId,
+        type: data.type,
+        subject: data.subject,
+        description: data.description,
+        imageFiles: data.images
+      })
+
+      onRefresh()
+      handleCloseUpdateModal()
+
+      toast.success('Cập nhật khiếu nại thành công!', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined
+      })
+    } catch (error) {
+      console.error('Error updating form:', error)
+      toast.error('Có lỗi xảy ra khi cập nhật khiếu nại. Vui lòng thử lại sau.', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined
+      })
+    } finally {
+      setUpdatingFormId(null)
     }
   }
 
@@ -310,10 +387,9 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
 
                     {/* Reply */}
                     {form.reply && (
-                      <div className='bg-blue-50 border border-blue-200 rounded-lg p-3'>
-                        <p className='text-xs text-blue-600 font-medium mb-1'>Phản hồi từ nhân viên:</p>
-                        <p className='text-sm text-blue-800'>{form.reply}</p>
-                        {form.staffName && <p className='text-xs text-blue-600 mt-1'>- {form.staffName}</p>}
+                      <div className='bg-green-50 border border-green-200 rounded-lg p-3'>
+                        <p className='text-xs text-green-600 font-medium mb-1'>Phản hồi từ nhân viên:</p>
+                        <p className='text-sm text-green-800'>{form.reply}</p>
                       </div>
                     )}
 
@@ -341,54 +417,66 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
                           )}
                         </div>
 
-                        {/* Cancel Button - Only show for Pending status */}
+                        {/* Action Buttons - Only show for Pending status */}
                         {form.status === 'Pending' && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant='outline'
-                                size='sm'
-                                disabled={cancellingFormId === form.id}
-                                className='text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400'
-                              >
-                                {cancellingFormId === form.id ? (
-                                  <>
-                                    <div className='w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin mr-1' />
-                                    Đang hủy...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Trash2 className='w-3 h-3 mr-1' />
-                                    Hủy
-                                  </>
-                                )}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className='flex items-center gap-2'>
-                                  <AlertCircle className='w-5 h-5 text-red-500' />
-                                  Xác nhận hủy khiếu nại
-                                </AlertDialogTitle>
-                                <AlertDialogDescription className='text-gray-600'>
-                                  Bạn có chắc chắn muốn hủy khiếu nại này không? Hành động này không thể hoàn tác.
-                                  <br />
-                                  <br />
-                                  <span className='font-medium text-gray-900'>Tiêu đề:</span> {form.subject}
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Không hủy</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleCancelForm(form.id)}
-                                  className='bg-red-600 hover:bg-red-700 text-white'
+                          <div className='flex gap-2'>
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              onClick={() => handleOpenUpdateModal(form)}
+                              disabled={updatingFormId === form.id}
+                              className='text-green-600 border-green-300 hover:bg-green-50 hover:border-green-400'
+                            >
+                              <Edit className='w-3 h-3 mr-1' />
+                              Cập nhật
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant='outline'
+                                  size='sm'
+                                  disabled={cancellingFormId === form.id}
+                                  className='text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400'
                                 >
-                                  <Trash2 className='w-4 h-4 mr-2' />
-                                  Xác nhận hủy
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                  {cancellingFormId === form.id ? (
+                                    <>
+                                      <div className='w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin mr-1' />
+                                      Đang hủy...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Trash2 className='w-3 h-3 mr-1' />
+                                      Hủy
+                                    </>
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className='flex items-center gap-2'>
+                                    <AlertCircle className='w-5 h-5 text-red-500' />
+                                    Xác nhận hủy khiếu nại
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription className='text-gray-600'>
+                                    Bạn có chắc chắn muốn hủy khiếu nại này không? Hành động này không thể hoàn tác.
+                                    <br />
+                                    <br />
+                                    <span className='font-medium text-gray-900'>Tiêu đề:</span> {form.subject}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Không hủy</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleCancelForm(form.id)}
+                                    className='bg-red-600 hover:bg-red-700 text-white'
+                                  >
+                                    <Trash2 className='w-4 h-4 mr-2' />
+                                    Xác nhận hủy
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -436,6 +524,15 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Update Form Modal */}
+      <UpdateFormModal
+        isOpen={showUpdateModal}
+        onClose={handleCloseUpdateModal}
+        form={selectedForm}
+        onSubmit={handleUpdateForm}
+        isLoading={updatingFormId !== null}
+      />
     </motion.div>
   )
 }

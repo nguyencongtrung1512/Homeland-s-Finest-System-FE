@@ -34,7 +34,24 @@ export const formApi = {
   },
 
   updateForm: async (id: string, data: UpdateFormRequest): Promise<FormDTO> => {
-    const response = await axiosInstance.put(`/Form/customer-update/${id}`, data)
+    const formData = new FormData()
+    if (data.storeId) formData.append('StoreId', data.storeId)
+    if (data.orderId) formData.append('OrderId', data.orderId)
+    formData.append('Type', data.type)
+    formData.append('Subject', data.subject)
+    formData.append('Description', data.description)
+
+    if (data.imageFiles) {
+      data.imageFiles.forEach((file) => {
+        formData.append('ImageFiles', file)
+      })
+    }
+
+    const response = await axiosInstance.put(`/Form/customer-update/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
     return response.data
   },
 
@@ -44,6 +61,11 @@ export const formApi = {
 
   getFormById: async (id: string): Promise<FormDTO> => {
     const response = await axiosInstance.get(`/Form/${id}`)
+    return response.data
+  },
+
+  getFormByOrderId: async (orderId: string): Promise<FormDTO> => {
+    const response = await axiosInstance.get(`/Form/detail-by-orderId/${orderId}`)
     return response.data
   },
 

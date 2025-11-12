@@ -172,6 +172,7 @@ export interface Order {
   totalHeight: number
   totalWeight: number
   status: OrderStatus
+  isComplained: boolean
   isFreeship: boolean
   isPayOut?: boolean
   shipPrice: number

@@ -40,7 +40,7 @@ export interface UpdateFormRequest {
   type: FormType
   subject: string
   description: string
-  imageUrl?: string[]
+  imageFiles?: File[]
 }
 
 export interface StaffUpdateRequest {

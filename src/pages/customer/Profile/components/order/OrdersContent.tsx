@@ -7,6 +7,7 @@ import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
 import ReviewModal from '../ReviewModal'
 import ComplaintModal from '../form/ComplaintModal'
+import ViewComplaintModal from '../form/ViewComplaintModal'
 import { confirmOrderReceived } from '../../../../../apis/order.api'
 import { purchaseOrder } from '../../../../../apis/transaction.api'
 import { formApi } from '../../../../../apis/form.api'
@@ -332,8 +333,8 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     totalAmount: apiOrder?.finalPrice || 0,
     note: apiOrder?.note || '',
     canConfirmReceived: statusVal === 'Delivered' && !apiOrder?.isPayOut,
-    // Chỉ cho phép khiếu nại nếu đã giao xong và không ở trạng thái đã/đang khiếu nại
-    canComplain: statusVal === 'Delivered' && !isComplaintInProgress,
+    // Chỉ cho phép khiếu nại nếu đã giao xong và không ở trạng thái đã/đang khiếu nại và chưa có isComplained = true
+    canComplain: statusVal === 'Delivered' && !isComplaintInProgress && !apiOrder?.isComplained,
     canReturn: apiOrder?.status === 'Delivered',
     shippingInfo: {
       recipientName: apiOrder?.toName || '',
@@ -370,6 +371,7 @@ export default function OrdersContent({
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showComplaintModal, setShowComplaintModal] = useState(false)
+  const [showViewComplaintModal, setShowViewComplaintModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<{ name: string; image: string; category?: string } | null>(
     null
   )
@@ -594,6 +596,16 @@ export default function OrdersContent({
     setSelectedOrderId('')
   }
 
+  const handleOpenViewComplaintModal = (orderId: string) => {
+    setSelectedOrderId(orderId)
+    setShowViewComplaintModal(true)
+  }
+
+  const handleCloseViewComplaintModal = () => {
+    setShowViewComplaintModal(false)
+    setSelectedOrderId('')
+  }
+
   const handleContinuePaymentFromModal = async () => {
     if (!selectedOrderId || selectedOrderStatus !== 'PendingPayment') {
       return
@@ -815,8 +827,18 @@ export default function OrdersContent({
                         )}
                       </Button>
                     )}
-              </>
-            )}
+                  </>
+                )}
+                {(order.originalStatus === 'Complaining' || order.originalStatus === 'Complained') && (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleOpenViewComplaintModal(order.id)}
+                    className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                  >
+                    Xem khiếu nại
+                  </Button>
+                )}
                 {order.originalStatus === 'Cancel' && (
                   <Button
                     variant='outline'
@@ -916,6 +938,12 @@ export default function OrdersContent({
         userId={user?.userId || ''}
         onSubmit={handleComplaint}
         isLoading={submittingComplaintOrderId === selectedOrderId}
+      />
+
+      <ViewComplaintModal
+        isOpen={showViewComplaintModal}
+        onClose={handleCloseViewComplaintModal}
+        orderId={selectedOrderId}
       />
     </div>
   )
