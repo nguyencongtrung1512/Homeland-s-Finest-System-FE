@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../../components/ui/dialog'
 import { Button } from '../../../../../components/ui/button'
@@ -37,9 +37,19 @@ const ComplaintModal = ({
   const [subject, setSubject] = useState('')
   const [description, setDescription] = useState('')
   const [images, setImages] = useState<File[]>([])
+  const [previewUrls, setPreviewUrls] = useState<string[]>([])
+
+  useEffect(() => {
+    const urls = images.map((file) => URL.createObjectURL(file))
+    setPreviewUrls(urls)
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [images])
 
   const formTypeOptions = [
     { value: 'ComplaintContent' as FormType, label: 'Khiếu nại nội dung' },
+    { value: 'ComplaintOrder' as FormType, label: 'Khiếu nại đơn hàng' },
     { value: 'SupportRefundMoney' as FormType, label: 'Hỗ trợ hoàn tiền' },
     { value: 'ReportSeller' as FormType, label: 'Báo cáo người bán' }
   ]
@@ -48,6 +58,8 @@ const ComplaintModal = ({
     switch (type) {
       case 'ComplaintContent':
         return 'Khiếu nại về chất lượng sản phẩm, dịch vụ hoặc nội dung'
+      case 'ComplaintOrder':
+        return 'Khiếu nại liên quan trực tiếp đến đơn hàng (giao nhận, thiếu/hư hỏng)'
       case 'SupportRefundMoney':
         return 'Yêu cầu hoàn tiền cho đơn hàng'
       case 'ReportSeller':
@@ -246,7 +258,23 @@ const ComplaintModal = ({
                     transition={{ duration: 0.2 }}
                     className='mt-2'
                   >
-                    <p className='text-xs text-gray-600'>Đã chọn {images.length} hình ảnh</p>
+                    <p className='text-xs text-gray-600 mb-2'>Đã chọn {images.length} hình ảnh</p>
+                    <div className='grid grid-cols-3 gap-2'>
+                      {previewUrls.map((url, idx) => (
+                        <motion.div
+                          key={url}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className='relative'
+                        >
+                          <img
+                            src={url}
+                            alt={`complaint-image-${idx + 1}`}
+                            className='w-full h-20 object-cover rounded-md border'
+                          />
+                        </motion.div>
+                      ))}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>

@@ -202,3 +202,17 @@ export interface UpdateOrderStatusInput {
 }
 
 export type PaymentMethod = 'COD' | 'Banking' | 'MyWallet'
+
+// Complaint Order type - dùng cho dữ liệu khiếu nại đơn hàng
+// Giúp thống nhất kiểu dữ liệu khi truyền từ modal khiếu nại sang API
+import type { FormType } from './form.type'
+
+export interface ComplaintOrder {
+  orderId: string
+  storeId: string
+  userId: string
+  type: FormType // Nên dùng 'ComplaintOrder' khi khiếu nại đơn hàng
+  subject: string
+  description: string
+  images?: File[]
+}

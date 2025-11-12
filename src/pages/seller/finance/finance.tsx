@@ -8,11 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAuth } from '../../../contexts/auth.context'
 import { getUserById, updateUser, type User as UserType } from '../../../apis/user.api'
 import { getWalletBalance, getWalletTransactions, depositMoney, payDebt, withdrawal } from '../../../apis/wallet.api'
-import type { WalletData, WalletTransactionDTO } from '../../../types/walletType'
+import type { WalletData, WalletTransactionDTO, TransactionWalletStatus } from '../../../types/walletType'
+import { getTransactionTypeLabel, getTransactionStatusLabel } from '../../../types/walletType'
 import { toast } from '../../../utils/toast'
 import Loading from '../../../components/Loading/loading'
 import {
-  PiggyBank,
   Clock,
   TrendingUp,
   Search,
@@ -35,7 +35,6 @@ function FinanceManagement() {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFilter, setDateFilter] = useState('')
-  const [showFormulaModal, setShowFormulaModal] = useState(false)
   const [userInfo, setUserInfo] = useState<UserType | null>(null)
   const [loadingUserInfo, setLoadingUserInfo] = useState(false)
   const [showUpdateBankModal, setShowUpdateBankModal] = useState(false)
@@ -53,6 +52,8 @@ function FinanceManagement() {
   const [showPayDebtModal, setShowPayDebtModal] = useState(false)
   const [payDebtAmount, setPayDebtAmount] = useState('')
   const [submittingPayDebt, setSubmittingPayDebt] = useState(false)
+  const [selectedFormula, setSelectedFormula] = useState<string | null>(null)
+  const [showFormulaModal, setShowFormulaModal] = useState(false)
 
   // Wallet data from API
   const [walletData, setWalletData] = useState<WalletData | null>(null)
@@ -132,8 +133,6 @@ function FinanceManagement() {
   // 3. Derived (Tính toán)
   const netIncome =
     walletDataDisplay.netRevenue || walletDataDisplay.grossRevenue - walletDataDisplay.totalCommissionPaid
-  const totalWithdrawn =
-    netIncome - (walletDataDisplay.availableBalance + walletDataDisplay.pendingBalance - walletDataDisplay.debtBalance)
 
   // Fetch user info
   useEffect(() => {
@@ -164,19 +163,20 @@ function FinanceManagement() {
 
   // Map transaction status
   const getStatusBadge = (status: string) => {
+    const statusLabel = getTransactionStatusLabel(status as TransactionWalletStatus)
     switch (status) {
       case 'Completed':
       case 'Approved':
-        return <Badge className='bg-green-100 text-green-800 hover:bg-green-100 border-green-200'>Đã thanh toán</Badge>
+        return <Badge className='bg-green-100 text-green-800 hover:bg-green-100 border-green-200'>{statusLabel}</Badge>
       case 'Pending':
-        return <Badge className='bg-yellow-100 text-orange-800 hover:bg-yellow-100 border-yellow-200'>Đang chờ</Badge>
+        return <Badge className='bg-yellow-100 text-orange-800 hover:bg-yellow-100 border-yellow-200'>{statusLabel}</Badge>
       case 'Cancel':
       case 'Rejected':
-        return <Badge className='bg-red-100 text-red-800 hover:bg-red-100 border-red-200'>Đã hủy</Badge>
+        return <Badge className='bg-red-100 text-red-800 hover:bg-red-100 border-red-200'>{statusLabel}</Badge>
       case 'Disputed':
-        return <Badge className='bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200'>Tranh chấp</Badge>
+        return <Badge className='bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200'>{statusLabel}</Badge>
       default:
-        return <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>{status}</Badge>
+        return <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>{statusLabel}</Badge>
     }
   }
 
@@ -510,7 +510,19 @@ function FinanceManagement() {
                 <CardContent className='p-4 sm:p-6'>
                   <div className='flex justify-between items-start'>
                     <div className='flex-1'>
-                      <h3 className='text-xs sm:text-sm font-medium text-gray-600 mb-2'>Số dư khả dụng</h3>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Số dư khả dụng</h3>
+                        <button
+                          onClick={() => {
+                            setSelectedFormula('availableBalance')
+                            setShowFormulaModal(true)
+                          }}
+                          className='p-0.5 hover:bg-gray-100 rounded-full transition-colors'
+                          aria-label='Xem công thức'
+                        >
+                          <Info className='w-3 h-3 sm:w-4 sm:h-4 text-gray-400 hover:text-blue-600' />
+                        </button>
+                      </div>
                       <motion.p
                         className='text-2xl sm:text-3xl font-bold text-green-600'
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -555,7 +567,19 @@ function FinanceManagement() {
                 <CardContent className='p-4 sm:p-6'>
                   <div className='flex justify-between items-start'>
                     <div className='flex-1'>
-                      <h3 className='text-xs sm:text-sm font-medium text-gray-600 mb-2'>Số dư chờ</h3>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Số dư chờ</h3>
+                        <button
+                          onClick={() => {
+                            setSelectedFormula('pendingBalance')
+                            setShowFormulaModal(true)
+                          }}
+                          className='p-0.5 hover:bg-gray-100 rounded-full transition-colors'
+                          aria-label='Xem công thức'
+                        >
+                          <Info className='w-3 h-3 sm:w-4 sm:h-4 text-gray-400 hover:text-blue-600' />
+                        </button>
+                      </div>
                       <motion.p
                         className='text-2xl sm:text-3xl font-bold text-blue-600'
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -583,7 +607,19 @@ function FinanceManagement() {
                 <CardContent className='p-4 sm:p-6'>
                   <div className='flex justify-between items-start'>
                     <div className='flex-1'>
-                      <h3 className='text-xs sm:text-sm font-medium text-gray-600 mb-2'>Số tiền nợ</h3>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Số tiền nợ</h3>
+                        <button
+                          onClick={() => {
+                            setSelectedFormula('debtBalance')
+                            setShowFormulaModal(true)
+                          }}
+                          className='p-0.5 hover:bg-gray-100 rounded-full transition-colors'
+                          aria-label='Xem công thức'
+                        >
+                          <Info className='w-3 h-3 sm:w-4 sm:h-4 text-gray-400 hover:text-blue-600' />
+                        </button>
+                      </div>
                       <motion.p
                         className='text-2xl sm:text-3xl font-bold text-red-600'
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -627,7 +663,19 @@ function FinanceManagement() {
                 <CardContent className='p-4 sm:p-6'>
                   <div className='flex justify-between items-start'>
                     <div className='flex-1'>
-                      <h3 className='text-xs sm:text-sm font-medium text-gray-600 mb-2'>Tổng doanh thu</h3>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Tổng doanh thu</h3>
+                        <button
+                          onClick={() => {
+                            setSelectedFormula('grossRevenue')
+                            setShowFormulaModal(true)
+                          }}
+                          className='p-0.5 hover:bg-gray-100 rounded-full transition-colors'
+                          aria-label='Xem công thức'
+                        >
+                          <Info className='w-3 h-3 sm:w-4 sm:h-4 text-gray-400 hover:text-blue-600' />
+                        </button>
+                      </div>
                       <motion.p
                         className='text-2xl sm:text-3xl font-bold text-green-600'
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -655,7 +703,19 @@ function FinanceManagement() {
                 <CardContent className='p-4 sm:p-6'>
                   <div className='flex justify-between items-start'>
                     <div className='flex-1'>
-                      <h3 className='text-xs sm:text-sm font-medium text-gray-600 mb-2'>Tổng hoa hồng đã trả</h3>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Tổng hoa hồng đã trả</h3>
+                        <button
+                          onClick={() => {
+                            setSelectedFormula('totalCommissionPaid')
+                            setShowFormulaModal(true)
+                          }}
+                          className='p-0.5 hover:bg-gray-100 rounded-full transition-colors'
+                          aria-label='Xem công thức'
+                        >
+                          <Info className='w-3 h-3 sm:w-4 sm:h-4 text-gray-400 hover:text-blue-600' />
+                        </button>
+                      </div>
                       <motion.p
                         className='text-2xl sm:text-3xl font-bold text-purple-600'
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -698,7 +758,19 @@ function FinanceManagement() {
                 <CardContent className='p-4'>
                   <div className='flex justify-between items-start'>
                     <div className='flex-1'>
-                      <h3 className='text-xs font-medium text-gray-600 mb-1'>Thu nhập ròng</h3>
+                      <div className='flex items-center gap-2 mb-1'>
+                        <h3 className='text-xs font-medium text-gray-600'>Thu nhập ròng</h3>
+                        <button
+                          onClick={() => {
+                            setSelectedFormula('netRevenue')
+                            setShowFormulaModal(true)
+                          }}
+                          className='p-0.5 hover:bg-gray-100 rounded-full transition-colors'
+                          aria-label='Xem công thức'
+                        >
+                          <Info className='w-3 h-3 sm:w-4 sm:h-4 text-gray-400 hover:text-blue-600' />
+                        </button>
+                      </div>
                       <motion.p
                         className='text-xl sm:text-2xl font-bold text-blue-600'
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -738,7 +810,7 @@ function FinanceManagement() {
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
                   className='pl-10 w-full sm:w-48'
-                  placeholder='mm/dd/yyyy'
+                  placeholder='dd/mm/yyyy'
                 />
               </div>
               <div className='relative flex-1'>
@@ -788,10 +860,10 @@ function FinanceManagement() {
                             transition={{ delay: index * 0.05 }}
                           >
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
-                              {transaction.orderId ? `#${transaction.orderId}` : 'N/A'}
+                              {transaction.orderId ? `#${transaction.orderId}` : 'Không có'}
                             </td>
                             <td className='py-4 px-4 text-gray-700 text-sm'>{formatDate(transaction.createdAt)}</td>
-                            <td className='py-4 px-4 text-gray-700 text-sm'>{transaction.type || 'N/A'}</td>
+                            <td className='py-4 px-4 text-gray-700 text-sm'>{getTransactionTypeLabel(transaction.type)}</td>
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
                               {transaction.amount.toLocaleString()} ₫
                             </td>
@@ -825,7 +897,7 @@ function FinanceManagement() {
                                 <div>
                                   <p className='text-xs text-gray-500'>Mã đơn hàng</p>
                                   <p className='font-medium text-gray-900'>
-                                    {transaction.orderId ? `#${transaction.orderId}` : 'N/A'}
+                                    {transaction.orderId ? `#${transaction.orderId}` : 'Không có'}
                                   </p>
                                 </div>
                                 {getStatusBadge(transaction.status)}
@@ -837,7 +909,9 @@ function FinanceManagement() {
                                 </div>
                                 <div>
                                   <p className='text-xs text-gray-500'>Loại</p>
-                                  <p className='text-sm text-gray-700'>{transaction.type || 'N/A'}</p>
+                                  <p className='text-sm text-gray-700'>
+                                    {getTransactionTypeLabel(transaction.type)}
+                                  </p>
                                 </div>
                               </div>
                               <div className='grid grid-cols-2 gap-3 pt-2 border-t'>
@@ -933,48 +1007,290 @@ function FinanceManagement() {
             <DialogDescription>Chi tiết cách tính các chỉ số tài chính</DialogDescription>
           </DialogHeader>
           <div className='space-y-6 mt-4'>
-            {/* Net Income Formula */}
-            <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
-              <h3 className='font-semibold text-blue-900 mb-3 flex items-center gap-2'>
-                <DollarSign className='w-5 h-5' />
-                Thu nhập ròng (Net Income)
-              </h3>
-              <div className='space-y-2 text-sm'>
-                <div className='flex items-center gap-2'>
-                  <span className='font-medium text-gray-700'>Công thức:</span>
-                  <code className='bg-white px-2 py-1 rounded border border-blue-300 text-blue-700'>
-                    Thu nhập ròng = Tổng doanh thu - Tổng hoa hồng đã trả
-                  </code>
-                </div>
-                <div className='flex items-center gap-2'>
-                  <span className='font-medium text-gray-700'>Tính toán:</span>
-                  <span className='text-gray-600'>
-                    {walletDataDisplay.grossRevenue.toLocaleString()} ₫ -{' '}
-                    {walletDataDisplay.totalCommissionPaid.toLocaleString()} ₫ ={' '}
-                    <span className='font-bold text-blue-600'>{netIncome.toLocaleString()} ₫</span>
-                  </span>
+            {/* Gross Revenue Formula */}
+            {selectedFormula === 'grossRevenue' && (
+              <div className='bg-green-50 p-4 rounded-lg border border-green-200'>
+                <h3 className='font-semibold text-green-900 mb-3 flex items-center gap-2'>
+                  <TrendingUp className='w-5 h-5' />
+                  Doanh thu gộp
+                </h3>
+                <div className='space-y-2 text-sm'>
+                  <div className='flex items-center gap-2'>
+                    <span className='font-medium text-gray-700'>Công thức:</span>
+                    <code className='bg-white px-2 py-1 rounded border border-green-300 text-green-700'>
+                      Doanh thu gộp = Σ(Tổng tiền đơn hàng)
+                    </code>
+                  </div>
+                  <div className='text-gray-600 mt-2'>
+                    <p className='mb-1'>Trong đó:</p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>Tổng tiền đơn hàng = Tiền đơn hàng + Tiền ship</li>
+                      <li>Σ là ký hiệu tổng (tổng tất cả các đơn hàng)</li>
+                    </ul>
+                  </div>
+                  <div className='mt-3 pt-3 border-t border-green-200'>
+                    <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
+                    <span className='font-bold text-green-600'>
+                      {walletDataDisplay.grossRevenue.toLocaleString()} ₫
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Current Balance Info */}
-            <div className='bg-gray-50 p-4 rounded-lg border border-gray-200'>
-              <h3 className='font-semibold text-gray-900 mb-3'>Số dư hiện tại</h3>
-              <div className='space-y-2 text-sm text-gray-600'>
-                <div className='flex justify-between'>
-                  <span>Số dư khả dụng:</span>
-                  <span className='font-medium'>{walletDataDisplay.availableBalance.toLocaleString()} ₫</span>
-                </div>
-                <div className='flex justify-between'>
-                  <span>Số dư chờ:</span>
-                  <span className='font-medium'>{walletDataDisplay.pendingBalance.toLocaleString()} ₫</span>
-                </div>
-                <div className='flex justify-between'>
-                  <span>Số tiền nợ:</span>
-                  <span className='font-medium text-red-600'>{walletDataDisplay.debtBalance.toLocaleString()} ₫</span>
+            {/* Total Discount Formula */}
+            {selectedFormula === 'totalDiscount' && (
+              <div className='bg-yellow-50 p-4 rounded-lg border border-yellow-200'>
+                <h3 className='font-semibold text-yellow-900 mb-3 flex items-center gap-2'>
+                  <Receipt className='w-5 h-5' />
+                  Tổng giảm giá
+                </h3>
+                <div className='space-y-2 text-sm'>
+                  <div className='flex items-center gap-2'>
+                    <span className='font-medium text-gray-700'>Công thức:</span>
+                    <code className='bg-white px-2 py-1 rounded border border-yellow-300 text-yellow-700'>
+                      Tổng giảm giá = Σ(Giảm giá sản phẩm)
+                    </code>
+                  </div>
+                  <div className='text-gray-600 mt-2'>
+                    <p className='mb-1'>Trong đó:</p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>Giảm giá sản phẩm = Giảm giá mà người bán chịu</li>
+                      <li>Σ là ký hiệu tổng (tổng tất cả các giảm giá)</li>
+                    </ul>
+                  </div>
+                  <div className='mt-3 pt-3 border-t border-yellow-200'>
+                    <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
+                    <span className='font-bold text-yellow-600'>
+                      {(walletDataDisplay as WalletData).totalDiscount?.toLocaleString() || 0} ₫
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Net Revenue Formula */}
+            {selectedFormula === 'netRevenue' && (
+              <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
+                <h3 className='font-semibold text-blue-900 mb-3 flex items-center gap-2'>
+                  <DollarSign className='w-5 h-5' />
+                  Doanh thu ròng
+                </h3>
+                <div className='space-y-2 text-sm'>
+                  <div className='flex items-center gap-2'>
+                    <span className='font-medium text-gray-700'>Công thức:</span>
+                    <code className='bg-white px-2 py-1 rounded border border-blue-300 text-blue-700'>
+                      Doanh thu ròng = Doanh thu gộp - Tổng giảm giá
+                    </code>
+                  </div>
+                  <div className='text-gray-600 mt-2'>
+                    <p className='mb-1'>Trong đó:</p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>Doanh thu gộp = Tổng tiền từ tất cả đơn hàng</li>
+                      <li>Tổng giảm giá = Tổng các khoản giảm giá sản phẩm</li>
+                    </ul>
+                  </div>
+                  <div className='mt-3 pt-3 border-t border-blue-200'>
+                    <div className='flex items-center gap-2'>
+                      <span className='font-medium text-gray-700'>Tính toán:</span>
+                      <span className='text-gray-600'>
+                        {walletDataDisplay.grossRevenue.toLocaleString()} ₫ -{' '}
+                        {((walletDataDisplay as WalletData).totalDiscount || 0).toLocaleString()} ₫ ={' '}
+                        <span className='font-bold text-blue-600'>{netIncome.toLocaleString()} ₫</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Total Commission Paid Formula */}
+            {selectedFormula === 'totalCommissionPaid' && (
+              <div className='bg-purple-50 p-4 rounded-lg border border-purple-200'>
+                <h3 className='font-semibold text-purple-900 mb-3 flex items-center gap-2'>
+                  <Receipt className='w-5 h-5' />
+                  Tổng hoa hồng đã trả
+                </h3>
+                <div className='space-y-2 text-sm'>
+                  <div className='flex items-center gap-2'>
+                    <span className='font-medium text-gray-700'>Công thức:</span>
+                    <code className='bg-white px-2 py-1 rounded border border-purple-300 text-purple-700'>
+                      Tổng hoa hồng đã trả = Σ(Hoa hồng đã trả + Nợ đã trả)
+                    </code>
+                  </div>
+                  <div className='text-gray-600 mt-2'>
+                    <p className='mb-1'>Trong đó:</p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>Hoa hồng đã trả = Hoa hồng đã thanh toán</li>
+                      <li>Nợ đã trả = Số nợ COD đã được trả</li>
+                      <li>Σ là ký hiệu tổng (tổng tất cả các khoản đã trả)</li>
+                    </ul>
+                  </div>
+                  <div className='mt-3 pt-3 border-t border-purple-200'>
+                    <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
+                    <span className='font-bold text-purple-600'>
+                      {walletDataDisplay.totalCommissionPaid.toLocaleString()} ₫
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Debt Balance Formula */}
+            {selectedFormula === 'debtBalance' && (
+              <div className='bg-red-50 p-4 rounded-lg border border-red-200'>
+                <h3 className='font-semibold text-red-900 mb-3 flex items-center gap-2'>
+                  <AlertCircle className='w-5 h-5' />
+                  Nợ chưa trả
+                </h3>
+                <div className='space-y-2 text-sm'>
+                  <div className='flex items-center gap-2'>
+                    <span className='font-medium text-gray-700'>Công thức:</span>
+                    <code className='bg-white px-2 py-1 rounded border border-red-300 text-red-700'>
+                      Nợ chưa trả = Σ(Hoa hồng COD chưa trả)
+                    </code>
+                  </div>
+                  <div className='text-gray-600 mt-2'>
+                    <p className='mb-1'>Trong đó:</p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>Hoa hồng COD = Hoa hồng từ đơn hàng COD</li>
+                      <li>Σ là ký hiệu tổng (tổng tất cả các khoản nợ chưa trả)</li>
+                    </ul>
+                  </div>
+                  <div className='mt-3 pt-3 border-t border-red-200'>
+                    <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
+                    <span className='font-bold text-red-600'>{walletDataDisplay.debtBalance.toLocaleString()} ₫</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Available Balance Formula */}
+            {selectedFormula === 'availableBalance' && (
+              <div className='bg-green-50 p-4 rounded-lg border border-green-200'>
+                <h3 className='font-semibold text-green-900 mb-3 flex items-center gap-2'>
+                  <Wallet className='w-5 h-5' />
+                  Số dư khả dụng
+                </h3>
+                <div className='space-y-2 text-sm'>
+                  <div className='text-gray-600 mt-2'>
+                    <p className='mb-1'>Số dư khả dụng là số tiền bạn có thể rút ngay bây giờ.</p>
+                    <p className='mb-1'>Bao gồm:</p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>Tiền từ các đơn hàng đã hoàn thành</li>
+                      <li>Tiền nạp vào ví</li>
+                      <li>Tiền hoàn lại từ các đơn hàng bị hủy</li>
+                      <li>Trừ đi các khoản nợ chưa trả</li>
+                    </ul>
+                  </div>
+                  <div className='mt-3 pt-3 border-t border-green-200'>
+                    <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
+                    <span className='font-bold text-green-600'>
+                      {walletDataDisplay.availableBalance.toLocaleString()} ₫
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pending Balance Formula */}
+            {selectedFormula === 'pendingBalance' && (
+              <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
+                <h3 className='font-semibold text-blue-900 mb-3 flex items-center gap-2'>
+                  <Clock className='w-5 h-5' />
+                  Số dư chờ
+                </h3>
+                <div className='space-y-2 text-sm'>
+                  <div className='text-gray-600 mt-2'>
+                    <p className='mb-1'>Số dư chờ là số tiền từ các đơn hàng Banking chưa được delivered.</p>
+                    <p className='mb-1'>Bao gồm:</p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>Tiền từ đơn hàng thanh toán Banking</li>
+                      <li>Đơn hàng đang trong trạng thái chờ xác nhận</li>
+                      <li>Sẽ chuyển sang số dư khả dụng khi đơn hàng được delivered</li>
+                    </ul>
+                  </div>
+                  <div className='mt-3 pt-3 border-t border-blue-200'>
+                    <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
+                    <span className='font-bold text-blue-600'>
+                      {walletDataDisplay.pendingBalance.toLocaleString()} ₫
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Default: Show all formulas */}
+            {!selectedFormula && (
+              <>
+                {/* Gross Revenue Formula */}
+                <div className='bg-green-50 p-4 rounded-lg border border-green-200'>
+                  <h3 className='font-semibold text-green-900 mb-3 flex items-center gap-2'>
+                    <TrendingUp className='w-5 h-5' />
+                    Doanh thu gộp
+                  </h3>
+                  <div className='space-y-2 text-sm'>
+                    <div className='flex items-center gap-2'>
+                      <span className='font-medium text-gray-700'>Công thức:</span>
+                      <code className='bg-white px-2 py-1 rounded border border-green-300 text-green-700'>
+                        Doanh thu gộp = Σ(Tổng tiền đơn hàng)
+                      </code>
+                    </div>
+                    <div className='text-gray-600 mt-2'>
+                      <p>Trong đó: Tổng tiền đơn hàng = Tiền đơn hàng + Tiền ship</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Net Revenue Formula */}
+                <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
+                  <h3 className='font-semibold text-blue-900 mb-3 flex items-center gap-2'>
+                    <DollarSign className='w-5 h-5' />
+                    Doanh thu ròng
+                  </h3>
+                  <div className='space-y-2 text-sm'>
+                    <div className='flex items-center gap-2'>
+                      <span className='font-medium text-gray-700'>Công thức:</span>
+                      <code className='bg-white px-2 py-1 rounded border border-blue-300 text-blue-700'>
+                        Doanh thu ròng = Doanh thu gộp - Tổng giảm giá
+                      </code>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Commission Paid Formula */}
+                <div className='bg-purple-50 p-4 rounded-lg border border-purple-200'>
+                  <h3 className='font-semibold text-purple-900 mb-3 flex items-center gap-2'>
+                    <Receipt className='w-5 h-5' />
+                    Tổng hoa hồng đã trả
+                  </h3>
+                  <div className='space-y-2 text-sm'>
+                    <div className='flex items-center gap-2'>
+                      <span className='font-medium text-gray-700'>Công thức:</span>
+                      <code className='bg-white px-2 py-1 rounded border border-purple-300 text-purple-700'>
+                        Tổng hoa hồng đã trả = Σ(Hoa hồng đã trả + Nợ đã trả)
+                      </code>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Debt Balance Formula */}
+                <div className='bg-red-50 p-4 rounded-lg border border-red-200'>
+                  <h3 className='font-semibold text-red-900 mb-3 flex items-center gap-2'>
+                    <AlertCircle className='w-5 h-5' />
+                    Nợ chưa trả
+                  </h3>
+                  <div className='space-y-2 text-sm'>
+                    <div className='flex items-center gap-2'>
+                      <span className='font-medium text-gray-700'>Công thức:</span>
+                      <code className='bg-white px-2 py-1 rounded border border-red-300 text-red-700'>
+                        Nợ chưa trả = Σ(Hoa hồng COD chưa trả)
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -1122,7 +1438,7 @@ function FinanceManagement() {
                 </div>
               </div>
             )}
-            Z {/* Info Notice */}
+            {/* Info Notice */}
             <div className='bg-gray-50 p-3 rounded-lg border border-gray-200'>
               <div className='flex items-start gap-2'>
                 <Info className='w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0' />

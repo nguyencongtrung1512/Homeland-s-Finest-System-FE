@@ -41,7 +41,7 @@ export const getTransactionPurchase = async (orderIds: string[]): Promise<Transa
 
 // GET /api/Transaction/get-all - Lấy danh sách tất cả transactions với pagination
 export const getAllTransactions = async (params?: TransactionQueryParams): Promise<Transaction[]> => {
-  const response: TransactionListResponse = await axiosInstance.get(`${API_URL}/get-all`, {
+  const response: TransactionListResponse = await axiosInstance.get(`${API_URL}`, {
     params
   })
   return response.data

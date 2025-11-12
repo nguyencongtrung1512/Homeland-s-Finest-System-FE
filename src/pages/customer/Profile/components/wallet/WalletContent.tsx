@@ -10,6 +10,7 @@ import ThreeDCard from '../../../../../components/ui/threed-card'
 import Loading from '../../../../../components/Loading/loading'
 import { getWalletBalance, getWalletTransactions, withdrawal } from '../../../../../apis/wallet.api'
 import type { WalletData, WalletTransactionDTO } from '../../../../../types/walletType'
+import { getTransactionTypeLabel, getTransactionStatusLabel } from '../../../../../types/walletType'
 import { toast } from '../../../../../utils/toast'
 
 interface WalletContentProps {
@@ -478,11 +479,11 @@ export default function WalletContent({
                   >
                     <div className='flex-1'>
                       <div className='flex items-center gap-2 mb-1'>
-                        <span className='font-semibold text-gray-900'>{transaction.type}</span>
+                        <span className='font-semibold text-gray-900'>{getTransactionTypeLabel(transaction.type)}</span>
                         <span
                           className={`text-xs px-2 py-1 rounded-full ${statusColors[transaction.status] || 'bg-gray-100 text-gray-800'}`}
                         >
-                          {transaction.status}
+                          {getTransactionStatusLabel(transaction.status)}
                         </span>
                       </div>
                       <p className='text-sm text-gray-600'>{transaction.description || 'Không có mô tả'}</p>

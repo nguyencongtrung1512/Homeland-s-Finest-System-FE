@@ -60,6 +60,7 @@ interface Order {
   autoRefund?: boolean // TH2: Chưa xác nhận, tự hoàn tiền
   autoConfirmDays?: number // Số ngày tự động xác nhận nhận hàng
   canConfirmReceived?: boolean // Có thể click "Đã nhận được hàng"
+  canComplain?: boolean // Có thể khiếu nại (ẩn nếu đã Complaining/Complained)
   // Detail modal data
   shippingInfo?: {
     recipientName: string
@@ -316,18 +317,23 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
 
   const orderHistories = apiOrder?.orderHistories || []
 
+  const statusVal: OrderStatus = apiOrder?.status || 'NotYet'
+  const isComplaintInProgress = statusVal === 'Complaining' || statusVal === 'Complained'
+
   return {
     id: apiOrder?.id || '',
     storeId: apiOrder?.storeId || '',
     date: apiOrder?.createdAt,
-    originalStatus: apiOrder?.status || 'NotYet',
+    originalStatus: statusVal,
     ...statusInfo,
     isFreeship: apiOrder?.isFreeship || false,
     products,
     total: formatPrice(apiOrder?.finalPrice),
     totalAmount: apiOrder?.finalPrice || 0,
     note: apiOrder?.note || '',
-    canConfirmReceived: apiOrder?.status === 'Delivered' && !apiOrder?.isPayOut,
+    canConfirmReceived: statusVal === 'Delivered' && !apiOrder?.isPayOut,
+    // Chỉ cho phép khiếu nại nếu đã giao xong và không ở trạng thái đã/đang khiếu nại
+    canComplain: statusVal === 'Delivered' && !isComplaintInProgress,
     canReturn: apiOrder?.status === 'Delivered',
     shippingInfo: {
       recipientName: apiOrder?.toName || '',
@@ -791,24 +797,26 @@ export default function OrdersContent({
                     >
                       Đánh giá
                     </Button>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => handleOpenComplaintModal(order.id)}
-                      disabled={submittingComplaintOrderId === order.id}
-                      className='text-red-600 border-red-600 hover:bg-red-50 disabled:opacity-50'
-                    >
-                      {submittingComplaintOrderId === order.id ? (
-                        <>
-                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2'></div>
-                          Đang gửi...
-                        </>
-                      ) : (
-                        'Khiếu nại'
-                      )}
-                    </Button>
-                  </>
-                )}
+                    {order.canComplain && (
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => handleOpenComplaintModal(order.id)}
+                        disabled={submittingComplaintOrderId === order.id}
+                        className='text-red-600 border-red-600 hover:bg-red-50 disabled:opacity-50'
+                      >
+                        {submittingComplaintOrderId === order.id ? (
+                          <>
+                            <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2'></div>
+                            Đang gửi...
+                          </>
+                        ) : (
+                          'Khiếu nại'
+                        )}
+                      </Button>
+                    )}
+              </>
+            )}
                 {order.originalStatus === 'Cancel' && (
                   <Button
                     variant='outline'

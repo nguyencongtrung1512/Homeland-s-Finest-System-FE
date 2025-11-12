@@ -82,10 +82,14 @@ export const path = {
   STAFF_MANAGEMENT_ADMIN: 'staffManagement', //đang phát triển
   TERMS_MANAGEMENT_ADMIN: 'termsManagement',
   TRANSACTION_MANAGEMENT_ADMIN: 'transactionManagement',
+  REQUEST_WALLET_MONEY_MANAGEMENT_ADMIN: 'requestWalletMoneyManagement',
   BLOG_MANAGEMENT_ADMIN: 'blogManagement',
   BLOG_CATEGORY_DETAIL: '/admin/blogManagement/detail/:id',
   SYSTEM_STORAGE_ADMIN: 'systemStorage',
   FORM_MANAGEMENT_ADMIN: 'formManagement',
+  // Admin complaint subpages
+  FORM_ORDER_MANAGEMENT_ADMIN: 'formManagement/order',
+  FORM_STORE_MANAGEMENT_ADMIN: 'formManagement/store',
   // ============ BLOG =============
   CREATE_BLOG: '/admin/blogManagement/detail/:id/create-blog',
   BLOG_CATEGORY_EDIT: '/admin/blogManagement/edit/:id'

@@ -36,6 +36,44 @@ export type TransactionWalletType =
   | 'RefundToCustomer' // Hệ thống trả tiền refund customer
   | 'Refund' // Customer nhận được tiền refund từ hệ thống
 
+/**
+ * Chuyển đổi TransactionWalletType sang tiếng Việt
+ */
+export const getTransactionTypeLabel = (type: TransactionWalletType): string => {
+  const typeMap: Record<TransactionWalletType, string> = {
+    OrderPayment: 'Thanh toán đơn hàng',
+    CustomerPayment: 'Khách hàng thanh toán',
+    OrderBankingPending: 'Chờ thanh toán đơn hàng',
+    OrderBankingCompleted: 'Hoàn thành thanh toán đơn hàng',
+    OrderCodDebt: 'Ghi nợ COD',
+    OrderCodPaid: 'Đã trả nợ COD',
+    Deposit: 'Nạp tiền',
+    CommissionReceived: 'Nhận hoa hồng',
+    DebtPayment: 'Trả nợ từ nạp tiền',
+    Withdrawal: 'Rút tiền',
+    PayDebt: 'Trả nợ',
+    PayoutToSeller: 'Thanh toán cho người bán',
+    RefundToCustomer: 'Hoàn tiền cho khách hàng',
+    Refund: 'Nhận hoàn tiền'
+  }
+  return typeMap[type] || type
+}
+
+/**
+ * Chuyển đổi TransactionWalletStatus sang tiếng Việt
+ */
+export const getTransactionStatusLabel = (status: TransactionWalletStatus): string => {
+  const statusMap: Record<TransactionWalletStatus, string> = {
+    Pending: 'Đang chờ',
+    Completed: 'Hoàn thành',
+    Cancel: 'Đã hủy',
+    Approved: 'Đã duyệt',
+    Rejected: 'Đã từ chối',
+    Disputed: 'Tranh chấp'
+  }
+  return statusMap[status] || status
+}
+
 export interface WalletTransactionDTO {
   id: string
   walletId: string
