@@ -41,6 +41,7 @@ export interface UpdateFormRequest {
   subject: string
   description: string
   imageFiles?: File[]
+  existingImageUrls?: string[]
 }
 
 export interface StaffUpdateRequest {

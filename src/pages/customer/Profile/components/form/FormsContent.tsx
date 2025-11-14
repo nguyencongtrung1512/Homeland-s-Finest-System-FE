@@ -181,7 +181,7 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
 
   const handleUpdateForm = async (
     formId: string,
-    data: { type: FormType; subject: string; description: string; images?: File[] }
+    data: { type: FormType; subject: string; description: string; images?: File[]; existingImageUrls?: string[] }
   ) => {
     try {
       setUpdatingFormId(formId)
@@ -197,7 +197,8 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
         type: data.type,
         subject: data.subject,
         description: data.description,
-        imageFiles: data.images
+        imageFiles: data.images,
+        existingImageUrls: data.existingImageUrls
       })
 
       onRefresh()
