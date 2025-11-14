@@ -12,6 +12,8 @@ import {
   CreditCard,
   Upload as UploadIcon
 } from 'lucide-react'
+import { Card as ShadcnCard, CardContent } from '../../../components/ui/card'
+import { Button as ShadcnButton } from '../../../components/ui/button'
 import { useNavigate, useParams } from 'react-router-dom'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { staffApi, type ReviewStoreRequest } from '../../../apis/staff.api'
@@ -223,22 +225,30 @@ function StaffStoreDetail() {
   const statusDisplay = getStatusDisplay(store.status)
 
   return (
-    <div className='space-y-6'>
+    <div className='space-y-6 p-6'>
       {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-3'>
-          <Button
-            type='text'
-            icon={<ArrowLeft size={16} />}
-            onClick={handleBack}
-            className='flex items-center gap-2 text-gray-600 hover:text-gray-900'
-          >
-            Trở về danh sách cửa hàng
-          </Button>
-        </div>
-        <h1 className='text-2xl font-bold text-gray-900'>Chi tiết cửa hàng</h1>
-        <div></div>
-      </div>
+      <ShadcnCard className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <h2 className='text-3xl font-bold text-white m-0'>Chi tiết cửa hàng</h2>
+            </div>
+            <ShadcnButton
+              variant='outline'
+              onClick={handleBack}
+              className='flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white'
+            >
+              <ArrowLeft size={16} />
+              Trở về danh sách cửa hàng
+            </ShadcnButton>
+          </div>
+          {store && (
+            <p className='text-white/90 mt-2 ml-9'>
+              {store.storeName} - {statusDisplay.text}
+            </p>
+          )}
+        </CardContent>
+      </ShadcnCard>
 
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
         {/* Left Column - Main Content */}
@@ -550,6 +560,7 @@ function StaffStoreDetail() {
             className='border-l-4 border-l-gray-400'
           >
             <div className='space-y-3'>
+              <p className='text-gray-500 text-sm'>Cửa hàng đang ở trạng thái {store?.status}</p>
               {/* Add Review button if store status allows it */}
               {store && store.status === 'Processing' && (
                 <Button
@@ -562,6 +573,7 @@ function StaffStoreDetail() {
                   Đánh giá cửa hàng
                 </Button>
               )}
+
             </div>
           </Card>
         </div>

@@ -31,7 +31,6 @@ const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => 
 
       if (response.data && response.data.length > 0) {
         setPromotions(response.data)
-        console.log('🎁 Found active promotions:', response.data)
       } else {
         console.log('🎁 No active promotions found')
       }

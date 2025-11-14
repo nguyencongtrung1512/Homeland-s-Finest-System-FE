@@ -23,7 +23,7 @@ interface CartContextProps {
   cartCount: number
   loading: boolean
   addToCart: (productVariantId: string, quantity: number, comboId?: string) => Promise<void>
-  refreshCart: () => Promise<void>
+  refreshCart: (options?: { silent?: boolean }) => Promise<void>
   clearCart: () => void
   clearCartAfterOrder: (itemIds: string[]) => Promise<void>
 }
@@ -62,30 +62,37 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }
 
   // Load cart data from API
-  const loadCart = useCallback(async () => {
-    if (!user?.userId || !isAuthenticated) {
-      setCart([])
-      setCartCount(0)
-      return
-    }
+  const loadCart = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!user?.userId || !isAuthenticated) {
+        setCart([])
+        setCartCount(0)
+        return
+      }
 
-    try {
-      setLoading(true)
-      const cartResponse = await getCartByUserId(user.userId)
-      const transformedCart = transformCartData(cartResponse?.data)
-      const countFromSummary =
-        cartResponse?.data?.summary?.totalItems ?? transformedCart.reduce((sum, i) => sum + i.quantity, 0)
-      console.log('[LoadCart] countFromSummary:', cartResponse)
-      setCart(transformedCart)
-      setCartCount(countFromSummary)
-    } catch (error) {
-      console.error('Error loading cart:', error)
-      setCart([])
-      setCartCount(0)
-    } finally {
-      setLoading(false)
-    }
-  }, [user?.userId, isAuthenticated])
+      try {
+        if (!options?.silent) {
+          setLoading(true)
+        }
+        const cartResponse = await getCartByUserId(user.userId)
+        const transformedCart = transformCartData(cartResponse?.data)
+        const countFromSummary =
+          cartResponse?.data?.summary?.totalItems ?? transformedCart.reduce((sum, i) => sum + i.quantity, 0)
+        console.log('[LoadCart] countFromSummary:', cartResponse)
+        setCart(transformedCart)
+        setCartCount(countFromSummary)
+      } catch (error) {
+        console.error('Error loading cart:', error)
+        setCart([])
+        setCartCount(0)
+      } finally {
+        if (!options?.silent) {
+          setLoading(false)
+        }
+      }
+    },
+    [user?.userId, isAuthenticated]
+  )
 
   // Add item to cart via API
   // CartProvider: addToCart
@@ -122,9 +129,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }
 
   // Refresh cart data
-  const refreshCart = useCallback(async () => {
-    await loadCart()
-  }, [loadCart])
+  const refreshCart = useCallback(
+    async (options?: { silent?: boolean }) => {
+      await loadCart(options)
+    },
+    [loadCart]
+  )
 
   // Clear cart (local only)
   const clearCart = () => {

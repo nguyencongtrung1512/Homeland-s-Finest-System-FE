@@ -24,26 +24,44 @@ interface ShimmerBorderProps {
   className?: string
   color?: string
   animationDuration?: string
+  contentClassName?: string
 }
 
 export const ShimmerBorder = ({
   children,
   className = '',
   color = '#10b981',
-  animationDuration = '3s'
+  animationDuration = '3s',
+  contentClassName = 'bg-white'
 }: ShimmerBorderProps) => {
+  const shimmerCss = `
+    @property --angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+    @keyframes shimmer-spin {
+      to {
+        --angle: 360deg;
+      }
+    }
+  `
+
   return (
-    <div className={`relative p-[2px] rounded-lg overflow-hidden flex flex-col ${className}`}>
-      {/* Shimmer Border Effect */}
-      <div
-        className='absolute inset-0'
-        style={{
-          background: `conic-gradient(from var(--angle), transparent 20%, ${color}, transparent 60%)`,
-          animation: `shimmer-spin ${animationDuration} linear infinite`
-        }}
-      />
-      {/* Content */}
-      <div className='relative bg-white rounded-lg flex-1 flex flex-col'>{children}</div>
-    </div>
+    <>
+      <style>{shimmerCss}</style>
+      <div className={`relative p-[1.5px] rounded-lg overflow-hidden ${className}`}>
+        {/* Shimmer Border Effect */}
+        <div
+          className='absolute inset-0'
+          style={{
+            background: `conic-gradient(from var(--angle), transparent 25%, ${color}, transparent 50%)`,
+            animation: `shimmer-spin ${animationDuration} linear infinite`
+          }}
+        />
+        {/* Content */}
+        <div className={`relative z-10 ${contentClassName} rounded-lg flex-1 flex flex-col`}>{children}</div>
+      </div>
+    </>
   )
 }

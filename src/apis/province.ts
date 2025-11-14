@@ -8,6 +8,8 @@ export interface Province {
   id: number
   name: string
   region: string
+  regionSpecified: string
+  description: string
 }
 export interface District {
   id: number
@@ -22,10 +24,21 @@ export interface Ward {
   districtName: string
 }
 
-
 export const getProvinces = async (): Promise<Province[]> => {
   const response = await axiosInstance.get(API_PROVINCE)
   return response.data
+}
+export interface ProvinceDetailResponse {
+  status: number
+  message: string
+  data: Province
+}
+
+export const getProvincesDetail = async (provinceName: string): Promise<ProvinceDetailResponse> => {
+  const response = await axiosInstance.get(
+    `${API_PROVINCE}/get-detail-by-name?provinceName=${encodeURIComponent(provinceName)}`
+  )
+  return response as unknown as ProvinceDetailResponse
 }
 
 export const getProvinceById = async (id: string): Promise<Province[]> => {

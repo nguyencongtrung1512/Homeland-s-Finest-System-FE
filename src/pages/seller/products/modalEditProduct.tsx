@@ -16,12 +16,7 @@ interface ModalEditProductProps {
   onSuccess: () => void
 }
 
-export default function ModalEditProduct({
-  open,
-  onOpenChange,
-  product,
-  onSuccess
-}: ModalEditProductProps) {
+export default function ModalEditProduct({ open, onOpenChange, product, onSuccess }: ModalEditProductProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [productData, setProductData] = useState({
@@ -36,6 +31,27 @@ export default function ModalEditProduct({
   const [newProductImages, setNewProductImages] = useState<File[]>([])
   const [productVideo, setProductVideo] = useState<File | null>(null)
   const [removeExistingVideo, setRemoveExistingVideo] = useState(false)
+
+  // Validation errors
+  const [nameError, setNameError] = useState<string>('')
+  const [materialError, setMaterialError] = useState<string>('')
+  const [descriptionError, setDescriptionError] = useState<string>('')
+
+  // Constants for validation
+  const MAX_NAME_LENGTH = 20
+  const MAX_MATERIAL_LENGTH = 20
+  const MAX_DESCRIPTION_WORDS = 500
+  const MAX_IMAGES = 10
+  const MIN_NAME_LENGTH = 1
+
+  // Helper function to count words
+  const countWords = (text: string): number => {
+    if (!text || text.trim().length === 0) return 0
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length
+  }
 
   // Load data khi mở dialog
   useEffect(() => {
@@ -68,10 +84,73 @@ export default function ModalEditProduct({
   }
 
   const addNewImages = (newFiles: File[]) => {
-    setNewProductImages((prev) => [...prev, ...newFiles])
+    const currentCount = existingImages.length + newProductImages.length
+    const availableSlots = MAX_IMAGES - currentCount
+
+    if (availableSlots <= 0) {
+      toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+      return
+    }
+
+    // Limit number of files that can be added
+    const filesToAdd = newFiles.slice(0, availableSlots)
+
+    if (filesToAdd.length < newFiles.length) {
+      toast.error(`Chỉ có thể thêm tối đa ${availableSlots} ảnh nữa.`)
+    }
+
+    // Validate file types and sizes
+    const validFiles: File[] = []
+    filesToAdd.forEach((file) => {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error(`File ${file.name} không phải là hình ảnh.`)
+        return
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`File ${file.name} quá lớn. Tối đa 5MB.`)
+        return
+      }
+
+      validFiles.push(file)
+    })
+
+    if (validFiles.length > 0) {
+      setNewProductImages((prev) => [...prev, ...validFiles])
+    }
   }
 
   const handleInputChange = (field: string, value: string | boolean) => {
+    // Clear errors when user starts typing
+    if (field === 'name') {
+      setNameError('')
+      const stringValue = value as string
+      if (stringValue.length > MAX_NAME_LENGTH) {
+        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự.`)
+        return
+      }
+    }
+
+    if (field === 'material') {
+      setMaterialError('')
+      const stringValue = value as string
+      if (stringValue.length > MAX_MATERIAL_LENGTH) {
+        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự.`)
+        return
+      }
+    }
+
+    if (field === 'description') {
+      setDescriptionError('')
+      const stringValue = value as string
+      const wordCount = countWords(stringValue)
+      if (wordCount > MAX_DESCRIPTION_WORDS) {
+        setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+      }
+    }
+
     setProductData((prev) => ({
       ...prev,
       [field]: value
@@ -87,8 +166,50 @@ export default function ModalEditProduct({
         return
       }
 
+      // Validate name
       if (!productData.name.trim()) {
         toast.error('Vui lòng nhập tên sản phẩm')
+        setNameError('Vui lòng nhập tên sản phẩm')
+        return
+      }
+
+      if (productData.name.trim().length < MIN_NAME_LENGTH) {
+        toast.error('Tên sản phẩm phải có ít nhất 1 ký tự')
+        setNameError('Tên sản phẩm phải có ít nhất 1 ký tự')
+        return
+      }
+
+      if (productData.name.trim().length > MAX_NAME_LENGTH) {
+        toast.error(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự`)
+        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự`)
+        return
+      }
+
+      // Validate material
+      if (productData.material && productData.material.length > MAX_MATERIAL_LENGTH) {
+        toast.error(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
+        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
+        return
+      }
+
+      // Validate description
+      const descriptionWordCount = countWords(productData.description)
+      if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
+        toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+        setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+        return
+      }
+
+      // Validate images count
+      const totalImages = existingImages.length + newProductImages.length
+      if (totalImages > MAX_IMAGES) {
+        toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+        return
+      }
+
+      // Validate video (only one video allowed)
+      if (productVideo && product.productVideo && !removeExistingVideo) {
+        toast.error('Chỉ được tối đa 1 video. Vui lòng xóa video cũ trước khi thêm video mới.')
         return
       }
 
@@ -214,6 +335,9 @@ export default function ModalEditProduct({
       setNewProductImages([])
       setProductVideo(null)
       setRemoveExistingVideo(false)
+      setNameError('')
+      setMaterialError('')
+      setDescriptionError('')
     }
   }
 
@@ -231,44 +355,69 @@ export default function ModalEditProduct({
           <div className='space-y-4'>
             {/* Name */}
             <div>
-              <Label htmlFor='edit-product-name' className='text-sm font-medium'>
-                Tên sản phẩm <span className='text-red-500'>*</span>
-              </Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label htmlFor='edit-product-name' className='text-sm font-medium'>
+                  Tên sản phẩm <span className='text-red-500'>*</span>
+                </Label>
+                <span
+                  className={`text-xs ${productData.name.length > MAX_NAME_LENGTH ? 'text-red-500' : 'text-gray-500'}`}
+                >
+                  {productData.name.length} / {MAX_NAME_LENGTH} ký tự
+                </span>
+              </div>
               <Input
                 id='edit-product-name'
                 placeholder='Nhập tên sản phẩm...'
                 value={productData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                className='mt-1'
+                className={`mt-1 ${nameError ? 'border-red-500' : ''}`}
               />
+              {nameError && <p className='mt-1 text-sm text-red-500'>{nameError}</p>}
             </div>
 
             {/* Material */}
             <div>
-              <Label htmlFor='edit-product-material' className='text-sm font-medium'>
-                Xuất xứ (Material)
-              </Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label htmlFor='edit-product-material' className='text-sm font-medium'>
+                  Xuất xứ (Material)
+                </Label>
+                <span
+                  className={`text-xs ${productData.material.length > MAX_MATERIAL_LENGTH ? 'text-red-500' : 'text-gray-500'}`}
+                >
+                  {productData.material.length} / {MAX_MATERIAL_LENGTH} ký tự
+                </span>
+              </div>
               <Input
                 id='edit-product-material'
                 placeholder='Nhập xuất xứ...'
                 value={productData.material}
                 onChange={(e) => handleInputChange('material', e.target.value)}
-                className='mt-1'
+                className={`mt-1 ${materialError ? 'border-red-500' : ''}`}
               />
+              {materialError && <p className='mt-1 text-sm text-red-500'>{materialError}</p>}
             </div>
 
             {/* Description */}
             <div>
-              <Label htmlFor='edit-product-description' className='text-sm font-medium'>
-                Mô tả sản phẩm
-              </Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label htmlFor='edit-product-description' className='text-sm font-medium'>
+                  Mô tả sản phẩm
+                </Label>
+                <span
+                  className={`text-xs ${countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'
+                    }`}
+                >
+                  {countWords(productData.description)} / {MAX_DESCRIPTION_WORDS} từ
+                </span>
+              </div>
               <Textarea
                 id='edit-product-description'
                 placeholder='Mô tả về sản phẩm...'
                 value={productData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                className='mt-1 min-h-[100px]'
+                className={`mt-1 min-h-[100px] ${descriptionError ? 'border-red-500' : ''}`}
               />
+              {descriptionError && <p className='mt-1 text-sm text-red-500'>{descriptionError}</p>}
             </div>
 
             {/* Category ID */}
@@ -303,7 +452,12 @@ export default function ModalEditProduct({
           {/* Existing Images */}
           {existingImages.length > 0 && (
             <div>
-              <Label className='text-sm font-medium'>Ảnh hiện có (click để xóa)</Label>
+              <div className='flex items-center justify-between mb-1'>
+                <Label className='text-sm font-medium'>Ảnh hiện có (click để xóa)</Label>
+                <span className='text-xs text-gray-500'>
+                  {existingImages.length + newProductImages.length} / {MAX_IMAGES} ảnh
+                </span>
+              </div>
               <div className='mt-2 grid grid-cols-4 gap-2'>
                 {existingImages.map((imageUrl, index) => (
                   <div key={index} className='relative group'>
@@ -333,50 +487,63 @@ export default function ModalEditProduct({
 
           {/* New Product Images */}
           <div>
-            <Label className='text-sm font-medium'>Thêm ảnh mới</Label>
-            <div
-              className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
-              onClick={() => document.getElementById('new-product-images')?.click()}
-              onDragOver={(e) => {
-                e.preventDefault()
-                e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
-              }}
-              onDragLeave={(e) => {
-                e.preventDefault()
-                e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-              }}
-              onDrop={(e) => {
-                e.preventDefault()
-                e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'))
-                if (files.length > 0) {
-                  addNewImages(files)
-                }
-              }}
-            >
-              <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-              <p className='text-gray-600 mb-2'>
-                {newProductImages.length > 0 ? 'Thêm ảnh khác' : 'Kéo thả hoặc click để tải ảnh lên'}
-              </p>
-              <input
-                type='file'
-                multiple
-                accept='image/*'
-                className='hidden'
-                id='new-product-images'
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || [])
+            <div className='flex items-center justify-between mb-1'>
+              <Label className='text-sm font-medium'>Thêm ảnh mới</Label>
+              <span className='text-xs text-gray-500'>
+                {existingImages.length + newProductImages.length} / {MAX_IMAGES} ảnh
+              </span>
+            </div>
+            {existingImages.length + newProductImages.length < MAX_IMAGES ? (
+              <div
+                className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                onClick={() => document.getElementById('new-product-images')?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault()
+                  e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                  const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'))
                   if (files.length > 0) {
                     addNewImages(files)
                   }
-                  e.target.value = ''
                 }}
-              />
-              <Button type='button' variant='outline' size='sm' className='mt-3'>
-                <Upload className='w-4 h-4 mr-2' />
-                {newProductImages.length > 0 ? 'Thêm ảnh' : 'Chọn ảnh'}
-              </Button>
-            </div>
+              >
+                <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                <p className='text-gray-600 mb-2'>
+                  {newProductImages.length > 0 ? 'Thêm ảnh khác' : 'Kéo thả hoặc click để tải ảnh lên'}
+                </p>
+                <input
+                  type='file'
+                  multiple
+                  accept='image/*'
+                  className='hidden'
+                  id='new-product-images'
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || [])
+                    if (files.length > 0) {
+                      addNewImages(files)
+                    }
+                    e.target.value = ''
+                  }}
+                />
+                <Button type='button' variant='outline' size='sm' className='mt-3'>
+                  <Upload className='w-4 h-4 mr-2' />
+                  {newProductImages.length > 0 ? 'Thêm ảnh' : 'Chọn ảnh'}
+                </Button>
+              </div>
+            ) : (
+              <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'>
+                <p className='text-sm text-amber-600'>
+                  Đã đạt giới hạn tối đa {MAX_IMAGES} hình ảnh. Vui lòng xóa ảnh cũ để thêm ảnh mới.
+                </p>
+              </div>
+            )}
 
             {newProductImages.length > 0 && (
               <div className='mt-4 grid grid-cols-4 gap-2'>
@@ -404,7 +571,12 @@ export default function ModalEditProduct({
 
           {/* Product Video */}
           <div>
-            <Label className='text-sm font-medium'>Video sản phẩm</Label>
+            <div className='flex items-center justify-between mb-1'>
+              <Label className='text-sm font-medium'>Video sản phẩm</Label>
+              <span className='text-xs text-gray-500'>
+                {(product.productVideo && !removeExistingVideo) || productVideo ? '1 / 1 video' : '0 / 1 video'}
+              </span>
+            </div>
             <div className='mt-2 space-y-2'>
               {product.productVideo && !removeExistingVideo && (
                 <div className='space-y-2'>
@@ -432,16 +604,9 @@ export default function ModalEditProduct({
                   <div className='flex items-center justify-between p-2 bg-gray-50 rounded-lg border'>
                     <div className='flex items-center gap-2'>
                       <Video className='w-4 h-4 text-gray-500' />
-                      <span className='text-xs text-gray-600 truncate max-w-md'>
-                        {product.productVideo}
-                      </span>
+                      <span className='text-xs text-gray-600 truncate max-w-md'>{product.productVideo}</span>
                     </div>
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      onClick={() => setRemoveExistingVideo(true)}
-                    >
+                    <Button type='button' variant='outline' size='sm' onClick={() => setRemoveExistingVideo(true)}>
                       Xóa video
                     </Button>
                   </div>
@@ -465,6 +630,11 @@ export default function ModalEditProduct({
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) {
+                        // Validate video file size (50MB max)
+                        if (file.size > 50 * 1024 * 1024) {
+                          toast.error('Video quá lớn. Tối đa 50MB.')
+                          return
+                        }
                         setProductVideo(file)
                         setRemoveExistingVideo(false)
                       }
@@ -503,11 +673,7 @@ export default function ModalEditProduct({
           <Button variant='outline' onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Hủy
           </Button>
-          <Button
-            onClick={handleUpdateProduct}
-            disabled={isSubmitting}
-            className='bg-green-600 hover:bg-green-700'
-          >
+          <Button onClick={handleUpdateProduct} disabled={isSubmitting} className='bg-green-600 hover:bg-green-700'>
             {isSubmitting ? (
               <>
                 <Loader2 className='w-4 h-4 mr-2 animate-spin' />
@@ -522,4 +688,3 @@ export default function ModalEditProduct({
     </Dialog>
   )
 }
-

@@ -43,7 +43,8 @@ export interface Product {
   storeName: string // varchar(255)
   provinceId: number // Foreign Key to Province
   editedById: string // UUID - Foreign Key to User who edited
-  summaryPrice: string // Price summary string
+  summaryPrice: number // numeric(10,2)
+  price: number // numeric(10,2)
   name: string // varchar(255)
   description: string // text
   productImages: string[] // JSONB - Array of image URLs

@@ -5,7 +5,10 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../contexts/auth.context'
 import { cancelOrder, getOrderDetail } from '../../../apis/order.api'
 import { purchaseOrder } from '../../../apis/transaction.api'
+import { getWalletBalance } from '../../../apis/wallet.api'
 import type { Order } from '../../../types/orderType'
+import type { Transaction as TransactionResponse } from '../../../types/transactionType'
+import type { WalletData } from '../../../types/walletType'
 import { toast } from 'react-toastify'
 import CancelOrderDialog from '../../../components/CancelOrderDialog/CancelOrderDialog'
 
@@ -29,6 +32,8 @@ function OrderCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [walletBalance, setWalletBalance] = useState<WalletData | null>(null)
+  const [isLoadingWallet, setIsLoadingWallet] = useState(false)
   const buyNowProduct = location.state?.product
   const existingOrder: Order = location.state?.order
   const existingOrders: Order[] = useMemo(() => location.state?.orders || [], [location.state?.orders])
@@ -39,6 +44,17 @@ function OrderCreate() {
   const orderId = params.get('orderId')
   const [order, setOrder] = useState<Order | null>(existingOrder ?? null)
   const [createdOrders, setCreatedOrders] = useState<Order[]>([])
+  const [hasRedirected, setHasRedirected] = useState(false)
+
+  const ordersFromState = useMemo(() => {
+    if (createdOrders.length > 0) {
+      return createdOrders
+    }
+    if (existingOrders.length > 0) {
+      return existingOrders
+    }
+    return []
+  }, [createdOrders, existingOrders])
 
   // Update createdOrders when existingOrders change
   useEffect(() => {
@@ -58,6 +74,28 @@ function OrderCreate() {
     }
   }, [existingOrder, existingOrders, orderId])
 
+  // Load wallet balance when payment method is MyWallet
+  useEffect(() => {
+    const loadWalletBalance = async () => {
+      if (paymentMethod === 'MyWallet') {
+        setIsLoadingWallet(true)
+        try {
+          const walletData = await getWalletBalance()
+          setWalletBalance(walletData)
+        } catch (error) {
+          console.error('Error loading wallet balance:', error)
+          toast.error('Không thể tải số dư ví. Vui lòng thử lại.')
+        } finally {
+          setIsLoadingWallet(false)
+        }
+      } else {
+        setWalletBalance(null)
+      }
+    }
+
+    loadWalletBalance()
+  }, [paymentMethod])
+
   const cartItems: CartItem[] = buyNowProduct
     ? [
       {
@@ -74,8 +112,8 @@ function OrderCreate() {
 
   // Get all items from all orders
   const getAllOrderItems = () => {
-    // Priority: existingOrders from Cart > createdOrders > single order > cartItems
-    const ordersToUse = existingOrders.length > 0 ? existingOrders : createdOrders
+    // Priority: createdOrders (đã đồng bộ trạng thái) > existingOrders từ Cart > single order > cartItems
+    const ordersToUse = ordersFromState
 
     if (ordersToUse.length > 0) {
       return ordersToUse.flatMap(
@@ -117,10 +155,8 @@ function OrderCreate() {
 
   const displayItems = getAllOrderItems()
 
-
-
   const calculateTotals = () => {
-    const ordersToUse = existingOrders.length > 0 ? existingOrders : createdOrders
+    const ordersToUse = ordersFromState
 
     if (ordersToUse.length > 0) {
       const totalShipping = ordersToUse.reduce((sum, order) => sum + (order.shipPrice || 0), 0)
@@ -156,9 +192,33 @@ function OrderCreate() {
 
   const { shipping, subtotal, totalDiscount, total } = calculateTotals()
 
+  const applyTransactionStatuses = (transactions: TransactionResponse[]) => {
+    if (!transactions || transactions.length === 0) {
+      return
+    }
+
+    const sourceOrders = ordersFromState.length > 0 ? ordersFromState : order ? [order] : []
+    if (sourceOrders.length > 0) {
+      const transactionStatusMap = new Map(transactions.map((tx) => [tx.orderId, tx.orderStatus]))
+      const updatedOrders = sourceOrders.map((sourceOrder) => {
+        const newStatus = transactionStatusMap.get(sourceOrder.id)
+        return newStatus ? { ...sourceOrder, status: newStatus as Order['status'] } : sourceOrder
+      })
+      setCreatedOrders(updatedOrders)
+    }
+
+    setOrder((prevOrder) => {
+      if (!prevOrder) {
+        return prevOrder
+      }
+      const newStatus = transactions.find((tx) => tx.orderId === prevOrder.id)?.orderStatus
+      return newStatus ? { ...prevOrder, status: newStatus as Order['status'] } : prevOrder
+    })
+  }
+
   const handlePayment = async () => {
     try {
-      const ordersToProcess = existingOrders.length > 0 ? existingOrders : createdOrders
+      const ordersToProcess = ordersFromState.length > 0 ? ordersFromState : []
 
       if (ordersToProcess.length > 0) {
         // Có orders rồi, chỉ cần thanh toán
@@ -185,7 +245,7 @@ function OrderCreate() {
 
     try {
       // Lấy orders để thanh toán
-      const ordersToProcess = existingOrders.length > 0 ? existingOrders : createdOrders
+      const ordersToProcess = ordersFromState.length > 0 ? ordersFromState : order ? [order] : []
 
       if (ordersToProcess.length === 0) {
         toast.error('Không tìm thấy đơn hàng để thanh toán')
@@ -197,7 +257,8 @@ function OrderCreate() {
 
       if (paymentMethod === 'COD') {
         // COD: Call purchaseOrder API to create transaction
-        await purchaseOrder({ orderIds })
+        const transactions = await purchaseOrder({ orderIds })
+        applyTransactionStatuses(transactions)
 
         toast.success(`Đơn hàng COD đã được tạo! Chờ giao hàng ${ordersToProcess.length} đơn.`)
 
@@ -209,6 +270,7 @@ function OrderCreate() {
       } else if (paymentMethod === 'Banking') {
         // Banking: Cần xử lý thanh toán
         const transactions = await purchaseOrder({ orderIds })
+        applyTransactionStatuses(transactions)
         const firstTransaction = transactions[0]
 
         toast.success('Đang chuyển đến trang thanh toán...')
@@ -221,6 +283,32 @@ function OrderCreate() {
 
           navigate(`/cart/invoice?orderId=${orderIdsParam}&status=pending&type=banking&multiple=true`)
         }
+      } else if (paymentMethod === 'MyWallet') {
+        // MyWallet: Thanh toán bằng ví
+        if (!walletBalance) {
+          toast.error('Không thể tải thông tin ví. Vui lòng thử lại.')
+          return
+        }
+
+        // Kiểm tra số dư
+        if (walletBalance.availableBalance < total) {
+          toast.error(
+            `Số dư không đủ! Số dư hiện tại: ${walletBalance.availableBalance.toLocaleString('vi-VN')}₫. Tổng thanh toán: ${total.toLocaleString('vi-VN')}₫`
+          )
+          return
+        }
+
+        // Gọi API thanh toán bằng wallet
+        const transactions = await purchaseOrder({ orderIds })
+        applyTransactionStatuses(transactions)
+
+        toast.success(`Thanh toán thành công từ ví! Đã thanh toán ${ordersToProcess.length} đơn hàng.`)
+
+        // Join all orderIds with comma for multiple orders
+        const orderIdsParam = orderIds.join(',')
+        console.log('🔍 DEBUG OrderCreate: MyWallet redirect with orderIds:', orderIdsParam)
+
+        navigate(`/cart/invoice?orderId=${orderIdsParam}&status=success&type=wallet&multiple=true`)
       }
     } catch (error: unknown) {
       console.error('Error processing payment:', error)
@@ -233,6 +321,29 @@ function OrderCreate() {
       setIsSubmitting(false)
     }
   }
+
+  useEffect(() => {
+    if (hasRedirected) {
+      return
+    }
+
+    const relevantOrders = ordersFromState.length > 0 ? ordersFromState : order ? [order] : []
+    if (relevantOrders.length === 0) {
+      return
+    }
+
+    const hasPendingPayment = relevantOrders.some((item) => item.status === 'PendingPayment')
+    const hasNotYetStatus = relevantOrders.some((item) => item.status === 'NotYet')
+
+    if (hasPendingPayment && !hasNotYetStatus) {
+      toast.info('Đơn hàng đang chờ thanh toán. Vui lòng tiếp tục trong mục Đơn hàng của tôi.')
+      navigate('/profile/orders', {
+        replace: true,
+        state: { focusStatus: 'PendingPayment', from: 'order-create' }
+      })
+      setHasRedirected(true)
+    }
+  }, [hasRedirected, navigate, order, ordersFromState])
 
   const handleCancelOrder = () => {
     if (!order) {
@@ -247,7 +358,7 @@ function OrderCreate() {
 
     setIsCancelling(true)
     try {
-      const ordersToCancel = existingOrders.length > 0 ? existingOrders : createdOrders
+      const ordersToCancel = ordersFromState.length > 0 ? ordersFromState : []
 
       if (ordersToCancel.length > 0) {
         // Hủy nhiều orders
@@ -284,13 +395,13 @@ function OrderCreate() {
           <h1 className='text-2xl font-bold text-gray-900 mb-2'>Xác nhận đơn hàng</h1>
           <p className='text-gray-600'>Vui lòng kiểm tra lại thông tin đơn hàng trước khi thanh toán</p>
 
-          {(existingOrders.length > 0 ? existingOrders : createdOrders).length > 0 && (
+          {ordersFromState.length > 0 && (
             <div className='mt-4 p-4 bg-green-100 rounded-lg border border-green-200'>
               <div className='flex items-center gap-2'>
                 <CheckCircle className='w-5 h-5 text-green-600' />
                 <p className='text-sm font-medium text-green-800'>
-                  ✅ Đặt hàng thành công! Đã tạo {(existingOrders.length > 0 ? existingOrders : createdOrders).length}{' '}
-                  đơn hàng từ {(existingOrders.length > 0 ? existingOrders : createdOrders).length} cửa hàng khác nhau
+                  ✅ Đặt hàng thành công! Đã tạo {ordersFromState.length} đơn hàng từ {ordersFromState.length} cửa hàng
+                  khác nhau
                 </p>
               </div>
             </div>
@@ -312,8 +423,8 @@ function OrderCreate() {
               </h2>
 
               <div className='space-y-6'>
-                {(existingOrders.length > 0 ? existingOrders : createdOrders).length > 0
-                  ? (existingOrders.length > 0 ? existingOrders : createdOrders).map((order, orderIndex) => (
+                {ordersFromState.length > 0
+                  ? ordersFromState.map((order, orderIndex) => (
                     <div key={order.id} className='space-y-4'>
                       <div className='flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200'>
                         <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
@@ -393,7 +504,7 @@ function OrderCreate() {
                   ))}
               </div>
 
-              {(existingOrders.length > 0 ? existingOrders : createdOrders).length === 0 && (
+              {ordersFromState.length === 0 && (
                 <div className='mt-6 pt-4 border-t border-gray-200'>
                   <div className='flex items-center justify-between text-sm text-gray-600'>
                     <div className='flex items-center gap-2'>
@@ -446,7 +557,7 @@ function OrderCreate() {
                 <h3 className='font-semibold text-lg mb-4'>Tổng kết đơn hàng</h3>
 
                 <div className='space-y-3 mb-4'>
-                  {(existingOrders.length > 0 ? existingOrders : createdOrders).length > 0 ? (
+                  {ordersFromState.length > 0 ? (
                     <>
                       <div className='flex justify-between text-sm'>
                         <span className='text-gray-600'>Tạm tính ({displayItems.length} sản phẩm)</span>
@@ -459,10 +570,7 @@ function OrderCreate() {
                         </div>
                       )}
                       <div className='flex justify-between text-sm'>
-                        <span className='text-gray-600'>
-                          Tổng phí vận chuyển ({(existingOrders.length > 0 ? existingOrders : createdOrders).length}{' '}
-                          đơn)
-                        </span>
+                        <span className='text-gray-600'>Tổng phí vận chuyển ({ordersFromState.length} đơn)</span>
                         <span className='font-medium'>{shipping.toLocaleString('vi-VN')}₫</span>
                       </div>
                       <div className='text-xs text-gray-500 ml-2'>
@@ -470,7 +578,7 @@ function OrderCreate() {
                       </div>
                       {/* Breakdown of shipping fees by store */}
                       <div className='ml-4 space-y-1'>
-                        {(existingOrders.length > 0 ? existingOrders : createdOrders).map((order, index) => (
+                        {ordersFromState.map((order, index) => (
                           <div key={order.id} className='flex justify-between text-xs text-gray-500'>
                             <span>
                               Đơn {index + 1} ({order.fromName}):
@@ -487,8 +595,7 @@ function OrderCreate() {
                       </div>
                       <div className='mt-2 p-2 bg-blue-50 rounded-lg border border-blue-200'>
                         <p className='text-xs text-blue-800'>
-                          📦 Đã tạo {(existingOrders.length > 0 ? existingOrders : createdOrders).length} đơn hàng từ{' '}
-                          {(existingOrders.length > 0 ? existingOrders : createdOrders).length} cửa hàng khác nhau
+                          📦 Đã tạo {ordersFromState.length} đơn hàng từ {ordersFromState.length} cửa hàng khác nhau
                         </p>
                       </div>
                     </>
@@ -521,8 +628,39 @@ function OrderCreate() {
                 <div className='mb-4 p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200'>
                   <p className='text-xs text-gray-600 mb-1'>Phương thức thanh toán:</p>
                   <p className='text-sm font-semibold text-gray-900'>
-                    {paymentMethod === 'COD' ? '💵 Thanh toán khi nhận hàng (COD)' : '💳 Chuyển khoản ngân hàng'}
+                    {paymentMethod === 'COD'
+                      ? '💵 Thanh toán khi nhận hàng (COD)'
+                      : paymentMethod === 'Banking'
+                        ? '💳 Chuyển khoản ngân hàng'
+                        : '💼 Thanh toán bằng ví của tôi'}
                   </p>
+                  {paymentMethod === 'MyWallet' && (
+                    <div className='mt-2 pt-2 border-t border-blue-200'>
+                      {isLoadingWallet ? (
+                        <div className='flex items-center gap-2 text-xs text-gray-600'>
+                          <Loader2 className='w-3 h-3 animate-spin' />
+                          <span>Đang tải số dư...</span>
+                        </div>
+                      ) : walletBalance ? (
+                        <div className='space-y-1'>
+                          <div className='flex justify-between text-xs'>
+                            <span className='text-gray-600'>Số dư khả dụng:</span>
+                            <span
+                              className={`font-semibold ${walletBalance.availableBalance >= total ? 'text-green-600' : 'text-red-600'
+                                }`}
+                            >
+                              {walletBalance.availableBalance.toLocaleString('vi-VN')}₫
+                            </span>
+                          </div>
+                          {walletBalance.availableBalance < total && (
+                            <p className='text-xs text-red-600'>⚠️ Số dư không đủ để thanh toán</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className='text-xs text-red-600'>Không thể tải số dư ví</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Action buttons */}
@@ -531,9 +669,11 @@ function OrderCreate() {
                     onClick={handlePayment}
                     disabled={
                       isSubmitting ||
-                      (existingOrders.length === 0 && createdOrders.length === 0 && !order && !existingOrder)
+                      isLoadingWallet ||
+                      (ordersFromState.length === 0 && !order && !existingOrder) ||
+                      (paymentMethod === 'MyWallet' && walletBalance !== null && walletBalance.availableBalance < total)
                     }
-                    className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all'
+                    className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all disabled:bg-gray-400 disabled:cursor-not-allowed'
                   >
                     {isSubmitting ? (
                       <>
@@ -543,17 +683,23 @@ function OrderCreate() {
                     ) : (
                       <>
                         <CheckCircle className='w-4 h-4 mr-2 py-5' />
-                        {existingOrders.length > 0 || createdOrders.length > 0
+                        {ordersFromState.length > 0
                           ? paymentMethod === 'COD'
                             ? 'Đặt hàng'
-                            : 'Thanh toán'
+                            : paymentMethod === 'MyWallet'
+                              ? 'Thanh toán bằng ví'
+                              : 'Thanh toán'
                           : order || existingOrder
                             ? paymentMethod === 'COD'
                               ? 'Đặt hàng'
-                              : 'Thanh toán'
+                              : paymentMethod === 'MyWallet'
+                                ? 'Thanh toán bằng ví'
+                                : 'Thanh toán'
                             : paymentMethod === 'COD'
                               ? 'Đặt hàng ngay'
-                              : 'Thanh toán ngay'}
+                              : paymentMethod === 'MyWallet'
+                                ? 'Thanh toán bằng ví'
+                                : 'Thanh toán ngay'}
                       </>
                     )}
                   </Button>

@@ -11,7 +11,7 @@ import {
 import { Alert, AlertDescription } from '../../../../../components/ui/alert'
 import { Label } from '../../../../../components/ui/label'
 import { cancelOrder } from '../../../../../apis/order.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../../../utils/toast'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 
 interface CancelOrderModalProps {
@@ -19,11 +19,21 @@ interface CancelOrderModalProps {
   onClose: () => void
   orderId: string
   userId: string
+  orderStatus?: string
+  onContinuePayment?: () => Promise<void> | void
+  isProcessingPayment?: boolean
 }
 
-export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: CancelOrderModalProps) {
+export default function CancelOrderModal({
+  isOpen,
+  onClose,
+  orderId,
+  userId,
+  isProcessingPayment
+}: CancelOrderModalProps) {
   const [selectedReason, setSelectedReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isContinuingPayment, setIsContinuingPayment] = useState(false)
 
   const cancelReasons = [
     'Muốn thay đổi địa chỉ giao hàng',
@@ -33,6 +43,7 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
     'Đặt nhầm, không muốn mua nữa',
     'Khác'
   ]
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,6 +87,7 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
 
   const handleCancel = () => {
     setSelectedReason('')
+    setIsContinuingPayment(false)
     onClose()
   }
 
@@ -84,7 +96,6 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
       handleCancel()
     }
   }
-
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className='sm:max-w-[500px] max-h-[90vh] overflow-hidden'>
@@ -105,6 +116,7 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
                 <strong>Lưu ý:</strong> Thao tác này sẽ hủy tất cả các sản phẩm có trong đơn hàng và không thể hoàn tác.
               </AlertDescription>
             </Alert>
+
 
             {/* Reason Selection */}
             <div className='space-y-4'>
@@ -136,7 +148,7 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
               type='button'
               variant='outline'
               onClick={handleCancel}
-              disabled={isLoading}
+              disabled={isLoading || isProcessingPayment || isContinuingPayment}
               className='w-full sm:w-auto'
             >
               Không phải bây giờ
@@ -144,7 +156,7 @@ export default function CancelOrderModal({ isOpen, onClose, orderId, userId }: C
             <Button
               type='submit'
               variant='destructive'
-              disabled={isLoading || !selectedReason}
+              disabled={isLoading || !selectedReason || isProcessingPayment || isContinuingPayment}
               className='w-full sm:w-auto'
             >
               {isLoading ? (

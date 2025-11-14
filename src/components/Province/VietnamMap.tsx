@@ -7,7 +7,7 @@ export type ProvinceProperties = {
   Note?: string | null
   Region?: string
   description?: string
-  details?: string
+  regionSpecified?: string
 }
 
 // Interface cho GeoJSON feature

@@ -4,6 +4,7 @@ export type FormType =
   | 'SupportPayment'
   | 'SupportTechnical'
   | 'ComplaintContent'
+  | 'ComplaintOrder'
   | 'RequestInformation'
   | 'ReportSeller'
   | 'FeedbackSuggestion'
@@ -39,7 +40,7 @@ export interface UpdateFormRequest {
   type: FormType
   subject: string
   description: string
-  imageUrl?: string[]
+  imageFiles?: File[]
 }
 
 export interface StaffUpdateRequest {

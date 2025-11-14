@@ -40,6 +40,7 @@ import StoreManagement from './pages/admin/storeManagerment/list'
 import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
+import RequestWalletMoneyManagement from './pages/admin/requestWalletMoneyManagement/list'
 import { AdminPromotionList, AdminPromotionDetail, AdminPromotionStats } from './pages/admin/promotionManagerment'
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import StoryWithSeller from './pages/customer/storyWithSeller'
@@ -68,6 +69,8 @@ import ViewBlog from './pages/customer/Blog/viewBlog'
 import SellerManagement from './pages/admin/sellerManagerment/list'
 import StaffManagement from './pages/admin/staffManagerment/list'
 import AdminFormManagement from './pages/admin/formManagerment/form'
+import FormOrderManagement from './pages/admin/formManagerment/formOrder'
+import FormStoreManagement from './pages/admin/formManagerment/formStore'
 import ManagerComboStaff from './pages/staff/comboManagerment/managerCombo'
 import DetailComboStaff from './pages/staff/comboManagerment/detailCombo'
 import ManagerProductAdmin from './pages/admin/productManagerment/list'
@@ -366,6 +369,10 @@ export default function useRouteElements() {
               element: <TransactionManagementAdmin />
             },
             {
+              path: path.REQUEST_WALLET_MONEY_MANAGEMENT_ADMIN,
+              element: <RequestWalletMoneyManagement />
+            },
+            {
               path: path.BLOG_MANAGEMENT_ADMIN,
               element: <BlogCategoryList />
             },
@@ -392,6 +399,14 @@ export default function useRouteElements() {
             {
               path: path.FORM_MANAGEMENT_ADMIN,
               element: <AdminFormManagement />
+            },
+            {
+              path: path.FORM_ORDER_MANAGEMENT_ADMIN,
+              element: <FormOrderManagement />
+            },
+            {
+              path: path.FORM_STORE_MANAGEMENT_ADMIN,
+              element: <FormStoreManagement />
             },
             {
               path: '/admin/promotions/:id',

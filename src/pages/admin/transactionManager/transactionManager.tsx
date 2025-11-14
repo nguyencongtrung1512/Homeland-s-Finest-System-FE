@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Search,
   Filter,
@@ -9,7 +9,8 @@ import {
   CheckCircle,
   RefreshCw,
   Wallet,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -17,6 +18,12 @@ import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import TransactionDetail from '../../staff/transactions/transactionDetail'
+import { getAllTransactions } from '../../../apis/transaction.api'
+import { getTransactionDashboard } from '../../../apis/dashboardTransaction.api'
+import type { Transaction as APITransaction } from '../../../types/transactionType'
+import { formatDate } from '../../../utils/formatDate'
+import { getOrderDetail } from '../../../apis/order.api'
+import { storeApi } from '../../../apis/store.api'
 
 interface Transaction {
   id: string
@@ -33,50 +40,167 @@ function TransactionManagementAdmin() {
   const [dateFilter, setDateFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [pagination, setPagination] = useState({
+    totalItems: 0,
+    totalPages: 1,
+    pageSize: 10
+  })
 
-  // Mock data
-  const transactions: Transaction[] = [
-    {
-      id: 'TXN001234',
-      customer: 'Nguyễn Văn An',
-      shop: 'Shop Thời Trang ABC',
-      createDate: '15/01/2024',
-      amount: 2500000,
-      status: 'disbursed'
-    },
-    {
-      id: 'TXN001235',
-      customer: 'Trần Thị Bình',
-      shop: 'Shop Điện Tử XYZ',
-      createDate: '15/01/2024',
-      amount: 1200000,
-      status: 'disbursed'
-    },
-    {
-      id: 'TXN001236',
-      customer: 'Lê Minh Cường',
-      shop: 'Shop Gia Dụng 123',
-      createDate: '14/01/2024',
-      amount: 850000,
-      status: 'delivering'
-    },
-    {
-      id: 'TXN001237',
-      customer: 'Phạm Thị Dung',
-      shop: 'Shop Mỹ Phẩm DEF',
-      createDate: '14/01/2024',
-      amount: 450000,
-      status: 'pending_confirmation'
-    },
-    {
-      id: 'TXN001238',
-      customer: 'Hoàng Văn Em',
-      shop: 'Shop Sách Online',
-      createDate: '13/01/2024',
-      amount: 320000,
-      status: 'refunded'
+  // Thống kê - giữ data cứng vì chưa có API đầy đủ
+  const [totalTransactions, setTotalTransactions] = useState(15847)
+  const [systemWallet, setSystemWallet] = useState(12340)
+  const [disbursed, setDisbursed] = useState(12340)
+  const [pendingDisbursement, setPendingDisbursement] = useState(850)
+  const [refunded, setRefunded] = useState(660)
+
+  // Map status từ API sang UI format
+  const mapStatusToUI = (status: string, orderStatus?: string): Transaction['status'] => {
+    // Map transaction status
+    if (status === 'Completed') return 'disbursed'
+    if (status === 'Pending') return 'pending'
+    if (status === 'Failed') return 'refunded'
+    if (status === 'Cancelled') return 'refunded'
+
+    // Map order status nếu có
+    if (orderStatus === 'Delivered') return 'disbursed'
+    if (orderStatus === 'Processing' || orderStatus === 'ReadyToPick') return 'delivering'
+    if (orderStatus === 'Confirmed') return 'pending_confirmation'
+
+    return 'pending'
+  }
+
+  // Map transaction từ API format sang UI format
+  const mapTransactionToUI = async (apiTransaction: APITransaction): Promise<Transaction> => {
+    let shopName = 'Chưa xác định'
+
+    try {
+      // Lấy order detail để có storeId
+      const order = await getOrderDetail(apiTransaction.orderId)
+      if (order?.storeId) {
+        // Lấy store info
+        const storeResponse = await storeApi.getStoreById(order.storeId)
+        if (storeResponse?.data?.storeName) {
+          shopName = storeResponse.data.storeName
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching store info:', error)
     }
-  ]
+
+    return {
+      id: apiTransaction.id,
+      customer: apiTransaction.userFullName || 'Khách hàng',
+      shop: shopName,
+      createDate: formatDate(apiTransaction.createdAt) || '',
+      amount: apiTransaction.amount,
+      status: mapStatusToUI(apiTransaction.status, apiTransaction.orderStatus)
+    }
+  }
+
+  // Fetch transactions từ API
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Build query params
+      const params: any = {
+        pageSize: pagination.pageSize,
+        pageNumber: currentPage
+      }
+
+      // Filter by status
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'waiting') params.status = 'Pending'
+        if (statusFilter === 'disbursed') params.status = 'Completed'
+      }
+
+      // Filter by date
+      if (dateFilter) {
+        const [month, day, year] = dateFilter.split('/')
+        if (year && month && day) {
+          params.fromDate = `${year}-${month}-${day}`
+          params.toDate = `${year}-${month}-${day}`
+        }
+      }
+
+      // Search by transaction ID or customer name
+      if (searchText) {
+        // Note: API có thể không hỗ trợ search, sẽ filter ở client side
+      }
+
+      const response = await getAllTransactions(params)
+
+      // Map transactions
+      const mappedTransactions = await Promise.all(
+        response.map((tx: APITransaction) => mapTransactionToUI(tx))
+      )
+
+      // Filter by search text nếu có
+      let filteredTransactions = mappedTransactions
+      if (searchText) {
+        filteredTransactions = mappedTransactions.filter(
+          (tx) =>
+            tx.id.toLowerCase().includes(searchText.toLowerCase()) ||
+            tx.customer.toLowerCase().includes(searchText.toLowerCase())
+        )
+      }
+
+      setTransactions(filteredTransactions)
+
+      // Update pagination nếu API trả về
+      // Note: API có thể không trả về pagination info, giữ nguyên state
+    } catch (err: any) {
+      console.error('Error fetching transactions:', err)
+      setError('Không thể tải danh sách giao dịch. Vui lòng thử lại sau.')
+      setTransactions([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch dashboard stats (nếu có)
+  const fetchDashboardStats = async () => {
+    try {
+      const currentYear = new Date().getFullYear()
+      const dashboardData = await getTransactionDashboard({
+        StartDate: `${currentYear}-01-01`,
+        EndDate: `${currentYear}-12-31`,
+        Year: currentYear
+      })
+
+      if (dashboardData?.summary) {
+        setTotalTransactions((prev) => dashboardData.summary.totalTransactions || prev)
+        setDisbursed((prev) => dashboardData.summary.successfulTransactions || prev)
+        setRefunded((prev) => dashboardData.summary.failedTransactions || prev)
+        setPendingDisbursement((prev) => dashboardData.summary.pendingTransactions || prev)
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard stats:', err)
+      // Giữ data cứng nếu API lỗi
+    }
+  }
+
+  // Fetch data khi component mount và khi filter thay đổi
+  useEffect(() => {
+    fetchTransactions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, statusFilter, dateFilter])
+
+  // Fetch dashboard stats khi component mount
+  useEffect(() => {
+    fetchDashboardStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Handle filter button click
+  const handleFilter = () => {
+    setCurrentPage(1)
+    fetchTransactions()
+  }
 
   const getStatusConfig = (status: string) => {
     const configs = {
@@ -174,10 +298,6 @@ function TransactionManagementAdmin() {
     </tr>
   )
 
-  const totalTransactions = 15847
-  const disbursed = 12340
-  const refunded = 660
-
   return (
     <div className='space-y-6 p-6 bg-gray-50 min-h-screen'>
       {/* Header */}
@@ -206,7 +326,7 @@ function TransactionManagementAdmin() {
             <div className='flex items-center justify-between'>
               <div>
                 <p className='text-sm text-gray-600 mb-1'>Ví hệ thống</p>
-                <p className='text-2xl font-bold text-green-600'>{disbursed.toLocaleString()}</p>
+                <p className='text-2xl font-bold text-green-600'>{systemWallet.toLocaleString()}</p>
               </div>
               <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
                 <Wallet className='w-6 h-6 text-green-600' />
@@ -234,10 +354,10 @@ function TransactionManagementAdmin() {
             <div className='flex items-center justify-between'>
               <div>
                 <p className='text-sm text-gray-600 mb-1'>Chờ giải ngân</p>
-                <p className='text-2xl font-bold text-green-600'>{disbursed.toLocaleString()}</p>
+                <p className='text-2xl font-bold text-orange-600'>{pendingDisbursement.toLocaleString()}</p>
               </div>
-              <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
-                <Clock className='w-6 h-6 text-green-600' />
+              <div className='w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center'>
+                <Clock className='w-6 h-6 text-orange-600' />
               </div>
             </div>
           </CardContent>
@@ -292,7 +412,7 @@ function TransactionManagementAdmin() {
               className='h-10 w-32 border-gray-200'
             />
 
-            <Button className='h-10 px-6 bg-blue-600 hover:bg-blue-700'>
+            <Button className='h-10 px-6 bg-blue-600 hover:bg-blue-700' onClick={handleFilter}>
               <Filter size={16} className='mr-2' />
               Lọc
             </Button>
@@ -303,67 +423,109 @@ function TransactionManagementAdmin() {
       {/* Transaction Table */}
       <Card className='bg-white shadow-sm'>
         <CardContent className='p-0'>
-          <div className='overflow-x-auto'>
-            <table className='w-full'>
-              {/* Table Header */}
-              <thead>
-                <tr className='border-b border-gray-200 bg-gray-50'>
-                  <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Mã giao dịch</th>
-                  <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Khách hàng</th>
-                  <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Cửa hàng</th>
-                  <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Ngày tạo</th>
-                  <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Số tiền</th>
-                  <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Trạng thái</th>
-                  <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Hành động</th>
-                </tr>
-              </thead>
-
-              {/* Table Body */}
-              <tbody className='bg-white'>{transactions.map(renderTransactionRow)}</tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          <div className='flex items-center justify-between px-6 py-4 border-t border-gray-200'>
-            <span className='text-gray-600 text-sm'>Hiển thị 1 đến 5 của 97 kết quả</span>
-            <div className='flex items-center gap-1'>
+          {error && (
+            <div className='p-6 text-center'>
+              <p className='text-red-600 text-sm'>{error}</p>
               <Button
-                variant='ghost'
+                variant='outline'
                 size='sm'
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className='h-8 w-8 p-0 text-gray-500 hover:text-gray-700'
+                onClick={fetchTransactions}
+                className='mt-4'
               >
-                <ChevronLeft size={16} />
-              </Button>
-
-              {[1, 2, 3].map((page) => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? 'default' : 'ghost'}
-                  size='sm'
-                  onClick={() => setCurrentPage(page)}
-                  className={`h-8 w-8 p-0 ${
-                    currentPage === page
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {page}
-                </Button>
-              ))}
-
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={() => setCurrentPage(Math.min(3, currentPage + 1))}
-                disabled={currentPage === 3}
-                className='h-8 w-8 p-0 text-gray-500 hover:text-gray-700'
-              >
-                <ChevronRight size={16} />
+                <RefreshCw size={14} className='mr-2' />
+                Thử lại
               </Button>
             </div>
-          </div>
+          )}
+
+          {loading && !error ? (
+            <div className='p-12 text-center'>
+              <Loader2 className='w-8 h-8 animate-spin text-blue-600 mx-auto mb-4' />
+              <p className='text-gray-600 text-sm'>Đang tải dữ liệu...</p>
+            </div>
+          ) : !error ? (
+            <>
+              <div className='overflow-x-auto'>
+                <table className='w-full'>
+                  {/* Table Header */}
+                  <thead>
+                    <tr className='border-b border-gray-200 bg-gray-50'>
+                      <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Mã giao dịch</th>
+                      <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Khách hàng</th>
+                      <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Cửa hàng</th>
+                      <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Ngày tạo</th>
+                      <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Số tiền</th>
+                      <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Trạng thái</th>
+                      <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Hành động</th>
+                    </tr>
+                  </thead>
+
+                  {/* Table Body */}
+                  <tbody className='bg-white'>
+                    {transactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className='px-6 py-12 text-center'>
+                          <p className='text-gray-500 text-sm'>Không có giao dịch nào</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      transactions.map(renderTransactionRow)
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className='flex items-center justify-between px-6 py-4 border-t border-gray-200'>
+                <span className='text-gray-600 text-sm'>
+                  Hiển thị {transactions.length > 0 ? (currentPage - 1) * pagination.pageSize + 1 : 0} đến{' '}
+                  {Math.min(currentPage * pagination.pageSize, pagination.totalItems || transactions.length)} của{' '}
+                  {pagination.totalItems || transactions.length} kết quả
+                </span>
+                <div className='flex items-center gap-1'>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1 || loading}
+                    className='h-8 w-8 p-0 text-gray-500 hover:text-gray-700'
+                  >
+                    <ChevronLeft size={16} />
+                  </Button>
+
+                  {Array.from({ length: Math.min(pagination.totalPages || 1, 5) }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? 'default' : 'ghost'}
+                      size='sm'
+                      onClick={() => setCurrentPage(page)}
+                      disabled={loading}
+                      className={`h-8 w-8 p-0 ${currentPage === page
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                        }`}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => setCurrentPage(Math.min(pagination.totalPages || 1, currentPage + 1))}
+                    disabled={currentPage >= (pagination.totalPages || 1) || loading}
+                    className='h-8 w-8 p-0 text-gray-500 hover:text-gray-700'
+                  >
+                    <ChevronRight size={16} />
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className='p-12 text-center'>
+              <p className='text-gray-600 text-sm'>Không có giao dịch nào</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

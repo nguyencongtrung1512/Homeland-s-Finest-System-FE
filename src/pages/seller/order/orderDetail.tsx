@@ -4,7 +4,8 @@ import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Dialog, DialogContent } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
-import { getOrderDetail, confirmOrder, shipOrder, cancelOrder } from '../../../apis/order.api'
+import { Input } from '../../../components/ui/input'
+import { getOrderDetail, confirmOrder, readyToPickOrder, cancelOrder } from '../../../apis/order.api'
 import type { Order as APIOrder } from '../../../types/orderType'
 import {
   Loader2,
@@ -18,7 +19,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 
 interface OrderItemWithCombo {
   id: string
@@ -94,6 +95,8 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
   const [actionLoading, setActionLoading] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [ghnCode, setGhnCode] = useState('')
+  const [showShipDialog, setShowShipDialog] = useState(false)
 
   // Transform API order to UI order format
   const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
@@ -183,6 +186,8 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
       setError(null)
       setCancelReason('')
       setShowCancelDialog(false)
+      setGhnCode('')
+      setShowShipDialog(false)
     }
   }, [isOpen])
 
@@ -204,19 +209,29 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
     }
   }
 
-  // Handle ship order
-  const handleShipOrder = async () => {
-    if (!order?.id) return
+  // Handle ship order - mở dialog để nhập GHNcode
+  const handleShipOrder = () => {
+    setShowShipDialog(true)
+  }
+
+  // Xác nhận đơn hàng sẵn sàng lấy hàng với GHNcode
+  const handleConfirmReadyToPick = async () => {
+    if (!order?.id || !ghnCode.trim()) {
+      toast.error('Vui lòng nhập mã GHN')
+      return
+    }
 
     setActionLoading(true)
     try {
-      await shipOrder(order.id)
-      toast.success('Đơn hàng đã được xác nhận đang giao!')
+      await readyToPickOrder(order.id, ghnCode.trim())
+      toast.success('Đơn hàng đã được xác nhận sẵn sàng lấy hàng!')
+      setShowShipDialog(false)
+      setGhnCode('')
       // Refresh order data
       await fetchOrderDetail()
     } catch (err) {
-      console.error('Error shipping order:', err)
-      toast.error('Không thể xác nhận đơn hàng đang giao')
+      console.error('Error confirming ready to pick:', err)
+      toast.error('Không thể xác nhận đơn hàng sẵn sàng lấy hàng')
     } finally {
       setActionLoading(false)
     }
@@ -248,12 +263,28 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
   const getStatusText = (status: string) => {
     const statusTextMap: Record<string, string> = {
       NotYet: 'Chưa xử lí',
+      PendingPayment: 'Chờ thanh toán',
       Processing: 'Chờ xác nhận',
       Confirmed: 'Đã xác nhận',
-      Shipping: 'Đang giao',
-      Delivered: 'Đã giao',
       Cancel: 'Đã hủy',
-      Returned: 'Đã trả hàng'
+      ReadyToPick: 'Đang chuẩn bị hàng',
+      Picking: 'Đang trên đường lấy hàng',
+      Picked: 'Đã lấy hàng',
+      Storing: 'Đang lưu kho',
+      Transporting: 'Đang vận chuyển',
+      Sorting: 'Đang phân loại',
+      Delivering: 'Đang giao hàng',
+      Delivered: 'Đã giao hàng thành công',
+      DeliveryFail: 'Giao hàng thất bại',
+      Returning: 'Đang trả hàng',
+      Returned: 'Đã trả hàng',
+      Refunded: 'Đã hoàn tiền',
+      Complaining: 'Đang phản hồi',
+      Complained: 'Đã phản hồi',
+      Paid: 'Đã thanh toán',
+      Exception: 'Gặp sự cố',
+      Damaged: 'Hàng hư hỏng',
+      Lost: 'Thất lạc'
     }
     return statusTextMap[status] || status
   }
@@ -618,7 +649,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                     ) : (
                       <>
                         <Package className='w-4 h-4 mr-2' />
-                        Xác nhận đang giao
+                        Đã chuẩn bị hàng
                       </>
                     )}
                   </Button>
@@ -685,6 +716,62 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                   <>
                     <XCircle className='w-4 h-4 mr-2' />
                     Xác nhận hủy
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ready to Pick Dialog */}
+      <Dialog open={showShipDialog} onOpenChange={setShowShipDialog}>
+        <DialogContent className='max-w-md'>
+          <div className='flex items-center gap-2 mb-4'>
+            <Package className='h-5 w-5 text-blue-600' />
+            <h3 className='font-semibold text-gray-900'>Xác nhận sẵn sàng lấy hàng</h3>
+          </div>
+
+          <div className='space-y-4'>
+            <div>
+              <label className='text-sm font-medium text-gray-700 mb-2 block'>
+                Mã GHN <span className='text-red-500'>*</span>
+              </label>
+              <Input
+                value={ghnCode}
+                onChange={(e) => setGhnCode(e.target.value)}
+                placeholder='Nhập mã GHN...'
+                className='w-full'
+              />
+              <p className='text-xs text-gray-500 mt-1'>Vui lòng nhập mã đơn hàng từ GHN</p>
+            </div>
+
+            <div className='flex gap-3 pt-2'>
+              <Button
+                onClick={() => {
+                  setShowShipDialog(false)
+                  setGhnCode('')
+                }}
+                variant='outline'
+                className='flex-1'
+                disabled={actionLoading}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={handleConfirmReadyToPick}
+                disabled={actionLoading || !ghnCode.trim()}
+                className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
+              >
+                {actionLoading ? (
+                  <>
+                    <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <Package className='w-4 h-4 mr-2' />
+                    Xác nhận
                   </>
                 )}
               </Button>

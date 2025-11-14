@@ -48,9 +48,16 @@ export const confirmOrder = async (orderId: string): Promise<Order> => {
   return response.data
 }
 
-// PUT /api/Order/ship/{orderId} - Xác nhận đang giao hàng (chuyển sang Shipping)
-export const shipOrder = async (orderId: string): Promise<Order> => {
-  const response: OrderResponse = await axiosInstance.put(`${API_URL}/shipping/${orderId}`)
+// PUT /api/Order/ready-to-pick/{orderId} - Xác nhận sẵn sàng lấy hàng (chuyển sang ReadyToPick)
+export const readyToPickOrder = async (orderId: string, ghnCode: string): Promise<Order> => {
+  const formData = new FormData()
+  formData.append('GHNcode', ghnCode)
+
+  const response: OrderResponse = await axiosInstance.put(`${API_URL}/ready-to-pick/${orderId}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
   return response.data
 }
 
@@ -119,7 +126,7 @@ export default {
   getOrderDetail,
   createOrder,
   confirmOrder,
-  shipOrder,
+  readyToPickOrder,
   cancelOrder,
   markOrderDelivered,
   returnOrder,

@@ -149,6 +149,7 @@ function HelpCenter() {
       SupportPayment: 'Hỗ trợ thanh toán',
       SupportTechnical: 'Hỗ trợ kỹ thuật',
       ComplaintContent: 'Khiếu nại nội dung',
+      ComplaintOrder: 'Khiếu nại đơn hàng',
       RequestInformation: 'Yêu cầu thông tin',
       ReportSeller: 'Báo cáo người bán',
       FeedbackSuggestion: 'Góp ý đề xuất',

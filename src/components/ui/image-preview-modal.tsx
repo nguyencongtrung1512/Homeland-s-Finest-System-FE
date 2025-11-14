@@ -19,7 +19,7 @@ export default function ImagePreviewModal({
 }: ImagePreviewModalProps) {
   // Validate and normalize images array from BE
   const normalizedImages = Array.isArray(images) ? images.filter((img) => img && typeof img === 'string') : []
-  
+
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
 
   // Navigation handlers - defined before useEffect
@@ -90,7 +90,7 @@ export default function ImagePreviewModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className='fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4'
+          className='fixed inset-0 bg-black/95 flex items-center justify-center z-[9999] p-4 backdrop-blur-sm'
           onClick={handleBackdropClick}
         >
           {/* Close Button */}
@@ -149,14 +149,14 @@ export default function ImagePreviewModal({
 
           {/* Image Counter */}
           {normalizedImages.length > 1 && (
-            <div className='absolute bottom-25 left-1/2 -translate-x-1/2 text-white bg-black/50 backdrop-blur-sm rounded-full px-4 py-2 text-sm font-medium'>
+            <div className='absolute bottom-24 left-1/2 -translate-x-1/2 text-white bg-black/60 backdrop-blur-md rounded-full px-4 py-2 text-sm font-medium shadow-lg'>
               {currentIndex + 1} / {normalizedImages.length}
             </div>
           )}
 
           {/* Thumbnail Strip (if multiple images) */}
           {normalizedImages.length > 1 && (
-            <div className='absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 max-w-4xl overflow-x-auto px-4 py-2 bg-black/50 backdrop-blur-sm rounded-lg'>
+            <div className='absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 max-w-4xl overflow-x-auto px-4 py-3 bg-black/60 backdrop-blur-md rounded-lg shadow-xl scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent'>
               {normalizedImages.map((img, idx) => (
                 <button
                   key={idx}
@@ -164,11 +164,10 @@ export default function ImagePreviewModal({
                     e.stopPropagation()
                     handleThumbnailClick(idx)
                   }}
-                  className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
-                    idx === currentIndex
-                      ? 'border-green-500 ring-2 ring-green-300 scale-110'
-                      : 'border-transparent hover:border-white/50 opacity-70 hover:opacity-100'
-                  }`}
+                  className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${idx === currentIndex
+                    ? 'border-emerald-400 ring-2 ring-emerald-300/50 scale-110 shadow-lg'
+                    : 'border-white/30 hover:border-white/60 opacity-70 hover:opacity-100 hover:scale-105'
+                    }`}
                 >
                   <img
                     src={img}

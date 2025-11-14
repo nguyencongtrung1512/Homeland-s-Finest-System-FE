@@ -30,7 +30,7 @@ import type {
   PromotionAdminRequest,
   PromotionFormData
 } from '../../../types/promotionType'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 
 const AdminPromotionList: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -212,7 +212,8 @@ const AdminPromotionList: React.FC = () => {
     try {
       const adminRequest: PromotionAdminRequest = {
         ...data,
-        userIds: data.userIds || []
+        userIds: data.userIds || [],
+        isPrivate: data.type === 'User' ? (data.isPrivate ?? true) : undefined
       }
       await createPromotion(adminRequest)
       setIsCreateModalOpen(false)
@@ -229,7 +230,7 @@ const AdminPromotionList: React.FC = () => {
         setSelectedPromotion(promotionDetail)
         setIsEditModalOpen(true)
       } else {
-        toast.error('Không thể lấy chi tiết promotion')
+        toast.error('Không thể lấy chi tiết mã khuyến mãi')
       }
     } catch {
       toast.error('Có lỗi xảy ra khi lấy chi tiết promotion')
@@ -240,14 +241,15 @@ const AdminPromotionList: React.FC = () => {
     try {
       const adminRequest: PromotionAdminRequest = {
         ...data,
-        userIds: data.userIds || []
+        userIds: data.userIds || [],
+        isPrivate: data.type === 'User' ? (data.isPrivate ?? true) : undefined
       }
       await updatePromotion(selectedPromotion!.id, adminRequest)
       setIsEditModalOpen(false)
       setSelectedPromotion(null)
-      toast.success('Cập nhật Mã khuyến mãi  thành công')
+      toast.success('Cập nhật mã khuyến mãi thành công')
     } catch {
-      toast.error('Có lỗi xảy ra khi cập nhật Mã khuyến mãi ')
+      toast.error('Có lỗi xảy ra khi cập nhật mã khuyến mãi ')
     }
   }
 
@@ -381,7 +383,7 @@ const AdminPromotionList: React.FC = () => {
       <div className='flex items-center justify-between'>
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Quản lý Mã khuyến mãi </h1>
-          <p className='text-gray-600 mt-1'>Quản lý và theo dõi các Mã khuyến mãi  trong hệ thống</p>
+          <p className='text-gray-600 mt-1'>Quản lý và theo dõi các Mã khuyến mãi trong hệ thống</p>
         </div>
         <Button onClick={() => setIsCreateModalOpen(true)} className='bg-blue-600 hover:bg-blue-700'>
           <Plus className='h-4 w-4 mr-2' />
@@ -515,7 +517,7 @@ const AdminPromotionList: React.FC = () => {
       {/* Promotions List */}
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách Mã khuyến mãi  ({paginationData.totalItems} kết quả)</CardTitle>
+          <CardTitle>Danh sách Mã khuyến mãi ({paginationData.totalItems} kết quả)</CardTitle>
         </CardHeader>
         <CardContent>
           {paginationData.paginatedPromotions && paginationData.paginatedPromotions.length > 0 ? (
@@ -535,7 +537,17 @@ const AdminPromotionList: React.FC = () => {
                         </Badge>
                       </div>
 
-                      <p className='text-gray-600 mb-3'>{promotion.description}</p>
+                      <div className='flex items-center gap-3 mb-3'>
+                        {promotion.type === 'User' && (
+                          <Badge
+                            className={promotion.isPrivate ? 'bg-gray-100 text-gray-800' : 'bg-gray-100 text-gray-800'}
+                          >
+                            {promotion.isPrivate ? 'Riêng tư' : 'Công khai'}
+                          </Badge>
+                        )}
+                        <p className='text-gray-600 pt-4'>{promotion.description}</p>
+                        <p className='text-gray-600 pt-4'>Ngày tạo: {formatDate(promotion.createdAt)}</p>
+                      </div>
 
                       <div className='flex items-center gap-6 text-sm text-gray-500'>
                         <div className='flex items-center gap-1'>

@@ -1,8 +1,26 @@
-import { BarChart3, CheckCircle, ClipboardMinus, CreditCard, FileText, Leaf, LibraryBig, User, Gift, AlertTriangle, Component, Package } from 'lucide-react'
+import {
+  BarChart3,
+  CheckCircle,
+  ClipboardMinus,
+  CreditCard,
+  FileText,
+  Leaf,
+  LibraryBig,
+  User,
+  Gift,
+  AlertTriangle,
+  Component,
+  Package,
+  Store,
+  Wallet,
+  ChevronDown,
+  ChevronRight
+} from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import path from '../../constants/path'
 import { ShopOutlined } from '@ant-design/icons'
+import { useState } from 'react'
 
 interface SideBarProps {
   isCollapsed: boolean
@@ -35,18 +53,18 @@ function SideBar({ isCollapsed }: SideBarProps) {
     },
     {
       key: path.TRANSACTION_MANAGEMENT_ADMIN,
-      label: 'Quản lí giao dịch',
+      label: 'Quản lý giao dịch',
       icon: <CreditCard size={18} />
+    },
+    {
+      key: path.REQUEST_WALLET_MONEY_MANAGEMENT_ADMIN,
+      label: 'Yêu cầu rút tiền & hoàn tiền',
+      icon: <Wallet size={18} />
     },
     {
       key: path.PROMOTION_MANAGEMENT_ADMIN,
       label: 'Quản lý Mã khuyến mãi ',
       icon: <Gift size={18} />
-    },
-    {
-      key: path.FORM_MANAGEMENT_ADMIN,
-      label: 'Quản lý khiếu nại',
-      icon: <AlertTriangle size={18} />
     },
     {
       key: path.BLOG_MANAGEMENT_ADMIN,
@@ -55,17 +73,17 @@ function SideBar({ isCollapsed }: SideBarProps) {
     },
     {
       key: path.STAFF_MANAGEMENT_ADMIN,
-      label: 'Quản lí nhân viên',
+      label: 'Quản lý nhân viên',
       icon: <User size={18} />
     },
     {
       key: path.ACCOUNT_MANAGEMENT_ADMIN,
-      label: 'Quản lí người dùng',
+      label: 'Quản lý người dùng',
       icon: <User size={18} />
     },
     {
       key: path.SELLER_MANAGEMENT_ADMIN,
-      label: 'Quản lí seller',
+      label: 'Quản lý Người bán',
       icon: <ShopOutlined size={18} />
     },
     {
@@ -75,7 +93,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
     },
     {
       key: path.SYSTEM_STORAGE_ADMIN,
-      label: 'Quản lí hệ thống',
+      label: 'Quản lý hệ thống',
       icon: <ClipboardMinus size={18} />
     }
   ]
@@ -85,6 +103,11 @@ function SideBar({ isCollapsed }: SideBarProps) {
     const fullPath = key.startsWith('/') ? key : `${path.BASE_ADMIN}/${key}`
     navigate(fullPath)
   }
+
+  const [complaintOpen, setComplaintOpen] = useState(false)
+  const complaintOrderPath = `${path.BASE_ADMIN}/${path.FORM_ORDER_MANAGEMENT_ADMIN}`
+  const complaintStorePath = `${path.BASE_ADMIN}/${path.FORM_STORE_MANAGEMENT_ADMIN}`
+
 
   return (
     <div
@@ -118,7 +141,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
           const isActive = isBaseAdmin
             ? location.pathname === itemFullPath
             : location.pathname === itemFullPath ||
-              (itemFullPath !== '/' && location.pathname.startsWith(itemFullPath + '/'))
+            (itemFullPath !== '/' && location.pathname.startsWith(itemFullPath + '/'))
 
           return (
             <button
@@ -139,6 +162,65 @@ function SideBar({ isCollapsed }: SideBarProps) {
             </button>
           )
         })}
+
+        {/* Complaint Group */}
+        <button
+          type='button'
+          onClick={() => setComplaintOpen((prev) => !prev)}
+          title={isCollapsed ? 'Quản lý khiếu nại' : undefined}
+          className={cn(
+            'admin-menu-item flex items-center h-10 w-full transition-all duration-300 rounded-md px-3 outline-none',
+            isCollapsed ? 'justify-center px-2' : 'justify-start gap-3',
+          )}
+        >
+          <span className='admin-menu-icon mr-2'>
+            <AlertTriangle size={18} />
+          </span>
+          {!isCollapsed && <span className='truncate'>Quản lý khiếu nại</span>}
+          {!isCollapsed &&
+            (complaintOpen ? (
+              <ChevronDown size={16} className='ml-auto' />
+            ) : (
+              <ChevronRight size={16} className='ml-auto' />
+            ))}
+        </button>
+
+        {/* Complaint children */}
+        {!isCollapsed && complaintOpen && (
+          <div className='space-y-2 pl-6'>
+            <button
+              type='button'
+              onClick={() => handleMenuClick(path.FORM_ORDER_MANAGEMENT_ADMIN)}
+              className={cn(
+                'admin-menu-item flex items-center h-9 w-full transition-all duration-300 rounded-md px-3 outline-none',
+                location.pathname === complaintOrderPath || location.pathname.startsWith(complaintOrderPath + '/')
+                  ? 'active text-white'
+                  : 'text-gray-700'
+              )}
+            >
+              <span className='admin-menu-icon mr-2'>
+                <Package size={16} />
+              </span>
+              <span className='truncate'>Khiếu nại đơn hàng</span>
+            </button>
+
+            <button
+              type='button'
+              onClick={() => handleMenuClick(path.FORM_STORE_MANAGEMENT_ADMIN)}
+              className={cn(
+                'admin-menu-item flex items-center h-9 w-full transition-all duration-300 rounded-md px-3 outline-none',
+                location.pathname === complaintStorePath || location.pathname.startsWith(complaintStorePath + '/')
+                  ? 'active text-white'
+                  : 'text-gray-700'
+              )}
+            >
+              <span className='admin-menu-icon mr-2'>
+                <Store size={16} />
+              </span>
+              <span className='truncate'>Khiếu nại cửa hàng</span>
+            </button>
+          </div>
+        )}
       </nav>
 
       {/* Styles: hover + active màu "xanh da trời" (sky-blue) giống seller sidebar */}

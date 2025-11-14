@@ -91,6 +91,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     maxQuantity: undefined,
     maxPerUser: 1,
     isActive: true,
+    isPrivate: true, // Default to true for User type promotions
     userIds: []
   })
 
@@ -223,7 +224,8 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         discountType: mappedDiscountType,
         startDate: processedStartDate,
         endDate: processedEndDate,
-        userIds: userIds
+        userIds: userIds,
+        isPrivate: initialData.isPrivate ?? (processedType === 'User' ? true : undefined)
       }
       setFormData(processedData)
       setIsInitialized(true)
@@ -359,6 +361,9 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         const newData = { ...prev, [field]: value as PromotionType }
         if (value !== 'User' && !isEdit) {
           newData.userIds = []
+          newData.isPrivate = undefined
+        } else if (value === 'User') {
+          newData.isPrivate = newData.isPrivate ?? true
         }
         return newData
       })
@@ -431,7 +436,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     <Card className='w-full max-w-2xl mx-auto border-blue-200 shadow-lg'>
       <CardHeader className='bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200'>
         <CardTitle className='text-2xl font-bold text-blue-900'>
-          {isEdit ? 'Chỉnh sửa Mã khuyến mãi ' : 'Tạo Mã khuyến mãi  mới'}
+          {isEdit ? 'Chỉnh sửa mã khuyến mãi ' : 'Tạo mã khuyến mãi  mới'}
         </CardTitle>
       </CardHeader>
 
@@ -581,6 +586,17 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                   )}
                 </div>
                 {errors.userIds && <p className='text-sm text-red-600'>{errors.userIds}</p>}
+
+                <div className='flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200 mt-3'>
+                  <Switch
+                    id='isPrivate'
+                    checked={formData.isPrivate ?? true}
+                    onCheckedChange={(checked) => handleInputChange('isPrivate', checked)}
+                  />
+                  <Label htmlFor='isPrivate' className='text-blue-900 font-medium cursor-pointer'>
+                    Mã khuyến mãi riêng tư (chỉ hiển thị cho người dùng được chọn)
+                  </Label>
+                </div>
               </div>
             )}
           </div>
