@@ -97,6 +97,8 @@ export const addressApi = {
       formData.append('districtId', data.districtId.toString())
       formData.append('wardId', data.wardId.toString())
       formData.append('streetAddress', data.streetAddress)
+      if (data.receiverName) formData.append('receiverName', data.receiverName)
+      if (data.receiverPhoneNumber) formData.append('receiverPhoneNumber', data.receiverPhoneNumber)
       formData.append('isDefault', data.isDefault ? 'true' : 'false')
 
       const response = await axiosInstance.post(API_URL_ADDRESS, formData, {
@@ -120,6 +122,8 @@ export const addressApi = {
             districtId: data.districtId,
             wardId: data.wardId,
             streetAddress: data.streetAddress,
+            receiverName: data.receiverName,
+            receiverPhoneNumber: data.receiverPhoneNumber,
             isDefault: data.isDefault
           }
           const retryResponse = await axiosInstance.post(API_URL_ADDRESS, jsonData, {
@@ -140,6 +144,8 @@ export const addressApi = {
               DistrictId: data.districtId,
               WardId: data.wardId,
               StreetAddress: data.streetAddress,
+              ReceiverName: data.receiverName,
+              ReceiverPhoneNumber: data.receiverPhoneNumber,
               IsDefault: data.isDefault
             }
             const capitalizedResponse = await axiosInstance.post(API_URL_ADDRESS, capitalizedData, {
@@ -178,6 +184,8 @@ export const addressApi = {
       if (data.districtId !== undefined) formData.append('DistrictId', data.districtId.toString())
       if (data.wardId !== undefined) formData.append('WardId', data.wardId.toString())
       if (data.streetAddress !== undefined) formData.append('StreetAddress', data.streetAddress)
+      if (data.receiverName !== undefined) formData.append('ReceiverName', data.receiverName)
+      if (data.receiverPhoneNumber !== undefined) formData.append('ReceiverPhoneNumber', data.receiverPhoneNumber)
       if (data.isDefault !== undefined) formData.append('IsDefault', data.isDefault ? 'true' : 'false')
       if (data.isActive !== undefined) formData.append('IsActive', data.isActive ? 'true' : 'false')
 
@@ -222,6 +230,8 @@ export const addressApi = {
       formData.append('DistrictId', (addr.districtId || 0).toString())
       formData.append('WardId', (addr.wardId || 0).toString())
       formData.append('StreetAddress', addr.streetAddress || '')
+      if (addr.receiverName) formData.append('ReceiverName', addr.receiverName)
+      if (addr.receiverPhoneNumber) formData.append('ReceiverPhoneNumber', addr.receiverPhoneNumber)
       formData.append('IsDefault', 'true')
       formData.append('IsActive', 'true')
 

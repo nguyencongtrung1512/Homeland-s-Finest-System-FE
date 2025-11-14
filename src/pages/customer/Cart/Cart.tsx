@@ -1283,7 +1283,7 @@ export default function Cart() {
                       <div className='flex-1'>
                         <div className='flex items-center gap-2 mb-1'>
                           <span className='font-medium text-gray-900'>
-                            {user?.email || 'user@example.com'} | 0123456789
+                            {address?.receiverName} | {address?.receiverPhoneNumber}
                           </span>
                           {address.isDefault && (
                             <span className='bg-orange-100 text-orange-600 text-xs px-2 py-1 rounded-full'>

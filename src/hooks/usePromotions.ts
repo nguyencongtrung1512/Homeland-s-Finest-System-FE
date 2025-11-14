@@ -592,11 +592,6 @@ export const useAdminPromotions = () => {
         await promotionApi.updatePromotionAdmin(id, data)
         await fetchAdminPromotions(pagination.pageNumber)
 
-        toast.success('Cập nhật promotion thành công!', {
-          position: 'top-right',
-          autoClose: 2000
-        })
-
         return true
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Không thể cập nhật promotion'

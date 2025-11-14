@@ -45,6 +45,8 @@ interface AddressFormData {
   districtId: number
   wardId: number
   streetAddress: string
+  receiverName: string
+  receiverPhoneNumber: string
   isDefault: boolean
 }
 
@@ -65,6 +67,8 @@ export default function AddressModal({
     districtId: address?.districtId || 0,
     wardId: address?.wardId || 0,
     streetAddress: address?.streetAddress || '',
+    receiverName: address?.receiverName || '',
+    receiverPhoneNumber: address?.receiverPhoneNumber || '',
     isDefault: address?.isDefault || false
   })
 
@@ -78,6 +82,14 @@ export default function AddressModal({
   // Memoized handlers để tránh re-render không cần thiết
   const handleStreetAddressChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, streetAddress: e.target.value }))
+  }, [])
+
+  const handleReceiverNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, receiverName: e.target.value }))
+  }, [])
+
+  const handleReceiverPhoneNumberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, receiverPhoneNumber: e.target.value }))
   }, [])
 
   const handleDefaultChange = useCallback(
@@ -465,6 +477,8 @@ export default function AddressModal({
         districtId: address.districtId || 0,
         wardId: address.wardId || 0,
         streetAddress: address.streetAddress || '',
+        receiverName: address.receiverName || '',
+        receiverPhoneNumber: address.receiverPhoneNumber || '',
         isDefault: address.isDefault || false
       })
     } else {
@@ -479,6 +493,8 @@ export default function AddressModal({
         districtId: 0,
         wardId: 0,
         streetAddress: '',
+        receiverName: '',
+        receiverPhoneNumber: '',
         isDefault: false
       })
     }
@@ -623,7 +639,13 @@ export default function AddressModal({
   // Form submission handler
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+    // Convert formData to AddressCreateInput, only including receiverName and receiverPhoneNumber if they have values
+    const addressData: AddressCreateInput = {
+      ...formData,
+      receiverName: formData.receiverName.trim() || undefined,
+      receiverPhoneNumber: formData.receiverPhoneNumber.trim() || undefined
+    }
+    onSave(addressData)
   }
 
   return (
@@ -733,6 +755,31 @@ export default function AddressModal({
                 />
               </div>
 
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <div>
+                  <Label htmlFor='receiverName'>Tên người nhận</Label>
+                  <Input
+                    id='receiverName'
+                    value={formData.receiverName}
+                    onChange={handleReceiverNameChange}
+                    className='mt-1'
+                    placeholder='Nhập tên người nhận'
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor='receiverPhoneNumber'>Số điện thoại người nhận</Label>
+                  <Input
+                    id='receiverPhoneNumber'
+                    value={formData.receiverPhoneNumber}
+                    onChange={handleReceiverPhoneNumberChange}
+                    className='mt-1'
+                    placeholder='Nhập số điện thoại'
+                    type='tel'
+                  />
+                </div>
+              </div>
+
               <div className='space-y-2'>
                 <div className='flex items-center gap-2'>
                   <Checkbox id='isDefault' checked={formData.isDefault} onCheckedChange={handleDefaultChange} />
@@ -742,8 +789,8 @@ export default function AddressModal({
                 </div>
 
                 {formData.isDefault && hasOtherDefault && (
-                  <div className='text-xs text-amber-600 bg-amber-50 p-2 rounded'>
-                    ⚠️ Địa chỉ mặc định hiện tại sẽ được thay thế bởi địa chỉ này
+                  <div className='text-xs text-green-600 bg-green-50 p-2 rounded'>
+                    Địa chỉ mặc định hiện tại sẽ được thay thế bởi địa chỉ này
                   </div>
                 )}
               </div>

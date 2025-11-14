@@ -8,6 +8,8 @@ export interface Address {
   districtId: number | null // integer
   wardId: number // integer
   streetAddress: string // text
+  receiverName: string | null // varchar(255)
+  receiverPhoneNumber: string | null // varchar(255)
   isDefault: boolean | null // boolean
   createdAt: string | null // TIMESTAMPTZ
   updatedAt: string | null // TIMESTAMPTZ
@@ -23,6 +25,8 @@ export interface AddressCreateInput {
   districtId: number
   wardId: number
   streetAddress: string
+  receiverName?: string
+  receiverPhoneNumber?: string
   isDefault?: boolean
 }
 
@@ -34,6 +38,8 @@ export interface AddressUpdateInput {
   districtId?: number
   wardId?: number
   streetAddress?: string
+  receiverName?: string
+  receiverPhoneNumber?: string
   isDefault?: boolean
   isActive?: boolean
 }

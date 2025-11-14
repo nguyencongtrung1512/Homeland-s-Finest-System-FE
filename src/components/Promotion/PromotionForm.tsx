@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { motion } from 'framer-motion'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
@@ -10,7 +10,7 @@ import { Switch } from '../ui/switch'
 import { Calendar } from '../ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { Checkbox } from '../ui/checkbox'
-import { CalendarIcon, Clock, Loader2, Save, X, Search } from 'lucide-react'
+import { CalendarIcon, Clock, Loader2, Save, X, Search, Gift } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { cn } from '../../lib/utils'
@@ -84,12 +84,12 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     title: '',
     description: '',
     discountType: 'percentage',
-    discountValue: 0,
+    discountValue: undefined,
     minValueDiscount: undefined,
     startDate: '',
     endDate: '',
     maxQuantity: undefined,
-    maxPerUser: 1,
+    maxPerUser: undefined,
     isActive: true,
     isPrivate: true, // Default to true for User type promotions
     userIds: []
@@ -262,11 +262,11 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
 
     // Only validate discount value if not free shipping
     if (formData.discountType !== 'freeship') {
-      if (formData.discountValue <= 0) {
+      if (formData.discountValue === undefined || formData.discountValue === null) {
+        newErrors.discountValue = 'Giá trị giảm giá không được để trống'
+      } else if (formData.discountValue <= 0) {
         newErrors.discountValue = 'Giá trị giảm giá phải lớn hơn 0'
-      }
-
-      if (formData.discountType === 'percentage' && formData.discountValue > 100) {
+      } else if (formData.discountType === 'percentage' && formData.discountValue > 100) {
         newErrors.discountValue = 'Phần trăm giảm giá không được vượt quá 100%'
       }
     }
@@ -315,7 +315,9 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       newErrors.maxQuantity = 'Số lượng tối đa phải lớn hơn 0'
     }
 
-    if (formData.maxPerUser <= 0) {
+    if (formData.maxPerUser === undefined || formData.maxPerUser === null) {
+      newErrors.maxPerUser = 'Số lượt sử dụng tối đa mỗi user không được để trống'
+    } else if (formData.maxPerUser <= 0) {
       newErrors.maxPerUser = 'Số lượt sử dụng tối đa mỗi user phải lớn hơn 0'
     }
 
@@ -334,7 +336,13 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       const submitData = { ...formData }
       if (submitData.discountType === 'freeship') {
         submitData.discountValue = 0
+      } else {
+        // Ensure discountValue is a number (validation ensures it's not undefined)
+        submitData.discountValue = submitData.discountValue ?? 0
       }
+
+      // Ensure maxPerUser is a number (validation ensures it's not undefined)
+      submitData.maxPerUser = submitData.maxPerUser ?? 1
 
       // Map discountType to API format
       const apiData = {
@@ -350,6 +358,24 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       console.log('📝 End Date (ISO with +7h):', apiData.endDate)
       onSubmit(apiData)
     }
+  }
+
+  // Helper function to handle number input and remove leading zeros
+  const handleNumberInput = (value: string): number | undefined => {
+    if (!value || value.trim() === '') {
+      return undefined
+    }
+    // Remove leading zeros except for single "0"
+    // If value is "0011", it becomes "11"
+    // If value is "0", it stays "0"
+    const trimmedValue = value.trim()
+    if (trimmedValue === '0') {
+      return 0
+    }
+    // Remove leading zeros for numbers with more than one digit
+    const cleanedValue = trimmedValue.replace(/^0+/, '') || '0'
+    const numValue = Number(cleanedValue)
+    return isNaN(numValue) ? undefined : numValue
   }
 
   const handleInputChange = (
@@ -370,6 +396,15 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     } else if (field === 'discountType') {
       console.log('🔄 Discount type changed to:', value)
       setFormData((prev) => ({ ...prev, [field]: value as DiscountType }))
+    } else if (
+      field === 'discountValue' ||
+      field === 'minValueDiscount' ||
+      field === 'maxQuantity' ||
+      field === 'maxPerUser'
+    ) {
+      // Handle number inputs with string value to process leading zeros
+      const processedValue = typeof value === 'string' ? handleNumberInput(value) : value
+      setFormData((prev) => ({ ...prev, [field]: processedValue }))
     } else {
       setFormData((prev) => ({ ...prev, [field]: value }))
     }
@@ -432,458 +467,552 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     }))
   }
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.3,
+        staggerChildren: 0.1
+      }
+    }
+  }
+
+  const headerVariants = {
+    hidden: { opacity: 0, y: -10 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.3
+      }
+    }
+  }
+
+  const sectionVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.4
+      }
+    }
+  }
+
+  const footerVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.3
+      }
+    }
+  }
+
   return (
-    <Card className='w-full max-w-2xl mx-auto border-blue-200 shadow-lg'>
-      <CardHeader className='bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200'>
-        <CardTitle className='text-2xl font-bold text-blue-900'>
-          {isEdit ? 'Chỉnh sửa mã khuyến mãi ' : 'Tạo mã khuyến mãi  mới'}
-        </CardTitle>
-      </CardHeader>
+    <motion.div
+      className='w-full h-full flex flex-col overflow-hidden bg-white'
+      variants={containerVariants}
+      initial='hidden'
+      animate='visible'
+    >
+      {/* Header */}
+      <motion.div
+        className='bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3 flex items-center justify-between flex-shrink-0'
+        variants={headerVariants}
+      >
+        <div className='flex items-center gap-2 text-white'>
+          <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 0.5, delay: 0.2 }}>
+            <Gift className='h-5 w-5' />
+          </motion.div>
+          <span className='font-semibold'>{isEdit ? 'Chỉnh sửa mã khuyến mãi' : 'Tạo mã khuyến mãi mới'}</span>
+        </div>
+        <Button
+          type='button'
+          variant='ghost'
+          onClick={onCancel}
+          disabled={loading}
+          className='text-white hover:bg-white/20 hover:text-white p-2 h-auto w-auto'
+        >
+          <X className='h-5 w-5' />
+        </Button>
+      </motion.div>
 
-      <CardContent className='p-0'>
-        <form onSubmit={handleSubmit} className='space-y-2'>
-          <div className='space-y-2 p-4'>
-            <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
-              <div className='w-1 h-6 bg-blue-500 rounded'></div>
-              Thông tin cơ bản
-            </h3>
+      {/* Content Area - Scrollable */}
+      <div className='flex-1 overflow-y-auto bg-gray-50 flex flex-col'>
+        <form onSubmit={handleSubmit} className='flex flex-col h-full'>
+          <div className='flex-1 space-y-4 p-4'>
+            <motion.div variants={sectionVariants} className='space-y-4'>
+              <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
+                <motion.div
+                  className='w-1 h-6 bg-blue-500 rounded'
+                  initial={{ scaleY: 0 }}
+                  animate={{ scaleY: 1 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                />
+                Thông tin cơ bản
+              </h3>
 
-            <div className='space-y-2'>
-              <Label htmlFor='type' className='text-blue-900 font-medium'>
-                Loại Mã khuyến mãi
-              </Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value) => {
-                  if (value && value !== formData.type) {
-                    handleInputChange('type', value)
-                  }
-                }}
-              >
-                <SelectTrigger className='border-blue-200 focus:ring-blue-500 focus:border-blue-500'>
-                  <SelectValue placeholder='Chọn loại Mã khuyến mãi ' />
-                </SelectTrigger>
-                <SelectContent>
-                  {adminPromotionTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {PROMOTION_TYPE_LABELS[type]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='title' className='text-blue-900 font-medium'>
-                Tiêu đề *
-              </Label>
-              <Input
-                id='title'
-                value={formData.title}
-                onChange={(e) => handleInputChange('title', e.target.value)}
-                placeholder='Nhập tiêu đề Mã khuyến mãi '
-                className={cn(
-                  'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
-                  errors.title && 'border-red-500'
-                )}
-              />
-              {errors.title && <p className='text-sm text-red-600'>{errors.title}</p>}
-            </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='description' className='text-blue-900 font-medium'>
-                Mô tả *
-              </Label>
-              <Textarea
-                id='description'
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder='Nhập mô tả chi tiết về Mã khuyến mãi '
-                rows={3}
-                className={cn(
-                  'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
-                  errors.description && 'border-red-500'
-                )}
-              />
-              {errors.description && <p className='text-sm text-red-600'>{errors.description}</p>}
-            </div>
-
-            {formData.type === 'User' && (
               <div className='space-y-2'>
-                <Label className='text-blue-900 font-medium'>Chọn người dùng *</Label>
-                <div className='border-2 border-blue-200 rounded-lg p-4 space-y-3 bg-blue-50'>
-                  <div className='relative'>
-                    <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400 h-4 w-4' />
-                    <Input
-                      placeholder='Tìm kiếm người dùng theo tên hoặc email...'
-                      value={userSearchTerm}
-                      onChange={(e) => setUserSearchTerm(e.target.value)}
-                      className='pl-10 border-blue-200 focus:ring-blue-500 focus:border-blue-500'
-                    />
-                  </div>
-
-                  <div className='flex items-center justify-between'>
-                    <span className='text-sm text-blue-700 font-medium'>
-                      Đã chọn {formData.userIds?.length || 0} người dùng
-                    </span>
-                    <div className='space-x-2'>
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        onClick={handleSelectAllUsers}
-                        disabled={loadingUsers}
-                        className='border-blue-300 text-blue-700 hover:bg-blue-100'
-                      >
-                        Chọn tất cả
-                      </Button>
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        onClick={handleDeselectAllUsers}
-                        disabled={loadingUsers}
-                        className='border-blue-300 text-blue-700 hover:bg-blue-100'
-                      >
-                        Bỏ chọn tất cả
-                      </Button>
-                    </div>
-                  </div>
-
-                  {loadingUsers ? (
-                    <div className='flex items-center justify-center py-4'>
-                      <Loader2 className='h-4 w-4 animate-spin mr-2 text-blue-500' />
-                      <span className='text-sm text-blue-600'>Đang tải danh sách người dùng...</span>
-                    </div>
-                  ) : (
-                    <div className='max-h-48 overflow-y-auto space-y-2'>
-                      {users.length === 0 ? (
-                        <p className='text-sm text-blue-500 text-center py-4'>Không tìm thấy người dùng</p>
-                      ) : (
-                        users.map((user) => {
-                          const isSelected = formData.userIds?.includes(user.id) || false
-                          return (
-                            <div
-                              key={user.id}
-                              className='flex items-center space-x-2 p-2 hover:bg-blue-100 rounded transition'
-                            >
-                              <Checkbox
-                                id={`user-${user.id}`}
-                                checked={isSelected}
-                                onCheckedChange={(checked) => handleUserToggle(user.id, checked as boolean)}
-                              />
-                              <Label
-                                htmlFor={`user-${user.id}`}
-                                className='flex-1 cursor-pointer text-sm text-blue-900'
-                              >
-                                {user.firstName} {user.lastName} ({user.email})
-                              </Label>
-                            </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  )}
-                </div>
-                {errors.userIds && <p className='text-sm text-red-600'>{errors.userIds}</p>}
-
-                <div className='flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200 mt-3'>
-                  <Switch
-                    id='isPrivate'
-                    checked={formData.isPrivate ?? true}
-                    onCheckedChange={(checked) => handleInputChange('isPrivate', checked)}
-                  />
-                  <Label htmlFor='isPrivate' className='text-blue-900 font-medium cursor-pointer'>
-                    Mã khuyến mãi riêng tư (chỉ hiển thị cho người dùng được chọn)
-                  </Label>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className='space-y-2 p-4'>
-            <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
-              <div className='w-1 h-6 bg-blue-500 rounded'></div>
-              Cấu hình giảm giá
-            </h3>
-
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <div className='space-y-2'>
-                <Label htmlFor='discountType' className='text-blue-900 font-medium'>
-                  Loại giảm giá *
+                <Label htmlFor='type' className='text-blue-900 font-medium'>
+                  Loại Mã khuyến mãi
                 </Label>
                 <Select
-                  key={`discount-type-${isInitialized}`}
-                  value={formData.discountType}
+                  value={formData.type}
                   onValueChange={(value) => {
-                    console.log('🔄 Changing discountType to:', value)
-                    handleInputChange('discountType', value)
+                    if (value && value !== formData.type) {
+                      handleInputChange('type', value)
+                    }
                   }}
                 >
                   <SelectTrigger className='border-blue-200 focus:ring-blue-500 focus:border-blue-500'>
-                    <SelectValue placeholder='Chọn loại giảm giá' />
+                    <SelectValue placeholder='Chọn loại Mã khuyến mãi ' />
                   </SelectTrigger>
                   <SelectContent>
-                    {DISCOUNT_TYPES.map((type) => (
+                    {adminPromotionTypes.map((type) => (
                       <SelectItem key={type} value={type}>
-                        {DISCOUNT_TYPE_LABELS[type]}
+                        {PROMOTION_TYPE_LABELS[type]}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className='text-xs text-gray-500'>Giá trị hiện tại: {formData.discountType}</p>
-                <p className='text-xs text-gray-500'>isInitialized: {isInitialized.toString()}</p>
               </div>
 
-              {formData.discountType !== 'freeship' && (
+              <div className='space-y-2'>
+                <Label htmlFor='title' className='text-blue-900 font-medium'>
+                  Tiêu đề *
+                </Label>
+                <Input
+                  id='title'
+                  value={formData.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  placeholder='Nhập tiêu đề Mã khuyến mãi '
+                  className={cn(
+                    'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
+                    errors.title && 'border-red-500'
+                  )}
+                />
+                {errors.title && <p className='text-sm text-red-600'>{errors.title}</p>}
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='description' className='text-blue-900 font-medium'>
+                  Mô tả *
+                </Label>
+                <Textarea
+                  id='description'
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  placeholder='Nhập mô tả chi tiết về Mã khuyến mãi '
+                  rows={3}
+                  className={cn(
+                    'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
+                    errors.description && 'border-red-500'
+                  )}
+                />
+                {errors.description && <p className='text-sm text-red-600'>{errors.description}</p>}
+              </div>
+
+              {formData.type === 'User' && (
                 <div className='space-y-2'>
-                  <Label htmlFor='discountValue' className='text-blue-900 font-medium'>
-                    Giá trị giảm giá *{formData.discountType === 'percentage' && ' (%)'}
-                    {formData.discountType === 'fixed_amount' && ' (₫)'}
-                  </Label>
-                  <Input
-                    id='discountValue'
-                    type='number'
-                    min='0'
-                    max={formData.discountType === 'percentage' ? 100 : undefined}
-                    value={formData.discountValue}
-                    onChange={(e) => handleInputChange('discountValue', Number(e.target.value))}
-                    placeholder='Nhập giá trị giảm giá'
-                    className={cn(
-                      'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
-                      errors.discountValue && 'border-red-500'
+                  <Label className='text-blue-900 font-medium'>Chọn người dùng *</Label>
+                  <div className='border-2 border-blue-200 rounded-lg p-4 space-y-3 bg-blue-50'>
+                    <div className='relative'>
+                      <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400 h-4 w-4' />
+                      <Input
+                        placeholder='Tìm kiếm người dùng theo tên hoặc email...'
+                        value={userSearchTerm}
+                        onChange={(e) => setUserSearchTerm(e.target.value)}
+                        className='pl-10 border-blue-200 focus:ring-blue-500 focus:border-blue-500'
+                      />
+                    </div>
+
+                    <div className='flex items-center justify-between'>
+                      <span className='text-sm text-blue-700 font-medium'>
+                        Đã chọn {formData.userIds?.length || 0} người dùng
+                      </span>
+                      <div className='space-x-2'>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={handleSelectAllUsers}
+                          disabled={loadingUsers}
+                          className='border-blue-300 text-blue-700 hover:bg-blue-100'
+                        >
+                          Chọn tất cả
+                        </Button>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={handleDeselectAllUsers}
+                          disabled={loadingUsers}
+                          className='border-blue-300 text-blue-700 hover:bg-blue-100'
+                        >
+                          Bỏ chọn tất cả
+                        </Button>
+                      </div>
+                    </div>
+
+                    {loadingUsers ? (
+                      <div className='flex items-center justify-center py-4'>
+                        <Loader2 className='h-4 w-4 animate-spin mr-2 text-blue-500' />
+                        <span className='text-sm text-blue-600'>Đang tải danh sách người dùng...</span>
+                      </div>
+                    ) : (
+                      <div className='max-h-48 overflow-y-auto space-y-2'>
+                        {users.length === 0 ? (
+                          <p className='text-sm text-blue-500 text-center py-4'>Không tìm thấy người dùng</p>
+                        ) : (
+                          users.map((user) => {
+                            const isSelected = formData.userIds?.includes(user.id) || false
+                            return (
+                              <div
+                                key={user.id}
+                                className='flex items-center space-x-2 p-2 hover:bg-blue-100 rounded transition'
+                              >
+                                <Checkbox
+                                  id={`user-${user.id}`}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => handleUserToggle(user.id, checked as boolean)}
+                                />
+                                <Label
+                                  htmlFor={`user-${user.id}`}
+                                  className='flex-1 cursor-pointer text-sm text-blue-900 pl-1'
+                                >
+                                  {user.firstName} {user.lastName} ({user.email})
+                                </Label>
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
                     )}
-                  />
-                  {errors.discountValue && <p className='text-sm text-red-600'>{errors.discountValue}</p>}
+                  </div>
+                  {errors.userIds && <p className='text-sm text-red-600'>{errors.userIds}</p>}
+
+                  <div className='flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200 mt-3'>
+                    <Switch
+                      id='isPrivate'
+                      checked={formData.isPrivate ?? true}
+                      onCheckedChange={(checked) => handleInputChange('isPrivate', checked)}
+                    />
+                    <Label htmlFor='isPrivate' className='text-blue-900 font-medium cursor-pointer'>
+                      Mã khuyến mãi riêng tư (chỉ hiển thị cho người dùng được chọn)
+                    </Label>
+                  </div>
                 </div>
               )}
-            </div>
+            </motion.div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='minValueDiscount' className='text-blue-900 font-medium'>
-                Giá trị đơn tối thiểu (₫)
-              </Label>
-              <Input
-                id='minValueDiscount'
-                type='number'
-                min='0'
-                value={formData.minValueDiscount || ''}
-                onChange={(e) =>
-                  handleInputChange('minValueDiscount', e.target.value ? Number(e.target.value) : undefined)
-                }
-                placeholder='Nhập giá trị đơn tối thiểu (để trống nếu không có)'
-                className={cn(
-                  'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
-                  errors.minValueDiscount && 'border-red-500'
+            <motion.div variants={sectionVariants} className='space-y-4 p-4'>
+              <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
+                <motion.div
+                  className='w-1 h-6 bg-blue-500 rounded'
+                  initial={{ scaleY: 0 }}
+                  animate={{ scaleY: 1 }}
+                  transition={{ duration: 0.3, delay: 0.3 }}
+                />
+                Cấu hình giảm giá
+              </h3>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-2'>
+                  <Label htmlFor='discountType' className='text-blue-900 font-medium'>
+                    Loại giảm giá *
+                  </Label>
+                  <Select
+                    key={`discount-type-${isInitialized}`}
+                    value={formData.discountType}
+                    onValueChange={(value) => {
+                      console.log('🔄 Changing discountType to:', value)
+                      handleInputChange('discountType', value)
+                    }}
+                  >
+                    <SelectTrigger className='border-blue-200 focus:ring-blue-500 focus:border-blue-500'>
+                      <SelectValue placeholder='Chọn loại giảm giá' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DISCOUNT_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {DISCOUNT_TYPE_LABELS[type]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.discountType !== 'freeship' && (
+                  <div className='space-y-2'>
+                    <Label htmlFor='discountValue' className='text-blue-900 font-medium'>
+                      Giá trị giảm giá *{formData.discountType === 'percentage' && ' (%)'}
+                      {formData.discountType === 'fixed_amount' && ' (₫)'}
+                    </Label>
+                    <Input
+                      id='discountValue'
+                      type='number'
+                      min='0'
+                      max={formData.discountType === 'percentage' ? 100 : undefined}
+                      value={formData.discountValue ?? ''}
+                      onChange={(e) => handleInputChange('discountValue', e.target.value)}
+                      placeholder='Nhập giá trị giảm giá'
+                      className={cn(
+                        'border-blue-200 focus:ring-blue-500 focus:border-blue-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]',
+                        errors.discountValue && 'border-red-500'
+                      )}
+                    />
+                    {errors.discountValue && <p className='text-sm text-red-600'>{errors.discountValue}</p>}
+                  </div>
                 )}
-              />
-              {errors.minValueDiscount && <p className='text-sm text-red-600'>{errors.minValueDiscount}</p>}
-            </div>
-          </div>
-
-          <div className='space-y-2 p-4'>
-            <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
-              <div className='w-1 h-6 bg-blue-500 rounded'></div>
-              Thời gian áp dụng
-            </h3>
-
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <div className='space-y-2'>
-                <Label className='text-blue-900 font-medium'>Ngày bắt đầu *</Label>
-                <div className='flex gap-2'>
-                  <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant='outline'
-                        className={cn(
-                          'flex-1 justify-start text-left font-normal border-blue-200 hover:bg-blue-50',
-                          !formData.startDate && 'text-muted-foreground',
-                          errors.startDate && 'border-red-500'
-                        )}
-                      >
-                        <CalendarIcon className='mr-2 h-4 w-4 text-blue-500' />
-                        {formData.startDate
-                          ? format(new Date(formData.startDate), 'dd/MM/yyyy', { locale: vi })
-                          : 'Chọn ngày'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className='w-auto p-0' align='start'>
-                      <Calendar
-                        mode='single'
-                        selected={formData.startDate ? new Date(formData.startDate) : undefined}
-                        onSelect={(date) => {
-                          handleDateChange('startDate', date)
-                          setStartDateOpen(false)
-                        }}
-                        disabled={(date) => {
-                          const today = new Date()
-                          today.setHours(0, 0, 0, 0)
-                          return date < today
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-
-                  <div className='flex items-center gap-1 px-3 border border-blue-200 rounded-md bg-blue-50'>
-                    <Clock className='h-4 w-4 text-blue-500' />
-                    <Input
-                      type='time'
-                      value={startTime}
-                      onChange={(e) => handleTimeChange('startDate', e.target.value)}
-                      className='w-24 border-0 bg-transparent focus:ring-0 text-blue-900'
-                    />
-                  </div>
-                </div>
-                {errors.startDate && <p className='text-sm text-red-600'>{errors.startDate}</p>}
-                {errors.startTime && <p className='text-sm text-red-600'>{errors.startTime}</p>}
               </div>
 
               <div className='space-y-2'>
-                <Label className='text-blue-900 font-medium'>Ngày kết thúc *</Label>
-                <div className='flex gap-2'>
-                  <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant='outline'
-                        className={cn(
-                          'flex-1 justify-start text-left font-normal border-blue-200 hover:bg-blue-50',
-                          !formData.endDate && 'text-muted-foreground',
-                          errors.endDate && 'border-red-500'
-                        )}
-                      >
-                        <CalendarIcon className='mr-2 h-4 w-4 text-blue-500' />
-                        {formData.endDate
-                          ? format(new Date(formData.endDate), 'dd/MM/yyyy', { locale: vi })
-                          : 'Chọn ngày'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className='w-auto p-0' align='start'>
-                      <Calendar
-                        mode='single'
-                        selected={formData.endDate ? new Date(formData.endDate) : undefined}
-                        onSelect={(date) => {
-                          handleDateChange('endDate', date)
-                          setEndDateOpen(false)
-                        }}
-                        disabled={(date) => {
-                          const today = new Date()
-                          today.setHours(0, 0, 0, 0)
-
-                          if (formData.startDate) {
-                            const startDate = new Date(formData.startDate)
-                            startDate.setHours(0, 0, 0, 0)
-                            return date <= startDate
-                          }
-                          return date < today
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-
-                  <div className='flex items-center gap-1 px-3 border border-blue-200 rounded-md bg-blue-50'>
-                    <Clock className='h-4 w-4 text-blue-500' />
-                    <Input
-                      type='time'
-                      value={endTime}
-                      onChange={(e) => handleTimeChange('endDate', e.target.value)}
-                      className='w-24 border-0 bg-transparent focus:ring-0 text-blue-900'
-                    />
-                  </div>
-                </div>
-                {errors.endDate && <p className='text-sm text-red-600'>{errors.endDate}</p>}
-              </div>
-            </div>
-          </div>
-
-          <div className='space-y-2 p-4'>
-            <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
-              <div className='w-1 h-6 bg-blue-500 rounded'></div>
-              Cấu hình số lượng
-            </h3>
-
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <div className='space-y-2'>
-                <Label htmlFor='maxQuantity' className='text-blue-900 font-medium'>
-                  Số lượng tối đa
+                <Label htmlFor='minValueDiscount' className='text-blue-900 font-medium'>
+                  Giá trị đơn tối thiểu (₫)
                 </Label>
                 <Input
-                  id='maxQuantity'
+                  id='minValueDiscount'
                   type='number'
-                  min='1'
-                  value={formData.maxQuantity || ''}
-                  onChange={(e) =>
-                    handleInputChange('maxQuantity', e.target.value ? Number(e.target.value) : undefined)
-                  }
-                  placeholder='Nhập số lượng tối đa (để trống nếu không giới hạn)'
+                  min='0'
+                  value={formData.minValueDiscount ?? ''}
+                  onChange={(e) => handleInputChange('minValueDiscount', e.target.value)}
+                  placeholder='Nhập giá trị đơn tối thiểu (để trống nếu không có)'
                   className={cn(
-                    'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
-                    errors.maxQuantity && 'border-red-500'
+                    'border-blue-200 focus:ring-blue-500 focus:border-blue-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]',
+                    errors.minValueDiscount && 'border-red-500'
                   )}
                 />
-                {errors.maxQuantity && <p className='text-sm text-red-600'>{errors.maxQuantity}</p>}
+                {errors.minValueDiscount && <p className='text-sm text-red-600'>{errors.minValueDiscount}</p>}
               </div>
+            </motion.div>
 
-              <div className='space-y-2'>
-                <Label htmlFor='maxPerUser' className='text-blue-900 font-medium'>
-                  Số lượt sử dụng tối đa mỗi user *
+            <motion.div variants={sectionVariants} className='space-y-4 p-4'>
+              <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
+                <motion.div
+                  className='w-1 h-6 bg-blue-500 rounded'
+                  initial={{ scaleY: 0 }}
+                  animate={{ scaleY: 1 }}
+                  transition={{ duration: 0.3, delay: 0.4 }}
+                />
+                Thời gian áp dụng
+              </h3>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-2'>
+                  <Label className='text-blue-900 font-medium'>Ngày bắt đầu *</Label>
+                  <div className='flex gap-2'>
+                    <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant='outline'
+                          className={cn(
+                            'flex-1 justify-start text-left font-normal border-blue-200 hover:bg-blue-50',
+                            !formData.startDate && 'text-muted-foreground',
+                            errors.startDate && 'border-red-500'
+                          )}
+                        >
+                          <CalendarIcon className='mr-2 h-4 w-4 text-blue-500' />
+                          {formData.startDate
+                            ? format(new Date(formData.startDate), 'dd/MM/yyyy', { locale: vi })
+                            : 'Chọn ngày'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className='w-auto p-0' align='start'>
+                        <Calendar
+                          mode='single'
+                          selected={formData.startDate ? new Date(formData.startDate) : undefined}
+                          onSelect={(date) => {
+                            handleDateChange('startDate', date)
+                            setStartDateOpen(false)
+                          }}
+                          disabled={(date) => {
+                            const today = new Date()
+                            today.setHours(0, 0, 0, 0)
+                            return date < today
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+
+                    <div className='flex items-center gap-1 px-3 border border-blue-200 rounded-md bg-blue-50'>
+                      <Clock className='h-4 w-4 text-blue-500' />
+                      <Input
+                        type='time'
+                        value={startTime}
+                        onChange={(e) => handleTimeChange('startDate', e.target.value)}
+                        className='w-24 border-0 bg-transparent focus:ring-0 text-blue-900'
+                      />
+                    </div>
+                  </div>
+                  {errors.startDate && <p className='text-sm text-red-600'>{errors.startDate}</p>}
+                  {errors.startTime && <p className='text-sm text-red-600'>{errors.startTime}</p>}
+                </div>
+
+                <div className='space-y-2'>
+                  <Label className='text-blue-900 font-medium'>Ngày kết thúc *</Label>
+                  <div className='flex gap-2'>
+                    <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant='outline'
+                          className={cn(
+                            'flex-1 justify-start text-left font-normal border-blue-200 hover:bg-blue-50',
+                            !formData.endDate && 'text-muted-foreground',
+                            errors.endDate && 'border-red-500'
+                          )}
+                        >
+                          <CalendarIcon className='mr-2 h-4 w-4 text-blue-500' />
+                          {formData.endDate
+                            ? format(new Date(formData.endDate), 'dd/MM/yyyy', { locale: vi })
+                            : 'Chọn ngày'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className='w-auto p-0' align='start'>
+                        <Calendar
+                          mode='single'
+                          selected={formData.endDate ? new Date(formData.endDate) : undefined}
+                          onSelect={(date) => {
+                            handleDateChange('endDate', date)
+                            setEndDateOpen(false)
+                          }}
+                          disabled={(date) => {
+                            const today = new Date()
+                            today.setHours(0, 0, 0, 0)
+
+                            if (formData.startDate) {
+                              const startDate = new Date(formData.startDate)
+                              startDate.setHours(0, 0, 0, 0)
+                              return date <= startDate
+                            }
+                            return date < today
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+
+                    <div className='flex items-center gap-1 px-3 border border-blue-200 rounded-md bg-blue-50'>
+                      <Clock className='h-4 w-4 text-blue-500' />
+                      <Input
+                        type='time'
+                        value={endTime}
+                        onChange={(e) => handleTimeChange('endDate', e.target.value)}
+                        className='w-24 border-0 bg-transparent focus:ring-0 text-blue-900'
+                      />
+                    </div>
+                  </div>
+                  {errors.endDate && <p className='text-sm text-red-600'>{errors.endDate}</p>}
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div variants={sectionVariants} className='space-y-4 p-4'>
+              <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
+                <motion.div
+                  className='w-1 h-6 bg-blue-500 rounded'
+                  initial={{ scaleY: 0 }}
+                  animate={{ scaleY: 1 }}
+                  transition={{ duration: 0.3, delay: 0.5 }}
+                />
+                Cấu hình số lượng
+              </h3>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-2'>
+                  <Label htmlFor='maxQuantity' className='text-blue-900 font-medium'>
+                    Số lượng tối đa
+                  </Label>
+                  <Input
+                    id='maxQuantity'
+                    type='number'
+                    min='1'
+                    value={formData.maxQuantity ?? ''}
+                    onChange={(e) => handleInputChange('maxQuantity', e.target.value)}
+                    placeholder='Nhập số lượng tối đa (để trống nếu không giới hạn)'
+                    className={cn(
+                      'border-blue-200 focus:ring-blue-500 focus:border-blue-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]',
+                      errors.maxQuantity && 'border-red-500'
+                    )}
+                  />
+                  {errors.maxQuantity && <p className='text-sm text-red-600'>{errors.maxQuantity}</p>}
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='maxPerUser' className='text-blue-900 font-medium'>
+                    Số lượt sử dụng tối đa mỗi user *
+                  </Label>
+                  <Input
+                    id='maxPerUser'
+                    type='number'
+                    min='1'
+                    value={formData.maxPerUser ?? ''}
+                    onChange={(e) => handleInputChange('maxPerUser', e.target.value)}
+                    placeholder='Nhập số lượt sử dụng tối đa'
+                    className={cn(
+                      'border-blue-200 focus:ring-blue-500 focus:border-blue-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]',
+                      errors.maxPerUser && 'border-red-500'
+                    )}
+                  />
+                  {errors.maxPerUser && <p className='text-sm text-red-600'>{errors.maxPerUser}</p>}
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div variants={sectionVariants} className='space-y-4 p-4'>
+              <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
+                <motion.div
+                  className='w-1 h-6 bg-blue-500 rounded'
+                  initial={{ scaleY: 0 }}
+                  animate={{ scaleY: 1 }}
+                  transition={{ duration: 0.3, delay: 0.6 }}
+                />
+                Trạng thái
+              </h3>
+
+              <div className='flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200'>
+                <Switch
+                  id='isActive'
+                  checked={formData.isActive}
+                  onCheckedChange={(checked) => handleInputChange('isActive', checked)}
+                />
+                <Label htmlFor='isActive' className='text-blue-900 px-2 font-medium cursor-pointer'>
+                  Kích hoạt Mã khuyến mãi
                 </Label>
-                <Input
-                  id='maxPerUser'
-                  type='number'
-                  min='1'
-                  value={formData.maxPerUser}
-                  onChange={(e) => handleInputChange('maxPerUser', Number(e.target.value))}
-                  placeholder='Nhập số lượt sử dụng tối đa'
-                  className={cn(
-                    'border-blue-200 focus:ring-blue-500 focus:border-blue-500',
-                    errors.maxPerUser && 'border-red-500'
-                  )}
-                />
-                {errors.maxPerUser && <p className='text-sm text-red-600'>{errors.maxPerUser}</p>}
               </div>
+            </motion.div>
+          </div>
+
+          <motion.div
+            className='flex items-center justify-end space-x-4 pt-4 px-4 pb-4 border-t border-gray-200 bg-white flex-shrink-0 mt-auto'
+            variants={footerVariants}
+          >
+            <div className='flex items-center gap-2'>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={onCancel}
+                disabled={loading}
+                className='border-blue-300 px-4 text-blue-700 hover:bg-blue-50'
+              >
+                <X className='h-4 w-4 mr-2' />
+                Hủy
+              </Button>
+
+              <Button type='submit' disabled={loading} className='bg-blue-500  hover:bg-blue-600 text-white'>
+                {loading ? <Loader2 className='h-4 w-4 mr-2 animate-spin' /> : <Save className='h-4 w-4 mr-2' />}
+                {isEdit ? 'Cập nhật' : 'Tạo mới'}
+              </Button>
             </div>
-          </div>
-
-          <div className='space-y-2 p-4'>
-            <h3 className='text-lg font-semibold text-blue-900 flex items-center gap-2'>
-              <div className='w-1 h-6 bg-blue-500 rounded'></div>
-              Trạng thái
-            </h3>
-
-            <div className='flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200'>
-              <Switch
-                id='isActive'
-                checked={formData.isActive}
-                onCheckedChange={(checked) => handleInputChange('isActive', checked)}
-              />
-              <Label htmlFor='isActive' className='text-blue-900 font-medium cursor-pointer'>
-                Kích hoạt Mã khuyến mãi
-              </Label>
-            </div>
-          </div>
-
-          <div className='flex items-center justify-end space-x-4 pt-2 px-4 pb-4 border-t border-blue-200'>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={onCancel}
-              disabled={loading}
-              className='border-blue-300 text-blue-700 hover:bg-blue-50'
-            >
-              <X className='h-4 w-4 mr-2' />
-              Hủy
-            </Button>
-
-            <Button type='submit' disabled={loading} className='bg-blue-500 hover:bg-blue-600 text-white'>
-              {loading ? <Loader2 className='h-4 w-4 mr-2 animate-spin' /> : <Save className='h-4 w-4 mr-2' />}
-              {isEdit ? 'Cập nhật' : 'Tạo mới'}
-            </Button>
-          </div>
+          </motion.div>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </motion.div>
   )
 }
 

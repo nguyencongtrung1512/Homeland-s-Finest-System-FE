@@ -671,8 +671,15 @@ const AdminPromotionList: React.FC = () => {
 
       {/* Create Promotion Modal */}
       {isCreateModalOpen && (
-        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4'>
-          <div className='bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl'>
+        <div
+          className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4'
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsCreateModalOpen(false)
+            }
+          }}
+        >
+          <div className='bg-white rounded-lg max-w-4xl w-full max-h-[90vh] h-[90vh] overflow-hidden shadow-xl flex flex-col'>
             <PromotionForm
               onSubmit={handleCreatePromotion}
               onCancel={() => setIsCreateModalOpen(false)}
@@ -685,8 +692,16 @@ const AdminPromotionList: React.FC = () => {
 
       {/* Edit Promotion Modal */}
       {selectedPromotion && isEditModalOpen && (
-        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4'>
-          <div className='bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl'>
+        <div
+          className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4'
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsEditModalOpen(false)
+              setSelectedPromotion(null)
+            }
+          }}
+        >
+          <div className='bg-white rounded-lg max-w-4xl w-full max-h-[90vh] h-[90vh] overflow-hidden shadow-xl flex flex-col'>
             <PromotionForm
               initialData={selectedPromotion}
               onSubmit={handleUpdatePromotion}

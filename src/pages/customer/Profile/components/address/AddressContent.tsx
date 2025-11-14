@@ -56,7 +56,22 @@ export default function AddressContent({
       if (status !== 200) throw new Error(message ?? 'Có lỗi xảy ra khi tải địa chỉ')
 
       const list = toArray<Address>(data).filter(isActiveAddress)
-      setAddresses(list)
+      // Sắp xếp: địa chỉ mặc định lên đầu
+      const sortedList = [...list].sort((a, b) => {
+        if (a.isDefault && !b.isDefault) return -1
+        if (!a.isDefault && b.isDefault) return 1
+        return 0
+      })
+      setAddresses(sortedList)
+
+      // Kiểm tra phải có ít nhất 1 địa chỉ mặc định
+      const hasDefault = sortedList.some((addr) => addr.isDefault)
+      if (sortedList.length > 0 && !hasDefault) {
+        toast.warning('Bạn cần đặt ít nhất một địa chỉ làm mặc định', {
+          position: 'top-right',
+          autoClose: 3000
+        })
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể tải danh sách địa chỉ')
     } finally {
@@ -78,6 +93,27 @@ export default function AddressContent({
 
   // Handle delete address - mở dialog xác nhận
   const handleDeleteClick = (addressId: string) => {
+    // Kiểm tra nếu địa chỉ là mặc định
+    const addressToDeleteObj = addresses.find((addr) => addr.id === addressId)
+    if (addressToDeleteObj?.isDefault) {
+      // Kiểm tra xem còn địa chỉ khác không
+      const otherAddresses = addresses.filter((addr) => addr.id !== addressId)
+      if (otherAddresses.length === 0) {
+        toast.error('Không thể xóa địa chỉ mặc định duy nhất. Vui lòng thêm địa chỉ khác trước.', {
+          position: 'top-right',
+          autoClose: 4000
+        })
+        return
+      }
+
+      // Hiển thị thông báo yêu cầu chọn địa chỉ khác làm mặc định
+      toast.error('Địa chỉ này là mặc định. Vui lòng chọn địa chỉ khác làm mặc định trước khi xóa.', {
+        position: 'top-right',
+        autoClose: 5000
+      })
+      return
+    }
+
     setAddressToDelete(addressId)
     setDeleteDialogOpen(true)
   }
@@ -135,8 +171,14 @@ export default function AddressContent({
       const response = await addressApi.getUserAddresses(userId)
       if (response?.data) {
         const list = toArray<Address>(response.data).filter(isActiveAddress)
-        setAddresses(list)
-        console.log('Debug - Updated addresses:', list)
+        // Sắp xếp: địa chỉ mặc định lên đầu
+        const sortedList = [...list].sort((a, b) => {
+          if (a.isDefault && !b.isDefault) return -1
+          if (!a.isDefault && b.isDefault) return 1
+          return 0
+        })
+        setAddresses(sortedList)
+        console.log('Debug - Updated addresses:', sortedList)
       }
       onSetDefault(addressId)
       toast.success('Đã đặt địa chỉ mặc định thành công!')
