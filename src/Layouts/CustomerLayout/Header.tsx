@@ -4,29 +4,50 @@ import { useCart } from '../../contexts/cart.context'
 import { useAuth } from '../../contexts/auth.context'
 import { Button } from '../../components/ui/button'
 import path from '../../constants/path'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 function Header() {
   const navigate = useNavigate()
   const { cart, cartCount } = useCart()
   const { user, isAuthenticated, logout } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
-  const [isHoveringIcon, setIsHoveringIcon] = useState(false)
-  const [isHoveringPopup, setIsHoveringPopup] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
-  const hideTimeout = useRef<NodeJS.Timeout | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const cartContainerRef = useRef<HTMLDivElement>(null)
   const userDropdownRef = useRef<HTMLDivElement>(null)
   const displayCount = cartCount || cart.reduce((sum, item) => sum + item.quantity, 0)
 
+  // Xử lý đóng dropdown với animation
+  const handleCloseDropdown = useCallback(() => {
+    setIsClosing(true)
+    setTimeout(() => {
+      setShowDropdown(false)
+      setIsClosing(false)
+    }, 300) // Thời gian animation slide-up
+  }, [])
+
+  // Xử lý mở dropdown khi click vào icon
+  const handleCartClick = () => {
+    if (showDropdown) {
+      handleCloseDropdown()
+    } else {
+      setShowDropdown(true)
+      setIsClosing(false)
+    }
+  }
+
   // Xử lý click outside để đóng dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (cartContainerRef.current && !cartContainerRef.current.contains(event.target as Node)) {
-        setShowDropdown(false)
-        setIsHoveringIcon(false)
-        setIsHoveringPopup(false)
+        // Kiểm tra nếu click vào backdrop
+        const target = event.target as HTMLElement
+        if (target.classList.contains('cart-backdrop')) {
+          handleCloseDropdown()
+        } else if (!dropdownRef.current?.contains(target)) {
+          handleCloseDropdown()
+        }
       }
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
         setShowUserDropdown(false)
@@ -35,36 +56,17 @@ function Header() {
 
     if (showDropdown || showUserDropdown) {
       document.addEventListener('mousedown', handleClickOutside)
+      // Ngăn scroll khi popup mở
+      if (showDropdown) {
+        document.body.style.overflow = 'hidden'
+      }
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      document.body.style.overflow = 'unset'
     }
-  }, [showDropdown, showUserDropdown])
-
-  // Hiển thị popup khi hover icon hoặc popup
-  const handleIconEnter = () => {
-    if (hideTimeout.current) clearTimeout(hideTimeout.current)
-    setIsHoveringIcon(true)
-    setShowDropdown(true)
-  }
-  const handleIconLeave = () => {
-    setIsHoveringIcon(false)
-    hideTimeout.current = setTimeout(() => {
-      if (!isHoveringPopup) setShowDropdown(false)
-    }, 100)
-  }
-  const handlePopupEnter = () => {
-    if (hideTimeout.current) clearTimeout(hideTimeout.current)
-    setIsHoveringPopup(true)
-    setShowDropdown(true)
-  }
-  const handlePopupLeave = () => {
-    setIsHoveringPopup(false)
-    hideTimeout.current = setTimeout(() => {
-      if (!isHoveringIcon) setShowDropdown(false)
-    }, 100)
-  }
+  }, [showDropdown, showUserDropdown, handleCloseDropdown])
 
   const handleLogout = async () => {
     await logout()
@@ -109,14 +111,12 @@ function Header() {
           <div
             ref={cartContainerRef}
             className='hidden md:inline text-sm text-[#2D5016] hover:text-orange-500 transition-colors font-medium whitespace-nowrap ml-2 relative'
-            onMouseEnter={handleIconEnter}
-            onMouseLeave={handleIconLeave}
           >
             <button
               type='button'
-              onClick={() => navigate(path.cart)}
-              className='relative focus:outline-none'
+              className='relative focus:outline-none cursor-pointer'
               aria-label='Xem giỏ hàng'
+              onClick={handleCartClick}
             >
               <ShoppingCart size={25} />
               {displayCount > 0 && (
@@ -125,61 +125,83 @@ function Header() {
                 </span>
               )}
             </button>
+            {/* Backdrop overlay */}
+            {showDropdown && (
+              <div
+                className={`fixed inset-0 bg-black/30 z-[60] cart-backdrop ${isClosing ? 'animate-fade-out' : 'animate-fade-in'
+                  }`}
+                onClick={handleCloseDropdown}
+              />
+            )}
             {/* Dropdown hiển thị sản phẩm trong giỏ */}
             {showDropdown && (
               <div
                 ref={dropdownRef}
-                className='absolute right-0 top-full w-[420px] bg-white shadow-2xl rounded-xl border border-gray-200 z-50 animate-fade-in'
-                style={{ marginTop: 12 }}
-                onMouseEnter={handlePopupEnter}
-                onMouseLeave={handlePopupLeave}
+                className={`fixed left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 w-[600px] max-w-[90vw] max-h-[80vh] bg-white shadow-2xl rounded-xl border border-gray-200 z-[70] flex flex-col ${isClosing ? 'animate-slide-up' : 'animate-slide-down'
+                  }`}
               >
-                <div className='p-4 border-b text-gray-500 text-base font-semibold'>Sản phẩm mới thêm</div>
-                {cart.length === 0 ? (
-                  <div className='flex flex-col items-center justify-center py-8 text-gray-400'>
-                    <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      width='64'
-                      height='64'
-                      fill='none'
-                      viewBox='0 0 24 24'
-                      stroke='#e5e7eb'
-                    >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={1.5}
-                        d='M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m13-9l2 9m-5-9V6a2 2 0 10-4 0v3'
-                      />
-                    </svg>
-                    <div className='mt-3 text-lg font-semibold'>Chưa có sản phẩm nào trong giỏ</div>
-                  </div>
-                ) : (
-                  <ul className='max-h-80 overflow-y-auto divide-y'>
-                    {cart.slice(0, 5).map((item, idx) => (
-                      <li key={item.id + idx} className='flex items-center gap-3 px-4 py-3'>
-                        <img src={item.image} alt={item.name} className='w-16 h-16 object-cover rounded border' />
-                        <div className='flex-1 min-w-0'>
-                          <div className='truncate font-medium text-gray-900 text-base'>{item.name}</div>
-                          <div className='text-xs text-gray-500'>Số lượng: {item.quantity}</div>
-                          {item.variant && (
-                            <div className='text-xs text-gray-500'>Phân loại: {item.variant}</div>
-                          )}
-                        </div>
-                        <div className='text-orange-600 font-semibold text-base whitespace-nowrap'>
-                          {item.price.toLocaleString('vi-VN')}₫
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div className='flex items-center justify-between p-4 border-t'>
-                  <span className='text-base text-gray-500'>Thêm hàng vào giỏ</span>
+                <div className='p-4 border-b text-gray-500 text-base font-semibold flex-shrink-0'>
+                  Sản phẩm mới thêm
+                </div>
+                <div className='flex-1 overflow-y-auto min-h-0'>
+                  {cart.length === 0 ? (
+                    <div className='flex flex-col items-center justify-center py-8 text-gray-400'>
+                      <svg
+                        xmlns='http://www.w3.org/2000/svg'
+                        width='64'
+                        height='64'
+                        fill='none'
+                        viewBox='0 0 24 24'
+                        stroke='#e5e7eb'
+                      >
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={1.5}
+                          d='M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m13-9l2 9m-5-9V6a2 2 0 10-4 0v3'
+                        />
+                      </svg>
+                      <div className='mt-3 text-lg font-semibold'>Chưa có sản phẩm nào trong giỏ</div>
+                    </div>
+                  ) : (
+                    <ul className='divide-y'>
+                      {[...cart].reverse().slice(0, 3).map((item, idx) => (
+                        <li key={item.id + idx} className='flex items-center gap-3 px-4 py-3'>
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className='w-16 h-16 object-cover rounded border'
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = 'https://i.pinimg.com/1200x/93/b6/9f/93b69fd5d973b3f2fbc325982eb8e658.jpg'
+                            }}
+                          />
+                          <div className='flex-1 min-w-0'>
+                            <div className='truncate font-medium text-gray-900 text-base'>{item.name}</div>
+                            <div className='text-xs text-gray-500'>Số lượng: {item.quantity}</div>
+                            {item.variant && (
+                              <div className='text-xs text-gray-500'>Phân loại: {item.variant}</div>
+                            )}
+                          </div>
+                          <div className='text-orange-600 font-semibold text-base whitespace-nowrap'>
+                            {item.price.toLocaleString('vi-VN')}₫
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className='flex items-center justify-between p-4 border-t flex-shrink-0'>
+                  <span className='text-base text-gray-500'>
+                    {displayCount > 0 ? `${displayCount} sản phẩm trong giỏ` : 'Chưa có sản phẩm'}
+                  </span>
                   <button
-                    className='bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded font-semibold text-base transition-colors'
+                    className='bg-green-500 hover:bg-green-600 !text-white px-5 py-2 rounded font-semibold text-base transition-colors whitespace-nowrap'
                     onClick={() => {
-                      setShowDropdown(false)
-                      navigate(path.cart)
+                      handleCloseDropdown()
+                      setTimeout(() => {
+                        navigate(path.cart)
+                      }, 300)
                     }}
                     tabIndex={0}
                   >
@@ -262,7 +284,7 @@ function Header() {
               Bạn muốn làm cộng tác viên?
             </Link>
           )}
-          
+
         </div>
       </div>
     </div>

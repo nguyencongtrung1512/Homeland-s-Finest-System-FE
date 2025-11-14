@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { useCart } from '../../../../../contexts/cart.context'
 import { useAuth } from '../../../../../contexts/auth.context'
 import {
@@ -75,7 +76,9 @@ function ProductGallery() {
   const [quantity, setQuantity] = useState(1)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [flyingImage, setFlyingImage] = useState<{ src: string; startX: number; startY: number } | null>(null)
 
+  const productImageRef = useRef<HTMLDivElement>(null)
   const { addToCart } = useCart()
   const { isAuthenticated } = useAuth()
 
@@ -221,6 +224,61 @@ function ProductGallery() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentVariant?.id])
 
+  // Function to trigger fly-to-cart animation
+  const triggerFlyToCart = (imageSrc: string) => {
+    if (!productImageRef.current) return
+
+    // Get product image position
+    const productImageRect = productImageRef.current.getBoundingClientRect()
+    const startX = productImageRect.left + productImageRect.width / 2
+    const startY = productImageRect.top + productImageRect.height / 2
+
+    // Get cart icon position (using querySelector to find cart button)
+    const cartButton = document.querySelector('[aria-label="Xem giỏ hàng"]') as HTMLElement
+    if (!cartButton) {
+      // Fallback: try to find cart container
+      const cartContainer = document.querySelector('.cart-container') as HTMLElement
+      if (!cartContainer) return
+      const cartRect = cartContainer.getBoundingClientRect()
+      const endX = cartRect.left + cartRect.width / 2
+      const endY = cartRect.top + cartRect.height / 2
+      animateFlyingImage(imageSrc, startX, startY, endX, endY)
+      return
+    }
+
+    const cartRect = cartButton.getBoundingClientRect()
+    const endX = cartRect.left + cartRect.width / 2
+    const endY = cartRect.top + cartRect.height / 2
+
+    animateFlyingImage(imageSrc, startX, startY, endX, endY)
+  }
+
+  // Helper function to animate flying image
+  const animateFlyingImage = (imageSrc: string, startX: number, startY: number, endX: number, endY: number) => {
+    // Set flying image state
+    setFlyingImage({ src: imageSrc, startX, startY })
+
+    // Animate the flying image
+    requestAnimationFrame(() => {
+      const flyingElement = document.getElementById('flying-to-cart-image')
+      if (!flyingElement) return
+
+      // Calculate distance and duration
+      const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
+      const duration = Math.min(2000, Math.max(1200, distance * 1.5)) // 1200-2000ms based on distance (slower)
+
+      // Start animation
+      flyingElement.style.transition = `all ${duration}ms cubic-bezier(0.4, 0, 0.2, 1)`
+      flyingElement.style.transform = `translate(${endX - startX}px, ${endY - startY}px) scale(0.2)`
+      flyingElement.style.opacity = '0'
+
+      // Remove after animation
+      setTimeout(() => {
+        setFlyingImage(null)
+      }, duration)
+    })
+  }
+
   const handleAddToCart = async () => {
     if (!currentVariant) {
       return
@@ -233,6 +291,18 @@ function ProductGallery() {
 
     try {
       setIsAddingToCart(true)
+
+      // Get current product image
+      const productData = getProductData()
+      const currentImage = allImages.length > 0 && selectedImage < allImages.length
+        ? allImages[selectedImage]
+        : (currentVariant?.productImages?.[0] || productData?.productImages?.[0] || defaultImageUrl)
+
+      // Trigger fly-to-cart animation
+      triggerFlyToCart(currentImage)
+
+      // Wait a bit before adding to cart to sync with animation
+      await new Promise((resolve) => setTimeout(resolve, 100))
       await addToCart(currentVariant.id, quantity)
     } catch (error) {
       console.error('Error adding to cart:', error)
@@ -315,7 +385,7 @@ function ProductGallery() {
         <div className='max-w-7xl mx-auto px-6 py-8'>
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 auto-rows-min'>
             {/* Image Gallery - Product Carousel */}
-            <div className='space-y-3'>
+            <div ref={productImageRef} className='space-y-3'>
               {allImages.length > 0 ? (
                 <ProductImageCarousel
                   images={allImages}
@@ -644,6 +714,44 @@ function ProductGallery() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Flying to Cart Animation */}
+      {flyingImage &&
+        createPortal(
+          <div
+            id='flying-to-cart-image'
+            style={{
+              position: 'fixed',
+              left: `${flyingImage.startX}px`,
+              top: `${flyingImage.startY}px`,
+              width: '100px',
+              height: '100px',
+              zIndex: 9999,
+              pointerEvents: 'none',
+              transform: 'translate(-50%, -50%) scale(1)',
+              opacity: 1,
+              transition: 'none'
+            }}
+          >
+            <img
+              src={flyingImage.src}
+              alt='Flying to cart'
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: '8px',
+                border: '2px solid #10b981',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+              }}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.src = defaultImageUrl
+              }}
+            />
+          </div>,
+          document.body
+        )}
     </>
   )
 }
