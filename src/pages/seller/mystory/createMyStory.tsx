@@ -133,6 +133,32 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
   }
 
   const handleFileChange = (field: keyof typeof storyData, file: File | null) => {
+    if (file) {
+      // Validate file type and size
+      const isImage = field === 'ThumbnailImage' || field === 'SingleImage'
+      const isVideo = field === 'VideoOpener' || field === 'VideoProcess' || field === 'VideoTestimonial'
+      
+      if (isImage) {
+        if (!file.type.startsWith('image/')) {
+          toast.error('File phải là hình ảnh')
+          return
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`File ${file.name} quá lớn. Tối đa 5MB (hiện tại: ${(file.size / 1024 / 1024).toFixed(2)}MB)`)
+          return
+        }
+      } else if (isVideo) {
+        if (!file.type.startsWith('video/')) {
+          toast.error('File phải là video')
+          return
+        }
+        if (file.size > 50 * 1024 * 1024) {
+          toast.error(`File ${file.name} quá lớn. Tối đa 50MB (hiện tại: ${(file.size / 1024 / 1024).toFixed(2)}MB)`)
+          return
+        }
+      }
+    }
+    
     setStoryData((prev) => ({
       ...prev,
       [field]: file
@@ -142,10 +168,27 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
   const handleGalleryImagesChange = (files: FileList | null) => {
     if (files) {
       const filesArray = Array.from(files)
-      setStoryData((prev) => ({
-        ...prev,
-        GalleryImages: [...prev.GalleryImages, ...filesArray]
-      }))
+      const maxImageSize = 5 * 1024 * 1024 // 5MB
+      const validFiles: File[] = []
+      
+      filesArray.forEach((file) => {
+        if (!file.type.startsWith('image/')) {
+          toast.error(`File ${file.name} không phải là hình ảnh`)
+          return
+        }
+        if (file.size > maxImageSize) {
+          toast.error(`File ${file.name} quá lớn. Tối đa 5MB (hiện tại: ${(file.size / 1024 / 1024).toFixed(2)}MB)`)
+          return
+        }
+        validFiles.push(file)
+      })
+      
+      if (validFiles.length > 0) {
+        setStoryData((prev) => ({
+          ...prev,
+          GalleryImages: [...prev.GalleryImages, ...validFiles]
+        }))
+      }
     }
   }
 
@@ -157,10 +200,106 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
   }
 
   const removeGalleryImageUrl = (index: number) => {
-    setStoryData((prev) => ({
+    setStoryData((prev) => ({ 
       ...prev,
       GalleryImageUrls: prev.GalleryImageUrls.filter((_, i) => i !== index)
     }))
+  }
+
+
+  const countWords = (text: string): number => {
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length
+  }
+
+
+  const validateForm = (): string | null => {
+    // Validate Title (max 20 words)
+    if (!storyData.Title.trim()) {
+      return 'Vui lòng nhập tiêu đề câu chuyện'
+    }
+    const titleWords = countWords(storyData.Title)
+    if (titleWords > 20) {
+      return `Tiêu đề không được vượt quá 20 từ (hiện tại: ${titleWords} từ)`
+    }
+
+    // Validate TextIntro (max 200 words)
+    if (storyData.TextIntro.trim()) {
+      const introWords = countWords(storyData.TextIntro)
+      if (introWords > 200) {
+        return `Giới thiệu không được vượt quá 200 từ (hiện tại: ${introWords} từ)`
+      }
+    }
+
+    // Validate TextExpanded (max 200 words)
+    if (storyData.TextExpanded.trim()) {
+      const expandedWords = countWords(storyData.TextExpanded)
+      if (expandedWords > 200) {
+        return `Nội dung mở rộng không được vượt quá 200 từ (hiện tại: ${expandedWords} từ)`
+      }
+    }
+
+    // Validate TextClosing (max 200 words)
+    if (storyData.TextClosing.trim()) {
+      const closingWords = countWords(storyData.TextClosing)
+      if (closingWords > 200) {
+        return `Kết luận không được vượt quá 200 từ (hiện tại: ${closingWords} từ)`
+      }
+    }
+
+    // Validate Descriptions (max 200 words each)
+    const descriptions = [
+      { text: storyData.VideoOpenerDescription, label: 'Mô tả video mở đầu' },
+      { text: storyData.SingleImageDescription, label: 'Mô tả hình ảnh đơn' },
+      { text: storyData.GalleryDescription, label: 'Mô tả thư viện ảnh' },
+      { text: storyData.VideoProcessDescription, label: 'Mô tả video quy trình' },
+      { text: storyData.VideoTestimonialDescription, label: 'Mô tả video đánh giá' }
+    ]
+
+    for (const desc of descriptions) {
+      if (desc.text.trim()) {
+        const descWords = countWords(desc.text)
+        if (descWords > 200) {
+          return `${desc.label} không được vượt quá 200 từ (hiện tại: ${descWords} từ)`
+        }
+      }
+    }
+
+    // Validate Image files (max 5MB each)
+    const maxImageSize = 5 * 1024 * 1024 // 5MB in bytes
+    const imageFiles = [
+      { file: storyData.ThumbnailImage, label: 'Ảnh đại diện' },
+      { file: storyData.SingleImage, label: 'Hình ảnh đơn' }
+    ]
+
+    for (const img of imageFiles) {
+      if (img.file && img.file.size > maxImageSize) {
+        return `${img.label} không được vượt quá 5MB (hiện tại: ${(img.file.size / 1024 / 1024).toFixed(2)}MB)`
+      }
+    }
+
+    // Validate Gallery images (max 5MB each)
+    for (let i = 0; i < storyData.GalleryImages.length; i++) {
+      const galleryImage = storyData.GalleryImages[i]
+      if (galleryImage.size > maxImageSize) {
+        return `Ảnh thư viện #${i + 1} không được vượt quá 5MB (hiện tại: ${(galleryImage.size / 1024 / 1024).toFixed(2)}MB)`
+      }
+    }
+
+    // Validate Video files (max 50MB each)
+    const maxVideoSize = 50 * 1024 * 1024 // 50MB in bytes
+    const videoFiles = [
+      { file: storyData.VideoOpener, label: 'Video mở đầu' },
+      { file: storyData.VideoProcess, label: 'Video quy trình' },
+      { file: storyData.VideoTestimonial, label: 'Video đánh giá' }
+    ]
+
+    for (const video of videoFiles) {
+      if (video.file && video.file.size > maxVideoSize) {
+        return `${video.label} không được vượt quá 50MB (hiện tại: ${(video.file.size / 1024 / 1024).toFixed(2)}MB)`
+      }
+    }
+
+    return null
   }
 
   // Fetch store ID
@@ -191,6 +330,13 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
 
     if (!storyData.Title.trim()) {
       toast.error('Vui lòng nhập tiêu đề câu chuyện')
+      return
+    }
+
+    // Run validation
+    const validationError = validateForm()
+    if (validationError) {
+      toast.error(validationError)
       return
     }
 
@@ -391,11 +537,17 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
         <div className='space-y-6 py-4'>
           {/* Title */}
           <div className='space-y-2'>
-            <Label className='text-base font-semibold'>Tiêu đề câu chuyện *</Label>
+            <div className='flex items-center justify-between'>
+              <Label className='text-base font-semibold'>Tiêu đề câu chuyện *</Label>
+              <span className={`text-xs ${countWords(storyData.Title) > 20 ? 'text-red-500' : 'text-gray-500'}`}>
+                {countWords(storyData.Title)} / 20 từ
+              </span>
+            </div>
             <Input
               placeholder='Nhập tiêu đề câu chuyện'
               value={storyData.Title}
               onChange={(e) => handleInputChange('Title', e.target.value)}
+              className={countWords(storyData.Title) > 20 ? 'border-red-500' : ''}
             />
           </div>
 
@@ -472,12 +624,17 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
 
           {/* Text Intro */}
           <div className='space-y-2'>
-            <Label className='text-base font-semibold'>Giới thiệu (TextIntro)</Label>
+            <div className='flex items-center justify-between'>
+              <Label className='text-base font-semibold'>Giới thiệu (TextIntro)</Label>
+              <span className={`text-xs ${countWords(storyData.TextIntro) > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                {countWords(storyData.TextIntro)} / 200 từ
+              </span>
+            </div>
             <Textarea
               placeholder='Nhập phần giới thiệu...'
               value={storyData.TextIntro}
               onChange={(e) => handleInputChange('TextIntro', e.target.value)}
-              className='min-h-[100px]'
+              className={`min-h-[100px] ${countWords(storyData.TextIntro) > 200 ? 'border-red-500' : ''}`}
             />
           </div>
 
@@ -538,12 +695,20 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
                 </>
               )}
             </div>
-            <Textarea
-              placeholder='Mô tả video mở đầu...'
-              value={storyData.VideoOpenerDescription}
-              onChange={(e) => handleInputChange('VideoOpenerDescription', e.target.value)}
-              className='min-h-[60px]'
-            />
+            <div className='space-y-2'>
+              <div className='flex items-center justify-between'>
+                <Label className='text-sm font-medium'>Mô tả video mở đầu</Label>
+                <span className={`text-xs ${countWords(storyData.VideoOpenerDescription) > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                  {countWords(storyData.VideoOpenerDescription)} / 200 từ
+                </span>
+              </div>
+              <Textarea
+                placeholder='Mô tả video mở đầu...'
+                value={storyData.VideoOpenerDescription}
+                onChange={(e) => handleInputChange('VideoOpenerDescription', e.target.value)}
+                className={`min-h-[60px] ${countWords(storyData.VideoOpenerDescription) > 200 ? 'border-red-500' : ''}`}
+              />
+            </div>
           </div>
 
           {/* Single Image */}
@@ -615,12 +780,20 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
                 </>
               )}
             </div>
-            <Textarea
-              placeholder='Mô tả hình ảnh đơn...'
-              value={storyData.SingleImageDescription}
-              onChange={(e) => handleInputChange('SingleImageDescription', e.target.value)}
-              className='min-h-[60px]'
-            />
+            <div className='space-y-2'>
+              <div className='flex items-center justify-between'>
+                <Label className='text-sm font-medium'>Mô tả hình ảnh đơn</Label>
+                <span className={`text-xs ${countWords(storyData.SingleImageDescription) > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                  {countWords(storyData.SingleImageDescription)} / 200 từ
+                </span>
+              </div>
+              <Textarea
+                placeholder='Mô tả hình ảnh đơn...'
+                value={storyData.SingleImageDescription}
+                onChange={(e) => handleInputChange('SingleImageDescription', e.target.value)}
+                className={`min-h-[60px] ${countWords(storyData.SingleImageDescription) > 200 ? 'border-red-500' : ''}`}
+              />
+            </div>
           </div>
 
           {/* Gallery Images */}
@@ -701,22 +874,35 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
                 </div>
               )}
             </div>
-            <Textarea
-              placeholder='Mô tả thư viện ảnh...'
-              value={storyData.GalleryDescription}
-              onChange={(e) => handleInputChange('GalleryDescription', e.target.value)}
-              className='min-h-[60px]'
-            />
+            <div className='space-y-2'>
+              <div className='flex items-center justify-between'>
+                <Label className='text-sm font-medium'>Mô tả thư viện ảnh</Label>
+                <span className={`text-xs ${countWords(storyData.GalleryDescription) > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                  {countWords(storyData.GalleryDescription)} / 200 từ
+                </span>
+              </div>
+              <Textarea
+                placeholder='Mô tả thư viện ảnh...'
+                value={storyData.GalleryDescription}
+                onChange={(e) => handleInputChange('GalleryDescription', e.target.value)}
+                className={`min-h-[60px] ${countWords(storyData.GalleryDescription) > 200 ? 'border-red-500' : ''}`}
+              />
+            </div>
           </div>
 
           {/* Text Expanded */}
           <div className='space-y-2'>
-            <Label className='text-base font-semibold'>Nội dung mở rộng (TextExpanded)</Label>
+            <div className='flex items-center justify-between'>
+              <Label className='text-base font-semibold'>Nội dung mở rộng (TextExpanded)</Label>
+              <span className={`text-xs ${countWords(storyData.TextExpanded) > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                {countWords(storyData.TextExpanded)} / 200 từ
+              </span>
+            </div>
             <Textarea
               placeholder='Nhập nội dung mở rộng...'
               value={storyData.TextExpanded}
               onChange={(e) => handleInputChange('TextExpanded', e.target.value)}
-              className='min-h-[100px]'
+              className={`min-h-[100px] ${countWords(storyData.TextExpanded) > 200 ? 'border-red-500' : ''}`}
             />
           </div>
 
@@ -777,12 +963,20 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
                 </>
               )}
             </div>
-            <Textarea
-              placeholder='Mô tả video quy trình...'
-              value={storyData.VideoProcessDescription}
-              onChange={(e) => handleInputChange('VideoProcessDescription', e.target.value)}
-              className='min-h-[60px]'
-            />
+            <div className='space-y-2'>
+              <div className='flex items-center justify-between'>
+                <Label className='text-sm font-medium'>Mô tả video quy trình</Label>
+                <span className={`text-xs ${countWords(storyData.VideoProcessDescription) > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                  {countWords(storyData.VideoProcessDescription)} / 200 từ
+                </span>
+              </div>
+              <Textarea
+                placeholder='Mô tả video quy trình...'
+                value={storyData.VideoProcessDescription}
+                onChange={(e) => handleInputChange('VideoProcessDescription', e.target.value)}
+                className={`min-h-[60px] ${countWords(storyData.VideoProcessDescription) > 200 ? 'border-red-500' : ''}`}
+              />
+            </div>
           </div>
 
           {/* Video Testimonial */}
@@ -846,22 +1040,35 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
                 </>
               )}
             </div>
-            <Textarea
-              placeholder='Mô tả video đánh giá...'
-              value={storyData.VideoTestimonialDescription}
-              onChange={(e) => handleInputChange('VideoTestimonialDescription', e.target.value)}
-              className='min-h-[60px]'
-            />
+            <div className='space-y-2'>
+              <div className='flex items-center justify-between'>
+                <Label className='text-sm font-medium'>Mô tả video đánh giá</Label>
+                <span className={`text-xs ${countWords(storyData.VideoTestimonialDescription) > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                  {countWords(storyData.VideoTestimonialDescription)} / 200 từ
+                </span>
+              </div>
+              <Textarea
+                placeholder='Mô tả video đánh giá...'
+                value={storyData.VideoTestimonialDescription}
+                onChange={(e) => handleInputChange('VideoTestimonialDescription', e.target.value)}
+                className={`min-h-[60px] ${countWords(storyData.VideoTestimonialDescription) > 200 ? 'border-red-500' : ''}`}
+              />
+            </div>
           </div>
 
           {/* Text Closing */}
           <div className='space-y-2'>
-            <Label className='text-base font-semibold'>Kết luận (TextClosing)</Label>
+            <div className='flex items-center justify-between'>
+              <Label className='text-base font-semibold'>Kết luận (TextClosing)</Label>
+              <span className={`text-xs ${countWords(storyData.TextClosing) > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                {countWords(storyData.TextClosing)} / 200 từ
+              </span>
+            </div>
             <Textarea
               placeholder='Nhập phần kết luận...'
               value={storyData.TextClosing}
               onChange={(e) => handleInputChange('TextClosing', e.target.value)}
-              className='min-h-[100px]'
+              className={`min-h-[100px] ${countWords(storyData.TextClosing) > 200 ? 'border-red-500' : ''}`}
             />
           </div>
         </div>
