@@ -21,6 +21,8 @@ import { Card, CardHeader, CardTitle } from '../../../components/ui/card'
 import { ScrollArea } from '../../../components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { useChat } from '../../../contexts/chat.context'
+import { sendChatMessage } from '../../../apis/chat.api'
+import { useAuth } from '../../../contexts/auth.context'
 
 interface Message {
   id: string
@@ -42,6 +44,7 @@ interface Conversation {
 }
 
 const ChatSystem: React.FC = () => {
+  const { user } = useAuth()
   const { isOpen, setIsOpen, activeTab, setActiveTab, selectedStoreId, selectedStoreName, setSelectedStoreId } =
     useChat()
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null)
@@ -57,6 +60,7 @@ const ChatSystem: React.FC = () => {
   const [inputValue, setInputValue] = useState('')
   const [sellerMessage, setSellerMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [, setRoomId] = useState<string | null>(null) // Lưu roomId để có thể dùng cho các tính năng sau
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const baseConversations: Conversation[] = [
@@ -178,9 +182,22 @@ const ChatSystem: React.FC = () => {
   const handleSendAIMessage = async () => {
     if (!inputValue.trim()) return
 
+    // Kiểm tra user đã đăng nhập chưa
+    if (!user?.userId) {
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        text: 'Vui lòng đăng nhập để sử dụng tính năng chat với AI.',
+        isUser: false,
+        timestamp: new Date()
+      }
+      setAiMessages((prev) => [...prev, errorMessage])
+      return
+    }
+
+    const userMessageText = inputValue.trim()
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputValue,
+      text: userMessageText,
       isUser: true,
       timestamp: new Date()
     }
@@ -189,28 +206,39 @@ const ChatSystem: React.FC = () => {
     setInputValue('')
     setIsTyping(true)
 
-    setTimeout(() => {
-      const botResponse = generateBotResponse(inputValue)
+    try {
+      // Gọi API chat với AI
+      const response = await sendChatMessage({
+        senderId: user.userId,
+        messageText: userMessageText
+      })
+
+      // Lưu roomId nếu có (có thể dùng để tiếp tục conversation sau)
+      if (response.data.roomId) {
+        setRoomId(response.data.roomId)
+      }
+
+      // Thêm tin nhắn từ AI vào danh sách
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: botResponse,
+        text: response.data.homeLandFinestText,
         isUser: false,
         timestamp: new Date()
       }
       setAiMessages((prev) => [...prev, botMessage])
+    } catch (error) {
+      console.error('Error sending message to AI:', error)
+      // Hiển thị thông báo lỗi
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Xin lỗi, có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.',
+        isUser: false,
+        timestamp: new Date()
+      }
+      setAiMessages((prev) => [...prev, errorMessage])
+    } finally {
       setIsTyping(false)
-    }, 1000)
-  }
-
-  const generateBotResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase()
-    if (input.includes('sản phẩm'))
-      return 'Chúng tôi có rất nhiều sản phẩm nông sản chất lượng cao. Bạn quan tâm loại sản phẩm nào?'
-    if (input.includes('giá'))
-      return 'Giá sản phẩm rất cạnh tranh. Bạn có thể xem chi tiết tại trang sản phẩm hoặc hỏi trực tiếp người bán.'
-    if (input.includes('seller') || input.includes('người bán'))
-      return 'Bạn có thể chuyển sang tab "Tin nhắn" để chat trực tiếp với người bán nhé!'
-    return 'Cảm ơn bạn! Tôi có thể giúp bạn về sản phẩm, mua hàng, hoặc kết nối với người bán. Bạn cần gì?'
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -473,7 +501,12 @@ const ChatSystem: React.FC = () => {
                     <div className='flex-1 flex flex-col min-h-0'>
                       {/* Chat Header with Back Button */}
                       <div className='bg-white border-b p-3 flex items-center gap-3 flex-shrink-0'>
-                        <Button onClick={handleBackToList} variant='ghost' size='icon' className='h-8 w-8 flex-shrink-0'>
+                        <Button
+                          onClick={handleBackToList}
+                          variant='ghost'
+                          size='icon'
+                          className='h-8 w-8 flex-shrink-0'
+                        >
                           <ArrowLeft className='h-5 w-5' />
                         </Button>
                         <div className='h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-xl flex-shrink-0'>
