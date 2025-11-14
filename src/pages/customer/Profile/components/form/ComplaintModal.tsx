@@ -33,7 +33,7 @@ const ComplaintModal = ({
   onSubmit,
   isLoading = false
 }: ComplaintModalProps) => {
-  const [formType, setFormType] = useState<FormType>('ComplaintContent')
+  const [formType, setFormType] = useState<FormType>('ComplaintOrder')
   const [subject, setSubject] = useState('')
   const [description, setDescription] = useState('')
   const [images, setImages] = useState<File[]>([])
@@ -95,6 +95,16 @@ const ComplaintModal = ({
     onClose()
   }
 
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFormType('ComplaintContent')
+      setSubject('')
+      setDescription('')
+      setImages([])
+    }
+  }, [isOpen])
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
     setImages((prev: File[]) => [...prev, ...files])
@@ -102,14 +112,10 @@ const ComplaintModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className='max-w-md mx-auto'>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.3 }}
-        >
-          <DialogHeader>
+      <DialogContent className='max-w-3xl max-h-[90vh] flex flex-col p-0'>
+        <div className='flex flex-col h-full overflow-hidden'>
+          {/* Fixed Header */}
+          <DialogHeader className='px-6 pt-6 pb-4 border-b border-gray-200 flex-shrink-0'>
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -128,175 +134,183 @@ const ComplaintModal = ({
             </motion.div>
           </DialogHeader>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className='space-y-6'
-          >
-            {/* Order Info */}
+          {/* Scrollable Content */}
+          <div className='flex-1 overflow-y-auto px-6 py-4'>
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.3 }}
-              className='bg-gray-50 rounded-lg p-3'
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className='space-y-6'
             >
-              <p className='text-sm text-gray-600'>
-                <span className='font-medium'>Mã đơn hàng:</span> {orderId}
-              </p>
-              <p className='text-xs text-gray-500 mt-1'>Vui lòng mô tả chi tiết vấn đề bạn gặp phải với đơn hàng này</p>
-            </motion.div>
-
-            {/* Form Type Selection */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.4 }}
-            >
-              <Label className='text-sm font-medium text-gray-700 mb-2 block'>
-                Loại khiếu nại <span className='text-red-500'>*</span>
-              </Label>
-              <Select value={formType} onValueChange={(value: FormType) => setFormType(value)} disabled={isLoading}>
-                <SelectTrigger>
-                  <SelectValue placeholder='Chọn loại khiếu nại' />
-                </SelectTrigger>
-                <SelectContent>
-                  {formTypeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <motion.p
-                key={formType}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
-                className='text-xs text-gray-500 mt-1'
-              >
-                {getFormTypeDescription(formType)}
-              </motion.p>
-            </motion.div>
-
-            {/* Subject */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.5 }}
-            >
-              <Label className='text-sm font-medium text-gray-700 mb-2 block'>
-                Tiêu đề khiếu nại <span className='text-red-500'>*</span>
-              </Label>
-              <Input
-                placeholder='Ví dụ: Sản phẩm bị hỏng, không đúng mô tả...'
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                disabled={isLoading}
-              />
-            </motion.div>
-
-            {/* Description */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.6 }}
-            >
-              <Label className='text-sm font-medium text-gray-700 mb-2 block'>
-                Mô tả chi tiết <span className='text-red-500'>*</span>
-              </Label>
-              <Textarea
-                placeholder='Hãy mô tả chi tiết vấn đề bạn gặp phải...'
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className='min-h-[120px] resize-none'
-                disabled={isLoading}
-              />
-            </motion.div>
-
-            {/* Image Upload */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.7 }}
-            >
-              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Hình ảnh minh chứng (tùy chọn)</Label>
+              {/* Order Info */}
               <motion.div
-                whileHover={{ scale: 1.02, borderColor: '#10b981' }}
-                transition={{ duration: 0.2 }}
-                className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.3 }}
+                className='bg-gray-50 rounded-lg p-3'
               >
-                <input
-                  type='file'
-                  multiple
-                  accept='image/*'
-                  onChange={handleImageUpload}
-                  className='hidden'
-                  id='complaint-image-upload'
+                <p className='text-sm text-gray-600'>
+                  <span className='font-medium'>Mã đơn hàng:</span> {orderId}
+                </p>
+                <p className='text-xs text-gray-500 mt-1'>Vui lòng mô tả chi tiết vấn đề bạn gặp phải với đơn hàng này</p>
+              </motion.div>
+
+              {/* Form Type Selection */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.4 }}
+              >
+                <Label className='text-sm font-medium text-gray-700 mb-2 block'>
+                  Loại khiếu nại <span className='text-red-500'>*</span>
+                </Label>
+                <Select value={formType} onValueChange={(value: FormType) => setFormType(value)} disabled={isLoading}>
+                  <SelectTrigger>
+                    <SelectValue placeholder='Chọn loại khiếu nại' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <motion.p
+                  key={formType}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className='text-xs text-gray-500 mt-1'
+                >
+                  {getFormTypeDescription(formType)}
+                </motion.p>
+              </motion.div>
+
+              {/* Subject */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.5 }}
+              >
+                <Label className='text-sm font-medium text-gray-700 mb-2 block'>
+                  Tiêu đề khiếu nại <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  placeholder='Ví dụ: Sản phẩm bị hỏng, không đúng mô tả...'
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
                   disabled={isLoading}
                 />
-                <Label
-                  htmlFor='complaint-image-upload'
-                  className={`cursor-pointer ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Camera className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                  </motion.div>
-                  <span className='text-sm text-gray-600 block'>Thêm hình ảnh</span>
-                  <span className='text-xs text-gray-500 block mt-1'>Hình ảnh sẽ giúp chúng tôi hiểu rõ vấn đề hơn</span>
-                </Label>
               </motion.div>
-              <AnimatePresence>
-                {images.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.2 }}
-                    className='mt-2'
-                  >
-                    <p className='text-xs text-gray-600 mb-2'>Đã chọn {images.length} hình ảnh</p>
-                    <div className='grid grid-cols-3 gap-2'>
-                      {previewUrls.map((url, idx) => (
-                        <motion.div
-                          key={url}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className='relative'
-                        >
-                          <img
-                            src={url}
-                            alt={`complaint-image-${idx + 1}`}
-                            className='w-full h-20 object-cover rounded-md border'
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
 
-            {/* Action Buttons */}
+              {/* Description */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.6 }}
+              >
+                <Label className='text-sm font-medium text-gray-700 mb-2 block'>
+                  Mô tả chi tiết <span className='text-red-500'>*</span>
+                </Label>
+                <Textarea
+                  placeholder='Hãy mô tả chi tiết vấn đề bạn gặp phải...'
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className='min-h-[120px] resize-none'
+                  disabled={isLoading}
+                />
+              </motion.div>
+
+              {/* Image Upload */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.7 }}
+              >
+                <Label className='text-sm font-medium text-gray-700 mb-2 block'>Hình ảnh minh chứng (tùy chọn)</Label>
+                <motion.div
+                  whileHover={{ scale: 1.02, borderColor: '#10b981' }}
+                  transition={{ duration: 0.2 }}
+                  className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'
+                >
+                  <input
+                    type='file'
+                    multiple
+                    accept='image/*'
+                    onChange={handleImageUpload}
+                    className='hidden'
+                    id='complaint-image-upload'
+                    disabled={isLoading}
+                  />
+                  <Label
+                    htmlFor='complaint-image-upload'
+                    className={`cursor-pointer ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <motion.div whileHover={{ scale: 1.1, rotate: 5 }} transition={{ duration: 0.2 }}>
+                      <Camera className='w-8 h-8 text-gray-400 mx-auto mb-2' />
+                    </motion.div>
+                    <span className='text-sm text-gray-600 block'>Thêm hình ảnh</span>
+                    <span className='text-xs text-gray-500 block mt-1'>Hình ảnh sẽ giúp chúng tôi hiểu rõ vấn đề hơn</span>
+                  </Label>
+                </motion.div>
+                <AnimatePresence>
+                  {images.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.2 }}
+                      className='mt-2'
+                    >
+                      <p className='text-xs text-gray-600 mb-2'>Đã chọn {images.length} hình ảnh</p>
+                      <div className='grid grid-cols-3 gap-2'>
+                        {previewUrls.map((url, idx) => (
+                          <motion.div
+                            key={url}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className='relative'
+                          >
+                            <img
+                              src={url}
+                              alt={`complaint-image-${idx + 1}`}
+                              className='w-full h-20 object-cover rounded-md border'
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* Footer Note */}
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, delay: 0.9 }}
+                className='text-xs text-gray-500 text-center'
+              >
+                Chúng tôi sẽ xem xét khiếu nại của bạn và phản hồi trong vòng 24-48 giờ
+              </motion.p>
+            </motion.div>
+          </div>
+
+          {/* Fixed Footer */}
+          <div className='px-6 py-4 border-t border-gray-200 flex-shrink-0 bg-white'>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.8 }}
-              className='flex gap-3 pt-4'
+              className='flex gap-3'
             >
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className='flex-1'>
                 <Button variant='outline' onClick={handleCancel} className='w-full' disabled={isLoading}>
                   Hủy
                 </Button>
               </motion.div>
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className='flex-1'
-              >
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className='flex-1'>
                 <Button
                   onClick={handleSubmit}
                   disabled={!subject.trim() || !description.trim() || isLoading}
@@ -313,18 +327,8 @@ const ComplaintModal = ({
                 </Button>
               </motion.div>
             </motion.div>
-
-            {/* Footer Note */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3, delay: 0.9 }}
-              className='text-xs text-gray-500 text-center'
-            >
-              Chúng tôi sẽ xem xét khiếu nại của bạn và phản hồi trong vòng 24-48 giờ
-            </motion.p>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )
