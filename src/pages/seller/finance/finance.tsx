@@ -1345,135 +1345,146 @@ function FinanceManagement() {
 
       {/* Withdraw Money Modal */}
       <Dialog open={showWithdrawModal} onOpenChange={handleCloseWithdrawModal}>
-        <DialogContent className='max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Yêu cầu rút tiền</DialogTitle>
-            <DialogDescription>
-              {user?.roleName === 'Seller'
-                ? 'Nhập số tiền bạn muốn rút. Yêu cầu của bạn sẽ cần được duyệt trước khi chuyển tiền.'
-                : 'Nhập số tiền bạn muốn rút về tài khoản ngân hàng của bạn'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className='space-y-4 mt-4'>
-            {/* Bank Info Summary */}
-            <div className='bg-gray-50 p-4 rounded-lg border border-gray-200'>
-              <h4 className='text-sm font-semibold text-gray-900 mb-2'>Thông tin nhận tiền</h4>
-              <div className='space-y-1 text-sm text-gray-600'>
-                <div className='flex justify-between'>
-                  <span>Ngân hàng:</span>
-                  <span className='font-medium'>{userInfo?.toBin || 'Chưa cập nhật'}</span>
+        <DialogContent className='max-w-3xl max-h-[90vh] flex flex-col p-0'>
+          <div className='flex flex-col h-full overflow-hidden'>
+            {/* Fixed Header */}
+            <DialogHeader className='px-6 pt-6 pb-4 border-b border-gray-200 flex-shrink-0'>
+              <DialogTitle>Yêu cầu rút tiền</DialogTitle>
+              <DialogDescription>
+                {user?.roleName === 'Seller'
+                  ? 'Nhập số tiền bạn muốn rút. Yêu cầu của bạn sẽ cần được duyệt trước khi chuyển tiền.'
+                  : 'Nhập số tiền bạn muốn rút về tài khoản ngân hàng của bạn'}
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Scrollable Content */}
+            <div className='flex-1 overflow-y-auto px-6 py-4'>
+              <div className='space-y-4'>
+                {/* Bank Info Summary */}
+                <div className='bg-gray-50 p-4 rounded-lg border border-gray-200'>
+                  <h4 className='text-sm font-semibold text-gray-900 mb-2'>Thông tin nhận tiền</h4>
+                  <div className='space-y-1 text-sm text-gray-600'>
+                    <div className='flex justify-between'>
+                      <span>Ngân hàng:</span>
+                      <span className='font-medium'>{userInfo?.toBin || 'Chưa cập nhật'}</span>
+                    </div>
+                    <div className='flex justify-between'>
+                      <span>Số tài khoản:</span>
+                      <span className='font-medium'>{formatAccountNumber(userInfo?.bankAccount || null)}</span>
+                    </div>
+                    <div className='flex justify-between'>
+                      <span>Tên chủ tài khoản:</span>
+                      <span className='font-medium'>{getAccountHolderName()}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className='flex justify-between'>
-                  <span>Số tài khoản:</span>
-                  <span className='font-medium'>{formatAccountNumber(userInfo?.bankAccount || null)}</span>
+                {/* Available Balance */}
+                <div className='bg-green-50 p-4 rounded-lg border border-green-200'>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-sm font-medium text-gray-700'>Số dư khả dụng:</span>
+                    <span className='text-lg font-bold text-green-600'>
+                      {walletDataDisplay.availableBalance.toLocaleString()} ₫
+                    </span>
+                  </div>
                 </div>
-                <div className='flex justify-between'>
-                  <span>Tên chủ tài khoản:</span>
-                  <span className='font-medium'>{getAccountHolderName()}</span>
+                {/* Amount Input */}
+                <div>
+                  <label className='text-sm font-medium text-gray-700 mb-2 block'>Số tiền muốn rút (₫)</label>
+                  <Input
+                    type='number'
+                    placeholder='Nhập số tiền...'
+                    value={withdrawAmount}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+                        setWithdrawAmount(value)
+                      }
+                    }}
+                    className='w-full text-lg'
+                    min='50000'
+                    max={walletDataDisplay.availableBalance}
+                  />
+                  <p className='text-xs text-gray-500 mt-1'>
+                    Số tiền tối thiểu: 50,000 ₫ | Số tiền tối đa: {walletDataDisplay.availableBalance.toLocaleString()}{' '}
+                    ₫
+                  </p>
                 </div>
-              </div>
-            </div>
-            {/* Available Balance */}
-            <div className='bg-green-50 p-4 rounded-lg border border-green-200'>
-              <div className='flex justify-between items-center'>
-                <span className='text-sm font-medium text-gray-700'>Số dư khả dụng:</span>
-                <span className='text-lg font-bold text-green-600'>
-                  {walletDataDisplay.availableBalance.toLocaleString()} ₫
-                </span>
-              </div>
-            </div>
-            {/* Amount Input */}
-            <div>
-              <label className='text-sm font-medium text-gray-700 mb-2 block'>Số tiền muốn rút (₫)</label>
-              <Input
-                type='number'
-                placeholder='Nhập số tiền...'
-                value={withdrawAmount}
-                onChange={(e) => {
-                  const value = e.target.value
-                  if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
-                    setWithdrawAmount(value)
-                  }
-                }}
-                className='w-full text-lg'
-                min='50000'
-                max={walletDataDisplay.availableBalance}
-              />
-              <p className='text-xs text-gray-500 mt-1'>
-                Số tiền tối thiểu: 50,000 ₫ | Số tiền tối đa: {walletDataDisplay.availableBalance.toLocaleString()} ₫
-              </p>
-            </div>
-            {/* Quick Amount Buttons */}
-            <div>
-              <label className='text-sm font-medium text-gray-700 mb-2 block'>Chọn nhanh:</label>
-              <div className='grid grid-cols-3 gap-2'>
-                {[50000, 100000, 500000].map((amount) => (
+                {/* Quick Amount Buttons */}
+                <div>
+                  <label className='text-sm font-medium text-gray-700 mb-2 block'>Chọn nhanh:</label>
+                  <div className='grid grid-cols-3 gap-2'>
+                    {[50000, 100000, 500000].map((amount) => (
+                      <Button
+                        key={amount}
+                        variant='outline'
+                        onClick={() => setWithdrawAmount(amount.toString())}
+                        className='text-xs'
+                        disabled={amount > walletDataDisplay.availableBalance}
+                      >
+                        {amount.toLocaleString()} ₫
+                      </Button>
+                    ))}
+                  </div>
                   <Button
-                    key={amount}
                     variant='outline'
-                    onClick={() => setWithdrawAmount(amount.toString())}
-                    className='text-xs'
-                    disabled={amount > walletDataDisplay.availableBalance}
+                    onClick={() => setWithdrawAmount(walletDataDisplay.availableBalance.toString())}
+                    className='w-full mt-2 text-sm'
                   >
-                    {amount.toLocaleString()} ₫
+                    Rút toàn bộ
                   </Button>
-                ))}
-              </div>
-              <Button
-                variant='outline'
-                onClick={() => setWithdrawAmount(walletDataDisplay.availableBalance.toString())}
-                className='w-full mt-2 text-sm'
-              >
-                Rút toàn bộ
-              </Button>
-            </div>
-            {/* Withdraw Amount Preview */}
-            {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
-              <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
-                <div className='flex justify-between items-center'>
-                  <span className='text-sm font-medium text-gray-700'>Số tiền sẽ rút:</span>
-                  <span className='text-xl font-bold text-blue-600'>
-                    {parseFloat(withdrawAmount).toLocaleString()} ₫
-                  </span>
                 </div>
-              </div>
-            )}
-            {/* Info Notice */}
-            <div className='bg-gray-50 p-3 rounded-lg border border-gray-200'>
-              <div className='flex items-start gap-2'>
-                <Info className='w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0' />
-                <div className='text-xs text-gray-700'>
-                  {user?.roleName === 'Seller' ? (
-                    <>
-                      <strong>Lưu ý:</strong> Yêu cầu rút tiền của bạn cần được duyệt bởi quản trị viên trước khi số
-                      tiền được chuyển vào tài khoản ngân hàng. Thời gian xử lý: 3-5 ngày làm việc.
-                    </>
-                  ) : (
-                    <>
-                      <strong>Lưu ý:</strong> Số tiền sẽ được chuyển trực tiếp vào tài khoản ngân hàng của bạn. Thời
-                      gian xử lý: 1-2 ngày làm việc.
-                    </>
-                  )}
+                {/* Withdraw Amount Preview */}
+                {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+                  <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
+                    <div className='flex justify-between items-center'>
+                      <span className='text-sm font-medium text-gray-700'>Số tiền sẽ rút:</span>
+                      <span className='text-xl font-bold text-blue-600'>
+                        {parseFloat(withdrawAmount).toLocaleString()} ₫
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {/* Info Notice */}
+                <div className='bg-gray-50 p-3 rounded-lg border border-gray-200'>
+                  <div className='flex items-start gap-2'>
+                    <Info className='w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0' />
+                    <div className='text-xs text-gray-700'>
+                      {user?.roleName === 'Seller' ? (
+                        <>
+                          <strong>Lưu ý:</strong> Yêu cầu rút tiền của bạn cần được duyệt bởi quản trị viên trước khi số
+                          tiền được chuyển vào tài khoản ngân hàng. Thời gian xử lý: 3-5 ngày làm việc.
+                        </>
+                      ) : (
+                        <>
+                          <strong>Lưu ý:</strong> Số tiền sẽ được chuyển trực tiếp vào tài khoản ngân hàng của bạn. Thời
+                          gian xử lý: 1-2 ngày làm việc.
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            {/* Action Buttons */}
-            <div className='flex gap-3 pt-4'>
-              <Button
-                variant='outline'
-                onClick={handleCloseWithdrawModal}
-                className='flex-1'
-                disabled={submittingWithdraw}
-              >
-                Hủy
-              </Button>
-              <Button
-                onClick={handleSubmitWithdraw}
-                className='flex-1 bg-green-600 hover:bg-green-700'
-                disabled={submittingWithdraw || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
-              >
-                {submittingWithdraw ? 'Đang xử lý...' : 'Xác nhận rút tiền'}
-              </Button>
+
+            {/* Fixed Footer */}
+            <div className='px-6 py-4 border-t border-gray-200 flex-shrink-0 bg-white'>
+              <div className='flex gap-3'>
+                <Button
+                  variant='outline'
+                  onClick={handleCloseWithdrawModal}
+                  className='flex-1'
+                  disabled={submittingWithdraw}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleSubmitWithdraw}
+                  className='flex-1 bg-green-600 hover:bg-green-700'
+                  disabled={submittingWithdraw || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
+                >
+                  {submittingWithdraw ? 'Đang xử lý...' : 'Xác nhận rút tiền'}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
