@@ -13,7 +13,7 @@ import { purchaseOrder } from '../../../../../apis/transaction.api'
 import { formApi } from '../../../../../apis/form.api'
 import { path } from '../../../../../constants/path'
 import type { Order as APIOrder, OrderStatus } from '../../../../../types/orderType'
-import { toast } from 'react-toastify'
+import { toast } from '../../../../../utils/toast'
 import { useAuth } from '../../../../../contexts/auth.context'
 import type { CreateFormRequest, FormType } from '../../../../../types/form.type'
 
@@ -23,7 +23,7 @@ interface Order {
   id: string
   storeId: string
   date: string
-  originalStatus: OrderStatus // Lưu status gốc từ API
+  originalStatus: OrderStatus
   status:
   | 'Chưa xác nhận'
   | 'Chờ thanh toán'
@@ -38,7 +38,7 @@ interface Order {
   isFreeship?: boolean
   products: {
     id?: string
-    productInventoryId?: string // Add this field for navigation
+    productInventoryId?: string
     name: string
     image: string
     description?: string
@@ -92,7 +92,6 @@ interface OrdersContentProps {
 const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   const getUIStatus = (apiStatus: OrderStatus) => {
     switch (apiStatus) {
-      // Chưa xác nhận
       case 'NotYet':
         return {
           status: 'Chưa xác nhận' as const,
@@ -107,7 +106,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-yellow-50',
           statusText: 'Đang chờ xác nhận đơn hàng'
         }
-      // Chờ thanh toán
       case 'PendingPayment':
         return {
           status: 'Chờ thanh toán' as const,
@@ -115,7 +113,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-orange-50',
           statusText: 'Bạn đã khởi tạo thanh toán, vui lòng hoàn tất'
         }
-      // Đã xác nhận
       case 'Confirmed':
         return {
           status: 'Đã xác nhận' as const,
@@ -144,7 +141,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-green-50',
           statusText: 'Shipper đã lấy hàng'
         }
-      // Vận chuyển
       case 'Storing':
         return {
           status: 'Vận chuyển' as const,
@@ -173,7 +169,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-blue-50',
           statusText: 'Đang giao hàng'
         }
-      // Hoàn thành
       case 'Delivered':
         return {
           status: 'Hoàn thành' as const,
@@ -188,7 +183,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-green-50',
           statusText: 'Đã giao hàng thành công'
         }
-      // Trả hàng/Hoàn tiền
       case 'Returning':
         return {
           status: 'Trả hàng/Hoàn tiền' as const,
@@ -252,7 +246,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-orange-50',
           statusText: 'Đã phản hồi'
         }
-      // Đã hủy
       case 'Cancel':
         return {
           status: 'Đã hủy' as const,
@@ -275,7 +268,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   const products = [
     ...(apiOrder?.orderItems || []).map((item) => ({
       id: item?.id || '',
-      productInventoryId: item?.productVariantId || '', // Use productVariantId instead
+      productInventoryId: item?.productVariantId || '',
       name: item?.orderItemName || 'Sản phẩm không xác định',
       image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
       quantity: (item?.quantity || 0).toString(),
@@ -321,6 +314,12 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   const statusVal: OrderStatus = apiOrder?.status || 'NotYet'
   const isComplaintInProgress = statusVal === 'Complaining' || statusVal === 'Complained'
 
+  const isComplainedValue = apiOrder?.isComplained === true
+  const canComplainOrder =
+    (statusVal === 'Delivered' || statusVal === 'Paid') &&
+    !isComplaintInProgress &&
+    !isComplainedValue
+
   return {
     id: apiOrder?.id || '',
     storeId: apiOrder?.storeId || '',
@@ -333,8 +332,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     totalAmount: apiOrder?.finalPrice || 0,
     note: apiOrder?.note || '',
     canConfirmReceived: statusVal === 'Delivered' && !apiOrder?.isPayOut,
-    // Chỉ cho phép khiếu nại nếu đã giao xong và không ở trạng thái đã/đang khiếu nại và chưa có isComplained = true
-    canComplain: statusVal === 'Delivered' && !isComplaintInProgress && !apiOrder?.isComplained,
+    canComplain: canComplainOrder,
     canReturn: apiOrder?.status === 'Delivered',
     shippingInfo: {
       recipientName: apiOrder?.toName || '',
@@ -377,9 +375,9 @@ export default function OrdersContent({
   )
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('')
-  const [confirmingOrderId, setConfirmingOrderId] = useState<string>('') // Thêm state để track loading
-  const [processingPaymentOrderId, setProcessingPaymentOrderId] = useState<string>('') // State để track payment loading
-  const [submittingComplaintOrderId, setSubmittingComplaintOrderId] = useState<string>('') // State để track complaint loading
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string>('')
+  const [processingPaymentOrderId, setProcessingPaymentOrderId] = useState<string>('')
+  const [submittingComplaintOrderId, setSubmittingComplaintOrderId] = useState<string>('')
   const ordersPerPage = 3
 
   const orders: Order[] = useMemo(() => {
@@ -394,7 +392,6 @@ export default function OrdersContent({
     }
   }, [apiOrders])
 
-  // Map các status API vào các tab
   const getStatusesForTab = (tabKey: string): OrderStatus[] => {
     switch (tabKey) {
       case 'Chưa xác nhận':
@@ -436,9 +433,8 @@ export default function OrdersContent({
   const handleFilterChange = (filterKey: string) => {
     setSelectedFilter(filterKey)
     setCurrentPage(1)
-    // Không gọi onFilterByStatus nữa vì sẽ get all và filter ở frontend
     if (onFilterByStatus) {
-      onFilterByStatus('') // Gửi empty để get all
+      onFilterByStatus('')
     }
   }
 
@@ -457,7 +453,7 @@ export default function OrdersContent({
       onRefreshOrders()
     } catch (error) {
       console.error('Lỗi khi xác nhận đã nhận hàng:', error)
-      alert('Có lỗi xảy ra khi xác nhận đã nhận hàng. Vui lòng thử lại.')
+      toast.error('Có lỗi xảy ra khi xác nhận đã nhận hàng. Vui lòng thử lại.')
     } finally {
       setConfirmingOrderId('')
     }
@@ -506,11 +502,10 @@ export default function OrdersContent({
       toast.error(errorMessage)
       return false
     } finally {
-      setProcessingPaymentOrderId('') // Kết thúc loading
+      setProcessingPaymentOrderId('')
     }
   }
 
-  // Handle complaint for delivered orders
   const handleComplaint = async (
     orderId: string,
     storeId: string,
@@ -537,8 +532,9 @@ export default function OrdersContent({
 
       await formApi.createForm(formData)
 
-      toast.success('Gửi khiếu nại thành công! Chúng tôi sẽ xem xét và phản hồi sớm nhất.')
       setShowComplaintModal(false)
+      toast.success('Gửi khiếu nại thành công! Chúng tôi sẽ xem xét và phản hồi sớm nhất.')
+      onRefreshOrders()
     } catch (error) {
       console.error('Error submitting complaint:', error)
       toast.error('Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.')
@@ -742,7 +738,6 @@ export default function OrdersContent({
                 <span className='text-lg font-semibold text-gray-900'>{order.total}</span>
               </div>
 
-              {/* Action Buttons */}
               <div className='flex gap-2 pt-4 flex-wrap'>
                 {(order.originalStatus === 'NotYet' ||
                   order.originalStatus === 'Processing' ||
@@ -794,7 +789,7 @@ export default function OrdersContent({
                     )}
                   </Button>
                 )}
-                {order.originalStatus === 'Delivered' && (
+                {(order.originalStatus === 'Delivered' || order.originalStatus === 'Paid') && (
                   <>
                     <Button
                       variant='outline'

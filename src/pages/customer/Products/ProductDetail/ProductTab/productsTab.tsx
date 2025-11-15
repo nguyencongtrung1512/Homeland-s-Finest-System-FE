@@ -30,9 +30,7 @@ export const ProductTabs: React.FC = () => {
       productCertificateApi
         .getByProductId(product.id)
         .then((response: any) => {
-          console.log('response certificates', response.data)
           if (response.status === 200 && response.data) {
-            console.log('response certificatesádfsdf', response.data)
             setCertificates(response.data)
           } else {
             setCertificates([])
@@ -108,7 +106,7 @@ export const ProductTabs: React.FC = () => {
           ) : (
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
               {certificates
-                ?.filter((cert) => cert.status === 'Active')
+                ?.filter((cert) => cert.status === 'Approved')
                 .map((certificate) => (
                   <div key={certificate.id} className='border border-gray-200 rounded-lg overflow-hidden'>
                     <img

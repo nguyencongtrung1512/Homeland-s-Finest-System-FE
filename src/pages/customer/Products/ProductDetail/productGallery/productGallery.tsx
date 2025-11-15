@@ -685,12 +685,12 @@ function ProductGallery() {
               </div>
 
               {/* Product Description */}
-              {product.description && (
+              {/* {product.description && (
                 <div className='bg-gray-50 p-5 rounded mt-6'>
                   <h3 className='text-base font-medium text-gray-900 mb-2'>Chi tiết sản phẩm</h3>
                   <p className='text-gray-700 text-sm leading-relaxed whitespace-pre-wrap'>{product.description}</p>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
 

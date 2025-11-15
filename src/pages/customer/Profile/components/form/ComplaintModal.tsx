@@ -48,18 +48,18 @@ const ComplaintModal = ({
   }, [images])
 
   const formTypeOptions = [
-    { value: 'ComplaintContent' as FormType, label: 'Khiếu nại nội dung' },
     { value: 'ComplaintOrder' as FormType, label: 'Khiếu nại đơn hàng' },
+    { value: 'ComplaintContent' as FormType, label: 'Khiếu nại nội dung' },
     { value: 'SupportRefundMoney' as FormType, label: 'Hỗ trợ hoàn tiền' },
     { value: 'ReportSeller' as FormType, label: 'Báo cáo người bán' }
   ]
 
   const getFormTypeDescription = (type: FormType) => {
     switch (type) {
-      case 'ComplaintContent':
-        return 'Khiếu nại về chất lượng sản phẩm, dịch vụ hoặc nội dung'
       case 'ComplaintOrder':
         return 'Khiếu nại liên quan trực tiếp đến đơn hàng (giao nhận, thiếu/hư hỏng)'
+      case 'ComplaintContent':
+        return 'Khiếu nại về chất lượng sản phẩm, dịch vụ hoặc nội dung'
       case 'SupportRefundMoney':
         return 'Yêu cầu hoàn tiền cho đơn hàng'
       case 'ReportSeller':
@@ -88,7 +88,7 @@ const ComplaintModal = ({
   }
 
   const handleCancel = () => {
-    setFormType('ComplaintContent')
+    setFormType('ComplaintOrder')
     setSubject('')
     setDescription('')
     setImages([])
@@ -98,7 +98,7 @@ const ComplaintModal = ({
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setFormType('ComplaintContent')
+      setFormType('ComplaintOrder')
       setSubject('')
       setDescription('')
       setImages([])
@@ -152,7 +152,9 @@ const ComplaintModal = ({
                 <p className='text-sm text-gray-600'>
                   <span className='font-medium'>Mã đơn hàng:</span> {orderId}
                 </p>
-                <p className='text-xs text-gray-500 mt-1'>Vui lòng mô tả chi tiết vấn đề bạn gặp phải với đơn hàng này</p>
+                <p className='text-xs text-gray-500 mt-1'>
+                  Vui lòng mô tả chi tiết vấn đề bạn gặp phải với đơn hàng này
+                </p>
               </motion.div>
 
               {/* Form Type Selection */}
@@ -251,7 +253,9 @@ const ComplaintModal = ({
                       <Camera className='w-8 h-8 text-gray-400 mx-auto mb-2' />
                     </motion.div>
                     <span className='text-sm text-gray-600 block'>Thêm hình ảnh</span>
-                    <span className='text-xs text-gray-500 block mt-1'>Hình ảnh sẽ giúp chúng tôi hiểu rõ vấn đề hơn</span>
+                    <span className='text-xs text-gray-500 block mt-1'>
+                      Hình ảnh sẽ giúp chúng tôi hiểu rõ vấn đề hơn
+                    </span>
                   </Label>
                 </motion.div>
                 <AnimatePresence>
@@ -266,12 +270,7 @@ const ComplaintModal = ({
                       <p className='text-xs text-gray-600 mb-2'>Đã chọn {images.length} hình ảnh</p>
                       <div className='grid grid-cols-3 gap-2'>
                         {previewUrls.map((url, idx) => (
-                          <motion.div
-                            key={url}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className='relative'
-                          >
+                          <motion.div key={url} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className='relative'>
                             <img
                               src={url}
                               alt={`complaint-image-${idx + 1}`}
