@@ -121,9 +121,23 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       toast.success('Đã thêm sản phẩm vào giỏ hàng!')
     } catch (error: unknown) {
       console.error('Error adding to cart:', error)
-      const errorMessage =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Có lỗi xảy ra khi thêm vào giỏ hàng'
+      // Axios interceptor returns error.response.data directly, so error has structure: { status, data, message }
+      let errorMessage = 'Có lỗi xảy ra khi thêm vào giỏ hàng'
+
+      if (error && typeof error === 'object') {
+        // Try to get message from error object (from axios interceptor)
+        if ('message' in error && typeof error.message === 'string') {
+          errorMessage = error.message
+        }
+        // Fallback: try nested structure (in case interceptor didn't transform)
+        else if ('response' in error && error.response && typeof error.response === 'object') {
+          const response = error.response as { data?: { message?: string } }
+          if (response.data?.message) {
+            errorMessage = response.data.message
+          }
+        }
+      }
+
       toast.error(errorMessage)
     }
   }
