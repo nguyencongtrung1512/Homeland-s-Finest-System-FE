@@ -291,8 +291,15 @@ function ManagerComboAdmin() {
             <tbody className='bg-white divide-y divide-gray-200'>
               {currentData.length > 0 ? (
                 currentData.map((combo) => {
-                  const storeNames = (combo.comboItems || []).map((item) => item.storeName)
-                  const uniqueStoreNames = [...new Set(storeNames)]
+                  // Ưu tiên dùng storeName trực tiếp từ combo object (backend trả về)
+                  // Nếu không có, thì lấy từ comboItems
+                  let displayStoreName = combo.storeName || ''
+                  
+                  if (!displayStoreName && combo.comboItems && combo.comboItems.length > 0) {
+                    const storeNames = combo.comboItems.map((item) => item.storeName).filter(Boolean)
+                    const uniqueStoreNames = [...new Set(storeNames)]
+                    displayStoreName = uniqueStoreNames.join(', ')
+                  }
 
                   return (
                     <tr key={combo.id} className='hover:bg-gray-50'>
@@ -307,7 +314,7 @@ function ManagerComboAdmin() {
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap'>
                         <div className='text-sm text-gray-900 max-w-[200px] truncate'>
-                          {uniqueStoreNames.join(', ')}
+                          {displayStoreName || '-'}
                         </div>
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>

@@ -17,6 +17,12 @@ export interface SystemStorageResponse {
   data: SystemStorageItem[]
 }
 
+// Interface cho PagedResult từ BE
+export interface PagedSystemStorageResult {
+  items: SystemStorageItem[]
+  totalItems: number
+}
+
 // Interface cho pagination parameters
 export interface SystemStorageParams {
   pageSize?: number
