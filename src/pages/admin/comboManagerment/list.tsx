@@ -79,7 +79,7 @@ function ManagerComboAdmin() {
       }
 
       const combos = await adminApi.getAllCombos(params)
-      setData(combos)
+      setData([...combos])
     } catch (error) {
       console.error('Error fetching combos:', error)
     } finally {
