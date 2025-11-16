@@ -54,7 +54,11 @@ function SystemStorage() {
     description: '',
     value: ''
   })
-
+  const [formErrors, setFormErrors] = useState({
+    name: '',
+    description: '',
+    value: ''
+  })
   // Fetch data function
   const fetchSystemStorage = useCallback(async () => {
     try {
@@ -98,10 +102,75 @@ function SystemStorage() {
     setIsDetailModalOpen(true)
   }
 
+  // Validation function
+  const validateForm = () => {
+    const errors = {
+      name: '',
+      description: '',
+      value: ''
+    }
+    let isValid = true
+
+    // Validate name (minimum 20 characters)
+    const trimmedName = formData.name.trim()
+    if (!trimmedName) {
+      errors.name = 'Tên không được để trống'
+      isValid = false
+    } else if (trimmedName.length < 20) {
+      errors.name = `Tên phải có ít nhất 20 ký tự (hiện tại: ${trimmedName.length} ký tự)`
+      isValid = false
+    } else if (trimmedName.length > 100) {
+      errors.name = 'Tên không được vượt quá 100 ký tự'
+      isValid = false
+    }
+
+    // Validate description (minimum 20 characters)
+    const trimmedDescription = formData.description.trim()
+    if (!trimmedDescription) {
+      errors.description = 'Mô tả không được để trống'
+      isValid = false
+    } else if (trimmedDescription.length < 20) {
+      errors.description = `Mô tả phải có ít nhất 20 ký tự (hiện tại: ${trimmedDescription.length} ký tự)`
+      isValid = false
+    } else if (trimmedDescription.length > 500) {
+      errors.description = 'Mô tả không được vượt quá 500 ký tự'
+      isValid = false
+    }
+
+    // Validate value (must be >= 0)
+    const trimmedValue = formData.value.trim()
+    if (!trimmedValue) {
+      errors.value = 'Giá trị không được để trống'
+      isValid = false
+    } else {
+      // Check if it's a valid number (allows decimals)
+      if (!/^-?\d*\.?\d+$/.test(trimmedValue)) {
+        errors.value = 'Giá trị phải là một số hợp lệ'
+        isValid = false
+      } else {
+        const numValue = Number(trimmedValue)
+        if (isNaN(numValue)) {
+          errors.value = 'Giá trị phải là một số hợp lệ'
+          isValid = false
+        } else if (numValue < 0) {
+          errors.value = 'Giá trị không được nhỏ hơn 0'
+          isValid = false
+        } else if (!Number.isFinite(numValue)) {
+          errors.value = 'Giá trị phải là một số hữu hạn'
+          isValid = false
+        }
+      }
+    }
+
+    setFormErrors(errors)
+    return isValid
+  }
+
   // Handle create new
   const handleCreateNew = () => {
     setEditingItem(null)
     setFormData({ name: '', description: '', value: '' })
+    setFormErrors({ name: '', description: '', value: '' })
     setIsModalOpen(true)
   }
 
@@ -113,6 +182,7 @@ function SystemStorage() {
       description: item.description,
       value: item.value
     })
+    setFormErrors({ name: '', description: '', value: '' })
     setIsModalOpen(true)
   }
 
@@ -124,8 +194,9 @@ function SystemStorage() {
 
   // Handle form submit
   const handleFormSubmit = async () => {
-    if (!formData.name.trim() || !formData.description.trim() || !formData.value.trim()) {
-      toast.error('Vui lòng điền đầy đủ thông tin')
+    // Validate form
+    if (!validateForm()) {
+      toast.error('Vui lòng kiểm tra lại thông tin đã nhập')
       return
     }
 
@@ -144,6 +215,7 @@ function SystemStorage() {
 
       setIsModalOpen(false)
       setFormData({ name: '', description: '', value: '' })
+      setFormErrors({ name: '', description: '', value: '' })
       setEditingItem(null)
       fetchSystemStorage() // Refresh data
     } catch (err: unknown) {
@@ -178,6 +250,7 @@ function SystemStorage() {
     setIsModalOpen(false)
     setEditingItem(null)
     setFormData({ name: '', description: '', value: '' })
+    setFormErrors({ name: '', description: '', value: '' })
   }
 
   // Handle detail modal close
@@ -336,10 +409,23 @@ function SystemStorage() {
               <Input
                 id='name'
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className='border-blue-300 focus:border-blue-500 focus:ring-blue-500'
-                placeholder='Nhập tên...'
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value })
+                  if (formErrors.name) {
+                    setFormErrors({ ...formErrors, name: '' })
+                  }
+                }}
+                className={`border-blue-300 focus:border-blue-500 focus:ring-blue-500 ${
+                  formErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                }`}
+                placeholder='Nhập tên (tối thiểu 20 ký tự)...'
               />
+              {formErrors.name && (
+                <p className='text-red-600 text-sm mt-2 flex items-center gap-1'>
+                  <span className='text-red-500'>•</span>
+                  {formErrors.name}
+                </p>
+              )}
             </div>
 
             {/* Mô tả */}
@@ -353,11 +439,24 @@ function SystemStorage() {
               <Textarea
                 id='description'
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className='border-blue-300 focus:border-blue-500 focus:ring-blue-500'
-                placeholder='Nhập mô tả...'
+                onChange={(e) => {
+                  setFormData({ ...formData, description: e.target.value })
+                  if (formErrors.description) {
+                    setFormErrors({ ...formErrors, description: '' })
+                  }
+                }}
+                className={`border-blue-300 focus:border-blue-500 focus:ring-blue-500 ${
+                  formErrors.description ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                }`}
+                placeholder='Nhập mô tả (tối thiểu 20 ký tự)...'
                 rows={3}
               />
+              {formErrors.description && (
+                <p className='text-red-600 text-sm mt-2 flex items-center gap-1'>
+                  <span className='text-red-500'>•</span>
+                  {formErrors.description}
+                </p>
+              )}
             </div>
 
             {/* Giá trị */}
@@ -370,11 +469,26 @@ function SystemStorage() {
               </div>
               <Input
                 id='value'
+                type='number'
                 value={formData.value}
-                onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                className='border-blue-300 focus:border-blue-500 focus:ring-blue-500'
-                placeholder='Nhập giá trị...'
+                onChange={(e) => {
+                  setFormData({ ...formData, value: e.target.value })
+                  if (formErrors.value) {
+                    setFormErrors({ ...formErrors, value: '' })
+                  }
+                }}
+                className={`border-blue-300 focus:border-blue-500 focus:ring-blue-500 ${
+                  formErrors.value ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                }`}
+                placeholder='Nhập giá trị (>= 0)...'
+                min='0'
               />
+              {formErrors.value && (
+                <p className='text-red-600 text-sm mt-2 flex items-center gap-1'>
+                  <span className='text-red-500'>•</span>
+                  {formErrors.value}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter className='bg-blue-50/50 rounded-lg p-4 border-t border-blue-200'>
