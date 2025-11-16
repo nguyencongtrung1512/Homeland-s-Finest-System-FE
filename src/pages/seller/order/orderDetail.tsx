@@ -293,14 +293,13 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
     return new Intl.NumberFormat('vi-VN').format(price) + 'đ'
   }
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+  const getPaymentTypeText = (paymentType: string) => {
+    const paymentTypeMap: Record<string, string> = {
+      COD: 'Thanh toán khi nhận hàng',
+      Wallet: 'Thanh toán bằng ví',
+      Banking: 'Thanh toán bằng thẻ ngân hàng'
+    }
+    return paymentTypeMap[paymentType] || paymentType
   }
 
   // Group combo items
@@ -544,12 +543,8 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                   <div className='space-y-1'>
                     <p className='text-xs text-gray-600'>Số thẻ</p>
                     <p className='font-medium text-gray-900 text-sm'>{order.fromPhone || '040324231'}</p>
-                    <p className='text-xs text-gray-600 mt-2'>Ngân hàng</p>
-                    <p className='font-medium text-gray-900 text-sm'>
-                      {order.paymentType === 'COD' ? 'Thanh toán khi nhận' : order.paymentType}
-                    </p>
-                    <p className='text-xs text-gray-600 mt-2'>Thời gian thanh toán</p>
-                    <p className='font-medium text-gray-900 text-sm'>10:00 Am</p>
+                    <p className='text-xs text-gray-600 mt-2'>Phương thức thanh toán</p>
+                    <p className='font-medium text-gray-900 text-sm'>{getPaymentTypeText(order.paymentType)}</p>
                   </div>
                 </div>
               </div>
@@ -593,7 +588,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                               <p className={`font-medium text-sm ${isCurrent ? 'text-gray-900' : 'text-gray-600'}`}>
                                 {history.description}
                               </p>
-                              <p className='text-xs text-gray-500'>{formatDateTime(history.time)}</p>
+                              <p className='text-xs text-gray-500'>{(history.time)}</p>
                             </div>
                           </div>
                         )

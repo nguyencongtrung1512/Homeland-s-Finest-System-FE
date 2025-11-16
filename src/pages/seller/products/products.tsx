@@ -47,9 +47,6 @@ function ProductsSeller() {
         status: ''
       })
 
-      console.log('response.data', response.data)
-      console.log('API Response:', response)
-
       if (response.status === 200) {
         setProducts(response.data)
         setPagination(response.pagination)
@@ -97,7 +94,7 @@ function ProductsSeller() {
     try {
       setIsDeleting(true)
       const response = await productApi.delete(productToDelete.id)
-      
+
       if (response && (response.status === 200 || response.status === 202)) {
         toast.success(response?.message || 'Xóa sản phẩm thành công')
         setShowDeleteDialog(false)
@@ -215,7 +212,7 @@ function ProductsSeller() {
                   return (
                     <tr key={product.id} className='border-b hover:bg-gray-50'>
                       <td className='py-3 px-4 text-gray-900'>{product.name}</td>
-                      <td className='py-3 px-4 text-gray-900'>{product.description}</td>
+                      <td className='py-3 px-4 text-gray-900 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap'>{product.description}</td>
                       <td className='py-3 px-4'>
                         <Badge variant={statusInfo.variant} className={statusInfo.className}>
                           {statusInfo.text}

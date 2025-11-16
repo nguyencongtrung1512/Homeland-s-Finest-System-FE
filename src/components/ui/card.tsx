@@ -6,18 +6,34 @@ function Card({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot='card'
-      className={cn('bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm', className)}
+      className={cn(
+        'bg-card text-card-foreground flex flex-col gap-6 rounded-xl border pb-6 shadow-sm overflow-hidden',
+        className
+      )}
       {...props}
     />
   )
 }
 
 function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
+  // Check if className contains border-t-2 to add negative margin
+  let needsMarginAdjustment = false
+  if (className) {
+    if (typeof className === 'string') {
+      needsMarginAdjustment = className.includes('border-t-2')
+    } else if (Array.isArray(className)) {
+      needsMarginAdjustment = (className as unknown[]).some(
+        (cls) => typeof cls === 'string' && cls.includes('border-t-2')
+      )
+    }
+  }
+
   return (
     <div
       data-slot='card-header'
       className={cn(
-        '@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6',
+        '@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 py-2 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6',
+        needsMarginAdjustment && '-mt-[1px]',
         className
       )}
       {...props}

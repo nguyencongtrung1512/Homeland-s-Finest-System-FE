@@ -66,7 +66,6 @@ export interface ProductCreateFormData {
   parentId?: string | null // Required if ProductType = ProductDetail, must be null if ProductMaster
   name: string
   categoryId?: string // Single category ID - NOT array
-  provinceId: string | number
   description?: string
   material?: string
   productImages?: File[]
@@ -111,10 +110,6 @@ export const productApi = {
       formData.append('CategoryId', data.categoryId)
     }
 
-    if (data.provinceId !== undefined) {
-      formData.append('ProvinceId', data.provinceId.toString())
-    }
-
     if (data.description) {
       formData.append('Description', data.description)
     }
@@ -156,10 +151,6 @@ export const productApi = {
 
     if (data.categoryId) {
       formData.append('CategoryId', data.categoryId)
-    }
-
-    if (data.provinceId !== undefined) {
-      formData.append('ProvinceId', data.provinceId.toString())
     }
 
     if (data.description) {

@@ -2,10 +2,9 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../../../components/ui/button'
 import { Badge } from '../../../../../components/ui/badge'
-import ReportModal from '../ReportModal'
 import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
-import ReviewModal from '../ReviewModal'
+import ReviewModal from './ReviewModal'
 import ComplaintModal from '../form/ComplaintModal'
 import ViewComplaintModal from '../form/ViewComplaintModal'
 import { confirmOrderReceived } from '../../../../../apis/order.api'
@@ -25,7 +24,7 @@ interface Order {
   date: string
   originalStatus: OrderStatus
   status:
-  | 'Chưa xác nhận'
+  | 'Chờ xác nhận'
   | 'Chờ thanh toán'
   | 'Đã xác nhận'
   | 'Vận chuyển'
@@ -101,7 +100,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
         }
       case 'Processing':
         return {
-          status: 'Chưa xác nhận' as const,
+          status: 'Chờ xác nhận' as const,
           statusColor: 'text-yellow-700',
           statusBgColor: 'bg-yellow-50',
           statusText: 'Đang chờ xác nhận đơn hàng'
@@ -364,15 +363,14 @@ export default function OrdersContent({
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
-  const [showReportModal, setShowReportModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showComplaintModal, setShowComplaintModal] = useState(false)
   const [showViewComplaintModal, setShowViewComplaintModal] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<{ name: string; image: string; category?: string } | null>(
-    null
-  )
+  const [selectedProducts, setSelectedProducts] = useState<
+    { id?: string; name: string; image: string; category?: string }[]
+  >([])
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('')
   const [confirmingOrderId, setConfirmingOrderId] = useState<string>('')
@@ -543,11 +541,6 @@ export default function OrdersContent({
     }
   }
 
-  const handleCloseReportModal = () => {
-    setShowReportModal(false)
-    setSelectedProduct(null)
-  }
-
   const handleOpenCancelModal = (orderId: string) => {
     setSelectedOrderId(orderId)
     const targetOrder = apiOrders?.find((item) => item.id === orderId)
@@ -572,14 +565,14 @@ export default function OrdersContent({
     setSelectedOrderId('')
   }
 
-  const handleOpenReviewModal = (product: { name: string; image: string; category?: string }) => {
-    setSelectedProduct(product)
+  const handleOpenReviewModal = (orderProducts: { id?: string; name: string; image: string; category?: string }[]) => {
+    setSelectedProducts(orderProducts)
     setShowReviewModal(true)
   }
 
   const handleCloseReviewModal = () => {
     setShowReviewModal(false)
-    setSelectedProduct(null)
+    setSelectedProducts([])
   }
 
   const handleOpenComplaintModal = (orderId: string) => {
@@ -740,7 +733,6 @@ export default function OrdersContent({
 
               <div className='flex gap-2 pt-4 flex-wrap'>
                 {(order.originalStatus === 'NotYet' ||
-                  order.originalStatus === 'Processing' ||
                   order.originalStatus === 'PendingPayment') && (
                     <Button
                       size='sm'
@@ -795,10 +787,14 @@ export default function OrdersContent({
                       variant='outline'
                       size='sm'
                       onClick={() =>
-                        handleOpenReviewModal({
-                          name: order.products[0]?.name || '',
-                          image: order.products[0]?.image || DEFAULT_PRODUCT_IMAGE
-                        })
+                        handleOpenReviewModal(
+                          order.products.map((p) => ({
+                            id: p.id,
+                            name: p.name,
+                            image: p.image || DEFAULT_PRODUCT_IMAGE,
+                            category: undefined
+                          }))
+                        )
                       }
                       className='text-green-600 border-green-600 hover:bg-green-50'
                     >
@@ -907,9 +903,6 @@ export default function OrdersContent({
         </div>
       )}
 
-      {selectedProduct && (
-        <ReportModal isOpen={showReportModal} onClose={handleCloseReportModal} product={selectedProduct} />
-      )}
 
       <CancelOrderModal
         isOpen={showCancelModal}
@@ -923,7 +916,13 @@ export default function OrdersContent({
 
       <OrderDetailModal isOpen={showOrderDetailModal} onClose={handleCloseOrderDetailModal} orderId={selectedOrderId} />
 
-      <ReviewModal isOpen={showReviewModal} onClose={handleCloseReviewModal} product={selectedProduct} />
+      <ReviewModal
+        isOpen={showReviewModal}
+        onClose={handleCloseReviewModal}
+        products={selectedProducts}
+        userId={user?.userId || ''}
+        onReviewSubmitted={onRefreshOrders}
+      />
 
       <ComplaintModal
         isOpen={showComplaintModal}

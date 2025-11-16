@@ -493,19 +493,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
               {materialError && <p className='mt-1 text-sm text-red-500'>{materialError}</p>}
             </div>
 
-            {/* Province ID */}
-            <div>
-              <Label htmlFor='update-province' className='text-sm font-medium'>
-                Province ID <span className='text-red-500'>*</span>
-              </Label>
-              <Input
-                id='update-province'
-                type='number'
-                value={provinceId || ''}
-                disabled
-                className='mt-1 bg-gray-100'
-              />
-            </div>
+
 
             {/* Category Selection */}
             <div>
