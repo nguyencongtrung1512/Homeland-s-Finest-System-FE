@@ -45,6 +45,8 @@ function ListCategory() {
     description: '',
     isActive: true
   })
+  const [nameError, setNameError] = useState('')
+  const [descriptionError, setDescriptionError] = useState('')
 
   // Fetch data function
   const fetchProductCategory = useCallback(async () => {
@@ -90,6 +92,8 @@ function ListCategory() {
   const handleCreateNew = () => {
     setEditingItem(null)
     setFormData({ name: '', description: '', isActive: true })
+    setNameError('')
+    setDescriptionError('')
     setIsModalOpen(true)
   }
 
@@ -101,13 +105,40 @@ function ListCategory() {
       description: item.description,
       isActive: item.isActive
     })
+    setNameError('')
+    setDescriptionError('')
     setIsModalOpen(true)
   }
 
   // Handle form submit
   const handleFormSubmit = async () => {
+    // Reset errors
+    setNameError('')
+    setDescriptionError('')
+
+    // Validate required fields
     if (!formData.name.trim() || !formData.description.trim()) {
       toast.error('Vui lòng điền đầy đủ thông tin')
+      if (!formData.name.trim()) {
+        setNameError('Tên danh mục là bắt buộc')
+      }
+      if (!formData.description.trim()) {
+        setDescriptionError('Mô tả là bắt buộc')
+      }
+      return
+    }
+
+    // Validate name length (max 10 characters)
+    if (formData.name.length > 10) {
+      setNameError(`Tên danh mục không được vượt quá 10 ký tự (${formData.name.length}/10 ký tự)`)
+      toast.error(`Tên danh mục không được vượt quá 10 ký tự`)
+      return
+    }
+
+    // Validate description length (max 20 characters)
+    if (formData.description.length > 20) {
+      setDescriptionError(`Mô tả không được vượt quá 20 ký tự (${formData.description.length}/20 ký tự)`)
+      toast.error(`Mô tả không được vượt quá 20 ký tự`)
       return
     }
 
@@ -127,6 +158,8 @@ function ListCategory() {
       setIsModalOpen(false)
       setFormData({ name: '', description: '', isActive: true })
       setEditingItem(null)
+      setNameError('')
+      setDescriptionError('')
       fetchProductCategory() // Refresh data
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra'
@@ -141,6 +174,8 @@ function ListCategory() {
     setIsModalOpen(false)
     setEditingItem(null)
     setFormData({ name: '', description: '', isActive: true })
+    setNameError('')
+    setDescriptionError('')
   }
 
   // Handle detail modal close
@@ -317,10 +352,28 @@ function ListCategory() {
               <Input
                 id='name'
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className='border-green-300 focus:border-green-500 focus:ring-green-500'
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value })
+                  if (e.target.value.length > 10) {
+                    setNameError(`Tên danh mục không được vượt quá 10 ký tự (${e.target.value.length}/10 ký tự)`)
+                  } else {
+                    setNameError('')
+                  }
+                }}
+                className={`border-green-300 focus:border-green-500 focus:ring-green-500 ${
+                  nameError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                }`}
                 placeholder='Nhập tên danh mục...'
+                maxLength={10}
               />
+              <div className='mt-2 flex items-center justify-between'>
+                <span className={`text-xs ${nameError ? 'text-red-500' : 'text-gray-500'}`}>
+                  {nameError 
+                    ? `Tên danh mục không được vượt quá 10 ký tự (${formData.name.length}/10 ký tự)`
+                    : `Số ký tự: ${formData.name.length}/10`
+                  }
+                </span>
+              </div>
             </div>
 
             {/* Mô tả */}
@@ -334,11 +387,29 @@ function ListCategory() {
               <Textarea
                 id='description'
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className='border-green-300 focus:border-green-500 focus:ring-green-500'
+                onChange={(e) => {
+                  setFormData({ ...formData, description: e.target.value })
+                  if (e.target.value.length > 20) {
+                    setDescriptionError(`Mô tả không được vượt quá 20 ký tự (${e.target.value.length}/20 ký tự)`)
+                  } else {
+                    setDescriptionError('')
+                  }
+                }}
+                className={`border-green-300 focus:border-green-500 focus:ring-green-500 ${
+                  descriptionError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                }`}
                 placeholder='Nhập mô tả danh mục...'
                 rows={3}
+                maxLength={20}
               />
+              <div className='mt-2 flex items-center justify-between'>
+                <span className={`text-xs ${descriptionError ? 'text-red-500' : 'text-gray-500'}`}>
+                  {descriptionError 
+                    ? `Mô tả không được vượt quá 20 ký tự (${formData.description.length}/20 ký tự)`
+                    : `Số ký tự: ${formData.description.length}/20`
+                  }
+                </span>
+              </div>
             </div>
 
             {/* Trạng thái */}

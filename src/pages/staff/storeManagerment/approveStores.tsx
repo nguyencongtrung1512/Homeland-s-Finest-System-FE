@@ -57,6 +57,7 @@ function ApproveStores() {
   const [reviewForm] = Form.useForm()
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [wordCount, setWordCount] = useState(0)
 
   // Function để convert API response thành UI format
   const convertAssignedStore = (apiStore: AssignedStore): StoreData => {
@@ -150,12 +151,31 @@ function ApproveStores() {
   // Handle image selection and preview
   const handleImageChange = (info: { fileList: Array<{ originFileObj?: File }> }) => {
     const fileList = info.fileList
-    const files = fileList.map((file) => file.originFileObj).filter(Boolean) as File[]
+    const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB in bytes
+    
+    // Filter và validate file size
+    const validFiles: File[] = []
+    const invalidFiles: string[] = []
+    
+    fileList.forEach((file) => {
+      if (file.originFileObj) {
+        if (file.originFileObj.size > MAX_FILE_SIZE) {
+          invalidFiles.push(file.originFileObj.name)
+        } else {
+          validFiles.push(file.originFileObj)
+        }
+      }
+    })
 
-    setSelectedImages(files)
+    // Hiển thị thông báo lỗi nếu có file vượt quá 5MB
+    if (invalidFiles.length > 0) {
+      toast.error(`Các file sau vượt quá 5MB: ${invalidFiles.join(', ')}`)
+    }
 
-    // Create previews
-    const previews = files.map((file: File) => URL.createObjectURL(file))
+    setSelectedImages(validFiles)
+
+    // Create previews chỉ cho các file hợp lệ
+    const previews = validFiles.map((file: File) => URL.createObjectURL(file))
     setImagePreviews(previews)
   }
 
@@ -172,11 +192,28 @@ function ApproveStores() {
   const handleReviewStore = (store: StoreData) => {
     setSelectedStore(store)
     reviewForm.resetFields()
+    setWordCount(0)
     setReviewModalOpen(true)
+  }
+
+  // Count words
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value
+    const words = value.trim().split(/\s+/).filter((word: string) => word.length > 0)
+    setWordCount(words.length)
   }
 
   const handleReviewSubmit = async (values: ReviewStoreRequest) => {
     if (!selectedStore) return
+
+    // Kiểm tra số từ trong ghi chú
+    if (values.StaffNotes) {
+      const words = values.StaffNotes.trim().split(/\s+/).filter((word: string) => word.length > 0)
+      if (words.length > 20) {
+        toast.error(`Ghi chú không được vượt quá 20 từ (${words.length}/20 từ)`)
+        return
+      }
+    }
 
     // Kiểm tra có ít nhất 1 ảnh
     if (selectedImages.length === 0) {
@@ -201,6 +238,7 @@ function ApproveStores() {
         setSelectedImages([])
         setImagePreviews([])
         setSelectedStore(null)
+        setWordCount(0)
         fetchAssignedStores() // Refresh data
       } else if (response && response.status === 202) {
         // Fallback: check status if available
@@ -210,6 +248,7 @@ function ApproveStores() {
         setSelectedImages([])
         setImagePreviews([])
         setSelectedStore(null)
+        setWordCount(0)
         fetchAssignedStores() // Refresh data
       } else if (response && response.message && response.message.includes('thành công')) {
         // Fallback: check if message contains success keywords
@@ -219,6 +258,7 @@ function ApproveStores() {
         setSelectedImages([])
         setImagePreviews([])
         setSelectedStore(null)
+        setWordCount(0)
         fetchAssignedStores() // Refresh data
       } else {
         console.error('❌ Unexpected response format:', response)
@@ -418,6 +458,7 @@ function ApproveStores() {
           setSelectedImages([])
           setImagePreviews([])
           setSelectedStore(null)
+          setWordCount(0)
         }}
         footer={null}
         width={600}
@@ -437,15 +478,46 @@ function ApproveStores() {
           <Form.Item
             name='StaffNotes'
             label='Ghi chú của nhân viên'
-            rules={[{ required: true, message: 'Vui lòng nhập ghi chú' }]}
+            rules={[
+              { required: true, message: 'Vui lòng nhập ghi chú' },
+              {
+                validator: (_, value) => {
+                  if (!value) {
+                    return Promise.resolve()
+                  }
+                  const words = value.trim().split(/\s+/).filter((word: string) => word.length > 0)
+                  if (words.length > 20) {
+                    // Không reject để tránh hiển thị error message, chỉ hiển thị trong help
+                    return Promise.resolve()
+                  }
+                  return Promise.resolve()
+                },
+                validateTrigger: 'onSubmit'
+              }
+            ]}
+            validateStatus={wordCount > 20 ? 'error' : ''}
+            hasFeedback={false}
+            help={
+              <span className={wordCount > 20 ? 'text-red-500' : 'text-gray-500'}>
+                {wordCount > 20 
+                  ? `Ghi chú không được vượt quá 20 từ (${wordCount}/20 từ)`
+                  : `Số từ: ${wordCount}/20 từ`
+                }
+              </span>
+            }
           >
-            <Input.TextArea rows={4} placeholder='Nhập ghi chú về cửa hàng...' />
+            <Input.TextArea 
+              rows={4} 
+              placeholder='Nhập ghi chú về cửa hàng...'
+              onChange={handleNotesChange}
+            />
           </Form.Item>
 
           <Form.Item
             name='StaffImages'
             label='Hình ảnh đính kèm (Bắt buộc)'
             rules={[{ required: true, message: 'Vui lòng chọn ít nhất 1 hình ảnh' }]}
+            help='Kích thước tối đa mỗi file: 5MB'
           >
             <div className='space-y-4'>
               <Upload
@@ -487,6 +559,7 @@ function ApproveStores() {
                 setSelectedImages([])
                 setImagePreviews([])
                 setSelectedStore(null)
+                setWordCount(0)
               }}
             >
               Hủy
