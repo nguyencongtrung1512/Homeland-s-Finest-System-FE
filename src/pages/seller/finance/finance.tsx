@@ -144,9 +144,9 @@ function FinanceManagement() {
         const userData = await getUserById(user.userId)
         setUserInfo(userData)
         // Set form values if user has bank info
-        if (userData.toBin || userData.bankAccount) {
+        if (userData.bankName || userData.bankAccount) {
           setBankForm({
-            bankName: userData.toBin || '',
+            bankName: userData.bankName || '',
             accountNumber: userData.bankAccount || ''
           })
         }
@@ -231,7 +231,7 @@ function FinanceManagement() {
   const handleUpdateInfo = () => {
     if (userInfo) {
       setBankForm({
-        bankName: userInfo.toBin || '',
+        bankName: userInfo.bankName || '',
         accountNumber: userInfo.bankAccount || ''
       })
     }
@@ -252,7 +252,7 @@ function FinanceManagement() {
     setUpdating(true)
     try {
       await updateUser(user.userId, {
-        toBin: bankForm.bankName.trim(),
+        bankName: bankForm.bankName.trim(),
         bankAccount: bankForm.accountNumber.trim()
       })
       toast.success('Cập nhật thông tin ngân hàng thành công')
@@ -288,7 +288,7 @@ function FinanceManagement() {
   // Handle withdraw request
   const handleWithdrawClick = () => {
     // Check if user has bank info
-    if (!userInfo?.toBin || !userInfo?.bankAccount) {
+    if (!userInfo?.bankName || !userInfo?.bankAccount) {
       toast.error('Vui lòng cập nhật thông tin ngân hàng trước khi rút tiền')
       setShowUpdateBankModal(true)
       return
@@ -319,7 +319,7 @@ function FinanceManagement() {
     }
 
     // Check if user has bank info
-    if (!userInfo?.toBin || !userInfo?.bankAccount) {
+    if (!userInfo?.bankName || !userInfo?.bankAccount) {
       toast.error('Vui lòng cập nhật thông tin ngân hàng trước khi rút tiền')
       setShowWithdrawModal(false)
       setShowUpdateBankModal(true)
@@ -961,7 +961,7 @@ function FinanceManagement() {
                     </div>
                     <div>
                       <p className='text-sm text-gray-600'>Ngân hàng</p>
-                      <p className='font-medium text-gray-900'>{userInfo?.toBin || 'Chưa cập nhật'}</p>
+                      <p className='font-medium text-gray-900'>{userInfo?.bankName || 'Chưa cập nhật'}</p>
                     </div>
                   </div>
 
@@ -990,7 +990,7 @@ function FinanceManagement() {
                 <div className='flex flex-col gap-4'>
                   <Button onClick={handleUpdateInfo} className='bg-green-600 hover:bg-green-700 text-white'>
                     <Edit className='w-4 h-4 mr-2' />
-                    {userInfo?.toBin && userInfo?.bankAccount ? 'Cập nhật thông tin' : 'Thêm thông tin ngân hàng'}
+                    {userInfo?.bankName && userInfo?.bankAccount ? 'Cập nhật thông tin' : 'Thêm thông tin ngân hàng'}
                   </Button>
                 </div>
               </div>
@@ -1366,7 +1366,7 @@ function FinanceManagement() {
                   <div className='space-y-1 text-sm text-gray-600'>
                     <div className='flex justify-between'>
                       <span>Ngân hàng:</span>
-                      <span className='font-medium'>{userInfo?.toBin || 'Chưa cập nhật'}</span>
+                      <span className='font-medium'>{userInfo?.bankName || 'Chưa cập nhật'}</span>
                     </div>
                     <div className='flex justify-between'>
                       <span>Số tài khoản:</span>

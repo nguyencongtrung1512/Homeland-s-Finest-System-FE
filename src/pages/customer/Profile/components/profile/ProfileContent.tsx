@@ -48,7 +48,7 @@ export default function ProfileContent() {
     gender: '',
     provinceId: '',
     bankAccount: '',
-    toBin: '',
+    bankName: '',
     avatar: null as File | null,
     currentPassword: '',
     newPassword: '',
@@ -109,7 +109,7 @@ export default function ProfileContent() {
           gender: userData.gender || '',
           provinceId: userData.provinceId?.toString() || '',
           bankAccount: userData.bankAccount || '',
-          toBin: userData.toBin || '',
+          bankName: userData.bankName || '',
           avatar: null,
           currentPassword: '',
           newPassword: '',
@@ -157,7 +157,7 @@ export default function ProfileContent() {
       gender: formData.gender,
       provinceId: formData.provinceId ? parseInt(formData.provinceId) : undefined,
       bankAccount: formData.bankAccount,
-      toBin: formData.toBin,
+      bankName: formData.bankName,
       note: (formData.note || 'Cập nhật từ trang Profile').trim(),
       avatar: formData.avatar || undefined
     }
@@ -519,13 +519,13 @@ export default function ProfileContent() {
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor='toBin'>Tên ngân hàng</Label>
+                        <Label htmlFor='bankName'>Tên ngân hàng</Label>
                         <div className='relative'>
                           <Building2 className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
                           <Input
-                            id='toBin'
-                            value={formData.toBin}
-                            onChange={(e) => handleInputChange('toBin', e.target.value)}
+                            id='bankName'
+                            value={formData.bankName}
+                            onChange={(e) => handleInputChange('bankName', e.target.value)}
                             placeholder='Nhập tên ngân hàng (VD: ACBank, Vietcombank)'
                             className='mt-1 pl-10'
                           />

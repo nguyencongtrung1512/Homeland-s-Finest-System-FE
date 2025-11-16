@@ -54,6 +54,15 @@ function SideBar() {
 
   const pendingMenuItems = [
     {
+      key: path.BASE_SELLER,
+      label: 'Trang tổng quan',
+      icon: (
+        <AnimatedIcon animationType='bounce'>
+          <Home size={18} />
+        </AnimatedIcon>
+      )
+    },
+    {
       key: path.setupStoreSeller,
       label: 'Cửa hàng',
       icon: <Store size={18} />
