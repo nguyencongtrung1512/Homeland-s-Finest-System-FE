@@ -180,6 +180,7 @@ export interface Order {
   totalOrder: number
   totalCommission: number
   totalDiscount: number
+  insurance?: number
   finalPrice: number
   payoutDate: string | null
   cancelDate: string | null

@@ -211,8 +211,14 @@ export const productApi = {
   },
 
   // Get products by store
-  getByStore: async (storeId: string, params?: Omit<any, 'storeId'>): Promise<ProductListResponse> => {
-    const response = await axiosInstance.get(`${API_URL}/by-store/${storeId}`, { params })
+  getByStore: async (storeId: string, params?: Omit<any, 'storeId' | 'productStatus'>): Promise<ProductListResponse> => {
+    const response = await axiosInstance.get(API_URL, {
+      params: {
+        storeId,
+        productStatus: 'Approved',
+        ...params
+      }
+    })
     return response as unknown as ProductListResponse
   },
 

@@ -24,6 +24,7 @@ interface Order {
   date: string
   originalStatus: OrderStatus
   status:
+  | 'Chưa xác nhận'
   | 'Chờ xác nhận'
   | 'Chờ thanh toán'
   | 'Đã xác nhận'
@@ -48,6 +49,8 @@ interface Order {
     finalPrice?: number
     variant?: string
     isCombo?: boolean
+    comboId?: string
+    comboName?: string
   }[]
   total: string
   totalAmount?: number
@@ -283,7 +286,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     ...(apiOrder?.orderItemsWithCombo || []).map((item) => ({
       id: item?.id || '',
       productInventoryId: item?.productVariantId || '',
-      name: `${item?.comboName || 'Combo'} - ${item?.orderItemName || 'Sản phẩm không xác định'}`,
+      name: item?.orderItemName || 'Sản phẩm không xác định',
       image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
       quantity: (item?.quantity || 0).toString(),
       price: item?.finalPrice || 0,
@@ -292,7 +295,9 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
         item?.length > 0 && item?.width > 0 && item?.height > 0 && item?.weight > 0
           ? `${item.length}x${item.width}x${item.height}cm, ${item.weight}g`
           : 'Thông tin kích thước không có',
-      isCombo: true
+      isCombo: true,
+      comboId: item?.comboId,
+      comboName: item?.comboName
     }))
   ]
 
@@ -315,9 +320,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
 
   const isComplainedValue = apiOrder?.isComplained === true
   const canComplainOrder =
-    (statusVal === 'Delivered' || statusVal === 'Paid') &&
-    !isComplaintInProgress &&
-    !isComplainedValue
+    (statusVal === 'Delivered' || statusVal === 'Paid') && !isComplaintInProgress && !isComplainedValue
 
   return {
     id: apiOrder?.id || '',
@@ -710,18 +713,7 @@ export default function OrdersContent({
                       {product.variant && <p className='text-sm text-gray-600'>{product.variant}</p>}
                       <p className='text-sm text-gray-600'>Số lượng: {product.quantity}</p>
                     </div>
-                    {product.finalPrice && (
-                      <div className='text-right'>
-                        <p className='font-medium text-gray-900'>
-                          {new Intl.NumberFormat('vi-VN', {
-                            style: 'currency',
-                            currency: 'VND'
-                          })
-                            .format(product.finalPrice)
-                            .replace('₫', 'đ')}
-                        </p>
-                      </div>
-                    )}
+
                   </div>
                 ))}
               </div>
@@ -732,26 +724,25 @@ export default function OrdersContent({
               </div>
 
               <div className='flex gap-2 pt-4 flex-wrap'>
-                {(order.originalStatus === 'NotYet' ||
-                  order.originalStatus === 'PendingPayment') && (
-                    <Button
-                      size='sm'
-                      onClick={() => handlePayment(order.id)}
-                      disabled={processingPaymentOrderId === order.id}
-                      className='bg-green-600 hover:bg-green-700 text-white disabled:opacity-50'
-                    >
-                      {processingPaymentOrderId === order.id ? (
-                        <>
-                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
-                          Đang xử lý...
-                        </>
-                      ) : order.originalStatus === 'PendingPayment' ? (
-                        'Tiếp tục thanh toán'
-                      ) : (
-                        'Thanh toán'
-                      )}
-                    </Button>
-                  )}
+                {(order.originalStatus === 'NotYet' || order.originalStatus === 'PendingPayment') && (
+                  <Button
+                    size='sm'
+                    onClick={() => handlePayment(order.id)}
+                    disabled={processingPaymentOrderId === order.id}
+                    className='bg-green-600 hover:bg-green-700 text-white disabled:opacity-50'
+                  >
+                    {processingPaymentOrderId === order.id ? (
+                      <>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                        Đang xử lý...
+                      </>
+                    ) : order.originalStatus === 'PendingPayment' ? (
+                      'Tiếp tục thanh toán'
+                    ) : (
+                      'Thanh toán'
+                    )}
+                  </Button>
+                )}
                 {(order.originalStatus === 'NotYet' ||
                   order.originalStatus === 'Processing' ||
                   order.originalStatus === 'PendingPayment') && (
@@ -902,7 +893,6 @@ export default function OrdersContent({
           </button>
         </div>
       )}
-
 
       <CancelOrderModal
         isOpen={showCancelModal}

@@ -9,7 +9,7 @@ import { getWalletBalance } from '../../../apis/wallet.api'
 import type { Order, OrderItemWithCombo } from '../../../types/orderType'
 import type { Transaction as TransactionResponse } from '../../../types/transactionType'
 import type { WalletData } from '../../../types/walletType'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import CancelOrderDialog from '../../../components/CancelOrderDialog/CancelOrderDialog'
 
 interface CartItem {
@@ -185,16 +185,16 @@ function OrderCreate() {
 
   const cartItems: CartItem[] = buyNowProduct
     ? [
-        {
-          id: buyNowProduct.id,
-          productVariantId: buyNowProduct.productVariantId,
-          name: buyNowProduct.name,
-          desc: buyNowProduct.desc || buyNowProduct.description,
-          price: buyNowProduct.price,
-          quantity: buyNowProduct.quantity,
-          image: buyNowProduct.image
-        }
-      ]
+      {
+        id: buyNowProduct.id,
+        productVariantId: buyNowProduct.productVariantId,
+        name: buyNowProduct.name,
+        desc: buyNowProduct.desc || buyNowProduct.description,
+        price: buyNowProduct.price,
+        quantity: buyNowProduct.quantity,
+        image: buyNowProduct.image
+      }
+    ]
     : []
 
   // Get all items from all orders
@@ -249,12 +249,14 @@ function OrderCreate() {
       const totalShipping = ordersToUse.reduce((sum, order) => sum + (order.shipPrice || 0), 0)
       const totalSubtotal = ordersToUse.reduce((sum, order) => sum + (order.totalOrder || 0), 0)
       const totalDiscount = ordersToUse.reduce((sum, order) => sum + (order.totalDiscount || 0), 0)
+      const totalInsurance = ordersToUse.reduce((sum, order) => sum + (order.insurance || 0), 0)
       const totalFinal = ordersToUse.reduce((sum, order) => sum + (order.finalPrice || 0), 0)
 
       return {
         shipping: totalShipping,
         subtotal: totalSubtotal,
         totalDiscount,
+        insurance: totalInsurance,
         total: totalFinal
       }
     }
@@ -264,6 +266,7 @@ function OrderCreate() {
         shipping: order.shipPrice || 0,
         subtotal: order.totalOrder || 0,
         totalDiscount: order.totalDiscount || 0,
+        insurance: order.insurance || 0,
         total: order.finalPrice || 0
       }
     }
@@ -273,11 +276,12 @@ function OrderCreate() {
       shipping: 0,
       subtotal,
       totalDiscount: 0,
+      insurance: 0,
       total: subtotal
     }
   }
 
-  const { shipping, subtotal, totalDiscount, total } = calculateTotals()
+  const { shipping, subtotal, totalDiscount, insurance, total } = calculateTotals()
 
   const comboGroupsByOrder = useMemo(() => {
     if (!ordersFromState.length) return {}
@@ -513,84 +517,90 @@ function OrderCreate() {
               <div className='space-y-6'>
                 {ordersFromState.length > 0
                   ? ordersFromState.map((order, orderIndex) => (
-                      <div key={order.id} className='space-y-4'>
-                        <div className='flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200'>
-                          <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                          <span className='font-semibold text-blue-800'>
-                            Đơn hàng {orderIndex + 1}: {order.fromName}
-                          </span>
-                        </div>
+                    <div key={order.id} className='space-y-4'>
+                      <div className='flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200'>
+                        <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
+                        <span className='font-semibold text-blue-800'>
+                          Đơn hàng {orderIndex + 1}: {order.fromName}
+                        </span>
+                      </div>
 
-                        <div className='space-y-3'>
-                          {order.orderItems?.map((item) => (
-                            <div
-                              key={item.id}
-                              className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
-                            >
-                              <img
-                                src={item.orderItemImageUrl}
-                                alt={item.orderItemName}
-                                className='w-12 h-12 rounded-lg object-cover border flex-shrink-0'
-                              />
-                              <div className='flex-1 min-w-0'>
-                                <h3 className='font-semibold text-gray-900 mb-1'>{item.orderItemName}</h3>
-                                <div className='flex items-center justify-between'>
-                                  <span className='text-sm text-gray-500'>Số lượng: {item.quantity}</span>
-                                  <span className='text-lg font-bold text-green-700'>
-                                    {(item.finalPrice || 0).toLocaleString('vi-VN')}₫
-                                  </span>
-                                </div>
+                      <div className='space-y-3'>
+                        {order.orderItems?.map((item) => (
+                          <div
+                            key={item.id}
+                            className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
+                          >
+                            <img
+                              src={item.orderItemImageUrl}
+                              alt={item.orderItemName}
+                              className='w-12 h-12 rounded-lg object-cover border flex-shrink-0'
+                            />
+                            <div className='flex-1 min-w-0'>
+                              <h3 className='font-semibold text-gray-900 mb-1'>{item.orderItemName}</h3>
+                              <div className='flex items-center justify-between'>
+                                <span className='text-sm text-gray-500'>Số lượng: {item.quantity}</span>
+                                <span className='text-lg font-bold text-green-700'>
+                                  {(item.finalPrice || 0).toLocaleString('vi-VN')}₫
+                                </span>
                               </div>
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ))}
+                      </div>
 
-                        {comboGroupsByOrder[order.id]?.length > 0 && (
-                          <div className='ml-4'>
-                            <ComboList combos={comboGroupsByOrder[order.id]} title='Combo trong đơn' />
+                      {comboGroupsByOrder[order.id]?.length > 0 && (
+                        <div className='ml-4'>
+                          <ComboList combos={comboGroupsByOrder[order.id]} title='Combo trong đơn' />
+                        </div>
+                      )}
+
+                      <div className='ml-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
+                        <div className='flex justify-between text-sm text-gray-600 mb-1'>
+                          <span>Tạm tính:</span>
+                          <span>{order.totalOrder.toLocaleString('vi-VN')}₫</span>
+                        </div>
+                        <div className='flex justify-between text-sm text-gray-600 mb-1'>
+                          <span>Phí vận chuyển:</span>
+                          <span>{order.shipPrice.toLocaleString('vi-VN')}₫</span>
+                        </div>
+                        {order.insurance && order.insurance > 0 && (
+                          <div className='flex justify-between text-sm text-gray-600 mb-1'>
+                            <span>Tiền bảo hiểm:</span>
+                            <span>{order.insurance.toLocaleString('vi-VN')}₫</span>
                           </div>
                         )}
-
-                        <div className='ml-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
-                          <div className='flex justify-between text-sm text-gray-600 mb-1'>
-                            <span>Tạm tính:</span>
-                            <span>{order.totalOrder.toLocaleString('vi-VN')}₫</span>
-                          </div>
-                          <div className='flex justify-between text-sm text-gray-600 mb-1'>
-                            <span>Phí vận chuyển:</span>
-                            <span>{order.shipPrice.toLocaleString('vi-VN')}₫</span>
-                          </div>
-                          <div className='flex justify-between text-sm font-semibold text-gray-900 border-t pt-1'>
-                            <span>Thành tiền:</span>
-                            <span className='text-green-700'>{order.finalPrice.toLocaleString('vi-VN')}₫</span>
-                          </div>
+                        <div className='flex justify-between text-sm font-semibold text-gray-900 border-t pt-1'>
+                          <span>Thành tiền:</span>
+                          <span className='text-green-700'>{order.finalPrice.toLocaleString('vi-VN')}₫</span>
                         </div>
                       </div>
-                    ))
+                    </div>
+                  ))
                   : displayItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
-                      >
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className='w-12 h-12 rounded-lg object-cover border flex-shrink-0'
-                        />
-                        <div className='flex-1 min-w-0'>
-                          <h3 className='font-semibold text-gray-900 mb-1'>{item.name}</h3>
-                          <p className='text-sm text-gray-600 whitespace-pre-line mb-2'>{item.desc}</p>
-                          <div className='flex items-center justify-between'>
-                            <span className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>
-                              Số lượng: {item.quantity}
-                            </span>
-                            <span className='text-lg font-bold text-green-700'>
-                              {item.price.toLocaleString('vi-VN')}₫
-                            </span>
-                          </div>
+                    <div
+                      key={item.id}
+                      className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
+                    >
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className='w-12 h-12 rounded-lg object-cover border flex-shrink-0'
+                      />
+                      <div className='flex-1 min-w-0'>
+                        <h3 className='font-semibold text-gray-900 mb-1'>{item.name}</h3>
+                        <p className='text-sm text-gray-600 whitespace-pre-line mb-2'>{item.desc}</p>
+                        <div className='flex items-center justify-between'>
+                          <span className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>
+                            Số lượng: {item.quantity}
+                          </span>
+                          <span className='text-lg font-bold text-green-700'>
+                            {item.price.toLocaleString('vi-VN')}₫
+                          </span>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
 
                 {ordersFromState.length === 0 && singleOrderComboGroups.length > 0 && (
                   <ComboList combos={singleOrderComboGroups} title='Combo trong đơn' />
@@ -666,6 +676,12 @@ function OrderCreate() {
                         <span className='text-gray-600'>Tổng phí vận chuyển ({ordersFromState.length} đơn)</span>
                         <span className='font-medium'>{shipping.toLocaleString('vi-VN')}₫</span>
                       </div>
+                      {insurance > 0 && (
+                        <div className='flex justify-between text-sm'>
+                          <span className='text-gray-600'>Tiền bảo hiểm</span>
+                          <span className='font-medium'>{insurance.toLocaleString('vi-VN')}₫</span>
+                        </div>
+                      )}
 
                       {/* Breakdown of shipping fees by store */}
                       <div className='ml-4 space-y-1'>
@@ -701,6 +717,12 @@ function OrderCreate() {
                         <span className='text-gray-600'>Phí vận chuyển</span>
                         <span className='font-medium'>{shipping.toLocaleString('vi-VN')}₫</span>
                       </div>
+                      {insurance > 0 && (
+                        <div className='flex justify-between text-sm'>
+                          <span className='text-gray-600'>Tiền bảo hiểm</span>
+                          <span className='font-medium'>{insurance.toLocaleString('vi-VN')}₫</span>
+                        </div>
+                      )}
                       <div className='border-t pt-3 mt-3'>
                         <div className='flex justify-between text-lg font-bold'>
                           <span>Tổng cộng</span>
@@ -732,9 +754,8 @@ function OrderCreate() {
                           <div className='flex justify-between text-xs'>
                             <span className='text-gray-600'>Số dư khả dụng:</span>
                             <span
-                              className={`font-semibold ${
-                                walletBalance.availableBalance >= total ? 'text-green-600' : 'text-red-600'
-                              }`}
+                              className={`font-semibold ${walletBalance.availableBalance >= total ? 'text-green-600' : 'text-red-600'
+                                }`}
                             >
                               {walletBalance.availableBalance.toLocaleString('vi-VN')}₫
                             </span>
