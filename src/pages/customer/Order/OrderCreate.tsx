@@ -6,7 +6,7 @@ import { useAuth } from '../../../contexts/auth.context'
 import { cancelOrder, getOrderDetail } from '../../../apis/order.api'
 import { purchaseOrder } from '../../../apis/transaction.api'
 import { getWalletBalance } from '../../../apis/wallet.api'
-import type { Order } from '../../../types/orderType'
+import type { Order, OrderItemWithCombo } from '../../../types/orderType'
 import type { Transaction as TransactionResponse } from '../../../types/transactionType'
 import type { WalletData } from '../../../types/walletType'
 import { toast } from 'react-toastify'
@@ -22,6 +22,93 @@ interface CartItem {
   image: string
   isCombo?: boolean
   comboId?: string
+}
+
+interface ComboDisplayGroup {
+  comboId: string
+  comboName: string
+  items: OrderItemWithCombo[]
+}
+
+type OrderComboItem = OrderItemWithCombo & { comboId?: string; comboItemId?: string }
+
+const buildComboGroups = (orderData?: Order | null): ComboDisplayGroup[] => {
+  if (!orderData?.orderItemsWithCombo || orderData.orderItemsWithCombo.length === 0) {
+    return []
+  }
+
+  const groups = orderData.orderItemsWithCombo.reduce(
+    (acc, comboItem) => {
+      const itemWithMeta = comboItem as OrderComboItem
+      const comboIdentifier =
+        ('comboId' in itemWithMeta ? itemWithMeta.comboId : undefined) || itemWithMeta.comboName || undefined
+      const key = comboIdentifier || itemWithMeta.comboItemId || itemWithMeta.id
+
+      if (!acc[key]) {
+        acc[key] = {
+          comboName: itemWithMeta.comboName || 'Combo đặc biệt',
+          items: []
+        }
+      }
+
+      acc[key].items.push(itemWithMeta)
+      return acc
+    },
+    {} as Record<string, { comboName: string; items: OrderComboItem[] }>
+  )
+
+  return Object.entries(groups).map(([comboId, data]) => ({
+    comboId,
+    comboName: data.comboName,
+    items: data.items
+  }))
+}
+
+const ComboList = ({ combos, title = 'Combo đã áp dụng' }: { combos: ComboDisplayGroup[]; title?: string }) => {
+  if (!combos.length) return null
+
+  return (
+    <div className='space-y-3'>
+      <div className='text-xs font-semibold text-orange-700 uppercase'>{title}</div>
+      <div className='space-y-4'>
+        {combos.map((combo) => {
+          const comboTotal = combo.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
+          return (
+            <div
+              key={combo.comboId}
+              className='bg-orange-50 rounded-xl border border-orange-100 p-4 space-y-3 shadow-sm'
+            >
+              <div className='flex items-center justify-between text-sm font-semibold text-orange-800'>
+                <span title={combo.comboName}>{combo.comboName}</span>
+                <span className='text-orange-700'>
+                  Tổng tiền combo:{' '}
+                  <span className='text-base font-semibold'>{comboTotal.toLocaleString('vi-VN')}₫</span>
+                </span>
+              </div>
+              <div className='space-y-2'>
+                {combo.items.map((comboItem) => (
+                  <div
+                    key={comboItem.id}
+                    className='flex items-center gap-3 bg-white rounded-lg border border-orange-100 p-2'
+                  >
+                    <img
+                      src={comboItem.orderItemImageUrl || '/api/placeholder/64/64'}
+                      alt={comboItem.orderItemName}
+                      className='w-12 h-12 rounded-lg object-cover border border-orange-200 flex-shrink-0'
+                    />
+                    <div className='flex-1 min-w-0'>
+                      <p className='text-sm font-medium text-gray-800 truncate'>{comboItem.orderItemName}</p>
+                      <p className='text-sm text-gray-500'>Số lượng: {comboItem.quantity}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function OrderCreate() {
@@ -98,16 +185,16 @@ function OrderCreate() {
 
   const cartItems: CartItem[] = buyNowProduct
     ? [
-      {
-        id: buyNowProduct.id,
-        productVariantId: buyNowProduct.productVariantId,
-        name: buyNowProduct.name,
-        desc: buyNowProduct.desc || buyNowProduct.description,
-        price: buyNowProduct.price,
-        quantity: buyNowProduct.quantity,
-        image: buyNowProduct.image
-      }
-    ]
+        {
+          id: buyNowProduct.id,
+          productVariantId: buyNowProduct.productVariantId,
+          name: buyNowProduct.name,
+          desc: buyNowProduct.desc || buyNowProduct.description,
+          price: buyNowProduct.price,
+          quantity: buyNowProduct.quantity,
+          image: buyNowProduct.image
+        }
+      ]
     : []
 
   // Get all items from all orders
@@ -191,6 +278,19 @@ function OrderCreate() {
   }
 
   const { shipping, subtotal, totalDiscount, total } = calculateTotals()
+
+  const comboGroupsByOrder = useMemo(() => {
+    if (!ordersFromState.length) return {}
+    return ordersFromState.reduce(
+      (acc, orderItem) => {
+        acc[orderItem.id] = buildComboGroups(orderItem)
+        return acc
+      },
+      {} as Record<string, ComboDisplayGroup[]>
+    )
+  }, [ordersFromState])
+
+  const singleOrderComboGroups = useMemo(() => buildComboGroups(order), [order])
 
   const applyTransactionStatuses = (transactions: TransactionResponse[]) => {
     if (!transactions || transactions.length === 0) {
@@ -395,21 +495,9 @@ function OrderCreate() {
           <h1 className='text-2xl font-bold text-gray-900 mb-2'>Xác nhận đơn hàng</h1>
           <p className='text-gray-600'>Vui lòng kiểm tra lại thông tin đơn hàng trước khi thanh toán</p>
 
-          {ordersFromState.length > 0 && (
-            <div className='mt-4 p-4 bg-green-100 rounded-lg border border-green-200'>
-              <div className='flex items-center gap-2'>
-                <CheckCircle className='w-5 h-5 text-green-600' />
-                <p className='text-sm font-medium text-green-800'>
-                  ✅ Đặt hàng thành công! Đã tạo {ordersFromState.length} đơn hàng từ {ordersFromState.length} cửa hàng
-                  khác nhau
-                </p>
-              </div>
-            </div>
-          )}
-
           {buyNowProduct && !existingOrder && (
             <div className='mt-2 p-2 bg-blue-100 rounded-lg'>
-              <p className='text-sm text-blue-800'>🛒 Đơn hàng từ "Mua ngay"</p>
+              <p className='text-sm text-blue-800'>Đơn hàng từ Mua ngay</p>
             </div>
           )}
         </div>
@@ -425,83 +513,88 @@ function OrderCreate() {
               <div className='space-y-6'>
                 {ordersFromState.length > 0
                   ? ordersFromState.map((order, orderIndex) => (
-                    <div key={order.id} className='space-y-4'>
-                      <div className='flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200'>
-                        <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                        <span className='font-semibold text-blue-800'>
-                          Đơn hàng {orderIndex + 1}: {order.fromName}
-                        </span>
-                        <span className='text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded'>
-                          ID: {order.id.slice(-8)}
-                        </span>
-                      </div>
+                      <div key={order.id} className='space-y-4'>
+                        <div className='flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200'>
+                          <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
+                          <span className='font-semibold text-blue-800'>
+                            Đơn hàng {orderIndex + 1}: {order.fromName}
+                          </span>
+                        </div>
 
-                      <div className='space-y-3'>
-                        {order.orderItems?.map((item) => (
-                          <div
-                            key={item.id}
-                            className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
-                          >
-                            <img
-                              src={item.orderItemImageUrl}
-                              alt={item.orderItemName}
-                              className='w-20 h-20 rounded-lg object-cover border flex-shrink-0'
-                            />
-                            <div className='flex-1 min-w-0'>
-                              <h3 className='font-semibold text-gray-900 mb-1'>{item.orderItemName}</h3>
-                              <div className='flex items-center justify-between'>
-                                <span className='text-lg font-bold text-green-700'>
-                                  {(item.finalPrice || 0).toLocaleString('vi-VN')}₫
-                                </span>
-                                <span className='text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded'>
-                                  Số lượng: {item.quantity}
-                                </span>
+                        <div className='space-y-3'>
+                          {order.orderItems?.map((item) => (
+                            <div
+                              key={item.id}
+                              className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
+                            >
+                              <img
+                                src={item.orderItemImageUrl}
+                                alt={item.orderItemName}
+                                className='w-12 h-12 rounded-lg object-cover border flex-shrink-0'
+                              />
+                              <div className='flex-1 min-w-0'>
+                                <h3 className='font-semibold text-gray-900 mb-1'>{item.orderItemName}</h3>
+                                <div className='flex items-center justify-between'>
+                                  <span className='text-sm text-gray-500'>Số lượng: {item.quantity}</span>
+                                  <span className='text-lg font-bold text-green-700'>
+                                    {(item.finalPrice || 0).toLocaleString('vi-VN')}₫
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
 
-                      <div className='ml-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
-                        <div className='flex justify-between text-sm text-gray-600 mb-1'>
-                          <span>Tạm tính:</span>
-                          <span>{order.totalOrder.toLocaleString('vi-VN')}₫</span>
-                        </div>
-                        <div className='flex justify-between text-sm text-gray-600 mb-1'>
-                          <span>Phí vận chuyển:</span>
-                          <span>{order.shipPrice.toLocaleString('vi-VN')}₫</span>
-                        </div>
-                        <div className='flex justify-between text-sm font-semibold text-gray-900 border-t pt-1'>
-                          <span>Thành tiền:</span>
-                          <span className='text-green-700'>{order.finalPrice.toLocaleString('vi-VN')}₫</span>
+                        {comboGroupsByOrder[order.id]?.length > 0 && (
+                          <div className='ml-4'>
+                            <ComboList combos={comboGroupsByOrder[order.id]} title='Combo trong đơn' />
+                          </div>
+                        )}
+
+                        <div className='ml-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
+                          <div className='flex justify-between text-sm text-gray-600 mb-1'>
+                            <span>Tạm tính:</span>
+                            <span>{order.totalOrder.toLocaleString('vi-VN')}₫</span>
+                          </div>
+                          <div className='flex justify-between text-sm text-gray-600 mb-1'>
+                            <span>Phí vận chuyển:</span>
+                            <span>{order.shipPrice.toLocaleString('vi-VN')}₫</span>
+                          </div>
+                          <div className='flex justify-between text-sm font-semibold text-gray-900 border-t pt-1'>
+                            <span>Thành tiền:</span>
+                            <span className='text-green-700'>{order.finalPrice.toLocaleString('vi-VN')}₫</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))
                   : displayItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className='w-20 h-20 rounded-lg object-cover border flex-shrink-0'
-                      />
-                      <div className='flex-1 min-w-0'>
-                        <h3 className='font-semibold text-gray-900 mb-1'>{item.name}</h3>
-                        <p className='text-sm text-gray-600 whitespace-pre-line mb-2'>{item.desc}</p>
-                        <div className='flex items-center justify-between'>
-                          <span className='text-lg font-bold text-green-700'>
-                            {item.price.toLocaleString('vi-VN')}₫
-                          </span>
-                          <span className='text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded'>
-                            Số lượng: {item.quantity}
-                          </span>
+                      <div
+                        key={item.id}
+                        className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
+                      >
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className='w-12 h-12 rounded-lg object-cover border flex-shrink-0'
+                        />
+                        <div className='flex-1 min-w-0'>
+                          <h3 className='font-semibold text-gray-900 mb-1'>{item.name}</h3>
+                          <p className='text-sm text-gray-600 whitespace-pre-line mb-2'>{item.desc}</p>
+                          <div className='flex items-center justify-between'>
+                            <span className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>
+                              Số lượng: {item.quantity}
+                            </span>
+                            <span className='text-lg font-bold text-green-700'>
+                              {item.price.toLocaleString('vi-VN')}₫
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+
+                {ordersFromState.length === 0 && singleOrderComboGroups.length > 0 && (
+                  <ComboList combos={singleOrderComboGroups} title='Combo trong đơn' />
+                )}
               </div>
 
               {ordersFromState.length === 0 && (
@@ -573,9 +666,7 @@ function OrderCreate() {
                         <span className='text-gray-600'>Tổng phí vận chuyển ({ordersFromState.length} đơn)</span>
                         <span className='font-medium'>{shipping.toLocaleString('vi-VN')}₫</span>
                       </div>
-                      <div className='text-xs text-gray-500 ml-2'>
-                        💡 Phí vận chuyển được tính riêng cho từng cửa hàng và cộng lại
-                      </div>
+
                       {/* Breakdown of shipping fees by store */}
                       <div className='ml-4 space-y-1'>
                         {ordersFromState.map((order, index) => (
@@ -592,11 +683,6 @@ function OrderCreate() {
                           <span>Tổng cộng</span>
                           <span className='text-green-700'>{total.toLocaleString('vi-VN')}₫</span>
                         </div>
-                      </div>
-                      <div className='mt-2 p-2 bg-blue-50 rounded-lg border border-blue-200'>
-                        <p className='text-xs text-blue-800'>
-                          📦 Đã tạo {ordersFromState.length} đơn hàng từ {ordersFromState.length} cửa hàng khác nhau
-                        </p>
                       </div>
                     </>
                   ) : (
@@ -646,8 +732,9 @@ function OrderCreate() {
                           <div className='flex justify-between text-xs'>
                             <span className='text-gray-600'>Số dư khả dụng:</span>
                             <span
-                              className={`font-semibold ${walletBalance.availableBalance >= total ? 'text-green-600' : 'text-red-600'
-                                }`}
+                              className={`font-semibold ${
+                                walletBalance.availableBalance >= total ? 'text-green-600' : 'text-red-600'
+                              }`}
                             >
                               {walletBalance.availableBalance.toLocaleString('vi-VN')}₫
                             </span>

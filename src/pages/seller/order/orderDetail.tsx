@@ -126,20 +126,23 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
         height: item?.height,
         weight: item?.weight
       })),
-      orderItemsWithCombo: (apiOrder?.orderItemsWithCombo || []).map((item) => ({
-        id: item?.id || '',
-        comboId: item?.comboId,
-        comboName: item?.comboName,
-        orderItemName: item?.orderItemName || 'Sản phẩm không xác định',
-        orderItemImageUrl: item?.orderItemImageUrl || '/src/assets/react.svg',
-        quantity: item?.quantity || 0,
-        finalPrice: item?.finalPrice,
-        totalPrice: item?.totalPrice || 0,
-        length: item?.length,
-        width: item?.width,
-        height: item?.height,
-        weight: item?.weight
-      })),
+      orderItemsWithCombo: (apiOrder?.orderItemsWithCombo || []).map((item) => {
+        const comboItem = item as Partial<OrderItemWithCombo>
+        return {
+          id: comboItem?.id || '',
+          comboId: comboItem?.comboId,
+          comboName: comboItem?.comboName,
+          orderItemName: comboItem?.orderItemName || 'Sản phẩm không xác định',
+          orderItemImageUrl: comboItem?.orderItemImageUrl || '/src/assets/react.svg',
+          quantity: comboItem?.quantity || 0,
+          finalPrice: comboItem?.finalPrice,
+          totalPrice: comboItem?.totalPrice || 0,
+          length: comboItem?.length,
+          width: comboItem?.width,
+          height: comboItem?.height,
+          weight: comboItem?.weight
+        }
+      }),
       orderHistories: apiOrder?.orderHistories || [],
       orderPromotions: (apiOrder?.orderPromotions || []).map((promo) => ({
         promotionType: promo?.promotionType || '',
@@ -407,23 +410,30 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                   {/* Combo Products */}
                   {comboGroups &&
                     Object.entries(comboGroups).map(([comboId, group]) => (
-                      <div key={comboId}>
+                      <div key={comboId} className='border-l-4 border-amber-500 pl-3'>
                         {group.comboName && (
                           <div className='flex items-center gap-2 mb-2'>
-                            <Gift className='h-4 w-4 text-amber-600' />
+                            <span className='text-xs text-gray-600'>Combo:</span>
                             <span className='text-xs font-semibold text-amber-800'>{group.comboName}</span>
                           </div>
                         )}
                         {group.items.map((item) => (
-                          <div key={item.id} className='flex gap-3 mb-3 last:mb-0'>
+                          <div
+                            key={item.id}
+                            className='flex gap-3 mb-3 last:mb-0 bg-amber-50/50 rounded-lg p-2 border border-amber-100'
+                          >
                             <img
                               src={item.orderItemImageUrl}
                               alt={item.orderItemName}
-                              className='w-16 h-16 object-cover rounded-lg border border-gray-200'
+                              className='w-16 h-16 object-cover rounded-lg border-2 border-amber-300'
                             />
                             <div className='flex-1 min-w-0'>
-                              <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
-                              {group.comboName && <p className='text-xs text-amber-600'>Combo Sạch bà nông trại</p>}
+                              <div className='flex items-center gap-2 mb-1'>
+                                <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
+                              </div>
+                              {group.comboName && (
+                                <p className='text-xs text-amber-600 font-medium'>Combo Sạch bà nông trại</p>
+                              )}
                               <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
                             </div>
                             <div className='text-right'>
@@ -436,7 +446,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
 
                   {/* Regular Products */}
                   {order.orderItems.map((item) => (
-                    <div key={item.id} className='flex gap-3'>
+                    <div key={item.id} className='flex gap-3 bg-white rounded-lg p-2 border border-gray-200'>
                       <img
                         src={item.orderItemImageUrl}
                         alt={item.orderItemName}
@@ -588,7 +598,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                               <p className={`font-medium text-sm ${isCurrent ? 'text-gray-900' : 'text-gray-600'}`}>
                                 {history.description}
                               </p>
-                              <p className='text-xs text-gray-500'>{(history.time)}</p>
+                              <p className='text-xs text-gray-500'>{history.time}</p>
                             </div>
                           </div>
                         )

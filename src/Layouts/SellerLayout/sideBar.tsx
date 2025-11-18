@@ -10,7 +10,8 @@ import {
   HelpCircle,
   Leaf,
   Component,
-  Gift
+  Gift,
+  Star
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../../contexts/store.context'
@@ -130,6 +131,15 @@ function SideBar() {
       icon: (
         <AnimatedIcon animationType='bounce'>
           <ShoppingCart size={18} />
+        </AnimatedIcon>
+      )
+    },
+    {
+      key: path.productReviewsSeller,
+      label: 'Đánh giá sản phẩm',
+      icon: (
+        <AnimatedIcon animationType='bounce'>
+          <Star size={18} />
         </AnimatedIcon>
       )
     },

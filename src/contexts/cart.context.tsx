@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAuth } from './auth.context'
-import { getCartByUserId, addToCart as addToCartAPI, removeCartItem } from '../apis/cart.api'
+import { getCartByUserId, addToCart as addToCartAPI, removeCartItem, removeCombo } from '../apis/cart.api'
+import { getComboById } from '../apis/combo.api'
 import type { CartData, Cart as APICart, CartItem as APICartItem } from '../types/cartType'
 import { toast } from '../utils/toast'
 
@@ -23,6 +24,7 @@ interface CartContextProps {
   cartCount: number
   loading: boolean
   addToCart: (productVariantId: string, quantity: number, comboId?: string) => Promise<void>
+  removeComboFromCart: (comboId: string) => Promise<void>
   refreshCart: (options?: { silent?: boolean }) => Promise<void>
   clearCart: () => void
   clearCartAfterOrder: (itemIds: string[]) => Promise<void>
@@ -108,13 +110,36 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      const items = [
-        {
-          productVariantId: comboId ? undefined : productVariantId,
-          comboId: comboId,
-          quantity: quantity
+      let items: {
+        productVariantId?: string
+        comboId?: string
+        quantity: number
+      }[] = []
+
+      if (comboId) {
+        const comboResponse = await getComboById(comboId)
+        const comboData = comboResponse?.data?.data ?? comboResponse?.data
+        const comboItems = comboData?.comboItems
+
+        if (!Array.isArray(comboItems) || comboItems.length === 0) {
+          toast.error('Combo không hợp lệ hoặc không có sản phẩm')
+          return
         }
-      ]
+
+        items = comboItems.map((comboItem: { productVariantId: string; quantity: number }) => ({
+          productVariantId: comboItem.productVariantId,
+          comboId,
+          quantity: comboItem.quantity * quantity
+        }))
+      } else {
+        items = [
+          {
+            productVariantId,
+            quantity
+          }
+        ]
+      }
+
       console.log('[AddToCart] payload:', items)
       await addToCartAPI(user.userId, items)
       await loadCart()
@@ -148,6 +173,24 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       await loadCart(options)
     },
     [loadCart]
+  )
+
+  // Remove entire combo
+  const removeComboFromCart = useCallback(
+    async (comboId: string) => {
+      if (!user?.userId || !isAuthenticated || !comboId) {
+        return
+      }
+
+      try {
+        await removeCombo(user.userId, comboId)
+        await loadCart({ silent: true })
+      } catch (error) {
+        console.error('Error removing combo from cart:', error)
+        toast.error('Không thể xóa combo, vui lòng thử lại')
+      }
+    },
+    [user?.userId, isAuthenticated, loadCart]
   )
 
   // Clear cart (local only)
@@ -202,6 +245,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         cartCount,
         loading,
         addToCart,
+        removeComboFromCart,
         refreshCart,
         clearCart,
         clearCartAfterOrder

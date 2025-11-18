@@ -65,6 +65,7 @@ import OrderCreate from './pages/customer/Order/OrderCreate'
 import SellerPromotionList from './pages/seller/promotionManagement/list'
 import CreateComboSeller from './pages/seller/combos/createCombo'
 import DetailComboSeller from './pages/seller/combos/detailCombo'
+import ProductReviews from './pages/seller/productReviews/productReviews'
 import ViewBlog from './pages/customer/Blog/viewBlog'
 import SellerManagement from './pages/admin/sellerManagerment/list'
 import StaffManagement from './pages/admin/staffManagerment/list'
@@ -235,6 +236,10 @@ export default function useRouteElements() {
             {
               path: path.detailComboSeller,
               element: <DetailComboSeller />
+            },
+            {
+              path: path.productReviewsSeller,
+              element: <ProductReviews />
             }
           ]
         }

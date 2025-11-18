@@ -128,8 +128,9 @@ function Header() {
             {/* Backdrop overlay */}
             {showDropdown && (
               <div
-                className={`fixed inset-0 bg-black/30 z-[60] cart-backdrop ${isClosing ? 'animate-fade-out' : 'animate-fade-in'
-                  }`}
+                className={`fixed inset-0 bg-black/30 z-[60] cart-backdrop ${
+                  isClosing ? 'animate-fade-out' : 'animate-fade-in'
+                }`}
                 onClick={handleCloseDropdown}
               />
             )}
@@ -137,8 +138,9 @@ function Header() {
             {showDropdown && (
               <div
                 ref={dropdownRef}
-                className={`fixed left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 w-[600px] max-w-[90vw] max-h-[80vh] bg-white shadow-2xl rounded-xl border border-gray-200 z-[70] flex flex-col ${isClosing ? 'animate-slide-up' : 'animate-slide-down'
-                  }`}
+                className={`fixed left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 w-[600px] max-w-[90vw] max-h-[80vh] bg-white shadow-2xl rounded-xl border border-gray-200 z-[70] flex flex-col ${
+                  isClosing ? 'animate-slide-up' : 'animate-slide-down'
+                }`}
               >
                 <div className='p-4 border-b text-gray-500 text-base font-semibold flex-shrink-0'>
                   Sản phẩm mới thêm
@@ -165,29 +167,30 @@ function Header() {
                     </div>
                   ) : (
                     <ul className='divide-y'>
-                      {[...cart].reverse().slice(0, 3).map((item, idx) => (
-                        <li key={item.id + idx} className='flex items-center gap-3 px-4 py-3'>
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className='w-16 h-16 object-cover rounded border'
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement
-                              target.src = 'https://i.pinimg.com/1200x/93/b6/9f/93b69fd5d973b3f2fbc325982eb8e658.jpg'
-                            }}
-                          />
-                          <div className='flex-1 min-w-0'>
-                            <div className='truncate font-medium text-gray-900 text-base'>{item.name}</div>
-                            <div className='text-xs text-gray-500'>Số lượng: {item.quantity}</div>
-                            {item.variant && (
-                              <div className='text-xs text-gray-500'>Phân loại: {item.variant}</div>
-                            )}
-                          </div>
-                          <div className='text-orange-600 font-semibold text-base whitespace-nowrap'>
-                            {item.price.toLocaleString('vi-VN')}₫
-                          </div>
-                        </li>
-                      ))}
+                      {[...cart]
+                        .reverse()
+                        .slice(0, 3)
+                        .map((item, idx) => (
+                          <li key={item.id + idx} className='flex items-center gap-3 px-4 py-3'>
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className='w-16 h-16 object-cover rounded border'
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.src = 'https://i.pinimg.com/1200x/93/b6/9f/93b69fd5d973b3f2fbc325982eb8e658.jpg'
+                              }}
+                            />
+                            <div className='flex-1 min-w-0'>
+                              <div className='truncate font-medium text-gray-900 text-base'>{item.name}</div>
+                              <div className='text-xs text-gray-500'>Số lượng: {item.quantity}</div>
+                              {item.variant && <div className='text-xs text-gray-500'>Phân loại: {item.variant}</div>}
+                            </div>
+                            <div className='text-orange-600 font-semibold text-base whitespace-nowrap'>
+                              {item.price.toLocaleString('vi-VN')}₫
+                            </div>
+                          </li>
+                        ))}
                     </ul>
                   )}
                 </div>
@@ -284,7 +287,6 @@ function Header() {
               Bạn muốn làm cộng tác viên?
             </Link>
           )}
-
         </div>
       </div>
     </div>

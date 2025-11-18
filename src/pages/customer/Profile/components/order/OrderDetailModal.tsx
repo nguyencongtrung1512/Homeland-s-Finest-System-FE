@@ -370,23 +370,30 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                   {/* Combo Products */}
                   {comboGroups &&
                     Object.entries(comboGroups).map(([comboId, group]) => (
-                      <div key={comboId}>
+                      <div key={comboId} className='border-l-4 border-amber-500 pl-3'>
                         {group.comboName && (
                           <div className='flex items-center gap-2 mb-2'>
-                            <Gift className='h-4 w-4 text-amber-600' />
+                            <span className='text-xs text-gray-600'>Combo: </span>
                             <span className='text-xs font-semibold text-amber-800'>{group.comboName}</span>
                           </div>
                         )}
                         {group.items.map((item) => (
-                          <div key={item.id} className='flex gap-3 mb-3 last:mb-0'>
+                          <div
+                            key={item.id}
+                            className='flex gap-3 mb-3 last:mb-0 bg-amber-50/50 rounded-lg p-2 border border-amber-100'
+                          >
                             <img
                               src={item.orderItemImageUrl}
                               alt={item.orderItemName}
-                              className='w-16 h-16 object-cover rounded-lg border border-gray-200'
+                              className='w-16 h-16 object-cover rounded-lg border-2 border-amber-300'
                             />
                             <div className='flex-1 min-w-0'>
-                              <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
-                              {group.comboName && <p className='text-xs text-amber-600'>Combo Sạch bà nông trại</p>}
+                              <div className='flex items-center gap-2 mb-1'>
+                                <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
+                              </div>
+                              {group.comboName && (
+                                <p className='text-xs text-amber-600 font-medium'>Combo Sạch bà nông trại</p>
+                              )}
                               <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
                             </div>
                             <div className='text-right'>
@@ -399,7 +406,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
 
                   {/* Regular Products */}
                   {order.orderItems.map((item) => (
-                    <div key={item.id} className='flex gap-3'>
+                    <div key={item.id} className='flex gap-3 bg-white rounded-lg p-2 border border-gray-200'>
                       <img
                         src={item.orderItemImageUrl}
                         alt={item.orderItemName}
@@ -445,11 +452,10 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                             <h4 className='font-semibold text-gray-900 text-sm'>{promotion.title}</h4>
                             <Badge
                               variant='outline'
-                              className={`text-xs ${
-                                promotion.promotionType === 'Product'
-                                  ? 'border-blue-200 text-blue-700 bg-blue-50'
-                                  : 'border-purple-200 text-purple-700 bg-purple-50'
-                              }`}
+                              className={`text-xs ${promotion.promotionType === 'Product'
+                                ? 'border-blue-200 text-blue-700 bg-blue-50'
+                                : 'border-purple-200 text-purple-700 bg-purple-50'
+                                }`}
                             >
                               {promotion.promotionType === 'Product' ? 'Sản phẩm' : 'Toàn cửa hàng'}
                             </Badge>
@@ -548,13 +554,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                         return (
                           <div key={history.id} className='flex items-start gap-4 relative'>
                             <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
-                                isCurrent
-                                  ? 'bg-green-600'
-                                  : isCompleted
-                                    ? 'bg-gray-400'
-                                    : 'bg-white border-2 border-gray-300'
-                              }`}
+                              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${isCurrent
+                                ? 'bg-green-600'
+                                : isCompleted
+                                  ? 'bg-gray-400'
+                                  : 'bg-white border-2 border-gray-300'
+                                }`}
                             >
                               {isCurrent ? (
                                 <Package className='h-5 w-5 text-white' />

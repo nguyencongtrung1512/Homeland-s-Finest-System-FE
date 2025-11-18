@@ -1,7 +1,7 @@
 // Cart component
 import { Button } from '../../../components/ui/button'
 import { Plus, Minus, ShoppingCart, Trash2, Store, MapPin, Edit, Trash, Gift, Tag, Wallet, Loader2 } from 'lucide-react'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
 import { useAuth } from '../../../contexts/auth.context'
@@ -10,8 +10,9 @@ import {
   removeCartItem,
   getCartByUserId,
   removePromotionFromCart,
-  calculateShippingFee
+  updateCombo
 } from '../../../apis/cart.api'
+import { getComboById } from '../../../apis/combo.api'
 import { toast } from '../../../utils/toast'
 import { createOrder } from '../../../apis/order.api'
 import { addressApi } from '../../../apis/address.api'
@@ -56,9 +57,25 @@ interface StorePromotion {
 
 type GroupedItem = APICartItem | ComboGroup
 
+type StoreSummaryEntry =
+  | {
+    type: 'combo'
+    comboId: string
+    comboName: string
+    itemCount: number
+    quantity: number
+    totalPrice: number
+  }
+  | {
+    type: 'single'
+    id: string
+    name: string
+    totalPrice: number
+  }
+
 export default function Cart() {
   const navigate = useNavigate()
-  const { refreshCart, loading, clearCartAfterOrder } = useCart()
+  const { refreshCart, loading, clearCartAfterOrder, removeComboFromCart } = useCart()
   const { user } = useAuth()
   const [cartData, setCartData] = useState<CartData | null>(null)
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({})
@@ -72,14 +89,17 @@ export default function Cart() {
   const [storePromotions] = useState<Record<string, StorePromotion[]>>({})
   const [isAppliedPromotionsModalOpen, setIsAppliedPromotionsModalOpen] = useState(false)
   const [selectedStoreForAppliedPromotions, setSelectedStoreForAppliedPromotions] = useState<string | null>(null)
-  const [shippingFee, setShippingFee] = useState(0)
-  const [storeShippingFees, setStoreShippingFees] = useState<Record<string, number>>({})
-  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false)
   const [walletBalance, setWalletBalance] = useState<WalletData | null>(null)
   const [isLoadingWallet, setIsLoadingWallet] = useState(false)
   const isInitialLoad = useRef(true) // Track if this is the first load
   const quantityUpdateTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingQuantityUpdates = useRef<Record<string, number>>({})
+  const [comboNames, setComboNames] = useState<Record<string, string>>({})
+
+  // Checkbox styling (gray accent + click animation)
+  const checkboxClass =
+    'w-5 h-5 rounded border-gray-300 focus:ring-2 focus:ring-gray-400 transition-transform duration-150 ease-out hover:scale-105 active:scale-95'
+  const checkboxStyle: CSSProperties = { accentColor: '#6b7280' }
 
   // Address management states
   const [showAddressModal, setShowAddressModal] = useState(false)
@@ -126,128 +146,6 @@ export default function Cart() {
     }
   }, [user?.userId])
 
-  const calculateShipping = useCallback(async () => {
-    if (!cartData || !selectedAddress) return
-
-    // Get all selected items from all stores
-    const selectedItemsList = cartData.carts.flatMap((store) => store.items.filter((item) => selectedItems[item.id]))
-
-    if (selectedItemsList.length === 0) {
-      setShippingFee(0)
-      setStoreShippingFees({})
-      return
-    }
-
-    setIsCalculatingShipping(true)
-    const newStoreShippingFees: Record<string, number> = {}
-    let totalShippingFee = 0
-
-    try {
-      // Get all selected cart item IDs
-      const cartItemIds = selectedItemsList.map((item) => item.id)
-
-      console.log('[CalculateShipping] Sending request with:', {
-        cartItemIds,
-        userAddressId: selectedAddress.id
-      })
-
-      // Send single request with all selected cart items
-      const response = await calculateShippingFee(cartItemIds, selectedAddress.id)
-
-      console.log('[CalculateShipping] Response:', response)
-
-      if (response.data.success) {
-        totalShippingFee = response.data.totalShippingFee
-
-        // Use storeShippingInfos from API response if available
-        if (response.data.storeShippingInfos && Array.isArray(response.data.storeShippingInfos)) {
-          let actualTotalShippingFee = 0
-
-          response.data.storeShippingInfos.forEach((storeInfo: { storeId: string; shippingFee: number }) => {
-            let storeShippingFee = storeInfo.shippingFee || 0
-
-            // Apply free shipping if store has freeship
-            const store = cartData.carts.find((s) => s.storeId === storeInfo.storeId)
-            if (store?.hasFreeship) {
-              console.log(`🚚 Free shipping applied for store: ${store.storeName}`)
-              storeShippingFee = 0
-            }
-
-            newStoreShippingFees[storeInfo.storeId] = storeShippingFee
-            actualTotalShippingFee += storeShippingFee
-          })
-
-          // Update totalShippingFee to reflect actual fees after free shipping
-          totalShippingFee = actualTotalShippingFee
-        } else {
-          // Fallback: distribute shipping fee among stores based on their item count
-          const storeItemCounts: Record<string, number> = {}
-          cartData.carts.forEach((store) => {
-            const storeSelectedItems = store.items.filter((item) => selectedItems[item.id])
-            if (storeSelectedItems.length > 0) {
-              storeItemCounts[store.storeId] = storeSelectedItems.length
-            }
-          })
-
-          const totalSelectedItems = Object.values(storeItemCounts).reduce((sum, count) => sum + count, 0)
-
-          // Calculate shipping fee per item
-          const shippingFeePerItem = totalSelectedItems > 0 ? totalShippingFee / totalSelectedItems : 0
-
-          // Assign shipping fee to each store
-          cartData.carts.forEach((store) => {
-            const storeSelectedItemsCount = storeItemCounts[store.storeId] || 0
-            if (storeSelectedItemsCount > 0) {
-              let storeShippingFee = storeSelectedItemsCount * shippingFeePerItem
-
-              // Apply free shipping if store has freeship
-              if (store.hasFreeship) {
-                console.log(`🚚 Free shipping applied for store: ${store.storeName}`)
-                storeShippingFee = 0
-              }
-
-              newStoreShippingFees[store.storeId] = storeShippingFee
-            } else {
-              newStoreShippingFees[store.storeId] = 0
-            }
-          })
-        }
-      } else {
-        // Fallback: set default fee for each store
-        cartData.carts.forEach((store) => {
-          const storeSelectedItems = store.items.filter((item) => selectedItems[item.id])
-          if (storeSelectedItems.length > 0) {
-            const fee = store.hasFreeship ? 0 : 30000
-            newStoreShippingFees[store.storeId] = fee
-            totalShippingFee += fee
-          } else {
-            newStoreShippingFees[store.storeId] = 0
-          }
-        })
-      }
-
-      setStoreShippingFees(newStoreShippingFees)
-      setShippingFee(totalShippingFee)
-    } catch (error) {
-      console.error('Error calculating shipping fee:', error)
-      // Fallback: set default fee for each store
-      cartData.carts.forEach((store) => {
-        const storeSelectedItems = store.items.filter((item) => selectedItems[item.id])
-        if (storeSelectedItems.length > 0) {
-          const fee = store.hasFreeship ? 0 : 30000
-          newStoreShippingFees[store.storeId] = fee
-          totalShippingFee += fee
-        } else {
-          newStoreShippingFees[store.storeId] = 0
-        }
-      })
-      setStoreShippingFees(newStoreShippingFees)
-      setShippingFee(totalShippingFee)
-    } finally {
-      setIsCalculatingShipping(false)
-    }
-  }, [cartData, selectedAddress, selectedItems])
-
   // Reset initial load flag when user changes
   useEffect(() => {
     isInitialLoad.current = true
@@ -259,8 +157,49 @@ export default function Cart() {
   }, [reloadCartData, loadUserAddresses])
 
   useEffect(() => {
-    calculateShipping()
-  }, [calculateShipping])
+    if (!cartData) return
+    const idsToFetch = new Set<string>()
+    cartData.carts.forEach((store) => {
+      store.items.forEach((item) => {
+        if (item.isCombo && item.comboId && !comboNames[item.comboId]) {
+          idsToFetch.add(item.comboId)
+        }
+      })
+    })
+    if (idsToFetch.size === 0) return
+    let isCancelled = false
+    const fetchComboNames = async () => {
+      try {
+        const comboEntries = await Promise.all(
+          Array.from(idsToFetch).map(async (comboId) => {
+            try {
+              const response = await getComboById(comboId)
+              const name = response?.data?.data?.name || response?.data?.name || 'Combo'
+              return { comboId, name }
+            } catch (error) {
+              console.error('Error fetching combo detail:', error)
+              return { comboId, name: 'Combo' }
+            }
+          })
+        )
+        if (!isCancelled) {
+          setComboNames((prev) => {
+            const updated = { ...prev }
+            comboEntries.forEach(({ comboId, name }) => {
+              updated[comboId] = name
+            })
+            return updated
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching combo names:', error)
+      }
+    }
+    fetchComboNames()
+    return () => {
+      isCancelled = true
+    }
+  }, [cartData, comboNames])
 
   // Cleanup quantity update timers on unmount
   useEffect(() => {
@@ -360,7 +299,6 @@ export default function Cart() {
 
       // Reload addresses from API to ensure sync
       await loadUserAddresses()
-      setTimeout(() => calculateShipping(), 200)
     } catch (error) {
       console.error('Error deleting address:', error)
       const errorMessage =
@@ -426,7 +364,6 @@ export default function Cart() {
       setShowAddressModal(false)
       setEditingAddress(null)
       await loadUserAddresses()
-      setTimeout(() => calculateShipping(), 100)
     } catch (error) {
       console.error('Error saving address:', error)
       const errorMessage =
@@ -484,10 +421,10 @@ export default function Cart() {
   const updateQuantity = (itemId: string, newQuantity: number) => {
     if (!user?.userId || newQuantity < 1) return
 
+    let targetComboId: string | null = null
+
     setCartData((prev) => {
       if (!prev) return prev
-
-      let targetComboId: string | null = null
 
       prev.carts.forEach((store) => {
         store.items.forEach((item) => {
@@ -523,29 +460,33 @@ export default function Cart() {
       }
     })
 
-    pendingQuantityUpdates.current[itemId] = newQuantity
+    const updateKey = targetComboId ?? itemId
+    pendingQuantityUpdates.current[updateKey] = newQuantity
 
-    if (quantityUpdateTimers.current[itemId]) {
-      clearTimeout(quantityUpdateTimers.current[itemId])
+    if (quantityUpdateTimers.current[updateKey]) {
+      clearTimeout(quantityUpdateTimers.current[updateKey])
     }
 
-    quantityUpdateTimers.current[itemId] = setTimeout(async () => {
+    quantityUpdateTimers.current[updateKey] = setTimeout(async () => {
       try {
-        const quantityToUpdate = pendingQuantityUpdates.current[itemId]
-        await updateCartItem(itemId, quantityToUpdate)
+        const quantityToUpdate = pendingQuantityUpdates.current[updateKey]
+        if (targetComboId) {
+          await updateCombo(user.userId, targetComboId, quantityToUpdate)
+        } else {
+          await updateCartItem(itemId, quantityToUpdate)
+        }
         await refreshCart({ silent: true })
         await reloadCartData()
-
       } catch (error) {
         console.error('Error updating quantity:', error)
         toast.error('Có lỗi xảy ra khi cập nhật số lượng')
         await reloadCartData()
       } finally {
-        if (quantityUpdateTimers.current[itemId]) {
-          clearTimeout(quantityUpdateTimers.current[itemId])
-          delete quantityUpdateTimers.current[itemId]
+        if (quantityUpdateTimers.current[updateKey]) {
+          clearTimeout(quantityUpdateTimers.current[updateKey])
+          delete quantityUpdateTimers.current[updateKey]
         }
-        delete pendingQuantityUpdates.current[itemId]
+        delete pendingQuantityUpdates.current[updateKey]
       }
     }, 2000)
   }
@@ -561,6 +502,18 @@ export default function Cart() {
     } catch (error) {
       console.error('Error removing item:', error)
       toast.error('Có lỗi xảy ra khi xóa sản phẩm')
+    }
+  }
+
+  const handleRemoveCombo = async (comboId?: string) => {
+    if (!comboId) return
+    try {
+      await removeComboFromCart(comboId)
+      await reloadCartData()
+      toast.success('Đã xóa combo khỏi giỏ hàng')
+    } catch (error) {
+      console.error('Error removing combo:', error)
+      toast.error('Có lỗi xảy ra khi xóa combo')
     }
   }
 
@@ -619,13 +572,6 @@ export default function Cart() {
 
     let discount = 0
 
-    // Check if store has free shipping - use store-specific shipping fee
-    if (store.hasFreeship) {
-      const storeShippingFee = storeShippingFees[storeId] || 0
-      discount += storeShippingFee // Free shipping = shipping fee discount
-      console.log('🚚 Free shipping applied for store:', store.storeName, 'discount:', storeShippingFee)
-    }
-
     // Add applied promotions discount
     if (store.appliedPromotions) {
       const promotionDiscount = store.appliedPromotions.reduce((sum, promo) => {
@@ -666,9 +612,13 @@ export default function Cart() {
     items.forEach((item) => {
       if (item.isCombo) {
         if (!comboMap.has(item.comboId)) {
+          const derivedComboName =
+            (item.comboId && comboNames[item.comboId]) ||
+            (item as APICartItem & { comboName?: string }).comboName ||
+            'Combo'
           comboMap.set(item.comboId, {
             comboId: item.comboId,
-            comboName: 'Combo',
+            comboName: derivedComboName,
             items: [],
             quantity: item.quantity,
             totalPrice: 0
@@ -867,7 +817,19 @@ export default function Cart() {
 
   const subtotal = getSelectedTotal()
   const totalDiscount = getTotalDiscount()
-  const finalTotal = Math.max(0, subtotal + shippingFee - totalDiscount)
+  const finalTotal = Math.max(0, subtotal - totalDiscount)
+  const selectedItemsList = cartData
+    ? cartData.carts.flatMap((store) =>
+      store.items
+        .filter((item) => selectedItems[item.id])
+        .map((item) => ({
+          ...item,
+          storeId: store.storeId,
+          storeName: store.storeName,
+          hasFreeship: store.hasFreeship
+        }))
+    )
+    : []
 
   // Check if wallet balance is sufficient
   // Only check when MyWallet is selected and balance is loaded
@@ -892,7 +854,8 @@ export default function Cart() {
                   type='checkbox'
                   checked={selectAll}
                   onChange={toggleSelectAll}
-                  className='w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500'
+                  className={checkboxClass}
+                  style={checkboxStyle}
                 />
                 <span className='text-gray-700'>Chọn tất cả ({getTotalItems()} sản phẩm)</span>
               </label>
@@ -902,10 +865,10 @@ export default function Cart() {
             {cartData.carts.map((store) => (
               <div key={store.cartId} className='bg-white rounded-lg shadow-sm overflow-hidden'>
                 {/* Store Header */}
-                <div className='bg-orange-50 px-4 py-3 border-b border-orange-100'>
+                <div className='bg-green-100 px-4 py-3 border-b border-green-200'>
                   <div className='flex items-center justify-between mb-2'>
                     <div className='flex items-center gap-2'>
-                      <Store className='w-5 h-5 text-orange-600' />
+                      <Store className='w-5 h-5 text-green-600' />
                       <span className='font-semibold text-gray-800'>{store.storeName}</span>
                       {store.hasFreeship && (
                         <span className='bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium'>
@@ -938,15 +901,16 @@ export default function Cart() {
                     </div>
                   </div>
                 </div>
-
                 {/* Items */}
                 <div className='divide-y divide-gray-100'>
                   {groupComboItems(store.items).map((item) => {
                     // Check if it's a combo group
                     if ('comboId' in item && 'items' in item) {
                       const comboItem = item as ComboGroup
+                      const comboTitle =
+                        (comboItem.comboId && comboNames[comboItem.comboId]) || comboItem.comboName || 'Combo'
                       return (
-                        <div key={comboItem.comboId} className='p-4 bg-purple-50'>
+                        <div key={comboItem.comboId} className='p-4 bg-white rounded-xl '>
                           <div className='flex items-start gap-4'>
                             <input
                               type='checkbox'
@@ -954,59 +918,56 @@ export default function Cart() {
                               onChange={() => {
                                 comboItem.items.forEach((i: APICartItem) => toggleItemSelection(i.id))
                               }}
-                              className='w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 mt-1'
+                              className={`${checkboxClass} mt-1`}
+                              style={checkboxStyle}
                             />
 
-                            <div className='flex-1'>
-                              <div className='flex items-center gap-2 mb-3'>
-                                <span className='bg-purple-600 text-white text-xs px-2 py-1 rounded'>
-                                  Sản phẩm combo
-                                </span>
-                                <span className='text-purple-600 font-medium text-sm'>COMBO</span>
-                              </div>
-
-                              <div className='bg-white rounded-lg p-3 mb-2'>
-                                <div className='flex justify-between items-start mb-2'>
-                                  <h3 className='font-semibold text-gray-800'>{comboItem.comboName}</h3>
+                            <div className='flex-1 space-y-4'>
+                              <div className='flex items-start justify-between gap-4'>
+                                <div className='flex items-center gap-2'>
+                                  <span className='mb-3 inline-flex items-center text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full'>
+                                    Sản phẩm combo
+                                  </span>
+                                  <h3 className='text-base font-semibold text-gray-900 mt-3'>{comboTitle}</h3>
+                                </div>
+                                <div className='text-right space-y-2'>
                                   <button
-                                    onClick={() => removeItem(comboItem.items[0].id)}
-                                    className='text-gray-400 hover:text-red-500'
+                                    onClick={() => handleRemoveCombo(comboItem.comboId)}
+                                    className='text-gray-400 hover:text-red-500 inline-flex justify-end w-full'
+                                    title='Xóa combo'
                                   >
                                     <Trash2 className='w-4 h-4' />
                                   </button>
                                 </div>
-                                <p className='text-sm text-gray-600 mb-3'>
-                                  {comboItem.items.length} sản phẩm trong combo
-                                </p>
-                                <div className='flex items-center justify-between'>
-                                  <div className='flex items-center gap-3'>
-                                    <button
-                                      onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity - 1)}
-                                      className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
-                                    >
-                                      <Minus className='w-4 h-4' />
-                                    </button>
-                                    <span className='w-12 text-center font-medium'>{comboItem.quantity}</span>
-                                    <button
-                                      onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity + 1)}
-                                      className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
-                                    >
-                                      <Plus className='w-4 h-4' />
-                                    </button>
-                                  </div>
-                                  <div className='text-right'>
-                                    <p className='text-purple-600 font-bold text-lg'>
-                                      ₫{formatPrice(comboItem.totalPrice)}
-                                    </p>
-                                  </div>
-                                </div>
                               </div>
 
-                              {/* Combo Items */}
-                              <div className='space-y-2'>
+                              <div className='flex flex-wrap items-center justify-between gap-4'>
+                                <div className='flex items-center gap-3'>
+                                  <button
+                                    onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity - 1)}
+                                    className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
+                                  >
+                                    <Minus className='w-4 h-4' />
+                                  </button>
+                                  <span className='w-12 text-center font-semibold text-gray-900'>
+                                    {comboItem.quantity}
+                                  </span>
+                                  <button
+                                    onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity + 1)}
+                                    className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
+                                  >
+                                    <Plus className='w-4 h-4' />
+                                  </button>
+                                </div>
+                                <p className='text-orange-600 font-bold text-lg whitespace-nowrap'>
+                                  ₫{formatPrice(comboItem.totalPrice)}
+                                </p>
+                              </div>
+
+                              <div className='space-y-2 bg-orange-50 rounded-lg p-2'>
                                 {comboItem.items.map((comboItem: APICartItem) => (
-                                  <div key={comboItem.id} className='flex items-center gap-3 bg-white rounded p-2'>
-                                    <div className='w-12 h-12 bg-gray-100 rounded flex items-center justify-center'>
+                                  <div key={comboItem.id} className='flex items-center gap-3  p-2'>
+                                    <div className='w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm'>
                                       <img
                                         src={comboItem.imageUrl || '/api/placeholder/48/48'}
                                         alt={comboItem.name}
@@ -1015,9 +976,7 @@ export default function Cart() {
                                     </div>
                                     <div className='flex-1'>
                                       <p className='text-sm font-medium text-gray-800'>{comboItem.name}</p>
-                                      <p className='text-xs text-gray-500'>
-                                        ₫{formatPrice(comboItem.unitPrice)} x {comboItem.quantity}
-                                      </p>
+                                      <p className='text-xs text-gray-500'>Số lượng: {comboItem.quantity}</p>
                                     </div>
                                   </div>
                                 ))}
@@ -1037,7 +996,8 @@ export default function Cart() {
                             type='checkbox'
                             checked={selectedItems[regularItem.id] || false}
                             onChange={() => toggleItemSelection(regularItem.id)}
-                            className='w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 mt-1'
+                            className={`${checkboxClass} mt-1`}
+                            style={checkboxStyle}
                           />
 
                           <div className='w-20 h-20 bg-gray-100 rounded overflow-hidden flex-shrink-0'>
@@ -1098,83 +1058,81 @@ export default function Cart() {
               <h2 className='text-lg font-bold text-gray-800 mb-4'>Tóm tắt đơn hàng</h2>
 
               <div className='space-y-3 mb-4 pb-4 border-b border-gray-200'>
-                <div className='flex justify-between text-sm'>
-                  <span className='text-gray-600'>Sản phẩm ({getSelectedCount()} món)</span>
-                  <span className='font-medium'>₫{formatPrice(subtotal)}</span>
-                </div>
+                {/* Selected items with pricing */}
+                <div className='space-y-3 max-h-64 overflow-y-auto pr-1'>
+                  {cartData?.carts.map((store) => {
+                    const storeSummaryEntries = groupComboItems(store.items).reduce<StoreSummaryEntry[]>(
+                      (entries, groupedItem) => {
+                        if ('items' in groupedItem) {
+                          const comboGroup = groupedItem as ComboGroup
+                          const selectedComboItems = comboGroup.items.filter((comboItem) => selectedItems[comboItem.id])
+                          const allSelected = selectedComboItems.length === comboGroup.items.length
 
-                {/* Store-wise breakdown with promotions */}
-                {cartData?.carts.map((store) => {
-                  const storeSubtotal = store.items
-                    .filter((item) => selectedItems[item.id])
-                    .reduce((sum, item) => sum + item.totalPrice, 0)
-                  const storeDiscount = getStoreDiscount(store.storeId)
-                  const storeFinal = Math.max(0, storeSubtotal - storeDiscount)
+                          if (allSelected && comboGroup.items.length > 0) {
+                            entries.push({
+                              type: 'combo',
+                              comboId: comboGroup.comboId,
+                              comboName: comboGroup.comboName || 'Combo',
+                              itemCount: comboGroup.items.length,
+                              quantity: comboGroup.quantity,
+                              totalPrice: comboGroup.totalPrice
+                            })
+                          } else {
+                            selectedComboItems.forEach((comboItem) => {
+                              entries.push({
+                                type: 'single',
+                                id: comboItem.id,
+                                name: comboItem.name,
+                                totalPrice: comboItem.totalPrice
+                              })
+                            })
+                          }
+                        } else if (selectedItems[groupedItem.id]) {
+                          entries.push({
+                            type: 'single',
+                            id: groupedItem.id,
+                            name: groupedItem.name,
+                            totalPrice: groupedItem.totalPrice
+                          })
+                        }
 
-                  if (storeSubtotal === 0) return null
+                        return entries
+                      },
+                      []
+                    )
 
-                  return (
-                    <div key={store.storeId} className='ml-4 space-y-1'>
-                      <div className='flex justify-between text-xs text-gray-500'>
-                        <span>{store.storeName}</span>
-                        <span>₫{formatPrice(storeSubtotal)}</span>
-                      </div>
-                      {storeDiscount > 0 && (
-                        <div className='flex justify-between text-xs text-green-600'>
-                          <span>
-                            {store.hasFreeship && storeDiscount >= shippingFee ? 'Miễn phí vận chuyển' : 'Giảm giá'}
-                          </span>
-                          <span>-₫{formatPrice(storeDiscount)}</span>
+                    if (storeSummaryEntries.length === 0) return null
+
+                    return (
+                      <div key={store.storeId} className='rounded-lg border border-gray-100 p-3 bg-gray-50 space-y-2'>
+                        <div className='flex justify-between text-xs text-gray-500'>
+                          <span>{store.storeName}</span>
+                          {store.hasFreeship && <span className='text-green-600 font-medium'>Miễn phí vận chuyển</span>}
                         </div>
-                      )}
-                      <div className='flex justify-between text-sm font-medium'>
-                        <span>Thành tiền</span>
-                        <span>₫{formatPrice(storeFinal)}</span>
-                      </div>
-                    </div>
-                  )
-                })}
-
-                {/* Store-wise shipping breakdown */}
-                {cartData?.carts.map((store) => {
-                  const storeSubtotal = store.items
-                    .filter((item) => selectedItems[item.id])
-                    .reduce((sum, item) => sum + item.totalPrice, 0)
-                  const storeShippingFee = storeShippingFees[store.storeId] || 0
-
-                  if (storeSubtotal === 0) return null
-
-                  return (
-                    <div key={`shipping-${store.storeId}`} className='ml-4'>
-                      <div className='flex justify-between text-xs text-gray-500'>
-                        <span>Phí vận chuyển {store.storeName}</span>
-                        <span className={store.hasFreeship ? 'text-green-600' : ''}>
-                          {isCalculatingShipping ? (
-                            <span className='text-blue-600'>Đang tính...</span>
-                          ) : store.hasFreeship ? (
-                            'Miễn phí'
-                          ) : storeShippingFee > 0 ? (
-                            `₫${formatPrice(storeShippingFee)}`
+                        {storeSummaryEntries.map((entry) =>
+                          entry.type === 'combo' ? (
+                            <div key={`combo-${entry.comboId}`} className='flex justify-between text-sm text-gray-700'>
+                              <span className='truncate pr-4'>
+                                {entry.comboName}
+                                <span className='block text-xs text-gray-500'>
+                                  {entry.itemCount} sản phẩm · x{entry.quantity}
+                                </span>
+                              </span>
+                              <span className='font-semibold text-orange-600'>₫{formatPrice(entry.totalPrice)}</span>
+                            </div>
                           ) : (
-                            'Miễn phí'
-                          )}
-                        </span>
+                            <div key={entry.id} className='flex justify-between text-sm text-gray-700'>
+                              <span className='truncate pr-4'>{entry.name}</span>
+                              <span>₫{formatPrice(entry.totalPrice)}</span>
+                            </div>
+                          )
+                        )}
                       </div>
-                    </div>
-                  )
-                })}
-
-                <div className='flex justify-between text-sm font-medium'>
-                  <span className='text-gray-600'>Tổng phí vận chuyển tạm tính</span>
-                  <span className={`font-medium ${shippingFee === 0 ? 'text-green-600' : ''}`}>
-                    {isCalculatingShipping ? (
-                      <span className='text-blue-600'>Đang tính...</span>
-                    ) : shippingFee === 0 ? (
-                      'Miễn phí'
-                    ) : (
-                      `₫${formatPrice(shippingFee)}`
-                    )}
-                  </span>
+                    )
+                  })}
+                  {selectedItemsList.length === 0 && (
+                    <p className='text-xs text-gray-500'>Chưa có sản phẩm được chọn.</p>
+                  )}
                 </div>
               </div>
 
@@ -1182,7 +1140,7 @@ export default function Cart() {
                 <span className='text-lg font-bold text-gray-800'>Tổng cộng</span>
                 <div className='text-right'>
                   {totalDiscount > 0 && (
-                    <div className='text-sm text-gray-500 line-through'>₫{formatPrice(subtotal + shippingFee)}</div>
+                    <div className='text-sm text-gray-500 line-through'>₫{formatPrice(subtotal)}</div>
                   )}
                   <span className='text-2xl font-bold text-orange-600'>₫{formatPrice(finalTotal)}</span>
                 </div>
@@ -1199,35 +1157,35 @@ export default function Cart() {
                   </div>
                 </div>
               )}
+              <div className='flex flex-col gap-4'>
+                <button
+                  onClick={handleCreateOrder}
+                  className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                  disabled={
+                    getSelectedCount() === 0 ||
+                    !selectedPaymentMethod ||
+                    !selectedAddress ||
+                    isSubmitting ||
+                    isLoadingWallet ||
+                    (selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient)
+                  }
+                >
+                  {isSubmitting
+                    ? 'Đang tạo đơn hàng...'
+                    : isLoadingWallet
+                      ? 'Đang kiểm tra số dư...'
+                      : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
+                        ? 'Số dư không đủ'
+                        : 'Mua hàng'}
+                </button>
 
-              <button
-                onClick={handleCreateOrder}
-                className='w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                disabled={
-                  getSelectedCount() === 0 ||
-                  !selectedPaymentMethod ||
-                  !selectedAddress ||
-                  isSubmitting ||
-                  isLoadingWallet ||
-                  (selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient)
-                }
-              >
-                {isSubmitting
-                  ? 'Đang tạo đơn hàng...'
-                  : isLoadingWallet
-                    ? 'Đang kiểm tra số dư...'
-                    : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
-                      ? 'Số dư không đủ'
-                      : `Mua hàng (${getSelectedCount()})`}
-              </button>
-
-              <button
-                onClick={() => navigate('/products')}
-                className='w-full border border-gray-300 text-gray-700 font-medium py-3 rounded-lg hover:bg-gray-50 transition-colors'
-              >
-                Tiếp tục mua sắm
-              </button>
-
+                <button
+                  onClick={() => navigate('/products')}
+                  className='w-full hover:bg-green-50 border border-gray-300 text-green-600 font-medium py-3 rounded-lg hover:bg-gray-50 transition-colors'
+                >
+                  Tiếp tục mua sắm
+                </button>
+              </div>
               <div className='mt-4 pt-4 border-t border-gray-200 space-y-2 text-xs text-gray-600'>
                 <div className='flex items-center gap-2'>
                   <div className='w-1 h-1 rounded-full bg-green-500'></div>
@@ -1246,11 +1204,11 @@ export default function Cart() {
         <div className='mt-6'>
           <div className='bg-white rounded-lg shadow-sm p-6'>
             <div className='flex items-center gap-3 mb-4'>
-              <MapPin className='w-6 h-6 text-orange-600' />
+              <MapPin className='w-6 h-6 text-green-600' />
               <h2 className='text-xl font-bold text-gray-800'>Địa chỉ giao hàng</h2>
               <button
                 onClick={handleAddAddress}
-                className='ml-auto text-orange-600 hover:text-orange-700 font-medium text-sm'
+                className='ml-auto text-green-600 hover:text-green-700 font-medium text-sm'
               >
                 + Thêm địa chỉ mới
               </button>
@@ -1261,12 +1219,11 @@ export default function Cart() {
                 <div
                   key={address.id}
                   className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedAddress?.id === address.id
-                    ? 'border-orange-500 bg-orange-50'
+                    ? 'border-green-500 bg-green-50'
                     : 'border-gray-200 hover:border-gray-300'
                     }`}
                   onClick={() => {
                     setSelectedAddress(address)
-                    setTimeout(() => calculateShipping(), 100)
                   }}
                 >
                   <div className='flex items-start justify-between'>
@@ -1276,7 +1233,6 @@ export default function Cart() {
                         checked={selectedAddress?.id === address.id}
                         onChange={() => {
                           setSelectedAddress(address)
-                          setTimeout(() => calculateShipping(), 100)
                         }}
                         className='w-4 h-4 text-orange-600 mt-1'
                       />
