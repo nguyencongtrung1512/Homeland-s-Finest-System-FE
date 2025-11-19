@@ -30,6 +30,8 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import { cn } from '../../../lib/utils'
+import { toast } from '../../../utils/toast'
 import { useAuth } from '../../../contexts/auth.context'
 import {
   type PromotionSellerDTO,
@@ -50,6 +52,17 @@ interface PromotionDetailModalProps {
   mode?: 'view' | 'edit' | 'create'
   onSubmit?: (data: PromotionSellerRequest) => Promise<void>
   loading?: boolean
+}
+
+// Helper function to format date to ISO string without timezone conversion
+const formatDateToISO = (date: Date, hours: number, minutes: number): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const h = String(hours).padStart(2, '0')
+  const m = String(minutes).padStart(2, '0')
+  const s = '00'
+  return `${year}-${month}-${day}T${h}:${m}:${s}.000Z`
 }
 
 const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
@@ -88,6 +101,20 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
   const [products, setProducts] = useState<Product[]>([])
   const [productsLoading, setProductsLoading] = useState(false)
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
+
+  // Validation errors
+  interface FormErrors {
+    title?: string
+    description?: string
+    discountValue?: string
+    minValueDiscount?: string
+    startDate?: string
+    startTime?: string
+    endDate?: string
+    maxQuantity?: string
+    maxPerUser?: string
+  }
+  const [errors, setErrors] = useState<FormErrors>({})
 
   // Initialize form data when modal opens or promotion changes
   useEffect(() => {
@@ -218,17 +245,21 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
   // Update formData with ISO format dates when startDate/endDate change
   useEffect(() => {
     if (startDate && endDate && mode !== 'create') {
+      const [startHours, startMinutes] = startTime.split(':').map(Number)
+      const [endHours, endMinutes] = endTime.split(':').map(Number)
+      const startISO = formatDateToISO(startDate, startHours, startMinutes)
+      const endISO = formatDateToISO(endDate, endHours, endMinutes)
       setFormData((prev) => ({
         ...prev,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString()
+        startDate: startISO,
+        endDate: endISO
       }))
       console.log('🔍 Updated formData with ISO dates:', {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString()
+        startDate: startISO,
+        endDate: endISO
       })
     }
-  }, [startDate, endDate, mode])
+  }, [startDate, endDate, startTime, endTime, mode])
 
   // Update isEditing when mode changes
   useEffect(() => {
@@ -285,33 +316,64 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
     return null
   }
 
+  // Helper function to handle number input and remove leading zeros
+  const handleNumberInput = (value: string): number | undefined => {
+    if (!value || value.trim() === '') {
+      return undefined
+    }
+    const trimmedValue = value.trim()
+    if (trimmedValue === '0') {
+      return 0
+    }
+    const cleanedValue = trimmedValue.replace(/^0+/, '') || '0'
+    const numValue = Number(cleanedValue)
+    return isNaN(numValue) ? undefined : numValue
+  }
+
   // Form handlers
   const handleInputChange = (
     field: keyof PromotionSellerRequest,
     value: string | number | boolean | string[] | undefined
   ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value
-    }))
+    if (
+      field === 'discountValue' ||
+      field === 'minValueDiscount' ||
+      field === 'maxQuantity' ||
+      field === 'maxPerUser'
+    ) {
+      // Handle number inputs with string value to process leading zeros
+      const processedValue = typeof value === 'string' ? handleNumberInput(value) : value
+      setFormData((prev) => ({
+        ...prev,
+        [field]: processedValue
+      }))
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value
+      }))
+    }
+
+    // Clear error when user starts typing
+    if (errors[field as keyof FormErrors]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }))
+    }
   }
 
   const handleDateChange = (date: Date | undefined, type: 'start' | 'end') => {
     if (type === 'start') {
       setStartDate(date)
       if (date) {
-        const [hours, minutes] = startTime.split(':')
-        const newDate = new Date(date)
-        newDate.setHours(parseInt(hours), parseInt(minutes))
-        handleInputChange('startDate', newDate.toISOString())
+        const [hours, minutes] = startTime.split(':').map(Number)
+        const isoString = formatDateToISO(date, hours, minutes)
+        handleInputChange('startDate', isoString)
       }
     } else {
       setEndDate(date)
       if (date) {
-        const [hours, minutes] = endTime.split(':')
-        const newDate = new Date(date)
-        newDate.setHours(parseInt(hours), parseInt(minutes))
-        handleInputChange('endDate', newDate.toISOString())
+        const [hours, minutes] = endTime.split(':').map(Number)
+        const isoString = formatDateToISO(date, hours, minutes)
+        handleInputChange('endDate', isoString)
       }
     }
   }
@@ -320,20 +382,98 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
     if (type === 'start') {
       setStartTime(time)
       if (startDate) {
-        const [hours, minutes] = time.split(':')
-        const newDate = new Date(startDate)
-        newDate.setHours(parseInt(hours), parseInt(minutes))
-        handleInputChange('startDate', newDate.toISOString())
+        const [hours, minutes] = time.split(':').map(Number)
+        const isoString = formatDateToISO(startDate, hours, minutes)
+        handleInputChange('startDate', isoString)
       }
     } else {
       setEndTime(time)
       if (endDate) {
-        const [hours, minutes] = time.split(':')
-        const newDate = new Date(endDate)
-        newDate.setHours(parseInt(hours), parseInt(minutes))
-        handleInputChange('endDate', newDate.toISOString())
+        const [hours, minutes] = time.split(':').map(Number)
+        const isoString = formatDateToISO(endDate, hours, minutes)
+        handleInputChange('endDate', isoString)
       }
     }
+  }
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
+
+    if (!formData.title.trim()) {
+      newErrors.title = 'Tiêu đề không được để trống'
+    } else if (formData.title.length < 3) {
+      newErrors.title = 'Tiêu đề phải có ít nhất 3 ký tự'
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = 'Mô tả không được để trống'
+    } else if (formData.description.length < 10) {
+      newErrors.description = 'Mô tả phải có ít nhất 10 ký tự'
+    }
+
+    // Only validate discount value if not free shipping
+    if (formData.discountType !== 'freeship') {
+      if (formData.discountValue === undefined || formData.discountValue === null) {
+        newErrors.discountValue = 'Giá trị giảm giá không được để trống'
+      } else if (formData.discountValue <= 0) {
+        newErrors.discountValue = 'Giá trị giảm giá phải lớn hơn 0'
+      } else if (formData.discountType === 'percentage' && formData.discountValue > 100) {
+        newErrors.discountValue = 'Phần trăm giảm giá không được vượt quá 100%'
+      }
+    }
+
+    if (formData.minValueDiscount && formData.minValueDiscount <= 0) {
+      newErrors.minValueDiscount = 'Giá trị đơn tối thiểu phải lớn hơn 0'
+    }
+
+    if (!formData.startDate) {
+      newErrors.startDate = 'Ngày bắt đầu không được để trống'
+    }
+
+    if (!formData.endDate) {
+      newErrors.endDate = 'Ngày kết thúc không được để trống'
+    }
+
+    // Validate start time not after current time if start date is today
+    if (formData.startDate) {
+      const startDate = new Date(formData.startDate)
+      const today = new Date()
+
+      // Check if start date is today
+      if (startDate.toDateString() === today.toDateString()) {
+        const [hours, minutes] = startTime.split(':').map(Number)
+        const selectedTime = new Date(startDate)
+        selectedTime.setHours(hours, minutes, 0, 0)
+
+        const now = new Date()
+        now.setSeconds(0, 0) // Ignore seconds for comparison
+
+        if (selectedTime <= now) {
+          newErrors.startTime = 'Giờ bắt đầu không được trước hoặc bằng giờ hiện tại khi chọn ngày hôm nay'
+        }
+      }
+    }
+
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(formData.startDate)
+      const end = new Date(formData.endDate)
+      if (start >= end) {
+        newErrors.endDate = 'Ngày kết thúc phải sau ngày bắt đầu'
+      }
+    }
+
+    if (formData.maxQuantity && formData.maxQuantity <= 0) {
+      newErrors.maxQuantity = 'Số lượng tối đa phải lớn hơn 0'
+    }
+
+    if (formData.maxPerUser === undefined || formData.maxPerUser === null) {
+      newErrors.maxPerUser = 'Số lượt sử dụng tối đa mỗi user không được để trống'
+    } else if (formData.maxPerUser <= 0) {
+      newErrors.maxPerUser = 'Số lượt sử dụng tối đa mỗi user phải lớn hơn 0'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -341,50 +481,33 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
 
     if (!onSubmit) return
 
-    // Validate required fields
-    if (!formData.title.trim()) {
-      alert('Vui lòng nhập tiêu đề promotion')
+    if (!validateForm()) {
       return
     }
 
-    if (!formData.description.trim()) {
-      alert('Vui lòng nhập mô tả promotion')
-      return
-    }
-
-    if (formData.discountValue <= 0) {
-      alert('Vui lòng nhập giá trị giảm giá hợp lệ')
-      return
-    }
-
-    if (!formData.startDate || !formData.endDate) {
-      alert('Vui lòng chọn ngày bắt đầu và kết thúc')
-      return
-    }
-
-    if (new Date(formData.startDate) >= new Date(formData.endDate)) {
-      alert('Ngày kết thúc phải sau ngày bắt đầu')
-      return
-    }
-
-    const finalData = {
+    // Prepare final data
+    const finalData: PromotionSellerRequest = {
       ...formData,
+      discountValue: formData.discountType === 'freeship' ? 0 : (formData.discountValue ?? 0),
+      maxPerUser: formData.maxPerUser ?? 1,
       productIds: selectedProducts
     }
 
     console.log('🔍 Submitting promotion data:', finalData)
     console.log('🔍 Mode:', mode)
     console.log('🔍 Promotion ID:', promotion?.id)
-    console.log('🔍 Final startDate:', finalData.startDate)
-    console.log('🔍 Final endDate:', finalData.endDate)
-    console.log('🔍 StartDate type:', typeof finalData.startDate)
-    console.log('🔍 EndDate type:', typeof finalData.endDate)
 
     try {
       await onSubmit(finalData)
+      toast.success(mode === 'create' ? 'Tạo khuyễn mãi thành công!' : 'Cập nhật khuyễn mãi thành công!')
       onClose()
     } catch (error) {
       console.error('Error submitting promotion:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error)?.message ||
+        (mode === 'create' ? 'Có lỗi xảy ra khi tạo promotion' : 'Có lỗi xảy ra khi cập nhật promotion')
+      toast.error(errorMessage)
     }
   }
 
@@ -575,8 +698,10 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                       value={formData.title}
                       onChange={(e) => handleInputChange('title', e.target.value)}
                       placeholder='Nhập tiêu đề promotion'
+                      className={cn(errors.title && 'border-red-500')}
                       required
                     />
+                    {errors.title && <p className='text-sm text-red-600'>{errors.title}</p>}
                   </div>
 
                   <div className='space-y-2'>
@@ -605,8 +730,10 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     placeholder='Nhập mô tả chi tiết về promotion'
                     rows={3}
+                    className={cn(errors.description && 'border-red-500')}
                     required
                   />
+                  {errors.description && <p className='text-sm text-red-600'>{errors.description}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -619,30 +746,45 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
               <CardContent>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                   <div className='space-y-2'>
-                    <Label htmlFor='discountValue'>Giá trị giảm giá *</Label>
+                    <Label htmlFor='discountValue'>
+                      Giá trị giảm giá *{formData.discountType === 'percentage' && ' (%)'}
+                      {formData.discountType === 'fixed_amount' && ' (₫)'}
+                    </Label>
                     <Input
                       id='discountValue'
                       type='number'
                       min='0'
-                      step='0.01'
-                      value={formData.discountValue}
-                      onChange={(e) => handleInputChange('discountValue', parseFloat(e.target.value) || 0)}
+                      max={formData.discountType === 'percentage' ? 100 : undefined}
+                      step={formData.discountType === 'percentage' ? '1' : '0.01'}
+                      value={formData.discountType === 'freeship' ? 0 : (formData.discountValue ?? '')}
+                      onChange={(e) => handleInputChange('discountValue', e.target.value)}
                       placeholder={formData.discountType === 'percentage' ? 'Nhập %' : 'Nhập số tiền'}
+                      className={cn(
+                        errors.discountValue && 'border-red-500',
+                        '[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]'
+                      )}
+                      disabled={formData.discountType === 'freeship'}
                       required
                     />
+                    {errors.discountValue && <p className='text-sm text-red-600'>{errors.discountValue}</p>}
                   </div>
 
                   <div className='space-y-2'>
-                    <Label htmlFor='minValueDiscount'>Giá trị đơn hàng tối thiểu</Label>
+                    <Label htmlFor='minValueDiscount'>Giá trị đơn hàng tối thiểu (₫)</Label>
                     <Input
                       id='minValueDiscount'
                       type='number'
                       min='0'
                       step='1000'
-                      value={formData.minValueDiscount || ''}
-                      onChange={(e) => handleInputChange('minValueDiscount', e.target.value ? parseFloat(e.target.value) : undefined)}
+                      value={formData.minValueDiscount ?? ''}
+                      onChange={(e) => handleInputChange('minValueDiscount', e.target.value)}
                       placeholder='Nhập số tiền tối thiểu'
+                      className={cn(
+                        errors.minValueDiscount && 'border-red-500',
+                        '[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]'
+                      )}
                     />
+                    {errors.minValueDiscount && <p className='text-sm text-red-600'>{errors.minValueDiscount}</p>}
                   </div>
                 </div>
               </CardContent>
@@ -660,7 +802,10 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                     <div className='flex gap-2'>
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button variant='outline' className='flex-1 justify-start text-left font-normal'>
+                          <Button
+                            variant='outline'
+                            className={cn('flex-1 justify-start text-left font-normal', errors.startDate && 'border-red-500')}
+                          >
                             <CalendarIcon className='mr-2 h-4 w-4' />
                             {startDate ? format(startDate, 'dd/MM/yyyy', { locale: vi }) : 'Chọn ngày'}
                           </Button>
@@ -670,6 +815,7 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                             mode='single'
                             selected={startDate}
                             onSelect={(date) => handleDateChange(date, 'start')}
+                            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                             initialFocus
                           />
                         </PopoverContent>
@@ -678,9 +824,11 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                         type='time'
                         value={startTime}
                         onChange={(e) => handleTimeChange(e.target.value, 'start')}
-                        className='w-24'
+                        className={cn('w-24', errors.startTime && 'border-red-500')}
                       />
                     </div>
+                    {errors.startDate && <p className='text-sm text-red-600'>{errors.startDate}</p>}
+                    {errors.startTime && <p className='text-sm text-red-600'>{errors.startTime}</p>}
                   </div>
 
                   <div className='space-y-2'>
@@ -688,7 +836,10 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                     <div className='flex gap-2'>
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button variant='outline' className='flex-1 justify-start text-left font-normal'>
+                          <Button
+                            variant='outline'
+                            className={cn('flex-1 justify-start text-left font-normal', errors.endDate && 'border-red-500')}
+                          >
                             <CalendarIcon className='mr-2 h-4 w-4' />
                             {endDate ? format(endDate, 'dd/MM/yyyy', { locale: vi }) : 'Chọn ngày'}
                           </Button>
@@ -698,6 +849,16 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                             mode='single'
                             selected={endDate}
                             onSelect={(date) => handleDateChange(date, 'end')}
+                            disabled={(date) => {
+                              const today = new Date()
+                              today.setHours(0, 0, 0, 0)
+                              if (startDate) {
+                                const start = new Date(startDate)
+                                start.setHours(0, 0, 0, 0)
+                                return date <= start
+                              }
+                              return date < today
+                            }}
                             initialFocus
                           />
                         </PopoverContent>
@@ -709,6 +870,7 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                         className='w-24'
                       />
                     </div>
+                    {errors.endDate && <p className='text-sm text-red-600'>{errors.endDate}</p>}
                   </div>
                 </div>
               </CardContent>
@@ -727,10 +889,15 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                       id='maxQuantity'
                       type='number'
                       min='0'
-                      value={formData.maxQuantity || ''}
-                      onChange={(e) => handleInputChange('maxQuantity', e.target.value ? parseInt(e.target.value) : undefined)}
+                      value={formData.maxQuantity ?? ''}
+                      onChange={(e) => handleInputChange('maxQuantity', e.target.value)}
                       placeholder='Không giới hạn nếu để trống'
+                      className={cn(
+                        errors.maxQuantity && 'border-red-500',
+                        '[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]'
+                      )}
                     />
+                    {errors.maxQuantity && <p className='text-sm text-red-600'>{errors.maxQuantity}</p>}
                   </div>
 
                   <div className='space-y-2'>
@@ -739,10 +906,16 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                       id='maxPerUser'
                       type='number'
                       min='1'
-                      value={formData.maxPerUser}
-                      onChange={(e) => handleInputChange('maxPerUser', parseInt(e.target.value) || 1)}
+                      value={formData.maxPerUser ?? ''}
+                      onChange={(e) => handleInputChange('maxPerUser', e.target.value)}
+                      placeholder='Nhập số lượt sử dụng tối đa'
+                      className={cn(
+                        errors.maxPerUser && 'border-red-500',
+                        '[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]'
+                      )}
                       required
                     />
+                    {errors.maxPerUser && <p className='text-sm text-red-600'>{errors.maxPerUser}</p>}
                   </div>
                 </div>
               </CardContent>

@@ -201,13 +201,11 @@ export const adminApi = {
       // { status, message, data: Combo[], pagination: {...} }
       // Lưu ý: axios interceptor đã trả về response.data rồi
       console.log('getAllCombos raw response:', response)
-      
+
       // Response từ axios interceptor đã là response.data rồi
       // Nên response có thể là object { status, message, data, pagination }
-      const data = Array.isArray(response) 
-        ? response 
-        : response?.data || response?.Data || []
-      
+      const data = Array.isArray(response) ? response : response?.data
+
       console.log('getAllCombos processed data:', data)
       return data
     } catch (error) {

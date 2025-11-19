@@ -287,6 +287,8 @@ export default function Profile() {
           id: response.data.id,
           ...formData,
           userId: authUser.userId,
+          receiverName: formData.receiverName ?? null,
+          receiverPhoneNumber: formData.receiverPhoneNumber ?? null,
           isDefault: formData.isDefault || false,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),

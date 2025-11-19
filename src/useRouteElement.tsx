@@ -41,7 +41,7 @@ import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
 import RequestWalletMoneyManagement from './pages/admin/requestWalletMoneyManagement/list'
-import { AdminPromotionList, AdminPromotionDetail, AdminPromotionStats } from './pages/admin/promotionManagerment'
+import { AdminPromotionList, AdminPromotionStats } from './pages/admin/promotionManagerment'
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import StoryWithSeller from './pages/customer/storyWithSeller'
 import StorePage from './pages/customer/storeSeller/storePage'
@@ -412,10 +412,6 @@ export default function useRouteElements() {
             {
               path: path.FORM_STORE_MANAGEMENT_ADMIN,
               element: <FormStoreManagement />
-            },
-            {
-              path: '/admin/promotions/:id',
-              element: <AdminPromotionDetail />
             },
             {
               path: '/admin/promotions/stats',

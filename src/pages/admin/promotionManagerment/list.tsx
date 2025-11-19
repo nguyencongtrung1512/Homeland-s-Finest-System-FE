@@ -12,7 +12,6 @@ import {
   Calendar,
   Gift,
   Users,
-  Store,
   Globe,
   Clock,
   TrendingUp,
@@ -20,7 +19,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react'
 import { useAdminPromotions } from '../../../hooks/usePromotions'
 import { PromotionForm } from '../../../components/Promotion'
@@ -88,6 +89,9 @@ const AdminPromotionList: React.FC = () => {
     if (!allPromotions) return []
 
     let filtered = [...allPromotions]
+
+    // Filter out Product type promotions
+    filtered = filtered.filter((promo) => promo.type !== 'Product')
 
     // Apply search filter
     if (searchTerm.trim()) {
@@ -194,14 +198,17 @@ const AdminPromotionList: React.FC = () => {
       }
     }
 
+    // Filter out Product type promotions
+    const filteredPromotions = allPromotions.filter((p) => p.type !== 'Product')
+
     const now = new Date()
     const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
     return {
-      total: allPromotions.length,
-      active: allPromotions.filter((p) => p.isActive).length,
-      expired: allPromotions.filter((p) => parseBackendDate(p.endDate) < now).length,
-      expiringSoon: allPromotions.filter((p) => {
+      total: filteredPromotions.length,
+      active: filteredPromotions.filter((p) => p.isActive).length,
+      expired: filteredPromotions.filter((p) => parseBackendDate(p.endDate) < now).length,
+      expiringSoon: filteredPromotions.filter((p) => {
         const endDate = parseBackendDate(p.endDate)
         return endDate > now && endDate <= sevenDaysLater
       }).length
@@ -212,6 +219,8 @@ const AdminPromotionList: React.FC = () => {
     try {
       const adminRequest: PromotionAdminRequest = {
         ...data,
+        discountValue: data.discountType === 'freeship' ? 0 : (data.discountValue ?? 0),
+        maxPerUser: data.maxPerUser ?? 1,
         userIds: data.userIds || [],
         isPrivate: data.type === 'User' ? (data.isPrivate ?? true) : undefined
       }
@@ -241,6 +250,8 @@ const AdminPromotionList: React.FC = () => {
     try {
       const adminRequest: PromotionAdminRequest = {
         ...data,
+        discountValue: data.discountType === 'freeship' ? 0 : (data.discountValue ?? 0),
+        maxPerUser: data.maxPerUser ?? 1,
         userIds: data.userIds || [],
         isPrivate: data.type === 'User' ? (data.isPrivate ?? true) : undefined
       }
@@ -265,8 +276,6 @@ const AdminPromotionList: React.FC = () => {
         return <Globe className='h-4 w-4' />
       case 'User':
         return <Users className='h-4 w-4' />
-      case 'Product':
-        return <Store className='h-4 w-4' />
       default:
         return <Gift className='h-4 w-4' />
     }
@@ -278,8 +287,6 @@ const AdminPromotionList: React.FC = () => {
         return 'bg-blue-100 text-blue-800'
       case 'User':
         return 'bg-green-100 text-green-800'
-      case 'Product':
-        return 'bg-purple-100 text-purple-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -293,7 +300,8 @@ const AdminPromotionList: React.FC = () => {
     return new Intl.NumberFormat('vi-VN').format(price)
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A'
     try {
       if (dateString.includes(' ') && dateString.includes('/')) {
         const [timePart, datePart] = dateString.split(' ')
@@ -474,7 +482,6 @@ const AdminPromotionList: React.FC = () => {
                 <SelectItem value='all'>Tất cả loại</SelectItem>
                 <SelectItem value='Global'>Toàn hệ thống</SelectItem>
                 <SelectItem value='User'>Cá nhân</SelectItem>
-                <SelectItem value='Product'>Sản phẩm</SelectItem>
               </SelectContent>
             </Select>
 
@@ -508,7 +515,7 @@ const AdminPromotionList: React.FC = () => {
             </Select>
 
             <Button variant='outline' onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>
-              {sortOrder === 'asc' ? '↑' : '↓'}
+              {sortOrder === 'asc' ? <ArrowUp className='h-4 w-4' /> : <ArrowDown className='h-4 w-4' />}
             </Button>
           </div>
         </CardContent>
@@ -545,9 +552,15 @@ const AdminPromotionList: React.FC = () => {
                             {promotion.isPrivate ? 'Riêng tư' : 'Công khai'}
                           </Badge>
                         )}
-                        <p className='text-gray-600 pt-4'>{promotion.description}</p>
-                        <p className='text-gray-600 pt-4'>Ngày tạo: {formatDate(promotion.createdAt)}</p>
+                        <p className='text-gray-600'>{promotion.description}</p>
                       </div>
+
+                      {promotion.createdAt && (
+                        <div className='flex items-center gap-1 text-sm text-gray-500 mb-3'>
+                          <Clock className='h-4 w-4' />
+                          <span>Ngày tạo: {formatDate(promotion.createdAt)}</span>
+                        </div>
+                      )}
 
                       <div className='flex items-center gap-6 text-sm text-gray-500'>
                         <div className='flex items-center gap-1'>
