@@ -41,6 +41,8 @@ interface ComboGroup {
   items: ReviewProduct[]
 }
 
+const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+
 const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, userId, onReviewSubmitted }) => {
   const [selectedProduct, setSelectedProduct] = useState<ReviewProduct | null>(null)
   const [selectedCombo, setSelectedCombo] = useState<ComboGroup | null>(null)
@@ -225,6 +227,13 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
     }
   }
 
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    event.currentTarget.onerror = null
+    event.currentTarget.src = DEFAULT_PRODUCT_IMAGE
+  }
+
+  const getProductImage = (image?: string) => image || DEFAULT_PRODUCT_IMAGE
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className='max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden'>
@@ -323,7 +332,12 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
                       key={item.orderItemId || item.productId || `${item.name}-${index}`}
                       className='flex items-center gap-2 bg-white rounded-lg p-2'
                     >
-                      <img src={item.image} alt={item.name} className='w-10 h-10 object-cover rounded' />
+                      <img
+                        src={getProductImage(item.image)}
+                        alt={item.name}
+                        className='w-10 h-10 object-cover rounded'
+                        onError={handleImageError}
+                      />
                       <div className='flex-1 min-w-0'>
                         <p className='text-xs font-medium text-gray-800 truncate'>{item.name}</p>
                       </div>
@@ -339,9 +353,10 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
             <>
               <div className='flex items-center gap-3 p-3 bg-gray-50 rounded-2xl'>
                 <img
-                  src={selectedProduct.image}
+                  src={getProductImage(selectedProduct.image)}
                   alt={selectedProduct.name}
                   className='w-16 h-16 object-cover rounded-xl'
+                  onError={handleImageError}
                 />
                 <div className='flex-1'>
                   <h3 className='font-medium text-gray-900 text-sm'>{selectedProduct.name}</h3>

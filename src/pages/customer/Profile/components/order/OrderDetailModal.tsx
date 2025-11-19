@@ -14,6 +14,7 @@ import { formatDate } from '../../../../../utils/formatDate'
 
 interface OrderItemWithCombo {
   id: string
+  comboItemId?: string
   comboId?: string
   comboName?: string
   orderItemName: string
@@ -79,6 +80,7 @@ interface OrderDetailModalProps {
   onClose: () => void
   orderId: string | null
 }
+const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
 const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId }) => {
   const navigate = useNavigate()
@@ -109,7 +111,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       orderItems: (apiOrder?.orderItems || []).map((item: any) => ({
         id: item?.id || '',
         orderItemName: item?.orderItemName || 'Sản phẩm không xác định',
-        orderItemImageUrl: item?.orderItemImageUrl || '/src/assets/react.svg',
+        orderItemImageUrl: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
         quantity: item?.quantity || 0,
         finalPrice: item?.finalPrice,
         totalPrice: item?.totalPrice || 0,
@@ -120,10 +122,11 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       })),
       orderItemsWithCombo: (apiOrder?.orderItemsWithCombo || []).map((item: any) => ({
         id: item?.id || '',
+        comboItemId: item?.comboItemId,
         comboId: item?.comboId,
         comboName: item?.comboName,
         orderItemName: item?.orderItemName || 'Sản phẩm không xác định',
-        orderItemImageUrl: item?.orderItemImageUrl || '/src/assets/react.svg',
+        orderItemImageUrl: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
         quantity: item?.quantity || 0,
         finalPrice: item?.finalPrice,
         totalPrice: item?.totalPrice || 0,
@@ -245,18 +248,25 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
   // Group combo items
   const comboGroups = order?.orderItemsWithCombo.reduce(
     (acc, item) => {
-      const comboId = item.comboId || 'no-combo'
-      if (!acc[comboId]) {
-        acc[comboId] = {
+      const comboKey = item.comboId || item.comboName || item.comboItemId || item.id
+      if (!acc[comboKey]) {
+        acc[comboKey] = {
           comboName: item.comboName,
-          items: []
+          items: [],
+          totalPrice: 0
         }
       }
-      acc[comboId].items.push(item)
+      acc[comboKey].items.push(item)
+      acc[comboKey].totalPrice += item.totalPrice || 0
       return acc
     },
-    {} as Record<string, { comboName?: string; items: OrderItemWithCombo[] }>
+    {} as Record<string, { comboName?: string; items: OrderItemWithCombo[]; totalPrice: number }>
   )
+
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    event.currentTarget.onerror = null
+    event.currentTarget.src = DEFAULT_PRODUCT_IMAGE
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -372,9 +382,14 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                     Object.entries(comboGroups).map(([comboId, group]) => (
                       <div key={comboId} className='border-l-4 border-amber-500 pl-3'>
                         {group.comboName && (
-                          <div className='flex items-center gap-2 mb-2'>
-                            <span className='text-xs text-gray-600'>Combo: </span>
-                            <span className='text-xs font-semibold text-amber-800'>{group.comboName}</span>
+                          <div className='flex items-center justify-between mb-2'>
+                            <div className='flex items-center gap-2'>
+                              <span className='text-xs text-gray-600'>Combo:</span>
+                              <span className='text-xs font-semibold text-amber-800'>{group.comboName}</span>
+                            </div>
+                            <span className='text-sm font-semibold text-amber-800'>
+                              {formatPrice(group.totalPrice)}
+                            </span>
                           </div>
                         )}
                         {group.items.map((item) => (
@@ -383,22 +398,19 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                             className='flex gap-3 mb-3 last:mb-0 bg-amber-50/50 rounded-lg p-2 border border-amber-100'
                           >
                             <img
-                              src={item.orderItemImageUrl}
+                              src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
                               alt={item.orderItemName}
                               className='w-16 h-16 object-cover rounded-lg border-2 border-amber-300'
+                              onError={handleImageError}
                             />
                             <div className='flex-1 min-w-0'>
                               <div className='flex items-center gap-2 mb-1'>
                                 <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
                               </div>
-                              {group.comboName && (
-                                <p className='text-xs text-amber-600 font-medium'>Combo Sạch bà nông trại</p>
-                              )}
+
                               <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
                             </div>
-                            <div className='text-right'>
-                              <p className='font-semibold text-gray-900'>{formatPrice(item.totalPrice)}</p>
-                            </div>
+
                           </div>
                         ))}
                       </div>
@@ -408,9 +420,10 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                   {order.orderItems.map((item) => (
                     <div key={item.id} className='flex gap-3 bg-white rounded-lg p-2 border border-gray-200'>
                       <img
-                        src={item.orderItemImageUrl}
+                        src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
                         alt={item.orderItemName}
                         className='w-16 h-16 object-cover rounded-lg border border-gray-200'
+                        onError={handleImageError}
                       />
                       <div className='flex-1 min-w-0'>
                         <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>

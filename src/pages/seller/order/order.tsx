@@ -19,6 +19,8 @@ import type { Order, OrderStatus } from '../../../types/orderType'
 import { toast } from 'react-toastify'
 import OrderDetail from './orderDetail'
 
+const HIDDEN_STATUSES: OrderStatus[] = ['NotYet', 'PendingPayment']
+
 // Status text mapping - moved outside component to avoid re-renders
 const statusTextMap: Record<string, string> = {
   NotYet: 'Chưa xử lí',
@@ -82,10 +84,12 @@ function OrderManagement() {
 
   // Create tabs from statusTextMap
   const tabs = useMemo(() => {
-    const statusTabs = Object.keys(statusTextMap).map((key) => ({
-      key: key as OrderStatus,
-      label: statusTextMap[key]
-    }))
+    const statusTabs = Object.keys(statusTextMap)
+      .filter((key) => !HIDDEN_STATUSES.includes(key as OrderStatus))
+      .map((key) => ({
+        key: key as OrderStatus,
+        label: statusTextMap[key]
+      }))
     return [{ key: 'all' as const, label: 'Tất cả' }, ...statusTabs]
   }, [])
 
@@ -203,7 +207,7 @@ function OrderManagement() {
 
     try {
       const allOrdersData = await getCustomerOrders(user.userId, { pageSize: 0 })
-      setAllOrders(allOrdersData)
+      setAllOrders(allOrdersData.filter((order) => !HIDDEN_STATUSES.includes(order.status as OrderStatus)))
     } catch (err) {
       console.error('Error fetching all orders:', err)
     }
@@ -222,7 +226,7 @@ function OrderManagement() {
         setError(null)
         const params = status ? { status } : undefined
         const ordersData = await getCustomerOrders(user.userId, params)
-        setOrders(ordersData)
+        setOrders(ordersData.filter((order) => !HIDDEN_STATUSES.includes(order.status as OrderStatus)))
       } catch (err) {
         console.error('Error fetching orders:', err)
         setError('Không thể tải danh sách đơn hàng')
