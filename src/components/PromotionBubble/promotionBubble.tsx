@@ -69,7 +69,7 @@ const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => 
 
       await promotionApi.claimPromotion(promotionId, user.userId)
 
-      toast.success('Nhận promotion thành công! 🎉', {
+      toast.success('Nhận khuyến mãi thành công! 🎉', {
         position: 'top-right',
         autoClose: 3000
       })
@@ -83,7 +83,7 @@ const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => 
       }
     } catch (error) {
       console.error('Error claiming promotion:', error)
-      toast.error('Không thể nhận promotion. Vui lòng thử lại!', {
+      toast.error('Không thể nhận khuyến mãi. Vui lòng thử lại!', {
         position: 'top-right',
         autoClose: 3000
       })

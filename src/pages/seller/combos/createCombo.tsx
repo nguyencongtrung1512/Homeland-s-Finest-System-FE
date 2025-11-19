@@ -120,7 +120,7 @@ function CreateComboSeller() {
         <h1 className='text-2xl font-semibold text-gray-900'>Tạo Combo Mới</h1>
       </div>
 
-      <Card className='max-w-2xl'>
+      <Card className='max-w-3xl mx-auto'>
         <CardHeader>
           <CardTitle>Thông tin Combo</CardTitle>
         </CardHeader>
@@ -211,7 +211,7 @@ function CreateComboSeller() {
       </Card>
 
       {/* Info Card */}
-      <Card className='max-w-2xl mt-6'>
+      <Card className='max-w-3xl mx-auto mt-6'>
         <CardHeader>
           <CardTitle className='text-lg'>Lưu ý</CardTitle>
         </CardHeader>

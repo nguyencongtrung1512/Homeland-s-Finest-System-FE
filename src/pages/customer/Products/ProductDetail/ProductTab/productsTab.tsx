@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useProductDetailContext } from '../productsDetail'
 import { productCertificateApi } from '../../../../../apis/productCertificate.api'
 import { productStoryApi } from '../../../../../apis/productStory.api'
 import type { ProductCertificateType } from '../../../../../types/productCertificateType'
 import type { ProductStory } from '../../../../../types/productStoryType'
 import Loading from '../../../../../components/Loading/loading'
+import ThreeDCarousel from '../../../../../components/ui/3d-caroseu'
 
 interface TabContent {
   id: string
@@ -30,9 +31,7 @@ export const ProductTabs: React.FC = () => {
       productCertificateApi
         .getByProductId(product.id)
         .then((response: any) => {
-          console.log('response certificates', response.data)
           if (response.status === 200 && response.data) {
-            console.log('response certificatesádfsdf', response.data)
             setCertificates(response.data)
           } else {
             setCertificates([])
@@ -74,6 +73,38 @@ export const ProductTabs: React.FC = () => {
     }
   }, [product?.id])
 
+  // Collect all images from story for 3D carousel
+  const storyImages = useMemo(() => {
+    if (!story?.contents) return []
+    const images: string[] = []
+
+    story.contents.forEach((content: any) => {
+      if (content.contentType === 'image' && content.contentData) {
+        images.push(content.contentData)
+      } else if (content.contentType === 'media') {
+        try {
+          const parsed = JSON.parse(content.contentData)
+          if (Array.isArray(parsed)) {
+            images.push(...parsed)
+          }
+        } catch {
+          const contentData = content.contentData
+          if (
+            contentData &&
+            (contentData.includes('.jpg') ||
+              contentData.includes('.jpeg') ||
+              contentData.includes('.png') ||
+              contentData.includes('/images/'))
+          ) {
+            images.push(contentData)
+          }
+        }
+      }
+    })
+
+    return images
+  }, [story])
+
   const tabs: TabContent[] = [
     {
       id: 'description',
@@ -81,7 +112,11 @@ export const ProductTabs: React.FC = () => {
       content: (
         <div className='max-w-4xl mx-auto'>
           {product?.description ? (
-            <div className='text-gray-700 text-base leading-6 whitespace-pre-wrap'>{product.description}</div>
+            <div className='p-4 max-h-[600px] overflow-y-auto'>
+              <div className='text-gray-700 text-base leading-6 whitespace-pre-wrap break-words'>
+                {product.description}
+              </div>
+            </div>
           ) : (
             <p className='text-gray-500 text-base'>Chưa có mô tả cho sản phẩm này.</p>
           )}
@@ -108,7 +143,7 @@ export const ProductTabs: React.FC = () => {
           ) : (
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
               {certificates
-                ?.filter((cert) => cert.status === 'Active')
+                ?.filter((cert) => cert.status === 'Approved')
                 .map((certificate) => (
                   <div key={certificate.id} className='border border-gray-200 rounded-lg overflow-hidden'>
                     <img
@@ -165,6 +200,16 @@ export const ProductTabs: React.FC = () => {
                 </div>
               )}
               <h3 className='text-black text-xl font-bold mb-4'>{story.title}</h3>
+              {storyImages.length > 0 && (
+                <div className='my-6' style={{ height: '500px' }}>
+                  <ThreeDCarousel
+                    images={storyImages}
+                    radius={storyImages.length <= 3 ? 100 : 240}
+                    cardW={storyImages.length <= 3 ? 200 : 180}
+                    cardH={storyImages.length <= 3 ? 280 : 240}
+                  />
+                </div>
+              )}
               {story.contents && story.contents.length > 0 ? (
                 <div className='space-y-4'>
                   {story.contents
@@ -177,23 +222,12 @@ export const ProductTabs: React.FC = () => {
                           </p>
                         )
                       } else if (content.contentType === 'image') {
-                        return (
-                          <div key={content.id} className='my-4'>
-                            <img
-                              src={content.contentData}
-                              alt='Story content'
-                              className='w-full h-auto rounded-lg object-cover'
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.src = 'https://via.placeholder.com/800x400?text=No+Image'
-                              }}
-                            />
-                          </div>
-                        )
+                        // Images will be shown in 3D carousel, skip individual rendering
+                        return null
                       } else if (content.contentType === 'video') {
                         return (
-                          <div key={content.id} className='my-4'>
-                            <video controls className='w-full rounded-lg'>
+                          <div key={content.id} className='my-4 flex justify-center'>
+                            <video controls className='max-w-2xl w-full rounded-lg' style={{ maxHeight: '500px' }}>
                               <source src={content.contentData} type='video/mp4' />
                               Trình duyệt của bạn không hỗ trợ video.
                             </video>
@@ -205,23 +239,8 @@ export const ProductTabs: React.FC = () => {
                           // Try to parse as JSON array (for images)
                           const parsed = JSON.parse(content.contentData)
                           if (Array.isArray(parsed)) {
-                            // It's an array of image URLs
-                            return (
-                              <div key={content.id} className='my-4 grid grid-cols-1 md:grid-cols-2 gap-4'>
-                                {parsed.map((imageUrl: string, index: number) => (
-                                  <img
-                                    key={index}
-                                    src={imageUrl}
-                                    alt={`Story image ${index + 1}`}
-                                    className='w-full h-auto rounded-lg object-cover'
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement
-                                      target.src = 'https://via.placeholder.com/800x400?text=No+Image'
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            )
+                            // Images will be shown in 3D carousel, skip individual rendering
+                            return null
                           }
                         } catch {
                           // Not JSON, check if it's a video URL
@@ -235,8 +254,8 @@ export const ProductTabs: React.FC = () => {
                           ) {
                             // It's a video URL
                             return (
-                              <div key={content.id} className='my-4'>
-                                <video controls className='w-full rounded-lg'>
+                              <div key={content.id} className='my-4 flex justify-center'>
+                                <video controls className='max-w-2xl w-full rounded-lg' style={{ maxHeight: '500px' }}>
                                   <source src={contentData} type='video/mp4' />
                                   Trình duyệt của bạn không hỗ trợ video.
                                 </video>
@@ -249,20 +268,8 @@ export const ProductTabs: React.FC = () => {
                               contentData.includes('.png') ||
                               contentData.includes('/images/'))
                           ) {
-                            // It's a single image URL
-                            return (
-                              <div key={content.id} className='my-4'>
-                                <img
-                                  src={contentData}
-                                  alt='Story content'
-                                  className='w-full h-auto rounded-lg object-cover'
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.src = 'https://via.placeholder.com/800x400?text=No+Image'
-                                  }}
-                                />
-                              </div>
-                            )
+                            // Images will be shown in 3D carousel, skip individual rendering
+                            return null
                           }
                         }
                       }

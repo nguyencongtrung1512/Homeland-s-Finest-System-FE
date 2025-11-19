@@ -118,12 +118,10 @@ const StorePage = () => {
     coverImage:
       store.coverImageUrl ||
       'https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?w=800&h=300&fit=crop&crop=center',
-    story:
-      'Chúng tôi cam kết mang đến những sản phẩm chất lượng cao nhất cho khách hàng.',
+    story: 'Chúng tôi cam kết mang đến những sản phẩm chất lượng cao nhất cho khách hàng.',
     products: products.map((product) => {
-      // Try to get price from variants if available, otherwise show placeholder
-      const variantPrice = (product as Product & { variants?: Array<{ price: number }> }).variants?.[0]?.price
-      const price = variantPrice || 0 // Default to 0 if no price available
+      // Get price directly from product, fallback to variants if needed
+      const price = product.price || 0
 
       return {
         ...product, // Spread all product properties
@@ -183,12 +181,13 @@ const StorePage = () => {
                         </div>
                         <div className='flex items-center gap-1'>
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${store.status === 'Approved'
-                              ? 'bg-green-100 text-green-800'
-                              : store.status === 'Pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
-                              }`}
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              store.status === 'Approved'
+                                ? 'bg-green-100 text-green-800'
+                                : store.status === 'Pending'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-red-100 text-red-800'
+                            }`}
                           >
                             {store.status === 'Approved'
                               ? 'Đã duyệt'

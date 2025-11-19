@@ -236,12 +236,12 @@ export interface PromotionFormData {
   title: string
   description: string
   discountType: DiscountType
-  discountValue: number
+  discountValue?: number
   minValueDiscount?: number
   startDate: string
   endDate: string
   maxQuantity?: number
-  maxPerUser: number
+  maxPerUser?: number
   isActive: boolean
   isPrivate?: boolean // For User type promotions
   userIds?: string[] // For User type promotions

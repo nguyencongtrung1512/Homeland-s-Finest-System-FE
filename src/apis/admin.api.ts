@@ -187,10 +187,26 @@ export const adminApi = {
   // Lấy danh sách tất cả combo cho admin
   getAllCombos: async (params?: ComboAdminParams): Promise<Combo[]> => {
     try {
-      const response = await axiosInstance.get(`${API_URL}/combos`, { params })
+      // Backend ComboController endpoint: /api/Combo
+      // Map params từ ComboAdminParams sang ComboParams format
+      const comboParams: any = {
+        pageSize: params?.pageSize,
+        pageNumber: params?.pageNumber,
+        storeId: params?.storeId
+      }
 
-      // Backend trả về array trực tiếp hoặc object có data property
-      const data = Array.isArray(response.data) ? response.data : response.data?.data || []
+      const response = await axiosInstance.get(`/Combo`, { params: comboParams })
+
+      // Backend trả về ApiResponseWithPagination với structure:
+      // { status, message, data: Combo[], pagination: {...} }
+      // Lưu ý: axios interceptor đã trả về response.data rồi
+      console.log('getAllCombos raw response:', response)
+
+      // Response từ axios interceptor đã là response.data rồi
+      // Nên response có thể là object { status, message, data, pagination }
+      const data = Array.isArray(response) ? response : response?.data
+
+      console.log('getAllCombos processed data:', data)
       return data
     } catch (error) {
       console.error('getAllCombos API error:', error)

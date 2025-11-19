@@ -6,7 +6,7 @@ import { Badge } from '../../../../../components/ui/badge'
 import { AlertTriangle, Loader2, Eye } from 'lucide-react'
 import { formApi } from '../../../../../apis/form.api'
 import type { FormDTO, FormStatus } from '../../../../../types/form.type'
-import { toast } from 'react-toastify'
+import { toast } from '../../../../../utils/toast'
 
 interface ViewComplaintModalProps {
   isOpen: boolean
@@ -98,14 +98,10 @@ const ViewComplaintModal = ({ isOpen, onClose, orderId }: ViewComplaintModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className='max-w-2xl mx-auto max-h-[90vh] overflow-y-auto'>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.3 }}
-        >
-          <DialogHeader>
+      <DialogContent className='max-w-3xl max-h-[70vh] flex flex-col p-0'>
+        <div className='flex flex-col h-full overflow-hidden'>
+          {/* Fixed Header */}
+          <DialogHeader className='px-6 pt-6 pb-4 border-b border-gray-200 flex-shrink-0'>
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -124,187 +120,192 @@ const ViewComplaintModal = ({ isOpen, onClose, orderId }: ViewComplaintModalProp
             </motion.div>
           </DialogHeader>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className='space-y-6'
-          >
-            {loading ? (
-              <div className='flex flex-col items-center justify-center py-12'>
-                <Loader2 className='w-8 h-8 animate-spin text-green-600 mb-4' />
-                <p className='text-gray-600'>Đang tải thông tin khiếu nại...</p>
-              </div>
-            ) : error ? (
-              <div className='flex flex-col items-center justify-center py-12'>
-                <AlertTriangle className='w-12 h-12 text-red-500 mb-4' />
-                <p className='text-red-600 font-medium mb-2'>Không thể tải thông tin</p>
-                <p className='text-gray-600 text-sm text-center'>{error}</p>
-                <Button onClick={loadComplaint} variant='outline' className='mt-4'>
-                  Thử lại
-                </Button>
-              </div>
-            ) : complaint ? (
-              <>
-                {/* Order Info */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.3 }}
-                  className='bg-gray-50 rounded-lg p-4'
-                >
-                  <p className='text-sm text-gray-600 mb-1'>
-                    <span className='font-medium'>Mã đơn hàng:</span> {complaint.orderId || orderId}
-                  </p>
-                  <p className='text-sm text-gray-600'>
-                    <span className='font-medium'>Mã khiếu nại:</span> {complaint.id}
-                  </p>
-                </motion.div>
-
-                {/* Status and Type */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.4 }}
-                  className='flex gap-3 flex-wrap'
-                >
-                  <div>
-                    <p className='text-xs text-gray-500 mb-1'>Loại khiếu nại</p>
-                    <Badge className='bg-blue-100 text-blue-700 border-0'>{getFormTypeLabel(complaint.type)}</Badge>
-                  </div>
-                  <div>
-                    <p className='text-xs text-gray-500 mb-1'>Trạng thái</p>
-                    <Badge className={`${getStatusColor(complaint.status)} border-0`}>
-                      {getStatusLabel(complaint.status)}
-                    </Badge>
-                  </div>
-                </motion.div>
-
-                {/* Subject */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.5 }}
-                >
-                  <p className='text-sm font-medium text-gray-700 mb-2'>Tiêu đề khiếu nại</p>
-                  <div className='bg-gray-50 rounded-lg p-3 border border-gray-200'>
-                    <p className='text-gray-900'>{complaint.subject}</p>
-                  </div>
-                </motion.div>
-
-                {/* Description */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.6 }}
-                >
-                  <p className='text-sm font-medium text-gray-700 mb-2'>Mô tả chi tiết</p>
-                  <div className='bg-gray-50 rounded-lg p-3 border border-gray-200 min-h-[100px]'>
-                    <p className='text-gray-900 whitespace-pre-wrap'>{complaint.description}</p>
-                  </div>
-                </motion.div>
-
-                {/* Images */}
-                {complaint.imageUrl && complaint.imageUrl.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.7 }}
-                  >
-                    <p className='text-sm font-medium text-gray-700 mb-2'>Hình ảnh minh chứng</p>
-                    <div className='grid grid-cols-3 gap-3'>
-                      {complaint.imageUrl.map((url, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.2, delay: 0.8 + idx * 0.1 }}
-                          className='relative group'
-                        >
-                          <img
-                            src={url}
-                            alt={`complaint-image-${idx + 1}`}
-                            className='w-full h-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity'
-                            onClick={() => window.open(url, '_blank')}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Reply */}
-                {complaint.reply && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.8 }}
-                  >
-                    <p className='text-sm font-medium text-gray-700 mb-2'>Phản hồi từ nhân viên</p>
-                    {complaint.staffName && (
-                      <p className='text-xs text-gray-500 mb-1'>
-                        Nhân viên: <span className='font-medium'>{complaint.staffName}</span>
-                      </p>
-                    )}
-                    <div className='bg-green-50 rounded-lg p-3 border border-green-200'>
-                      <p className='text-gray-900 whitespace-pre-wrap'>{complaint.reply}</p>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Admin Text */}
-                {complaint.adminText && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.9 }}
-                  >
-                    <p className='text-sm font-medium text-gray-700 mb-2'>Phản hồi từ Admin</p>
-                    <div className='bg-blue-50 rounded-lg p-3 border border-blue-200'>
-                      <p className='text-gray-900 whitespace-pre-wrap'>{complaint.adminText}</p>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Timestamps */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 1.0 }}
-                  className='bg-gray-50 rounded-lg p-3 border border-gray-200'
-                >
-                  <div className='grid grid-cols-2 gap-3 text-sm'>
-                    <div>
-                      <p className='text-gray-500 mb-1'>Ngày tạo</p>
-                      <p className='text-gray-900 font-medium'>{complaint.createdAt}</p>
-                    </div>
-                    <div>
-                      <p className='text-gray-500 mb-1'>Ngày cập nhật</p>
-                      <p className='text-gray-900 font-medium'>{complaint.updatedAt}</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Close Button */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 1.1 }}
-                  className='flex justify-end pt-4'
-                >
-                  <Button onClick={onClose} className='bg-green-600 hover:bg-green-700 text-white'>
-                    Đóng
+          {/* Scrollable Content */}
+          <div className='flex-1 overflow-y-auto px-6 py-4'>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className='space-y-6'
+            >
+              {loading ? (
+                <div className='flex flex-col items-center justify-center py-12'>
+                  <Loader2 className='w-8 h-8 animate-spin text-green-600 mb-4' />
+                  <p className='text-gray-600'>Đang tải thông tin khiếu nại...</p>
+                </div>
+              ) : error ? (
+                <div className='flex flex-col items-center justify-center py-12'>
+                  <AlertTriangle className='w-12 h-12 text-red-500 mb-4' />
+                  <p className='text-red-600 font-medium mb-2'>Không thể tải thông tin</p>
+                  <p className='text-gray-600 text-sm text-center'>{error}</p>
+                  <Button onClick={loadComplaint} variant='outline' className='mt-4'>
+                    Thử lại
                   </Button>
-                </motion.div>
-              </>
-            ) : (
-              <div className='flex flex-col items-center justify-center py-12'>
-                <AlertTriangle className='w-12 h-12 text-gray-400 mb-4' />
-                <p className='text-gray-600'>Không tìm thấy thông tin khiếu nại</p>
-              </div>
-            )}
-          </motion.div>
-        </motion.div>
+                </div>
+              ) : complaint ? (
+                <>
+                  {/* Order Info */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.3 }}
+                    className='bg-gray-50 rounded-lg p-4'
+                  >
+                    <p className='text-sm text-gray-600 mb-1'>
+                      <span className='font-medium'>Mã đơn hàng:</span> {complaint.orderId || orderId}
+                    </p>
+                    <p className='text-sm text-gray-600'>
+                      <span className='font-medium'>Mã khiếu nại:</span> {complaint.id}
+                    </p>
+                  </motion.div>
+
+                  {/* Status and Type */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.4 }}
+                    className='flex gap-3 flex-wrap'
+                  >
+                    <div>
+                      <p className='text-xs text-gray-500 mb-1'>Loại khiếu nại</p>
+                      <Badge className='bg-blue-100 text-blue-700 border-0'>{getFormTypeLabel(complaint.type)}</Badge>
+                    </div>
+                    <div>
+                      <p className='text-xs text-gray-500 mb-1'>Trạng thái</p>
+                      <Badge className={`${getStatusColor(complaint.status)} border-0`}>
+                        {getStatusLabel(complaint.status)}
+                      </Badge>
+                    </div>
+                  </motion.div>
+
+                  {/* Subject */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.5 }}
+                  >
+                    <p className='text-sm font-medium text-gray-700 mb-2'>Tiêu đề khiếu nại</p>
+                    <div className='bg-gray-50 rounded-lg p-3 border border-gray-200'>
+                      <p className='text-gray-900'>{complaint.subject}</p>
+                    </div>
+                  </motion.div>
+
+                  {/* Description */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.6 }}
+                  >
+                    <p className='text-sm font-medium text-gray-700 mb-2'>Mô tả chi tiết</p>
+                    <div className='bg-gray-50 rounded-lg p-3 border border-gray-200 min-h-[100px]'>
+                      <p className='text-gray-900 whitespace-pre-wrap'>{complaint.description}</p>
+                    </div>
+                  </motion.div>
+
+                  {/* Images */}
+                  {complaint.imageUrl && complaint.imageUrl.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.7 }}
+                    >
+                      <p className='text-sm font-medium text-gray-700 mb-2'>Hình ảnh minh chứng</p>
+                      <div className='grid grid-cols-3 gap-3'>
+                        {complaint.imageUrl.map((url, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.2, delay: 0.8 + idx * 0.1 }}
+                            className='relative group'
+                          >
+                            <img
+                              src={url}
+                              alt={`complaint-image-${idx + 1}`}
+                              className='w-full h-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity'
+                              onClick={() => window.open(url, '_blank')}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Reply */}
+                  {complaint.reply && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.8 }}
+                    >
+                      <p className='text-sm font-medium text-gray-700 mb-2'>Phản hồi từ nhân viên</p>
+                      {complaint.staffName && (
+                        <p className='text-xs text-gray-500 mb-1'>
+                          Nhân viên: <span className='font-medium'>{complaint.staffName}</span>
+                        </p>
+                      )}
+                      <div className='bg-green-50 rounded-lg p-3 border border-green-200'>
+                        <p className='text-gray-900 whitespace-pre-wrap'>{complaint.reply}</p>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Admin Text */}
+                  {complaint.adminText && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.9 }}
+                    >
+                      <p className='text-sm font-medium text-gray-700 mb-2'>Phản hồi từ Admin</p>
+                      <div className='bg-blue-50 rounded-lg p-3 border border-blue-200'>
+                        <p className='text-gray-900 whitespace-pre-wrap'>{complaint.adminText}</p>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Timestamps */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 1.0 }}
+                    className='bg-gray-50 rounded-lg p-3 border border-gray-200'
+                  >
+                    <div className='grid grid-cols-2 gap-3 text-sm'>
+                      <div>
+                        <p className='text-gray-500 mb-1'>Ngày tạo</p>
+                        <p className='text-gray-900 font-medium'>{complaint.createdAt}</p>
+                      </div>
+                      <div>
+                        <p className='text-gray-500 mb-1'>Ngày cập nhật</p>
+                        <p className='text-gray-900 font-medium'>{complaint.updatedAt}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </>
+              ) : (
+                <div className='flex flex-col items-center justify-center py-12'>
+                  <AlertTriangle className='w-12 h-12 text-gray-400 mb-4' />
+                  <p className='text-gray-600'>Không tìm thấy thông tin khiếu nại</p>
+                </div>
+              )}
+            </motion.div>
+          </div>
+
+          {/* Fixed Footer */}
+          <div className='px-6 py-4 border-t border-gray-200 flex-shrink-0 bg-white'>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 1.1 }}
+              className='flex justify-end'
+            >
+              <Button onClick={onClose} className='bg-green-600 hover:bg-green-700 text-white'>
+                Đóng
+              </Button>
+            </motion.div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )

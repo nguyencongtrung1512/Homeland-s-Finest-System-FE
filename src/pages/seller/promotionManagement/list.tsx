@@ -9,7 +9,6 @@ import {
   Plus,
   Search,
   Edit,
-  Trash2,
   Eye,
   Calendar,
   Clock,
@@ -18,7 +17,11 @@ import {
   DollarSign,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react'
 import { useSellerPromotions } from '../../../hooks/usePromotions'
 import { useAuth } from '../../../contexts/auth.context'
@@ -28,15 +31,13 @@ import {
   type PromotionDetailDTO,
   type PromotionSellerRequest,
   type PromotionFilter,
-  type PromotionSort,
-  PROMOTION_TYPE_LABELS
+  type PromotionSort
 } from '../../../types/promotionType'
 import PromotionDetailModal from './promotionFrom'
 
 const SellerPromotionList: React.FC = () => {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<'all' | 'Global' | 'Product'>('all')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'expired'>('all')
   const [sortBy, setSortBy] = useState<'createdAt' | 'startDate' | 'endDate' | 'title' | 'discountValue'>('createdAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -54,8 +55,6 @@ const SellerPromotionList: React.FC = () => {
     fetchPromotions,
     createPromotion,
     updatePromotion,
-    deletePromotion,
-    togglePromotionStatus,
     getPromotionDetail
   } = useSellerPromotions()
 
@@ -68,7 +67,7 @@ const SellerPromotionList: React.FC = () => {
       return
     }
     const filters: PromotionFilter = {
-      type: filterType === 'all' ? undefined : filterType,
+      type: 'Product', // Seller promotions are always Product type
       isActive: filterStatus === 'all' ? undefined : filterStatus === 'active'
     }
 
@@ -86,7 +85,7 @@ const SellerPromotionList: React.FC = () => {
     } catch (error) {
       console.error('❌ Error loading promotions:', error)
     }
-  }, [fetchPromotions, sellerId, currentPage, pageSize, filterType, filterStatus, sortBy, sortDirection])
+  }, [fetchPromotions, sellerId, currentPage, pageSize, filterStatus, sortBy, sortDirection])
 
   useEffect(() => {
     if (sellerId) {
@@ -102,9 +101,13 @@ const SellerPromotionList: React.FC = () => {
       'loading:',
       loading,
       'totalItems:',
-      totalItems
+      totalItems,
+      'totalPages:',
+      totalPages,
+      'currentPage:',
+      currentPage
     )
-  }, [promotions, loading, totalItems])
+  }, [promotions, loading, totalItems, totalPages, currentPage])
 
   // Hiển thị loading hoặc error nếu không có seller ID
   if (!sellerId) {
@@ -130,28 +133,6 @@ const SellerPromotionList: React.FC = () => {
   const handleFilterChange = () => {
     setCurrentPage(1)
     loadPromotions()
-  }
-
-  const handleDeletePromotion = async (promotionId: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa promotion này?')) {
-      try {
-        await deletePromotion(promotionId)
-        console.log('Xóa promotion thành công')
-        loadPromotions()
-      } catch {
-        console.error('Có lỗi xảy ra khi xóa promotion')
-      }
-    }
-  }
-
-  const handleToggleStatus = async (promotionId: string) => {
-    try {
-      await togglePromotionStatus(promotionId)
-      console.log('Cập nhật trạng thái promotion thành công')
-      loadPromotions()
-    } catch {
-      console.error('Có lỗi xảy ra khi cập nhật trạng thái')
-    }
   }
 
   const handleViewDetail = async (promotionId: string) => {
@@ -206,6 +187,51 @@ const SellerPromotionList: React.FC = () => {
       console.error('Có lỗi xảy ra khi xử lý promotion:', error)
       throw error // Re-throw để form có thể handle error
     }
+  }
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = []
+    const maxVisible = 5
+
+    if (totalPages <= maxVisible + 2) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
+    } else {
+      pages.push(1)
+
+      let start = Math.max(2, currentPage - 1)
+      let end = Math.min(totalPages - 1, currentPage + 1)
+
+      if (currentPage <= 3) {
+        end = maxVisible - 1
+      } else if (currentPage >= totalPages - 2) {
+        start = totalPages - maxVisible + 2
+      }
+
+      if (start > 2) {
+        pages.push('...')
+      }
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i)
+      }
+
+      if (end < totalPages - 1) {
+        pages.push('...')
+      }
+
+      pages.push(totalPages)
+    }
+
+    return pages
   }
 
   const formatDate = (dateString: string) => {
@@ -313,7 +339,7 @@ const SellerPromotionList: React.FC = () => {
       <div className='flex items-center justify-between'>
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Quản lý Promotion</h1>
-          <p className='text-gray-600 mt-1'>Quản lý các Mã khuyến mãi  của cửa hàng</p>
+          <p className='text-gray-600 mt-1'>Quản lý các Mã khuyến mãi của cửa hàng</p>
         </div>
         <Button className='bg-blue-500 hover:bg-blue-600 text-white' onClick={handleCreatePromotion}>
           <Plus className='h-4 w-4 mr-2' />
@@ -403,26 +429,7 @@ const SellerPromotionList: React.FC = () => {
               </div>
             </form>
 
-            {/* Type Filter */}
-            <div className='flex flex-col gap-2'>
-              <Label className='text-sm font-medium'>Loại</Label>
-              <Select
-                value={filterType}
-                onValueChange={(value) => {
-                  setFilterType(value as 'all' | 'Global' | 'Product')
-                  handleFilterChange()
-                }}
-              >
-                <SelectTrigger className='w-40'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>Tất cả</SelectItem>
-                  <SelectItem value='Global'>Toàn hệ thống</SelectItem>
-                  <SelectItem value='Product'>Sản phẩm</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
 
             {/* Status Filter */}
             <div className='flex flex-col gap-2'>
@@ -505,8 +512,7 @@ const SellerPromotionList: React.FC = () => {
               <table className='w-full'>
                 <thead>
                   <tr className='border-b'>
-                    <th className='text-left py-3 px-4 font-medium text-gray-900'>Promotion</th>
-                    <th className='text-left py-3 px-4 font-medium text-gray-900'>Loại</th>
+                    <th className='text-left py-3 px-4 font-medium text-gray-900'>Khuyến mãi</th>
                     <th className='text-left py-3 px-4 font-medium text-gray-900'>Giảm giá</th>
                     <th className='text-left py-3 px-4 font-medium text-gray-900'>Thời gian</th>
                     <th className='text-left py-3 px-4 font-medium text-gray-900'>Trạng thái</th>
@@ -523,9 +529,7 @@ const SellerPromotionList: React.FC = () => {
                           <p className='text-sm text-gray-600 mt-1 line-clamp-2'>{promotion.description}</p>
                         </div>
                       </td>
-                      <td className='py-4 px-4'>
-                        <Badge variant='outline'>{PROMOTION_TYPE_LABELS[promotion.type]}</Badge>
-                      </td>
+
                       <td className='py-4 px-4'>
                         <div className='flex items-center gap-2'>
                           {getDiscountIcon(promotion.discountType)}
@@ -567,23 +571,8 @@ const SellerPromotionList: React.FC = () => {
                           <Button variant='outline' size='sm' onClick={() => handleViewDetail(promotion.id)}>
                             <Eye className='h-4 w-4' />
                           </Button>
-                          <Button
-                            variant='outline'
-                            size='sm'
-                            onClick={() => handleEditPromotion(promotion.id)}
-                          >
+                          <Button variant='outline' size='sm' onClick={() => handleEditPromotion(promotion.id)}>
                             <Edit className='h-4 w-4' />
-                          </Button>
-                          <Button variant='outline' size='sm' onClick={() => handleToggleStatus(promotion.id)}>
-                            {promotion.isActive ? <XCircle className='h-4 w-4' /> : <CheckCircle className='h-4 w-4' />}
-                          </Button>
-                          <Button
-                            variant='outline'
-                            size='sm'
-                            onClick={() => handleDeletePromotion(promotion.id)}
-                            className='text-red-600 hover:text-red-700'
-                          >
-                            <Trash2 className='h-4 w-4' />
                           </Button>
                         </div>
                       </td>
@@ -594,38 +583,77 @@ const SellerPromotionList: React.FC = () => {
             </div>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className='flex items-center justify-between mt-6'>
-              <p className='text-sm text-gray-600'>
-                Hiển thị {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalItems)} của{' '}
-                {totalItems} kết quả
-              </p>
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Card>
+          <CardContent className='p-4'>
+            <div className='flex items-center justify-between'>
+              <div className='text-sm text-gray-600'>
+                Hiển thị {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalItems)} trong tổng số{' '}
+                {totalItems} Promotion
+              </div>
               <div className='flex items-center gap-2'>
                 <Button
                   variant='outline'
                   size='sm'
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  onClick={() => handlePageChange(1)}
                   disabled={currentPage === 1}
                 >
-                  Trước
+                  <ChevronsLeft className='h-4 w-4' />
                 </Button>
-                <span className='text-sm text-gray-600'>
-                  Trang {currentPage} / {totalPages}
-                </span>
                 <Button
                   variant='outline'
                   size='sm'
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className='h-4 w-4' />
+                </Button>
+
+                <div className='flex items-center gap-1'>
+                  {getPageNumbers().map((page, index) =>
+                    page === '...' ? (
+                      <span key={`ellipsis-${index}`} className='px-2'>
+                        ...
+                      </span>
+                    ) : (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? 'default' : 'outline'}
+                        size='sm'
+                        onClick={() => handlePageChange(page as number)}
+                        className={currentPage === page ? 'bg-blue-600 text-white' : ''}
+                      >
+                        {page}
+                      </Button>
+                    )
+                  )}
+                </div>
+
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
                 >
-                  Sau
+                  <ChevronRight className='h-4 w-4' />
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronsRight className='h-4 w-4' />
                 </Button>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Unified Promotion Modal */}
       <PromotionDetailModal

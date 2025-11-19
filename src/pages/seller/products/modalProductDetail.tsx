@@ -242,7 +242,6 @@ export default function ModalProductDetail({
         parentId: parentId || null, // ParentId = id của product hiện tại
         name: productDetailData.name,
         categoryId: productDetailData.categoryId || undefined,
-        provinceId: product.provinceId || 0,
         description: productDetailData.description || undefined,
         material: productDetailData.material || undefined,
         productImages: mediaData.productImages.length > 0 ? mediaData.productImages : undefined,
@@ -252,8 +251,9 @@ export default function ModalProductDetail({
 
       const response = await productApi.createDetail(formData)
 
-      if (response.status === 200 && response.data) {
-        toast.success('Tạo sản phẩm chi tiết thành công!')
+      // Accept both 200 (OK) and 201 (Created) status codes
+      if ((response.status === 200 || response.status === 201) && response.data) {
+        toast.success(response.message || 'Tạo sản phẩm chi tiết thành công!')
         onOpenChange(false)
         // Reset form
         setProductDetailData({
@@ -272,7 +272,7 @@ export default function ModalProductDetail({
         // Call success callback
         onSuccess()
       } else {
-        toast.error('Không thể tạo sản phẩm chi tiết')
+        toast.error(response.message || 'Không thể tạo sản phẩm chi tiết')
       }
     } catch (error: unknown) {
       console.error('Error creating product detail:', error)
@@ -284,8 +284,44 @@ export default function ModalProductDetail({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const err = error as any
 
-        // Check for errors object (validation errors)
-        if (err.errors && typeof err.errors === 'object') {
+        // Check for axios error response structure (error.response.data)
+        if (err.response?.data) {
+          const responseData = err.response.data
+
+          // Priority 1: Check for message in response.data
+          if (responseData.message) {
+            errorMessage = responseData.message
+          }
+          // Priority 2: Check for errors object (validation errors)
+          else if (responseData.errors && typeof responseData.errors === 'object') {
+            const errorMessages: string[] = []
+            Object.keys(responseData.errors).forEach((field) => {
+              const fieldErrors = responseData.errors[field]
+              if (Array.isArray(fieldErrors)) {
+                errorMessages.push(...fieldErrors)
+              } else if (typeof fieldErrors === 'string') {
+                errorMessages.push(fieldErrors)
+              }
+            })
+            if (errorMessages.length > 0) {
+              errorMessage = errorMessages.join(', ')
+            }
+          }
+          // Priority 3: Check for title field
+          else if (responseData.title) {
+            errorMessage = responseData.title
+          }
+          // Priority 4: Check for errors array
+          else if (responseData.errors && Array.isArray(responseData.errors)) {
+            errorMessage = responseData.errors.join(', ')
+          }
+          // Priority 5: Check for error string
+          else if (responseData.error && typeof responseData.error === 'string') {
+            errorMessage = responseData.error
+          }
+        }
+        // Check for direct errors object (validation errors)
+        else if (err.errors && typeof err.errors === 'object') {
           const errorMessages: string[] = []
           Object.keys(err.errors).forEach((field) => {
             const fieldErrors = err.errors[field]

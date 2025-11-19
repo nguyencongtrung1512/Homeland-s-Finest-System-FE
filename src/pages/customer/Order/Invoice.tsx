@@ -1,10 +1,105 @@
 import { Button } from '../../../components/ui/button'
-import { CheckCircle, XCircle, CreditCard, BadgeCheck, Loader2, ChevronDown, Package, Truck, ShoppingBag, Calendar } from 'lucide-react'
+import {
+  CheckCircle,
+  XCircle,
+  CreditCard,
+  BadgeCheck,
+  Loader2,
+  ChevronDown,
+  Package,
+  Truck,
+  ShoppingBag,
+  Calendar
+} from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { getOrderDetail } from '../../../apis/order.api'
-import type { Order } from '../../../types/orderType'
+import type { Order, OrderItemWithCombo } from '../../../types/orderType'
 import { toast } from 'react-toastify'
+
+interface ComboDisplayGroup {
+  comboId: string
+  comboName: string
+  items: OrderItemWithCombo[]
+}
+
+const buildComboGroups = (orderData?: Order | null): ComboDisplayGroup[] => {
+  if (!orderData?.orderItemsWithCombo || orderData.orderItemsWithCombo.length === 0) {
+    return []
+  }
+
+  const groups = orderData.orderItemsWithCombo.reduce(
+    (acc, comboItem) => {
+      const comboIdentifier =
+        ('comboId' in comboItem ? comboItem.comboId : undefined) || comboItem.comboName || undefined
+      const key = comboIdentifier || comboItem.comboItemId || comboItem.id
+
+      if (!acc[key]) {
+        acc[key] = {
+          comboName: comboItem.comboName || 'Combo đặc biệt',
+          items: []
+        }
+      }
+
+      acc[key].items.push(comboItem)
+      return acc
+    },
+    {} as Record<string, { comboName: string; items: OrderItemWithCombo[] }>
+  )
+
+  return Object.entries(groups).map(([comboId, data]) => ({
+    comboId,
+    comboName: data.comboName,
+    items: data.items
+  }))
+}
+
+const ComboSection = ({ combos }: { combos: ComboDisplayGroup[] }) => {
+  if (!combos.length) return null
+
+  return (
+    <div className='space-y-3'>
+      <div className='text-xs font-semibold text-orange-700 uppercase'>Combo trong đơn</div>
+      <div className='space-y-4'>
+        {combos.map((combo) => {
+          const comboTotal = combo.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
+          return (
+            <div
+              key={combo.comboId}
+              className='bg-orange-50 rounded-xl border border-orange-100 p-4 space-y-3 shadow-sm'
+            >
+              <div className='flex items-center justify-between text-sm font-semibold text-orange-800'>
+                <span title={combo.comboName}>{combo.comboName}</span>
+                <span className='text-orange-700'>
+                  Tổng tiền combo:{' '}
+                  <span className='text-base font-semibold'>{comboTotal.toLocaleString('vi-VN')}₫</span>
+                </span>
+              </div>
+              <div className='space-y-2'>
+                {combo.items.map((comboItem) => (
+                  <div
+                    key={comboItem.id}
+                    className='flex items-center gap-3 bg-white rounded-lg border border-orange-100 p-2'
+                  >
+                    <img
+                      src={comboItem.orderItemImageUrl || '/api/placeholder/64/64'}
+                      alt={comboItem.orderItemName}
+                      className='w-12 h-12 rounded-lg object-cover border border-orange-200 flex-shrink-0'
+                    />
+                    <div className='flex-1 min-w-0'>
+                      <p className='text-sm font-medium text-gray-800 truncate'>{comboItem.orderItemName}</p>
+                      <p className='text-sm text-gray-500'>Số lượng: {comboItem.quantity}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 function Invoice() {
   const location = useLocation()
@@ -15,7 +110,7 @@ function Invoice() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
-  
+
   const params = new URLSearchParams(location.search)
   const status = params.get('status') === 'fail' ? 'fail' : 'success'
   const orderId = params.get('orderId')
@@ -43,7 +138,7 @@ function Invoice() {
           const orderPromises = orderIds.map((orderId) => getOrderDetail(orderId))
           const orderDetails = await Promise.all(orderPromises)
           const flattenedOrders = orderDetails.flat()
-          
+
           setOrders(flattenedOrders)
           setOrder(flattenedOrders[0])
         } else {
@@ -87,34 +182,16 @@ function Invoice() {
 
   const getPaymentMethodText = (paymentType: string) => {
     switch (paymentType) {
-      case 'COD': return 'COD'
-      case 'VNPay': return 'VNPay'
-      case 'Momo': return 'Momo'
-      case 'Banking': return 'Chuyển khoản'
-      default: return paymentType
-    }
-  }
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'NotYet': return 'Chờ xử lý'
-      case 'Processing': return 'Đang xử lý'
-      case 'Shipping': return 'Đang giao'
-      case 'Delivered': return 'Đã giao'
-      case 'Cancel': return 'Đã hủy'
-      case 'Returned': return 'Đã trả'
-      default: return status
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Processing': return 'bg-blue-100 text-blue-700 border-blue-300'
-      case 'Shipping': return 'bg-amber-100 text-amber-700 border-amber-300'
-      case 'Delivered': return 'bg-emerald-100 text-emerald-700 border-emerald-300'
-      case 'Cancel': return 'bg-red-100 text-red-700 border-red-300'
-      case 'NotYet': return 'bg-gray-100 text-gray-700 border-gray-300'
-      default: return 'bg-gray-100 text-gray-700 border-gray-300'
+      case 'COD':
+        return 'COD'
+      case 'VNPay':
+        return 'VNPay'
+      case 'Momo':
+        return 'Momo'
+      case 'Banking':
+        return 'Chuyển khoản'
+      default:
+        return paymentType
     }
   }
 
@@ -147,10 +224,7 @@ function Invoice() {
             </div>
             <h2 className='text-2xl font-bold text-gray-900'>Lỗi</h2>
             <p className='text-gray-600'>{error || 'Không tìm thấy thông tin đơn hàng'}</p>
-            <Button 
-              onClick={() => navigate('/profile?tab=orders')} 
-              className='w-full bg-green-600 hover:bg-green-700'
-            >
+            <Button onClick={() => navigate('/profile?tab=orders')} className='w-full bg-green-600 hover:bg-green-700'>
               Quay lại danh sách đơn hàng
             </Button>
           </div>
@@ -162,13 +236,12 @@ function Invoice() {
   return (
     <div className='min-h-screen bg-gradient-to-br from-emerald-50 via-white to-green-50 py-12 px-4'>
       <div className='max-w-5xl mx-auto space-y-8'>
-        
         {/* Success/Fail Status Header */}
-        <div className='relative overflow-hidden'>
+        <div className='relative rounded-[32px] bg-gradient-to-br from-emerald-100 via-white to-emerald-50 p-[1px] overflow-hidden shadow-lg'>
           {status === 'success' ? (
-            <div className='bg-white rounded-3xl shadow-2xl border-2 border-green-300 p-10 relative'>
-              <div className='absolute -top-20 -right-20 w-40 h-40 bg-green-200/30 rounded-full blur-3xl' />
-              <div className='absolute -bottom-20 -left-20 w-40 h-40 bg-emerald-200/30 rounded-full blur-3xl' />
+            <div className='bg-white rounded-[30px] border border-green-500 p-10 relative overflow-hidden'>
+              <div className='absolute -top-24 -right-16 w-48 h-48 bg-green-200/40 rounded-full blur-[120px] pointer-events-none blur-lg' />
+              <div className='absolute -bottom-24 -left-16 w-48 h-48 bg-emerald-200/40 rounded-full blur-[120px] pointer-events-none blur-lg' />
               <div className='relative z-10 text-center space-y-4'>
                 <div className='inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg'>
                   <BadgeCheck className='w-11 h-11 text-white' />
@@ -189,10 +262,7 @@ function Invoice() {
                 <p className='text-lg text-gray-600 max-w-2xl mx-auto'>
                   Đã có lỗi xảy ra. Vui lòng thử lại hoặc chọn phương thức khác.
                 </p>
-                <Button 
-                  className='mt-4 bg-green-600 hover:bg-green-700' 
-                  onClick={() => navigate('/cart/confirm')}
-                >
+                <Button className='mt-4 bg-green-600 hover:bg-green-700' onClick={() => navigate('/cart/confirm')}>
                   Quay lại thanh toán
                 </Button>
               </div>
@@ -214,15 +284,19 @@ function Invoice() {
                     <p className='text-green-100'>{orders.length} đơn từ các cửa hàng khác nhau</p>
                   </div>
                 </div>
-                
+
                 <div className='bg-white/10 backdrop-blur-sm rounded-2xl p-6 space-y-3'>
                   <div className='flex justify-between text-green-50'>
                     <span>Tạm tính ({orders.length} đơn)</span>
-                    <span className='font-semibold text-white'>{calculateTotals().totalOrder.toLocaleString('vi-VN')}₫</span>
+                    <span className='font-semibold text-white'>
+                      {calculateTotals().totalOrder.toLocaleString('vi-VN')}₫
+                    </span>
                   </div>
                   <div className='flex justify-between text-green-50'>
                     <span>Phí vận chuyển</span>
-                    <span className='font-semibold text-white'>{calculateTotals().totalShipPrice.toLocaleString('vi-VN')}₫</span>
+                    <span className='font-semibold text-white'>
+                      {calculateTotals().totalShipPrice.toLocaleString('vi-VN')}₫
+                    </span>
                   </div>
                   {calculateTotals().totalDiscount > 0 && (
                     <div className='flex justify-between text-yellow-200'>
@@ -233,7 +307,9 @@ function Invoice() {
                   <div className='border-t border-white/20 pt-3 mt-2'>
                     <div className='flex justify-between items-center'>
                       <span className='text-xl font-bold'>Tổng thanh toán</span>
-                      <span className='text-3xl font-bold'>{calculateTotals().totalFinalPrice.toLocaleString('vi-VN')}₫</span>
+                      <span className='text-3xl font-bold'>
+                        {calculateTotals().totalFinalPrice.toLocaleString('vi-VN')}₫
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -242,183 +318,197 @@ function Invoice() {
 
             {/* Order Cards with Accordion */}
             <div className='space-y-4'>
-              {orders.map((orderItem, index) => (
-                <div 
-                  key={orderItem.id} 
-                  className='bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300'
-                >
-                  {/* Order Header - Always Visible */}
-                  <button
-                    onClick={() => toggleOrder(orderItem.id)}
-                    className='w-full p-6 text-left hover:bg-gray-50 transition-colors'
+              {orders.map((orderItem, index) => {
+                const comboGroups = buildComboGroups(orderItem)
+                return (
+                  <div
+                    key={orderItem.id}
+                    className='bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300'
                   >
-                    <div className='flex items-start justify-between gap-4 mb-4'>
-                      <div className='flex items-center gap-3 flex-1 min-w-0'>
-                        <div className='w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md'>
-                          <span className='text-white font-bold'>{index + 1}</span>
-                        </div>
-                        <div className='flex-1 min-w-0'>
-                          <div className='font-bold text-gray-900 text-lg truncate'>
-                            #{orderItem.ghnorderCode || orderItem.id.slice(-8)}
-                          </div>
-                          <div className='flex items-center gap-2 text-sm text-gray-500 mt-1'>
-                            <Calendar className='w-4 h-4' />
-                            <span>{formatDate(orderItem.orderHistories?.[0]?.time)}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className='flex items-center gap-3 flex-shrink-0'>
-                        <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${getStatusColor(orderItem.status || '')}`}>
-                          {getStatusText(orderItem.status || '')}
-                        </span>
-                        <ChevronDown 
-                          className={`w-5 h-5 text-gray-600 transition-transform duration-300 ${expandedOrders.has(orderItem.id) ? 'rotate-180' : ''}`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Quick Info - Always Visible */}
-                    <div className='flex items-center justify-between gap-4 flex-wrap'>
-                      <div className='flex items-center gap-3 text-sm'>
-                        <div className='flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg'>
-                          <CreditCard className='w-4 h-4 text-gray-600' />
-                          <span className='font-medium text-gray-700'>{getPaymentMethodText(orderItem.paymentType || '')}</span>
-                        </div>
-                        <div className='flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg'>
-                          <Package className='w-4 h-4 text-gray-600' />
-                          <span className='font-medium text-gray-700'>{orderItem.orderItems.length} sản phẩm</span>
-                        </div>
-                      </div>
-                      <div className='text-2xl font-bold text-green-600'>
-                        {(orderItem.finalPrice || 0).toLocaleString('vi-VN')}₫
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Collapsible Content */}
-                  {expandedOrders.has(orderItem.id) && (
-                    <div className='border-t border-gray-200 bg-gradient-to-br from-gray-50 to-white p-6 space-y-6'>
-                      
-                      {/* Shipping Info */}
-                      <div className='bg-white rounded-xl p-5 border border-gray-200 shadow-sm'>
-                        <div className='flex items-start gap-4'>
-                          <div className='w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0'>
-                            <Truck className='w-6 h-6 text-blue-600' />
+                    {/* Order Header - Always Visible */}
+                    <button
+                      onClick={() => toggleOrder(orderItem.id)}
+                      className='w-full p-6 text-left hover:bg-gray-50 transition-colors'
+                    >
+                      <div className='flex items-start justify-between gap-4 mb-4'>
+                        <div className='flex items-center gap-3 flex-1 min-w-0'>
+                          <div className='w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md'>
+                            <span className='text-white font-bold'>{index + 1}</span>
                           </div>
                           <div className='flex-1 min-w-0'>
-                            <h3 className='font-semibold text-gray-900 mb-2'>Thông tin giao hàng</h3>
-                            <div className='space-y-1 text-sm text-gray-600'>
-                              <p><span className='font-medium text-gray-900'>Người nhận:</span> {orderItem.toName}</p>
-                              <p><span className='font-medium text-gray-900'>Địa chỉ:</span> {orderItem.toAddress}</p>
-                              <p className='text-xs text-gray-500 mt-2'>📍 Từ: {orderItem.fromName}</p>
+                            <div className='font-bold text-gray-900 text-lg truncate'>
+                              #{orderItem.ghnorderCode || orderItem.id.slice(-8)}
+                            </div>
+                            <div className='flex items-center gap-2 text-sm text-gray-500 mt-1'>
+                              <Calendar className='w-4 h-4' />
+                              <span>{formatDate(orderItem.orderHistories?.[0]?.time)}</span>
                             </div>
                           </div>
                         </div>
+
+                        <div className='flex items-center gap-3 flex-shrink-0'>
+                          <ChevronDown
+                            className={`w-5 h-5 text-gray-600 transition-transform duration-300 ${expandedOrders.has(orderItem.id) ? 'rotate-180' : ''}`}
+                          />
+                        </div>
                       </div>
 
-                      {/* Products */}
-                      <div>
-                        <h3 className='font-semibold text-gray-900 mb-3 flex items-center gap-2'>
-                          <Package className='w-5 h-5 text-green-600' />
-                          Sản phẩm ({orderItem.orderItems.length})
-                        </h3>
-                        <div className='space-y-3'>
-                          {orderItem.orderItems.map((item, idx) => (
-                            <div key={idx} className='flex gap-4 bg-white rounded-xl p-4 border border-gray-200 hover:border-green-300 transition-colors'>
-                              <img
-                                src={item.orderItemImageUrl}
-                                alt={item.orderItemName}
-                                className='w-20 h-20 rounded-lg object-cover border border-gray-200 flex-shrink-0'
-                              />
-                              <div className='flex-1 min-w-0'>
-                                <p className='font-medium text-gray-900 mb-2 line-clamp-2'>{item.orderItemName}</p>
-                                <div className='flex items-center gap-3 text-sm'>
-                                  <span className='bg-gray-100 text-gray-700 px-2 py-1 rounded font-medium'>
-                                    x{item.quantity}
-                                  </span>
-                                  {item.basePrice && item.finalPrice && item.basePrice !== item.finalPrice && (
-                                    <span className='text-red-500 line-through'>
-                                      {item.basePrice.toLocaleString('vi-VN')}₫
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className='text-right flex-shrink-0'>
-                                <p className='font-bold text-green-600 text-lg'>
-                                  {(item.totalPrice || 0).toLocaleString('vi-VN')}₫
+                      {/* Quick Info - Always Visible */}
+                      <div className='flex items-center justify-between gap-4 flex-wrap'>
+                        <div className='flex items-center gap-3 text-sm flex-wrap'>
+                          <div className='flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg'>
+                            <CreditCard className='w-4 h-4 text-gray-600' />
+                            <span className='font-medium text-gray-700'>
+                              {getPaymentMethodText(orderItem.paymentType || '')}
+                            </span>
+                          </div>
+                          <div className='flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg'>
+                            <Package className='w-4 h-4 text-gray-600' />
+                            <span className='font-medium text-gray-700'>{orderItem.orderItems.length} sản phẩm</span>
+                          </div>
+                          {comboGroups.length > 0 && (
+                            <div className='flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg'>
+                              <ShoppingBag className='w-4 h-4 text-gray-600' />
+                              <span className='font-medium text-gray-700'>{comboGroups.length} combo</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className='text-2xl font-bold text-green-600'>
+                          {(orderItem.finalPrice || 0).toLocaleString('vi-VN')}₫
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Collapsible Content */}
+                    {expandedOrders.has(orderItem.id) && (
+                      <div className='border-t border-gray-200 bg-gradient-to-br from-gray-50 to-white p-6 space-y-6'>
+                        {/* Shipping Info */}
+                        <div className='bg-white rounded-xl p-5 border border-gray-200 shadow-sm'>
+                          <div className='flex items-start gap-4'>
+                            <div className='w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                              <Truck className='w-6 h-6 text-blue-600' />
+                            </div>
+                            <div className='flex-1 min-w-0'>
+                              <h3 className='font-semibold text-gray-900 mb-2'>Thông tin giao hàng</h3>
+                              <div className='space-y-1 text-sm text-gray-600'>
+                                <p>
+                                  <span className='font-medium text-gray-900'>Người nhận:</span> {orderItem.toName}
                                 </p>
+                                <p>
+                                  <span className='font-medium text-gray-900'>Địa chỉ:</span> {orderItem.toAddress}
+                                </p>
+                                <p className='text-xs text-gray-500 mt-2'> Từ: {orderItem.fromName}</p>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Promotions */}
-                      {orderItem.orderPromotions && orderItem.orderPromotions.length > 0 && (
-                        <div className='bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-5 border border-green-200'>
-                          <div className='flex items-center gap-2 mb-3'>
-                            <CheckCircle className='w-5 h-5 text-green-600' />
-                            <h3 className='font-semibold text-green-900'>Khuyến mãi đã áp dụng</h3>
                           </div>
-                          <div className='space-y-2'>
-                            {orderItem.orderPromotions.map((promo, idx) => (
-                              <div key={idx} className='flex items-center justify-between'>
-                                <span className='text-green-700 text-sm'>{promo.title}</span>
-                                {promo.discountAmount > 0 && (
-                                  <span className='font-bold text-green-600'>
-                                    -{promo.discountAmount.toLocaleString('vi-VN')}₫
-                                  </span>
-                                )}
+                        </div>
+
+                        {/* Products */}
+                        <div>
+                          <h3 className='font-semibold text-gray-900 mb-3 flex items-center gap-2'>
+                            <Package className='w-5 h-5 text-green-600' />
+                            Sản phẩm ({orderItem.orderItems.length})
+                          </h3>
+                          <div className='space-y-3'>
+                            {orderItem.orderItems.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className='flex gap-4 bg-white rounded-xl p-4 border border-gray-200 hover:border-green-300 transition-colors'
+                              >
+                                <img
+                                  src={item.orderItemImageUrl}
+                                  alt={item.orderItemName}
+                                  className='w-20 h-20 rounded-lg object-cover border border-gray-200 flex-shrink-0'
+                                />
+                                <div className='flex-1 min-w-0'>
+                                  <p className='font-medium text-gray-900 mb-2 line-clamp-2'>{item.orderItemName}</p>
+                                  <div className='flex items-center gap-3 text-sm'>
+                                    <span className='text-gray-700 font-medium'>số lượng: {item.quantity}</span>
+                                  </div>
+                                </div>
+                                <div className='text-right flex-shrink-0'>
+                                  <p className='font-bold text-green-600 text-lg'>
+                                    {(item.totalPrice || 0).toLocaleString('vi-VN')}₫
+                                  </p>
+                                </div>
                               </div>
                             ))}
                           </div>
                         </div>
-                      )}
 
-                      {/* Price Summary */}
-                      <div className='bg-white rounded-xl p-5 border-2 border-gray-200'>
-                        <div className='space-y-3'>
-                          <div className='flex justify-between text-gray-600'>
-                            <span>Tạm tính</span>
-                            <span className='font-medium'>{(orderItem.totalOrder || 0).toLocaleString('vi-VN')}₫</span>
-                          </div>
-                          <div className='flex justify-between text-gray-600'>
-                            <span>Phí vận chuyển</span>
-                            <span className='font-medium'>{(orderItem.shipPrice || 0).toLocaleString('vi-VN')}₫</span>
-                          </div>
-                          {orderItem.totalDiscount > 0 && (
-                            <div className='flex justify-between text-green-600'>
-                              <span>Giảm giá</span>
-                              <span className='font-bold'>-{(orderItem.totalDiscount || 0).toLocaleString('vi-VN')}₫</span>
+                        {/* Combo section */}
+                        {comboGroups.length > 0 && <ComboSection combos={comboGroups} />}
+
+                        {/* Promotions */}
+                        {orderItem.orderPromotions && orderItem.orderPromotions.length > 0 && (
+                          <div className='bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-5 border border-green-200'>
+                            <div className='flex items-center gap-2 mb-3'>
+                              <CheckCircle className='w-5 h-5 text-green-600' />
+                              <h3 className='font-semibold text-green-900'>Khuyến mãi đã áp dụng</h3>
                             </div>
-                          )}
-                          <div className='pt-3 border-t-2 border-dashed border-gray-300'>
-                            <div className='flex justify-between items-center'>
-                              <span className='text-lg font-bold text-gray-900'>Thành tiền</span>
-                              <span className='text-2xl font-bold text-green-600'>
-                                {(orderItem.finalPrice || 0).toLocaleString('vi-VN')}₫
+                            <div className='space-y-2'>
+                              {orderItem.orderPromotions.map((promo, idx) => (
+                                <div key={idx} className='flex items-center justify-between'>
+                                  <span className='text-green-700 text-sm'>{promo.title}</span>
+                                  {promo.discountAmount > 0 && (
+                                    <span className='font-bold text-green-600'>
+                                      -{promo.discountAmount.toLocaleString('vi-VN')}₫
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Price Summary */}
+                        <div className='bg-white rounded-xl p-5 border-2 border-gray-200'>
+                          <div className='space-y-3'>
+                            <div className='flex justify-between text-gray-600'>
+                              <span>Tạm tính</span>
+                              <span className='font-medium'>
+                                {(orderItem.totalOrder || 0).toLocaleString('vi-VN')}₫
                               </span>
+                            </div>
+                            <div className='flex justify-between text-gray-600'>
+                              <span>Phí vận chuyển</span>
+                              <span className='font-medium'>{(orderItem.shipPrice || 0).toLocaleString('vi-VN')}₫</span>
+                            </div>
+                            {orderItem.totalDiscount > 0 && (
+                              <div className='flex justify-between text-green-600'>
+                                <span>Giảm giá</span>
+                                <span className='font-bold'>
+                                  -{(orderItem.totalDiscount || 0).toLocaleString('vi-VN')}₫
+                                </span>
+                              </div>
+                            )}
+                            <div className='pt-3 border-t-2 border-dashed border-gray-300'>
+                              <div className='flex justify-between items-center'>
+                                <span className='text-lg font-bold text-gray-900'>Thành tiền</span>
+                                <span className='text-2xl font-bold text-green-600'>
+                                  {(orderItem.finalPrice || 0).toLocaleString('vi-VN')}₫
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             {/* Action Buttons */}
             <div className='flex flex-col sm:flex-row justify-center gap-4 pt-4'>
-              <Button 
+              <Button
                 onClick={() => navigate('/profile?tab=orders')}
                 className='bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all'
               >
                 <Package className='w-5 h-5 mr-2' />
                 Xem lịch sử mua hàng
               </Button>
-              <Button 
+              <Button
                 onClick={() => navigate('/')}
                 className='bg-white hover:bg-gray-50 text-gray-700 px-8 py-6 text-lg font-semibold rounded-xl border-2 border-gray-300 hover:border-green-400 transition-all'
               >

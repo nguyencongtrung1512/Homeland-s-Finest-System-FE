@@ -72,12 +72,12 @@ function OrderManagementStaff() {
         <h1 className='text-2xl font-bold text-green-700 mb-6'>Quản lý Đơn hàng</h1>
 
         {/* Tabs */}
-        <div className='flex space-x-8 border-b border-gray-200 mb-6'>
+        <div className='flex gap-8 border-b border-gray-200 mb-6'>
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 text-sm font-medium transition-colors ${
+              className={`pb-3 px-2 text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.key
                   ? 'text-orange-600 border-b-2 border-orange-600'
                   : 'text-gray-600 hover:text-gray-900'

@@ -90,10 +90,7 @@ function ComboSeller() {
     fetchCombos()
   }, [fetchCombos])
 
-  const handleRefresh = async () => {
-    await fetchCombos()
-    toast.success('Đã làm mới danh sách combo')
-  }
+
 
   const handlePreviousPage = () => {
     if (pagination && pagination.pageNumber > 1) {
@@ -228,10 +225,7 @@ function ComboSeller() {
       <div className='flex justify-between items-center mb-6'>
         <h1 className='text-2xl font-semibold text-gray-900'>Quản lý Combo</h1>
         <div className='flex space-x-2'>
-          <Button variant='outline' onClick={handleRefresh} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Làm mới
-          </Button>
+          
           <Button className='bg-green-600 hover:bg-green-700' onClick={handleCreateCombo}>
             <Plus className='w-4 h-4 mr-2' />
             Thêm Combo mới

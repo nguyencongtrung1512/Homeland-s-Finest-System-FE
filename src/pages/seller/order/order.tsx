@@ -19,6 +19,8 @@ import type { Order, OrderStatus } from '../../../types/orderType'
 import { toast } from 'react-toastify'
 import OrderDetail from './orderDetail'
 
+const HIDDEN_STATUSES: OrderStatus[] = ['NotYet', 'PendingPayment']
+
 // Status text mapping - moved outside component to avoid re-renders
 const statusTextMap: Record<string, string> = {
   NotYet: 'Chưa xử lí',
@@ -82,10 +84,12 @@ function OrderManagement() {
 
   // Create tabs from statusTextMap
   const tabs = useMemo(() => {
-    const statusTabs = Object.keys(statusTextMap).map((key) => ({
-      key: key as OrderStatus,
-      label: statusTextMap[key]
-    }))
+    const statusTabs = Object.keys(statusTextMap)
+      .filter((key) => !HIDDEN_STATUSES.includes(key as OrderStatus))
+      .map((key) => ({
+        key: key as OrderStatus,
+        label: statusTextMap[key]
+      }))
     return [{ key: 'all' as const, label: 'Tất cả' }, ...statusTabs]
   }, [])
 
@@ -203,7 +207,7 @@ function OrderManagement() {
 
     try {
       const allOrdersData = await getCustomerOrders(user.userId, { pageSize: 0 })
-      setAllOrders(allOrdersData)
+      setAllOrders(allOrdersData.filter((order) => !HIDDEN_STATUSES.includes(order.status as OrderStatus)))
     } catch (err) {
       console.error('Error fetching all orders:', err)
     }
@@ -222,7 +226,7 @@ function OrderManagement() {
         setError(null)
         const params = status ? { status } : undefined
         const ordersData = await getCustomerOrders(user.userId, params)
-        setOrders(ordersData)
+        setOrders(ordersData.filter((order) => !HIDDEN_STATUSES.includes(order.status as OrderStatus)))
       } catch (err) {
         console.error('Error fetching orders:', err)
         setError('Không thể tải danh sách đơn hàng')
@@ -436,7 +440,7 @@ function OrderManagement() {
             </div>
           ) : (
             <div className='w-full'>
-              <div className='flex items-center py-4'>
+              <div className='flex items-center justify-between py-4'>
                 <Input
                   placeholder='Tìm theo Mã đơn hàng hoặc Tên khách hàng...'
                   value={searchTerm}
@@ -446,7 +450,7 @@ function OrderManagement() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant='outline' className='ml-auto'>
-                      Cột hiển thị <ChevronDown className='ml-2 h-4 w-4' />
+                      Cột hiện thị <ChevronDown className='ml-2 h-4 w-4' />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align='end'>
@@ -547,6 +551,7 @@ function OrderManagement() {
                 {/* Pagination Controls */}
                 <div className='flex items-center space-x-2'>
                   <Button
+                    className='mr-2'
                     variant='outline'
                     size='sm'
                     onClick={() => handlePageChange(currentPage - 1)}
@@ -556,7 +561,7 @@ function OrderManagement() {
                     Trước
                   </Button>
 
-                  <div className='flex items-center space-x-1'>
+                  <div className='flex items-center space-x-1 px-1'>
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNumber
                       if (totalPages <= 5) {
@@ -572,7 +577,7 @@ function OrderManagement() {
                       return (
                         <Button
                           key={pageNumber}
-                          variant={currentPage === pageNumber ? 'default' : 'outline'}
+                          variant={'outline'}
                           size='sm'
                           onClick={() => handlePageChange(pageNumber)}
                           className='w-8 h-8 p-0'

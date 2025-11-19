@@ -14,7 +14,7 @@ export interface User {
   firstName: string
   lastName: string
   bankAccount: string | null
-  toBin: string | null
+  bankName: string | null
   avatar: string | null
   userPoint: number
   provinceId: number | null
@@ -114,7 +114,7 @@ export interface UpdateUserData {
   note?: string
   provinceId?: number
   bankAccount?: string
-  toBin?: string
+  bankName?: string
 }
 
 export interface UpdateUserResponse {
@@ -174,7 +174,7 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
     (data.provinceId !== undefined ? data.provinceId : currentUser?.provinceId || '').toString()
   )
   formData.append('BankAccount', data.bankAccount !== undefined ? data.bankAccount : currentUser?.bankAccount || '')
-  formData.append('ToBin', data.toBin !== undefined ? data.toBin : currentUser?.toBin || '')
+  formData.append('bankName', data.bankName !== undefined ? data.bankName : currentUser?.bankName || '')
 
   // Thêm UpdatedAt timestamp
   const now = new Date().toISOString()

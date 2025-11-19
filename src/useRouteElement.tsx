@@ -41,7 +41,7 @@ import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
 import RequestWalletMoneyManagement from './pages/admin/requestWalletMoneyManagement/list'
-import { AdminPromotionList, AdminPromotionDetail, AdminPromotionStats } from './pages/admin/promotionManagerment'
+import { AdminPromotionList, AdminPromotionStats } from './pages/admin/promotionManagerment'
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import StoryWithSeller from './pages/customer/storyWithSeller'
 import StorePage from './pages/customer/storeSeller/storePage'
@@ -65,6 +65,7 @@ import OrderCreate from './pages/customer/Order/OrderCreate'
 import SellerPromotionList from './pages/seller/promotionManagement/list'
 import CreateComboSeller from './pages/seller/combos/createCombo'
 import DetailComboSeller from './pages/seller/combos/detailCombo'
+import ProductReviews from './pages/seller/productReviews/productReviews'
 import ViewBlog from './pages/customer/Blog/viewBlog'
 import SellerManagement from './pages/admin/sellerManagerment/list'
 import StaffManagement from './pages/admin/staffManagerment/list'
@@ -235,6 +236,10 @@ export default function useRouteElements() {
             {
               path: path.detailComboSeller,
               element: <DetailComboSeller />
+            },
+            {
+              path: path.productReviewsSeller,
+              element: <ProductReviews />
             }
           ]
         }
@@ -407,10 +412,6 @@ export default function useRouteElements() {
             {
               path: path.FORM_STORE_MANAGEMENT_ADMIN,
               element: <FormStoreManagement />
-            },
-            {
-              path: '/admin/promotions/:id',
-              element: <AdminPromotionDetail />
             },
             {
               path: '/admin/promotions/stats',

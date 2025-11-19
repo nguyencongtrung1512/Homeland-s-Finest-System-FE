@@ -11,6 +11,8 @@ import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/p
 import { useAuth } from '../../../contexts/auth.context'
 import { Upload, ChevronRight, Trash2, Video, Image as ImageIcon, Package, FileImage, Loader2, X } from 'lucide-react'
 import { toast } from '../../../utils/toast'
+import ProductComboBox from '../../../components/ui/product-combo-box'
+import type { Product } from '../../../types/productType'
 
 function CreateProduct() {
   const navigate = useNavigate()
@@ -22,6 +24,9 @@ function CreateProduct() {
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<ProductCategoryItem[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [productsLoading, setProductsLoading] = useState(false)
+  const [selectedParentProduct, setSelectedParentProduct] = useState<Product | null>(null)
 
   // Validation constants
   const MAX_NAME_WORDS = 20
@@ -286,13 +291,40 @@ function CreateProduct() {
     }
   }
 
-  // Load store ID and categories on component mount
+  // Fetch all products for parent selection
+  const fetchProducts = async () => {
+    try {
+      setProductsLoading(true)
+      const response = await productApi.getAll({ pageSize: 100, pageNumber: 1 })
+      if (response && response.data) {
+        // Extract products from response
+        let productsList: Product[] = []
+        if (Array.isArray(response.data)) {
+          productsList = response.data
+        } else {
+          // If response.data is an object with data property
+          const responseWithData = response.data as { data?: Product[] }
+          productsList = responseWithData.data || []
+        }
+        setProducts(productsList)
+      } else {
+        setProducts([])
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error)
+      setProducts([])
+    } finally {
+      setProductsLoading(false)
+    }
+  }
+
+  // Load store ID, categories and products on component mount
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true)
 
-      // Fetch store ID and categories in parallel
-      const [fetchedStoreId] = await Promise.all([fetchStoreId(), fetchCategories()])
+      // Fetch store ID, categories and products in parallel
+      const [fetchedStoreId] = await Promise.all([fetchStoreId(), fetchCategories(), fetchProducts()])
 
       if (fetchedStoreId) {
         setError(null)
@@ -408,18 +440,12 @@ function CreateProduct() {
         }
       }
 
-      // Validation: Chỉ validate các trường bắt buộc theo API
-      // Description, ProductImages, ProductVideo không bắt buộc theo API spec
-      // Nhưng có thể giữ validation cho UX tốt hơn
-
-      // Prepare form data theo cấu trúc API yêu cầu
       const formData: ProductCreateFormData = {
         storeId: storeId,
-        // productType: 'ProductMaster', // Tạo Product Master (Gốc Hiển thị Cấp 1)
-        parentId: null, // ProductMaster không có parent, phải là null
+        // If parent product is selected, use its ID, otherwise null (ProductMaster)
+        parentId: selectedParentProduct?.id || null,
         name: productData.name,
         categoryId: productData.categoryId || undefined, // Chỉ gửi nếu có chọn category
-        provinceId: provinceId ? parseInt(provinceId) : 0, // Convert sang number, mặc định 0 nếu không có
         description: productData.description || undefined, // Không bắt buộc
         material: productData.material.trim(), // Luôn gửi material (đã validate không rỗng ở trên)
         productImages: mediaData.productImages.length > 0 ? mediaData.productImages : undefined, // Không bắt buộc
@@ -430,14 +456,7 @@ function CreateProduct() {
 
       // Hiển thị thông tin response theo format mẫu
       if (response.data) {
-        const productData = response.data
-        console.log('Product Response Data:', {
-          id: productData.id,
-          name: productData.name,
-          status: productData.status,
-          productImages: productData.productImages,
-          productVideo: productData.productVideo
-        })
+        console.log('Product Response Data:', response.data)
       }
 
       // Show success message
@@ -455,8 +474,44 @@ function CreateProduct() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const err = error as any
 
-        // Check for errors object (validation errors)
-        if (err.errors && typeof err.errors === 'object') {
+        // Check for axios error response structure (error.response.data)
+        if (err.response?.data) {
+          const responseData = err.response.data
+
+          // Priority 1: Check for message in response.data
+          if (responseData.message) {
+            errorMessage = responseData.message
+          }
+          // Priority 2: Check for errors object (validation errors)
+          else if (responseData.errors && typeof responseData.errors === 'object') {
+            const errorMessages: string[] = []
+            Object.keys(responseData.errors).forEach((field) => {
+              const fieldErrors = responseData.errors[field]
+              if (Array.isArray(fieldErrors)) {
+                errorMessages.push(...fieldErrors)
+              } else if (typeof fieldErrors === 'string') {
+                errorMessages.push(fieldErrors)
+              }
+            })
+            if (errorMessages.length > 0) {
+              errorMessage = errorMessages.join(', ')
+            }
+          }
+          // Priority 3: Check for title field
+          else if (responseData.title) {
+            errorMessage = responseData.title
+          }
+          // Priority 4: Check for errors array
+          else if (responseData.errors && Array.isArray(responseData.errors)) {
+            errorMessage = responseData.errors.join(', ')
+          }
+          // Priority 5: Check for error string
+          else if (responseData.error && typeof responseData.error === 'string') {
+            errorMessage = responseData.error
+          }
+        }
+        // Check for direct errors object (validation errors)
+        else if (err.errors && typeof err.errors === 'object') {
           const errorMessages: string[] = []
           Object.keys(err.errors).forEach((field) => {
             const fieldErrors = err.errors[field]
@@ -536,7 +591,7 @@ function CreateProduct() {
         <div className='lg:col-span-2 space-y-6'>
           {/* Basic Information */}
           <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
-            <CardHeader className='bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100'>
+            <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
               <CardTitle className='text-green-700 flex items-center gap-2'>
                 <Package className='w-5 h-5' />
                 Thông tin cơ bản
@@ -610,7 +665,7 @@ function CreateProduct() {
 
           {/* Media Section */}
           <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
-            <CardHeader className='bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100'>
+            <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
               <CardTitle className='text-green-700 flex items-center gap-2'>
                 <FileImage className='w-5 h-5' />
                 Hình ảnh & Video
@@ -861,7 +916,7 @@ function CreateProduct() {
         <div className='space-y-6'>
           {/* Category */}
           <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
-            <CardHeader className='bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100'>
+            <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
               <CardTitle className='text-green-700 flex items-center gap-2'>
                 <Package className='w-5 h-5' />
                 Phân loại
@@ -887,11 +942,10 @@ function CreateProduct() {
                     {categories.map((category) => (
                       <div
                         key={category.id}
-                        className={`flex items-start space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                          productData.categoryId === category.id
-                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 shadow-sm'
-                            : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-300 hover:shadow-sm'
-                        }`}
+                        className={`flex items-start space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${productData.categoryId === category.id
+                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 shadow-sm'
+                          : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-300 hover:shadow-sm'
+                          }`}
                         onClick={() => handleCategorySelect(category.id)}
                       >
                         <div className='flex items-center'>
@@ -932,6 +986,81 @@ function CreateProduct() {
                           </div>
                         ) : null
                       })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Parent Product Selection */}
+          <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
+            <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700'>
+              <CardTitle className='text-green-700 flex items-center gap-2'>
+                <Package className='w-5 h-5' />
+                Sản phẩm liên quan (Tùy chọn)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <Label htmlFor='parent-product' className='text-sm font-medium'>
+                  Chọn sản phẩm liên quan
+                </Label>
+                <p className='text-xs text-gray-500 mt-1 mb-2'>Chọn một sản phẩm liên quan.</p>
+
+                {productsLoading ? (
+                  <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
+                    <Loader2 className='w-4 h-4 animate-spin mr-2' />
+                    <span className='text-sm text-gray-500'>Đang tải sản phẩm...</span>
+                  </div>
+                ) : (
+                  <div className='mt-1'>
+                    <ProductComboBox
+                      products={products.map((p) => ({
+                        id: p.id,
+                        name: p.name,
+                        description: p.description || ''
+                      }))}
+                      placeholder='Tìm kiếm sản phẩm cha...'
+                      onSelect={(product) => {
+                        if (product) {
+                          // Find the full product from products array
+                          const fullProduct = products.find((p) => p.id === product.id)
+                          setSelectedParentProduct(fullProduct || null)
+                        } else {
+                          setSelectedParentProduct(null)
+                        }
+                      }}
+                      value={selectedParentProduct?.id || null}
+                    />
+                  </div>
+                )}
+
+                {/* Show selected parent product */}
+                {selectedParentProduct && (
+                  <div className='mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 shadow-sm'>
+                    <div className='flex items-start justify-between'>
+                      <div className='flex-1 min-w-0'>
+                        <div className='flex items-center gap-2 mb-2'>
+                          <Package className='w-4 h-4 text-green-600 flex-shrink-0' />
+                          <p className='text-sm font-semibold text-green-800'>Sản phẩm cha đã chọn:</p>
+                        </div>
+                        <p className='font-medium text-gray-900 mb-1'>
+                          Sản phẩm liên quan: {selectedParentProduct.name}
+                        </p>
+                        {selectedParentProduct.description && (
+                          <p className='text-sm text-gray-600 line-clamp-2'>{selectedParentProduct.description}</p>
+                        )}
+                        <p className='text-sm text-gray-600 mb-1'>({selectedParentProduct.id})</p>
+                      </div>
+                      <button
+                        type='button'
+                        onClick={() => setSelectedParentProduct(null)}
+                        className='ml-2 text-green-600 hover:text-green-800 hover:bg-green-200 rounded-full p-1 transition-all duration-150 flex-shrink-0'
+                        title='Xóa lựa chọn'
+                      >
+                        <X className='w-4 h-4' />
+                      </button>
                     </div>
                   </div>
                 )}

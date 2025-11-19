@@ -592,11 +592,6 @@ export const useAdminPromotions = () => {
         await promotionApi.updatePromotionAdmin(id, data)
         await fetchAdminPromotions(pagination.pageNumber)
 
-        toast.success('Cập nhật promotion thành công!', {
-          position: 'top-right',
-          autoClose: 2000
-        })
-
         return true
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Không thể cập nhật promotion'
@@ -646,7 +641,7 @@ export const useAdminPromotions = () => {
         await promotionApi.togglePromotionStatus(promotionId)
         await fetchAdminPromotions(pagination.pageNumber)
 
-        toast.success('Thay đổi trạng thái promotion thành công!', {
+        toast.success('Thay đổi trạng thái khuyến mãi thành công!', {
           position: 'top-right',
           autoClose: 2000
         })
@@ -734,35 +729,34 @@ export const useSellerPromotions = () => {
         console.log('🔍 Hook: Calling promotionApi.getSellerPromotions...')
         const response = await promotionApi.getSellerPromotions(sellerId, pageSize, pageNumber, filter, sort)
 
-        // Backend trả về data là array trực tiếp, không có items/pagination wrapper
+        // Backend trả về: { status, message, data: [...], pagination: {...} }
         let items: PromotionDTO[] = []
         let totalPages = 1
         let totalItems = 0
 
+        // Lấy data (array)
         if (Array.isArray(response.data)) {
-          // Response data là array trực tiếp
           items = response.data
-          totalItems = response.data.length
-          totalPages = Math.ceil(totalItems / pageSize) || 1
-          console.log('🔍 Hook: Processing direct array response')
-        } else if (
-          response.data &&
-          typeof response.data === 'object' &&
-          'items' in response.data &&
-          Array.isArray((response.data as { items: PromotionDTO[] }).items)
-        ) {
-          // Response data có wrapper với items/pagination
-          const wrappedData = response.data as {
-            items: PromotionDTO[]
-            pagination?: { totalPages?: number; totalItems?: number }
-          }
-          items = wrappedData.items
-          totalPages = wrappedData.pagination?.totalPages || 1
-          totalItems = wrappedData.pagination?.totalItems || wrappedData.items.length
-          console.log('🔍 Hook: Processing wrapped response')
         } else {
-          console.warn('🔍 Hook: Unexpected response structure:', response.data)
+          console.warn('🔍 Hook: Response data is not an array:', response.data)
           items = []
+        }
+
+        // Lấy pagination từ response object (cùng level với data)
+        const responseWithPagination = response as unknown as {
+          data: PromotionDTO[]
+          pagination?: { totalPages?: number; totalItems?: number; pageSize?: number; pageNumber?: number }
+        }
+
+        if (responseWithPagination.pagination) {
+          totalPages = responseWithPagination.pagination.totalPages || 1
+          totalItems = responseWithPagination.pagination.totalItems || items.length
+          console.log('🔍 Hook: Using pagination from response:', responseWithPagination.pagination)
+        } else {
+          // Fallback: tính từ data length nếu không có pagination
+          totalItems = items.length
+          totalPages = Math.ceil(totalItems / pageSize) || 1
+          console.log('🔍 Hook: No pagination in response, calculating from data length')
         }
 
         console.log('🔍 Hook: Final processed data:', { items: items.length, totalPages, totalItems })
@@ -801,7 +795,6 @@ export const useSellerPromotions = () => {
     setLoading(true)
     try {
       await promotionApi.updatePromotionSeller(id, data)
-      toast.success('Cập nhật promotion thành công', { position: 'top-right', autoClose: 3000 })
     } catch (err: unknown) {
       console.error('Error updating seller promotion:', err)
       const errorMessage = err instanceof Error ? err.message : 'Không thể cập nhật promotion'
@@ -831,7 +824,6 @@ export const useSellerPromotions = () => {
     setLoading(true)
     try {
       await promotionApi.togglePromotionStatus(promotionId)
-      toast.success('Cập nhật trạng thái promotion thành công', { position: 'top-right', autoClose: 3000 })
     } catch (err: unknown) {
       console.error('Error toggling promotion status:', err)
       const errorMessage = err instanceof Error ? err.message : 'Không thể cập nhật trạng thái'

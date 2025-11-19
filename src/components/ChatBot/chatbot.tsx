@@ -4,6 +4,8 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { MessageCircle, Send, X, Bot, User } from 'lucide-react'
+import { sendChatMessage } from '../../apis/chat.api'
+import { useAuth } from '../../contexts/auth.context'
 
 interface Message {
   id: string
@@ -13,6 +15,7 @@ interface Message {
 }
 
 const ChatBot: React.FC = () => {
+  const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -24,6 +27,7 @@ const ChatBot: React.FC = () => {
   ])
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [, setRoomId] = useState<string | null>(null) // Lưu roomId để có thể dùng cho các tính năng sau (lưu lịch sử chat, tiếp tục conversation)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -37,9 +41,22 @@ const ChatBot: React.FC = () => {
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return
 
+    // Kiểm tra user đã đăng nhập chưa
+    if (!user?.userId) {
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        text: 'Vui lòng đăng nhập để sử dụng tính năng chat với AI.',
+        isUser: false,
+        timestamp: new Date()
+      }
+      setMessages((prev) => [...prev, errorMessage])
+      return
+    }
+
+    const userMessageText = inputValue.trim()
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputValue,
+      text: userMessageText,
       isUser: true,
       timestamp: new Date()
     }
@@ -48,48 +65,40 @@ const ChatBot: React.FC = () => {
     setInputValue('')
     setIsTyping(true)
 
-    // Simulate bot response
-    setTimeout(() => {
-      const botResponse = generateBotResponse(inputValue)
+    try {
+      // Gọi API chat với AI
+      const response = await sendChatMessage({
+        senderId: user.userId,
+        messageText: userMessageText
+      })
+
+      // Lưu roomId nếu có (có thể dùng để tiếp tục conversation sau)
+      if (response.data.roomId) {
+        setRoomId(response.data.roomId)
+        // roomId có thể được dùng cho các tính năng như lưu lịch sử chat, tiếp tục conversation, etc.
+      }
+
+      // Thêm tin nhắn từ AI vào danh sách
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: botResponse,
+        text: response.data.homeLandFinestText,
         isUser: false,
         timestamp: new Date()
       }
       setMessages((prev) => [...prev, botMessage])
+    } catch (error) {
+      console.error('Error sending message to AI:', error)
+      // Hiển thị thông báo lỗi
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Xin lỗi, có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.',
+        isUser: false,
+        timestamp: new Date()
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
       setIsTyping(false)
-    }, 1000)
-  }
-
-  const generateBotResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase()
-
-    if (input.includes('sản phẩm') || input.includes('nông sản')) {
-      return 'Chúng tôi có rất nhiều sản phẩm nông sản chất lượng cao từ khắp các vùng miền Việt Nam như gạo, rau củ, trái cây, thảo dược... Bạn có thể xem chi tiết tại trang sản phẩm hoặc cho tôi biết bạn quan tâm đến loại sản phẩm nào cụ thể?'
     }
-
-    if (input.includes('câu chuyện') || input.includes('story')) {
-      return 'Tôi rất vui được chia sẻ những câu chuyện cảm động từ các nhà sản xuất nông sản. Mỗi sản phẩm đều mang trong mình một câu chuyện về tình yêu đất, tình yêu nghề. Bạn có thể khám phá tại trang "Câu Chuyện Đồng Quê" hoặc hỏi tôi về câu chuyện cụ thể nào đó.'
-    }
-
-    if (input.includes('giá') || input.includes('mua') || input.includes('đặt hàng')) {
-      return 'Để mua sản phẩm, bạn có thể: 1) Chọn sản phẩm từ trang sản phẩm, 2) Thêm vào giỏ hàng, 3) Thanh toán. Tôi có thể hướng dẫn bạn chi tiết từng bước. Bạn muốn mua sản phẩm nào?'
-    }
-
-    if (input.includes('vận chuyển') || input.includes('ship')) {
-      return 'Chúng tôi giao hàng toàn quốc với nhiều phương thức vận chuyển khác nhau. Phí ship sẽ được tính dựa trên khoảng cách và trọng lượng sản phẩm. Thời gian giao hàng thường từ 2-5 ngày làm việc.'
-    }
-
-    if (input.includes('chất lượng') || input.includes('organic') || input.includes('hữu cơ')) {
-      return 'Tất cả sản phẩm của chúng tôi đều được kiểm định chất lượng nghiêm ngặt, có chứng nhận hữu cơ và đảm bảo an toàn thực phẩm. Chúng tôi cam kết mang đến những sản phẩm tốt nhất cho sức khỏe gia đình bạn.'
-    }
-
-    if (input.includes('cảm ơn') || input.includes('thanks')) {
-      return 'Không có gì! Tôi rất vui được hỗ trợ bạn. Nếu bạn có thêm câu hỏi nào khác, đừng ngần ngại hỏi tôi nhé! 😊'
-    }
-
-    return 'Cảm ơn bạn đã hỏi! Tôi có thể giúp bạn tìm hiểu về sản phẩm, câu chuyện của người nông dân, hướng dẫn mua hàng, hoặc bất kỳ thông tin nào khác về Tinh Hoa Quê Nhà. Bạn có thể hỏi cụ thể hơn không?'
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

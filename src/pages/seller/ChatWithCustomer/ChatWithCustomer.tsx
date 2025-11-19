@@ -1,90 +1,420 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Badge } from '../../../components/ui/badge'
 import { Search, Phone, Video, MoreVertical, Paperclip, Image as ImageIcon, Send, Share2 } from 'lucide-react'
+import { useAuth } from '../../../contexts/auth.context'
+import { getAllChatRoomsByUserId, getChatRoomMessages, sendChatRoomMessage } from '../../../apis/chat.api'
+import { signalRService } from '../../../service/signalRService'
+import { resolveImageUrl } from '../../../utils/image'
+import type { ChatRoomData, ChatRoomMessageData } from '../../../types/chat.type'
+import ImagePreviewModal from '../../../components/ui/image-preview-modal'
+
+interface Message {
+  id: string
+  sender: 'shop' | 'customer'
+  content: string
+  timestamp: string
+  avatar?: string
+  images?: string[] // Array of image URLs
+  isTyping?: boolean
+}
+
+interface Conversation {
+  id: string
+  name: string
+  lastMessage: string
+  timestamp: string
+  unreadCount: number
+  avatar: string
+  isActive: boolean
+  customerId: string
+  sellerId: string
+}
 
 function ChatWithCustomer() {
-  const [selectedChat, setSelectedChat] = useState(1)
+  const { user } = useAuth()
+  const [selectedChat, setSelectedChat] = useState<string | null>(null)
   const [message, setMessage] = useState('')
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [messages, setMessages] = useState<{ [roomId: string]: Message[] }>({})
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null)
+  const [loadingRooms, setLoadingRooms] = useState(false)
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [selectedImages, setSelectedImages] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set())
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [previewIndex, setPreviewIndex] = useState(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Mock data
-  const conversations = [
-    {
-      id: 1,
-      name: 'Cửa hàng Đặc sản Hà Giang',
-      lastMessage: 'Chào bạn! Mình có thêm bánh buckwheat mới về...',
-      timestamp: '10:30',
-      unreadCount: 2,
-      avatar: '/api/placeholder/40/40',
-      isActive: true
-    },
-    {
-      id: 2,
-      name: 'Nguyễn Văn Minh',
-      lastMessage: 'Cảm ơn shop, sản phẩm rất chất lượng!',
-      timestamp: 'Hôm qua',
-      unreadCount: 0,
-      avatar: '/api/placeholder/40/40',
-      isActive: false
-    },
-    {
-      id: 3,
-      name: 'Làng nghề Bát Tràng',
-      lastMessage: 'Bộ ấm chén đã sẵn sàng giao hàng',
-      timestamp: '2 ngày',
-      unreadCount: 0,
-      avatar: '/api/placeholder/40/40',
-      isActive: false
-    }
-  ]
+  // Load chat rooms từ API
+  useEffect(() => {
+    const loadChatRooms = async () => {
+      if (!user?.userId) return
 
-  const messages = [
-    {
-      id: 1,
-      sender: 'shop',
-      content:
-        'Chào bạn! Cảm ơn bạn đã quan tâm đến bánh tam giác mạch của shop. Mình có thêm lô mới về rất thơm ngon đó!',
-      timestamp: '10:25',
-      avatar: '/api/placeholder/32/32'
-    },
-    {
-      id: 2,
-      sender: 'customer',
-      content: 'Bánh có thể bảo quản được bao lâu ạ? Mình muốn mua làm quà cho gia đình.',
-      timestamp: '10:26'
-    },
-    {
-      id: 3,
-      sender: 'shop',
-      content:
-        'Bánh có thể bảo quản 7-10 ngày ở nhiệt độ thường, hoặc 1 tháng nếu cho vào tủ lạnh. Đây là hình ảnh lô mới',
-      timestamp: '10:28',
-      avatar: '/api/placeholder/32/32',
-      image: '/api/placeholder/200/150'
-    },
-    {
-      id: 4,
-      sender: 'customer',
-      content: 'Wao trông ngon quá! Mình muốn đặt 2 hộp. Ship tôi Hà Nội được không ạ?',
-      timestamp: '10:30'
-    },
-    {
-      id: 5,
-      sender: 'shop',
-      content: '',
-      timestamp: '10:32',
-      avatar: '/api/placeholder/32/32',
-      isTyping: true
+      try {
+        setLoadingRooms(true)
+        const response = await getAllChatRoomsByUserId(user.userId)
+
+        const mappedConversations: Conversation[] = response.data.map((room: ChatRoomData) => {
+          // Seller sẽ thấy tên customer
+          return {
+            id: room.id,
+            name: room.customername,
+            lastMessage: '',
+            timestamp: room.updatedAt,
+            unreadCount: 0, // Có thể tính từ API sau
+            avatar: '',
+            isActive: false,
+            customerId: room.customerId,
+            sellerId: room.sellerId
+          }
+        })
+
+        setConversations(mappedConversations)
+      } catch (error) {
+        console.error('Error loading chat rooms:', error)
+      } finally {
+        setLoadingRooms(false)
+      }
     }
-  ]
+
+    loadChatRooms()
+  }, [user?.userId])
+
+  // Kết nối SignalR khi component mount
+  useEffect(() => {
+    if (user?.userId) {
+      signalRService.startConnection().catch((error) => {
+        console.error('Failed to start SignalR connection:', error)
+      })
+
+      return () => {
+        // Cleanup khi unmount
+      }
+    }
+  }, [user?.userId])
+
+  // Load messages khi chọn conversation
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!selectedChat || !user?.userId) {
+        setCurrentRoomId(null)
+        setFailedImages(new Set()) // Reset failed images when no chat selected
+        return
+      }
+
+      // Reset failed images when switching to a new chat
+      setFailedImages(new Set())
+
+      try {
+        setLoadingMessages(true)
+        setCurrentRoomId(selectedChat)
+
+        // Join SignalR room - đợi connection sẵn sàng
+        console.log('[ChatWithCustomer] Loading messages for room:', selectedChat)
+        if (signalRService.isConnected()) {
+          try {
+            console.log('[ChatWithCustomer] SignalR connected, joining room...')
+            await signalRService.joinRoom(selectedChat)
+            console.log('[ChatWithCustomer] Successfully joined room')
+          } catch (joinError) {
+            console.warn(
+              '[ChatWithCustomer] Error joining room (non-critical, continuing to load messages):',
+              joinError
+            )
+            // Tiếp tục load messages dù join room thất bại
+          }
+        } else {
+          // Nếu chưa connected, thử start connection trước
+          console.log('[ChatWithCustomer] SignalR not connected, starting connection...')
+          try {
+            await signalRService.startConnection()
+            // Đợi một chút để connection ổn định
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            if (signalRService.isConnected()) {
+              console.log('[ChatWithCustomer] Connection established, joining room...')
+              await signalRService.joinRoom(selectedChat)
+            } else {
+              console.warn('[ChatWithCustomer] Connection failed to establish')
+            }
+          } catch (connectionError) {
+            console.warn(
+              '[ChatWithCustomer] Error starting connection (non-critical, continuing to load messages):',
+              connectionError
+            )
+            // Tiếp tục load messages dù connection thất bại
+          }
+        }
+
+        // Load messages từ API
+        const response = await getChatRoomMessages(selectedChat)
+
+        // Kiểm tra response.data có tồn tại và là array không
+        if (!response || !response.data || !Array.isArray(response.data)) {
+          console.warn('[ChatWithCustomer] Invalid response data:', response)
+          setMessages((prev) => ({
+            ...prev,
+            [selectedChat]: []
+          }))
+          return
+        }
+
+        // Map và deduplicate messages theo ID để tránh duplicate
+        const messageMap = new Map<string, Message>()
+        response.data.forEach((msg: ChatRoomMessageData) => {
+          // Chỉ thêm nếu chưa có message với ID này
+          if (!messageMap.has(msg.id)) {
+            // Đảm bảo images là array of strings
+            const imageUrls: string[] = Array.isArray(msg.images)
+              ? msg.images
+                .map((img) => {
+                  // Nếu đã là string, dùng trực tiếp
+                  if (typeof img === 'string') return img
+                  // Nếu là object, thử lấy URL từ các property phổ biến
+                  if (img && typeof img === 'object') {
+                    const imgObj = img as Record<string, unknown>
+                    return (
+                      (typeof imgObj.url === 'string' ? imgObj.url : '') ||
+                      (typeof imgObj.path === 'string' ? imgObj.path : '') ||
+                      (typeof imgObj.src === 'string' ? imgObj.src : '') ||
+                      (typeof imgObj.imageUrl === 'string' ? imgObj.imageUrl : '') ||
+                      String(img)
+                    )
+                  }
+                  return String(img || '')
+                })
+                .filter((url) => url && url !== '[object Object]' && url.trim() !== '')
+              : []
+
+            messageMap.set(msg.id, {
+              id: msg.id,
+              sender: msg.senderId === user.userId ? 'shop' : 'customer',
+              content: msg.messageText,
+              timestamp: msg.sentAt,
+              avatar: msg.senderId === user.userId ? '' : '',
+              images: imageUrls // Đã convert thành strings
+            })
+          }
+        })
+
+        // Chuyển Map thành Array và sort theo timestamp
+        const mappedMessages: Message[] = Array.from(messageMap.values()).sort((a, b) => {
+          const timeA = new Date(a.timestamp).getTime()
+          const timeB = new Date(b.timestamp).getTime()
+          return timeA - timeB
+        })
+
+        // Replace messages thay vì merge để tránh duplicate khi reload
+        setMessages((prev) => ({
+          ...prev,
+          [selectedChat]: mappedMessages
+        }))
+
+        // Cập nhật lastMessage trong conversations
+        if (mappedMessages.length > 0) {
+          const lastMsg = mappedMessages[mappedMessages.length - 1]
+          setConversations((prev) =>
+            prev.map((conv) =>
+              conv.id === selectedChat ? { ...conv, lastMessage: lastMsg.content, timestamp: lastMsg.timestamp } : conv
+            )
+          )
+        }
+      } catch (error) {
+        console.error('Error loading messages:', error)
+      } finally {
+        setLoadingMessages(false)
+      }
+    }
+
+    loadMessages()
+
+    // Cleanup: leave room khi chuyển conversation
+    return () => {
+      if (currentRoomId && signalRService.isConnected()) {
+        // leaveRoom không throw error, chỉ log warning nếu có lỗi
+        signalRService.leaveRoom(currentRoomId).catch(() => {
+          // Error đã được handle trong leaveRoom, không cần log thêm
+        })
+      }
+    }
+  }, [selectedChat, user?.userId, currentRoomId])
+
+  // Lắng nghe tin nhắn mới từ SignalR
+  useEffect(() => {
+    if (!currentRoomId || !signalRService.isConnected() || !user?.userId) return
+
+    const handleNewMessage = (messageData: ChatRoomMessageData) => {
+      console.log('[ChatWithCustomer] SignalR received message:', {
+        roomId: messageData.roomId,
+        currentRoomId,
+        senderId: messageData.senderId,
+        userId: user.userId,
+        messageText: messageData.messageText,
+        messageId: messageData.id
+      })
+
+      if (messageData.roomId === currentRoomId) {
+        // Đảm bảo images là array of strings
+        const imageUrls: string[] = Array.isArray(messageData.images)
+          ? messageData.images
+            .map((img) => {
+              // Nếu đã là string, dùng trực tiếp
+              if (typeof img === 'string') return img
+              // Nếu là object, thử lấy URL từ các property phổ biến
+              if (img && typeof img === 'object') {
+                const imgObj = img as Record<string, unknown>
+                return (
+                  (typeof imgObj.url === 'string' ? imgObj.url : '') ||
+                  (typeof imgObj.path === 'string' ? imgObj.path : '') ||
+                  (typeof imgObj.src === 'string' ? imgObj.src : '') ||
+                  (typeof imgObj.imageUrl === 'string' ? imgObj.imageUrl : '') ||
+                  String(img)
+                )
+              }
+              return String(img || '')
+            })
+            .filter((url) => url && url !== '[object Object]' && url.trim() !== '')
+          : []
+
+        const newMessage: Message = {
+          id: messageData.id,
+          sender: messageData.senderId === user.userId ? 'shop' : 'customer',
+          content: messageData.messageText,
+          timestamp: messageData.sentAt,
+          avatar: messageData.senderId === user.userId ? '' : '',
+          images: imageUrls // Đã convert thành strings
+        }
+
+        // Kiểm tra xem tin nhắn đã tồn tại chưa để tránh duplicate
+        setMessages((prev) => {
+          const existingMessages = prev[currentRoomId] || []
+
+          // Kiểm tra duplicate bằng nội dung và thời gian (vì SignalR có thể tạo ID khác nhau)
+          const contentDuplicate = existingMessages.some(
+            (msg) =>
+              msg.content === messageData.messageText &&
+              msg.timestamp === messageData.sentAt &&
+              msg.sender === (messageData.senderId === user.userId ? 'shop' : 'customer')
+          )
+
+          if (contentDuplicate) {
+            console.log('[ChatWithCustomer] Duplicate message detected, skipping:', messageData.messageText)
+            return prev // Không thêm nếu đã có message với cùng nội dung và thời gian
+          }
+
+          console.log('[ChatWithCustomer] Adding new message to UI:', messageData.messageText)
+          return {
+            ...prev,
+            [currentRoomId]: [...existingMessages, newMessage]
+          }
+        })
+
+        // Cập nhật lastMessage trong conversations
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === currentRoomId
+              ? { ...conv, lastMessage: newMessage.content, timestamp: newMessage.timestamp }
+              : conv
+          )
+        )
+      }
+    }
+
+    // Lắng nghe tin nhắn từ room hiện tại
+    signalRService.onReceiveMessage(currentRoomId, handleNewMessage)
+  }, [currentRoomId, user?.userId])
+
+  // Scroll to bottom khi có tin nhắn mới
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages, selectedChat])
 
   const currentChat = conversations.find((chat) => chat.id === selectedChat)
+  const currentMessages = selectedChat ? messages[selectedChat] || [] : []
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      console.log('Sending message:', message)
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    const newFiles = Array.from(files)
+    const totalImages = selectedImages.length + newFiles.length
+
+    // Validate tối đa 3 ảnh
+    if (totalImages > 3) {
+      alert('Chỉ được gửi tối đa 3 ảnh mỗi lần')
+      // Chỉ lấy số ảnh còn thiếu để đủ 3 ảnh
+      const remainingSlots = 3 - selectedImages.length
+      if (remainingSlots > 0) {
+        const filesToAdd = newFiles.slice(0, remainingSlots)
+        setSelectedImages((prev) => [...prev, ...filesToAdd])
+        // Tạo preview cho các ảnh mới
+        filesToAdd.forEach((file) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            setImagePreviews((prev) => [...prev, reader.result as string])
+          }
+          reader.readAsDataURL(file)
+        })
+      }
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
+    // Thêm ảnh mới
+    setSelectedImages((prev) => [...prev, ...newFiles])
+
+    // Tạo preview cho các ảnh mới
+    newFiles.forEach((file) => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreviews((prev) => [...prev, reader.result as string])
+      }
+      reader.readAsDataURL(file)
+    })
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleRemoveImage = (index: number) => {
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index))
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSendMessage = async () => {
+    // Phải có ít nhất message hoặc ảnh
+    if ((!message.trim() && selectedImages.length === 0) || !currentRoomId || !user?.userId) return
+
+    const messageText = message.trim() || ''
+
+    try {
+      // Gửi qua API để lưu vào database
+      // Backend sẽ tự động gửi SignalR sau khi lưu DB, SignalR handler sẽ thêm message vào UI
+      await sendChatRoomMessage({
+        roomId: currentRoomId,
+        senderId: user.userId,
+        messageText: messageText,
+        images: selectedImages.length > 0 ? selectedImages : undefined
+      })
+
+      // Reset form
       setMessage('')
+      setSelectedImages([])
+      setImagePreviews([])
+    } catch (error) {
+      console.error('Error sending message:', error)
     }
   }
 
@@ -96,9 +426,14 @@ function ChatWithCustomer() {
   }
 
   return (
-    <div className='h-screen bg-gray-50 flex'>
+    <div className='h-screen bg-gray-50 flex flex-col sm:flex-row'>
       {/* Left Sidebar - Chat List */}
-      <div className='w-80 bg-white border-r border-gray-200 flex flex-col'>
+      <motion.div
+        initial={{ x: -300, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className='w-full sm:w-80 bg-white border-r border-gray-200 flex flex-col h-full sm:h-auto'
+      >
         {/* Header */}
         <div className='bg-green-700 text-white p-4'>
           <h1 className='text-lg font-semibold'>Tin nhắn</h1>
@@ -115,178 +450,351 @@ function ChatWithCustomer() {
 
         {/* Chat List */}
         <div className='flex-1 overflow-y-auto'>
-          {conversations.map((chat) => (
-            <div
-              key={chat.id}
-              onClick={() => setSelectedChat(chat.id)}
-              className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                chat.id === selectedChat ? 'bg-green-50 border-l-4 border-l-green-500' : ''
-              }`}
-            >
-              <div className='flex items-center gap-3'>
-                <div className='relative'>
-                  <div className='w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center'>
-                    <span className='text-sm font-medium text-gray-600'>{chat.name.charAt(0)}</span>
+          {loadingRooms ? (
+            <div className='p-4 text-center text-gray-500'>Đang tải...</div>
+          ) : conversations.length === 0 ? (
+            <div className='p-4 text-center text-gray-500'>Chưa có cuộc trò chuyện nào</div>
+          ) : (
+            conversations.map((chat) => (
+              <div
+                key={chat.id}
+                onClick={() => setSelectedChat(chat.id)}
+                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${chat.id === selectedChat ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+                  }`}
+              >
+                <div className='flex items-center gap-3'>
+                  <div className='relative'>
+                    <div className='w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center'>
+                      <span className='text-sm font-medium text-gray-600'>{chat.name.charAt(0)}</span>
+                    </div>
+                    {chat.isActive && (
+                      <div className='absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white'></div>
+                    )}
                   </div>
-                  {chat.isActive && (
-                    <div className='absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white'></div>
+
+                  <div className='flex-1 min-w-0'>
+                    <div className='flex items-center justify-between mb-1'>
+                      <h3 className='font-medium text-gray-900 truncate'>{chat.name}</h3>
+                      <span className='text-xs text-gray-500'>{chat.timestamp}</span>
+                    </div>
+                    <p className='text-sm text-gray-600 truncate'>{chat.lastMessage}</p>
+                  </div>
+
+                  {chat.unreadCount > 0 && (
+                    <Badge className='bg-green-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center'>
+                      {chat.unreadCount}
+                    </Badge>
                   )}
                 </div>
-
-                <div className='flex-1 min-w-0'>
-                  <div className='flex items-center justify-between mb-1'>
-                    <h3 className='font-medium text-gray-900 truncate'>{chat.name}</h3>
-                    <span className='text-xs text-gray-500'>{chat.timestamp}</span>
-                  </div>
-                  <p className='text-sm text-gray-600 truncate'>{chat.lastMessage}</p>
-                </div>
-
-                {chat.unreadCount > 0 && (
-                  <Badge className='bg-green-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center'>
-                    {chat.unreadCount}
-                  </Badge>
-                )}
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Right Side - Chat Area */}
-      <div className='flex-1 flex flex-col'>
+      <motion.div
+        initial={{ x: 300, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.1, ease: 'easeOut' }}
+        className='flex-1 flex flex-col min-w-0'
+      >
         {/* Chat Header */}
-        <div className='bg-white border-b border-gray-200 p-4'>
-          <div className='flex items-center justify-between'>
-            <div className='flex items-center gap-3'>
-              <div className='relative'>
-                <div className='w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center'>
-                  <span className='text-sm font-medium text-gray-600'>{currentChat?.name.charAt(0)}</span>
-                </div>
-                <div className='absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white'></div>
-              </div>
-              <div>
-                <h2 className='font-semibold text-gray-900'>{currentChat?.name}</h2>
-                <p className='text-sm text-green-600 flex items-center gap-1'>
-                  <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                  Đang hoạt động
-                </p>
-              </div>
-            </div>
-
-            <div className='flex items-center gap-2'>
-              <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                <Phone className='w-4 h-4' />
-              </Button>
-              <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                <Video className='w-4 h-4' />
-              </Button>
-              <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                <MoreVertical className='w-4 h-4' />
-              </Button>
-            </div>
-          </div>
-
-          {/* Product Card */}
-          <div className='mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
+        {currentChat && (
+          <div className='bg-white border-b border-gray-200 p-4'>
             <div className='flex items-center justify-between'>
               <div className='flex items-center gap-3'>
-                <div className='w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center'>
-                  <span className='text-xs text-gray-600'>IMG</span>
+                <div className='relative'>
+                  <div className='w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center'>
+                    <span className='text-sm font-medium text-gray-600'>{currentChat?.name.charAt(0)}</span>
+                  </div>
+                  <div className='absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white'></div>
                 </div>
                 <div>
-                  <h4 className='font-medium text-gray-900'>Bánh tam giác mạch Hà Giang</h4>
-                  <p className='text-sm text-green-600 font-medium'>120.000₫ - 150.000₫</p>
+                  <h2 className='font-semibold text-gray-900'>{currentChat?.name}</h2>
+                  <div className='text-sm text-green-600 flex items-center gap-1'>
+                    <span className='w-2 h-2 bg-green-500 rounded-full'></span>
+                    Đang hoạt động
+                  </div>
                 </div>
               </div>
-              <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                <Share2 className='w-4 h-4' />
-              </Button>
+
+              <div className='flex items-center gap-2'>
+                <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
+                  <Phone className='w-4 h-4' />
+                </Button>
+                <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
+                  <Video className='w-4 h-4' />
+                </Button>
+                <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
+                  <MoreVertical className='w-4 h-4' />
+                </Button>
+              </div>
+            </div>
+
+            {/* Product Card */}
+            <div className='mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-3'>
+                  <div className='w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center'>
+                    <span className='text-xs text-gray-600'>IMG</span>
+                  </div>
+                  <div>
+                    <h4 className='font-medium text-gray-900'>Bánh tam giác mạch Hà Giang</h4>
+                    <p className='text-sm text-green-600 font-medium'>120.000₫ - 150.000₫</p>
+                  </div>
+                </div>
+                <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
+                  <Share2 className='w-4 h-4' />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Messages Area */}
         <div className='flex-1 overflow-y-auto p-4 space-y-4'>
-          {/* Date Separator */}
-          <div className='text-center'>
-            <span className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>Hôm nay</span>
-          </div>
-
-          {/* Messages */}
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.sender === 'customer' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex gap-2 max-w-xs lg:max-w-md ${msg.sender === 'customer' ? 'flex-row-reverse' : ''}`}>
-                {msg.sender === 'shop' && (
-                  <div className='w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0'>
-                    <span className='text-xs font-medium text-gray-600'>S</span>
-                  </div>
-                )}
-
-                <div
-                  className={`rounded-lg px-3 py-2 ${
-                    msg.sender === 'customer' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
-                  }`}
-                >
-                  {msg.isTyping ? (
-                    <div className='flex items-center gap-1'>
-                      <div className='flex gap-1'>
-                        <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'></div>
-                        <div
-                          className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
-                          style={{ animationDelay: '0.1s' }}
-                        ></div>
-                        <div
-                          className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
-                          style={{ animationDelay: '0.2s' }}
-                        ></div>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <p className='text-sm'>{msg.content}</p>
-                      {msg.image && (
-                        <div className='mt-2'>
-                          <img src={msg.image} alt='Product' className='w-32 h-24 object-cover rounded-lg' />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
+          {!selectedChat ? (
+            <div className='h-full flex items-center justify-center text-gray-500'>
+              Chọn một cuộc trò chuyện để bắt đầu
             </div>
-          ))}
+          ) : loadingMessages ? (
+            <div className='h-full flex items-center justify-center text-gray-500'>Đang tải tin nhắn...</div>
+          ) : (
+            <>
+              {/* Date Separator */}
+              {currentMessages.length > 0 && (
+                <div className='text-center'>
+                  <span className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>Hôm nay</span>
+                </div>
+              )}
+
+              {/* Messages */}
+              {currentMessages.map((msg, msgIndex) => {
+                // Chuẩn bị danh sách ảnh để preview
+                const handleImageClick = (idx: number) => {
+                  const allImages = msg.images
+                    ? msg.images.map((img) => {
+                      const urlString = typeof img === 'string' ? img : String(img || '')
+                      return urlString.startsWith('http://') || urlString.startsWith('https://')
+                        ? urlString
+                        : resolveImageUrl(urlString)
+                    })
+                    : []
+                  setPreviewImages(allImages)
+                  setPreviewIndex(idx)
+                  setIsPreviewOpen(true)
+                }
+
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{
+                      duration: 0.3,
+                      delay: msgIndex * 0.05,
+                      ease: 'easeOut'
+                    }}
+                    className={`flex ${msg.sender === 'shop' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`flex gap-2 max-w-[85%] sm:max-w-xs lg:max-w-md ${msg.sender === 'shop' ? 'flex-row-reverse' : ''}`}>
+                      {msg.sender === 'customer' && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                          className='w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0'
+                        >
+                          <span className='text-xs font-medium text-gray-600'>C</span>
+                        </motion.div>
+                      )}
+
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        className={`rounded-lg px-3 py-2 ${msg.sender === 'shop' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
+                          }`}
+                      >
+                        {msg.isTyping ? (
+                          <div className='flex items-center gap-1'>
+                            <div className='flex gap-1'>
+                              <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'></div>
+                              <div
+                                className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
+                                style={{ animationDelay: '0.1s' }}
+                              ></div>
+                              <div
+                                className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
+                                style={{ animationDelay: '0.2s' }}
+                              ></div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {Array.isArray(msg.images) && msg.images.length > 0 && (
+                              <div className='mt-2 flex flex-wrap gap-2'>
+                                {msg.images.map((imageUrl, idx) => {
+                                  // Đảm bảo imageUrl là string
+                                  const imageUrlString = typeof imageUrl === 'string' ? imageUrl : String(imageUrl || '')
+
+                                  // Nếu đã là full URL (bắt đầu với http:// hoặc https://) thì dùng trực tiếp
+                                  // Nếu không thì resolve với base URL
+                                  const finalUrl =
+                                    imageUrlString.startsWith('http://') || imageUrlString.startsWith('https://')
+                                      ? imageUrlString
+                                      : resolveImageUrl(imageUrlString)
+
+                                  const imageKey = `${msg.id}-${idx}`
+                                  const hasFailed = failedImages.has(imageKey)
+                                  const fallbackImage = 'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
+
+                                  return hasFailed ? (
+                                    <motion.img
+                                      key={idx}
+                                      initial={{ opacity: 0, scale: 0.8 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      src={fallbackImage}
+                                      alt={`Image ${idx + 1} (fallback)`}
+                                      className='max-w-[200px] sm:max-w-[250px] max-h-[200px] sm:max-h-[300px] object-contain rounded-lg cursor-pointer shadow-md'
+                                      onClick={() => handleImageClick(idx)}
+                                      onError={() => {
+                                        console.error('[ChatWithCustomer] Fallback image also failed to load')
+                                      }}
+                                    />
+                                  ) : (
+                                    <motion.img
+                                      key={idx}
+                                      initial={{ opacity: 0, scale: 0.8 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      transition={{ duration: 0.2, delay: idx * 0.05 }}
+                                      src={finalUrl}
+                                      alt={`Image ${idx + 1}`}
+                                      className='max-w-[200px] sm:max-w-[250px] max-h-[200px] sm:max-h-[300px] object-contain rounded-lg cursor-pointer shadow-md'
+                                      onClick={() => handleImageClick(idx)}
+                                      loading='lazy'
+                                      onError={(e) => {
+                                        // Khi ảnh gốc fail, thử fallback
+                                        const img = e.currentTarget as HTMLImageElement
+                                        console.error('[ChatWithCustomer] Image load error:', {
+                                          attemptedUrl: img.src,
+                                          originalUrl: imageUrl,
+                                          finalUrl: finalUrl
+                                        })
+                                        if (img && img.src !== fallbackImage) {
+                                          console.log('[ChatWithCustomer] Trying fallback image')
+                                          img.src = fallbackImage
+                                        } else {
+                                          console.log('[ChatWithCustomer] Fallback also failed, marking as failed')
+                                          setFailedImages((prev) => new Set(prev).add(imageKey))
+                                        }
+                                      }}
+                                      onLoad={() => {
+                                        console.log('[ChatWithCustomer] Image loaded successfully:', finalUrl)
+                                      }}
+                                    />
+                                  )
+                                })}
+                              </div>
+                            )}
+                            {msg.content && <p className='text-sm'>{msg.content}</p>}
+                          </>
+                        )}
+                      </motion.div>
+                    </div>
+                  </motion.div>
+                )
+              })}
+              <div ref={messagesEndRef} />
+            </>
+          )}
         </div>
 
         {/* Message Input */}
-        <div className='bg-white border-t border-gray-200 p-4'>
-          <div className='flex items-center gap-3'>
-            <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-              <Paperclip className='w-4 h-4' />
-            </Button>
-            <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-              <ImageIcon className='w-4 h-4' />
-            </Button>
+        {currentChat && (
+          <div className='bg-white border-t border-gray-200 p-4'>
+            {/* Image Previews */}
+            {imagePreviews.length > 0 && (
+              <div className='mb-3 flex flex-wrap gap-2'>
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className='relative'>
+                    <img
+                      src={preview}
+                      alt={`Preview ${index + 1}`}
+                      className='w-20 h-20 object-cover rounded-lg border border-gray-200'
+                    />
+                    <button
+                      onClick={() => handleRemoveImage(index)}
+                      className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600'
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            <div className='flex-1'>
-              <Input
-                placeholder='Nhập tin nhắn...'
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className='border-gray-200 focus:border-green-500 focus:ring-green-500'
+            <div className='flex items-center gap-3'>
+              <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
+                <Paperclip className='w-4 h-4' />
+              </Button>
+              <input
+                type='file'
+                ref={fileInputRef}
+                onChange={handleImageSelect}
+                accept='image/*'
+                multiple
+                className='hidden'
+                id='image-input'
               />
-            </div>
+              <Button
+                variant='ghost'
+                size='sm'
+                className='text-gray-600 hover:text-gray-900'
+                onClick={() => fileInputRef.current?.click()}
+                disabled={selectedImages.length >= 3}
+                title={selectedImages.length >= 3 ? 'Tối đa 3 ảnh' : 'Chọn ảnh'}
+              >
+                <ImageIcon className='w-4 h-4' />
+              </Button>
 
-            <Button
-              onClick={handleSendMessage}
-              className='bg-green-600 hover:bg-green-700 text-white'
-              disabled={!message.trim()}
-            >
-              <Send className='w-4 h-4' />
-            </Button>
+              <div className='flex-1'>
+                <Input
+                  placeholder='Nhập tin nhắn...'
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className='border-gray-200 focus:border-green-500 focus:ring-green-500'
+                  disabled={loadingMessages || !currentRoomId}
+                />
+              </div>
+
+              <Button
+                onClick={handleSendMessage}
+                className='bg-green-600 hover:bg-green-700 text-white'
+                disabled={(!message.trim() && selectedImages.length === 0) || loadingMessages || !currentRoomId}
+              >
+                <Send className='w-4 h-4' />
+              </Button>
+            </div>
+            {selectedImages.length > 0 && (
+              <p className='text-xs text-gray-500 mt-2'>Đã chọn {selectedImages.length}/3 ảnh</p>
+            )}
           </div>
-        </div>
-      </div>
+        )}
+      </motion.div>
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        images={previewImages}
+        initialIndex={previewIndex}
+        alt='Chat image'
+      />
     </div>
   )
 }

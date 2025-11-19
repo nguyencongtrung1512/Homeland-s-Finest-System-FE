@@ -2,19 +2,23 @@ export interface ProductReview {
   id: string // UUID
   productId: string // UUID - Foreign key to Product
   userId: string // UUID - Foreign key to User
-  orderId: string // UUID - Foreign key to Order
+  replyId?: string // UUID - Foreign key to ProductReview (optional, for replies)
   rating: number // numeric(3,2) - Rating from 1 to 5
   comment: string // text
+  imageUrl?: string[] // JSONB - Array of image URLs
+  isActive: boolean // BOOLEAN
   createdAt: string // TIMESTAMPTZ
   updatedAt: string // TIMESTAMPTZ
 }
 
 export interface ProductReviewCreateInput {
-  productId: string
+  orderItemId: string // UUID - Foreign key to OrderItem (for validation: user must have purchased this item)
+  productId: string // UUID - Foreign key to Product (identify actual product/combo item being reviewed)
   userId: string
-  orderId: string
   rating: number
   comment: string
+  comboId?: string // Optional combo identifier when reviewing combo items
+  images?: File[] // Optional images to upload
 }
 
 export interface ProductReviewUpdateInput {

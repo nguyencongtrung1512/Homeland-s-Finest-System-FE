@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_MAPBOX_ACCESS_TOKEN: string
   readonly VITE_FPT_AI_API_KEY: string
   readonly VITE_FPT_AI_OCR_URL: string
+  readonly VITE_CHAT_API_URL: string
 }
 
 interface ImportMeta {

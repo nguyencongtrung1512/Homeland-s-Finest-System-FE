@@ -10,7 +10,8 @@ import {
   HelpCircle,
   Leaf,
   Component,
-  Gift
+  Gift,
+  Star
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../../contexts/store.context'
@@ -53,6 +54,15 @@ function SideBar() {
   const { store, isStoreApproved } = useStore()
 
   const pendingMenuItems = [
+    {
+      key: path.BASE_SELLER,
+      label: 'Trang tổng quan',
+      icon: (
+        <AnimatedIcon animationType='bounce'>
+          <Home size={18} />
+        </AnimatedIcon>
+      )
+    },
     {
       key: path.setupStoreSeller,
       label: 'Cửa hàng',
@@ -121,6 +131,15 @@ function SideBar() {
       icon: (
         <AnimatedIcon animationType='bounce'>
           <ShoppingCart size={18} />
+        </AnimatedIcon>
+      )
+    },
+    {
+      key: path.productReviewsSeller,
+      label: 'Đánh giá sản phẩm',
+      icon: (
+        <AnimatedIcon animationType='bounce'>
+          <Star size={18} />
         </AnimatedIcon>
       )
     },

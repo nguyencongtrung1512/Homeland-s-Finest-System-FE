@@ -51,7 +51,7 @@ function TransactionManagementAdmin() {
 
   // Thống kê - giữ data cứng vì chưa có API đầy đủ
   const [totalTransactions, setTotalTransactions] = useState(15847)
-  const [systemWallet, setSystemWallet] = useState(12340)
+  const systemWallet = 12340 // Hardcoded value - API không cung cấp
   const [disbursed, setDisbursed] = useState(12340)
   const [pendingDisbursement, setPendingDisbursement] = useState(850)
   const [refunded, setRefunded] = useState(660)
@@ -151,8 +151,15 @@ function TransactionManagementAdmin() {
 
       setTransactions(filteredTransactions)
 
-      // Update pagination nếu API trả về
-      // Note: API có thể không trả về pagination info, giữ nguyên state
+      // Update pagination - tính từ số lượng transactions
+      // Note: API có thể không trả về pagination info, tính từ data
+      const totalItems = filteredTransactions.length
+      const calculatedTotalPages = Math.ceil(totalItems / pagination.pageSize) || 1
+      setPagination((prev) => ({
+        ...prev,
+        totalItems,
+        totalPages: calculatedTotalPages
+      }))
     } catch (err: any) {
       console.error('Error fetching transactions:', err)
       setError('Không thể tải danh sách giao dịch. Vui lòng thử lại sau.')

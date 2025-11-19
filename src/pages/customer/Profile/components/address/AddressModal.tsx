@@ -45,8 +45,12 @@ interface AddressFormData {
   districtId: number
   wardId: number
   streetAddress: string
+  receiverName: string
+  receiverPhoneNumber: string
   isDefault: boolean
 }
+
+const VN_PHONE_REGEX = /^(?:\+?84|0)(?:\d){9}$/
 
 export default function AddressModal({
   isOpen,
@@ -65,6 +69,8 @@ export default function AddressModal({
     districtId: address?.districtId || 0,
     wardId: address?.wardId || 0,
     streetAddress: address?.streetAddress || '',
+    receiverName: address?.receiverName || '',
+    receiverPhoneNumber: address?.receiverPhoneNumber || '',
     isDefault: address?.isDefault || false
   })
 
@@ -74,10 +80,23 @@ export default function AddressModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>('manual')
+  const [validationErrors, setValidationErrors] = useState<{ receiverName?: string; receiverPhoneNumber?: string }>({})
 
   // Memoized handlers để tránh re-render không cần thiết
   const handleStreetAddressChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, streetAddress: e.target.value }))
+  }, [])
+
+  const handleReceiverNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setFormData((prev) => ({ ...prev, receiverName: value }))
+    setValidationErrors((prev) => ({ ...prev, receiverName: undefined }))
+  }, [])
+
+  const handleReceiverPhoneNumberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9+]/g, '')
+    setFormData((prev) => ({ ...prev, receiverPhoneNumber: value }))
+    setValidationErrors((prev) => ({ ...prev, receiverPhoneNumber: undefined }))
   }, [])
 
   const handleDefaultChange = useCallback(
@@ -465,8 +484,11 @@ export default function AddressModal({
         districtId: address.districtId || 0,
         wardId: address.wardId || 0,
         streetAddress: address.streetAddress || '',
+        receiverName: address.receiverName || '',
+        receiverPhoneNumber: address.receiverPhoneNumber || '',
         isDefault: address.isDefault || false
       })
+      setValidationErrors({})
     } else {
       console.log('🔄 Resetting formData for new address')
       // Reset form data for new address
@@ -479,8 +501,11 @@ export default function AddressModal({
         districtId: 0,
         wardId: 0,
         streetAddress: '',
+        receiverName: '',
+        receiverPhoneNumber: '',
         isDefault: false
       })
+      setValidationErrors({})
     }
   }, [address, userId])
 
@@ -623,7 +648,44 @@ export default function AddressModal({
   // Form submission handler
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+
+    if (
+      !formData.provinceId ||
+      !formData.districtId ||
+      !formData.wardId ||
+      !formData.streetAddress.trim()
+    ) {
+      toast.error('Vui lòng nhập đầy đủ tỉnh/thành, quận/huyện, phường/xã và địa chỉ cụ thể.')
+      return
+    }
+
+    const trimmedName = formData.receiverName.trim()
+    const trimmedPhone = formData.receiverPhoneNumber.trim()
+    const errors: { receiverName?: string; receiverPhoneNumber?: string } = {}
+
+    if (!trimmedName) {
+      errors.receiverName = 'Vui lòng nhập tên người nhận.'
+    } else if (trimmedName.length > 50) {
+      errors.receiverName = 'Tên người nhận tối đa 50 ký tự.'
+    }
+
+    if (!trimmedPhone) {
+      errors.receiverPhoneNumber = 'Vui lòng nhập số điện thoại người nhận.'
+    } else if (!VN_PHONE_REGEX.test(trimmedPhone)) {
+      errors.receiverPhoneNumber = 'Số điện thoại không hợp lệ. Vui lòng nhập 10 số và bắt đầu bằng 0 hoặc +84.'
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors)
+      return
+    }
+
+    const addressData: AddressCreateInput = {
+      ...formData,
+      receiverName: trimmedName,
+      receiverPhoneNumber: trimmedPhone
+    }
+    onSave(addressData)
   }
 
   return (
@@ -733,6 +795,42 @@ export default function AddressModal({
                 />
               </div>
 
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <div>
+                  <Label htmlFor='receiverName'>Tên người nhận</Label>
+                  <Input
+                    id='receiverName'
+                    value={formData.receiverName}
+                    onChange={handleReceiverNameChange}
+                    className={`mt-1 ${validationErrors.receiverName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    placeholder='Nhập tên người nhận'
+                    required
+                    maxLength={50}
+                  />
+                  {validationErrors.receiverName && (
+                    <p className='mt-1 text-xs text-red-600'>{validationErrors.receiverName}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor='receiverPhoneNumber'>Số điện thoại người nhận</Label>
+                  <Input
+                    id='receiverPhoneNumber'
+                    value={formData.receiverPhoneNumber}
+                    onChange={handleReceiverPhoneNumberChange}
+                    className={`mt-1 ${validationErrors.receiverPhoneNumber ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    placeholder='Nhập số điện thoại'
+                    type='tel'
+                    inputMode='numeric'
+                    required
+                    maxLength={12}
+                  />
+                  {validationErrors.receiverPhoneNumber && (
+                    <p className='mt-1 text-xs text-red-600'>{validationErrors.receiverPhoneNumber}</p>
+                  )}
+                </div>
+              </div>
+
               <div className='space-y-2'>
                 <div className='flex items-center gap-2'>
                   <Checkbox id='isDefault' checked={formData.isDefault} onCheckedChange={handleDefaultChange} />
@@ -742,8 +840,8 @@ export default function AddressModal({
                 </div>
 
                 {formData.isDefault && hasOtherDefault && (
-                  <div className='text-xs text-amber-600 bg-amber-50 p-2 rounded'>
-                    ⚠️ Địa chỉ mặc định hiện tại sẽ được thay thế bởi địa chỉ này
+                  <div className='text-xs text-green-600 bg-green-50 p-2 rounded'>
+                    Địa chỉ mặc định hiện tại sẽ được thay thế bởi địa chỉ này
                   </div>
                 )}
               </div>

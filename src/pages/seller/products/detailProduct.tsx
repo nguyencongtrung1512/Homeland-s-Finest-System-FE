@@ -78,6 +78,10 @@ function DetailProductSeller() {
   const [stories, setStories] = useState<ProductStory[]>([])
   const [checkingValidation, setCheckingValidation] = useState(false)
 
+  // State for parent product
+  const [parentProduct, setParentProduct] = useState<Product | null>(null)
+  const [loadingParent, setLoadingParent] = useState(false)
+
   // States for confirmation dialogs
   const [showSubmitConfirmDialog, setShowSubmitConfirmDialog] = useState(false)
   const [showCancelConfirmDialog, setShowCancelConfirmDialog] = useState(false)
@@ -153,6 +157,37 @@ function DetailProductSeller() {
       fetchValidationData()
     }
   }, [id, product])
+
+  // Fetch parent product if product has parentId
+  useEffect(() => {
+    const fetchParentProduct = async () => {
+      // Check if product has parentId (it might be in the response but not in the type)
+      const productWithParent = product as Product & { parentId?: string | null }
+      if (!productWithParent?.parentId) {
+        setParentProduct(null)
+        return
+      }
+
+      try {
+        setLoadingParent(true)
+        const response = await productApi.getById(productWithParent.parentId)
+        if (response.status === 200 && response.data) {
+          setParentProduct(response.data)
+        } else {
+          setParentProduct(null)
+        }
+      } catch (error) {
+        console.error('Error fetching parent product:', error)
+        setParentProduct(null)
+      } finally {
+        setLoadingParent(false)
+      }
+    }
+
+    if (product) {
+      fetchParentProduct()
+    }
+  }, [product])
 
   const handleBack = () => {
     navigate(-1)
@@ -275,7 +310,6 @@ function DetailProductSeller() {
       product.description.trim() !== '' &&
       product.productImages &&
       product.productImages.length > 0 &&
-      product.provinceId &&
       product.productCategories &&
       product.productCategories.id &&
       product.material &&
@@ -568,8 +602,8 @@ function DetailProductSeller() {
             {product?.status?.toLowerCase() === 'draft' && !canSubmit() && (
               <div className='mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg'>
                 <p className='text-sm text-yellow-800'>
-                  <strong>Lưu ý:</strong> Vui lòng điền đầy đủ thông tin sản phẩm, chứng nhận và câu chuyện để có thể gửi
-                  sản phẩm.
+                  <strong>Lưu ý:</strong> Vui lòng điền đầy đủ thông tin sản phẩm, chứng nhận và câu chuyện để có thể
+                  gửi sản phẩm.
                 </p>
               </div>
             )}
@@ -692,13 +726,72 @@ function DetailProductSeller() {
                   </CardContent>
                 </Card>
               </motion.div>
+              {/* Parent Product Information */}
+              {parentProduct && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.45 }}
+                >
+                  <Card className='shadow-lg border-green-200'>
+                    <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-b border-green-200'>
+                      <CardTitle className='flex items-center gap-2 text-green-700'>
+                        <Package size={20} className='text-green-600' />
+                        Sản phẩm liên quan
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className='pt-6'>
+                      {loadingParent ? (
+                        <div className='flex items-center justify-center py-8'>
+                          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-600'></div>
+                          <span className='ml-3 text-gray-600'>Đang tải thông tin sản phẩm liên quan...</span>
+                        </div>
+                      ) : (
+                        <div className='space-y-4'>
+                          <div className='flex items-start gap-4'>
+                            <div className='flex-1 min-w-0'>
+                              <div className='flex items-center gap-2 mb-2'>
+                                <Package size={16} className='text-green-600 flex-shrink-0' />
+                                <h3 className='text-lg font-semibold text-gray-900'>{parentProduct.name}</h3>
+                                <Badge
+                                  variant='outline'
+                                  className='bg-green-50 text-green-700 border-green-200 text-xs'
+                                >
+                                  {parentProduct.typeProduct || 'Product'}
+                                </Badge>
+                              </div>
+                              {parentProduct.description && (
+                                <p className='text-sm text-gray-600 mb-3 line-clamp-2'>{parentProduct.description}</p>
+                              )}
+
+                              <div className='mt-3'>
+                                <Button
+                                  variant='outline'
+                                  size='sm'
+                                  onClick={() =>
+                                    navigate(`/seller/product-management/detail-product/${parentProduct.id}`)
+                                  }
+                                  className='text-green-600 border-green-300 hover:bg-green-50'
+                                >
+                                  <Eye size={14} className='mr-2' />
+                                  Xem chi tiết
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
 
               {/* Certificates */}
               {product?.productCertificateDTOs && product.productCertificateDTOs.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.5 }}
+                  transition={{ duration: 0.4, delay: parentProduct ? 0.55 : 0.5 }}
                 >
                   <Card className='shadow-lg'>
                     <CardHeader>
@@ -714,7 +807,9 @@ function DetailProductSeller() {
                             <div className='flex items-start justify-between mb-3'>
                               <div className='flex items-center gap-2'>
                                 <Award size={16} className='text-green-600' />
-                                <span className='font-medium text-gray-900'>Chứng nhận #{certificate.id.slice(0, 8)}</span>
+                                <span className='font-medium text-gray-900'>
+                                  Chứng nhận #{certificate.id.slice(0, 8)}
+                                </span>
                               </div>
                               {getCertificateStatusBadge(certificate.status)}
                             </div>
@@ -765,7 +860,7 @@ function DetailProductSeller() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.6 }}
+                transition={{ duration: 0.4, delay: parentProduct ? 0.65 : 0.6 }}
               >
                 <Card className='shadow-lg'>
                   <CardHeader>
@@ -797,7 +892,7 @@ function DetailProductSeller() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.7 }}
+              transition={{ duration: 0.4, delay: parentProduct ? 0.75 : 0.7 }}
             >
               <Card className='shadow-lg'>
                 <CardHeader>
@@ -840,7 +935,7 @@ function DetailProductSeller() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, delay: 0.8 }}
+                transition={{ duration: 0.4, delay: parentProduct ? 0.85 : 0.8 }}
               >
                 <Card className='shadow-lg'>
                   <CardHeader>
@@ -876,7 +971,7 @@ function DetailProductSeller() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.8 }}
+                transition={{ duration: 0.4, delay: parentProduct ? 0.85 : 0.8 }}
               >
                 <Card className='shadow-lg'>
                   <CardHeader>
@@ -1098,7 +1193,8 @@ function DetailProductSeller() {
                                   className='w-full flex items-center justify-center gap-2 py-2 text-gray-600 hover:text-green-600 transition-colors cursor-pointer'
                                 >
                                   <span className='text-sm font-medium'>
-                                    {expandedVariants.has(parentVariant.id) ? 'Variant con' : 'Variant con'} ({childVariants.length})
+                                    {expandedVariants.has(parentVariant.id) ? 'Variant con' : 'Variant con'} (
+                                    {childVariants.length})
                                   </span>
                                   <motion.div
                                     animate={{ rotate: expandedVariants.has(parentVariant.id) ? 180 : 0 }}
@@ -1157,9 +1253,13 @@ function DetailProductSeller() {
                                           {/* Child Attribute Name */}
                                           {childVariant.attributeName && (
                                             <div className='space-y-2'>
-                                              <label className='text-sm font-medium text-gray-700'>Tên thuộc tính</label>
+                                              <label className='text-sm font-medium text-gray-700'>
+                                                Tên thuộc tính
+                                              </label>
                                               <div className='p-2 bg-white rounded border'>
-                                                <span className='text-gray-900 text-sm'>{childVariant.attributeName}</span>
+                                                <span className='text-gray-900 text-sm'>
+                                                  {childVariant.attributeName}
+                                                </span>
                                               </div>
                                             </div>
                                           )}
@@ -1205,7 +1305,9 @@ function DetailProductSeller() {
                                           {/* Child Weight */}
                                           {childVariant.weight !== null && (
                                             <div className='space-y-2'>
-                                              <label className='text-sm font-medium text-gray-700'>Trọng lượng (g)</label>
+                                              <label className='text-sm font-medium text-gray-700'>
+                                                Trọng lượng (g)
+                                              </label>
                                               <div className='p-2 bg-white rounded border'>
                                                 <span className='text-gray-900 text-sm'>{childVariant.weight}g</span>
                                               </div>
@@ -1217,7 +1319,9 @@ function DetailProductSeller() {
                                             childVariant.width !== null &&
                                             childVariant.height !== null && (
                                               <div className='space-y-2'>
-                                                <label className='text-sm font-medium text-gray-700'>Kích thước (cm)</label>
+                                                <label className='text-sm font-medium text-gray-700'>
+                                                  Kích thước (cm)
+                                                </label>
                                                 <div className='p-2 bg-white rounded border'>
                                                   <span className='text-gray-900 text-sm'>
                                                     {childVariant.length}x{childVariant.width}x{childVariant.height} cm
@@ -1367,11 +1471,7 @@ function DetailProductSeller() {
           {/* Tab 2: Chứng nhận */}
           <TabsContent value='certificates' className='space-y-6'>
             {id && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-              >
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                 <ProductCertificate
                   productId={id}
                   editModes={editModes}
@@ -1386,11 +1486,7 @@ function DetailProductSeller() {
           {/* Tab 3: Câu chuyện */}
           <TabsContent value='story' className='space-y-6'>
             {id && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-              >
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                 <ProductStoryComponent
                   productId={id}
                   isEditMode={editModes.story}
@@ -1510,10 +1606,11 @@ function DetailProductSeller() {
           <DialogHeader>
             <DialogTitle>Xác nhận xóa sản phẩm</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn xóa sản phẩm <strong>{product?.name}</strong> không? 
+              Bạn có chắc chắn muốn xóa sản phẩm <strong>{product?.name}</strong> không?
               <br />
               <span className='text-sm text-gray-500 mt-2 block'>
-                Sản phẩm sẽ bị vô hiệu hóa và không còn hiển thị trên hệ thống. Hành động này có thể ảnh hưởng đến các đơn hàng liên quan.
+                Sản phẩm sẽ bị vô hiệu hóa và không còn hiển thị trên hệ thống. Hành động này có thể ảnh hưởng đến các
+                đơn hàng liên quan.
               </span>
             </DialogDescription>
           </DialogHeader>

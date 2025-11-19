@@ -211,6 +211,7 @@ export const createPromotionSeller = async (data: PromotionSellerRequest): Promi
 
   // Add all fields to FormData with PascalCase field names (matching backend)
   formData.append('sellerId', data.sellerId)
+  formData.append('Type', 'Product') // Seller promotions are always Product type
   formData.append('Title', data.title)
   formData.append('Description', data.description)
   formData.append('DiscountType', data.discountType)
@@ -254,6 +255,7 @@ export const updatePromotionSeller = async (
 
   // Add all fields to FormData with PascalCase field names (matching backend)
   formData.append('sellerId', data.sellerId)
+  formData.append('Type', 'Product') // Seller promotions are always Product type
   formData.append('Title', data.title)
   formData.append('Description', data.description)
   formData.append('DiscountType', data.discountType)

@@ -131,6 +131,7 @@ export interface OrderItemWithCombo {
   orderId: string
   productId: string
   productVariantId: string
+  comboId?: string
   comboItemId: string
   comboName: string
   orderItemName: string
@@ -179,6 +180,7 @@ export interface Order {
   totalOrder: number
   totalCommission: number
   totalDiscount: number
+  insurance?: number
   finalPrice: number
   payoutDate: string | null
   cancelDate: string | null

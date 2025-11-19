@@ -15,7 +15,7 @@ interface UpdateFormModalProps {
   form: FormDTO | null
   onSubmit: (
     formId: string,
-    data: { type: FormType; subject: string; description: string; images?: File[] }
+    data: { type: FormType; subject: string; description: string; images?: File[]; existingImageUrls?: string[] }
   ) => Promise<void>
   isLoading?: boolean
 }
@@ -27,6 +27,12 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
   const [images, setImages] = useState<File[]>([])
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([])
+  const [errors, setErrors] = useState<{ subject?: string; description?: string; images?: string }>({})
+
+  // Constants for validation
+  const MAX_IMAGES = 5
+  const MAX_SUBJECT_LENGTH = 200
+  const MAX_DESCRIPTION_LENGTH = 2000
 
   useEffect(() => {
     if (form) {
@@ -35,6 +41,7 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
       setDescription(form.description)
       setExistingImageUrls(form.imageUrl || [])
       setImages([])
+      setErrors({})
     }
   }, [form])
 
@@ -61,15 +68,37 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
     { value: 'SupportRefundMoney' as FormType, label: 'Hỗ trợ hoàn tiền' }
   ]
 
+  const validateForm = (): boolean => {
+    const newErrors: { subject?: string; description?: string; images?: string } = {}
+
+    // Validate subject
+    if (!subject.trim()) {
+      newErrors.subject = 'Vui lòng nhập tiêu đề'
+    } else if (subject.length > MAX_SUBJECT_LENGTH) {
+      newErrors.subject = `Tiêu đề không được vượt quá ${MAX_SUBJECT_LENGTH} ký tự (hiện tại: ${subject.length})`
+    }
+
+    // Validate description
+    if (!description.trim()) {
+      newErrors.description = 'Vui lòng nhập mô tả chi tiết'
+    } else if (description.length > MAX_DESCRIPTION_LENGTH) {
+      newErrors.description = `Mô tả không được vượt quá ${MAX_DESCRIPTION_LENGTH} ký tự (hiện tại: ${description.length})`
+    }
+
+    // Validate total images
+    const totalImages = existingImageUrls.length + images.length
+    if (totalImages > MAX_IMAGES) {
+      newErrors.images = `Tổng số hình ảnh không được vượt quá ${MAX_IMAGES} (hiện tại: ${totalImages})`
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async () => {
     if (!form) return
 
-    if (!subject.trim()) {
-      alert('Vui lòng nhập tiêu đề')
-      return
-    }
-    if (!description.trim()) {
-      alert('Vui lòng nhập mô tả chi tiết')
+    if (!validateForm()) {
       return
     }
 
@@ -77,7 +106,8 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
       type: formType,
       subject: subject.trim(),
       description: description.trim(),
-      images: images.length > 0 ? images : undefined
+      images: images.length > 0 ? images : undefined,
+      existingImageUrls: existingImageUrls.length > 0 ? existingImageUrls : undefined
     })
   }
 
@@ -88,22 +118,40 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
       setDescription(form.description)
       setExistingImageUrls(form.imageUrl || [])
       setImages([])
+      setErrors({})
     }
     onClose()
   }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
+    const totalAfterAdd = existingImageUrls.length + images.length + files.length
+
+    if (totalAfterAdd > MAX_IMAGES) {
+      setErrors((prev) => ({
+        ...prev,
+        images: `Tổng số hình ảnh không được vượt quá ${MAX_IMAGES}. Bạn có thể thêm tối đa ${MAX_IMAGES - existingImageUrls.length - images.length} hình ảnh nữa.`
+      }))
+      // Reset input
+      event.target.value = ''
+      return
+    }
+
     setImages((prev: File[]) => [...prev, ...files])
+    setErrors((prev) => ({ ...prev, images: undefined }))
+    // Reset input để có thể chọn lại file giống nhau
+    event.target.value = ''
   }
 
   const removeImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index))
+    setErrors((prev) => ({ ...prev, images: undefined }))
   }
 
-  // const removeExistingImage = (index: number) => {
-  //   setExistingImageUrls((prev) => prev.filter((_, i) => i !== index))
-  // }
+  const removeExistingImage = (index: number) => {
+    setExistingImageUrls((prev) => prev.filter((_, i) => i !== index))
+    setErrors((prev) => ({ ...prev, images: undefined }))
+  }
 
   if (!form) return null
 
@@ -172,13 +220,23 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
             >
               <Label className='text-sm font-medium text-gray-700 mb-2 block'>
                 Tiêu đề <span className='text-red-500'>*</span>
+                <span className='text-xs text-gray-500 ml-2'>(Tối đa {MAX_SUBJECT_LENGTH} ký tự)</span>
               </Label>
               <Input
                 placeholder='Nhập tiêu đề khiếu nại...'
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                onChange={(e) => {
+                  setSubject(e.target.value)
+                  setErrors((prev) => ({ ...prev, subject: undefined }))
+                }}
+                maxLength={MAX_SUBJECT_LENGTH}
                 disabled={isLoading}
+                className={errors.subject ? 'border-red-500' : ''}
               />
+              {errors.subject && <p className='text-sm text-red-600 mt-1'>{errors.subject}</p>}
+              <p className='text-xs text-gray-500 mt-1'>
+                {subject.length}/{MAX_SUBJECT_LENGTH} ký tự
+              </p>
             </motion.div>
 
             {/* Description */}
@@ -189,14 +247,23 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
             >
               <Label className='text-sm font-medium text-gray-700 mb-2 block'>
                 Mô tả chi tiết <span className='text-red-500'>*</span>
+                <span className='text-xs text-gray-500 ml-2'>(Tối đa {MAX_DESCRIPTION_LENGTH} ký tự)</span>
               </Label>
               <Textarea
                 placeholder='Hãy mô tả chi tiết...'
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className='min-h-[120px] resize-none'
+                onChange={(e) => {
+                  setDescription(e.target.value)
+                  setErrors((prev) => ({ ...prev, description: undefined }))
+                }}
+                maxLength={MAX_DESCRIPTION_LENGTH}
+                className={`min-h-[120px] resize-none ${errors.description ? 'border-red-500' : ''}`}
                 disabled={isLoading}
               />
+              {errors.description && <p className='text-sm text-red-600 mt-1'>{errors.description}</p>}
+              <p className='text-xs text-gray-500 mt-1'>
+                {description.length}/{MAX_DESCRIPTION_LENGTH} ký tự
+              </p>
             </motion.div>
 
             {/* Existing Images */}
@@ -206,15 +273,17 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.6 }}
               >
-                <Label className='text-sm font-medium text-gray-700 mb-2 block'>Hình ảnh hiện tại</Label>
+                <Label className='text-sm font-medium text-gray-700 mb-2 block'>
+                  Hình ảnh hiện tại ({existingImageUrls.length}/{MAX_IMAGES})
+                </Label>
                 <div className='grid grid-cols-4 gap-2'>
                   {existingImageUrls.map((url, idx) => (
                     <div key={idx} className='relative group'>
                       <img src={url} alt={`existing-${idx}`} className='w-full h-20 object-cover rounded-md border' />
                       <button
                         type='button'
-                        // onClick={() => removeExistingImage(idx)}
-                        className='absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity'
+                        onClick={() => removeExistingImage(idx)}
+                        className='absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600'
                         disabled={isLoading}
                       >
                         <X className='w-3 h-3' />
@@ -231,7 +300,14 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.7 }}
             >
-              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Thêm hình ảnh mới (tùy chọn)</Label>
+              <Label className='text-sm font-medium text-gray-700 mb-2 block'>
+                Thêm hình ảnh mới (tùy chọn) - Tối đa {MAX_IMAGES} ảnh tổng cộng
+              </Label>
+              {errors.images && <p className='text-sm text-red-600 mb-2'>{errors.images}</p>}
+              <p className='text-xs text-gray-500 mb-2'>
+                Đã có {existingImageUrls.length} ảnh hiện tại + {images.length} ảnh mới ={' '}
+                {existingImageUrls.length + images.length}/{MAX_IMAGES} ảnh
+              </p>
               <motion.div
                 whileHover={{ scale: 1.02, borderColor: '#10b981' }}
                 transition={{ duration: 0.2 }}
@@ -310,7 +386,14 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className='flex-1'>
                 <Button
                   onClick={handleSubmit}
-                  disabled={!subject.trim() || !description.trim() || isLoading}
+                  disabled={
+                    !subject.trim() ||
+                    !description.trim() ||
+                    isLoading ||
+                    subject.length > MAX_SUBJECT_LENGTH ||
+                    description.length > MAX_DESCRIPTION_LENGTH ||
+                    existingImageUrls.length + images.length > MAX_IMAGES
+                  }
                   className='w-full bg-green-600 hover:bg-green-700 text-white'
                 >
                   {isLoading ? (
@@ -332,4 +415,3 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
 }
 
 export default UpdateFormModal
-

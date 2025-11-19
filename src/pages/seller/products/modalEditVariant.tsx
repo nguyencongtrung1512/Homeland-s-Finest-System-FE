@@ -36,11 +36,17 @@ export default function ModalEditVariant({
   const [descriptionError, setDescriptionError] = useState<string>('')
   const [priceError, setPriceError] = useState<string>('')
   const [quantityError, setQuantityError] = useState<string>('')
+  const [lengthError, setLengthError] = useState<string>('')
+  const [widthError, setWidthError] = useState<string>('')
+  const [heightError, setHeightError] = useState<string>('')
+  const [weightError, setWeightError] = useState<string>('')
 
   // Constants for validation
   const MAX_ATTRIBUTE_NAME_LENGTH = 10
   const MAX_DESCRIPTION_WORDS = 20
   const MIN_ATTRIBUTE_NAME_LENGTH = 1
+  const MAX_DIMENSION = 200 // cm
+  const MAX_WEIGHT = 50000 // gram (50kg)
 
   // Helper function to count words
   const countWords = (text: string): number => {
@@ -134,6 +140,38 @@ export default function ModalEditVariant({
       if (numValue < 0) {
         setQuantityError('Số lượng tồn kho không được là số âm')
         return
+      }
+    }
+
+    if (field === 'length') {
+      setLengthError('')
+      const numValue = value as number
+      if (numValue > MAX_DIMENSION) {
+        setLengthError(`Chiều dài không được vượt quá ${MAX_DIMENSION} cm`)
+      }
+    }
+
+    if (field === 'width') {
+      setWidthError('')
+      const numValue = value as number
+      if (numValue > MAX_DIMENSION) {
+        setWidthError(`Chiều rộng không được vượt quá ${MAX_DIMENSION} cm`)
+      }
+    }
+
+    if (field === 'height') {
+      setHeightError('')
+      const numValue = value as number
+      if (numValue > MAX_DIMENSION) {
+        setHeightError(`Chiều cao không được vượt quá ${MAX_DIMENSION} cm`)
+      }
+    }
+
+    if (field === 'weight') {
+      setWeightError('')
+      const numValue = value as number
+      if (numValue > MAX_WEIGHT) {
+        setWeightError(`Trọng lượng không được vượt quá ${MAX_WEIGHT} gram (50kg)`)
       }
     }
 
@@ -238,6 +276,32 @@ export default function ModalEditVariant({
         if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
           toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
           setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+          return
+        }
+
+        // Validate dimensions
+        if (variantData.length > MAX_DIMENSION) {
+          toast.error(`Chiều dài không được vượt quá ${MAX_DIMENSION} cm`)
+          setLengthError(`Chiều dài không được vượt quá ${MAX_DIMENSION} cm`)
+          return
+        }
+
+        if (variantData.width > MAX_DIMENSION) {
+          toast.error(`Chiều rộng không được vượt quá ${MAX_DIMENSION} cm`)
+          setWidthError(`Chiều rộng không được vượt quá ${MAX_DIMENSION} cm`)
+          return
+        }
+
+        if (variantData.height > MAX_DIMENSION) {
+          toast.error(`Chiều cao không được vượt quá ${MAX_DIMENSION} cm`)
+          setHeightError(`Chiều cao không được vượt quá ${MAX_DIMENSION} cm`)
+          return
+        }
+
+        // Validate weight
+        if (variantData.weight > MAX_WEIGHT) {
+          toast.error(`Trọng lượng không được vượt quá ${MAX_WEIGHT} gram (50kg)`)
+          setWeightError(`Trọng lượng không được vượt quá ${MAX_WEIGHT} gram (50kg)`)
           return
         }
       }
@@ -353,6 +417,10 @@ export default function ModalEditVariant({
       setDescriptionError('')
       setPriceError('')
       setQuantityError('')
+      setLengthError('')
+      setWidthError('')
+      setHeightError('')
+      setWeightError('')
     }
   }
 
@@ -493,6 +561,7 @@ export default function ModalEditVariant({
                     id='edit-length'
                     type='number'
                     min='0'
+                    max={MAX_DIMENSION}
                     placeholder='cm'
                     value={variantData.length || ''}
                     onChange={(e) => {
@@ -501,8 +570,9 @@ export default function ModalEditVariant({
                         handleVariantInputChange('length', value)
                       }
                     }}
-                    className='mt-1'
+                    className={`mt-2 text-sm ${lengthError ? 'border-red-500' : ''}`}
                   />
+                  {lengthError && <p className='mt-2 text-sm text-red-500'>{lengthError}</p>}
                 </div>
 
                 {/* Width */}
@@ -514,6 +584,7 @@ export default function ModalEditVariant({
                     id='edit-width'
                     type='number'
                     min='0'
+                    max={MAX_DIMENSION}
                     placeholder='cm'
                     value={variantData.width || ''}
                     onChange={(e) => {
@@ -522,8 +593,9 @@ export default function ModalEditVariant({
                         handleVariantInputChange('width', value)
                       }
                     }}
-                    className='mt-1'
+                    className={`mt-2 text-sm ${widthError ? 'border-red-500' : ''}`}
                   />
+                  {widthError && <p className='mt-2 text-sm text-red-500'>{widthError}</p>}
                 </div>
 
                 {/* Height */}
@@ -535,6 +607,7 @@ export default function ModalEditVariant({
                     id='edit-height'
                     type='number'
                     min='0'
+                    max={MAX_DIMENSION}
                     placeholder='cm'
                     value={variantData.height || ''}
                     onChange={(e) => {
@@ -543,8 +616,9 @@ export default function ModalEditVariant({
                         handleVariantInputChange('height', value)
                       }
                     }}
-                    className='mt-1'
+                    className={`mt-2 ${heightError ? 'border-red-500' : ''}`}
                   />
+                  {heightError && <p className='mt-2 text-sm text-red-500'>{heightError}</p>}
                 </div>
               </div>
 
@@ -557,6 +631,7 @@ export default function ModalEditVariant({
                   id='edit-weight'
                   type='number'
                   min='0'
+                  max={MAX_WEIGHT}
                   placeholder='gram'
                   value={variantData.weight || ''}
                   onChange={(e) => {
@@ -565,8 +640,9 @@ export default function ModalEditVariant({
                       handleVariantInputChange('weight', value)
                     }
                   }}
-                  className='mt-1'
+                  className={`mt-2 ${weightError ? 'border-red-500' : ''}`}
                 />
+                {weightError && <p className='mt-2 text-sm text-red-500'>{weightError}</p>}
               </div>
 
               {/* Is Active */}

@@ -35,13 +35,22 @@ export const formApi = {
 
   updateForm: async (id: string, data: UpdateFormRequest): Promise<FormDTO> => {
     const formData = new FormData()
-    if (data.storeId) formData.append('StoreId', data.storeId)
-    if (data.orderId) formData.append('OrderId', data.orderId)
+    // StoreId và OrderId có thể rỗng nhưng vẫn cần gửi
+    formData.append('StoreId', data.storeId || '')
+    formData.append('OrderId', data.orderId || '')
     formData.append('Type', data.type)
     formData.append('Subject', data.subject)
     formData.append('Description', data.description)
 
-    if (data.imageFiles) {
+    // ExistingImageUrls - gửi các URL ảnh hiện có
+    if (data.existingImageUrls && data.existingImageUrls.length > 0) {
+      data.existingImageUrls.forEach((url) => {
+        formData.append('ExistingImageUrls', url)
+      })
+    }
+
+    // ImageFiles - gửi các file ảnh mới
+    if (data.imageFiles && data.imageFiles.length > 0) {
       data.imageFiles.forEach((file) => {
         formData.append('ImageFiles', file)
       })

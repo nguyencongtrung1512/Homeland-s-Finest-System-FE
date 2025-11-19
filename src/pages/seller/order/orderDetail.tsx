@@ -23,6 +23,7 @@ import { toast } from '../../../utils/toast'
 
 interface OrderItemWithCombo {
   id: string
+  comboItemId?: string
   comboId?: string
   comboName?: string
   orderItemName: string
@@ -87,6 +88,7 @@ interface OrderDetailModalProps {
   onClose: () => void
   orderId: string | null
 }
+const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
 const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId }) => {
   const [order, setOrder] = useState<Order | null>(null)
@@ -117,7 +119,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
       orderItems: (apiOrder?.orderItems || []).map((item) => ({
         id: item?.id || '',
         orderItemName: item?.orderItemName || 'Sản phẩm không xác định',
-        orderItemImageUrl: item?.orderItemImageUrl || '/src/assets/react.svg',
+        orderItemImageUrl: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
         quantity: item?.quantity || 0,
         finalPrice: item?.finalPrice,
         totalPrice: item?.totalPrice || 0,
@@ -126,20 +128,24 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
         height: item?.height,
         weight: item?.weight
       })),
-      orderItemsWithCombo: (apiOrder?.orderItemsWithCombo || []).map((item) => ({
-        id: item?.id || '',
-        comboId: item?.comboId,
-        comboName: item?.comboName,
-        orderItemName: item?.orderItemName || 'Sản phẩm không xác định',
-        orderItemImageUrl: item?.orderItemImageUrl || '/src/assets/react.svg',
-        quantity: item?.quantity || 0,
-        finalPrice: item?.finalPrice,
-        totalPrice: item?.totalPrice || 0,
-        length: item?.length,
-        width: item?.width,
-        height: item?.height,
-        weight: item?.weight
-      })),
+      orderItemsWithCombo: (apiOrder?.orderItemsWithCombo || []).map((item) => {
+        const comboItem = item as Partial<OrderItemWithCombo>
+        return {
+          id: comboItem?.id || '',
+          comboItemId: comboItem?.comboItemId,
+          comboId: comboItem?.comboId,
+          comboName: comboItem?.comboName,
+          orderItemName: comboItem?.orderItemName || 'Sản phẩm không xác định',
+          orderItemImageUrl: comboItem?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
+          quantity: comboItem?.quantity || 0,
+          finalPrice: comboItem?.finalPrice,
+          totalPrice: comboItem?.totalPrice || 0,
+          length: comboItem?.length,
+          width: comboItem?.width,
+          height: comboItem?.height,
+          weight: comboItem?.weight
+        }
+      }),
       orderHistories: apiOrder?.orderHistories || [],
       orderPromotions: (apiOrder?.orderPromotions || []).map((promo) => ({
         promotionType: promo?.promotionType || '',
@@ -293,31 +299,37 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
     return new Intl.NumberFormat('vi-VN').format(price) + 'đ'
   }
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+  const getPaymentTypeText = (paymentType: string) => {
+    const paymentTypeMap: Record<string, string> = {
+      COD: 'Thanh toán khi nhận hàng',
+      Wallet: 'Thanh toán bằng ví',
+      Banking: 'Thanh toán bằng thẻ ngân hàng'
+    }
+    return paymentTypeMap[paymentType] || paymentType
   }
 
   // Group combo items
   const comboGroups = order?.orderItemsWithCombo.reduce(
     (acc, item) => {
-      const comboId = item.comboId || 'no-combo'
-      if (!acc[comboId]) {
-        acc[comboId] = {
+      const comboKey = item.comboId || item.comboName || item.comboItemId || item.id
+      if (!acc[comboKey]) {
+        acc[comboKey] = {
           comboName: item.comboName,
-          items: []
+          items: [],
+          totalPrice: 0
         }
       }
-      acc[comboId].items.push(item)
+      acc[comboKey].items.push(item)
+      acc[comboKey].totalPrice += item.totalPrice || 0
       return acc
     },
-    {} as Record<string, { comboName?: string; items: OrderItemWithCombo[] }>
+    {} as Record<string, { comboName?: string; items: OrderItemWithCombo[]; totalPrice: number }>
   )
+
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    event.currentTarget.onerror = null
+    event.currentTarget.src = DEFAULT_PRODUCT_IMAGE
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -408,23 +420,31 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                   {/* Combo Products */}
                   {comboGroups &&
                     Object.entries(comboGroups).map(([comboId, group]) => (
-                      <div key={comboId}>
+                      <div key={comboId} className='border-l-4 border-amber-500 pl-3'>
                         {group.comboName && (
                           <div className='flex items-center gap-2 mb-2'>
-                            <Gift className='h-4 w-4 text-amber-600' />
+                            <span className='text-xs text-gray-600'>Combo:</span>
                             <span className='text-xs font-semibold text-amber-800'>{group.comboName}</span>
                           </div>
                         )}
                         {group.items.map((item) => (
-                          <div key={item.id} className='flex gap-3 mb-3 last:mb-0'>
+                          <div
+                            key={item.id}
+                            className='flex gap-3 mb-3 last:mb-0 bg-amber-50/50 rounded-lg p-2 border border-amber-100'
+                          >
                             <img
-                              src={item.orderItemImageUrl}
+                              src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
                               alt={item.orderItemName}
-                              className='w-16 h-16 object-cover rounded-lg border border-gray-200'
+                              className='w-16 h-16 object-cover rounded-lg border-2 border-amber-300'
+                              onError={handleImageError}
                             />
                             <div className='flex-1 min-w-0'>
-                              <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
-                              {group.comboName && <p className='text-xs text-amber-600'>Combo Sạch bà nông trại</p>}
+                              <div className='flex items-center gap-2 mb-1'>
+                                <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
+                              </div>
+                              {group.comboName && (
+                                <p className='text-xs text-amber-600 font-medium'>Combo Sạch bà nông trại</p>
+                              )}
                               <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
                             </div>
                             <div className='text-right'>
@@ -437,11 +457,12 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
 
                   {/* Regular Products */}
                   {order.orderItems.map((item) => (
-                    <div key={item.id} className='flex gap-3'>
+                    <div key={item.id} className='flex gap-3 bg-white rounded-lg p-2 border border-gray-200'>
                       <img
-                        src={item.orderItemImageUrl}
+                        src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
                         alt={item.orderItemName}
                         className='w-16 h-16 object-cover rounded-lg border border-gray-200'
+                        onError={handleImageError}
                       />
                       <div className='flex-1 min-w-0'>
                         <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
@@ -544,12 +565,8 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                   <div className='space-y-1'>
                     <p className='text-xs text-gray-600'>Số thẻ</p>
                     <p className='font-medium text-gray-900 text-sm'>{order.fromPhone || '040324231'}</p>
-                    <p className='text-xs text-gray-600 mt-2'>Ngân hàng</p>
-                    <p className='font-medium text-gray-900 text-sm'>
-                      {order.paymentType === 'COD' ? 'Thanh toán khi nhận' : order.paymentType}
-                    </p>
-                    <p className='text-xs text-gray-600 mt-2'>Thời gian thanh toán</p>
-                    <p className='font-medium text-gray-900 text-sm'>10:00 Am</p>
+                    <p className='text-xs text-gray-600 mt-2'>Phương thức thanh toán</p>
+                    <p className='font-medium text-gray-900 text-sm'>{getPaymentTypeText(order.paymentType)}</p>
                   </div>
                 </div>
               </div>
@@ -593,7 +610,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                               <p className={`font-medium text-sm ${isCurrent ? 'text-gray-900' : 'text-gray-600'}`}>
                                 {history.description}
                               </p>
-                              <p className='text-xs text-gray-500'>{formatDateTime(history.time)}</p>
+                              <p className='text-xs text-gray-500'>{history.time}</p>
                             </div>
                           </div>
                         )

@@ -23,6 +23,7 @@ import Loading from '../../../../../components/Loading/loading'
 import EmptyState from '../../../../../components/EmptyState/emptyState'
 import { toast } from '../../../../../utils/toast'
 import UpdateFormModal from './UpdateFormModal'
+import ImagePreviewModal from '../../../../../components/ui/image-preview-modal'
 
 interface FormsContentProps {
   forms: FormDTO[]
@@ -36,6 +37,22 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [selectedForm, setSelectedForm] = useState<FormDTO | null>(null)
   const [updatingFormId, setUpdatingFormId] = useState<string | null>(null)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [previewIndex, setPreviewIndex] = useState(0)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const openImagePreview = (images: string[], index: number) => {
+    if (!images || images.length === 0) return
+    setPreviewImages(images)
+    setPreviewIndex(index)
+    setIsPreviewOpen(true)
+  }
+
+  const closeImagePreview = () => {
+    setIsPreviewOpen(false)
+    setPreviewImages([])
+    setPreviewIndex(0)
+  }
+
 
   const getStatusIcon = (status: FormStatus) => {
     switch (status) {
@@ -181,7 +198,7 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
 
   const handleUpdateForm = async (
     formId: string,
-    data: { type: FormType; subject: string; description: string; images?: File[] }
+    data: { type: FormType; subject: string; description: string; images?: File[]; existingImageUrls?: string[] }
   ) => {
     try {
       setUpdatingFormId(formId)
@@ -197,7 +214,8 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
         type: data.type,
         subject: data.subject,
         description: data.description,
-        imageFiles: data.images
+        imageFiles: data.images,
+        existingImageUrls: data.existingImageUrls
       })
 
       onRefresh()
@@ -374,12 +392,21 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
                         <p className='text-xs text-gray-500 mb-2'>Hình ảnh đính kèm:</p>
                         <div className='flex gap-2 flex-wrap'>
                           {form.imageUrl.map((imageUrl, index) => (
-                            <img
+                            <button
                               key={index}
-                              src={imageUrl}
-                              alt={`Attachment ${index + 1}`}
-                              className='w-16 h-16 object-cover rounded border'
-                            />
+                              type='button'
+                              onClick={() => openImagePreview(form.imageUrl ?? [], index)}
+                              className='relative group w-16 h-16 rounded border overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500'
+                            >
+                              <img
+                                src={imageUrl}
+                                alt={`Attachment ${index + 1}`}
+                                className='w-full h-full object-cover transition-transform duration-200 group-hover:scale-105'
+                              />
+                              <div className='absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs transition-opacity'>
+                                Xem
+                              </div>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -532,6 +559,14 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
         form={selectedForm}
         onSubmit={handleUpdateForm}
         isLoading={updatingFormId !== null}
+      />
+
+      <ImagePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={closeImagePreview}
+        images={previewImages}
+        initialIndex={previewIndex}
+        alt='Ảnh khiếu nại'
       />
     </motion.div>
   )

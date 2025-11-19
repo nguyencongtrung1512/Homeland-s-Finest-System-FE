@@ -32,7 +32,6 @@ export default function AddressCard({ address, onEdit, onDelete, onSetDefault, i
             transition={{ duration: 0.3, delay: 0.1 }}
             className='flex items-center gap-2 mb-2'
           >
-            <h3 className='font-medium text-gray-900'>Địa chỉ giao hàng</h3>
             {address.isDefault && (
               <motion.div
                 initial={{ scale: 0 }}
@@ -43,21 +42,32 @@ export default function AddressCard({ address, onEdit, onDelete, onSetDefault, i
               </motion.div>
             )}
           </motion.div>
+          {(address.receiverName || address.receiverPhoneNumber) && (
+            <motion.div
+              initial={{ x: -10, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.3, delay: 0.15 }}
+              className='text-sm text-gray-700 mb-2 space-y-1'
+            >
+              {address.receiverName && (
+                <p className='font-medium'>
+                  <span className='text-gray-500'>Người nhận:</span> {address.receiverName}
+                </p>
+              )}
+              {address.receiverPhoneNumber && (
+                <p>
+                  <span className='text-gray-500'>SĐT:</span> {address.receiverPhoneNumber}
+                </p>
+              )}
+            </motion.div>
+          )}
           <motion.p
             initial={{ x: -10, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.2 }}
             className='text-sm text-gray-600 mb-1'
           >
-            {address.streetAddress}
-          </motion.p>
-          <motion.p
-            initial={{ x: -10, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
-            className='text-sm text-gray-600'
-          >
-            {address.ward}, {address.district}, {address.province}
+            {address.streetAddress} ,{address.ward}, {address.district}, {address.province}
           </motion.p>
         </div>
       </motion.div>

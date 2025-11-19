@@ -2,18 +2,17 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../../../components/ui/button'
 import { Badge } from '../../../../../components/ui/badge'
-import ReportModal from '../ReportModal'
 import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
-import ReviewModal from '../ReviewModal'
+import ReviewModal, { type ReviewProduct } from './ReviewModal'
 import ComplaintModal from '../form/ComplaintModal'
 import ViewComplaintModal from '../form/ViewComplaintModal'
-import { confirmOrderReceived } from '../../../../../apis/order.api'
+import { confirmOrderReceived, getOrderDetail } from '../../../../../apis/order.api'
 import { purchaseOrder } from '../../../../../apis/transaction.api'
 import { formApi } from '../../../../../apis/form.api'
 import { path } from '../../../../../constants/path'
 import type { Order as APIOrder, OrderStatus } from '../../../../../types/orderType'
-import { toast } from 'react-toastify'
+import { toast } from '../../../../../utils/toast'
 import { useAuth } from '../../../../../contexts/auth.context'
 import type { CreateFormRequest, FormType } from '../../../../../types/form.type'
 
@@ -23,9 +22,10 @@ interface Order {
   id: string
   storeId: string
   date: string
-  originalStatus: OrderStatus // Lưu status gốc từ API
+  originalStatus: OrderStatus
   status:
   | 'Chưa xác nhận'
+  | 'Chờ xác nhận'
   | 'Chờ thanh toán'
   | 'Đã xác nhận'
   | 'Vận chuyển'
@@ -38,7 +38,7 @@ interface Order {
   isFreeship?: boolean
   products: {
     id?: string
-    productInventoryId?: string // Add this field for navigation
+    productInventoryId?: string
     name: string
     image: string
     description?: string
@@ -49,11 +49,14 @@ interface Order {
     finalPrice?: number
     variant?: string
     isCombo?: boolean
+    comboId?: string
+    comboName?: string
   }[]
   total: string
   totalAmount?: number
   originalTotal?: string
   note?: string
+  isComplained?: boolean
   canReturn?: boolean
   returnDeadline?: string
   // Action states
@@ -92,7 +95,6 @@ interface OrdersContentProps {
 const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   const getUIStatus = (apiStatus: OrderStatus) => {
     switch (apiStatus) {
-      // Chưa xác nhận
       case 'NotYet':
         return {
           status: 'Chưa xác nhận' as const,
@@ -102,12 +104,11 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
         }
       case 'Processing':
         return {
-          status: 'Chưa xác nhận' as const,
+          status: 'Chờ xác nhận' as const,
           statusColor: 'text-yellow-700',
           statusBgColor: 'bg-yellow-50',
           statusText: 'Đang chờ xác nhận đơn hàng'
         }
-      // Chờ thanh toán
       case 'PendingPayment':
         return {
           status: 'Chờ thanh toán' as const,
@@ -115,7 +116,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-orange-50',
           statusText: 'Bạn đã khởi tạo thanh toán, vui lòng hoàn tất'
         }
-      // Đã xác nhận
       case 'Confirmed':
         return {
           status: 'Đã xác nhận' as const,
@@ -144,7 +144,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-green-50',
           statusText: 'Shipper đã lấy hàng'
         }
-      // Vận chuyển
       case 'Storing':
         return {
           status: 'Vận chuyển' as const,
@@ -173,7 +172,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-blue-50',
           statusText: 'Đang giao hàng'
         }
-      // Hoàn thành
       case 'Delivered':
         return {
           status: 'Hoàn thành' as const,
@@ -188,7 +186,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-green-50',
           statusText: 'Đã giao hàng thành công'
         }
-      // Trả hàng/Hoàn tiền
       case 'Returning':
         return {
           status: 'Trả hàng/Hoàn tiền' as const,
@@ -252,7 +249,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-orange-50',
           statusText: 'Đã phản hồi'
         }
-      // Đã hủy
       case 'Cancel':
         return {
           status: 'Đã hủy' as const,
@@ -275,7 +271,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   const products = [
     ...(apiOrder?.orderItems || []).map((item) => ({
       id: item?.id || '',
-      productInventoryId: item?.productVariantId || '', // Use productVariantId instead
+      productInventoryId: item?.productVariantId || '',
       name: item?.orderItemName || 'Sản phẩm không xác định',
       image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
       quantity: (item?.quantity || 0).toString(),
@@ -291,7 +287,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     ...(apiOrder?.orderItemsWithCombo || []).map((item) => ({
       id: item?.id || '',
       productInventoryId: item?.productVariantId || '',
-      name: `${item?.comboName || 'Combo'} - ${item?.orderItemName || 'Sản phẩm không xác định'}`,
+      name: item?.orderItemName || 'Sản phẩm không xác định',
       image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
       quantity: (item?.quantity || 0).toString(),
       price: item?.finalPrice || 0,
@@ -300,7 +296,9 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
         item?.length > 0 && item?.width > 0 && item?.height > 0 && item?.weight > 0
           ? `${item.length}x${item.width}x${item.height}cm, ${item.weight}g`
           : 'Thông tin kích thước không có',
-      isCombo: true
+      isCombo: true,
+      comboId: item?.comboId,
+      comboName: item?.comboName
     }))
   ]
 
@@ -321,11 +319,16 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   const statusVal: OrderStatus = apiOrder?.status || 'NotYet'
   const isComplaintInProgress = statusVal === 'Complaining' || statusVal === 'Complained'
 
+  const isComplainedValue = apiOrder?.isComplained === true
+  const canComplainOrder =
+    (statusVal === 'Delivered' || statusVal === 'Paid') && !isComplaintInProgress && !isComplainedValue
+
   return {
     id: apiOrder?.id || '',
     storeId: apiOrder?.storeId || '',
     date: apiOrder?.createdAt,
     originalStatus: statusVal,
+    isComplained: isComplainedValue,
     ...statusInfo,
     isFreeship: apiOrder?.isFreeship || false,
     products,
@@ -333,8 +336,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     totalAmount: apiOrder?.finalPrice || 0,
     note: apiOrder?.note || '',
     canConfirmReceived: statusVal === 'Delivered' && !apiOrder?.isPayOut,
-    // Chỉ cho phép khiếu nại nếu đã giao xong và không ở trạng thái đã/đang khiếu nại và chưa có isComplained = true
-    canComplain: statusVal === 'Delivered' && !isComplaintInProgress && !apiOrder?.isComplained,
+    canComplain: canComplainOrder,
     canReturn: apiOrder?.status === 'Delivered',
     shippingInfo: {
       recipientName: apiOrder?.toName || '',
@@ -366,21 +368,55 @@ export default function OrdersContent({
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
-  const [showReportModal, setShowReportModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showComplaintModal, setShowComplaintModal] = useState(false)
   const [showViewComplaintModal, setShowViewComplaintModal] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<{ name: string; image: string; category?: string } | null>(
-    null
-  )
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('')
-  const [confirmingOrderId, setConfirmingOrderId] = useState<string>('') // Thêm state để track loading
-  const [processingPaymentOrderId, setProcessingPaymentOrderId] = useState<string>('') // State để track payment loading
-  const [submittingComplaintOrderId, setSubmittingComplaintOrderId] = useState<string>('') // State để track complaint loading
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string>('')
+  const [processingPaymentOrderId, setProcessingPaymentOrderId] = useState<string>('')
+  const [submittingComplaintOrderId, setSubmittingComplaintOrderId] = useState<string>('')
+  const [reviewProducts, setReviewProducts] = useState<ReviewProduct[]>([])
+  const [loadingReviewOrderId, setLoadingReviewOrderId] = useState<string>('')
   const ordersPerPage = 3
+
+  const extractReviewProducts = (orderDetail?: APIOrder | null): ReviewProduct[] => {
+    if (!orderDetail) return []
+
+    const regularItems: ReviewProduct[] = (orderDetail.orderItems || []).map((item) => ({
+      orderItemId: item?.id || '',
+      productId: item?.productId || item?.productVariantId || '',
+      name: item?.orderItemName || 'Sản phẩm không xác định',
+      image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
+      isCombo: false
+    }))
+
+    const comboItems: ReviewProduct[] = (orderDetail.orderItemsWithCombo || []).map((item, index) => {
+      const comboNameKey = item?.comboName ? `${orderDetail.id || ''}-${item.comboName}` : ''
+      const comboGroupKey =
+        item?.comboId ||
+        comboNameKey ||
+        item?.id ||
+        item?.comboItemId ||
+        `${orderDetail.id || 'order'}-combo-${index}`
+
+      return {
+        orderItemId: item?.id || '',
+        productId: item?.productId || item?.productVariantId || '',
+        name: item?.orderItemName || 'Sản phẩm combo',
+        image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
+        isCombo: true,
+        comboId: item?.comboId || undefined,
+        comboItemId: item?.comboItemId || undefined,
+        comboName: item?.comboName || 'Combo',
+        comboGroupKey
+      }
+    })
+
+    return [...regularItems, ...comboItems].filter((product) => product.productId && product.orderItemId)
+  }
 
   const orders: Order[] = useMemo(() => {
     if (!apiOrders || !Array.isArray(apiOrders)) {
@@ -394,7 +430,6 @@ export default function OrdersContent({
     }
   }, [apiOrders])
 
-  // Map các status API vào các tab
   const getStatusesForTab = (tabKey: string): OrderStatus[] => {
     switch (tabKey) {
       case 'Chưa xác nhận':
@@ -436,9 +471,8 @@ export default function OrdersContent({
   const handleFilterChange = (filterKey: string) => {
     setSelectedFilter(filterKey)
     setCurrentPage(1)
-    // Không gọi onFilterByStatus nữa vì sẽ get all và filter ở frontend
     if (onFilterByStatus) {
-      onFilterByStatus('') // Gửi empty để get all
+      onFilterByStatus('')
     }
   }
 
@@ -457,7 +491,7 @@ export default function OrdersContent({
       onRefreshOrders()
     } catch (error) {
       console.error('Lỗi khi xác nhận đã nhận hàng:', error)
-      alert('Có lỗi xảy ra khi xác nhận đã nhận hàng. Vui lòng thử lại.')
+      toast.error('Có lỗi xảy ra khi xác nhận đã nhận hàng. Vui lòng thử lại.')
     } finally {
       setConfirmingOrderId('')
     }
@@ -506,11 +540,10 @@ export default function OrdersContent({
       toast.error(errorMessage)
       return false
     } finally {
-      setProcessingPaymentOrderId('') // Kết thúc loading
+      setProcessingPaymentOrderId('')
     }
   }
 
-  // Handle complaint for delivered orders
   const handleComplaint = async (
     orderId: string,
     storeId: string,
@@ -537,19 +570,15 @@ export default function OrdersContent({
 
       await formApi.createForm(formData)
 
-      toast.success('Gửi khiếu nại thành công! Chúng tôi sẽ xem xét và phản hồi sớm nhất.')
       setShowComplaintModal(false)
+      toast.success('Gửi khiếu nại thành công! Chúng tôi sẽ xem xét và phản hồi sớm nhất.')
+      onRefreshOrders()
     } catch (error) {
       console.error('Error submitting complaint:', error)
       toast.error('Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.')
     } finally {
       setSubmittingComplaintOrderId('')
     }
-  }
-
-  const handleCloseReportModal = () => {
-    setShowReportModal(false)
-    setSelectedProduct(null)
   }
 
   const handleOpenCancelModal = (orderId: string) => {
@@ -576,14 +605,32 @@ export default function OrdersContent({
     setSelectedOrderId('')
   }
 
-  const handleOpenReviewModal = (product: { name: string; image: string; category?: string }) => {
-    setSelectedProduct(product)
-    setShowReviewModal(true)
+  const handleOpenReviewModal = async (orderId: string) => {
+    try {
+      setLoadingReviewOrderId(orderId)
+      const orderDetail = await getOrderDetail(orderId)
+      const productsForReview = extractReviewProducts(orderDetail)
+
+      if (!productsForReview.length) {
+        toast.info('Không tìm thấy sản phẩm nào để đánh giá trong đơn hàng này.')
+        return
+      }
+
+      setReviewProducts(productsForReview)
+      setSelectedOrderId(orderId)
+      setShowReviewModal(true)
+    } catch (error) {
+      console.error('Error fetching order detail for review:', error)
+      toast.error('Không thể tải thông tin sản phẩm để đánh giá. Vui lòng thử lại.')
+    } finally {
+      setLoadingReviewOrderId('')
+    }
   }
 
   const handleCloseReviewModal = () => {
     setShowReviewModal(false)
-    setSelectedProduct(null)
+    setReviewProducts([])
+    setSelectedOrderId('')
   }
 
   const handleOpenComplaintModal = (orderId: string) => {
@@ -685,7 +732,12 @@ export default function OrdersContent({
                     )}
                   </div>
                   <p className='text-sm text-gray-600'>{order.date}</p>
-                  <p className={`text-sm ${order.statusColor} mt-1`}>{order.statusText}</p>
+                  <p className={`text-sm ${order.statusColor} mt-1`}>
+                    {order.statusText}
+                    {order.isComplained && (
+                      <span className='ml-1 text-xs text-red-600 font-medium'>(Đơn đã khiếu nại)</span>
+                    )}
+                  </p>
                 </div>
                 <Button
                   variant='outline'
@@ -697,74 +749,31 @@ export default function OrdersContent({
                 </Button>
               </div>
 
-              <div className='space-y-3 mb-4'>
-                {order.products.map((product, index) => (
-                  <div key={index} className='flex items-center gap-4'>
-                    <img
-                      src={product.image || DEFAULT_PRODUCT_IMAGE}
-                      alt={product.name}
-                      className='w-16 h-16 object-cover rounded-lg border'
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        if (target.src !== DEFAULT_PRODUCT_IMAGE) {
-                          target.src = DEFAULT_PRODUCT_IMAGE
-                        }
-                      }}
-                    />
-                    <div className='flex-1'>
-                      <div className='flex items-center gap-2 mb-1'>
-                        <h4 className='font-medium text-gray-900'>{product.name}</h4>
-                        {product.isCombo && (
-                          <Badge className='bg-purple-100 text-purple-700 border-0 text-xs'>Combo</Badge>
-                        )}
-                      </div>
-                      {product.variant && <p className='text-sm text-gray-600'>{product.variant}</p>}
-                      <p className='text-sm text-gray-600'>Số lượng: {product.quantity}</p>
-                    </div>
-                    {product.finalPrice && (
-                      <div className='text-right'>
-                        <p className='font-medium text-gray-900'>
-                          {new Intl.NumberFormat('vi-VN', {
-                            style: 'currency',
-                            currency: 'VND'
-                          })
-                            .format(product.finalPrice)
-                            .replace('₫', 'đ')}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
               <div className='flex justify-between items-center pt-4 border-t'>
                 <span className='text-gray-600'>Tổng tiền:</span>
                 <span className='text-lg font-semibold text-gray-900'>{order.total}</span>
               </div>
 
-              {/* Action Buttons */}
               <div className='flex gap-2 pt-4 flex-wrap'>
-                {(order.originalStatus === 'NotYet' ||
-                  order.originalStatus === 'Processing' ||
-                  order.originalStatus === 'PendingPayment') && (
-                    <Button
-                      size='sm'
-                      onClick={() => handlePayment(order.id)}
-                      disabled={processingPaymentOrderId === order.id}
-                      className='bg-green-600 hover:bg-green-700 text-white disabled:opacity-50'
-                    >
-                      {processingPaymentOrderId === order.id ? (
-                        <>
-                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
-                          Đang xử lý...
-                        </>
-                      ) : order.originalStatus === 'PendingPayment' ? (
-                        'Tiếp tục thanh toán'
-                      ) : (
-                        'Thanh toán'
-                      )}
-                    </Button>
-                  )}
+                {(order.originalStatus === 'NotYet' || order.originalStatus === 'PendingPayment') && (
+                  <Button
+                    size='sm'
+                    onClick={() => handlePayment(order.id)}
+                    disabled={processingPaymentOrderId === order.id}
+                    className='bg-green-600 hover:bg-green-700 text-white disabled:opacity-50'
+                  >
+                    {processingPaymentOrderId === order.id ? (
+                      <>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                        Đang xử lý...
+                      </>
+                    ) : order.originalStatus === 'PendingPayment' ? (
+                      'Tiếp tục thanh toán'
+                    ) : (
+                      'Thanh toán'
+                    )}
+                  </Button>
+                )}
                 {(order.originalStatus === 'NotYet' ||
                   order.originalStatus === 'Processing' ||
                   order.originalStatus === 'PendingPayment') && (
@@ -794,20 +803,23 @@ export default function OrdersContent({
                     )}
                   </Button>
                 )}
-                {order.originalStatus === 'Delivered' && (
+                {(order.originalStatus === 'Delivered' || order.originalStatus === 'Paid') && (
                   <>
                     <Button
                       variant='outline'
                       size='sm'
-                      onClick={() =>
-                        handleOpenReviewModal({
-                          name: order.products[0]?.name || '',
-                          image: order.products[0]?.image || DEFAULT_PRODUCT_IMAGE
-                        })
-                      }
-                      className='text-green-600 border-green-600 hover:bg-green-50'
+                      onClick={() => handleOpenReviewModal(order.id)}
+                      disabled={loadingReviewOrderId === order.id}
+                      className='text-green-600 border-green-600 hover:bg-green-50 disabled:opacity-50'
                     >
-                      Đánh giá
+                      {loadingReviewOrderId === order.id ? (
+                        <>
+                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2'></div>
+                          Đang tải...
+                        </>
+                      ) : (
+                        'Đánh giá'
+                      )}
                     </Button>
                     {order.canComplain && (
                       <Button
@@ -912,10 +924,6 @@ export default function OrdersContent({
         </div>
       )}
 
-      {selectedProduct && (
-        <ReportModal isOpen={showReportModal} onClose={handleCloseReportModal} product={selectedProduct} />
-      )}
-
       <CancelOrderModal
         isOpen={showCancelModal}
         onClose={handleCloseCancelModal}
@@ -928,7 +936,13 @@ export default function OrdersContent({
 
       <OrderDetailModal isOpen={showOrderDetailModal} onClose={handleCloseOrderDetailModal} orderId={selectedOrderId} />
 
-      <ReviewModal isOpen={showReviewModal} onClose={handleCloseReviewModal} product={selectedProduct} />
+      <ReviewModal
+        isOpen={showReviewModal}
+        onClose={handleCloseReviewModal}
+        products={reviewProducts}
+        userId={user?.userId || ''}
+        onReviewSubmitted={onRefreshOrders}
+      />
 
       <ComplaintModal
         isOpen={showComplaintModal}

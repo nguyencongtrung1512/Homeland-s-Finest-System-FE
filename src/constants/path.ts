@@ -42,6 +42,7 @@ export const path = {
   setupStoreSeller: 'setup-store',
   helpSeller: 'help',
   detailHelpSeller: 'help/:requestId',
+  productReviewsSeller: 'product-reviews',
   // ============ STAFF========
   BASE_STAFF: '/staff',
   // Staff nested routes (relative paths)
