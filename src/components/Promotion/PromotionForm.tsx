@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -10,6 +10,7 @@ import { Switch } from '../ui/switch'
 import { Calendar } from '../ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { Checkbox } from '../ui/checkbox'
+import { Slider } from '../ui/slider'
 import { CalendarIcon, Clock, Loader2, Save, X, Search, Gift } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -104,6 +105,8 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('18:00')
   const [isInitialized, setIsInitialized] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState<string>('all')
+  const [pointRange, setPointRange] = useState<[number, number]>([0, 1000])
 
   // Debug formData changes
   useEffect(() => {
@@ -112,6 +115,21 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
   }, [formData.discountType])
 
   const adminPromotionTypes = ['Global', 'User'] as const
+  const MONTH_OPTIONS = [
+    { value: 'all', label: 'Tất cả tháng' },
+    { value: '1', label: 'Tháng 1' },
+    { value: '2', label: 'Tháng 2' },
+    { value: '3', label: 'Tháng 3' },
+    { value: '4', label: 'Tháng 4' },
+    { value: '5', label: 'Tháng 5' },
+    { value: '6', label: 'Tháng 6' },
+    { value: '7', label: 'Tháng 7' },
+    { value: '8', label: 'Tháng 8' },
+    { value: '9', label: 'Tháng 9' },
+    { value: '10', label: 'Tháng 10' },
+    { value: '11', label: 'Tháng 11' },
+    { value: '12', label: 'Tháng 12' }
+  ]
 
   const loadUsers = useCallback(async (searchTerm = '') => {
     setLoadingUsers(true)
@@ -244,6 +262,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       return () => clearTimeout(timeoutId)
     }
   }, [formData.type, userSearchTerm, loadUsers])
+
 
   const validateForm = (): boolean => {
     const newErrors: PromotionFormErrors = {}
@@ -453,18 +472,54 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     }))
   }
 
+  const getMonthFromDate = (dateString?: string) => {
+    if (!dateString) return null
+    const parsedDate = new Date(dateString)
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return parsedDate.getMonth() + 1
+    }
+    const dateParts = dateString.split('/')
+    if (dateParts.length === 3) {
+      const month = Number.parseInt(dateParts[1], 10)
+      return Number.isNaN(month) ? null : month
+    }
+    return null
+  }
+
+  const filteredUsers = useMemo(() => {
+    const [minPoint, maxPoint] = pointRange
+
+    return users.filter((user) => {
+      const birthMonth = getMonthFromDate(user.dateOfBirth)
+      const monthMatch = selectedMonth === 'all' || birthMonth === Number(selectedMonth)
+      const points = typeof user.userPoint === 'number' ? user.userPoint : 0
+      const pointMatch = points >= minPoint && points <= maxPoint
+      return monthMatch && pointMatch
+    })
+  }, [users, selectedMonth, pointRange])
+
+  const handlePointSliderChange = (values: number[]) => {
+    if (values.length === 2) {
+      const [min, max] = values
+      // Đảm bảo min luôn <= max
+      setPointRange([Math.min(min, max), Math.max(min, max)])
+    }
+  }
+
   const handleSelectAllUsers = () => {
-    setFormData((prev) => ({
-      ...prev,
-      userIds: users.map((user) => user.id)
-    }))
+    setFormData((prev) => {
+      const currentIds = prev.userIds || []
+      const combined = new Set([...currentIds, ...filteredUsers.map((user) => user.id)])
+      return { ...prev, userIds: Array.from(combined) }
+    })
   }
 
   const handleDeselectAllUsers = () => {
-    setFormData((prev) => ({
-      ...prev,
-      userIds: []
-    }))
+    setFormData((prev) => {
+      const currentIds = prev.userIds || []
+      const filteredIds = new Set(filteredUsers.map((user) => user.id))
+      return { ...prev, userIds: currentIds.filter((id) => !filteredIds.has(id)) }
+    })
   }
 
   // Animation variants
@@ -631,6 +686,46 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                       />
                     </div>
 
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                      <div className='space-y-1'>
+                        <Label className='text-blue-900 text-sm font-medium'>Lọc theo tháng sinh</Label>
+                        <Select value={selectedMonth} onValueChange={(value) => setSelectedMonth(value)}>
+                          <SelectTrigger className='border-blue-200 focus:ring-blue-500 focus:border-blue-500'>
+                            <SelectValue placeholder='Chọn tháng' />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MONTH_OPTIONS.map((month) => (
+                              <SelectItem key={month.value} value={month.value}>
+                                {month.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className='space-y-2'>
+                        <div className='flex items-center justify-between'>
+                          <Label className='text-blue-900 text-sm font-medium'>Lọc theo điểm</Label>
+                          <span className='text-xs text-blue-700'>
+                            {pointRange[0]} - {pointRange[1]} điểm
+                          </span>
+                        </div>
+                        <div className='px-2 py-4'>
+                          <Slider
+                            value={pointRange}
+                            onValueChange={handlePointSliderChange}
+                            min={0}
+                            max={1000}
+                            step={10}
+                            className='w-full'
+                          />
+                          <div className='flex justify-between text-[11px] text-blue-500 mt-2'>
+                            <span>0</span>
+                            <span>1000</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className='flex items-center justify-between'>
                       <span className='text-sm text-blue-700 font-medium'>
                         Đã chọn {formData.userIds?.length || 0} người dùng
@@ -666,10 +761,10 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                       </div>
                     ) : (
                       <div className='max-h-48 overflow-y-auto space-y-2'>
-                        {users.length === 0 ? (
+                        {filteredUsers.length === 0 ? (
                           <p className='text-sm text-blue-500 text-center py-4'>Không tìm thấy người dùng</p>
                         ) : (
-                          users.map((user) => {
+                          filteredUsers.map((user) => {
                             const isSelected = formData.userIds?.includes(user.id) || false
                             return (
                               <div
@@ -685,7 +780,8 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                                   htmlFor={`user-${user.id}`}
                                   className='flex-1 cursor-pointer text-sm text-blue-900 pl-1'
                                 >
-                                  {user.firstName} {user.lastName} ({user.email})
+                                  {user.firstName} {user.lastName} ({user.userPoint} điểm) - ngày sinh:{' '}
+                                  {user.dateOfBirth}
                                 </Label>
                               </div>
                             )
