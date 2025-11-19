@@ -13,31 +13,37 @@ import { productReviewApi } from '../../../../../apis/productReview.api'
 import { toast } from '../../../../../utils/toast'
 import type { ProductReviewCreateInput } from '../../../../../types/productReviewType'
 
-interface Product {
-  id?: string
+export interface ReviewProduct {
+  orderItemId?: string
+  productId?: string
   name: string
   image: string
   category?: string
   isCombo?: boolean
   comboId?: string
+  comboItemId?: string
   comboName?: string
+  comboGroupKey?: string
 }
 
 interface ReviewModalProps {
   isOpen: boolean
   onClose: () => void
-  products: Product[]
+  products: ReviewProduct[]
   userId: string
   onReviewSubmitted?: () => void
 }
 
+interface ComboGroup {
+  comboGroupKey: string
+  comboId?: string
+  comboName: string
+  items: ReviewProduct[]
+}
+
 const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, userId, onReviewSubmitted }) => {
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [selectedCombo, setSelectedCombo] = useState<{
-    comboId: string
-    comboName: string
-    items: Product[]
-  } | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<ReviewProduct | null>(null)
+  const [selectedCombo, setSelectedCombo] = useState<ComboGroup | null>(null)
   const [overallRating, setOverallRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0) // Track which star is being hovered
   const [qualityComment, setQualityComment] = useState('')
@@ -45,22 +51,29 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Group products by combo - use useMemo to calculate before useEffect
-  const { comboGroups, regularProducts, allItems, hasMultipleItems } = useMemo(() => {
+  const { comboGroups, regularProducts, selectionItems, hasMultipleItems } = useMemo(() => {
     if (!products || products.length === 0) {
       return {
         comboGroups: [],
         regularProducts: [],
-        allItems: [],
+        selectionItems: [],
         hasMultipleItems: false
       }
     }
 
     const groupedProducts = products.reduce(
       (acc, product) => {
-        if (product.isCombo && product.comboId) {
-          const comboKey = product.comboId
+        if (product.isCombo) {
+          const comboKey =
+            product.comboGroupKey ||
+            product.comboId ||
+            product.comboName ||
+            product.orderItemId ||
+            product.productId ||
+            product.name
           if (!acc.combos[comboKey]) {
             acc.combos[comboKey] = {
+              comboGroupKey: comboKey,
               comboId: product.comboId,
               comboName: product.comboName || 'Combo',
               items: []
@@ -73,35 +86,38 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
         return acc
       },
       {
-        combos: {} as Record<string, { comboId: string; comboName: string; items: Product[] }>,
-        regular: [] as Product[]
+        combos: {} as Record<string, ComboGroup>,
+        regular: [] as ReviewProduct[]
       }
     )
 
-    const comboGroups = Object.values(groupedProducts.combos)
+    const comboGroups = Object.values(groupedProducts.combos) as ComboGroup[]
     const regularProducts = groupedProducts.regular
-    const allItems = [...comboGroups, ...regularProducts]
-    const hasMultipleItems = allItems.length > 1
+    const selectionItems = [
+      ...comboGroups.map((combo) => ({ type: 'combo' as const, combo })),
+      ...regularProducts.map((product) => ({ type: 'product' as const, product }))
+    ]
+    const hasMultipleItems = selectionItems.length > 1
 
-    return { comboGroups, regularProducts, allItems, hasMultipleItems }
+    return { comboGroups, regularProducts, selectionItems, hasMultipleItems }
   }, [products])
 
   // Auto-select first item if only one item
   useEffect(() => {
-    if (allItems.length === 1) {
-      const item = allItems[0]
-      if ('comboId' in item && 'items' in item) {
-        setSelectedCombo(item as { comboId: string; comboName: string; items: Product[] })
+    if (selectionItems.length === 1) {
+      const item = selectionItems[0]
+      if (item.type === 'combo') {
+        setSelectedCombo(item.combo)
         setSelectedProduct(null)
-      } else {
-        setSelectedProduct(item as Product)
+      } else if (item.type === 'product') {
+        setSelectedProduct(item.product)
         setSelectedCombo(null)
       }
-    } else if (allItems.length > 1) {
+    } else if (selectionItems.length > 1) {
       setSelectedProduct(null)
       setSelectedCombo(null)
     }
-  }, [allItems])
+  }, [selectionItems])
 
   // Reset form when modal closes or product changes
   useEffect(() => {
@@ -148,7 +164,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
   const handleSubmit = async () => {
     // Check if combo or product is selected
     const isComboSelected = selectedCombo !== null
-    const isProductSelected = selectedProduct !== null && selectedProduct.id
+    const isProductSelected = selectedProduct !== null
 
     if (!isComboSelected && !isProductSelected) {
       toast.error('Vui lòng chọn sản phẩm hoặc combo để đánh giá')
@@ -165,20 +181,23 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
 
       // For combo, use the first item's orderItemId
       // Backend should handle combo review based on comboId or orderItemId
-      const orderItemId =
-        isComboSelected && selectedCombo?.items[0]?.id ? selectedCombo.items[0].id : selectedProduct?.id
+      const targetItem = isComboSelected ? selectedCombo?.items[0] : selectedProduct
+      const orderItemId = targetItem?.orderItemId
+      const productId = targetItem?.productId
 
-      if (!orderItemId) {
+      if (!orderItemId || !productId) {
         toast.error('Không tìm thấy thông tin đơn hàng để đánh giá')
         return
       }
 
       // Prepare review data according to ProductReviewCreateInput interface
       const reviewData: ProductReviewCreateInput = {
-        orderItemId: orderItemId, // OrderItemId for backend validation
+        orderItemId, // OrderItemId for backend validation
+        productId,
         userId: userId,
         rating: overallRating,
         comment: qualityComment.trim() || '',
+        comboId: selectedCombo?.comboId,
         images: uploadedImages.length > 0 ? uploadedImages : undefined
       }
 
@@ -227,12 +246,12 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
                 {/* Combo Groups */}
                 {comboGroups.map((combo) => (
                   <button
-                    key={combo.comboId}
+                    key={combo.comboGroupKey}
                     onClick={() => {
                       setSelectedCombo(combo)
                       setSelectedProduct(null)
                     }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${selectedCombo?.comboId === combo.comboId
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${selectedCombo?.comboGroupKey === combo.comboGroupKey
                       ? 'border-orange-500 bg-orange-50'
                       : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                       }`}
@@ -246,32 +265,35 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
                       </div>
                       <p className='text-xs text-gray-600 mt-1'>{combo.items.length} sản phẩm trong combo</p>
                     </div>
-                    {selectedCombo?.comboId === combo.comboId && <div className='text-orange-600'>✓</div>}
+                    {selectedCombo?.comboGroupKey === combo.comboGroupKey && <div className='text-orange-600'>✓</div>}
                   </button>
                 ))}
 
                 {/* Regular Products */}
-                {regularProducts.map((product) => (
-                  <button
-                    key={product.id || product.name}
-                    onClick={() => {
-                      setSelectedProduct(product)
-                      setSelectedCombo(null)
-                    }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${selectedProduct?.id === product.id || selectedProduct?.name === product.name
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                      }`}
-                  >
-                    <div className='flex-1 text-left'>
-                      <h4 className='font-medium text-gray-900 text-sm'>{product.name}</h4>
-                      {product.category && <p className='text-xs text-gray-600 mt-1'>{product.category}</p>}
-                    </div>
-                    {selectedProduct?.id === product.id || selectedProduct?.name === product.name ? (
-                      <div className='text-green-600'>✓</div>
-                    ) : null}
-                  </button>
-                ))}
+                {regularProducts.map((product) => {
+                  const isSelected =
+                    (!!selectedProduct?.orderItemId && selectedProduct.orderItemId === product.orderItemId) ||
+                    (!!selectedProduct?.productId && selectedProduct.productId === product.productId) ||
+                    selectedProduct?.name === product.name
+
+                  return (
+                    <button
+                      key={product.orderItemId || product.productId || product.name}
+                      onClick={() => {
+                        setSelectedProduct(product)
+                        setSelectedCombo(null)
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                        }`}
+                    >
+                      <div className='flex-1 text-left'>
+                        <h4 className='font-medium text-gray-900 text-sm'>{product.name}</h4>
+                        {product.category && <p className='text-xs text-gray-600 mt-1'>{product.category}</p>}
+                      </div>
+                      {isSelected ? <div className='text-green-600'>✓</div> : null}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -297,7 +319,10 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
                 <h4 className='text-xs font-semibold text-orange-800 mb-2'>Sản phẩm trong combo:</h4>
                 <div className='space-y-2'>
                   {selectedCombo.items.map((item, index) => (
-                    <div key={item.id || index} className='flex items-center gap-2 bg-white rounded-lg p-2'>
+                    <div
+                      key={item.orderItemId || item.productId || `${item.name}-${index}`}
+                      className='flex items-center gap-2 bg-white rounded-lg p-2'
+                    >
                       <img src={item.image} alt={item.name} className='w-10 h-10 object-cover rounded' />
                       <div className='flex-1 min-w-0'>
                         <p className='text-xs font-medium text-gray-800 truncate'>{item.name}</p>
@@ -321,10 +346,6 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
                 <div className='flex-1'>
                   <h3 className='font-medium text-gray-900 text-sm'>{selectedProduct.name}</h3>
                   {selectedProduct.category && <p className='text-xs text-gray-600 mt-1'>{selectedProduct.category}</p>}
-                  <div className='flex items-center gap-1 mt-1'>
-                    <span className='text-yellow-500'>⭐</span>
-                    <span className='text-xs text-gray-600'>127 đánh giá</span>
-                  </div>
                 </div>
               </div>
             </>

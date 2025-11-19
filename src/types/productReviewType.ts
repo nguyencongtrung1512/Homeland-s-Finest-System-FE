@@ -13,9 +13,11 @@ export interface ProductReview {
 
 export interface ProductReviewCreateInput {
   orderItemId: string // UUID - Foreign key to OrderItem (for validation: user must have purchased this item)
+  productId: string // UUID - Foreign key to Product (identify actual product/combo item being reviewed)
   userId: string
   rating: number
   comment: string
+  comboId?: string // Optional combo identifier when reviewing combo items
   images?: File[] // Optional images to upload
 }
 

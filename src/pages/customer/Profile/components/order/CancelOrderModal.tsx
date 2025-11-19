@@ -123,7 +123,7 @@ export default function CancelOrderModal({
               <Label className='text-base font-medium'>Chọn lý do hủy đơn hàng</Label>
               <div className='space-y-3'>
                 {cancelReasons.map((reason, index) => (
-                  <div key={index} className='flex items-start space-x-3'>
+                  <div key={index} className='flex items-start gap-2'>
                     <input
                       type='radio'
                       id={`reason-${index}`}
@@ -134,7 +134,7 @@ export default function CancelOrderModal({
                       className='mt-1 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500 focus:ring-2'
                       disabled={isLoading}
                     />
-                    <Label htmlFor={`reason-${index}`} className='text-sm leading-5 cursor-pointer font-normal'>
+                    <Label htmlFor={`reason-${index}`} className='text-sm mb-1 leading-5 cursor-pointer font-normal'>
                       {reason}
                     </Label>
                   </div>
@@ -143,7 +143,7 @@ export default function CancelOrderModal({
             </div>
           </div>
 
-          <DialogFooter className='gap-2 sm:gap-0'>
+          <DialogFooter className='gap-3 sm:gap-3'>
             <Button
               type='button'
               variant='outline'

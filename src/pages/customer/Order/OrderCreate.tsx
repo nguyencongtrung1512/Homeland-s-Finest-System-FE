@@ -441,7 +441,7 @@ function OrderCreate() {
 
     if (hasPendingPayment && !hasNotYetStatus) {
       toast.info('Đơn hàng đang chờ thanh toán. Vui lòng tiếp tục trong mục Đơn hàng của tôi.')
-      navigate('/profile/orders', {
+      navigate('/profile', {
         replace: true,
         state: { focusStatus: 'PendingPayment', from: 'order-create' }
       })
@@ -450,7 +450,7 @@ function OrderCreate() {
   }, [hasRedirected, navigate, order, ordersFromState])
 
   const handleCancelOrder = () => {
-    if (!order) {
+    if (ordersFromState.length === 0 && !order) {
       toast.error('Không tìm thấy thông tin đơn hàng để hủy')
       return
     }
@@ -515,14 +515,22 @@ function OrderCreate() {
               </h2>
 
               <div className='space-y-6'>
+                {ordersFromState.length === 0 && order && (
+                  <div className='flex items-center justify-between gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 flex-wrap'>
+                    <span className='font-semibold text-blue-800 flex-1 min-w-[200px]'>{order.fromName}</span>
+                    <span className='text-xs text-gray-600 font-mono'>Mã đơn hàng: {order.id}</span>
+                  </div>
+                )}
+
                 {ordersFromState.length > 0
                   ? ordersFromState.map((order, orderIndex) => (
                     <div key={order.id} className='space-y-4'>
-                      <div className='flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200'>
+                      <div className='flex items-center justify-between gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 flex-wrap'>
                         <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                        <span className='font-semibold text-blue-800'>
+                        <span className='font-semibold text-blue-800 flex-1 min-w-[200px]'>
                           Đơn hàng {orderIndex + 1}: {order.fromName}
                         </span>
+                        <span className='text-xs text-gray-600 font-mono'>Mã đơn: {order.id}</span>
                       </div>
 
                       <div className='space-y-3'>
@@ -857,7 +865,20 @@ function OrderCreate() {
         isOpen={showCancelDialog}
         onClose={() => setShowCancelDialog(false)}
         onConfirm={handleConfirmCancel}
-        orderInfo={order ? { orderId: order.id, userId: user?.userId || '', totalAmount: order.finalPrice } : undefined}
+        orderInfo={
+          ordersFromState.length > 0
+            ? {
+              orderId:
+                ordersFromState.length === 1
+                  ? ordersFromState[0].id
+                  : `${ordersFromState[0].id} + ${ordersFromState.length - 1} đơn khác`,
+              userId: user?.userId || '',
+              totalAmount: ordersFromState.reduce((sum, current) => sum + (current.finalPrice || 0), 0)
+            }
+            : order
+              ? { orderId: order.id, userId: user?.userId || '', totalAmount: order.finalPrice }
+              : undefined
+        }
         isLoading={isCancelling}
       />
     </div>

@@ -10,6 +10,7 @@ export interface ProductCardData extends Product {
 // Card hiển thị sản phẩm
 const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> = ({ product, onClick }) => {
   const navigate = useNavigate()
+  const defaultImage = 'https://toigingiuvedep.vn/wp-content/uploads/2023/03/anh-kha-banh-trai-tim-om-bo-hoa.jpg'
 
   const handleProductClick = () => {
     if (onClick) {
@@ -26,7 +27,15 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
     >
       {/* Ảnh */}
       <div className='relative h-40 w-full rounded-lg overflow-hidden'>
-        <img src={product.productImages[0]} alt='' className='w-full h-full object-cover' />
+        <img
+          src={product.productImages?.[0] || defaultImage}
+          alt={product.name}
+          className='w-full h-full object-cover'
+          onError={(e) => {
+            const target = e.target as HTMLImageElement
+            target.src = defaultImage
+          }}
+        />
       </div>
 
       {/* Nội dung */}

@@ -4,10 +4,10 @@ import { Button } from '../../../../../components/ui/button'
 import { Badge } from '../../../../../components/ui/badge'
 import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
-import ReviewModal from './ReviewModal'
+import ReviewModal, { type ReviewProduct } from './ReviewModal'
 import ComplaintModal from '../form/ComplaintModal'
 import ViewComplaintModal from '../form/ViewComplaintModal'
-import { confirmOrderReceived } from '../../../../../apis/order.api'
+import { confirmOrderReceived, getOrderDetail } from '../../../../../apis/order.api'
 import { purchaseOrder } from '../../../../../apis/transaction.api'
 import { formApi } from '../../../../../apis/form.api'
 import { path } from '../../../../../constants/path'
@@ -56,6 +56,7 @@ interface Order {
   totalAmount?: number
   originalTotal?: string
   note?: string
+  isComplained?: boolean
   canReturn?: boolean
   returnDeadline?: string
   // Action states
@@ -327,6 +328,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     storeId: apiOrder?.storeId || '',
     date: apiOrder?.createdAt,
     originalStatus: statusVal,
+    isComplained: isComplainedValue,
     ...statusInfo,
     isFreeship: apiOrder?.isFreeship || false,
     products,
@@ -371,15 +373,50 @@ export default function OrdersContent({
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showComplaintModal, setShowComplaintModal] = useState(false)
   const [showViewComplaintModal, setShowViewComplaintModal] = useState(false)
-  const [selectedProducts, setSelectedProducts] = useState<
-    { id?: string; name: string; image: string; category?: string }[]
-  >([])
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('')
   const [confirmingOrderId, setConfirmingOrderId] = useState<string>('')
   const [processingPaymentOrderId, setProcessingPaymentOrderId] = useState<string>('')
   const [submittingComplaintOrderId, setSubmittingComplaintOrderId] = useState<string>('')
+  const [reviewProducts, setReviewProducts] = useState<ReviewProduct[]>([])
+  const [loadingReviewOrderId, setLoadingReviewOrderId] = useState<string>('')
   const ordersPerPage = 3
+
+  const extractReviewProducts = (orderDetail?: APIOrder | null): ReviewProduct[] => {
+    if (!orderDetail) return []
+
+    const regularItems: ReviewProduct[] = (orderDetail.orderItems || []).map((item) => ({
+      orderItemId: item?.id || '',
+      productId: item?.productId || item?.productVariantId || '',
+      name: item?.orderItemName || 'Sản phẩm không xác định',
+      image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
+      isCombo: false
+    }))
+
+    const comboItems: ReviewProduct[] = (orderDetail.orderItemsWithCombo || []).map((item, index) => {
+      const comboNameKey = item?.comboName ? `${orderDetail.id || ''}-${item.comboName}` : ''
+      const comboGroupKey =
+        item?.comboId ||
+        comboNameKey ||
+        item?.id ||
+        item?.comboItemId ||
+        `${orderDetail.id || 'order'}-combo-${index}`
+
+      return {
+        orderItemId: item?.id || '',
+        productId: item?.productId || item?.productVariantId || '',
+        name: item?.orderItemName || 'Sản phẩm combo',
+        image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
+        isCombo: true,
+        comboId: item?.comboId || undefined,
+        comboItemId: item?.comboItemId || undefined,
+        comboName: item?.comboName || 'Combo',
+        comboGroupKey
+      }
+    })
+
+    return [...regularItems, ...comboItems].filter((product) => product.productId && product.orderItemId)
+  }
 
   const orders: Order[] = useMemo(() => {
     if (!apiOrders || !Array.isArray(apiOrders)) {
@@ -568,14 +605,32 @@ export default function OrdersContent({
     setSelectedOrderId('')
   }
 
-  const handleOpenReviewModal = (orderProducts: { id?: string; name: string; image: string; category?: string }[]) => {
-    setSelectedProducts(orderProducts)
-    setShowReviewModal(true)
+  const handleOpenReviewModal = async (orderId: string) => {
+    try {
+      setLoadingReviewOrderId(orderId)
+      const orderDetail = await getOrderDetail(orderId)
+      const productsForReview = extractReviewProducts(orderDetail)
+
+      if (!productsForReview.length) {
+        toast.info('Không tìm thấy sản phẩm nào để đánh giá trong đơn hàng này.')
+        return
+      }
+
+      setReviewProducts(productsForReview)
+      setSelectedOrderId(orderId)
+      setShowReviewModal(true)
+    } catch (error) {
+      console.error('Error fetching order detail for review:', error)
+      toast.error('Không thể tải thông tin sản phẩm để đánh giá. Vui lòng thử lại.')
+    } finally {
+      setLoadingReviewOrderId('')
+    }
   }
 
   const handleCloseReviewModal = () => {
     setShowReviewModal(false)
-    setSelectedProducts([])
+    setReviewProducts([])
+    setSelectedOrderId('')
   }
 
   const handleOpenComplaintModal = (orderId: string) => {
@@ -677,7 +732,12 @@ export default function OrdersContent({
                     )}
                   </div>
                   <p className='text-sm text-gray-600'>{order.date}</p>
-                  <p className={`text-sm ${order.statusColor} mt-1`}>{order.statusText}</p>
+                  <p className={`text-sm ${order.statusColor} mt-1`}>
+                    {order.statusText}
+                    {order.isComplained && (
+                      <span className='ml-1 text-xs text-red-600 font-medium'>(Đơn đã khiếu nại)</span>
+                    )}
+                  </p>
                 </div>
                 <Button
                   variant='outline'
@@ -687,35 +747,6 @@ export default function OrdersContent({
                 >
                   Xem chi tiết
                 </Button>
-              </div>
-
-              <div className='space-y-3 mb-4'>
-                {order.products.map((product, index) => (
-                  <div key={index} className='flex items-center gap-4'>
-                    <img
-                      src={product.image || DEFAULT_PRODUCT_IMAGE}
-                      alt={product.name}
-                      className='w-16 h-16 object-cover rounded-lg border'
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        if (target.src !== DEFAULT_PRODUCT_IMAGE) {
-                          target.src = DEFAULT_PRODUCT_IMAGE
-                        }
-                      }}
-                    />
-                    <div className='flex-1'>
-                      <div className='flex items-center gap-2 mb-1'>
-                        <h4 className='font-medium text-gray-900'>{product.name}</h4>
-                        {product.isCombo && (
-                          <Badge className='bg-purple-100 text-purple-700 border-0 text-xs'>Combo</Badge>
-                        )}
-                      </div>
-                      {product.variant && <p className='text-sm text-gray-600'>{product.variant}</p>}
-                      <p className='text-sm text-gray-600'>Số lượng: {product.quantity}</p>
-                    </div>
-
-                  </div>
-                ))}
               </div>
 
               <div className='flex justify-between items-center pt-4 border-t'>
@@ -777,19 +808,18 @@ export default function OrdersContent({
                     <Button
                       variant='outline'
                       size='sm'
-                      onClick={() =>
-                        handleOpenReviewModal(
-                          order.products.map((p) => ({
-                            id: p.id,
-                            name: p.name,
-                            image: p.image || DEFAULT_PRODUCT_IMAGE,
-                            category: undefined
-                          }))
-                        )
-                      }
-                      className='text-green-600 border-green-600 hover:bg-green-50'
+                      onClick={() => handleOpenReviewModal(order.id)}
+                      disabled={loadingReviewOrderId === order.id}
+                      className='text-green-600 border-green-600 hover:bg-green-50 disabled:opacity-50'
                     >
-                      Đánh giá
+                      {loadingReviewOrderId === order.id ? (
+                        <>
+                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2'></div>
+                          Đang tải...
+                        </>
+                      ) : (
+                        'Đánh giá'
+                      )}
                     </Button>
                     {order.canComplain && (
                       <Button
@@ -909,7 +939,7 @@ export default function OrdersContent({
       <ReviewModal
         isOpen={showReviewModal}
         onClose={handleCloseReviewModal}
-        products={selectedProducts}
+        products={reviewProducts}
         userId={user?.userId || ''}
         onReviewSubmitted={onRefreshOrders}
       />

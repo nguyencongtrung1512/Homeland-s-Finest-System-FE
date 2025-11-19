@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
-import { AlertTriangle, X } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 
 interface CancelOrderDialogProps {
   isOpen: boolean
@@ -73,17 +73,12 @@ export default function CancelOrderDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className='max-w-md mx-auto'>
+      <DialogContent className='max-w-sm mx-auto max-h-[80vh] overflow-y-auto'>
         <DialogHeader className='space-y-3'>
           <div className='flex items-center justify-between'>
             <DialogTitle className='text-xl font-semibold text-gray-900'>Hủy đơn hàng</DialogTitle>
             <Button variant='ghost' size='sm' onClick={handleClose} className='h-8 w-8 p-0'>
-              <X className='h-4 w-4' />
             </Button>
-          </div>
-
-          <div className='text-center'>
-            <h3 className='text-lg font-medium text-gray-900'>Chọn Lý Do Hủy</h3>
           </div>
         </DialogHeader>
 
@@ -102,17 +97,6 @@ export default function CancelOrderDialog({
           {/* Order/Product Info */}
           {(orderInfo || productInfo) && (
             <div className='bg-gray-50 rounded-lg p-3'>
-              {orderInfo && (
-                <div className='text-sm text-gray-700'>
-                  <p>
-                    <span className='font-medium'>Order ID:</span> {orderInfo.orderId}
-                  </p>
-                  <p>
-                    <span className='font-medium'>Tổng tiền:</span>{' '}
-                    {(orderInfo.totalAmount || 0).toLocaleString('vi-VN')}₫
-                  </p>
-                </div>
-              )}
               {productInfo && (
                 <div className='text-sm text-gray-700'>
                   <p>
