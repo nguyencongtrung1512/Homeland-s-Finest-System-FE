@@ -17,6 +17,7 @@ import { productApi, type ProductListResponse } from '../../../apis/product.api'
 import type { Product } from '../../../types/productType'
 import ModalUpdateProduct from './modalUpdateProduct'
 import { toast } from '../../../utils/toast'
+import Pagination from '../../../components/Pagination/Pagination'
 
 function ProductsSeller() {
   const navigate = useNavigate()
@@ -255,50 +256,20 @@ function ProductsSeller() {
           </div>
 
           {/* Pagination */}
-          <div className='flex items-center justify-between mt-6'>
-            <div className='text-sm text-gray-700'>
-              Hiển thị {(pagination.pageNumber - 1) * pagination.pageSize + 1}-
-              {Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalItems)} của {pagination.totalItems}{' '}
-              sản phẩm
+          {pagination.totalPages > 1 && (
+            <div className='flex flex-col gap-4 mt-6 lg:flex-row lg:items-center lg:justify-between'>
+              <div className='text-sm text-gray-700'>
+                Hiển thị {(pagination.pageNumber - 1) * pagination.pageSize + 1} -{' '}
+                {Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalItems)} trong tổng số{' '}
+                {pagination.totalItems} sản phẩm
+              </div>
+              <Pagination
+                currentPage={pagination.pageNumber}
+                totalPages={pagination.totalPages}
+                onPageChange={handlePageChange}
+              />
             </div>
-            <div className='flex space-x-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                disabled={pagination.pageNumber <= 1}
-                onClick={() => handlePageChange(pagination.pageNumber - 1)}
-              >
-                Trước
-              </Button>
-
-              {/* Page numbers */}
-              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                const pageNum = Math.max(1, pagination.pageNumber - 2) + i
-                if (pageNum > pagination.totalPages) return null
-
-                return (
-                  <Button
-                    key={pageNum}
-                    variant='outline'
-                    size='sm'
-                    className={pageNum === pagination.pageNumber ? 'bg-green-600 text-white hover:bg-green-700' : ''}
-                    onClick={() => handlePageChange(pageNum)}
-                  >
-                    {pageNum}
-                  </Button>
-                )
-              })}
-
-              <Button
-                variant='outline'
-                size='sm'
-                disabled={pagination.pageNumber >= pagination.totalPages}
-                onClick={() => handlePageChange(pagination.pageNumber + 1)}
-              >
-                Sau
-              </Button>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

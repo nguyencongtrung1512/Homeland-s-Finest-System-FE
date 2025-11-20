@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -25,6 +25,7 @@ import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
 import { toast } from '../../../utils/toast'
 import { useAuth } from '../../../contexts/auth.context'
 import { formatDate } from '../../../utils/formatDate'
+import Pagination from '../../../components/Pagination/Pagination'
 
 function HelpCenter() {
   const { user } = useAuth()
@@ -35,6 +36,8 @@ function HelpCenter() {
   const [error, setError] = useState<string | null>(null)
   const [selectedRequest, setSelectedRequest] = useState<FormDTO | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
 
   // Mock data for policies
   const policies = [
@@ -249,12 +252,34 @@ function HelpCenter() {
     setIsDetailOpen(true)
   }
 
-  const filteredRequests = supportRequests.filter((request) => {
-    if (activeTab === 'all') return true
-    if (activeTab === 'pending') return !['ApprovedByAdmin', 'Confirmed', 'Cancel'].includes(request.status)
-    if (activeTab === 'resolved') return ['ApprovedByAdmin', 'Confirmed'].includes(request.status)
-    return true
-  })
+  const filteredRequests = useMemo(() => {
+    return supportRequests.filter((request) => {
+      if (activeTab === 'all') return true
+      if (activeTab === 'pending') return !['ApprovedByAdmin', 'Confirmed', 'Cancel'].includes(request.status)
+      if (activeTab === 'resolved') return ['ApprovedByAdmin', 'Confirmed'].includes(request.status)
+      return true
+    })
+  }, [supportRequests, activeTab])
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(filteredRequests.length / pageSize)), [filteredRequests.length, pageSize])
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.min(Math.max(page, 1), totalPages))
+  }
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  const startIndex = (currentPage - 1) * pageSize
+  const paginatedRequests = filteredRequests.slice(startIndex, startIndex + pageSize)
+  const displayStart = filteredRequests.length === 0 ? 0 : startIndex + 1
+  const displayEnd = Math.min(startIndex + paginatedRequests.length, filteredRequests.length)
 
   return (
     <div className='p-6 bg-gray-50 min-h-screen'>
@@ -359,7 +384,7 @@ function HelpCenter() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRequests.map((request) => (
+                    {paginatedRequests.map((request) => (
                       <tr key={request.id} className='border-b border-gray-100 hover:bg-gray-50'>
                         <td className='py-4 px-6 text-gray-900 font-medium'>
                           #{request.id.substring(0, 8).toUpperCase()}
@@ -383,25 +408,13 @@ function HelpCenter() {
             )}
 
             {/* Pagination */}
-            <div className='flex items-center justify-between p-6 border-t border-gray-200'>
-              <div className='text-sm text-gray-700'>Hiển thị 1 đến 5 của 23 kết quả</div>
-              <div className='flex items-center gap-2'>
-                <Button variant='outline' size='sm' className='text-gray-600'>
-                  Trước
-                </Button>
-                <Button size='sm' className='bg-green-600 hover:bg-green-700 text-white'>
-                  1
-                </Button>
-                <Button variant='outline' size='sm' className='text-gray-600'>
-                  2
-                </Button>
-                <Button variant='outline' size='sm' className='text-gray-600'>
-                  3
-                </Button>
-                <Button variant='outline' size='sm' className='text-gray-600'>
-                  Tiếp
-                </Button>
+            <div className='flex flex-col gap-4 p-6 border-t border-gray-200 lg:flex-row lg:items-center lg:justify-between'>
+              <div className='text-sm text-gray-700'>
+                {`Hiển thị ${displayStart}-${displayEnd} trong tổng số ${filteredRequests.length} yêu cầu`}
               </div>
+              {filteredRequests.length > pageSize && (
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+              )}
             </div>
           </CardContent>
         </Card>

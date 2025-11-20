@@ -18,6 +18,7 @@ import { useAuth } from '../../../contexts/auth.context'
 import type { Order, OrderStatus } from '../../../types/orderType'
 import { toast } from 'react-toastify'
 import OrderDetail from './orderDetail'
+import Pagination from '../../../components/Pagination/Pagination'
 
 const HIDDEN_STATUSES: OrderStatus[] = ['NotYet', 'PendingPayment']
 
@@ -156,7 +157,8 @@ function OrderManagement() {
 
   // Handle pagination
   const handlePageChange = (page: number) => {
-    setCurrentPage(page)
+    const clampedPage = Math.min(Math.max(page, 1), totalPages || 1)
+    setCurrentPage(clampedPage)
   }
 
   // Handle order detail modal
@@ -542,62 +544,14 @@ function OrderManagement() {
                   </TableBody>
                 </Table>
               </div>
-              <div className='flex items-center justify-between space-x-2 py-4'>
-                <div className='flex-1 text-sm text-muted-foreground'>
+              <div className='flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between'>
+                <div className='text-sm text-muted-foreground'>
                   Hiển thị {startIndex + 1}-{Math.min(endIndex, sortedOrders.length)} trong {sortedOrders.length} đơn
                   hàng
                 </div>
-
-                {/* Pagination Controls */}
-                <div className='flex items-center space-x-2'>
-                  <Button
-                    className='mr-2'
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className='h-4 w-4' />
-                    Trước
-                  </Button>
-
-                  <div className='flex items-center space-x-1 px-1'>
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNumber
-                      if (totalPages <= 5) {
-                        pageNumber = i + 1
-                      } else if (currentPage <= 3) {
-                        pageNumber = i + 1
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNumber = totalPages - 4 + i
-                      } else {
-                        pageNumber = currentPage - 2 + i
-                      }
-
-                      return (
-                        <Button
-                          key={pageNumber}
-                          variant={'outline'}
-                          size='sm'
-                          onClick={() => handlePageChange(pageNumber)}
-                          className='w-8 h-8 p-0'
-                        >
-                          {pageNumber}
-                        </Button>
-                      )
-                    })}
-                  </div>
-
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    Sau
-                    <ChevronRight className='h-4 w-4' />
-                  </Button>
-                </div>
+                {totalPages > 1 && (
+                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+                )}
               </div>
             </div>
           )}

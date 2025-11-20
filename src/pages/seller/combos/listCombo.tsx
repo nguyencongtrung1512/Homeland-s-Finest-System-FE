@@ -18,9 +18,10 @@ import {
 } from '../../../components/ui/alert-dialog'
 import { storeApi } from '../../../apis/store.api'
 import { useAuth } from '../../../contexts/auth.context'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { Combo, ComboParams } from '../../../types/combo.type'
 import UpdateComboModal from './updateCombo'
+import Pagination from '../../../components/Pagination/Pagination'
 
 function ComboSeller() {
   const navigate = useNavigate()
@@ -37,15 +38,15 @@ function ComboSeller() {
   const [showToggleDialog, setShowToggleDialog] = useState(false)
   const [toggling, setToggling] = useState(false)
 
-  const pagination =
-    allCombos.length > 0
-      ? {
-        pageNumber: currentPage,
-        pageSize: pageSize,
-        totalItems: allCombos.length,
-        totalPages: Math.ceil(allCombos.length / pageSize)
-      }
-      : null
+  const pagination = useMemo(() => {
+    if (allCombos.length === 0) return null
+    return {
+      pageNumber: currentPage,
+      pageSize: pageSize,
+      totalItems: allCombos.length,
+      totalPages: Math.ceil(allCombos.length / pageSize)
+    }
+  }, [allCombos.length, currentPage, pageSize])
 
   const combos = allCombos.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
@@ -90,18 +91,10 @@ function ComboSeller() {
     fetchCombos()
   }, [fetchCombos])
 
-
-
-  const handlePreviousPage = () => {
-    if (pagination && pagination.pageNumber > 1) {
-      setCurrentPage(pagination.pageNumber - 1)
-    }
-  }
-
-  const handleNextPage = () => {
-    if (pagination && pagination.pageNumber < pagination.totalPages) {
-      setCurrentPage(pagination.pageNumber + 1)
-    }
+  const handlePageChange = (page: number) => {
+    if (!pagination) return
+    const clampedPage = Math.min(Math.max(page, 1), pagination.totalPages)
+    setCurrentPage(clampedPage)
   }
 
   const handleCreateCombo = () => {
@@ -225,7 +218,6 @@ function ComboSeller() {
       <div className='flex justify-between items-center mb-6'>
         <h1 className='text-2xl font-semibold text-gray-900'>Quản lý Combo</h1>
         <div className='flex space-x-2'>
-          
           <Button className='bg-green-600 hover:bg-green-700' onClick={handleCreateCombo}>
             <Plus className='w-4 h-4 mr-2' />
             Thêm Combo mới
@@ -336,28 +328,17 @@ function ComboSeller() {
 
           {/* Pagination */}
           {pagination && pagination.totalPages > 1 && (
-            <div className='flex items-center justify-between mt-6'>
+            <div className='flex flex-col gap-4 mt-6 lg:flex-row lg:items-center lg:justify-between'>
               <div className='text-sm text-gray-700'>
-                Hiển thị {(pagination.pageNumber - 1) * pagination.pageSize + 1}-
-                {Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalItems)} của{' '}
+                Hiển thị {(pagination.pageNumber - 1) * pagination.pageSize + 1} -{' '}
+                {Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalItems)} trong tổng số{' '}
                 {pagination.totalItems} combo
               </div>
-              <div className='flex space-x-2'>
-                <Button variant='outline' size='sm' disabled={pagination.pageNumber === 1} onClick={handlePreviousPage}>
-                  Trước
-                </Button>
-                <Button variant='outline' size='sm' className='bg-green-600 text-white hover:bg-green-700'>
-                  {pagination.pageNumber}
-                </Button>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  disabled={pagination.pageNumber === pagination.totalPages}
-                  onClick={handleNextPage}
-                >
-                  Sau
-                </Button>
-              </div>
+              <Pagination
+                currentPage={pagination.pageNumber}
+                totalPages={pagination.totalPages}
+                onPageChange={handlePageChange}
+              />
             </div>
           )}
         </CardContent>
