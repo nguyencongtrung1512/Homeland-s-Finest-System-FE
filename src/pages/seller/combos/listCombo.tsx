@@ -1,7 +1,11 @@
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Plus, Edit, Eye, RefreshCw, PauseCircle, PlayCircle } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import path from '../../../constants/path'
@@ -38,17 +42,98 @@ function ComboSeller() {
   const [showToggleDialog, setShowToggleDialog] = useState(false)
   const [toggling, setToggling] = useState(false)
 
-  const pagination = useMemo(() => {
-    if (allCombos.length === 0) return null
-    return {
-      pageNumber: currentPage,
-      pageSize: pageSize,
-      totalItems: allCombos.length,
-      totalPages: Math.ceil(allCombos.length / pageSize)
-    }
-  }, [allCombos.length, currentPage, pageSize])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortBy, setSortBy] = useState<'createdAt' | 'name' | 'price'>('createdAt')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'draft' | 'pending' | 'processing' | 'approved' | 'rejected' | 'active' | 'inactive' | 'cancelled'
+  >('all')
 
-  const combos = allCombos.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const filteredCombos = useMemo(() => {
+    return allCombos.filter((combo) => {
+      const matchesSearch = (() => {
+        if (!searchTerm.trim()) return true
+        const term = searchTerm.toLowerCase()
+        return (
+          combo.name.toLowerCase().includes(term) ||
+          combo.description?.toLowerCase().includes(term) ||
+          combo.status?.toLowerCase().includes(term)
+        )
+      })()
+
+      const statusValue = combo.status.toLowerCase()
+      const matchesStatus = (() => {
+        switch (statusFilter) {
+          case 'draft':
+            return statusValue === 'draft'
+          case 'pending':
+            return statusValue === 'pending'
+          case 'processing':
+            return statusValue === 'processing'
+          case 'approved':
+            return statusValue === 'approved'
+          case 'rejected':
+            return statusValue === 'rejected'
+          case 'active':
+            return statusValue === 'active'
+          case 'inactive':
+            return !combo.isActive
+          case 'cancelled':
+            return statusValue === 'cancelled'
+          case 'all':
+          default:
+            return true
+        }
+      })()
+
+      return matchesSearch && matchesStatus
+    })
+  }, [allCombos, searchTerm, statusFilter])
+
+  const sortedCombos = useMemo(() => {
+    const sorted = [...filteredCombos]
+    const direction = sortDirection === 'asc' ? 1 : -1
+
+    const getDateValue = (combo: Combo) => {
+      const withDates = combo as Combo & { createdAt?: string; updatedAt?: string }
+      const dateString = withDates.createdAt ?? withDates.updatedAt ?? ''
+      return dateString ? new Date(dateString).getTime() : 0
+    }
+
+    sorted.sort((a, b) => {
+      const getValue = (combo: Combo) => {
+        switch (sortBy) {
+          case 'name':
+            return combo.name.toLowerCase()
+          case 'price':
+            return calculateTotalPrice(combo.comboItems.filter((item) => item.isActive))
+          case 'createdAt':
+          default:
+            return getDateValue(combo)
+        }
+      }
+
+      const valueA = getValue(a)
+      const valueB = getValue(b)
+
+      if (typeof valueA === 'number' && typeof valueB === 'number') {
+        return (valueA - valueB) * direction
+      }
+
+      if (valueA < valueB) return -1 * direction
+      if (valueA > valueB) return 1 * direction
+      return 0
+    })
+
+    return sorted
+  }, [filteredCombos, sortBy, sortDirection])
+
+  const combos = sortedCombos.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const totalItems = sortedCombos.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const paginationStart = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const paginationEnd = Math.min(currentPage * pageSize, totalItems)
+  const paginationLabel = `Hiển thị ${paginationStart} - ${paginationEnd} trong tổng số ${totalItems} combo`
 
   const fetchCombos = useCallback(async () => {
     if (!user?.userId) {
@@ -92,8 +177,7 @@ function ComboSeller() {
   }, [fetchCombos])
 
   const handlePageChange = (page: number) => {
-    if (!pagination) return
-    const clampedPage = Math.min(Math.max(page, 1), pagination.totalPages)
+    const clampedPage = Math.min(Math.max(page, 1), totalPages)
     setCurrentPage(clampedPage)
   }
 
@@ -159,7 +243,7 @@ function ComboSeller() {
   const getStatusBadge = (status: string, isActive: boolean) => {
     if (!isActive) {
       return {
-        text: 'Dừng hoạt động',
+        text: 'Tạm dừng',
         className: 'bg-gray-100 text-gray-800 hover:bg-gray-100'
       }
     }
@@ -231,6 +315,79 @@ function ComboSeller() {
           <p className='text-red-800'>{error}</p>
         </div>
       )}
+
+      <Card className='mb-6'>
+        <CardContent className='p-4'>
+          <motion.div
+            className='grid grid-cols-1 gap-6 md:grid-cols-3 lg:grid-cols-4 lg:gap-4'
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
+            <div className='flex flex-col gap-2 lg:col-span-2'>
+              <Label className='text-sm font-bold text-gray-700'>Tìm kiếm</Label>
+              <div className='relative'>
+                <Input
+                  placeholder='Tìm theo tên, mô tả hoặc trạng thái...'
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className='pl-3'
+                />
+              </div>
+            </div>
+            <div className='flex flex-col gap-2 lg:col-span-1'>
+              <Label className='text-sm font-bold text-gray-700'>Sắp xếp</Label>
+              <Select
+                value={`${sortBy}-${sortDirection}`}
+                onValueChange={(value) => {
+                  const [field, direction] = value.split('-')
+                  setSortBy(field as 'createdAt' | 'name' | 'price')
+                  setSortDirection(direction as 'asc' | 'desc')
+                }}
+              >
+                <SelectTrigger className='text-sm w-[200px]'>
+                  <SelectValue placeholder='Chọn kiểu sắp xếp' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='createdAt-desc'>Mới nhất</SelectItem>
+                  <SelectItem value='createdAt-asc'>Cũ nhất</SelectItem>
+                  <SelectItem value='name-asc'>Tên A-Z</SelectItem>
+                  <SelectItem value='name-desc'>Tên Z-A</SelectItem>
+                  <SelectItem value='price-asc'>Giá tăng dần</SelectItem>
+                  <SelectItem value='price-desc'>Giá giảm dần</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className='flex flex-col gap-2 lg:col-span-1'>
+              <Label className='text-sm font-bold text-gray-700'>Trạng thái</Label>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value as typeof statusFilter)
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger className='text-sm w-[200px]'>
+                  <SelectValue placeholder='Chọn trạng thái' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Tất cả</SelectItem>
+                  <SelectItem value='draft'>Nháp</SelectItem>
+                  <SelectItem value='pending'>Chờ duyệt</SelectItem>
+                  <SelectItem value='processing'>Đang xử lý</SelectItem>
+                  <SelectItem value='approved'>Đã duyệt</SelectItem>
+                  <SelectItem value='rejected'>Bị từ chối</SelectItem>
+                  <SelectItem value='active'>Hoạt động</SelectItem>
+                  <SelectItem value='inactive'>Tạm dừng</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </motion.div>
+        </CardContent>
+      </Card>
 
       {/* Combos Table */}
       <Card>
@@ -327,18 +484,10 @@ function ComboSeller() {
           )}
 
           {/* Pagination */}
-          {pagination && pagination.totalPages > 1 && (
+          {totalPages > 1 && (
             <div className='flex flex-col gap-4 mt-6 lg:flex-row lg:items-center lg:justify-between'>
-              <div className='text-sm text-gray-700'>
-                Hiển thị {(pagination.pageNumber - 1) * pagination.pageSize + 1} -{' '}
-                {Math.min(pagination.pageNumber * pagination.pageSize, pagination.totalItems)} trong tổng số{' '}
-                {pagination.totalItems} combo
-              </div>
-              <Pagination
-                currentPage={pagination.pageNumber}
-                totalPages={pagination.totalPages}
-                onPageChange={handlePageChange}
-              />
+              <div className='text-sm text-gray-700'>{paginationLabel}</div>
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
             </div>
           )}
         </CardContent>
