@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -12,6 +12,8 @@ import type { WalletData, WalletTransactionDTO, TransactionWalletStatus } from '
 import { getTransactionTypeLabel, getTransactionStatusLabel } from '../../../types/walletType'
 import { toast } from '../../../utils/toast'
 import Loading from '../../../components/Loading/loading'
+
+import Pagination from '../../../components/Pagination/Pagination'
 import {
   Clock,
   TrendingUp,
@@ -61,6 +63,8 @@ function FinanceManagement() {
   const [loadingWallet, setLoadingWallet] = useState(true)
   const [loadingTransactions, setLoadingTransactions] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [transactionPage, setTransactionPage] = useState(1)
+  const transactionsPerPage = 10
 
   // Fetch wallet balance
   const fetchWalletBalance = async () => {
@@ -169,12 +173,16 @@ function FinanceManagement() {
       case 'Approved':
         return <Badge className='bg-green-100 text-green-800 hover:bg-green-100 border-green-200'>{statusLabel}</Badge>
       case 'Pending':
-        return <Badge className='bg-yellow-100 text-orange-800 hover:bg-yellow-100 border-yellow-200'>{statusLabel}</Badge>
+        return (
+          <Badge className='bg-yellow-100 text-orange-800 hover:bg-yellow-100 border-yellow-200'>{statusLabel}</Badge>
+        )
       case 'Cancel':
       case 'Rejected':
         return <Badge className='bg-red-100 text-red-800 hover:bg-red-100 border-red-200'>{statusLabel}</Badge>
       case 'Disputed':
-        return <Badge className='bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200'>{statusLabel}</Badge>
+        return (
+          <Badge className='bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200'>{statusLabel}</Badge>
+        )
       default:
         return <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-100'>{statusLabel}</Badge>
     }
@@ -196,6 +204,38 @@ function FinanceManagement() {
     const matchesDate = !dateFilter || formatDate(transaction.createdAt).includes(dateFilter)
     return matchesSearch && matchesDate
   })
+
+  const totalTransactionPages = useMemo(
+    () => Math.ceil(filteredTransactions.length / transactionsPerPage),
+    [filteredTransactions.length, transactionsPerPage]
+  )
+
+  useEffect(() => {
+    setTransactionPage(1)
+  }, [searchTerm, dateFilter])
+
+  useEffect(() => {
+    if (transactionPage > totalTransactionPages && totalTransactionPages > 0) {
+      setTransactionPage(totalTransactionPages)
+    }
+  }, [transactionPage, totalTransactionPages])
+
+  const transactionStartIndex = (transactionPage - 1) * transactionsPerPage
+  const paginatedTransactions = filteredTransactions.slice(
+    transactionStartIndex,
+    transactionStartIndex + transactionsPerPage
+  )
+  const transactionEndIndex = Math.min(
+    transactionStartIndex + paginatedTransactions.length,
+    filteredTransactions.length
+  )
+  const transactionDisplayStart = filteredTransactions.length === 0 ? 0 : transactionStartIndex + 1
+
+  const handleTransactionPageChange = (page: number) => {
+    if (totalTransactionPages === 0) return
+    const clampedPage = Math.min(Math.max(page, 1), totalTransactionPages)
+    setTransactionPage(clampedPage)
+  }
 
   // Animation variants
   const containerVariants = {
@@ -850,7 +890,7 @@ function FinanceManagement() {
                     </thead>
                     <tbody>
                       <AnimatePresence>
-                        {filteredTransactions.map((transaction, index) => (
+                        {paginatedTransactions.map((transaction, index) => (
                           <motion.tr
                             key={transaction.id}
                             className='border-b border-gray-100 hover:bg-gray-50'
@@ -863,7 +903,9 @@ function FinanceManagement() {
                               {transaction.orderId ? `#${transaction.orderId}` : 'Không có'}
                             </td>
                             <td className='py-4 px-4 text-gray-700 text-sm'>{formatDate(transaction.createdAt)}</td>
-                            <td className='py-4 px-4 text-gray-700 text-sm'>{getTransactionTypeLabel(transaction.type)}</td>
+                            <td className='py-4 px-4 text-gray-700 text-sm'>
+                              {getTransactionTypeLabel(transaction.type)}
+                            </td>
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
                               {transaction.amount.toLocaleString()} ₫
                             </td>
@@ -881,7 +923,7 @@ function FinanceManagement() {
                 {/* Mobile Cards */}
                 <div className='md:hidden space-y-4'>
                   <AnimatePresence>
-                    {filteredTransactions.map((transaction, index) => (
+                    {paginatedTransactions.map((transaction, index) => (
                       <motion.div
                         key={transaction.id}
                         variants={itemVariants}
@@ -909,9 +951,7 @@ function FinanceManagement() {
                                 </div>
                                 <div>
                                   <p className='text-xs text-gray-500'>Loại</p>
-                                  <p className='text-sm text-gray-700'>
-                                    {getTransactionTypeLabel(transaction.type)}
-                                  </p>
+                                  <p className='text-sm text-gray-700'>{getTransactionTypeLabel(transaction.type)}</p>
                                 </div>
                               </div>
                               <div className='grid grid-cols-2 gap-3 pt-2 border-t'>
@@ -934,6 +974,18 @@ function FinanceManagement() {
                       </motion.div>
                     ))}
                   </AnimatePresence>
+                </div>
+                <div className='flex flex-col gap-4 mt-6 md:flex-row md:items-center md:justify-between'>
+                  <div className='text-sm text-gray-600'>
+                    {`Hiển thị ${transactionDisplayStart}-${transactionEndIndex} trong tổng số ${filteredTransactions.length} giao dịch`}
+                  </div>
+                  {totalTransactionPages > 1 && (
+                    <Pagination
+                      currentPage={transactionPage}
+                      totalPages={totalTransactionPages}
+                      onPageChange={handleTransactionPageChange}
+                    />
+                  )}
                 </div>
               </>
             )}

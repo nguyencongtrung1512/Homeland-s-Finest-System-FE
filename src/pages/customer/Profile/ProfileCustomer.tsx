@@ -310,6 +310,26 @@ export default function Profile() {
 
   const displayName = user ? `${user.lastName} ${user.firstName}` : 'Người dùng'
 
+  const formatMemberSince = (dateString?: string | null) => {
+    if (!dateString) return 'N/A'
+
+    const parsedDate = new Date(dateString)
+    if (!isNaN(parsedDate.getTime())) {
+      return parsedDate.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+    }
+
+    const dateMatch = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+    if (dateMatch) {
+      const [, day, month, year] = dateMatch
+      const fallbackDate = new Date(Number(year), Number(month) - 1, Number(day))
+      if (!isNaN(fallbackDate.getTime())) {
+        return fallbackDate.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+      }
+    }
+
+    return 'N/A'
+  }
+
   const handleAvatarSave = async (file: File) => {
     if (!authUser?.userId) return
 
@@ -386,10 +406,7 @@ export default function Profile() {
                   transition={{ duration: 0.4, delay: 0.5 }}
                   className='text-sm text-gray-500'
                 >
-                  Thành viên từ{' '}
-                  {user?.createdAt
-                    ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
-                    : 'N/A'}
+                  Thành viên từ {formatMemberSince(user?.createdAt)}
                 </motion.p>
                 <div className='flex gap-4 mt-2'>
                   {user?.userPoint !== undefined && (

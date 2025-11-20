@@ -499,14 +499,14 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
 
     try {
       await onSubmit(finalData)
-      toast.success(mode === 'create' ? 'Tạo khuyễn mãi thành công!' : 'Cập nhật khuyễn mãi thành công!')
+      toast.success(mode === 'create' ? 'Tạo khuyến mãi thành công!' : 'Cập nhật khuyến mãi thành công!')
       onClose()
     } catch (error) {
       console.error('Error submitting promotion:', error)
       const errorMessage =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         (error as Error)?.message ||
-        (mode === 'create' ? 'Có lỗi xảy ra khi tạo promotion' : 'Có lỗi xảy ra khi cập nhật promotion')
+        (mode === 'create' ? 'Có lỗi xảy ra khi tạo khuyến mãi' : 'Có lỗi xảy ra khi cập nhật khuyến mãi')
       toast.error(errorMessage)
     }
   }
@@ -671,7 +671,7 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
           <DialogTitle className='flex items-center justify-between'>
             <div className='flex items-center gap-2 text-xl'>
               <Tag className='h-5 w-5 text-blue-500' />
-              {mode === 'create' ? 'Tạo Promotion Mới' : mode === 'edit' ? 'Chỉnh sửa Promotion' : 'Chi tiết Promotion'}
+              {mode === 'create' ? 'Tạo Khuyến Mãi Mới' : mode === 'edit' ? 'Chỉnh sửa Khuyến Mãi' : 'Chi tiết Khuyến Mãi'}
             </div>
             {mode === 'view' && (
               <Button variant='outline' size='sm' onClick={() => setIsEditing(true)}>
@@ -986,7 +986,7 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                             </div>
                             <Button
                               type='button'
-                              variant={selectedProducts.includes(product.id) ? 'default' : 'outline'}
+                              variant={selectedProducts.includes(product.id) ? 'yellow' : 'outline'}
                               size='sm'
                               onClick={() => {
                                 if (selectedProducts.includes(product.id)) {
@@ -1063,8 +1063,8 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
               <Button type='button' variant='outline' onClick={onClose}>
                 Hủy
               </Button>
-              <Button type='submit' disabled={loading}>
-                {loading ? 'Đang xử lý...' : mode === 'create' ? 'Tạo Promotion' : 'Cập nhật'}
+              <Button variant='yellow' type='submit' disabled={loading}>
+                {loading ? 'Đang xử lý...' : mode === 'create' ? 'Tạo khuyến mãi' : 'Cập nhật'}
               </Button>
             </div>
           </form>
