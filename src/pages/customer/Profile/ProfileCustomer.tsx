@@ -241,18 +241,27 @@ export default function Profile() {
     if (!authUser?.userId) return
 
     try {
+      const trimmedName = formData.receiverName?.trim() ?? ''
+      const trimmedPhone = formData.receiverPhoneNumber?.trim() ?? ''
+
+      const baseAddressData = {
+        province: formData.province,
+        district: formData.district,
+        ward: formData.ward,
+        provinceId: formData.provinceId,
+        districtId: formData.districtId,
+        wardId: formData.wardId,
+        streetAddress: formData.streetAddress,
+        receiverName: trimmedName,
+        receiverPhoneNumber: trimmedPhone,
+        isDefault: formData.isDefault
+      }
+
       if (editingAddress) {
         // Convert AddressCreateInput to AddressUpdateInput for update
         const updateData = {
           userId: authUser.userId,
-          province: formData.province,
-          district: formData.district,
-          ward: formData.ward,
-          provinceId: formData.provinceId,
-          districtId: formData.districtId,
-          wardId: formData.wardId,
-          streetAddress: formData.streetAddress,
-          isDefault: formData.isDefault
+          ...baseAddressData
         }
 
         // Call API to update address
@@ -275,7 +284,7 @@ export default function Profile() {
         console.log('Address updated successfully:', response)
       } else {
         const addressDataWithUserId = {
-          ...formData,
+          ...baseAddressData,
           userId: authUser.userId
         }
 
@@ -285,10 +294,10 @@ export default function Profile() {
         // Add new address to local state
         const newAddress: Address = {
           id: response.data.id,
-          ...formData,
+          ...baseAddressData,
           userId: authUser.userId,
-          receiverName: formData.receiverName ?? null,
-          receiverPhoneNumber: formData.receiverPhoneNumber ?? null,
+          receiverName: baseAddressData.receiverName || null,
+          receiverPhoneNumber: baseAddressData.receiverPhoneNumber || null,
           isDefault: formData.isDefault || false,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -419,14 +428,6 @@ export default function Profile() {
                       Điểm tích lũy: {user.userPoint} điểm
                     </motion.p>
                   )}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.4, delay: 0.7, type: 'spring', stiffness: 200 }}
-                    className='flex items-center gap-1'
-                  >
-
-                  </motion.div>
                 </div>
               </motion.div>
             </div>

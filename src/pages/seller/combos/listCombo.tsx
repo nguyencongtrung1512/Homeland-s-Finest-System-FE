@@ -328,7 +328,7 @@ function ComboSeller() {
               <Label className='text-sm font-bold text-gray-700'>Tìm kiếm</Label>
               <div className='relative'>
                 <Input
-                  placeholder='Tìm theo tên, mô tả hoặc trạng thái...'
+                  placeholder='Tìm theo tên, mô tả ...'
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value)
