@@ -25,7 +25,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '../../../components/ui/textarea'
 import { Badge } from '../../../components/ui/badge'
 import { getRequestWalletMoney, updateRequestWalletMoney } from '../../../apis/requestWalletMoney.api'
+import { getWalletBalance, withdrawal } from '../../../apis/wallet.api'
 import type { RequestWalletMoney, UpdateRequestWalletMoneyInput } from '../../../types/requestWalletMoneyType'
+import type { WalletData } from '../../../types/walletType'
 import { formatDate } from '../../../utils/formatDate'
 import { toast } from '../../../utils/toast'
 
@@ -45,6 +47,10 @@ function RequestWalletMoneyManagement() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [updateNote, setUpdateNote] = useState('')
   const [isUpdating, setIsUpdating] = useState(false)
+  const [walletData, setWalletData] = useState<WalletData | null>(null)
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
+  const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false)
 
   // Thống kê
   const [stats, setStats] = useState({
@@ -73,8 +79,8 @@ function RequestWalletMoneyManagement() {
         type?: string
         status?: string
       } = {
-        pageSize: 1,
-        pageNumber: 0
+        pageSize: 0,
+        pageNumber: 1
       }
 
       // Vẫn filter ở API nếu có
@@ -87,7 +93,6 @@ function RequestWalletMoneyManagement() {
       }
 
       const response = await getRequestWalletMoney(params)
-      console.log('response trung data', response)
       const requests = response.data || []
 
       // Lưu tất cả requests
@@ -108,6 +113,46 @@ function RequestWalletMoneyManagement() {
       toast.error('Lỗi', 'Không thể tải danh sách yêu cầu')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchWalletInfo = async () => {
+    try {
+      const data = await getWalletBalance()
+      setWalletData(data)
+    } catch (err) {
+      console.error('Error fetching wallet balance:', err)
+    }
+  }
+
+  const handleCreateWithdrawal = async () => {
+    if (!withdrawAmount) return
+
+    const amountNumber = Number(withdrawAmount)
+    if (Number.isNaN(amountNumber) || amountNumber <= 0) {
+      toast.error('Lỗi', 'Số tiền không hợp lệ')
+      return
+    }
+
+    if (walletData && amountNumber > walletData.availableBalance) {
+      toast.error('Lỗi', 'Số tiền rút vượt quá số dư khả dụng')
+      return
+    }
+
+    try {
+      setIsSubmittingWithdraw(true)
+      await withdrawal(amountNumber)
+      toast.success('Thành công', 'Đã tạo yêu cầu rút tiền')
+      setIsWithdrawModalOpen(false)
+      setWithdrawAmount('')
+      fetchWalletInfo()
+      fetchRequests()
+    } catch (err: unknown) {
+      console.error('Error creating withdrawal request:', err)
+      const message = (err as { message?: string })?.message || 'Không thể tạo yêu cầu rút tiền'
+      toast.error('Lỗi', message)
+    } finally {
+      setIsSubmittingWithdraw(false)
     }
   }
 
@@ -145,6 +190,10 @@ function RequestWalletMoneyManagement() {
     fetchRequests()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeFilter, statusFilter])
+
+  useEffect(() => {
+    fetchWalletInfo()
+  }, [])
 
   // Handle filter button click
   const handleFilter = () => {
@@ -396,7 +445,37 @@ function RequestWalletMoneyManagement() {
       </motion.div>
 
       {/* Summary Cards */}
-      <div className='grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6'>
+      <div className='grid grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-3 md:gap-6'>
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.05 }}
+        >
+          <Card className='bg-white shadow-sm'>
+            <CardContent className='p-4 md:p-6'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <p className='text-xs md:text-sm text-gray-600 mb-1'>Số dư khả dụng</p>
+                  <p className='text-xl md:text-2xl font-bold text-emerald-600'>
+                    {walletData ? `${walletData.availableBalance.toLocaleString('vi-VN')}₫` : '--'}
+                  </p>
+                  <Button
+                    size='sm'
+                    className='mt-3 bg-emerald-600 hover:bg-emerald-700 text-white'
+                    onClick={() => setIsWithdrawModalOpen(true)}
+                    disabled={!walletData || walletData.availableBalance <= 0}
+                  >
+                    Tạo yêu cầu rút
+                  </Button>
+                </div>
+                <div className='w-10 h-10 md:w-12 md:h-12 bg-emerald-100 rounded-lg flex items-center justify-center'>
+                  <DollarSign className='w-5 h-5 md:w-6 md:h-6 text-emerald-600' />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -478,26 +557,7 @@ function RequestWalletMoneyManagement() {
           </Card>
         </motion.div>
 
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.5 }}
-          className='hidden md:block'
-        >
-          <Card className='bg-white shadow-sm'>
-            <CardContent className='p-6'>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <p className='text-sm text-gray-600 mb-1'>Tổng tiền</p>
-                  <p className='text-2xl font-bold text-gray-900'>{(stats.totalAmount / 1000000).toFixed(1)}M₫</p>
-                </div>
-                <div className='w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center'>
-                  <DollarSign className='w-6 h-6 text-purple-600' />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+
       </div>
 
       {/* Filters */}
@@ -801,6 +861,64 @@ function RequestWalletMoneyManagement() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Withdrawal Modal */}
+      <Dialog
+        open={isWithdrawModalOpen}
+        onOpenChange={(open) => {
+          setIsWithdrawModalOpen(open)
+          if (!open) {
+            setWithdrawAmount('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tạo yêu cầu rút tiền</DialogTitle>
+          </DialogHeader>
+          <div className='space-y-4 mt-2'>
+            <div>
+              <p className='text-sm text-gray-600 mb-1'>
+                Số dư khả dụng:{' '}
+                <span className='font-semibold text-emerald-600'>
+                  {walletData ? `${walletData.availableBalance.toLocaleString('vi-VN')}₫` : '--'}
+                </span>
+              </p>
+              <Input
+                type='number'
+                min={0}
+                step='1000'
+                placeholder='Nhập số tiền muốn rút'
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+              />
+              <p className='text-xs text-gray-500 mt-1'>Số tiền tối thiểu 1.000₫ và không vượt quá số dư khả dụng.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setIsWithdrawModalOpen(false)
+                setWithdrawAmount('')
+              }}
+              disabled={isSubmittingWithdraw}
+            >
+              Hủy
+            </Button>
+            <Button onClick={handleCreateWithdrawal} disabled={!withdrawAmount || isSubmittingWithdraw}>
+              {isSubmittingWithdraw ? (
+                <>
+                  <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                  Đang tạo...
+                </>
+              ) : (
+                'Xác nhận tạo yêu cầu'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

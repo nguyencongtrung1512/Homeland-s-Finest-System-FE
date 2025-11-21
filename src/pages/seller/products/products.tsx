@@ -172,9 +172,6 @@ function ProductsSeller() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      if (!product.isActive) {
-        return false
-      }
       const matchesSearch = (() => {
         if (!searchTerm.trim()) return true
         const term = searchTerm.toLowerCase()
@@ -452,9 +449,9 @@ function ProductsSeller() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Xác nhận xóa sản phẩm</DialogTitle>
+            <DialogTitle>Xác nhận tạm dừng sản phẩm</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn xóa sản phẩm <strong>{productToDelete?.name}</strong> không?
+              Bạn có chắc chắn muốn tạm dừng sản phẩm <strong>{productToDelete?.name}</strong> không?
               <br />
               <span className='text-sm text-gray-500 mt-2 block'>
                 Sản phẩm sẽ bị vô hiệu hóa và không còn hiển thị trên hệ thống. Hành động này có thể ảnh hưởng đến các sản phẩm và
@@ -472,7 +469,7 @@ function ProductsSeller() {
               variant='destructive'
               className='bg-red-600 hover:bg-red-700 text-white'
             >
-              {isDeleting ? 'Đang xóa...' : 'Xác nhận xóa'}
+              {isDeleting ? 'Đang xóa...' : 'Xác nhận tạm dừng'}
             </Button>
           </DialogFooter>
         </DialogContent>
