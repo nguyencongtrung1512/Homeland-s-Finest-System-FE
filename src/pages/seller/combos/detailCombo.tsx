@@ -338,7 +338,7 @@ function DetailComboSeller() {
   }, [fetchCombo])
 
   const handleBack = () => {
-    navigate('/seller/combos')
+    navigate('/seller/combo-management')
   }
 
   const getStatusBadge = (status: string, isActive: boolean) => {

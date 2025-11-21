@@ -27,7 +27,6 @@ function AdminLayout() {
 
   const menuItems = [
     { key: 'profile', icon: <User size={16} />, label: 'Thông tin cá nhân', isModal: true },
-    { key: 'settings', icon: <Settings size={16} />, label: 'Cài đặt' },
     { key: 'logout', icon: <LogOut size={16} />, label: 'Đăng xuất', onClick: handleLogout }
   ]
 
@@ -116,8 +115,8 @@ function AdminLayout() {
                                   <span className='text-sm font-medium text-gray-600'>Vai trò:</span>
                                   <span className='text-sm text-gray-900'>{user?.roleName || 'Admin'}</span>
                                 </div>
-                               
-                               
+
+
                                 <div className='flex justify-between items-center py-2'>
                                   <span className='text-sm font-medium text-gray-600'>Token hết hạn:</span>
                                   <span className='text-sm text-gray-900'>

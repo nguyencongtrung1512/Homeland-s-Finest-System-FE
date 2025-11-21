@@ -8,6 +8,7 @@ import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
+import { ComboReview } from './review'
 
 // Context for sharing combo data across components
 interface ComboDetailContextType {
@@ -352,6 +353,11 @@ function ComboDetail() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Combo Reviews Section */}
+        <div className='mt-8'>
+          <ComboReview />
         </div>
       </div>
 

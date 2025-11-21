@@ -34,7 +34,7 @@ export const productReviewApi = {
     return response as unknown as ReviewStatsApiResponse
   },
 
-  // 3. Create product review
+  // 3. Create product review with FormData (multipart/form-data)
   // Backend will validate: OrderItemId exists, belongs to user, order is completed, and not reviewed yet
   createReview: async (reviewData: ProductReviewCreateInput): Promise<ReviewApiResponse> => {
     const formData = new FormData()
@@ -63,7 +63,7 @@ export const productReviewApi = {
     return response as unknown as ReviewApiResponse
   },
 
-  // 4. Update review
+  // 4. Update review with FormData (multipart/form-data)
   updateReview: async (reviewId: string, updateData: ProductReviewUpdateInput): Promise<ReviewApiResponse> => {
     const formData = new FormData()
 

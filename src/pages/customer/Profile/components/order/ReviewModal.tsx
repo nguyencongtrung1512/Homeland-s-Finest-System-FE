@@ -43,7 +43,15 @@ interface ComboGroup {
 
 const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
-const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, userId, onReviewSubmitted }) => {
+const ReviewModal: React.FC<ReviewModalProps> = ({
+  isOpen,
+  onClose,
+  products,
+  userId, // userId is passed but not used - backend gets it from token
+  onReviewSubmitted
+}) => {
+  // Suppress unused variable warning - userId may be needed in future
+  void userId
   const [selectedProduct, setSelectedProduct] = useState<ReviewProduct | null>(null)
   const [selectedCombo, setSelectedCombo] = useState<ComboGroup | null>(null)
   const [overallRating, setOverallRating] = useState(0)
@@ -181,31 +189,26 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
     try {
       setIsSubmitting(true)
 
-      // For combo, use the first item's orderItemId
-      // Backend should handle combo review based on comboId or orderItemId
+      // Get orderItemId from selected item
+      // For combo: use first item's orderItemId (backend will handle combo review automatically)
+      // For product: use the product's orderItemId
       const targetItem = isComboSelected ? selectedCombo?.items[0] : selectedProduct
       const orderItemId = targetItem?.orderItemId
-      const productId = targetItem?.productId
 
-      if (!orderItemId || !productId) {
+      if (!orderItemId) {
         toast.error('Không tìm thấy thông tin đơn hàng để đánh giá')
         return
       }
 
-      // Prepare review data according to ProductReviewCreateInput interface
+      // Prepare review data - only send orderItemId, rating, comment, images
+      // Backend will automatically detect if it's a combo or product based on orderItemId
       const reviewData: ProductReviewCreateInput = {
-        orderItemId, // OrderItemId for backend validation
-        productId,
-        userId: userId,
+        orderItemId, // Backend will validate and get product/combo info from this
         rating: overallRating,
-        comment: qualityComment.trim() || '',
-        comboId: selectedCombo?.comboId,
+        comment: qualityComment.trim() || undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined
       }
 
-      // Call API to submit review
-      // Backend will validate: OrderItemId exists, belongs to user, order is completed (Delivered/Paid), and not reviewed yet
-      // For combo, backend should recognize it's a combo review based on orderItemId
       await productReviewApi.createReview(reviewData)
 
       toast.success(isComboSelected ? 'Đánh giá combo thành công!' : 'Đánh giá sản phẩm thành công!')
@@ -215,12 +218,39 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, products, us
       if (onReviewSubmitted) {
         onReviewSubmitted()
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error submitting review:', error)
-      const errorMessage =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        (error as Error)?.message ||
-        'Có lỗi xảy ra khi gửi đánh giá. Vui lòng thử lại.'
+
+      // Extract error message from backend response
+      let errorMessage = 'Có lỗi xảy ra khi gửi đánh giá. Vui lòng thử lại.'
+
+      if (error) {
+        // Backend error response structure: { message: string, status: number, errors?: [] }
+        const errorObj = error as {
+          message?: string
+          response?: { data?: { message?: string; errors?: Array<{ field?: string; message?: string }> } }
+        }
+
+        if (errorObj.message) {
+          errorMessage = errorObj.message
+        } else if (errorObj.response?.data?.message) {
+          errorMessage = errorObj.response.data.message
+        } else if (
+          errorObj.response?.data?.errors &&
+          Array.isArray(errorObj.response.data.errors) &&
+          errorObj.response.data.errors.length > 0
+        ) {
+          // Handle validation errors
+          const validationErrors = errorObj.response.data.errors
+            .map((err) => err.message || err.field)
+            .filter(Boolean)
+            .join(', ')
+          errorMessage = validationErrors || errorMessage
+        } else if (typeof error === 'string') {
+          errorMessage = error
+        }
+      }
+
       toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)

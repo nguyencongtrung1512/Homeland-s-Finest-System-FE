@@ -21,6 +21,7 @@ const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae89372327
 interface Order {
   id: string
   storeId: string
+  fromName: string
   date: string
   originalStatus: OrderStatus
   status:
@@ -326,6 +327,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   return {
     id: apiOrder?.id || '',
     storeId: apiOrder?.storeId || '',
+    fromName: apiOrder?.fromName || '',
     date: apiOrder?.createdAt,
     originalStatus: statusVal,
     isComplained: isComplainedValue,
@@ -725,7 +727,7 @@ export default function OrdersContent({
               <div className='flex justify-between items-start mb-4'>
                 <div>
                   <div className='flex items-center gap-3 mb-2'>
-                    <span className='font-medium text-gray-900'>Mã đơn hàng: {order.id}</span>
+                    <span className=''>Cửa hàng: {order.fromName}</span>
                     <Badge className={`${order.statusBgColor} ${order.statusColor} border-0`}>{order.status}</Badge>
                     {order.isFreeship && (
                       <Badge className='bg-green-100 text-green-700 border-0 text-xs'>Miễn phí ship</Badge>
