@@ -278,6 +278,38 @@ function DetailProductSeller() {
 
   const hasNumericValue = (value: number | null | undefined): value is number => value !== null && value !== undefined
 
+  // Helper function để kiểm tra có thể chỉnh sửa product info không (trừ variant)
+  // Theo tài liệu: Draft, Cancelled, Denied, Approved có thể chỉnh sửa
+  const canEditProductInfo = (): boolean => {
+    if (!product) return false
+    const status = product.status?.toLowerCase()
+    // Có thể chỉnh sửa khi: Draft, Cancelled, Denied, Approved
+    // Theo productState.md: "(Draft | Cancelled | Denied | Approved) → (Pending | Processing)"
+    return status === 'draft' || status === 'cancelled' || status === 'denied' || status === 'approved'
+  }
+
+  // Helper function để kiểm tra có thể submit không
+  // Theo tài liệu: Draft, Cancelled, Denied, Approved có thể submit
+  const canSubmitProduct = (): boolean => {
+    if (!product) return false
+    const status = product.status?.toLowerCase()
+    // Có thể submit khi: Draft, Cancelled, Denied, Approved
+    // Theo productState.md: "(Draft | Cancelled | Denied | Approved) → (Pending | Processing)"
+    return status === 'draft' || status === 'cancelled' || status === 'denied' || status === 'approved'
+  }
+
+  // Helper function để kiểm tra có đang ở trạng thái không cho phép chỉnh sửa không
+  // Theo tài liệu: Processing, Confirmed không cho phép chỉnh sửa (trừ variant)
+  // Approved cho phép chỉnh sửa để gửi duyệt lại
+  const isInReadOnlyStatus = (): boolean => {
+    if (!product) return false
+    const status = product.status?.toLowerCase()
+    // Processing, Confirmed: không cho phép chỉnh sửa (trừ variant)
+    // Theo productState.md: "Ở trạng thái này (Confirmed), Seller không thể sửa đổi cây sản phẩm"
+    // Approved KHÔNG nằm trong danh sách này vì có thể chỉnh sửa để gửi lại
+    return status === 'processing' || status === 'confirmed'
+  }
+
   const getStatusBadge = (status: string, isActive: boolean) => {
     // Ưu tiên hiển thị status trước, đặc biệt là các trạng thái đặc biệt
     switch (status) {
@@ -648,6 +680,11 @@ function DetailProductSeller() {
 
   // Handlers for edit modes
   const handleToggleEditMode = (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => {
+    // Chỉ cho phép toggle edit mode khi có thể chỉnh sửa product info
+    if (!canEditProductInfo()) {
+      toast.warning('Không thể chỉnh sửa trong trạng thái hiện tại')
+      return
+    }
     if (section === 'certificates') {
       setEditModes((prev) => ({ ...prev, certificates: !prev.certificates }))
     } else if (section === 'story') {
@@ -733,24 +770,28 @@ function DetailProductSeller() {
           <h1 className='text-2xl font-bold text-gray-900'>Chi tiết sản phẩm</h1>
         </div>
         <div className='flex items-center gap-2'>
-          <Button
-            onClick={() => setShowEditProductDialog(true)}
-            className='bg-blue-600 hover:bg-blue-700 text-white'
-            variant='outline'
-            size='sm'
-          >
-            <Edit className='w-4 h-4 mr-2' />
-            Chỉnh sửa sản phẩm
-          </Button>
-          <Button
-            onClick={() => setShowCreateDetailDialog(true)}
-            className='bg-green-600 hover:bg-green-700 text-white'
-            variant='outline'
-            size='sm'
-          >
-            <Plus className='w-4 h-4 mr-2' />
-            Thêm sản phẩm liên quan
-          </Button>
+          {canEditProductInfo() && (
+            <Button
+              onClick={() => setShowEditProductDialog(true)}
+              className='bg-blue-600 hover:bg-blue-700 text-white'
+              variant='outline'
+              size='sm'
+            >
+              <Edit className='w-4 h-4 mr-2' />
+              Chỉnh sửa sản phẩm
+            </Button>
+          )}
+          {canEditProductInfo() && (
+            <Button
+              onClick={() => setShowCreateDetailDialog(true)}
+              className='bg-green-600 hover:bg-green-700 text-white'
+              variant='outline'
+              size='sm'
+            >
+              <Plus className='w-4 h-4 mr-2' />
+              Thêm sản phẩm liên quan
+            </Button>
+          )}
           {product?.isActive ? (
             <Button
               onClick={handleToggleActiveClick}
@@ -795,8 +836,8 @@ function DetailProductSeller() {
                 {product && getStatusBadge(product.status, product.isActive)}
               </div>
               <div className='flex items-center gap-2'>
-                {/* Hiển thị button Submit khi status là Draft */}
-                {product?.status?.toLowerCase() === 'draft' && (
+                {/* Hiển thị button Submit khi có thể submit (Draft, Cancelled, Denied, Approved) */}
+                {canSubmitProduct() && (
                   <Button
                     onClick={handleOpenSubmitConfirm}
                     disabled={!canSubmit() || checkingValidation}
@@ -821,8 +862,30 @@ function DetailProductSeller() {
                   )}
               </div>
             </div>
-            {/* Hiển thị checklist các bước cần hoàn thành - chỉ hiển thị khi Draft */}
-            {product?.status?.toLowerCase() === 'draft' && (
+            {/* Hiển thị thông báo khi đang ở trạng thái Processing, Confirmed (không cho phép chỉnh sửa) */}
+            {isInReadOnlyStatus() && (
+              <div className='mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg'>
+                <div className='flex items-start gap-3'>
+                  <AlertCircle className='w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5' />
+                  <div>
+                    <p className='text-sm font-medium text-yellow-800 mb-1'>
+                      {product?.status?.toLowerCase() === 'processing'
+                        ? 'Đang gửi duyệt, không được chỉnh sửa'
+                        : product?.status?.toLowerCase() === 'confirmed'
+                          ? 'Sản phẩm đã được xác nhận, không được chỉnh sửa'
+                          : 'Sản phẩm đã được duyệt, không được chỉnh sửa'}
+                    </p>
+                    <p className='text-xs text-yellow-700'>
+                      {product?.status?.toLowerCase() === 'processing'
+                        ? 'Sản phẩm đang được xử lý bởi hệ thống. Bạn có thể hủy để chỉnh sửa hoặc chờ kết quả duyệt.'
+                        : 'Bạn chỉ có thể chỉnh sửa thông tin biến thể sản phẩm (Product Variant).'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Hiển thị checklist các bước cần hoàn thành - chỉ hiển thị khi có thể submit (Draft, Cancelled, Denied, Approved) */}
+            {canSubmitProduct() && (
               <div className='mt-4 space-y-3'>
                 <div className='p-4 bg-gray-50 border border-gray-200 rounded-lg'>
                   <div className='flex items-center justify-between mb-3'>
@@ -919,11 +982,14 @@ function DetailProductSeller() {
         </Card>
       </motion.div>
 
-      {/* Progress Stepper - Hiển thị cho Draft, Pending, Processing và Confirmed để xem lại thông tin */}
+      {/* Progress Stepper - Hiển thị cho Draft, Pending, Processing, Confirmed, Cancelled, Denied và Approved */}
       {(product?.status?.toLowerCase() === 'draft' ||
         product?.status?.toLowerCase() === 'pending' ||
         product?.status?.toLowerCase() === 'processing' ||
-        product?.status?.toLowerCase() === 'confirmed') && (
+        product?.status?.toLowerCase() === 'confirmed' ||
+        product?.status?.toLowerCase() === 'cancelled' ||
+        product?.status?.toLowerCase() === 'denied' ||
+        product?.status?.toLowerCase() === 'approved') && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1019,8 +1085,8 @@ function DetailProductSeller() {
                               {step.label}
                             </span>
 
-                            {/* Popover for missing items - chỉ hiển thị khi status là Draft */}
-                            {hasError && product?.status?.toLowerCase() === 'draft' && (
+                            {/* Popover for missing items - chỉ hiển thị khi có thể chỉnh sửa (Draft, Cancelled, Denied) */}
+                            {hasError && canSubmitProduct() && (
                               <div
                                 className={`absolute bottom-full left-1/2 transform -translate-x-1/2 z-50 mb-2 transition-all duration-200 ${showPopover[step.key]
                                   ? 'opacity-100 pointer-events-auto'
@@ -1989,14 +2055,16 @@ function DetailProductSeller() {
         </Tabs>
       </motion.div>
 
-      {/* Modal Create Product Detail */}
-      <ModalProductDetail
-        open={showCreateDetailDialog}
-        onOpenChange={setShowCreateDetailDialog}
-        product={product}
-        parentId={id}
-        onSuccess={handleRefreshProduct}
-      />
+      {/* Modal Create Product Detail - Chỉ mở khi có thể chỉnh sửa */}
+      {canEditProductInfo() && (
+        <ModalProductDetail
+          open={showCreateDetailDialog}
+          onOpenChange={setShowCreateDetailDialog}
+          product={product}
+          parentId={id}
+          onSuccess={handleRefreshProduct}
+        />
+      )}
 
       {/* Modal Create Product Variant */}
       <ModalVariantProduct
@@ -2030,13 +2098,15 @@ function DetailProductSeller() {
         onSuccess={handleRefreshProduct}
       />
 
-      {/* Modal Edit Product */}
-      <ModalEditProduct
-        open={showEditProductDialog}
-        onOpenChange={setShowEditProductDialog}
-        product={product}
-        onSuccess={handleRefreshProduct}
-      />
+      {/* Modal Edit Product - Chỉ mở khi có thể chỉnh sửa */}
+      {canEditProductInfo() && (
+        <ModalEditProduct
+          open={showEditProductDialog}
+          onOpenChange={setShowEditProductDialog}
+          product={product}
+          onSuccess={handleRefreshProduct}
+        />
+      )}
 
       {/* Modal xác nhận gửi sản phẩm */}
       <Dialog open={showSubmitConfirmDialog} onOpenChange={setShowSubmitConfirmDialog}>
@@ -2044,8 +2114,8 @@ function DetailProductSeller() {
           <DialogHeader>
             <DialogTitle>Xác nhận gửi sản phẩm</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn gửi sản phẩm <strong>{product?.name}</strong> để duyệt không? Sản phẩm sẽ được
-              chuyển sang trạng thái "Đang xử lý" sau khi gửi.
+              Bạn có chắc chắn muốn gửi sản phẩm <strong>{product?.name}</strong> để duyệt không? Sản phẩm sẽ không được
+              chỉnh sửa sau khi gửi.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

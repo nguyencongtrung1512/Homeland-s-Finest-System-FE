@@ -332,7 +332,7 @@ function ComboListStaff() {
             <div className='flex-1 min-w-[300px] relative'>
               <Search size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
               <Input
-                placeholder='Tìm kiếm theo tên combo, cửa hàng, tỉnh/thành phố...'
+                placeholder='Tìm kiếm theo tên combo, cửa hàng'
                 value={searchText}
                 onChange={(e) => {
                   setSearchText(e.target.value)

@@ -33,7 +33,9 @@ function ProductsSeller() {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState<'createdAt' | 'name' | 'price'>('createdAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected' | 'draft'>('all')
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'approved' | 'pending' | 'rejected' | 'draft' | 'processing' | 'cancelled' | 'confirmed' | 'denied'
+  >('all')
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [showUpdateDialog, setShowUpdateDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -270,7 +272,31 @@ function ProductsSeller() {
           className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
           text: 'Chờ duyệt'
         }
+      case 'processing':
+        return {
+          variant: 'secondary' as const,
+          className: 'bg-orange-100 text-orange-800 hover:bg-orange-100',
+          text: 'Đang xử lý'
+        }
+      case 'cancelled':
+        return {
+          variant: 'secondary' as const,
+          className: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
+          text: 'Đã hủy'
+        }
       case 'rejected':
+        return {
+          variant: 'secondary' as const,
+          className: 'bg-red-100 text-red-800 hover:bg-red-100',
+          text: 'Từ chối'
+        }
+      case 'confirmed':
+        return {
+          variant: 'secondary' as const,
+          className: 'bg-cyan-100 text-cyan-800 hover:bg-cyan-100',
+          text: 'Đã xác nhận'
+        }
+      case 'denied':
         return {
           variant: 'secondary' as const,
           className: 'bg-red-100 text-red-800 hover:bg-red-100',
@@ -305,11 +331,19 @@ function ProductsSeller() {
             ? product.isActive && (statusValue === 'approved' || statusValue === 'active')
             : statusFilter === 'pending'
               ? statusValue === 'pending'
-              : statusFilter === 'rejected'
-                ? statusValue === 'rejected'
-                : statusFilter === 'draft'
-                  ? statusValue === 'draft'
-                  : !product.isActive
+              : statusFilter === 'processing'
+                ? statusValue === 'processing'
+                : statusFilter === 'cancelled'
+                  ? statusValue === 'cancelled'
+                  : statusFilter === 'rejected'
+                    ? statusValue === 'rejected'
+                    : statusFilter === 'confirmed'
+                      ? statusValue === 'confirmed'
+                      : statusFilter === 'denied'
+                        ? statusValue === 'denied'
+                        : statusFilter === 'draft'
+                          ? statusValue === 'draft'
+                          : !product.isActive
 
       return matchesSearch && matchesStatus
     })
@@ -464,9 +498,13 @@ function ProductsSeller() {
                 <SelectContent>
                   <SelectItem value='all'>Tất cả</SelectItem>
                   <SelectItem value='approved'>Hoạt động</SelectItem>
-                  <SelectItem value='pending'>Chờ duyệt</SelectItem>
-                  <SelectItem value='rejected'>Từ chối</SelectItem>
                   <SelectItem value='draft'>Nháp</SelectItem>
+                  <SelectItem value='pending'>Chờ duyệt</SelectItem>
+                  <SelectItem value='processing'>Đang xử lý</SelectItem>
+                  <SelectItem value='confirmed'>Đã xác nhận</SelectItem>
+                  <SelectItem value='cancelled'>Đã hủy</SelectItem>
+                  <SelectItem value='rejected'>Từ chối</SelectItem>
+                  <SelectItem value='denied'>Từ chối</SelectItem>
                 </SelectContent>
               </Select>
             </div>
