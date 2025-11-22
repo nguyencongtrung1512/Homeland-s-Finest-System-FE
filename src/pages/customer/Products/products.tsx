@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import AsideFilter from './AsideFilter/asideFilter'
 import ProductCard, { type ProductCardData } from './Product/productCard'
 import Discover from './discover'
-import { useProducts } from '../../../hooks/useProducts'
 import Pagination from '../../../components/Pagination/Pagination'
 import Loading from '../../../components/Loading/loading'
 import { useCart } from '../../../contexts/cart.context'
@@ -13,29 +12,79 @@ import { PromotionBubble } from '../../../components/PromotionBubble'
 import ChatBot from '../../../components/ChatBot/chatbot'
 import ChatSystem from '../Chat/chatSystem'
 import { useAuth } from '../../../contexts/auth.context'
+import searchApi, { type SearchRequest } from '../../../apis/search.api'
+import type { Product } from '../../../types/productType'
 
 function Products() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
-  const [currentPage, setCurrentPage] = useState(0) // Backend expect zero-based page
+  const [currentPage, setCurrentPage] = useState(1) // 1-based for UI
+  const [pageSize] = useState(10) // Items per page
   const { addToCart } = useCart()
   const [activeTab, setActiveTab] = useState<'product' | 'combo'>('product')
   const [combos, setCombos] = useState<Combo[]>([])
   const [combosLoading, setCombosLoading] = useState(false)
   const [combosError, setCombosError] = useState<string | null>(null)
 
-  const { products, loading, error, pagination, refetch } = useProducts({
-    pageNumber: currentPage + 1,
-    pageSize: 10
-  })
+  // Search state
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<string | null>(null)
+  const [filters, setFilters] = useState<{
+    minPrice?: number
+    maxPrice?: number
+    categoryFilters?: string[]
+    provinceFilters?: string[]
+    regionFilters?: string[]
+    subRegionFilters?: string[]
+  }>({})
 
+  // Fetch products using search API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      if (activeTab !== 'product') return
+
+      try {
+        setLoading(true)
+        setError(null)
+
+        const searchRequest: SearchRequest = {
+          queryText: searchQuery.trim() || '', // Empty string for trending
+          userId: user?.userId || null,
+          limit: 10, // Get more results for client-side pagination
+          sortBy: sortBy || null,
+          minPrice: filters.minPrice || null,
+          maxPrice: filters.maxPrice || null,
+          categoryFilters: filters.categoryFilters || null,
+          provinceFilters: filters.provinceFilters || null,
+          regionFilters: filters.regionFilters || null,
+          subRegionFilters: filters.subRegionFilters || null
+        }
+
+        const results = await searchApi.search(searchRequest)
+        setProducts(results)
+      } catch (err: unknown) {
+        console.error('Error fetching products:', err)
+        const errorMessage = err instanceof Error ? err.message : 'Không thể tải sản phẩm. Vui lòng thử lại.'
+        setError(errorMessage)
+        setProducts([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [activeTab, searchQuery, sortBy, filters, user?.userId])
+
+  // Fetch combos
   useEffect(() => {
     const fetchCombos = async () => {
       if (activeTab !== 'combo') return
       try {
         setCombosLoading(true)
         setCombosError(null)
-        const data = await getAllCombos({ pageNumber: currentPage + 1, pageSize: 12 })
+        const data = await getAllCombos({ pageNumber: currentPage, pageSize: 12 })
         setCombos(data)
       } catch {
         setCombosError('Không thể tải combo.')
@@ -46,7 +95,15 @@ function Products() {
     fetchCombos()
   }, [activeTab, currentPage])
 
-  const productCardData: ProductCardData[] = products.map((product) => ({
+  // Client-side pagination
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return products.slice(start, start + pageSize)
+  }, [products, currentPage, pageSize])
+
+  const totalPages = Math.ceil(products.length / pageSize)
+
+  const productCardData: ProductCardData[] = paginatedProducts.map((product) => ({
     ...product,
     price: product.price
   }))
@@ -61,17 +118,23 @@ function Products() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Search disabled for testing basic API call')
-    refetch()
+    setCurrentPage(1) // Reset to first page on new search
   }
 
   const handleSortChange = (sort: string) => {
-    console.log('Sort disabled for testing basic API call:', sort)
-    refetch()
+    // Map UI sort labels to API sortBy values
+    const sortMap: Record<string, string> = {
+      'Mới nhất': 'newest',
+      'Bán chạy': 'best-selling',
+      'Giá thấp → cao': 'price-asc',
+      'Giá cao → thấp': 'price-desc'
+    }
+    setSortBy(sortMap[sort] || null)
+    setCurrentPage(1) // Reset to first page on sort change
   }
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page - 1) // Convert 1-based UI to 0-based API
+    setCurrentPage(page)
   }
 
   return (
@@ -166,7 +229,14 @@ function Products() {
               <h3 className='text-lg font-medium text-gray-900 mb-2'>Có lỗi xảy ra</h3>
               <p className='text-gray-600 mb-4'>{activeTab === 'product' ? error : combosError}</p>
               <button
-                onClick={() => (activeTab === 'product' ? refetch() : setActiveTab('combo'))}
+                onClick={() => {
+                  if (activeTab === 'product') {
+                    // Trigger refetch by updating a dependency
+                    setFilters({ ...filters })
+                  } else {
+                    setActiveTab('combo')
+                  }
+                }}
                 className='px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors'
               >
                 Thử lại
@@ -214,15 +284,15 @@ function Products() {
               {activeTab === 'product' && (
                 <>
                   <Pagination
-                    currentPage={currentPage + 1}
-                    totalPages={pagination.totalPages}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
                     onPageChange={handlePageChange}
                     maxVisiblePages={5}
                   />
 
                   {/* Results info */}
                   <div className='text-center text-sm text-gray-600 mt-4'>
-                    Hiển thị {productCardData.length} trong tổng số {pagination.totalItems} sản phẩm
+                    Hiển thị {productCardData.length} trong tổng số {products.length} sản phẩm
                   </div>
                 </>
               )}
@@ -234,9 +304,7 @@ function Products() {
       <div>
         <Discover />
       </div>
-      <div>
-      {isAuthenticated ? <ChatSystem /> : <ChatBot />}
-      </div>
+      <div>{isAuthenticated ? <ChatSystem /> : <ChatBot />}</div>
       <PromotionBubble />
     </div>
   )

@@ -18,13 +18,15 @@ import {
   Edit,
   CircleFadingArrowUp,
   ChevronDown,
-  Trash2
+  CheckCircle2,
+  XCircle,
+  AlertCircle
 } from 'lucide-react'
 import { message } from 'antd'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs'
+import { Tabs, TabsContent } from '../../../components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -86,9 +88,14 @@ function DetailProductSeller() {
   const [showSubmitConfirmDialog, setShowSubmitConfirmDialog] = useState(false)
   const [showCancelConfirmDialog, setShowCancelConfirmDialog] = useState(false)
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false)
+  const [showActivateDialog, setShowActivateDialog] = useState(false)
 
   // States for expanded variants (collapse/expand)
   const [expandedVariants, setExpandedVariants] = useState<Set<string>>(new Set())
+
+  // State for active tab
+  const [activeTab, setActiveTab] = useState<string>('info')
+  const [showPopover, setShowPopover] = useState<{ [key: string]: boolean }>({})
 
   useEffect(() => {
     const fetchProductDetail = async () => {
@@ -118,45 +125,81 @@ function DetailProductSeller() {
     fetchProductDetail()
   }, [id, navigate])
 
-  // Fetch certificates and stories for validation
+  // Function to refresh validation data (certificates and stories)
+  const refreshValidationData = async (skipDelay = false) => {
+    if (!id) return
+
+    // Only add delay when adding new data, not when reloading
+    if (!skipDelay) {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+
+    // Fetch certificates separately - don't let story errors affect certificates
+    try {
+      const certResponse = await productCertificateApi.getByProductId(id)
+      // Parse giống hệt như trong ProductCertificate component: response.data.data || response.data || []
+      const certificatesData = certResponse.data?.data || certResponse.data || []
+      const finalCertificates = Array.isArray(certificatesData) ? certificatesData : []
+      setCertificates(finalCertificates)
+    } catch (error) {
+      console.error('Error fetching certificates:', error)
+      // Only reset certificates if there's an actual error
+      setCertificates([])
+    }
+
+    // Fetch stories separately - handle 400 as "no story found" (normal case)
+    try {
+      const storyResponse = await productStoryApi.getByProductId(id)
+      if (storyResponse.status === 200 && storyResponse.data) {
+        // Response có thể là single story object hoặc array
+        const storyData = storyResponse.data
+        if (Array.isArray(storyData)) {
+          setStories(storyData)
+        } else {
+          setStories([storyData])
+        }
+      } else {
+        // No story found - this is normal, not an error
+        setStories([])
+      }
+    } catch (error: unknown) {
+      // Handle 400 as "no story found" - this is a normal case, not an error
+      const axiosError = error as { response?: { status?: number } }
+      if (axiosError?.response?.status === 400) {
+        // No story found - this is normal, not an error
+        setStories([])
+      } else {
+        console.error('Error fetching stories:', error)
+        setStories([])
+      }
+    }
+  }
+
+  // Fetch certificates and stories for validation - chỉ chạy khi mount hoặc id thay đổi
   useEffect(() => {
     const fetchValidationData = async () => {
       if (!id) return
 
       try {
         setCheckingValidation(true)
-        // Fetch certificates
-        const certResponse = await productCertificateApi.getByProductId(id)
-        const certData = certResponse.data?.data || certResponse.data || []
-        setCertificates(Array.isArray(certData) ? certData : [])
-
-        // Fetch stories - API returns single story or array
-        const storyResponse = await productStoryApi.getByProductId(id)
-        if (storyResponse.status === 200 && storyResponse.data) {
-          // Response có thể là single story object hoặc array
-          const storyData = storyResponse.data
-          if (Array.isArray(storyData)) {
-            setStories(storyData)
-          } else {
-            setStories([storyData])
-          }
-        } else {
-          setStories([])
-        }
-      } catch (error) {
-        console.error('Error fetching validation data:', error)
-        // Set empty arrays on error
-        setCertificates([])
-        setStories([])
+        // Skip delay when initial load/reload
+        await refreshValidationData(true)
       } finally {
         setCheckingValidation(false)
       }
     }
 
-    if (product) {
+    if (id) {
       fetchValidationData()
     }
-  }, [id, product])
+    // Chỉ chạy khi id thay đổi, không chạy khi product thay đổi để tránh override state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  // Close popovers when tab changes
+  useEffect(() => {
+    setShowPopover({})
+  }, [activeTab])
 
   // Fetch parent product if product has parentId
   useEffect(() => {
@@ -233,6 +276,8 @@ function DetailProductSeller() {
     return result
   }
 
+  const hasNumericValue = (value: number | null | undefined): value is number => value !== null && value !== undefined
+
   const getStatusBadge = (status: string, isActive: boolean) => {
     // Ưu tiên hiển thị status trước, đặc biệt là các trạng thái đặc biệt
     switch (status) {
@@ -242,10 +287,14 @@ function DetailProductSeller() {
         return <Badge className='bg-yellow-100 text-yellow-800'>Chờ duyệt</Badge>
       case 'Processing':
         return <Badge className='bg-yellow-100 text-yellow-800'>Đang xử lý</Badge>
+      case 'Confirmed':
+        return <Badge className='bg-yellow-100 text-yellow-800'>Đang xử lý</Badge>
       case 'Approved':
-        return <Badge className='bg-green-100 text-green-800'>Đã duyệt</Badge>
+        return <Badge className='bg-green-100 text-green-800'>Hoạt động</Badge>
       case 'Rejected':
-        return <Badge className='bg-red-100 text-red-800'>Từ chối</Badge>
+        return <Badge className='bg-red-100 text-red-800'>Đang xử lý</Badge>
+      case 'Denied':
+        return <Badge className='bg-red-100 text-red-800'>Bị từ chối</Badge>
       case 'Cancelled':
         return <Badge className='bg-gray-100 text-gray-800'>Đã hủy</Badge>
       default:
@@ -277,24 +326,76 @@ function DetailProductSeller() {
       if (refreshResponse.status === 200 && refreshResponse.data) {
         setProduct(refreshResponse.data)
       }
-      // Refresh certificates and stories
-      const certResponse = await productCertificateApi.getByProductId(id)
-      const certData = certResponse.data?.data || certResponse.data || []
-      setCertificates(Array.isArray(certData) ? certData : [])
-
-      const storyResponse = await productStoryApi.getByProductId(id)
-      if (storyResponse.status === 200 && storyResponse.data) {
-        const storyData = storyResponse.data
-        if (Array.isArray(storyData)) {
-          setStories(storyData)
-        } else {
-          setStories([storyData])
-        }
-      } else {
-        setStories([])
-      }
+      // Refresh validation data (certificates, stories) để cập nhật progress bar
+      // Skip delay vì đây là refresh sau khi update product
+      await refreshValidationData(true)
     } catch (error) {
       console.error('Error refreshing product:', error)
+    }
+  }
+
+  // Kiểm tra từng bước chi tiết
+  const getSubmitChecklist = () => {
+    if (!product) {
+      return {
+        productName: false,
+        productDescription: false,
+        productImages: false,
+        productCategory: false,
+        productMaterial: false,
+        productVariant: false,
+        certificates: false,
+        story: false
+      }
+    }
+
+    // Kiểm tra có ít nhất 1 product variant
+    const parentVariants = product.variantGroups ? getParentVariants(product.variantGroups) : []
+    const hasVariant = parentVariants.length > 0
+
+    return {
+      productName: !!(product.name && product.name.trim() !== ''),
+      productDescription: !!(product.description && product.description.trim() !== ''),
+      productImages: !!(product.productImages && product.productImages.length > 0),
+      productCategory: !!(product.productCategories && product.productCategories.id),
+      productMaterial: !!(product.material && product.material.trim() !== ''),
+      productVariant: hasVariant,
+      certificates: certificates.length > 0,
+      story: stories.some(
+        (story) => story.title && story.title.trim() !== '' && story.contents && story.contents.length > 0
+      )
+    }
+  }
+
+  // Kiểm tra trạng thái từng tab
+  const getTabStatus = () => {
+    const checklist = getSubmitChecklist()
+    return {
+      info: {
+        completed:
+          checklist.productName &&
+          checklist.productDescription &&
+          checklist.productImages &&
+          checklist.productCategory &&
+          checklist.productMaterial &&
+          checklist.productVariant,
+        missingItems: [
+          !checklist.productName && 'Tên sản phẩm',
+          !checklist.productDescription && 'Mô tả sản phẩm',
+          !checklist.productImages && 'Hình ảnh sản phẩm (ít nhất 1 ảnh)',
+          !checklist.productCategory && 'Danh mục sản phẩm',
+          !checklist.productMaterial && 'Xuất xứ (Material)',
+          !checklist.productVariant && 'Ít nhất 1 product variant'
+        ].filter(Boolean) as string[]
+      },
+      certificates: {
+        completed: checklist.certificates,
+        missingItems: !checklist.certificates ? ['Ít nhất 1 chứng nhận'] : []
+      },
+      story: {
+        completed: checklist.story,
+        missingItems: !checklist.story ? ['Tiêu đề và nội dung câu chuyện'] : []
+      }
     }
   }
 
@@ -302,29 +403,17 @@ function DetailProductSeller() {
   const canSubmit = (): boolean => {
     if (!product) return false
 
-    // Kiểm tra thông tin sản phẩm
-    const hasProductInfo = !!(
-      product.name &&
-      product.name.trim() !== '' &&
-      product.description &&
-      product.description.trim() !== '' &&
-      product.productImages &&
-      product.productImages.length > 0 &&
-      product.productCategories &&
-      product.productCategories.id &&
-      product.material &&
-      product.material.trim() !== ''
+    const checklist = getSubmitChecklist()
+    return (
+      checklist.productName &&
+      checklist.productDescription &&
+      checklist.productImages &&
+      checklist.productCategory &&
+      checklist.productMaterial &&
+      checklist.productVariant &&
+      checklist.certificates &&
+      checklist.story
     )
-
-    // Kiểm tra chứng nhận (có ít nhất 1 chứng nhận)
-    const hasCertificates = certificates.length > 0
-
-    // Kiểm tra câu chuyện (có ít nhất 1 story với title và contents)
-    const hasStory = stories.some(
-      (story) => story.title && story.title.trim() !== '' && story.contents && story.contents.length > 0
-    )
-
-    return hasProductInfo && hasCertificates && hasStory
   }
 
   // Handler mở modal xác nhận submit
@@ -346,7 +435,12 @@ function DetailProductSeller() {
       const response = await productApi.submit(id)
       if (response && response.status === 202) {
         toast.success(response?.message || 'Gửi sản phẩm thành công')
+        // Wait a bit for backend to process
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        // Refresh all data: product, certificates, and stories
         await handleRefreshProduct()
+        // Also refresh validation data to update progress bar
+        await refreshValidationData(true)
       } else {
         toast.error(response?.message || 'Không thể gửi sản phẩm')
       }
@@ -377,7 +471,12 @@ function DetailProductSeller() {
       const response = await productApi.cancel(id)
       if (response && response.status === 202) {
         toast.success(response?.message || 'Hủy sản phẩm thành công')
+        // Wait a bit for backend to process
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        // Refresh all data: product, certificates, and stories
         await handleRefreshProduct()
+        // Also refresh validation data to update progress bar
+        await refreshValidationData(true)
       } else {
         toast.error(response?.message || 'Không thể hủy sản phẩm')
       }
@@ -393,32 +492,141 @@ function DetailProductSeller() {
     }
   }
 
-  // Handler mở modal xác nhận xóa
-  const handleOpenDeleteConfirm = () => {
-    setShowDeleteConfirmDialog(true)
+  // Handler mở modal xác nhận dừng/kích hoạt
+  const handleToggleActiveClick = () => {
+    if (product?.isActive) {
+      // Nếu đang active thì dừng sản phẩm
+      setShowDeleteConfirmDialog(true)
+    } else {
+      // Nếu đang inactive thì kích hoạt lại
+      setShowActivateDialog(true)
+    }
   }
 
-  // Handler xóa sản phẩm (sau khi xác nhận)
+  // Handler dừng sản phẩm (sau khi xác nhận)
   const handleDelete = async () => {
-    if (!id) return
+    if (!id || !product) return
 
     try {
       setCheckingValidation(true)
       setShowDeleteConfirmDialog(false)
-      const response = await productApi.delete(id)
+
+      // Fetch chi tiết sản phẩm để lấy đầy đủ thông tin
+      const productDetail = await productApi.getById(id)
+      if (productDetail.status !== 200 || !productDetail.data) {
+        toast.error('Không thể tải thông tin sản phẩm')
+        return
+      }
+
+      const productData = productDetail.data
+
+      // Tạo FormData với tất cả các field
+      const formData = new FormData()
+      formData.append('Name', productData.name || '')
+      formData.append('ProvinceId', productData.provinceId?.toString() || '')
+      formData.append('IsActive', 'false') // Thay đổi isActive thành false
+      formData.append('RemoveExistingVideo', 'false')
+
+      // Optional fields
+      if (productData.description) {
+        formData.append('Description', productData.description)
+      }
+
+      if (productData.material) {
+        formData.append('Material', productData.material)
+      }
+
+      if (productData.productCategories?.id) {
+        formData.append('CategoryId', productData.productCategories.id)
+      }
+
+      // Existing image URLs
+      if (productData.productImages && productData.productImages.length > 0) {
+        productData.productImages.forEach((url: string) => {
+          formData.append('ExistingImageUrls', url)
+        })
+      }
+
+      const response = await productApi.updateWithFormData(id, formData)
+
       if (response && (response.status === 200 || response.status === 202)) {
-        toast.success(response?.message || 'Xóa sản phẩm thành công')
-        // Navigate back to product list after successful deletion
-        navigate('/seller/product-management')
+        toast.success('Tạm dừng sản phẩm thành công')
+        // Refresh product data
+        await handleRefreshProduct()
       } else {
-        toast.error(response?.message || 'Không thể xóa sản phẩm')
+        toast.error(response?.message || 'Không thể tạm dừng sản phẩm')
       }
     } catch (error: unknown) {
-      console.error('Error deleting product:', error)
+      console.error('Error deactivating product:', error)
       const errorMessage =
         error && typeof error === 'object' && 'message' in error
           ? String(error.message)
-          : 'Có lỗi xảy ra khi xóa sản phẩm'
+          : 'Có lỗi xảy ra khi tạm dừng sản phẩm'
+      toast.error(errorMessage)
+    } finally {
+      setCheckingValidation(false)
+    }
+  }
+
+  // Handler kích hoạt lại sản phẩm (sau khi xác nhận)
+  const handleActivateConfirm = async () => {
+    if (!id || !product) return
+
+    try {
+      setCheckingValidation(true)
+      setShowActivateDialog(false)
+
+      // Fetch chi tiết sản phẩm để lấy đầy đủ thông tin
+      const productDetail = await productApi.getById(id)
+      if (productDetail.status !== 200 || !productDetail.data) {
+        toast.error('Không thể tải thông tin sản phẩm')
+        return
+      }
+
+      const productData = productDetail.data
+
+      // Tạo FormData với tất cả các field
+      const formData = new FormData()
+      formData.append('Name', productData.name || '')
+      formData.append('ProvinceId', productData.provinceId?.toString() || '')
+      formData.append('IsActive', 'true') // Thay đổi isActive thành true
+      formData.append('RemoveExistingVideo', 'false')
+
+      // Optional fields
+      if (productData.description) {
+        formData.append('Description', productData.description)
+      }
+
+      if (productData.material) {
+        formData.append('Material', productData.material)
+      }
+
+      if (productData.productCategories?.id) {
+        formData.append('CategoryId', productData.productCategories.id)
+      }
+
+      // Existing image URLs
+      if (productData.productImages && productData.productImages.length > 0) {
+        productData.productImages.forEach((url: string) => {
+          formData.append('ExistingImageUrls', url)
+        })
+      }
+
+      const response = await productApi.updateWithFormData(id, formData)
+
+      if (response && (response.status === 200 || response.status === 202)) {
+        toast.success('Kích hoạt sản phẩm thành công')
+        // Refresh product data
+        await handleRefreshProduct()
+      } else {
+        toast.error(response?.message || 'Không thể kích hoạt sản phẩm')
+      }
+    } catch (error: unknown) {
+      console.error('Error activating product:', error)
+      const errorMessage =
+        error && typeof error === 'object' && 'message' in error
+          ? String(error.message)
+          : 'Có lỗi xảy ra khi kích hoạt sản phẩm'
       toast.error(errorMessage)
     } finally {
       setCheckingValidation(false)
@@ -541,18 +749,31 @@ function DetailProductSeller() {
             size='sm'
           >
             <Plus className='w-4 h-4 mr-2' />
-            Thêm Product Detail
+            Thêm sản phẩm liên quan
           </Button>
-          <Button
-            onClick={handleOpenDeleteConfirm}
-            className='bg-red-600 hover:bg-red-700 text-white'
-            variant='outline'
-            size='sm'
-            disabled={checkingValidation}
-          >
-            <Trash2 className='w-4 h-4 mr-2' />
-            Xóa sản phẩm
-          </Button>
+          {product?.isActive ? (
+            <Button
+              onClick={handleToggleActiveClick}
+              className='bg-red-600 hover:bg-red-700 text-white'
+              variant='outline'
+              size='sm'
+              disabled={checkingValidation}
+            >
+              <Archive className='w-4 h-4 mr-2' />
+              Dừng sản phẩm
+            </Button>
+          ) : (
+            <Button
+              onClick={handleToggleActiveClick}
+              className='bg-green-600 hover:bg-green-700 text-white'
+              variant='outline'
+              size='sm'
+              disabled={checkingValidation}
+            >
+              <Play className='w-4 h-4 mr-2' />
+              Kích hoạt lại
+            </Button>
+          )}
         </div>
       </motion.div>
       <motion.div
@@ -585,31 +806,253 @@ function DetailProductSeller() {
                     Gửi sản phẩm
                   </Button>
                 )}
-                {/* Hiển thị button Cancel khi status là Pending hoặc Processing */}
-                {(product?.status?.toLowerCase() === 'pending' || product?.status?.toLowerCase() === 'processing') && (
-                  <Button
-                    onClick={handleOpenCancelConfirm}
-                    disabled={checkingValidation}
-                    variant='destructive'
-                    className='bg-red-600 hover:bg-red-700 text-white'
-                  >
-                    Hủy sản phẩm
-                  </Button>
-                )}
+                {/* Hiển thị button Cancel khi status là Pending, Processing hoặc Confirmed */}
+                {(product?.status?.toLowerCase() === 'pending' ||
+                  product?.status?.toLowerCase() === 'processing' ||
+                  product?.status?.toLowerCase() === 'confirmed') && (
+                    <Button
+                      onClick={handleOpenCancelConfirm}
+                      disabled={checkingValidation}
+                      variant='destructive'
+                      className='bg-red-600 hover:bg-red-700 text-white'
+                    >
+                      Hủy sản phẩm
+                    </Button>
+                  )}
               </div>
             </div>
-            {/* Hiển thị thông báo khi không đủ điều kiện submit */}
-            {product?.status?.toLowerCase() === 'draft' && !canSubmit() && (
-              <div className='mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg'>
-                <p className='text-sm text-yellow-800'>
-                  <strong>Lưu ý:</strong> Vui lòng điền đầy đủ thông tin sản phẩm, chứng nhận và câu chuyện để có thể
-                  gửi sản phẩm.
-                </p>
+            {/* Hiển thị checklist các bước cần hoàn thành - chỉ hiển thị khi Draft */}
+            {product?.status?.toLowerCase() === 'draft' && (
+              <div className='mt-4 space-y-3'>
+                <div className='p-4 bg-gray-50 border border-gray-200 rounded-lg'>
+                  <div className='flex items-center justify-between mb-3'>
+                    <h4 className='text-sm font-semibold text-gray-900'>Hoàn thành các bước khi gửi:</h4>
+                    {(() => {
+                      const checklist = getSubmitChecklist()
+                      const totalSteps = 8
+                      const completedSteps = Object.values(checklist).filter((v) => v).length
+                      return (
+                        <span
+                          className={`text-sm font-medium ${completedSteps === totalSteps ? 'text-green-600' : 'text-yellow-600'
+                            }`}
+                        >
+                          {completedSteps}/{totalSteps} bước đã hoàn thành
+                        </span>
+                      )
+                    })()}
+                  </div>
+                  <div className='space-y-2'>
+                    {(() => {
+                      const checklist = getSubmitChecklist()
+                      const steps = [
+                        {
+                          key: 'productName',
+                          label: 'Tên sản phẩm',
+                          completed: checklist.productName
+                        },
+                        {
+                          key: 'productDescription',
+                          label: 'Mô tả sản phẩm',
+                          completed: checklist.productDescription
+                        },
+                        {
+                          key: 'productImages',
+                          label: 'Hình ảnh sản phẩm (ít nhất 1 ảnh)',
+                          completed: checklist.productImages
+                        },
+                        {
+                          key: 'productCategory',
+                          label: 'Danh mục sản phẩm',
+                          completed: checklist.productCategory
+                        },
+                        {
+                          key: 'productMaterial',
+                          label: 'Xuất xứ (Material)',
+                          completed: checklist.productMaterial
+                        },
+                        {
+                          key: 'productVariant',
+                          label: 'Product variant (ít nhất 1 variant)',
+                          completed: checklist.productVariant
+                        },
+                        {
+                          key: 'certificates',
+                          label: 'Chứng nhận sản phẩm (ít nhất 1 chứng nhận)',
+                          completed: checklist.certificates
+                        },
+                        {
+                          key: 'story',
+                          label: 'Câu chuyện sản phẩm (có tiêu đề và nội dung)',
+                          completed: checklist.story
+                        }
+                      ]
+
+                      return steps.map((step) => (
+                        <div
+                          key={step.key}
+                          className={`flex items-center gap-2 p-2 rounded-md transition-colors ${step.completed ? 'bg-green-50' : 'bg-red-50'
+                            }`}
+                        >
+                          {step.completed ? (
+                            <CheckCircle2 className='w-5 h-5 text-green-600 flex-shrink-0' />
+                          ) : (
+                            <XCircle className='w-5 h-5 text-red-500 flex-shrink-0' />
+                          )}
+                          <span className={`text-sm ${step.completed ? 'text-green-800' : 'text-red-800 font-medium'}`}>
+                            {step.label}
+                          </span>
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                </div>
+                {!canSubmit() && (
+                  <div className='p-3 bg-yellow-50 border border-yellow-200 rounded-lg'>
+                    <p className='text-sm text-yellow-800'>
+                      <strong>Lưu ý:</strong> Vui lòng hoàn thành tất cả các bước trên để có thể gửi sản phẩm.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Progress Stepper - Hiển thị cho Draft, Pending, Processing và Confirmed để xem lại thông tin */}
+      {(product?.status?.toLowerCase() === 'draft' ||
+        product?.status?.toLowerCase() === 'pending' ||
+        product?.status?.toLowerCase() === 'processing' ||
+        product?.status?.toLowerCase() === 'confirmed') && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.25 }}
+          >
+            <Card className='mb-6 overflow-visible'>
+              <CardContent className='p-6 overflow-visible'>
+                <div className='relative overflow-visible'>
+                  {/* Progress Line */}
+                  <div className='absolute top-6 left-0 right-0 h-0.5 bg-gray-200'>
+                    <div
+                      className='h-full bg-green-500 transition-all duration-300'
+                      style={{
+                        width: `${(() => {
+                          const tabStatus = getTabStatus()
+                          const completedTabs = [
+                            tabStatus.info.completed,
+                            tabStatus.certificates.completed,
+                            tabStatus.story.completed
+                          ].filter(Boolean).length
+                          return (completedTabs / 3) * 100
+                        })()}%`
+                      }}
+                    />
+                  </div>
+
+                  {/* Progress Nodes */}
+                  <div className='relative flex justify-between items-center overflow-visible'>
+                    {[
+                      { key: 'info', label: 'Thông tin sản phẩm', tab: 'info' },
+                      { key: 'certificates', label: 'Chứng nhận', tab: 'certificates' },
+                      { key: 'story', label: 'Câu chuyện', tab: 'story' }
+                    ].map((step) => {
+                      const tabStatus = getTabStatus()
+                      const stepStatus = tabStatus[step.key as keyof typeof tabStatus]
+                      const isActive = activeTab === step.tab
+                      const isCompleted = stepStatus.completed
+                      const hasError = !isCompleted && stepStatus.missingItems.length > 0
+
+                      return (
+                        <div key={step.key} className='flex flex-col items-center flex-1 relative z-10 overflow-visible'>
+                          <button
+                            type='button'
+                            onClick={() => {
+                              setActiveTab(step.tab)
+                              // Scroll to tabs if needed
+                              setTimeout(() => {
+                                document
+                                  .getElementById('product-tabs')
+                                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                              }, 100)
+                              // Show popover if there are missing items
+                              if (hasError) {
+                                setShowPopover((prev) => ({ ...prev, [step.key]: !prev[step.key] }))
+                              } else {
+                                setShowPopover((prev) => ({ ...prev, [step.key]: false }))
+                              }
+                            }}
+                            className={`relative flex flex-col items-center group overflow-visible ${isActive ? 'scale-110' : ''
+                              } transition-transform duration-200`}
+                          >
+                            {/* Node Circle */}
+                            <div
+                              className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${isCompleted
+                                ? 'bg-green-500 border-green-500 text-white'
+                                : hasError
+                                  ? 'bg-red-100 border-red-500 text-red-600'
+                                  : isActive
+                                    ? 'bg-blue-100 border-blue-500 text-blue-600'
+                                    : 'bg-gray-100 border-gray-300 text-gray-400'
+                                }`}
+                            >
+                              {isCompleted ? (
+                                <CheckCircle2 className='w-6 h-6' />
+                              ) : hasError ? (
+                                <AlertCircle className='w-6 h-6' />
+                              ) : (
+                                <div className='w-4 h-4 rounded-full bg-current' />
+                              )}
+                            </div>
+
+                            {/* Label */}
+                            <span
+                              className={`mt-2 text-xs font-medium text-center max-w-[120px] ${isActive
+                                ? 'text-blue-600 font-semibold'
+                                : isCompleted
+                                  ? 'text-green-600'
+                                  : hasError
+                                    ? 'text-red-600'
+                                    : 'text-gray-500'
+                                }`}
+                            >
+                              {step.label}
+                            </span>
+
+                            {/* Popover for missing items - chỉ hiển thị khi status là Draft */}
+                            {hasError && product?.status?.toLowerCase() === 'draft' && (
+                              <div
+                                className={`absolute bottom-full left-1/2 transform -translate-x-1/2 z-50 mb-2 transition-all duration-200 ${showPopover[step.key]
+                                  ? 'opacity-100 pointer-events-auto'
+                                  : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'
+                                  }`}
+                              >
+                                <div className='bg-white border-2 border-red-200 rounded-lg shadow-xl p-3 min-w-[200px] max-w-[250px] relative'>
+                                  <div className='text-xs font-semibold text-red-800 mb-2'>Còn thiếu:</div>
+                                  <ul className='text-xs text-red-700 space-y-1'>
+                                    {stepStatus.missingItems.map((item, idx) => (
+                                      <li key={idx} className='flex items-start gap-1'>
+                                        <span className='text-red-500 mt-0.5 flex-shrink-0'>•</span>
+                                        <span className='break-words'>{item}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                  {/* Arrow pointing down */}
+                                  <div className='absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-red-200'></div>
+                                  <div className='absolute -bottom-[1px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[3px] border-r-[3px] border-t-[3px] border-transparent border-t-white'></div>
+                                </div>
+                              </div>
+                            )}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
       {/* Tabs */}
       <motion.div
@@ -617,13 +1060,7 @@ function DetailProductSeller() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.3 }}
       >
-        <Tabs defaultValue='info' className='w-full'>
-          <TabsList className='mb-6'>
-            <TabsTrigger value='info'>Thông tin sản phẩm</TabsTrigger>
-            <TabsTrigger value='certificates'>Chứng nhận</TabsTrigger>
-            <TabsTrigger value='story'>Câu chuyện</TabsTrigger>
-          </TabsList>
-
+        <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full' id='product-tabs'>
           {/* Tab 1: Thông tin sản phẩm */}
           <TabsContent value='info' className='space-y-6'>
             {/* Product Information - Horizontal Layout */}
@@ -1012,7 +1449,7 @@ function DetailProductSeller() {
                             {/* Variant Cha Header */}
                             <div className='mb-4 pb-4 border-b border-gray-200'>
                               <div className='flex items-center justify-between mb-4'>
-                                <h3 className='text-lg font-semibold text-gray-900'>Variant cha</h3>
+                                <h3 className='text-lg font-semibold text-gray-900'>Biến thể sản phẩm</h3>
                                 <Button
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -1129,6 +1566,30 @@ function DetailProductSeller() {
                                           className={`font-medium ${parentVariant.quantity > 20 ? 'text-green-600' : parentVariant.quantity > 10 ? 'text-yellow-600' : 'text-red-600'}`}
                                         >
                                           {parentVariant.quantity} sản phẩm
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Reserved COD */}
+                                  {hasNumericValue(parentVariant.reservedCOD) && (
+                                    <div className='space-y-2'>
+                                      <label className='text-sm font-medium text-gray-700'>Giữ hàng COD</label>
+                                      <div className='p-3 bg-gray-50 rounded-lg border'>
+                                        <span className='text-gray-900'>
+                                          {parentVariant.reservedCOD.toLocaleString('vi-VN')} sản phẩm
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Reserved Combo */}
+                                  {hasNumericValue(parentVariant.reservedCombo) && (
+                                    <div className='space-y-2'>
+                                      <label className='text-sm font-medium text-gray-700'>Giữ hàng combo</label>
+                                      <div className='p-3 bg-gray-50 rounded-lg border'>
+                                        <span className='text-gray-900'>
+                                          {parentVariant.reservedCombo.toLocaleString('vi-VN')} sản phẩm
                                         </span>
                                       </div>
                                     </div>
@@ -1302,6 +1763,32 @@ function DetailProductSeller() {
                                             </div>
                                           )}
 
+                                          {/* Child Reserved COD */}
+                                          {hasNumericValue(childVariant.reservedCOD) && (
+                                            <div className='space-y-2'>
+                                              <label className='text-sm font-medium text-gray-700'>Giữ hàng COD</label>
+                                              <div className='p-2 bg-white rounded border'>
+                                                <span className='text-gray-900 text-sm'>
+                                                  {childVariant.reservedCOD.toLocaleString('vi-VN')} sản phẩm
+                                                </span>
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Child Reserved Combo */}
+                                          {hasNumericValue(childVariant.reservedCombo) && (
+                                            <div className='space-y-2'>
+                                              <label className='text-sm font-medium text-gray-700'>
+                                                Giữ hàng combo
+                                              </label>
+                                              <div className='p-2 bg-white rounded border'>
+                                                <span className='text-gray-900 text-sm'>
+                                                  {childVariant.reservedCombo.toLocaleString('vi-VN')} sản phẩm
+                                                </span>
+                                              </div>
+                                            </div>
+                                          )}
+
                                           {/* Child Weight */}
                                           {childVariant.weight !== null && (
                                             <div className='space-y-2'>
@@ -1399,7 +1886,7 @@ function DetailProductSeller() {
                                 className='w-full'
                               >
                                 <Plus className='w-4 h-4 mr-2' />
-                                {hasChildren ? 'Thêm variant con' : 'Tạo variant con'}
+                                {hasChildren ? 'Thêm biến thể con' : 'Tạo biến thể con'}
                               </Button>
                             </div>
                           </motion.div>
@@ -1478,6 +1965,7 @@ function DetailProductSeller() {
                   onToggleEditMode={handleToggleEditMode}
                   onCancelEdit={handleCancelEdit}
                   onSaveSection={handleSaveSection}
+                  onRefresh={refreshValidationData}
                 />
               </motion.div>
             )}
@@ -1493,6 +1981,7 @@ function DetailProductSeller() {
                   onToggleEditMode={handleToggleEditMode}
                   onCancelEdit={handleCancelEdit}
                   onSaveSection={handleSaveSection}
+                  onRefresh={refreshValidationData}
                 />
               </motion.div>
             )}
@@ -1600,13 +2089,13 @@ function DetailProductSeller() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal xác nhận xóa sản phẩm */}
+      {/* Modal xác nhận tạm dừng sản phẩm */}
       <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Xác nhận xóa sản phẩm</DialogTitle>
+            <DialogTitle>Xác nhận tạm dừng sản phẩm</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn xóa sản phẩm <strong>{product?.name}</strong> không?
+              Bạn có chắc chắn muốn tạm dừng sản phẩm <strong>{product?.name}</strong> không?
               <br />
               <span className='text-sm text-gray-500 mt-2 block'>
                 Sản phẩm sẽ bị vô hiệu hóa và không còn hiển thị trên hệ thống. Hành động này có thể ảnh hưởng đến các
@@ -1624,7 +2113,44 @@ function DetailProductSeller() {
               variant='destructive'
               className='bg-red-600 hover:bg-red-700 text-white'
             >
-              {checkingValidation ? 'Đang xóa...' : 'Xác nhận xóa'}
+              {checkingValidation ? 'Đang xử lý...' : 'Xác nhận tạm dừng'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal xác nhận kích hoạt lại sản phẩm */}
+      <Dialog open={showActivateDialog} onOpenChange={setShowActivateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className='text-yellow-600'>⚠️ Cảnh báo: Kích hoạt lại sản phẩm</DialogTitle>
+            <DialogDescription>
+              <div className='space-y-2'>
+                <p>
+                  Bạn có chắc chắn muốn kích hoạt lại sản phẩm <strong>{product?.name}</strong> không?
+                </p>
+                <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3'>
+                  <p className='text-sm text-yellow-800 font-medium mb-1'>⚠️ Lưu ý quan trọng:</p>
+                  <ul className='text-sm text-yellow-700 list-disc list-inside space-y-1'>
+                    <li>Sản phẩm sẽ được hiển thị lại trên hệ thống</li>
+                    <li>Khách hàng có thể xem và mua sản phẩm này</li>
+                    <li>Hãy đảm bảo sản phẩm vẫn còn tồn kho và thông tin còn chính xác</li>
+                    <li>Kiểm tra lại giá cả và thông tin sản phẩm trước khi kích hoạt</li>
+                  </ul>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setShowActivateDialog(false)} disabled={checkingValidation}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleActivateConfirm}
+              disabled={checkingValidation}
+              className='bg-green-600 hover:bg-green-700 text-white'
+            >
+              {checkingValidation ? 'Đang xử lý...' : 'Xác nhận kích hoạt'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -947,7 +947,7 @@ function DetailProductAdmin() {
                           >
                             {/* Variant Cha Header */}
                             <div className='mb-4 pb-4 border-b border-gray-200'>
-                              <h3 className='text-lg font-semibold text-gray-900 mb-4'>Variant cha</h3>
+                              <h3 className='text-lg font-semibold text-gray-900 mb-4'>Biến thể sản phẩm</h3>
                               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
                                 {/* Attribute Type */}
                                 {attributeType && (

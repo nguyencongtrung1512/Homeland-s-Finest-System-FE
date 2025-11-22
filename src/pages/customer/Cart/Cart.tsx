@@ -20,6 +20,7 @@ import { getWalletBalance } from '../../../apis/wallet.api'
 import type { CartData, CartItem as APICartItem } from '../../../types/cartType'
 import type { Address, AddressCreateInput } from '../../../types/addressType'
 import type { WalletData } from '../../../types/walletType'
+import type { ComboItem as ComboDetailItem } from '../../../types/combo.type'
 
 // Import Promotion Components
 import { PromotionModal } from '../../../components/Promotion'
@@ -44,6 +45,12 @@ interface ComboGroup {
   items: APICartItem[]
   quantity: number
   totalPrice: number
+}
+
+interface ComboChildRequirement {
+  requiredQuantity: number
+  productName?: string
+  imageUrl?: string
 }
 
 interface StorePromotion {
@@ -95,6 +102,7 @@ export default function Cart() {
   const quantityUpdateTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingQuantityUpdates = useRef<Record<string, number>>({})
   const [comboNames, setComboNames] = useState<Record<string, string>>({})
+  const [comboChildItems, setComboChildItems] = useState<Record<string, Record<string, ComboChildRequirement>>>({})
 
   // Checkbox styling (gray accent + click animation)
   const checkboxClass =
@@ -161,24 +169,35 @@ export default function Cart() {
     const idsToFetch = new Set<string>()
     cartData.carts.forEach((store) => {
       store.items.forEach((item) => {
-        if (item.isCombo && item.comboId && !comboNames[item.comboId]) {
+        if (item.isCombo && item.comboId && (!comboNames[item.comboId] || !comboChildItems[item.comboId])) {
           idsToFetch.add(item.comboId)
         }
       })
     })
     if (idsToFetch.size === 0) return
     let isCancelled = false
-    const fetchComboNames = async () => {
+    const fetchComboDetails = async () => {
       try {
         const comboEntries = await Promise.all(
           Array.from(idsToFetch).map(async (comboId) => {
             try {
               const response = await getComboById(comboId)
-              const name = response?.data?.data?.name || response?.data?.name || 'Combo'
-              return { comboId, name }
+              const comboData = response?.data?.data || response?.data
+              const name = comboData?.name || 'Combo'
+              const comboItems = (comboData?.comboItems ?? []) as ComboDetailItem[]
+              const quantityMap = comboItems.reduce<Record<string, ComboChildRequirement>>((acc, comboItem) => {
+                if (!comboItem.productVariantId) return acc
+                acc[comboItem.productVariantId] = {
+                  requiredQuantity: comboItem.quantity ?? 0,
+                  productName: comboItem.productName || comboItem.comboItemName,
+                  imageUrl: comboItem.comboItemImageUrl
+                }
+                return acc
+              }, {})
+              return { comboId, name, quantityMap }
             } catch (error) {
               console.error('Error fetching combo detail:', error)
-              return { comboId, name: 'Combo' }
+              return { comboId, name: comboNames[comboId] || 'Combo', quantityMap: {} }
             }
           })
         )
@@ -190,16 +209,23 @@ export default function Cart() {
             })
             return updated
           })
+          setComboChildItems((prev) => {
+            const updated = { ...prev }
+            comboEntries.forEach(({ comboId, quantityMap }) => {
+              updated[comboId] = quantityMap
+            })
+            return updated
+          })
         }
       } catch (error) {
-        console.error('Error fetching combo names:', error)
+        console.error('Error fetching combo names/details:', error)
       }
     }
-    fetchComboNames()
+    fetchComboDetails()
     return () => {
       isCancelled = true
     }
-  }, [cartData, comboNames])
+  }, [cartData, comboNames, comboChildItems])
 
   // Cleanup quantity update timers on unmount
   useEffect(() => {
@@ -438,10 +464,15 @@ export default function Cart() {
         const updatedItems = store.items.map((item) => {
           if (item.id === itemId || (targetComboId && item.comboId === targetComboId)) {
             const unitPrice = item.unitPrice ?? (item.quantity ? item.totalPrice / item.quantity : 0)
-            const updatedTotalPrice = unitPrice * newQuantity
+            const requirement =
+              targetComboId && item.isCombo
+                ? comboChildItems[targetComboId]?.[item.productVariantId]?.requiredQuantity || 1
+                : 1
+            const updatedItemQuantity = targetComboId ? requirement * newQuantity : newQuantity
+            const updatedTotalPrice = unitPrice * updatedItemQuantity
             return {
               ...item,
-              quantity: newQuantity,
+              quantity: updatedItemQuantity,
               totalPrice: updatedTotalPrice
             }
           }
@@ -610,22 +641,33 @@ export default function Cart() {
     const comboMap = new Map<string, ComboGroup>()
 
     items.forEach((item) => {
-      if (item.isCombo) {
+      if (item.isCombo && item.comboId) {
         if (!comboMap.has(item.comboId)) {
           const derivedComboName =
             (item.comboId && comboNames[item.comboId]) ||
             (item as APICartItem & { comboName?: string }).comboName ||
             'Combo'
+          const comboRequirement =
+            comboChildItems[item.comboId]?.[item.productVariantId]?.requiredQuantity
+          const derivedQuantity =
+            comboRequirement && comboRequirement > 0 ? Math.max(1, Math.round(item.quantity / comboRequirement)) : item.quantity
           comboMap.set(item.comboId, {
             comboId: item.comboId,
             comboName: derivedComboName,
             items: [],
-            quantity: item.quantity,
+            quantity: derivedQuantity,
             totalPrice: 0
           })
         }
         const combo = comboMap.get(item.comboId)!
         combo.items.push(item)
+        if (!combo.quantity) {
+          const comboRequirement =
+            comboChildItems[item.comboId]?.[item.productVariantId]?.requiredQuantity
+          if (comboRequirement && comboRequirement > 0) {
+            combo.quantity = Math.max(1, Math.round(item.quantity / comboRequirement))
+          }
+        }
         combo.totalPrice += item.totalPrice
       } else {
         grouped.push(item)
@@ -965,21 +1007,37 @@ export default function Cart() {
                               </div>
 
                               <div className='space-y-2 bg-orange-50 rounded-lg p-2'>
-                                {comboItem.items.map((comboItem: APICartItem) => (
-                                  <div key={comboItem.id} className='flex items-center gap-3  p-2'>
-                                    <div className='w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm'>
-                                      <img
-                                        src={comboItem.imageUrl || '/api/placeholder/48/48'}
-                                        alt={comboItem.name}
-                                        className='w-10 h-10 object-cover rounded'
-                                      />
+                                {comboItem.items.map((childItem: APICartItem) => {
+                                  const comboId = childItem.comboId || comboItem.comboId
+                                  const childRequirement =
+                                    (comboId && comboChildItems[comboId]?.[childItem.productVariantId]) || null
+                                  const requiredQuantity = childRequirement?.requiredQuantity
+                                  return (
+                                    <div key={childItem.id} className='flex items-center gap-3  p-2'>
+                                      <div className='w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm'>
+                                        <img
+                                          src={
+                                            childItem.imageUrl ||
+                                            childRequirement?.imageUrl ||
+                                            '/api/placeholder/48/48'
+                                          }
+                                          alt={childItem.name}
+                                          className='w-10 h-10 object-cover rounded'
+                                        />
+                                      </div>
+                                      <div className='flex-1'>
+                                        <p className='text-sm font-medium text-gray-800'>
+                                          {childRequirement?.productName || childItem.name}
+                                        </p>
+                                        <p className='text-xs text-gray-500'>
+                                          {typeof requiredQuantity === 'number'
+                                            ? `Số lượng định mức: ${requiredQuantity}`
+                                            : `Số lượng: ${childItem.quantity}`}
+                                        </p>
+                                      </div>
                                     </div>
-                                    <div className='flex-1'>
-                                      <p className='text-sm font-medium text-gray-800'>{comboItem.name}</p>
-                                      <p className='text-xs text-gray-500'>Số lượng: {comboItem.quantity}</p>
-                                    </div>
-                                  </div>
-                                ))}
+                                  )
+                                })}
                               </div>
                             </div>
                           </div>

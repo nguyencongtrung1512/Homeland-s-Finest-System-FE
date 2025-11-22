@@ -48,6 +48,12 @@ export const getAllSystemStorage = async (params?: SystemStorageParams) => {
   return response
 }
 
+// Function để lấy SystemStorage theo name
+export const getSystemStorageByName = async (name: string) => {
+  const response = await axiosInstance.get(`${API_URL}?name=${encodeURIComponent(name)}`)
+  return response
+}
+
 // Function để tạo SystemStorage mới
 export const createSystemStorage = async (data: SystemStorageItem) => {
   const response = await axiosInstance.post(API_URL, data, {

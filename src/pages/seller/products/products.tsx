@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../components/ui/dialog'
-import { Plus, Edit, Trash2, Eye } from 'lucide-react'
+import { Plus, Edit, Eye, Play, PauseCircle } from 'lucide-react'
 import path from '../../../constants/path'
 import { productApi, type ProductListResponse } from '../../../apis/product.api'
 import type { Product } from '../../../types/productType'
@@ -37,8 +37,11 @@ function ProductsSeller() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [showUpdateDialog, setShowUpdateDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showActivateDialog, setShowActivateDialog] = useState(false)
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
+  const [productToActivate, setProductToActivate] = useState<Product | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isActivating, setIsActivating] = useState(false)
 
   // Fetch products from API - GET /api/Product tự động filter theo seller đã đăng nhập
   const fetchProducts = async () => {
@@ -88,9 +91,16 @@ function ProductsSeller() {
     setCurrentPage(newPage)
   }
 
-  const handleDeleteClick = (product: Product) => {
-    setProductToDelete(product)
-    setShowDeleteDialog(true)
+  const handleToggleActiveClick = (product: Product) => {
+    if (product.isActive) {
+      // Nếu đang active thì Dừng bán sản phẩm
+      setProductToDelete(product)
+      setShowDeleteDialog(true)
+    } else {
+      // Nếu đang inactive thì kích hoạt lại
+      setProductToActivate(product)
+      setShowActivateDialog(true)
+    }
   }
 
   const handleDeleteConfirm = async () => {
@@ -98,23 +108,59 @@ function ProductsSeller() {
 
     try {
       setIsDeleting(true)
-      const response = await productApi.delete(productToDelete.id)
+      // Fetch chi tiết sản phẩm để lấy đầy đủ thông tin
+      const productDetail = await productApi.getById(productToDelete.id)
+      if (productDetail.status !== 200 || !productDetail.data) {
+        toast.error('Không thể tải thông tin sản phẩm')
+        return
+      }
+
+      const product = productDetail.data
+
+      // Tạo FormData với tất cả các field
+      const formData = new FormData()
+      formData.append('Name', product.name || '')
+      formData.append('ProvinceId', product.provinceId?.toString() || '')
+      formData.append('IsActive', 'false') // Thay đổi isActive thành false
+      formData.append('RemoveExistingVideo', 'false')
+
+      // Optional fields
+      if (product.description) {
+        formData.append('Description', product.description)
+      }
+
+      if (product.material) {
+        formData.append('Material', product.material)
+      }
+
+      if (product.productCategories?.id) {
+        formData.append('CategoryId', product.productCategories.id)
+      }
+
+      // Existing image URLs
+      if (product.productImages && product.productImages.length > 0) {
+        product.productImages.forEach((url: string) => {
+          formData.append('ExistingImageUrls', url)
+        })
+      }
+
+      const response = await productApi.updateWithFormData(productToDelete.id, formData)
 
       if (response && (response.status === 200 || response.status === 202)) {
-        toast.success('Xóa sản phẩm thành công')
+        toast.success('Tạm Dừng bán sản phẩm thành công')
         setShowDeleteDialog(false)
         setProductToDelete(null)
         // Refresh product list
         await fetchProducts()
       } else {
-        toast.error(response?.message || 'Không thể xóa sản phẩm')
+        toast.error(response?.message || 'Không thể tạm Dừng bán sản phẩm')
       }
     } catch (error: unknown) {
-      console.error('Error deleting product:', error)
+      console.error('Error deactivating product:', error)
       const errorMessage =
         error && typeof error === 'object' && 'message' in error
           ? String(error.message)
-          : 'Có lỗi xảy ra khi xóa sản phẩm'
+          : 'Có lỗi xảy ra khi tạm Dừng bán sản phẩm'
       toast.error(errorMessage)
     } finally {
       setIsDeleting(false)
@@ -124,6 +170,75 @@ function ProductsSeller() {
   const handleDeleteCancel = () => {
     setShowDeleteDialog(false)
     setProductToDelete(null)
+  }
+
+  const handleActivateConfirm = async () => {
+    if (!productToActivate) return
+
+    try {
+      setIsActivating(true)
+      // Fetch chi tiết sản phẩm để lấy đầy đủ thông tin
+      const productDetail = await productApi.getById(productToActivate.id)
+      if (productDetail.status !== 200 || !productDetail.data) {
+        toast.error('Không thể tải thông tin sản phẩm')
+        return
+      }
+
+      const product = productDetail.data
+
+      // Tạo FormData với tất cả các field
+      const formData = new FormData()
+      formData.append('Name', product.name || '')
+      formData.append('ProvinceId', product.provinceId?.toString() || '')
+      formData.append('IsActive', 'true') // Thay đổi isActive thành true
+      formData.append('RemoveExistingVideo', 'false')
+
+      // Optional fields
+      if (product.description) {
+        formData.append('Description', product.description)
+      }
+
+      if (product.material) {
+        formData.append('Material', product.material)
+      }
+
+      if (product.productCategories?.id) {
+        formData.append('CategoryId', product.productCategories.id)
+      }
+
+      // Existing image URLs
+      if (product.productImages && product.productImages.length > 0) {
+        product.productImages.forEach((url: string) => {
+          formData.append('ExistingImageUrls', url)
+        })
+      }
+
+      const response = await productApi.updateWithFormData(productToActivate.id, formData)
+
+      if (response && (response.status === 200 || response.status === 202)) {
+        toast.success('Kích hoạt sản phẩm thành công')
+        setShowActivateDialog(false)
+        setProductToActivate(null)
+        // Refresh product list
+        await fetchProducts()
+      } else {
+        toast.error(response?.message || 'Không thể kích hoạt sản phẩm')
+      }
+    } catch (error: unknown) {
+      console.error('Error activating product:', error)
+      const errorMessage =
+        error && typeof error === 'object' && 'message' in error
+          ? String(error.message)
+          : 'Có lỗi xảy ra khi kích hoạt sản phẩm'
+      toast.error(errorMessage)
+    } finally {
+      setIsActivating(false)
+    }
+  }
+
+  const handleActivateCancel = () => {
+    setShowActivateDialog(false)
+    setProductToActivate(null)
   }
 
   const getStatusBadge = (status: string, isActive: boolean) => {
@@ -280,7 +395,7 @@ function ProductsSeller() {
       {/* Header */}
       <div className='flex justify-between items-center mb-6'>
         <h1 className='text-2xl font-semibold text-gray-900'>Quản lý sản phẩm</h1>
-        <Button className='bg-green-600 hover:bg-green-700' onClick={handleCreateProduct}>
+        <Button variant='yellow' onClick={handleCreateProduct}>
           <Plus className='w-4 h-4 mr-2' />
           Thêm sản phẩm mới
         </Button>
@@ -407,15 +522,26 @@ function ProductsSeller() {
                           >
                             <Edit className='w-4 h-4' />
                           </Button>
-                          <Button
-                            title='Xóa sản phẩm'
-                            variant='ghost'
-                            size='sm'
-                            className='text-red-600 hover:text-red-700 hover:bg-red-50'
-                            onClick={() => handleDeleteClick(product)}
-                          >
-                            <Trash2 className='w-4 h-4' />
-                          </Button>
+                          {product.isActive ? (
+                            <Button
+                              title='Dừng bán sản phẩm'
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => handleToggleActiveClick(product)}
+                            >
+                              <PauseCircle className='w-4 h-4' />
+                            </Button>
+                          ) : (
+                            <Button
+                              title='Kích hoạt lại sản phẩm'
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => handleToggleActiveClick(product)}
+                              className='text-green-600 hover:text-green-700 hover:bg-green-50'
+                            >
+                              <Play className='w-4 h-4' />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -445,17 +571,17 @@ function ProductsSeller() {
         onSuccess={fetchProducts}
       />
 
-      {/* Dialog xác nhận xóa sản phẩm */}
+      {/* Dialog xác nhận tạm Dừng bán sản phẩm */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Xác nhận tạm dừng sản phẩm</DialogTitle>
+            <DialogTitle>Xác nhận tạm Dừng bán sản phẩm</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn tạm dừng sản phẩm <strong>{productToDelete?.name}</strong> không?
+              Bạn có chắc chắn muốn tạm Dừng bán sản phẩm <strong>{productToDelete?.name}</strong> không?
               <br />
               <span className='text-sm text-gray-500 mt-2 block'>
-                Sản phẩm sẽ bị vô hiệu hóa và không còn hiển thị trên hệ thống. Hành động này có thể ảnh hưởng đến các sản phẩm và
-                đơn hàng liên quan.
+                Sản phẩm sẽ bị vô hiệu hóa và không còn hiển thị trên hệ thống. Hành động này có thể ảnh hưởng đến các
+                sản phẩm và đơn hàng liên quan.
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -469,7 +595,44 @@ function ProductsSeller() {
               variant='destructive'
               className='bg-red-600 hover:bg-red-700 text-white'
             >
-              {isDeleting ? 'Đang xóa...' : 'Xác nhận tạm dừng'}
+              {isDeleting ? 'Đang xử lý...' : 'Xác nhận tạm dừng'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog xác nhận kích hoạt lại sản phẩm */}
+      <Dialog open={showActivateDialog} onOpenChange={setShowActivateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className='text-yellow-600'>⚠️ Cảnh báo: Kích hoạt lại sản phẩm</DialogTitle>
+            <DialogDescription>
+              <div className='space-y-2'>
+                <p>
+                  Bạn có chắc chắn muốn kích hoạt lại sản phẩm <strong>{productToActivate?.name}</strong> không?
+                </p>
+                <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3'>
+                  <p className='text-sm text-yellow-800 font-medium mb-1'>⚠️ Lưu ý quan trọng:</p>
+                  <ul className='text-sm text-yellow-700 list-disc list-inside space-y-1'>
+                    <li>Sản phẩm sẽ được hiển thị lại trên hệ thống</li>
+                    <li>Khách hàng có thể xem và mua sản phẩm này</li>
+                    <li>Hãy đảm bảo sản phẩm vẫn còn tồn kho và thông tin còn chính xác</li>
+                    <li>Kiểm tra lại giá cả và thông tin sản phẩm trước khi kích hoạt</li>
+                  </ul>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant='outline' onClick={handleActivateCancel} disabled={isActivating}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleActivateConfirm}
+              disabled={isActivating}
+              className='bg-green-600 hover:bg-green-700 text-white'
+            >
+              {isActivating ? 'Đang xử lý...' : 'Xác nhận kích hoạt'}
             </Button>
           </DialogFooter>
         </DialogContent>

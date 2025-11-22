@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -6,6 +6,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { Upload, Image as ImageIcon, X, Loader2 } from 'lucide-react'
 import { productVariantApi, type CreateVariantRequest } from '../../../apis/productVariant.api'
+import { getSystemStorageByName } from '../../../apis/systemStorage.api'
 import { toast } from '../../../utils/toast'
 import type { Product, VariantOption } from '../../../types/productType'
 
@@ -41,6 +42,9 @@ export default function ModalVariantProduct({
   })
 
   const [variantImages, setVariantImages] = useState<File[]>([])
+  const [commissionRate, setCommissionRate] = useState<number>(0)
+  const [commissionLoading, setCommissionLoading] = useState(false)
+  const [commissionError, setCommissionError] = useState<string>('')
 
   const [hasAutoAttributeType, setHasAutoAttributeType] = useState(false)
   const [attributeTypeError, setAttributeTypeError] = useState<string>('')
@@ -52,7 +56,7 @@ export default function ModalVariantProduct({
   const [weightError, setWeightError] = useState<string>('')
 
   // Constants for validation
-  const MAX_IMAGES = 2
+  const MAX_IMAGES = 1
   const MAX_DESCRIPTION_WORDS = 20
   const MAX_ATTRIBUTE_TYPE_LENGTH = 10
   const MAX_ATTRIBUTE_NAME_LENGTH = 10
@@ -124,6 +128,93 @@ export default function ModalVariantProduct({
     }
   }, [open, product, selectedParentVariant])
 
+  const extractCommissionValue = useCallback((payload: unknown): number => {
+    if (!payload) return NaN
+
+    const toNumber = (value: unknown) => {
+      if (value === null || value === undefined) return NaN
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? parsed : NaN
+    }
+
+    if (Array.isArray(payload)) {
+      const target =
+        payload.find(
+          (item) =>
+            item &&
+            typeof item === 'object' &&
+            'name' in item &&
+            typeof (item as { name: string }).name === 'string' &&
+            ((item as { name: string }).name.toLowerCase() === 'commission' ||
+              (item as { name: string }).name.toLowerCase() === 'commissionrate')
+        ) || payload[0]
+      return extractCommissionValue(target)
+    }
+
+    if (typeof payload === 'object') {
+      const obj = payload as Record<string, unknown>
+      if ('value' in obj) {
+        return toNumber(obj.value)
+      }
+      if ('data' in obj) {
+        const result = extractCommissionValue(obj.data)
+        if (!Number.isNaN(result)) return result
+      }
+      if ('items' in obj) {
+        const result = extractCommissionValue(obj.items)
+        if (!Number.isNaN(result)) return result
+      }
+    }
+
+    return NaN
+  }, [])
+
+  // Fetch commission config khi mở modal
+  useEffect(() => {
+    if (!open) return
+    let isCancelled = false
+
+    const fetchCommission = async () => {
+      try {
+        setCommissionLoading(true)
+        setCommissionError('')
+        const response = await getSystemStorageByName('commission')
+        const payload = response?.data ?? response
+        const parsedValue = extractCommissionValue(payload)
+        if (!isCancelled) {
+          setCommissionRate(Number.isFinite(parsedValue) ? parsedValue : 0)
+        }
+      } catch (error) {
+        console.error('Error fetching commission:', error)
+        if (!isCancelled) {
+          setCommissionError('Không thể tải tỷ lệ hoa hồng, dùng mặc định 0%.')
+          setCommissionRate(0)
+        }
+      } finally {
+        if (!isCancelled) {
+          setCommissionLoading(false)
+        }
+      }
+    }
+
+    fetchCommission()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [open, extractCommissionValue])
+
+  const computeSalePrice = (basePrice: number, rate: number) => {
+    if (basePrice <= 0) return 0
+    const multiplier = 1 + rate / 100
+    return Math.round(basePrice * multiplier)
+  }
+
+  const formatCurrency = (value: number) => {
+    if (!value) return '0 VNĐ'
+    return `${value.toLocaleString('vi-VN')} VNĐ`
+  }
+
   // Helper function to find parent variant's attributeType
   const getParentVariantAttributeType = (): string | null => {
     if (!product?.variantGroups || !selectedParentVariant) {
@@ -153,41 +244,33 @@ export default function ModalVariantProduct({
 
   const addVariantImages = (newFiles: File[]) => {
     const currentCount = variantImages.length
-    const availableSlots = MAX_IMAGES - currentCount
 
-    if (availableSlots <= 0) {
+    if (currentCount >= MAX_IMAGES) {
       toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
       return
     }
 
-    // Limit number of files that can be added
-    const filesToAdd = newFiles.slice(0, availableSlots)
+    // Chỉ lấy file đầu tiên nếu upload nhiều file
+    const fileToAdd = newFiles[0]
 
-    if (filesToAdd.length < newFiles.length) {
-      toast.error(`Chỉ có thể thêm tối đa ${availableSlots} ảnh nữa.`)
+    if (newFiles.length > 1) {
+      toast.error(`Chỉ được upload 1 ảnh. Đã chọn ảnh đầu tiên.`)
     }
 
-    // Validate file types and sizes
-    const validFiles: File[] = []
-    filesToAdd.forEach((file) => {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast.error(`File ${file.name} không phải là hình ảnh.`)
-        return
-      }
-
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`File ${file.name} quá lớn. Tối đa 5MB.`)
-        return
-      }
-
-      validFiles.push(file)
-    })
-
-    if (validFiles.length > 0) {
-      setVariantImages((prev) => [...prev, ...validFiles])
+    // Validate file type
+    if (!fileToAdd.type.startsWith('image/')) {
+      toast.error(`File ${fileToAdd.name} không phải là hình ảnh.`)
+      return
     }
+
+    // Validate file size (5MB max)
+    if (fileToAdd.size > 5 * 1024 * 1024) {
+      toast.error(`File ${fileToAdd.name} quá lớn. Tối đa 5MB.`)
+      return
+    }
+
+    // Replace existing image or add new one
+    setVariantImages([fileToAdd])
   }
 
   const handleVariantInputChange = (field: string, value: string | number) => {
@@ -348,12 +431,12 @@ export default function ModalVariantProduct({
 
       // Validate price và quantity cho cả variant cha và variant con
       if (variantData.price < 0) {
-        toast.error('Giá bán không được là số âm')
+        toast.error('Giá gốc không được là số âm')
         return
       }
 
       if (variantData.price === 0) {
-        toast.error('Vui lòng nhập giá bán hợp lệ (lớn hơn 0)')
+        toast.error('Vui lòng nhập giá gốc hợp lệ (lớn hơn 0)')
         return
       }
 
@@ -619,14 +702,14 @@ export default function ModalVariantProduct({
             {/* Price - Hiển thị cho cả variant cha và variant con */}
             <div>
               <Label htmlFor='variant-price' className='text-sm font-medium'>
-                Giá bán (VNĐ) <span className='text-red-500'>*</span>
+                Giá gốc (VNĐ) <span className='text-red-500'>*</span>
               </Label>
               <Input
                 id='variant-price'
                 type='number'
                 min='0'
                 step='1000'
-                placeholder='Nhập giá bán...'
+                placeholder='Nhập giá gốc...'
                 value={variantData.price || ''}
                 onChange={(e) => {
                   const value = e.target.value === '' ? 0 : Number(e.target.value)
@@ -636,7 +719,31 @@ export default function ModalVariantProduct({
                 }}
                 className='mt-1'
               />
-              {variantData.price < 0 && <p className='mt-1 text-sm text-red-500'>Giá bán không được là số âm</p>}
+              {variantData.price < 0 && <p className='mt-1 text-sm text-red-500'>Giá gốc không được là số âm</p>}
+            </div>
+
+            {/* Sale Price */}
+            <div>
+              <Label className='text-sm font-medium'>Giá bán ra dự kiến (VNĐ)</Label>
+              <div className='relative mt-1'>
+                <Input
+                  value={
+                    commissionLoading
+                      ? 'Đang tải...'
+                      : formatCurrency(computeSalePrice(variantData.price, commissionRate))
+                  }
+                  readOnly
+                  className='bg-gray-100'
+                  disabled={commissionLoading}
+                />
+                {commissionLoading && (
+                  <div className='absolute right-3 top-1/2 -translate-y-1/2'>
+                    <Loader2 className='w-4 h-4 animate-spin text-gray-400' />
+                  </div>
+                )}
+              </div>
+
+              {commissionError && <p className='mt-1 text-sm text-amber-600'>{commissionError}</p>}
             </div>
 
             {/* Quantity - Hiển thị cho cả variant cha và variant con */}
@@ -819,11 +926,10 @@ export default function ModalVariantProduct({
               >
                 <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
                 <p className='text-gray-600 mb-2'>
-                  {variantImages.length > 0 ? 'Thêm ảnh khác' : 'Kéo thả hoặc click để tải ảnh lên'}
+                  {variantImages.length > 0 ? 'Thay đổi ảnh' : 'Kéo thả hoặc click để tải ảnh lên'}
                 </p>
                 <input
                   type='file'
-                  multiple
                   accept='image/*'
                   className='hidden'
                   id='variant-images'
@@ -837,8 +943,9 @@ export default function ModalVariantProduct({
                 />
                 <Button type='button' variant='outline' size='sm' className='mt-3'>
                   <Upload className='w-4 h-4 mr-2' />
-                  {variantImages.length > 0 ? 'Thêm ảnh' : 'Chọn ảnh'}
+                  {variantImages.length > 0 ? 'Thay đổi ảnh' : 'Chọn ảnh'}
                 </Button>
+                <p className='text-xs text-gray-500 mt-2'>Tối đa 1 ảnh, định dạng: JPG, PNG, WEBP, tối đa 5MB</p>
               </div>
             ) : (
               <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'>
@@ -849,25 +956,23 @@ export default function ModalVariantProduct({
             )}
 
             {variantImages.length > 0 && (
-              <div className='mt-4 grid grid-cols-4 gap-2'>
-                {variantImages.map((file, index) => (
-                  <div key={`${file.name}-${index}`} className='relative group'>
-                    <div className='aspect-square rounded-lg overflow-hidden border-2 border-gray-200'>
-                      <img
-                        src={createPreviewUrl(file)}
-                        alt={`Variant ${index + 1}`}
-                        className='w-full h-full object-cover'
-                      />
-                    </div>
-                    <button
-                      type='button'
-                      onClick={() => removeVariantImage(index)}
-                      className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all'
-                    >
-                      <X className='w-3 h-3' />
-                    </button>
+              <div className='mt-4'>
+                <div className='relative inline-block group'>
+                  <div className='w-32 h-32 rounded-lg overflow-hidden border-2 border-gray-200'>
+                    <img
+                      src={createPreviewUrl(variantImages[0])}
+                      alt='Variant image'
+                      className='w-full h-full object-cover'
+                    />
                   </div>
-                ))}
+                  <button
+                    type='button'
+                    onClick={() => removeVariantImage(0)}
+                    className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all'
+                  >
+                    <X className='w-4 h-4' />
+                  </button>
+                </div>
               </div>
             )}
           </div>

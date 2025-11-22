@@ -16,6 +16,7 @@ interface ProductStoryProps {
   onToggleEditMode: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => void
   onCancelEdit: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => void
   onSaveSection: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => Promise<void>
+  onRefresh?: () => Promise<void> | void
 }
 
 interface StoryEditData {
@@ -31,7 +32,13 @@ interface StoryEditData {
   originalVideo: string
 }
 
-function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCancelEdit }: ProductStoryProps) {
+function ProductStoryComponent({
+  productId,
+  isEditMode,
+  onToggleEditMode,
+  onCancelEdit,
+  onRefresh
+}: ProductStoryProps) {
   const [stories, setStories] = useState<ProductStory[]>([])
   const [loading, setLoading] = useState(false)
   const [editData, setEditData] = useState<StoryEditData>({
@@ -307,6 +314,12 @@ function ProductStoryComponent({ productId, isEditMode, onToggleEditMode, onCanc
       }
 
       await fetchStories() // Refresh data after save
+      // Wait a bit to ensure state is updated
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      // Notify parent component to refresh validation data
+      if (onRefresh) {
+        await onRefresh()
+      }
       onToggleEditMode('story') // Exit edit mode
     } catch (err) {
       console.error('❌ Error saving story:', err)

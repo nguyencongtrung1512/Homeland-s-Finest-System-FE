@@ -34,6 +34,8 @@ export interface UpdateVariantRequest {
   height?: number
   weight?: number
   isActive?: boolean
+  removeExistingImage?: boolean
+  newProductImage?: File
 }
 
 export const productVariantApi = {
@@ -91,7 +93,51 @@ export const productVariantApi = {
   },
   // Update variant - PUT /api/Product/{parentId}/variants/{variantId}
   update: async (parentId: string, variantId: string, data: UpdateVariantRequest) => {
-    return await axiosInstance.put(`${API_URL}/${parentId}/variants/${variantId}`, data)
+    const formData = new FormData()
+
+    // Optional fields - only append if they have values
+    if (data.attributeName !== undefined) {
+      formData.append('AttributeName', data.attributeName)
+    }
+    if (data.attributeType !== undefined) {
+      formData.append('AttributeType', data.attributeType)
+    }
+    if (data.description !== undefined) {
+      formData.append('Description', data.description)
+    }
+    if (data.basePrice !== undefined) {
+      formData.append('BasePrice', data.basePrice.toString())
+    }
+    if (data.quantity !== undefined) {
+      formData.append('Quantity', data.quantity.toString())
+    }
+    if (data.length !== undefined) {
+      formData.append('Length', data.length.toString())
+    }
+    if (data.width !== undefined) {
+      formData.append('Width', data.width.toString())
+    }
+    if (data.height !== undefined) {
+      formData.append('Height', data.height.toString())
+    }
+    if (data.weight !== undefined) {
+      formData.append('Weight', data.weight.toString())
+    }
+    if (data.isActive !== undefined) {
+      formData.append('IsActive', data.isActive.toString())
+    }
+    if (data.removeExistingImage !== undefined) {
+      formData.append('RemoveExistingImage', data.removeExistingImage.toString())
+    }
+    if (data.newProductImage !== undefined) {
+      formData.append('NewProductImage', data.newProductImage)
+    }
+
+    return await axiosInstance.put(`${API_URL}/${parentId}/variants/${variantId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
   },
 
   // Activate variant

@@ -30,11 +30,12 @@ interface ProductCertificateProps {
   onToggleEditMode: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => void
   onCancelEdit: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => void
   onSaveSection: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => Promise<void>
+  onRefresh?: () => Promise<void> | void
 }
 
 // Chỉ có 2 trạng thái: Active và Inactive
 
-function ProductCertificate({ productId }: ProductCertificateProps) {
+function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
   const [certificates, setCertificates] = useState<ProductCertificateType[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -122,7 +123,14 @@ function ProductCertificate({ productId }: ProductCertificateProps) {
 
       toast.success('Thêm chứng nhận thành công')
       removeSelectedFile()
-      fetchCertificates() // Reload danh sách
+      // Wait a bit for backend to process
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      // Reload local certificates list first to ensure we have latest data
+      await fetchCertificates()
+      // Notify parent component to refresh validation data (skip delay since we already waited)
+      if (onRefresh) {
+        await onRefresh()
+      }
     } catch {
       toast.error('Không thể thêm chứng nhận')
     } finally {

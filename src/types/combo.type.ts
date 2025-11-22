@@ -43,6 +43,7 @@ export interface ComboData {
   description?: string
   totalBasePrice: number
   totalFinalPrice: number
+  availableQuantity?: number
   disabledReason?: string | null
   status: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Cancelled'
   staffNote?: string | null
@@ -68,6 +69,7 @@ export interface ComboItem {
   basePrice: number
   finalPrice: number
   quantity: number
+  availableQuantity?: number
   isActive: boolean
   productName: string
   variantName: string
@@ -84,6 +86,7 @@ export interface Combo {
   description?: string
   totalBasePrice: number
   totalFinalPrice: number
+  availableQuantity?: number
   disabledReason?: string | null
   status: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Cancelled'
   staffNote?: string | null

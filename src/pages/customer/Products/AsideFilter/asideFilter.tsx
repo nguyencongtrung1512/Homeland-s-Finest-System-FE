@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Slider } from '../../../../components/ui/slider'
 
 type Brand = {
   id: string
@@ -13,7 +14,7 @@ const BRANDS: Brand[] = [
 ]
 
 function AsideFilter() {
-  const [price, setPrice] = useState(500000)
+  const [priceRange, setPriceRange] = useState<number[]>([0, 1000000])
   const [selectedBrands, setSelectedBrands] = useState<string[]>([])
 
   const toggleBrand = (id: string) => {
@@ -43,11 +44,10 @@ function AsideFilter() {
             <button
               key={b.id}
               onClick={() => toggleBrand(b.id)}
-              className={`text-sm rounded border px-3 py-1.5 transition ${
-                selectedBrands.includes(b.id)
-                  ? 'bg-green-600 text-white border-green-600'
-                  : 'bg-white text-gray-700 hover:border-green-400'
-              }`}
+              className={`text-sm rounded border px-3 py-1.5 transition ${selectedBrands.includes(b.id)
+                ? 'bg-green-600 text-white border-green-600'
+                : 'bg-white text-gray-700 hover:border-green-400'
+                }`}
             >
               {b.name}
             </button>
@@ -57,22 +57,23 @@ function AsideFilter() {
 
       {/* Price range */}
       <div className='mt-6'>
-        <p className='text-sm font-semibold text-gray-700'>KHOẢNG GIÁ (TRÊN M | KG)</p>
+        <p className='text-sm font-semibold text-gray-700'>KHOẢNG GIÁ </p>
         <div className='mt-3'>
-          <input
-            type='range'
+          <Slider
+            value={priceRange}
+            onValueChange={setPriceRange}
             min={0}
             max={1000000}
             step={10000}
-            value={price}
-            onChange={(e) => setPrice(Number(e.target.value))}
-            className='w-full accent-green-600'
+            className='w-full'
           />
           <div className='flex justify-between text-xs text-gray-500 mt-1'>
             <span>0đ</span>
             <span>1,000,000đ</span>
           </div>
-          <div className='mt-2 text-sm font-medium text-green-700'>Tối đa: {price.toLocaleString('vi-VN')}đ</div>
+          <div className='mt-2 text-sm font-medium text-green-700'>
+            Từ: {priceRange[0].toLocaleString('vi-VN')}đ - Đến: {priceRange[1].toLocaleString('vi-VN')}đ
+          </div>
         </div>
       </div>
 

@@ -118,6 +118,7 @@ export interface OrderItem {
   weight: number
   orderItemName: string
   orderItemImageUrl: string
+  isReviewed: boolean
   basePrice: number
   commission: number
   finalPrice: number
@@ -140,6 +141,7 @@ export interface OrderItemWithCombo {
   width: number
   height: number
   weight: number
+  isReviewed: boolean
   basePrice: number
   commission: number
   finalPrice: number

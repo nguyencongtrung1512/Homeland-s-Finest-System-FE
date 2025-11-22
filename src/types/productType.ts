@@ -10,6 +10,8 @@ export interface VariantOption {
   basePrice: number | null // numeric(10,2)
   finalPrice: number | null // numeric(10,2)
   quantity: number | null // integer
+  reservedCOD: number | null // integer - inventory reserved for COD orders
+  reservedCombo: number | null // integer - inventory reserved for combos
   weight: number | null // numeric(10,2)
   length: number | null // numeric(10,2)
   width: number | null // numeric(10,2)

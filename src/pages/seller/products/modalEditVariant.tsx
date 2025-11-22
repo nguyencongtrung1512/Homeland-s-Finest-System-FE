@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Upload, Image as ImageIcon, X } from 'lucide-react'
 import { productVariantApi, type UpdateVariantRequest } from '../../../apis/productVariant.api'
+import { getSystemStorageByName } from '../../../apis/systemStorage.api'
 import { toast } from '../../../utils/toast'
 import type { Product, VariantOption } from '../../../types/productType'
 
@@ -69,6 +70,97 @@ export default function ModalEditVariant({
     weight: 0,
     isActive: true
   })
+  const [commissionRate, setCommissionRate] = useState<number>(0)
+  const [commissionLoading, setCommissionLoading] = useState(false)
+  const [commissionError, setCommissionError] = useState<string>('')
+  const [newProductImage, setNewProductImage] = useState<File | null>(null)
+  const [removeExistingImage, setRemoveExistingImage] = useState<boolean>(false)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const extractCommissionValue = useCallback((payload: unknown): number => {
+    if (!payload) return NaN
+
+    const toNumber = (value: unknown) => {
+      if (value === null || value === undefined) return NaN
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? parsed : NaN
+    }
+
+    if (Array.isArray(payload)) {
+      const target =
+        payload.find(
+          (item) =>
+            item &&
+            typeof item === 'object' &&
+            'name' in item &&
+            typeof (item as { name: string }).name === 'string' &&
+            ((item as { name: string }).name.toLowerCase() === 'commission' ||
+              (item as { name: string }).name.toLowerCase() === 'commissionrate')
+        ) || payload[0]
+      return extractCommissionValue(target)
+    }
+
+    if (typeof payload === 'object') {
+      const obj = payload as Record<string, unknown>
+      if ('value' in obj) {
+        return toNumber(obj.value)
+      }
+      if ('data' in obj) {
+        const nested = extractCommissionValue(obj.data)
+        if (!Number.isNaN(nested)) return nested
+      }
+      if ('items' in obj) {
+        const nested = extractCommissionValue(obj.items)
+        if (!Number.isNaN(nested)) return nested
+      }
+    }
+
+    return NaN
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    let isCancelled = false
+
+    const fetchCommission = async () => {
+      try {
+        setCommissionLoading(true)
+        setCommissionError('')
+        const response = await getSystemStorageByName('commission')
+        const payload = response?.data ?? response
+        const parsedValue = extractCommissionValue(payload)
+        if (!isCancelled) {
+          setCommissionRate(Number.isFinite(parsedValue) ? parsedValue : 0)
+        }
+      } catch (error) {
+        console.error('Error fetching commission:', error)
+        if (!isCancelled) {
+          setCommissionError('Không thể tải tỷ lệ hoa hồng, dùng mặc định 0%.')
+          setCommissionRate(0)
+        }
+      } finally {
+        if (!isCancelled) {
+          setCommissionLoading(false)
+        }
+      }
+    }
+
+    fetchCommission()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [open, extractCommissionValue])
+
+  const computeSalePrice = (basePrice: number, rate: number) => {
+    if (basePrice <= 0) return 0
+    const multiplier = 1 + rate / 100
+    return Math.round(basePrice * multiplier)
+  }
+
+  const formatCurrency = (value: number) => {
+    if (!value) return '0 VNĐ'
+    return `${value.toLocaleString('vi-VN')} VNĐ`
+  }
 
   // Load data khi mở dialog
   useEffect(() => {
@@ -85,8 +177,19 @@ export default function ModalEditVariant({
         weight: variant.weight || 0,
         isActive: variant.isActive ?? true
       })
+      // Reset image states
+      setNewProductImage(null)
+      setRemoveExistingImage(false)
+      setImagePreview(null)
+      // Set preview for existing image if available
+      if (variant.productImages && variant.productImages.length > 0) {
+        setImagePreview(variant.productImages[0])
+      }
     }
   }, [open, variant])
+
+  const variantHasChildren = (variantOption?: VariantOption | null) =>
+    Array.isArray(variantOption?.childVariantGroups) && variantOption.childVariantGroups.length > 0
 
   // Helper để lấy attributeType từ variantGroup
   const getAttributeTypeForVariant = (): string | null => {
@@ -190,6 +293,53 @@ export default function ModalEditVariant({
     }))
   }
 
+  const parentHasChildren = isParentVariant && variantHasChildren(variant)
+  const canEditFullFields = !isParentVariant || !parentHasChildren
+
+  // Handle image upload
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    processImageFile(file)
+  }
+
+  // Process image file (used by both upload and drag-drop)
+  const processImageFile = (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('File phải là hình ảnh')
+      return
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File quá lớn. Tối đa 5MB.')
+      return
+    }
+
+    setNewProductImage(file)
+    setImagePreview(URL.createObjectURL(file))
+    setRemoveExistingImage(false) // Reset remove flag when uploading new image
+  }
+
+  // Handle remove image
+  const handleRemoveImage = () => {
+    setNewProductImage(null)
+    setImagePreview(null)
+    setRemoveExistingImage(true)
+  }
+
+  // Handle remove new image (before upload)
+  const handleRemoveNewImage = () => {
+    setNewProductImage(null)
+    // Restore existing image preview if available
+    if (variant?.productImages && variant.productImages.length > 0 && !removeExistingImage) {
+      setImagePreview(variant.productImages[0])
+    } else {
+      setImagePreview(null)
+    }
+  }
+
   const handleUpdateVariant = async () => {
     try {
       setIsSubmitting(true)
@@ -206,8 +356,8 @@ export default function ModalEditVariant({
       }
 
       // Validate
-      if (isParentVariant) {
-        // Variant cha: chỉ validate attributeName và description
+      if (!canEditFullFields) {
+        // Variant cha có variant con: chỉ validate tên & mô tả
         if (!variantData.attributeName.trim()) {
           toast.error('Vui lòng nhập tên thuộc tính')
           setAttributeNameError('Vui lòng nhập tên thuộc tính')
@@ -234,7 +384,7 @@ export default function ModalEditVariant({
           return
         }
       } else {
-        // Variant con: validate đầy đủ
+        // Variant con hoặc variant cha chưa có con: validate đầy đủ
         if (!variantData.attributeName.trim()) {
           toast.error('Vui lòng nhập tên thuộc tính')
           setAttributeNameError('Vui lòng nhập tên thuộc tính')
@@ -309,14 +459,14 @@ export default function ModalEditVariant({
       // Prepare update data
       const updateData: UpdateVariantRequest = {}
 
-      if (isParentVariant) {
-        // Variant cha: chỉ gửi attributeName và description
+      if (!canEditFullFields) {
+        // Variant cha có con: chỉ gửi attributeName và description
         updateData.attributeName = variantData.attributeName
         if (variantData.description) {
           updateData.description = variantData.description
         }
       } else {
-        // Variant con: gửi đầy đủ
+        // Variant con hoặc variant cha chưa có con: gửi đầy đủ
         const attributeType = getAttributeTypeForVariant()
         if (attributeType) {
           updateData.attributeType = attributeType
@@ -340,6 +490,14 @@ export default function ModalEditVariant({
         }
         if (variantData.height > 0) {
           updateData.height = variantData.height
+        }
+
+        // Handle image update
+        if (newProductImage) {
+          updateData.newProductImage = newProductImage
+        }
+        if (removeExistingImage) {
+          updateData.removeExistingImage = removeExistingImage
         }
       }
 
@@ -421,6 +579,9 @@ export default function ModalEditVariant({
       setWidthError('')
       setHeightError('')
       setWeightError('')
+      setNewProductImage(null)
+      setRemoveExistingImage(false)
+      setImagePreview(null)
     }
   }
 
@@ -432,14 +593,14 @@ export default function ModalEditVariant({
     <Dialog open={open} onOpenChange={handleDialogClose}>
       <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
-          <DialogTitle>Chỉnh sửa Product Variant</DialogTitle>
+          <DialogTitle>Chỉnh sửa biến thể sản phẩm</DialogTitle>
         </DialogHeader>
 
         <div className='space-y-6 mt-4'>
           {/* Basic Information */}
           <div className='space-y-4'>
-            {/* Attribute Type - Chỉ hiển thị cho variant con */}
-            {!isParentVariant && attributeType && (
+            {/* Attribute Type */}
+            {attributeType && (!isParentVariant || !parentHasChildren) && (
               <div>
                 <Label htmlFor='edit-attribute-type' className='text-sm font-medium'>
                   Loại thuộc tính
@@ -471,8 +632,8 @@ export default function ModalEditVariant({
               {attributeNameError && <p className='mt-1 text-sm text-red-500'>{attributeNameError}</p>}
             </div>
 
-            {/* Price - Chỉ hiển thị cho variant con */}
-            {!isParentVariant && (
+            {/* Price */}
+            {canEditFullFields && (
               <div>
                 <Label htmlFor='edit-price' className='text-sm font-medium'>
                   Giá bán (VNĐ) <span className='text-red-500'>*</span>
@@ -493,11 +654,24 @@ export default function ModalEditVariant({
                   className={`mt-1 ${priceError ? 'border-red-500' : ''}`}
                 />
                 {priceError && <p className='mt-1 text-sm text-red-500'>{priceError}</p>}
+                <p className='mt-1 text-xs text-gray-500'>
+                  {`Nhập giá gốc. Hệ thống sẽ áp dụng hoa hồng ${commissionLoading ? '...' : `${commissionRate}%`} để tính giá bán ra.`}
+                </p>
+                <div className='mt-4'>
+                  <Label className='text-sm font-medium'>Giá bán ra dự kiến (VNĐ)</Label>
+                  <Input
+                    value={formatCurrency(computeSalePrice(variantData.basePrice, commissionRate))}
+                    readOnly
+                    className='mt-1 bg-gray-100'
+                  />
+
+                  {commissionError && <p className='mt-1 text-sm text-amber-600'>{commissionError}</p>}
+                </div>
               </div>
             )}
 
-            {/* Quantity - Chỉ hiển thị cho variant con */}
-            {!isParentVariant && (
+            {/* Quantity */}
+            {canEditFullFields && (
               <div>
                 <Label htmlFor='edit-quantity' className='text-sm font-medium'>
                   Số lượng tồn kho <span className='text-red-500'>*</span>
@@ -542,10 +716,121 @@ export default function ModalEditVariant({
               />
               {descriptionError && <p className='mt-1 text-sm text-red-500'>{descriptionError}</p>}
             </div>
+
+            {/* Image Upload */}
+            {canEditFullFields && (
+              <div>
+                <Label className='text-sm font-medium'>Hình ảnh variant</Label>
+                <div className='mt-2 space-y-4'>
+                  {/* Current/Preview Image */}
+                  {imagePreview && (
+                    <div className='relative inline-block'>
+                      <div className='w-32 h-32 rounded-lg overflow-hidden border-2 border-gray-200'>
+                        <img src={imagePreview} alt='Variant preview' className='w-full h-full object-cover' />
+                      </div>
+                      <button
+                        type='button'
+                        onClick={newProductImage ? handleRemoveNewImage : handleRemoveImage}
+                        className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-all'
+                      >
+                        <X className='w-4 h-4' />
+                      </button>
+                      {newProductImage && <p className='mt-1 text-xs text-green-600'>Ảnh mới đã chọn</p>}
+                    </div>
+                  )}
+
+                  {/* Upload Area */}
+                  {!imagePreview && (
+                    <div
+                      className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                      onClick={() => document.getElementById('edit-variant-image')?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        e.currentTarget.classList.add('border-blue-400')
+                      }}
+                      onDragLeave={(e) => {
+                        e.currentTarget.classList.remove('border-blue-400')
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        e.currentTarget.classList.remove('border-blue-400')
+                        const files = Array.from(e.dataTransfer.files)
+                        if (files.length > 0) {
+                          processImageFile(files[0])
+                        }
+                      }}
+                    >
+                      <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                      <p className='text-gray-600 mb-2'>Kéo thả hoặc click để tải ảnh lên</p>
+                      <input
+                        type='file'
+                        id='edit-variant-image'
+                        accept='image/*'
+                        className='hidden'
+                        onChange={handleImageUpload}
+                      />
+                      <Button type='button' variant='outline' size='sm' className='mt-3'>
+                        <Upload className='w-4 h-4 mr-2' />
+                        Chọn ảnh
+                      </Button>
+                      <p className='text-xs text-gray-500 mt-2'>Tối đa 5MB, định dạng: JPG, PNG, WEBP</p>
+                    </div>
+                  )}
+
+                  {/* Upload New Image Button (when existing image is shown) */}
+                  {imagePreview && !newProductImage && (
+                    <div>
+                      <input
+                        type='file'
+                        id='edit-variant-image'
+                        accept='image/*'
+                        className='hidden'
+                        onChange={handleImageUpload}
+                      />
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        onClick={() => document.getElementById('edit-variant-image')?.click()}
+                      >
+                        <Upload className='w-4 h-4 mr-2' />
+                        Thay đổi ảnh
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Remove Existing Image Checkbox (only show if there's existing image and no new image) */}
+                  {variant?.productImages &&
+                    variant.productImages.length > 0 &&
+                    !newProductImage &&
+                    imagePreview === variant.productImages[0] && (
+                      <div className='flex items-center gap-2'>
+                        <input
+                          type='checkbox'
+                          id='edit-remove-image'
+                          checked={removeExistingImage}
+                          onChange={(e) => {
+                            setRemoveExistingImage(e.target.checked)
+                            if (e.target.checked) {
+                              setImagePreview(null)
+                            } else {
+                              setImagePreview(variant.productImages?.[0] || null)
+                            }
+                          }}
+                          className='w-4 h-4 rounded border-gray-300'
+                        />
+                        <Label htmlFor='edit-remove-image' className='text-sm text-gray-700 cursor-pointer'>
+                          Xóa ảnh hiện tại
+                        </Label>
+                      </div>
+                    )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Dimensions - Chỉ hiển thị cho variant con */}
-          {!isParentVariant && (
+          {/* Dimensions */}
+          {canEditFullFields && (
             <div className='space-y-4'>
               <div className='flex items-center justify-between mb-2'>
                 <Label className='text-sm font-medium'>Kích thước (cm)</Label>

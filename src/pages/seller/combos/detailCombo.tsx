@@ -770,6 +770,13 @@ function DetailComboSeller() {
                   <span className='text-lg font-semibold text-gray-900'>{totalItems}</span>
                 </div>
 
+                {combo.availableQuantity !== undefined && (
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium text-gray-700'>Số lượng khả dụng:</span>
+                    <span className='text-lg font-semibold text-blue-600'>{combo.availableQuantity}</span>
+                  </div>
+                )}
+
                 {/* <div className='flex items-center justify-between'>
                   <span className='text-sm font-medium text-gray-700'>Sản phẩm hoạt động:</span>
                   <span className='text-lg font-semibold text-gray-900'>{activeItemsCount}</span>

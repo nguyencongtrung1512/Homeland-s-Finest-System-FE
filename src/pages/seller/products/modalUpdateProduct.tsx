@@ -48,6 +48,8 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
   const [nameError, setNameError] = useState<string>('')
   const [materialError, setMaterialError] = useState<string>('')
   const [descriptionError, setDescriptionError] = useState<string>('')
+  const [categoryError, setCategoryError] = useState<string>('')
+  const [imagesError, setImagesError] = useState<string>('')
 
   // Constants for validation
   const MAX_NAME_LENGTH = 20
@@ -237,6 +239,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
   }
 
   const handleCategorySelect = (categoryId: string) => {
+    setCategoryError('')
     setProductData((prev) => ({
       ...prev,
       categoryId: prev.categoryId === categoryId ? null : categoryId
@@ -279,14 +282,13 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
         return
       }
 
-      // Validate material
-      if (productData.material && productData.material.length > MAX_MATERIAL_LENGTH) {
-        toast.error(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
-        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
+      // Validate description - required
+      if (!productData.description.trim()) {
+        toast.error('Vui lòng nhập mô tả sản phẩm')
+        setDescriptionError('Vui lòng nhập mô tả sản phẩm')
         return
       }
 
-      // Validate description
       const descriptionWordCount = countWords(productData.description)
       if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
         toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
@@ -294,10 +296,37 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
         return
       }
 
-      // Validate images count
+      // Validate material - required
+      if (!productData.material.trim()) {
+        toast.error('Vui lòng nhập xuất xứ (material)')
+        setMaterialError('Vui lòng nhập xuất xứ (material)')
+        return
+      }
+
+      if (productData.material.trim().length > MAX_MATERIAL_LENGTH) {
+        toast.error(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
+        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
+        return
+      }
+
+      // Validate category - required
+      if (!productData.categoryId) {
+        toast.error('Vui lòng chọn loại sản phẩm')
+        setCategoryError('Vui lòng chọn loại sản phẩm')
+        return
+      }
+
+      // Validate images - at least 1 image required
       const totalImages = existingImageUrls.length + mediaData.newProductImages.length
+      if (totalImages === 0) {
+        toast.error('Vui lòng thêm ít nhất 1 hình ảnh sản phẩm')
+        setImagesError('Vui lòng thêm ít nhất 1 hình ảnh sản phẩm')
+        return
+      }
+
       if (totalImages > MAX_IMAGES) {
         toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+        setImagesError(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
         return
       }
 
@@ -432,6 +461,8 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
       setNameError('')
       setMaterialError('')
       setDescriptionError('')
+      setCategoryError('')
+      setImagesError('')
     }
   }
 
@@ -475,7 +506,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             <div>
               <div className='flex items-center justify-between mb-1'>
                 <Label htmlFor='update-material' className='text-sm font-medium'>
-                  Material
+                  Xuất xứ (Material) <span className='text-red-500'>*</span>
                 </Label>
                 <span
                   className={`text-xs ${productData.material.length > MAX_MATERIAL_LENGTH ? 'text-red-500' : 'text-gray-500'}`}
@@ -493,14 +524,15 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
               {materialError && <p className='mt-1 text-sm text-red-500'>{materialError}</p>}
             </div>
 
-
-
             {/* Category Selection */}
             <div>
               <Label className='text-sm font-medium'>
                 Loại sản phẩm <span className='text-red-500'>*</span>
               </Label>
-              <div className='mt-2 space-y-2 max-h-40 overflow-y-auto border rounded-lg p-2'>
+              {categoryError && <p className='mt-1 text-sm text-red-500'>{categoryError}</p>}
+              <div
+                className={`mt-2 space-y-2 max-h-40 overflow-y-auto border rounded-lg p-2 ${categoryError ? 'border-red-500' : ''}`}
+              >
                 {categoriesLoading ? (
                   <div className='text-center py-4 text-gray-500'>Đang tải danh mục...</div>
                 ) : categories.length === 0 ? (
@@ -529,7 +561,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             <div>
               <div className='flex items-center justify-between mb-1'>
                 <Label htmlFor='update-description' className='text-sm font-medium'>
-                  Mô tả sản phẩm
+                  Mô tả sản phẩm <span className='text-red-500'>*</span>
                 </Label>
                 <span
                   className={`text-xs ${countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'
@@ -580,7 +612,9 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             {existingImageUrls.length > 0 && (
               <div>
                 <div className='flex items-center justify-between mb-2'>
-                  <Label className='text-sm font-medium'>Ảnh hiện tại</Label>
+                  <Label className='text-sm font-medium'>
+                    Ảnh hiện tại <span className='text-red-500'>*</span>
+                  </Label>
                   <span className='text-xs text-gray-500'>
                     {existingImageUrls.length + mediaData.newProductImages.length} / {MAX_IMAGES} ảnh
                   </span>
@@ -606,13 +640,18 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             {/* New Product Images */}
             <div>
               <div className='flex items-center justify-between mb-2'>
-                <Label className='text-sm font-medium'>Ảnh sản phẩm mới</Label>
+                <Label className='text-sm font-medium'>
+                  Ảnh sản phẩm {existingImageUrls.length === 0 && <span className='text-red-500'>*</span>}
+                </Label>
                 <span className='text-xs text-gray-500'>
                   {existingImageUrls.length + mediaData.newProductImages.length} / {MAX_IMAGES} ảnh
                 </span>
               </div>
+              {imagesError && <p className='mb-2 text-sm text-red-500'>{imagesError}</p>}
               {existingImageUrls.length + mediaData.newProductImages.length < MAX_IMAGES ? (
-                <div className='grid grid-cols-3 gap-4'>
+                <div
+                  className={`grid grid-cols-3 gap-4 ${imagesError ? 'border-2 border-red-500 rounded-lg p-2' : ''}`}
+                >
                   {/* Existing new images */}
                   {mediaData.newProductImages.map((file, index) => (
                     <div key={index} className='relative group'>

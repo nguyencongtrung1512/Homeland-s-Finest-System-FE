@@ -13,6 +13,7 @@ import { Upload, ChevronRight, Trash2, Video, Image as ImageIcon, Package, FileI
 import { toast } from '../../../utils/toast'
 import ProductComboBox from '../../../components/ui/product-combo-box'
 import type { Product } from '../../../types/productType'
+import Loading from '../../../components/Loading/loading'
 
 function CreateProduct() {
   const navigate = useNavigate()
@@ -26,7 +27,7 @@ function CreateProduct() {
   const [categoriesLoading, setCategoriesLoading] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [productsLoading, setProductsLoading] = useState(false)
-  const [selectedParentProduct, setSelectedParentProduct] = useState<Product | null>(null)
+  const [selectedParentProduct, setSelectedParentProduct] = useState<{ id: string; name: string } | null>(null)
 
   // Validation constants
   const MAX_NAME_WORDS = 20
@@ -291,27 +292,29 @@ function CreateProduct() {
     }
   }
 
-  // Fetch all products for parent selection
+  // Fetch products for combo (sản phẩm liên quan)
   const fetchProducts = async () => {
     try {
       setProductsLoading(true)
-      const response = await productApi.getAll({ pageSize: 100, pageNumber: 1 })
-      if (response && response.data) {
-        // Extract products from response
-        let productsList: Product[] = []
-        if (Array.isArray(response.data)) {
-          productsList = response.data
-        } else {
-          // If response.data is an object with data property
-          const responseWithData = response.data as { data?: Product[] }
-          productsList = responseWithData.data || []
-        }
+      const response = await productApi.getForCombo()
+      if (response && response.status === 200 && response.data) {
+        // Map ProductForCombo to Product format for compatibility
+        const productsList: Product[] = response.data.map(
+          (item) =>
+            ({
+              id: item.id,
+              name: item.name,
+              description: item.categoryName || '',
+              productImages: item.thumbnailUrl ? [item.thumbnailUrl] : [],
+              productCategories: { id: '', name: item.categoryName || '', description: '', isActive: true }
+            }) as Product
+        )
         setProducts(productsList)
       } else {
         setProducts([])
       }
     } catch (error) {
-      console.error('Error fetching products:', error)
+      console.error('Error fetching products for combo:', error)
       setProducts([])
     } finally {
       setProductsLoading(false)
@@ -442,8 +445,8 @@ function CreateProduct() {
 
       const formData: ProductCreateFormData = {
         storeId: storeId,
-        // If parent product is selected, use its ID, otherwise null (ProductMaster)
-        parentId: selectedParentProduct?.id || null,
+        // If parent product is selected, use its ID, otherwise undefined (không gửi parentId)
+        parentId: selectedParentProduct?.id || undefined,
         name: productData.name,
         categoryId: productData.categoryId || undefined, // Chỉ gửi nếu có chọn category
         description: productData.description || undefined, // Không bắt buộc
@@ -549,13 +552,7 @@ function CreateProduct() {
     }
   }
   if (loading) {
-    return (
-      <div className='p-6'>
-        <div className='flex justify-center items-center h-64'>
-          <div className='text-lg'>Đang tải thông tin cửa hàng...</div>
-        </div>
-      </div>
-    )
+    return <Loading fullScreen={true} text='Đang tải thông tin cửa hàng...' size='lg' />
   }
   if (error) {
     return (
@@ -929,9 +926,8 @@ function CreateProduct() {
                 </Label>
 
                 {categoriesLoading ? (
-                  <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
-                    <Loader2 className='w-4 h-4 animate-spin mr-2' />
-                    <span className='text-sm text-gray-500'>Đang tải danh mục...</span>
+                  <div className='py-4 mt-1 border rounded-md'>
+                    <Loading size='sm' text='Đang tải danh mục...' />
                   </div>
                 ) : categories.length === 0 ? (
                   <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
@@ -994,7 +990,7 @@ function CreateProduct() {
           </Card>
 
           {/* Parent Product Selection */}
-          <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
+          <Card className='border-green-100 min-h-[400px] flex flex-col shadow-sm hover:shadow-md transition-shadow duration-200'>
             <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700'>
               <CardTitle className='text-green-700 flex items-center gap-2'>
                 <Package className='w-5 h-5' />
@@ -1009,9 +1005,8 @@ function CreateProduct() {
                 <p className='text-xs text-gray-500 mt-1 mb-2'>Chọn một sản phẩm liên quan.</p>
 
                 {productsLoading ? (
-                  <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
-                    <Loader2 className='w-4 h-4 animate-spin mr-2' />
-                    <span className='text-sm text-gray-500'>Đang tải sản phẩm...</span>
+                  <div className='py-4 mt-1 border rounded-md'>
+                    <Loading size='sm' text='Đang tải sản phẩm...' />
                   </div>
                 ) : (
                   <div className='mt-1'>
@@ -1021,12 +1016,11 @@ function CreateProduct() {
                         name: p.name,
                         description: p.description || ''
                       }))}
-                      placeholder='Tìm kiếm sản phẩm cha...'
+                      placeholder='Tìm kiếm sản phẩm liên quan...'
                       onSelect={(product) => {
                         if (product) {
-                          // Find the full product from products array
-                          const fullProduct = products.find((p) => p.id === product.id)
-                          setSelectedParentProduct(fullProduct || null)
+                          // Store only id and name for parent product
+                          setSelectedParentProduct({ id: product.id, name: product.name })
                         } else {
                           setSelectedParentProduct(null)
                         }
@@ -1038,7 +1032,7 @@ function CreateProduct() {
 
                 {/* Show selected parent product */}
                 {selectedParentProduct && (
-                  <div className='mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 shadow-sm'>
+                  <div className='mt-4 p-4  bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 shadow-sm'>
                     <div className='flex items-start justify-between'>
                       <div className='flex-1 min-w-0'>
                         <div className='flex items-center gap-2 mb-2'>
@@ -1048,9 +1042,6 @@ function CreateProduct() {
                         <p className='font-medium text-gray-900 mb-1'>
                           Sản phẩm liên quan: {selectedParentProduct.name}
                         </p>
-                        {selectedParentProduct.description && (
-                          <p className='text-sm text-gray-600 line-clamp-2'>{selectedParentProduct.description}</p>
-                        )}
                         <p className='text-sm text-gray-600 mb-1'>({selectedParentProduct.id})</p>
                       </div>
                       <button

@@ -138,20 +138,58 @@ function DetailProductStaff() {
     return result
   }
 
+  // Helper function to get Vietnamese status text
+  const getStatusText = (status: string, isActive: boolean): string => {
+    if (!isActive) {
+      return 'Tạm dừng'
+    }
+
+    switch (status?.toLowerCase()) {
+      case 'draft':
+        return 'Nháp'
+      case 'pending':
+        return 'Chờ duyệt'
+      case 'processing':
+        return 'Đang xử lý'
+      case 'confirmed':
+        return 'Đã xác nhận'
+      case 'approved':
+        return 'Đã duyệt'
+      case 'rejected':
+        return 'Từ chối'
+      case 'denied':
+        return 'Bị từ chối'
+      case 'cancelled':
+        return 'Đã hủy'
+      default:
+        return 'Không xác định'
+    }
+  }
+
   const getStatusBadge = (status: string, isActive: boolean) => {
     if (!isActive) {
       return <Badge className='bg-red-100 text-red-800'>Tạm dừng</Badge>
     }
 
     switch (status?.toLowerCase()) {
+      case 'draft':
+        return <Badge className='bg-gray-100 text-gray-800'>Nháp</Badge>
       case 'pending':
         return <Badge className='bg-yellow-100 text-yellow-800'>Chờ duyệt</Badge>
+      case 'processing':
+        return <Badge className='bg-yellow-100 text-yellow-800'>Đang xử lý</Badge>
+      case 'confirmed':
+        return <Badge className='bg-yellow-100 text-yellow-800'>Đã xác nhận</Badge>
       case 'approved':
         return <Badge className='bg-green-100 text-green-800'>Đã duyệt</Badge>
       case 'rejected':
         return <Badge className='bg-red-100 text-red-800'>Từ chối</Badge>
+      case 'denied':
+        return <Badge className='bg-red-100 text-red-800'>Bị từ chối</Badge>
+      case 'cancelled':
+        return <Badge className='bg-gray-100 text-gray-800'>Đã hủy</Badge>
       default:
-        return <Badge className='bg-gray-100 text-gray-800'>{status}</Badge>
+        return <Badge className='bg-gray-100 text-gray-800'>Không xác định</Badge>
     }
   }
 
@@ -164,7 +202,7 @@ function DetailProductStaff() {
       case 'rejected':
         return <Badge className='bg-red-100 text-red-800'>Từ chối</Badge>
       default:
-        return <Badge className='bg-gray-100 text-gray-800'>{status}</Badge>
+        return <Badge className='bg-gray-100 text-gray-800'>Không xác định</Badge>
     }
   }
 
@@ -352,7 +390,7 @@ function DetailProductStaff() {
                     size='lg'
                   >
                     <CheckCircle className='w-5 h-5 mr-2' />
-                    Chấp nhận xử lý
+                    Tiếp nhận xử lý
                   </Button>
                   <Button
                     onClick={() => handleActionClick('Rejected')}
@@ -375,7 +413,7 @@ function DetailProductStaff() {
                     size='lg'
                   >
                     <CheckCircle className='w-5 h-5 mr-2' />
-                    Chấp nhận
+                    Duyệt sản phẩm
                   </Button>
                   <Button
                     onClick={() => handleActionClick('Denied')}
@@ -384,7 +422,7 @@ function DetailProductStaff() {
                     className='bg-red-600 hover:bg-red-700'
                   >
                     <XCircle className='w-5 h-5 mr-2' />
-                    Từ chối
+                    Từ chối Duyệt sản phẩm
                   </Button>
                 </div>
               )}
@@ -394,7 +432,8 @@ function DetailProductStaff() {
                 <div className='flex items-center gap-2 text-gray-600'>
                   <AlertCircle className='w-5 h-5' />
                   <span>
-                    Sản phẩm đã được xử lý. Trạng thái hiện tại: <strong>{product?.status}</strong>
+                    Sản phẩm đã được xử lý. Trạng thái hiện tại:{' '}
+                    <strong>{product ? getStatusText(product.status, product.isActive) : 'Không xác định'}</strong>
                   </span>
                 </div>
               )}
@@ -434,16 +473,16 @@ function DetailProductStaff() {
                 <CardContent>
                   {/* Product Image Gallery - Using Carousel for Better Preview */}
                   {/* Ensure productImages is array from BE */}
-                  {product?.productImages && 
-                   Array.isArray(product.productImages) && 
-                   product.productImages.length > 0 ? (
+                  {product?.productImages &&
+                    Array.isArray(product.productImages) &&
+                    product.productImages.length > 0 ? (
                     <div className='space-y-4'>
                       {/* Product Image Carousel */}
                       <div className='relative'>
-                        <ProductImageCarousel 
-                          images={product.productImages} 
-                          productName={product.name} 
-                          height='450px' 
+                        <ProductImageCarousel
+                          images={product.productImages}
+                          productName={product.name}
+                          height='450px'
                         />
                         {/* Fullscreen Preview Button */}
                         <button
@@ -632,7 +671,7 @@ function DetailProductStaff() {
                             {certificate.imageUrl && (
                               <div>
                                 <span className='text-sm text-gray-600 block mb-2'>Hình ảnh chứng nhận:</span>
-                                <div 
+                                <div
                                   className='relative w-full max-w-md h-64 bg-gray-100 rounded-lg overflow-hidden cursor-pointer group hover:ring-2 ring-green-500 transition-all'
                                   onClick={() => handleImagePreview(certificate.imageUrl!)}
                                 >

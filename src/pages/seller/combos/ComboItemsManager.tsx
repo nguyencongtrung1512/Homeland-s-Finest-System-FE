@@ -532,7 +532,12 @@ function ComboItemsManager({
                     </p>
                     <p className='text-sm text-gray-500'>{item.storeName}</p>
                     <div className='flex justify-between items-center mt-2'>
-                      <span className='text-sm text-gray-600'>Số lượng: {item.quantity}</span>
+                      <div className='flex flex-col gap-1'>
+                        <span className='text-sm text-gray-600'>Số lượng: {item.quantity}</span>
+                        {item.availableQuantity !== undefined && (
+                          <span className='text-sm text-green-600'>Khả dụng: {item.availableQuantity}</span>
+                        )}
+                      </div>
                       <div className='text-right'>
                         <div className='text-sm text-gray-500 line-through'>
                           {(item.basePrice * item.quantity).toLocaleString()}₫
