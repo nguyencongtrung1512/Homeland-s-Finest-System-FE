@@ -420,7 +420,6 @@ function ManagerComboStaff() {
       {/* Header */}
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Quản lý Combo</h1>
           <p className='text-gray-600 mt-1'>Xét duyệt các combo được phân công ({totalCombos} combo)</p>
         </div>
         <Button

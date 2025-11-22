@@ -672,21 +672,21 @@ function DetailProductStaff() {
                               <div>
                                 <span className='text-sm text-gray-600 block mb-2'>Hình ảnh chứng nhận:</span>
                                 <div
-                                  className='relative w-full max-w-md h-64 bg-gray-100 rounded-lg overflow-hidden cursor-pointer group hover:ring-2 ring-green-500 transition-all'
+                                  className='relative w-full max-w-2xl bg-white rounded-lg overflow-hidden cursor-pointer group hover:ring-2 ring-green-500 transition-all border border-gray-200 flex items-center justify-center min-h-[200px]'
                                   onClick={() => handleImagePreview(certificate.imageUrl!)}
                                 >
                                   <img
                                     src={certificate.imageUrl}
                                     alt='Chứng nhận'
-                                    className='w-full h-full object-contain transition-transform duration-300 group-hover:scale-105'
+                                    className='w-full h-auto max-h-96 object-contain transition-transform duration-300 group-hover:scale-105 relative z-10'
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement
                                       target.src = '/placeholder-image.png'
                                     }}
                                   />
-                                  <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity duration-300 flex items-center justify-center'>
-                                    <div className='opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-2 text-white'>
-                                      <ZoomIn className='w-6 h-6' />
+                                  <div className='absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-opacity duration-300 flex items-center justify-center pointer-events-none z-20'>
+                                    <div className='opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-2 text-white bg-black/60 px-4 py-2 rounded-lg'>
+                                      <ZoomIn className='w-5 h-5' />
                                       <span className='text-sm font-medium'>Click để xem lớn</span>
                                     </div>
                                   </div>

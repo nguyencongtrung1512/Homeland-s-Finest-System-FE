@@ -56,9 +56,21 @@ function SideBar() {
       icon: <CheckCircle size={18} />
     },
     {
-      key: path.comboManagementStaff,
+      key: 'combo-management',
       label: 'Quản lý combo',
-      icon: <Component size={18} />
+      icon: <Component size={18} />,
+      children: [
+        {
+          key: path.comboManagementStaff,
+          label: 'Duyệt combo',
+          icon: <CheckCircle size={16} />
+        },
+        {
+          key: path.comboListStaff,
+          label: 'Danh sách combo',
+          icon: <Package size={16} />
+        }
+      ]
     },
     {
       key: path.productCategoryStaff,
@@ -149,7 +161,7 @@ function SideBar() {
       <Menu
         mode='inline'
         selectedKeys={[location.pathname]}
-        defaultOpenKeys={['store-management']}
+        defaultOpenKeys={['store-management', 'combo-management']}
         items={menuItems}
         onClick={handleMenuClick}
         style={{

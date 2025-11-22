@@ -68,6 +68,7 @@ export const path = {
   BLOG_LIST_BY_CATEGORY: '/category/:categoryId/blogs',
   BLOG_DETAIL: '/blog-detail/:id',
   comboManagementStaff: 'combo-management',
+  comboListStaff: 'combo-list',
   detailComboStaff: '/staff/combo-management/detail-combo/:id',
   // ============ ADMIN =============
   BASE_ADMIN: '/admin',

@@ -73,6 +73,7 @@ import AdminFormManagement from './pages/admin/formManagerment/form'
 import FormOrderManagement from './pages/admin/formManagerment/formOrder'
 import FormStoreManagement from './pages/admin/formManagerment/formStore'
 import ManagerComboStaff from './pages/staff/comboManagerment/managerCombo'
+import ComboListStaff from './pages/staff/comboManagerment/list'
 import DetailComboStaff from './pages/staff/comboManagerment/detailCombo'
 import ManagerProductAdmin from './pages/admin/productManagerment/list'
 import ManagerComboAdmin from './pages/admin/comboManagerment/list'
@@ -289,6 +290,10 @@ export default function useRouteElements() {
             {
               path: path.comboManagementStaff,
               element: <ManagerComboStaff />
+            },
+            {
+              path: path.comboListStaff,
+              element: <ComboListStaff />
             },
             {
               path: path.detailComboStaff,

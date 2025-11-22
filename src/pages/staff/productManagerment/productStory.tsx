@@ -116,18 +116,18 @@ function ProductStoryComponent({ productId }: ProductStoryProps) {
         <div className='space-y-6'>
           {currentStory ? (
             <>
-              <div>
-                <h3 className='text-xl font-semibold text-gray-900 mb-3'>{currentStory.title}</h3>
-                <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>{currentStory.content}</p>
+              <div className='flex flex-col items-center'>
+                <h3 className='text-xl font-semibold text-gray-900 mb-3 text-center w-full'>{currentStory.title}</h3>
+                <p className='text-gray-700 whitespace-pre-wrap leading-relaxed max-w-4xl text-center'>{currentStory.content}</p>
               </div>
 
               {/* Story Images */}
               {currentStory.images && currentStory.images.length > 0 && (
-                <div>
-                  <h4 className='text-lg font-medium text-gray-900 mb-3'>Hình ảnh minh họa</h4>
-                  <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                <div className='flex flex-col items-center'>
+                  <h4 className='text-lg font-medium text-gray-900 mb-4 text-center w-full'>Hình ảnh minh họa</h4>
+                  <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-6xl justify-items-center'>
                     {currentStory.images.map((image: string, index: number) => (
-                      <div key={index} className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
+                      <div key={index} className='aspect-video bg-gray-100 rounded-lg overflow-hidden w-full max-w-md'>
                         <img
                           src={image}
                           alt={`Story ${index + 1}`}
@@ -141,9 +141,9 @@ function ProductStoryComponent({ productId }: ProductStoryProps) {
 
               {/* Story Video */}
               {currentStory.video && (
-                <div>
-                  <h4 className='text-lg font-medium text-gray-900 mb-3'>Video câu chuyện</h4>
-                  <video src={currentStory.video} controls className='w-full max-w-2xl rounded-lg' />
+                <div className='flex flex-col items-center'>
+                  <h4 className='text-lg font-medium text-gray-900 mb-4 text-center w-full'>Video câu chuyện</h4>
+                  <video src={currentStory.video} controls className='w-full max-w-4xl rounded-lg' />
                 </div>
               )}
             </>
