@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Package, Calendar, Store, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { ArrowLeft, Package, Calendar, Store, CheckCircle, XCircle, Clock, Image as ImageIcon } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { staffApi, type ComboDetail } from '../../../apis/staff.api'
 import { toast } from 'react-toastify'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { Separator } from '../../../components/ui/separator'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../../components/ui/dialog'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
+import ThreeDCard from '../../../components/ui/threed-card'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 function DetailComboStaff() {
   const { id } = useParams<{ id: string }>()
@@ -200,7 +201,14 @@ function DetailComboStaff() {
       const [hours, minutes, seconds] = time.split(':')
 
       // Tạo Date object với định dạng chuẩn
-      const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes), parseInt(seconds))
+      const dateObj = new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hours),
+        parseInt(minutes),
+        parseInt(seconds)
+      )
 
       if (isNaN(dateObj.getTime())) {
         return '-'
@@ -232,6 +240,8 @@ function DetailComboStaff() {
       currency: 'VND'
     }).format(amount)
   }
+
+  const DEFAULT_IMAGE_URL = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
   if (loading) {
     return (
@@ -296,122 +306,170 @@ function DetailComboStaff() {
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
         {/* Main Info */}
         <div className='lg:col-span-2 space-y-6'>
-          {/* Combo Basic Info */}
-          <Card>
-            <CardHeader>
-              <div className='flex items-start gap-4'>
-                <Avatar className='h-16 w-16'>
-                  {combo.thumbnailUrl ? (
-                    <img
-                      src={combo.thumbnailUrl}
-                      alt={combo.name}
-                      className='w-full h-full object-cover'
-                      onError={(e) => {
-                        const target = e.currentTarget
-                        const fallback = target.nextElementSibling as HTMLElement
-                        if (fallback) {
-                          target.style.display = 'none'
-                          fallback.style.display = 'flex'
-                        }
-                      }}
-                    />
-                  ) : null}
-                  <AvatarFallback className='text-white font-semibold text-lg bg-gradient-to-br from-blue-500 to-blue-600'>
-                    {combo.name
-                      .split(' ')
-                      .map((word) => word.charAt(0))
-                      .join('')
-                      .toUpperCase()
-                      .slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className='flex-1'>
-                  <CardTitle className='text-2xl mb-2'>{combo.name}</CardTitle>
-                  <Badge variant={statusConfig.variant} className={statusConfig.className}>
-                    <StatusIcon size={14} className='mr-1' />
-                    {statusConfig.text}
-                  </Badge>
-                </div>
+          {/* Combo Image with ThreeDCard */}
+          <ThreeDCard
+            className='w-full'
+            backgroundImage={combo.thumbnailUrl || DEFAULT_IMAGE_URL}
+            enableGlow={true}
+            enableShadow={true}
+            enableParallax={true}
+          >
+            <div className='relative h-64 md:h-80 flex items-center justify-center'>
+              {combo.thumbnailUrl ? (
+                <img
+                  src={combo.thumbnailUrl}
+                  alt={combo.name}
+                  className='w-full h-full object-cover rounded-2xl'
+                  onError={(e) => {
+                    e.currentTarget.src = DEFAULT_IMAGE_URL
+                  }}
+                />
+              ) : (
+                <img src={DEFAULT_IMAGE_URL} alt={combo.name} className='w-full h-full object-cover rounded-2xl' />
+              )}
+              <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent rounded-2xl' />
+              <div className='absolute bottom-6 left-6 right-6 text-white z-10'>
+                <h2 className='text-3xl font-bold mb-2 drop-shadow-lg'>{combo.name}</h2>
+                <Badge
+                  variant={statusConfig.variant}
+                  className={`${statusConfig.className} backdrop-blur-sm bg-opacity-80`}
+                >
+                  <StatusIcon size={14} className='mr-1' />
+                  {statusConfig.text}
+                </Badge>
               </div>
+            </div>
+          </ThreeDCard>
+
+          {/* Combo Basic Info */}
+          <Card className='shadow-lg border-2'>
+            <CardHeader className='bg-gradient-to-r from-blue-50 to-indigo-50 border-b pt-3'>
+              <CardTitle className='text-2xl flex items-center gap-2'>Thông tin combo</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className='pt-6'>
               {combo.description && (
-                <div className='mb-4'>
-                  <h3 className='font-semibold text-gray-900 mb-2'>Mô tả</h3>
-                  <p className='text-gray-600'>{combo.description}</p>
+                <div className='mb-6 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500'>
+                  <h3 className='font-semibold text-gray-900 mb-2 flex items-center gap-2'>Mô tả</h3>
+                  <p className='text-gray-700 leading-relaxed'>{combo.description}</p>
                 </div>
               )}
 
-              <div className='grid grid-cols-2 gap-4'>
-                <div className='flex items-center gap-2 text-sm text-gray-600'>
-                  <Store size={16} className='text-gray-400' />
-                  <span className='font-medium'>Tỉnh/Thành phố:</span>
-                  <span>{combo.provinceName}</span>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-transparent rounded-lg hover:shadow-md transition-shadow'>
+                  <div className='p-2 bg-blue-100 rounded-lg'>
+                    <Store size={18} className='text-blue-600' />
+                  </div>
+                  <div className='flex-1'>
+                    <span className='text-xs text-gray-500 block'>Tỉnh/Thành phố</span>
+                    <span className='font-semibold text-gray-900'>{combo.provinceName}</span>
+                  </div>
                 </div>
-                <div className='flex items-center gap-2 text-sm text-gray-600'>
-                  <Package size={16} className='text-gray-400' />
-                  <span className='font-medium'>Số sản phẩm:</span>
-                  <span>{combo.comboItems?.length || 0}</span>
+                <div className='flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-transparent rounded-lg hover:shadow-md transition-shadow'>
+                  <div className='p-2 bg-purple-100 rounded-lg'>
+                    <Package size={18} className='text-purple-600' />
+                  </div>
+                  <div className='flex-1'>
+                    <span className='text-xs text-gray-500 block'>Số sản phẩm</span>
+                    <span className='font-semibold text-gray-900'>{combo.comboItems?.length || 0}</span>
+                  </div>
                 </div>
-                <div className='flex items-center gap-2 text-sm text-gray-600'>
-                  <Calendar size={16} className='text-gray-400' />
-                  <span className='font-medium'>Ngày tạo:</span>
-                  <span>{formatDate(combo.createdAt)}</span>
+                <div className='flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-transparent rounded-lg hover:shadow-md transition-shadow'>
+                  <div className='p-2 bg-green-100 rounded-lg'>
+                    <Calendar size={18} className='text-green-600' />
+                  </div>
+                  <div className='flex-1'>
+                    <span className='text-xs text-gray-500 block'>Ngày tạo</span>
+                    <span className='font-semibold text-gray-900'>{formatDate(combo.createdAt)}</span>
+                  </div>
                 </div>
-                <div className='flex items-center gap-2 text-sm text-gray-600'>
-                  <Calendar size={16} className='text-gray-400' />
-                  <span className='font-medium'>Cập nhập:</span>
-                  <span>{formatDate(combo.updatedAt)}</span>
+                <div className='flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-transparent rounded-lg hover:shadow-md transition-shadow'>
+                  <div className='p-2 bg-orange-100 rounded-lg'>
+                    <Calendar size={18} className='text-orange-600' />
+                  </div>
+                  <div className='flex-1'>
+                    <span className='text-xs text-gray-500 block'>Cập nhật</span>
+                    <span className='font-semibold text-gray-900'>{formatDate(combo.updatedAt)}</span>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Combo Items */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <Package size={20} />
-                Danh sách sản phẩm trong combo
-              </CardTitle>
+          <Card className='shadow-lg border-2'>
+            <CardHeader className='bg-gradient-to-r from-blue-50 to-indigo-50 border-b pt-3'>
+              <CardTitle className='flex items-center gap-2 text-xl'>Danh sách sản phẩm trong combo</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className='pt-6'>
               {combo.comboItems && combo.comboItems.length > 0 ? (
                 <div className='space-y-4'>
                   {combo.comboItems.map((item) => (
-                    <div key={item.id} className='border rounded-lg p-4'>
-                      <div className='flex items-center justify-between mb-2'>
-                        <h4 className='font-semibold text-gray-900'>{item.comboItemName}</h4>
-                        <Badge
-                          variant={item.isActive ? 'default' : 'secondary'}
-                          className={item.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}
-                        >
-                          {item.isActive ? 'Hoạt động' : 'Không hoạt động'}
-                        </Badge>
-                      </div>
-                      <div className='grid grid-cols-3 gap-4 text-sm text-gray-600'>
-                        <div>
-                          <span className='font-medium'>Số lượng:</span>
-                          <span className='ml-2'>{item.quantity}</span>
+                    <div
+                      key={item.id}
+                      className='group border-2 rounded-xl p-4 hover:shadow-xl transition-all duration-300 bg-white hover:border-blue-300'
+                    >
+                      <div className='flex gap-4'>
+                        {/* Product Image */}
+                        <div className='relative flex-shrink-0'>
+                          <div className='w-24 h-24 rounded-lg overflow-hidden border-2 border-gray-200 group-hover:border-blue-400 transition-colors'>
+                            {item.comboItemImageUrl ? (
+                              <img
+                                src={item.comboItemImageUrl}
+                                alt={item.comboItemName}
+                                className='w-full h-full object-cover'
+                                onError={(e) => {
+                                  e.currentTarget.src = DEFAULT_IMAGE_URL
+                                }}
+                              />
+                            ) : (
+                              <img
+                                src={DEFAULT_IMAGE_URL}
+                                alt={item.comboItemName}
+                                className='w-full h-full object-cover'
+                              />
+                            )}
+                          </div>
+                          {!item.comboItemImageUrl && (
+                            <div className='absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg'>
+                              <ImageIcon size={24} className='text-gray-400' />
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <span className='font-medium'>Giá:</span>
-                          <span className='ml-2 text-green-600 font-semibold'>{formatCurrency(item.finalPrice)}</span>
-                        </div>
-                        <div>
-                          <span className='font-medium'>Thành tiền:</span>
-                          <span className='ml-2 text-green-600 font-semibold'>
-                            {formatCurrency(item.finalPrice * item.quantity)}
-                          </span>
+
+                        {/* Product Info */}
+                        <div className='flex-1 min-w-0'>
+                          <h4 className='font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors'>
+                            {item.comboItemName}
+                          </h4>
+                          <div className='space-y-1.5 text-sm'>
+                            <div className='flex items-center gap-2'>
+                              <span className='text-gray-500'>Sản phẩm:</span>
+                              <span className='font-medium text-gray-700'>{item.productName}</span>
+                            </div>
+                            {item.variantName && (
+                              <div className='flex items-center gap-2'>
+                                <span className='text-gray-500'>Biến thể:</span>
+                                <span className='font-medium text-gray-700'>{item.variantName}</span>
+                              </div>
+                            )}
+                            <div className='flex items-center gap-2'>
+                              <span className='text-gray-500'>Số lượng:</span>
+                              <Badge variant='outline' className='font-semibold'>
+                                {item.quantity}
+                              </Badge>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className='text-center py-8 text-gray-500'>
-                  <Package size={48} className='mx-auto mb-4 text-gray-300' />
-                  <p>Chưa có sản phẩm nào trong combo</p>
+                <div className='text-center py-12 text-gray-500'>
+                  <div className='inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4'>
+                    <Package size={40} className='text-gray-300' />
+                  </div>
+                  <p className='text-lg font-medium'>Chưa có sản phẩm nào trong combo</p>
                 </div>
               )}
             </CardContent>
@@ -422,32 +480,47 @@ function DetailComboStaff() {
         <div className='space-y-6'>
           {/* Staff Notes */}
           {combo.staffNote && (
-            <Card>
-              <CardHeader>
-                <CardTitle className='text-lg'>Ghi chú của Staff</CardTitle>
+            <Card className='shadow-lg border-2 border-yellow-200'>
+              <CardHeader className='bg-gradient-to-r from-yellow-50 to-amber-50 border-b'>
+                <CardTitle className='text-lg flex items-center gap-2'>
+                  Ghi chú của nhân viên
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className='text-gray-600'>{combo.staffNote}</p>
+              <CardContent className='pt-4'>
+                <p className='text-gray-700 leading-relaxed p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400'>
+                  {combo.staffNote}
+                </p>
               </CardContent>
             </Card>
           )}
 
           {/* Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-lg'>Hành động</CardTitle>
+          <Card className='shadow-lg border-2'>
+            <CardHeader className='bg-gradient-to-r from-indigo-50 to-blue-50 border-b'>
+              <CardTitle className='text-lg flex items-center gap-2'>Hành động</CardTitle>
             </CardHeader>
-            <CardContent className='space-y-3'>
-              {/* Processing Status - Staff needs to Accept or Reject assignment */}
+            <CardContent className='space-y-4'>
+              {/* Trạng thái hiện tại */}
+              <div className='p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border-2 border-gray-200'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-3'>
+                    <p className='text-sm text-gray-500 mb-2 pt-3'>Trạng thái hiện tại:</p>
+                    <span className='font-medium text-gray-700 pb-1'>{statusConfig.text}</span>
+                  </div>
+                </div>
+              </div>
+
               {combo.status === 'Processing' && (
                 <>
                   <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                    <DialogTrigger asChild>
-                      <Button className='w-full bg-green-600 hover:bg-green-700'>
-                        <CheckCircle size={16} className='mr-2' />
-                        Chấp nhận review
-                      </Button>
-                    </DialogTrigger>
+                    <ShimmerBorder color='#10b981' className='w-full' contentClassName='bg-transparent'>
+                      <DialogTrigger asChild>
+                        <Button className='w-full bg-green-600 hover:bg-green-700'>
+                          <CheckCircle size={16} className='mr-2' />
+                          Chấp nhận xử lý
+                        </Button>
+                      </DialogTrigger>
+                    </ShimmerBorder>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Chấp nhận nhiệm vụ</DialogTitle>
@@ -467,7 +540,12 @@ function DetailComboStaff() {
                           <Button variant='outline' onClick={() => setShowConfirmDialog(false)} className='flex-1'>
                             Hủy
                           </Button>
-                          <Button onClick={handleConfirmAssignment} disabled={actionLoading} className='flex-1'>
+                          <Button
+                            variant='green'
+                            onClick={handleConfirmAssignment}
+                            disabled={actionLoading}
+                            className='flex-1'
+                          >
                             {actionLoading ? 'Đang xử lý...' : 'Xác nhận chấp nhận'}
                           </Button>
                         </div>
@@ -476,12 +554,14 @@ function DetailComboStaff() {
                   </Dialog>
 
                   <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-                    <DialogTrigger asChild>
-                      <Button variant='destructive' className='w-full'>
-                        <XCircle size={16} className='mr-2' />
-                        Từ chối
-                      </Button>
-                    </DialogTrigger>
+                    <ShimmerBorder color='#ef4444' className='w-full' contentClassName='bg-transparent'>
+                      <DialogTrigger asChild>
+                        <Button variant='destructive' className='w-full'>
+                          <XCircle size={16} className='mr-2' />
+                          Từ chối
+                        </Button>
+                      </DialogTrigger>
+                    </ShimmerBorder>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Từ chối nhiệm vụ</DialogTitle>
@@ -517,12 +597,14 @@ function DetailComboStaff() {
               {combo.status === 'Confirmed' && (
                 <>
                   <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-                    <DialogTrigger asChild>
-                      <Button className='w-full bg-green-600 hover:bg-green-700'>
-                        <CheckCircle size={16} className='mr-2' />
-                        Approved
-                      </Button>
-                    </DialogTrigger>
+                    <ShimmerBorder color='#10b981' className='w-full' contentClassName='bg-transparent'>
+                      <DialogTrigger asChild>
+                        <Button className='w-full bg-green-600 hover:bg-green-700'>
+                          <CheckCircle size={16} className='mr-2' />
+                          Duyệt
+                        </Button>
+                      </DialogTrigger>
+                    </ShimmerBorder>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Phê duyệt combo</DialogTitle>
@@ -539,10 +621,19 @@ function DetailComboStaff() {
                           />
                         </div>
                         <div className='flex gap-2'>
-                          <Button variant='outline' onClick={() => setShowApproveDialog(false)} className='flex-1'>
+                          <Button
+                            variant='outline'
+                            onClick={() => setShowApproveDialog(false)}
+                            className='flex-1 text-white'
+                          >
                             Hủy
                           </Button>
-                          <Button onClick={handleApproveCombo} disabled={actionLoading} className='flex-1'>
+                          <Button
+                            variant='green'
+                            onClick={handleApproveCombo}
+                            disabled={actionLoading}
+                            className='flex-1'
+                          >
                             {actionLoading ? 'Đang xử lý...' : 'Xác nhận phê duyệt'}
                           </Button>
                         </div>
@@ -551,12 +642,14 @@ function DetailComboStaff() {
                   </Dialog>
 
                   <Dialog open={showDenyDialog} onOpenChange={setShowDenyDialog}>
-                    <DialogTrigger asChild>
-                      <Button variant='destructive' className='w-full'>
-                        <XCircle size={16} className='mr-2' />
-                        Denied
-                      </Button>
-                    </DialogTrigger>
+                    <ShimmerBorder color='#ef4444' className='w-full' contentClassName='bg-transparent'>
+                      <DialogTrigger asChild>
+                        <Button variant='destructive' className='w-full'>
+                          <XCircle size={16} className='mr-2' />
+                          Từ chối
+                        </Button>
+                      </DialogTrigger>
+                    </ShimmerBorder>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Từ chối combo</DialogTitle>
@@ -588,9 +681,11 @@ function DetailComboStaff() {
                 </>
               )}
 
-              <Button variant='outline' onClick={() => navigate('/staff/combo-management')} className='w-full'>
-                Quay lại danh sách
-              </Button>
+              <ShimmerBorder color='#6366f1' className='w-full' contentClassName='bg-transparent'>
+                <Button variant='outline' onClick={() => navigate('/staff/combo-management')} className='w-full'>
+                  Quay lại danh sách
+                </Button>
+              </ShimmerBorder>
             </CardContent>
           </Card>
 

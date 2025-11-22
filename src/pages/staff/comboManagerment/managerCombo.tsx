@@ -397,7 +397,7 @@ function ManagerComboStaff() {
               className='flex items-center justify-center gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300'
             >
               <ExternalLink size={16} />
-              Xem chi tiết
+              Xem
             </Button>
             {(combo.status === 'Processing' || combo.status === 'Confirmed') && (
               <Button

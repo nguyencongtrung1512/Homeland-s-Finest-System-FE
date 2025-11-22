@@ -45,7 +45,7 @@ export interface ComboData {
   totalFinalPrice: number
   availableQuantity?: number
   disabledReason?: string | null
-  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Cancelled'
+  status: 'Draft' | 'Pending' | 'Denied' | 'Rejected' | 'Confirmed' | 'Processing' | 'Cancelled' | 'Approved'
   staffNote?: string | null
   assignedToId?: string | null
   isActive: boolean
@@ -88,7 +88,7 @@ export interface Combo {
   totalFinalPrice: number
   availableQuantity?: number
   disabledReason?: string | null
-  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Cancelled'
+  status: 'Draft' | 'Pending' | 'Denied' | 'Rejected' | 'Confirmed' | 'Processing' | 'Cancelled' | 'Approved'
   staffNote?: string | null
   assignedToId?: string | null
   isActive: boolean

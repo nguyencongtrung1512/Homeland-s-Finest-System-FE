@@ -53,7 +53,7 @@ export const ShimmerBorder = ({
       <div className={`relative p-[1.5px] rounded-lg overflow-hidden ${className}`}>
         {/* Shimmer Border Effect */}
         <div
-          className='absolute inset-0'
+          className='absolute inset-0 pointer-events-none'
           style={{
             background: `conic-gradient(from var(--angle), transparent 25%, ${color}, transparent 50%)`,
             animation: `shimmer-spin ${animationDuration} linear infinite`

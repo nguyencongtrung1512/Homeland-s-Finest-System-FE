@@ -12,9 +12,13 @@ const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
       case 'Approved':
         return 'bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm font-medium'
+      case 'Confirmed':
+        return 'bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm font-medium'
       case 'Pending':
         return 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-sm font-medium'
       case 'Rejected':
+        return 'bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm font-medium'
+      case 'Denied':
         return 'bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm font-medium'
       case 'Draft':
         return 'bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-sm font-medium'
@@ -35,6 +39,10 @@ const StatusBadge = ({ status }: { status: string }) => {
         return 'Chờ duyệt'
       case 'Rejected':
         return 'Từ chối'
+      case 'Denied':
+        return 'Bị từ chối'
+      case 'Confirmed':
+        return 'Đã xác nhận'
       case 'Draft':
         return 'Nháp'
       case 'Processing':
@@ -225,7 +233,9 @@ function ManagerComboAdmin() {
             <option value=''>Tất cả trạng thái</option>
             <option value='Pending'>Chờ duyệt</option>
             <option value='Approved'>Đã duyệt</option>
-            <option value='Rejected'>Từ chối</option>
+            <option value='Confirmed'>Đã xác nhận bởi nhân viênviên</option>
+            <option value='Rejected'>Đã từ chối bởi nhân viên</option>
+            <option value='Denied'>Bị từ chối</option>
             <option value='Processing'>Đang xử lý</option>
             <option value='Cancelled'>Đã hủy</option>
           </select>
@@ -294,7 +304,7 @@ function ManagerComboAdmin() {
                   // Ưu tiên dùng storeName trực tiếp từ combo object (backend trả về)
                   // Nếu không có, thì lấy từ comboItems
                   let displayStoreName = combo.storeName || ''
-                  
+
                   if (!displayStoreName && combo.comboItems && combo.comboItems.length > 0) {
                     const storeNames = combo.comboItems.map((item) => item.storeName).filter(Boolean)
                     const uniqueStoreNames = [...new Set(storeNames)]

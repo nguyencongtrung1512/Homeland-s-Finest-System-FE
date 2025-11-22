@@ -152,7 +152,7 @@ function DetailComboSeller() {
     if (!combo) return
 
     if (finalPrice < 0) {
-      toast.error('Giá cuối cùng không được âm')
+      toast.error('Giá bán không được âm')
       return
     }
 
@@ -168,10 +168,28 @@ function DetailComboSeller() {
       const response = await updateComboShell(combo.id, updateData)
 
       if (response && (response.status === 200 || response.status === 202)) {
+        // Cập nhật state local thay vì fetch lại toàn bộ
+        if (response.data) {
+          const updatedCombo = response.data as unknown as Combo
+          setCombo({
+            ...updatedCombo,
+            isActive: updatedCombo.isActive ?? combo.isActive
+          })
+          // Cập nhật finalPrice từ response
+          if (!isEditingRef.current) {
+            setFinalPrice(updatedCombo.totalFinalPrice || 0)
+          }
+        } else {
+          // Nếu response không có data, chỉ cập nhật totalFinalPrice trong state hiện tại
+          setCombo({
+            ...combo,
+            totalFinalPrice: finalPrice
+          })
+        }
+
         toast.success('Cập nhật giá combo thành công')
         isEditingRef.current = false
         setIsEditingFinalPrice(false)
-        await fetchCombo()
       } else {
         toast.error('Có lỗi xảy ra khi cập nhật giá combo')
       }
@@ -698,14 +716,13 @@ function DetailComboSeller() {
                   <div className='space-y-2'>
                     <div className='flex items-center justify-between min-h-[40px]'>
                       <Label htmlFor='finalPrice' className='text-sm font-medium text-gray-700 flex-shrink-0'>
-                        Giá cuối cùng:
+                        Giá Bán:
                       </Label>
                       <div className='flex items-center gap-2 flex-1 justify-end'>
                         {isEditingFinalPrice ? (
                           <>
                             <Input
                               id='finalPrice'
-                              type='number'
                               value={finalPrice}
                               onChange={(e) => setFinalPrice(Number(e.target.value))}
                               className='w-32 h-8'
