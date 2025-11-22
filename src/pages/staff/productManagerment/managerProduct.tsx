@@ -1,28 +1,56 @@
-import { useState, useEffect } from 'react'
-import { Card, Input, Select, DatePicker, Button, Table, Tag, Pagination, message } from 'antd'
-import { Search, Filter, Eye } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Search, Filter, Eye, CalendarIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { ColumnsType } from 'antd/es/table'
+import { format } from 'date-fns'
+import { vi } from 'date-fns/locale'
+import { Card, CardContent } from '../../../components/ui/card'
+import { Input } from '../../../components/ui/input'
+import { Button } from '../../../components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Badge } from '../../../components/ui/badge'
+import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
+import { Calendar } from '../../../components/ui/calendar'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
+import Pagination from '../../../components/Pagination/Pagination'
 import { staffApi, type ProductForReview } from '../../../apis/staff.api'
+import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { useAuth } from '../../../contexts/auth.context'
+import { toast } from '../../../utils/toast'
+import { formatDate } from '../../../utils/formatDate'
 import path from '../../../constants/path'
 
-const { Search: AntSearch } = Input
-const { Option } = Select
+const DEFAULT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
 function ManagerProduct() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [products, setProducts] = useState<ProductForReview[]>([])
+  const [allProducts, setAllProducts] = useState<ProductForReview[]>([])
+  const [categories, setCategories] = useState<ProductCategoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
-  const [dateFilter, setDateFilter] = useState(null)
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(10)
-  const [totalItems, setTotalItems] = useState(0)
 
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const response = await getAllProductCategory({ pageSize: 0 })
+      console.log('response data categories', response)
+      if (response && response.data) {
+        setCategories(response.data)
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+    }
+  }
+
+  // Load categories on component mount
+  useEffect(() => {
+    fetchCategories()
+  }, [])
 
   // Fetch products for review
   const fetchProductsForReview = async (page: number = 1, search: string = '', status: string = 'all') => {
@@ -30,7 +58,7 @@ function ManagerProduct() {
       setLoading(true)
 
       if (!user?.userId) {
-        message.error('Không tìm thấy thông tin staff')
+        toast.error('Không tìm thấy thông tin staff')
         return
       }
 
@@ -44,25 +72,14 @@ function ManagerProduct() {
       const response = await staffApi.getProductsForReview(user.userId, params)
 
       if (response) {
-        setProducts(response.data)
-        if (response.pagination) {
-          setTotalItems(response.pagination.totalItems)
-
-        } else {
-          setTotalItems(0)
-
-        }
+        setAllProducts(response.data)
       } else {
-        message.error('Không thể tải danh sách sản phẩm')
-        setProducts([])
-        setTotalItems(0)
-
+        toast.error('Không thể tải danh sách sản phẩm')
+        setAllProducts([])
       }
-    } catch (error) {
-      message.error('Có lỗi xảy ra khi tải dữ liệu')
-      setProducts([])
-      setTotalItems(0)
-
+    } catch {
+      toast.error('Có lỗi xảy ra khi tải dữ liệu')
+      setAllProducts([])
     } finally {
       setLoading(false)
     }
@@ -73,121 +90,78 @@ function ManagerProduct() {
     if (user?.userId) {
       fetchProductsForReview(currentPage, searchText, statusFilter)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.userId, currentPage])
+
+  // Apply client-side filters (category and date)
+  const filteredProducts = useMemo(() => {
+    let filtered = [...allProducts]
+
+    // Filter by category (client-side)
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter((p) => p.categoryIds?.includes(categoryFilter))
+    }
+
+    // Filter by date (client-side)
+    if (dateFilter) {
+      const filterDate = format(dateFilter, 'yyyy-MM-dd')
+      filtered = filtered.filter((p) => {
+        try {
+          // Handle different date formats from API
+          const dateStr = p.createdAt.split(' ')[0] // Get date part before space
+          // If format is dd-MM-yyyy, convert to yyyy-MM-dd
+          if (dateStr.includes('-')) {
+            const parts = dateStr.split('-')
+            if (parts.length === 3) {
+              // Check if it's dd-MM-yyyy or yyyy-MM-dd
+              if (parts[0].length === 4) {
+                // Already yyyy-MM-dd
+                return dateStr === filterDate
+              } else {
+                // dd-MM-yyyy, convert to yyyy-MM-dd
+                const [day, month, year] = parts
+                return `${year}-${month}-${day}` === filterDate
+              }
+            }
+          }
+          return dateStr === filterDate
+        } catch {
+          return false
+        }
+      })
+    }
+
+    return filtered
+  }, [allProducts, categoryFilter, dateFilter])
 
   const getStatusTag = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending':
-        return <Tag color='orange'>Chờ duyệt</Tag>
+        return <Badge className='bg-orange-500 hover:bg-orange-600'>Chờ duyệt</Badge>
       case 'approved':
-        return <Tag color='green'>Đã duyệt</Tag>
+        return <Badge className='bg-green-500 hover:bg-green-600'>Đã duyệt</Badge>
       case 'rejected':
-        return <Tag color='red'>Từ chối</Tag>
+        return <Badge variant='destructive'>Từ chối</Badge>
       default:
-        return <Tag>{status}</Tag>
+        return <Badge variant='outline'>{status}</Badge>
     }
   }
 
-  const formatDate = (dateString: string) => {
-    try {
-      const [date] = dateString.split(' ')
-      const [day, month, year] = date.split('-')
-      return `${day}/${month}/${year}`
-    } catch {
-      return dateString
-    }
+  const truncateText = (text: string, maxLength: number = 50) => {
+    if (!text) return ''
+    if (text.length <= maxLength) return text
+    return text.substring(0, maxLength).trim() + '...'
   }
-
-  const columns: ColumnsType<ProductForReview> = [
-    {
-      title: 'Sản phẩm',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name, record) => (
-        <div className='flex items-center gap-3'>
-          <div className='w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden'>
-            {record.productImages && record.productImages.length > 0 ? (
-              <img
-                src={record.productImages[0]}
-                alt={name}
-                className='w-full h-full object-cover'
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement
-                  target.style.display = 'none'
-                  const nextElement = target.nextElementSibling as HTMLElement
-                  if (nextElement) {
-                    nextElement.style.display = 'flex'
-                  }
-                }}
-              />
-            ) : null}
-            <span className='text-xs text-gray-500'>IMG</span>
-          </div>
-          <div>
-            <div className='font-medium text-gray-900'>{name}</div>
-            <div className='text-sm text-gray-500'>#{record.id.slice(0, 8)}...</div>
-          </div>
-        </div>
-      )
-    },
-    {
-      title: 'Loại sản phẩm',
-      dataIndex: 'typeProduct',
-      key: 'typeProduct',
-      render: (typeProduct) => <span className='text-gray-700'>{typeProduct}</span>
-    },
-    {
-      title: 'Xuất xứ',
-      dataIndex: 'material',
-      key: 'material',
-      render: (material) => <span className='text-gray-700'>{material}</span>
-    },
-    {
-      title: 'Ngày tạo',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date) => <span className='text-gray-700'>{formatDate(date)}</span>
-    },
-    // {
-    //   title: 'Đánh giá',
-    //   dataIndex: 'rating',
-    //   key: 'rating',
-    //   render: (rating, record) => (
-    //     <span className='text-gray-700'>
-    //       {rating.toFixed(1)} ⭐ ({record.reviewCount})
-    //     </span>
-    //   )
-    // },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => getStatusTag(status)
-    },
-    {
-      title: 'Hành động',
-      key: 'action',
-      render: (_, record) => (
-        <div className='flex items-center gap-2'>
-          <Button
-            type='text'
-            icon={<Eye size={16} />}
-            onClick={() => {
-              const detailPath = `${path.detailProductStaff.replace(':id', record.id)}`
-              navigate(detailPath)
-            }}
-            className='flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
-            title='Xem chi tiết'
-          />
-        </div>
-      )
-    }
-  ]
 
   const handleFilter = () => {
     setCurrentPage(1)
     fetchProductsForReview(1, searchText, statusFilter)
   }
+
+  // Reset to page 1 when category or date filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [categoryFilter, dateFilter])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -200,6 +174,13 @@ function ManagerProduct() {
     fetchProductsForReview(1, value, statusFilter)
   }
 
+  // Calculate pagination for filtered products
+  const totalPages = Math.ceil(filteredProducts.length / pageSize)
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredProducts.slice(startIndex, startIndex + pageSize)
+  }, [filteredProducts, currentPage, pageSize])
+
   return (
     <div className='space-y-6'>
       {/* Header */}
@@ -210,73 +191,178 @@ function ManagerProduct() {
 
       {/* Search and Filters */}
       <Card>
-        <div className='flex flex-wrap items-center gap-4'>
-          <div className='flex-1 min-w-[300px]'>
-            <AntSearch
-              placeholder='Tên sản phẩm hoặc ID...'
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onSearch={handleSearch}
-              prefix={<Search size={16} className='text-gray-400' />}
-              className='w-full'
-            />
+        <CardContent className='pt-6'>
+          <div className='flex flex-wrap items-center gap-4'>
+            <div className='flex-1 min-w-[300px]'>
+              <div className='relative'>
+                <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' size={16} />
+                <Input
+                  placeholder='Tên sản phẩm hoặc ID...'
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearch(searchText)
+                    }
+                  }}
+                  className='pl-10 w-full'
+                />
+              </div>
+            </div>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className='w-40'>
+                <SelectValue placeholder='Trạng thái' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Tất cả</SelectItem>
+                <SelectItem value='Pending'>Chờ duyệt</SelectItem>
+                <SelectItem value='Approved'>Đã duyệt</SelectItem>
+                <SelectItem value='Rejected'>Từ chối</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className='w-40'>
+                <SelectValue placeholder='Danh mục' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Tất cả</SelectItem>
+                {categories
+                  .filter((cat) => cat.isActive)
+                  .map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant='outline' className='w-40 justify-start text-left font-normal'>
+                  <CalendarIcon className='mr-2 h-4 w-4' />
+                  {dateFilter ? format(dateFilter, 'dd/MM/yyyy', { locale: vi }) : 'mm/dd/yyyy'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className='w-auto p-0' align='start'>
+                <Calendar mode='single' selected={dateFilter} onSelect={setDateFilter} initialFocus locale={vi} />
+              </PopoverContent>
+            </Popover>
+
+            <Button onClick={handleFilter} className='bg-blue-600 hover:bg-blue-700'>
+              <Filter size={16} className='mr-2' />
+              Lọc
+            </Button>
           </div>
-
-          <Select value={statusFilter} onChange={setStatusFilter} className='w-40' placeholder='Trạng thái'>
-            <Option value='all'>Tất cả</Option>
-            <Option value='Pending'>Chờ duyệt</Option>
-            <Option value='Approved'>Đã duyệt</Option>
-            <Option value='Rejected'>Từ chối</Option>
-          </Select>
-
-          <Select value={categoryFilter} onChange={setCategoryFilter} className='w-40' placeholder='Danh mục'>
-            <Option value='all'>Tất cả</Option>
-            <Option value='electronics'>Điện tử</Option>
-            <Option value='fashion'>Thời trang</Option>
-            <Option value='books'>Sách</Option>
-            <Option value='gaming'>Gaming</Option>
-          </Select>
-
-          <DatePicker placeholder='mm/dd/yyyy' value={dateFilter} onChange={setDateFilter} className='w-40' />
-
-          <Button
-            type='primary'
-            icon={<Filter size={16} />}
-            onClick={handleFilter}
-            className='bg-blue-600 hover:bg-blue-700'
-          >
-            Lọc
-          </Button>
-        </div>
+        </CardContent>
       </Card>
 
       {/* Table */}
       <Card>
-        <Table
-          columns={columns}
-          dataSource={products}
-          pagination={false}
-          loading={loading}
-          rowKey="id"
-          className='w-full'
-        />
+        <CardContent className='pt-6'>
+          {loading ? (
+            <div className='flex items-center justify-center py-12'>
+              <div className='text-gray-500'>Đang tải...</div>
+            </div>
+          ) : (
+            <>
+              <div className='rounded-md border'>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Sản phẩm</TableHead>
+                      <TableHead>Ngày tạo</TableHead>
+                      <TableHead>Trạng thái</TableHead>
+                      <TableHead>Hành động</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedProducts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className='text-center py-8 text-gray-500'>
+                          Không có dữ liệu
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedProducts.map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell>
+                            <div className='flex items-center gap-3'>
+                              <div className='w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative'>
+                                {record.productImages && record.productImages.length > 0 ? (
+                                  <img
+                                    src={record.productImages[0]}
+                                    alt={record.name}
+                                    className='w-full h-full object-cover'
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement
+                                      target.src = DEFAULT_IMAGE
+                                    }}
+                                  />
+                                ) : (
+                                  <img src={DEFAULT_IMAGE} alt={record.name} className='w-full h-full object-cover' />
+                                )}
+                              </div>
+                              <div>
+                                <div className='font-medium text-gray-900'>{record.name}</div>
+                                {record.description && (
+                                  <div className='text-sm ' title={record.description}>
+                                    Mô tả  {truncateText(record.description, 60)}
+                                  </div>
+                                )}
+                                <div className='text-sm ' title={record.material}>
+                                  Xuất xứ: {record.material}
+                                </div>
+                              </div>
 
-        {/* Pagination */}
-        <div className='flex items-center justify-between mt-6'>
-          <div className='text-sm text-gray-600'>
-            Hiển thị {(currentPage - 1) * pageSize + 1} đến {Math.min(currentPage * pageSize, totalItems)} của {totalItems} kết quả
-          </div>
-          <Pagination
-            current={currentPage}
-            total={totalItems}
-            pageSize={pageSize}
-            onChange={handlePageChange}
-            showSizeChanger={false}
-            showQuickJumper={false}
-            disabled={loading}
-            hideOnSinglePage={false}
-          />
-        </div>
+                            </div>
+                          </TableCell>
+
+
+                          <TableCell>
+                            <span className='text-gray-700'>{formatDate(record.createdAt)}</span>
+                          </TableCell>
+                          <TableCell>{getStatusTag(record.status)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant='ghost'
+                              size='icon'
+                              onClick={() => {
+                                const detailPath = `${path.detailProductStaff.replace(':id', record.id)}`
+                                navigate(detailPath)
+                              }}
+                              className='h-8 w-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
+                              title='Xem chi tiết'
+                            >
+                              <Eye size={16} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              <div className='flex items-center justify-between mt-6'>
+                <div className='text-sm text-gray-600'>
+                  Hiển thị {(currentPage - 1) * pageSize + 1} đến{' '}
+                  {Math.min(currentPage * pageSize, filteredProducts.length)} của {filteredProducts.length} kết quả
+                </div>
+                {totalPages > 1 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    maxVisiblePages={5}
+                  />
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
       </Card>
     </div>
   )

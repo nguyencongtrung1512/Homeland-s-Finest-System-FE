@@ -152,7 +152,8 @@ function UpdateComboModal({ open, onOpenChange, combo: initialCombo, onSuccess }
     }
   }
 
-  const canEdit = combo?.status === 'Draft' || combo?.status === 'Rejected' || combo?.status === 'Pending'
+  // Chỉ cho phép chỉnh sửa khi status là 'Draft'
+  const canEdit = combo?.status === 'Draft'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -260,15 +261,31 @@ function UpdateComboModal({ open, onOpenChange, combo: initialCombo, onSuccess }
               )}
             </div>
 
-            {/* Status warning */}
-            {combo?.status === 'Approved' && (
-              <div className='text-sm text-green-600 bg-green-50 px-3 py-2 rounded'>
-                Combo đã được duyệt, không thể chỉnh sửa
-              </div>
-            )}
-            {combo?.status === 'Pending' && (
-              <div className='text-sm text-yellow-600 bg-yellow-50 px-3 py-2 rounded'>
-                Combo đang chờ duyệt, vẫn có thể chỉnh sửa
+            {/* Status Info - Chỉ hiển thị cho Draft vì chỉ có Draft mới mở được modal */}
+            {canEdit && combo?.status === 'Draft' && (
+              <div className='p-4 bg-blue-50 border border-blue-200 rounded-lg'>
+                <div className='flex items-start gap-3'>
+                  <div className='flex-shrink-0 mt-0.5'>
+                    <svg
+                      className='w-5 h-5 text-blue-600'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                      xmlns='http://www.w3.org/2000/svg'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                      />
+                    </svg>
+                  </div>
+                  <div className='flex-1'>
+                    <h4 className='text-sm font-semibold text-blue-800 mb-1'>Combo ở trạng thái nháp</h4>
+                    <p className='text-sm text-blue-700'>Bạn có thể chỉnh sửa thông tin combo trước khi gửi duyệt.</p>
+                  </div>
+                </div>
               </div>
             )}
 

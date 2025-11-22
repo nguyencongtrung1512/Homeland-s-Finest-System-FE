@@ -5,7 +5,7 @@ import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { BookOpen, Edit, Save, X, Trash2, Image, Video, Upload } from 'lucide-react'
+import { BookOpen, Edit, Save, X, Trash2, Image, Video, Upload, AlertCircle } from 'lucide-react'
 import { productStoryApi } from '../../../apis/productStory.api'
 import type { ProductStory } from '../../../types/productStoryType'
 
@@ -17,6 +17,7 @@ interface ProductStoryProps {
   onCancelEdit: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => void
   onSaveSection: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => Promise<void>
   onRefresh?: () => Promise<void> | void
+  canEdit?: boolean
 }
 
 interface StoryEditData {
@@ -37,7 +38,8 @@ function ProductStoryComponent({
   isEditMode,
   onToggleEditMode,
   onCancelEdit,
-  onRefresh
+  onRefresh,
+  canEdit = true
 }: ProductStoryProps) {
   const [stories, setStories] = useState<ProductStory[]>([])
   const [loading, setLoading] = useState(false)
@@ -575,7 +577,7 @@ function ProductStoryComponent({
                 Lưu
               </Button>
             </>
-          ) : stories.length > 0 ? (
+          ) : canEdit && stories.length > 0 ? (
             <Button size='sm' variant='outline' onClick={() => onToggleEditMode('story')}>
               <Edit className='w-4 h-4 mr-2' />
               Chỉnh sửa
@@ -584,6 +586,22 @@ function ProductStoryComponent({
         </div>
       </CardHeader>
       <CardContent>
+        {/* Hiển thị thông báo khi không được phép chỉnh sửa */}
+        {!canEdit && !isEditMode && (
+          <div className='mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
+            <div className='flex items-start gap-3'>
+              <AlertCircle className='w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5' />
+              <div>
+                <p className='text-sm font-medium text-yellow-800 mb-1'>
+                  Không thể chỉnh sửa trong trạng thái hiện tại
+                </p>
+                <p className='text-xs text-yellow-700'>
+                  Sản phẩm đang được xử lý bởi hệ thống. Bạn có thể hủy để chỉnh sửa hoặc chờ kết quả duyệt.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {isEditMode ? (
           // Edit mode for story
           <div className='space-y-6'>
@@ -823,10 +841,12 @@ function ProductStoryComponent({
                 <BookOpen className='w-16 h-16 text-gray-400 mx-auto mb-4' />
                 <h3 className='text-lg font-medium text-gray-900 mb-2'>Chưa có câu chuyện</h3>
                 <p className='text-gray-500 mb-6'>Thêm câu chuyện để khách hàng hiểu rõ hơn về sản phẩm</p>
-                <Button variant='outline' onClick={() => onToggleEditMode('story')}>
-                  <Edit className='w-4 h-4 mr-2' />
-                  Thêm câu chuyện
-                </Button>
+                {canEdit && (
+                  <Button variant='outline' onClick={() => onToggleEditMode('story')}>
+                    <Edit className='w-4 h-4 mr-2' />
+                    Thêm câu chuyện
+                  </Button>
+                )}
               </div>
             )}
           </div>

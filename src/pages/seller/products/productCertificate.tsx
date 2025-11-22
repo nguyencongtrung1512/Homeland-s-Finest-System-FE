@@ -31,11 +31,12 @@ interface ProductCertificateProps {
   onCancelEdit: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => void
   onSaveSection: (section: 'basicInfo' | 'variants' | 'story' | 'certificates') => Promise<void>
   onRefresh?: () => Promise<void> | void
+  canEdit?: boolean
 }
 
 // Chỉ có 2 trạng thái: Active và Inactive
 
-function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
+function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCertificateProps) {
   const [certificates, setCertificates] = useState<ProductCertificateType[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -51,8 +52,40 @@ function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
       // Thử cả hai cách để xem cái nào work
       const certificatesData = response.data.data || response.data || []
       setCertificates(certificatesData)
-    } catch {
-      toast.error('Không thể tải danh sách chứng nhận')
+    } catch (error: unknown) {
+      console.error('Error fetching certificates:', error)
+
+      // Extract error message from backend response
+      let errorMessage = 'Không thể tải danh sách chứng nhận'
+
+      if (error && typeof error === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = error as any
+
+        // Check for axios error response structure (error.response.data)
+        if (err.response?.data) {
+          const responseData = err.response.data
+
+          // Priority 1: Check for message in response.data
+          if (responseData.message) {
+            errorMessage = responseData.message
+          }
+          // Priority 2: Check for title field
+          else if (responseData.title) {
+            errorMessage = responseData.title
+          }
+          // Priority 3: Check for error string
+          else if (responseData.error && typeof responseData.error === 'string') {
+            errorMessage = responseData.error
+          }
+        }
+        // Check for direct message property
+        else if (err.message && typeof err.message === 'string') {
+          errorMessage = err.message
+        }
+      }
+
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -131,8 +164,59 @@ function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
       if (onRefresh) {
         await onRefresh()
       }
-    } catch {
-      toast.error('Không thể thêm chứng nhận')
+    } catch (error: unknown) {
+      console.error('Error creating certificate:', error)
+
+      // Extract error message from backend response
+      let errorMessage = 'Không thể thêm chứng nhận'
+
+      if (error && typeof error === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = error as any
+
+        // Check for axios error response structure (error.response.data)
+        if (err.response?.data) {
+          const responseData = err.response.data
+
+          // Priority 1: Check for message in response.data
+          if (responseData.message) {
+            errorMessage = responseData.message
+          }
+          // Priority 2: Check for errors object (validation errors)
+          else if (responseData.errors && typeof responseData.errors === 'object') {
+            const errorMessages: string[] = []
+            Object.keys(responseData.errors).forEach((field) => {
+              const fieldErrors = responseData.errors[field]
+              if (Array.isArray(fieldErrors)) {
+                errorMessages.push(...fieldErrors)
+              } else if (typeof fieldErrors === 'string') {
+                errorMessages.push(fieldErrors)
+              }
+            })
+            if (errorMessages.length > 0) {
+              errorMessage = errorMessages.join(', ')
+            }
+          }
+          // Priority 3: Check for title field
+          else if (responseData.title) {
+            errorMessage = responseData.title
+          }
+          // Priority 4: Check for errors array
+          else if (responseData.errors && Array.isArray(responseData.errors)) {
+            errorMessage = responseData.errors.join(', ')
+          }
+          // Priority 5: Check for error string
+          else if (responseData.error && typeof responseData.error === 'string') {
+            errorMessage = responseData.error
+          }
+        }
+        // Check for direct message property
+        else if (err.message && typeof err.message === 'string') {
+          errorMessage = err.message
+        }
+      }
+
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -145,8 +229,59 @@ function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
       await productCertificateApi.updateStatus(certificateId, newStatus)
       toast.success('Cập nhật trạng thái thành công')
       fetchCertificates() // Reload danh sách
-    } catch {
-      toast.error('Không thể cập nhật trạng thái')
+    } catch (error: unknown) {
+      console.error('Error updating certificate status:', error)
+
+      // Extract error message from backend response
+      let errorMessage = 'Không thể cập nhật trạng thái'
+
+      if (error && typeof error === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = error as any
+
+        // Check for axios error response structure (error.response.data)
+        if (err.response?.data) {
+          const responseData = err.response.data
+
+          // Priority 1: Check for message in response.data
+          if (responseData.message) {
+            errorMessage = responseData.message
+          }
+          // Priority 2: Check for errors object (validation errors)
+          else if (responseData.errors && typeof responseData.errors === 'object') {
+            const errorMessages: string[] = []
+            Object.keys(responseData.errors).forEach((field) => {
+              const fieldErrors = responseData.errors[field]
+              if (Array.isArray(fieldErrors)) {
+                errorMessages.push(...fieldErrors)
+              } else if (typeof fieldErrors === 'string') {
+                errorMessages.push(fieldErrors)
+              }
+            })
+            if (errorMessages.length > 0) {
+              errorMessage = errorMessages.join(', ')
+            }
+          }
+          // Priority 3: Check for title field
+          else if (responseData.title) {
+            errorMessage = responseData.title
+          }
+          // Priority 4: Check for errors array
+          else if (responseData.errors && Array.isArray(responseData.errors)) {
+            errorMessage = responseData.errors.join(', ')
+          }
+          // Priority 5: Check for error string
+          else if (responseData.error && typeof responseData.error === 'string') {
+            errorMessage = responseData.error
+          }
+        }
+        // Check for direct message property
+        else if (err.message && typeof err.message === 'string') {
+          errorMessage = err.message
+        }
+      }
+
+      toast.error(errorMessage)
     } finally {
       setUpdatingStatus(null)
     }
@@ -207,6 +342,22 @@ function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
 
       <CardContent className='px-6 py-6'>
         <div className='space-y-8'>
+          {/* Hiển thị thông báo khi không được phép chỉnh sửa */}
+          {!canEdit && (
+            <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
+              <div className='flex items-start gap-3'>
+                <AlertCircle className='w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5' />
+                <div>
+                  <p className='text-sm font-medium text-yellow-800 mb-1'>
+                    Không thể chỉnh sửa trong trạng thái hiện tại
+                  </p>
+                  <p className='text-xs text-yellow-700'>
+                    Sản phẩm đang được xử lý bởi hệ thống. Bạn có thể hủy để chỉnh sửa hoặc chờ kết quả duyệt.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <div className='bg-gradient-to-br from-slate-50 to-white border border-border rounded-lg p-6'>
             <h3 className='text-base font-semibold text-slate-900 mb-4 flex items-center gap-2'>
               <Plus className='w-5 h-5 text-emerald-600' />
@@ -243,16 +394,26 @@ function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
               ) : (
                 <div
                   className='border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-emerald-400 transition-colors cursor-pointer bg-slate-50/50'
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    if (canEdit) {
+                      fileInputRef.current?.click()
+                    }
+                  }}
                   onDragOver={(e) => {
+                    if (!canEdit) return
                     e.preventDefault()
                     e.currentTarget.classList.add('border-emerald-400', 'bg-emerald-50/50')
                   }}
                   onDragLeave={(e) => {
+                    if (!canEdit) return
                     e.preventDefault()
                     e.currentTarget.classList.remove('border-emerald-400', 'bg-emerald-50/50')
                   }}
                   onDrop={(e) => {
+                    if (!canEdit) {
+                      e.preventDefault()
+                      return
+                    }
                     e.preventDefault()
                     e.currentTarget.classList.remove('border-emerald-400', 'bg-emerald-50/50')
                     const file = e.dataTransfer.files[0]
@@ -267,6 +428,7 @@ function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
                       toast.error('File phải là hình ảnh')
                     }
                   }}
+                  style={{ cursor: canEdit ? 'pointer' : 'not-allowed', opacity: canEdit ? 1 : 0.6 }}
                 >
                   <ImageIcon className='w-12 h-12 text-slate-400 mx-auto mb-3' />
                   <p className='text-slate-600 mb-1 font-medium'>Kéo thả hoặc click để tải ảnh lên</p>
@@ -290,6 +452,7 @@ function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
                     variant='outline'
                     onClick={() => fileInputRef.current?.click()}
                     className='flex-1 sm:flex-initial'
+                    disabled={!canEdit}
                   >
                     <Upload className='w-4 h-4 mr-2' />
                     Chọn ảnh
@@ -297,7 +460,7 @@ function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
                 )}
                 <Button
                   onClick={handleAddCertificate}
-                  disabled={!selectedFile || loading}
+                  disabled={!selectedFile || loading || !canEdit}
                   className='flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-medium gap-2 transition-colors'
                 >
                   {loading ? (
@@ -354,7 +517,7 @@ function ProductCertificate({ productId, onRefresh }: ProductCertificateProps) {
                         <Switch
                           checked={isActiveStatus(cert.status)}
                           onCheckedChange={(checked) => handleStatusChange(cert.id, checked)}
-                          disabled={updatingStatus === cert.id}
+                          disabled={updatingStatus === cert.id || !canEdit}
                           className='data-[state=checked]:bg-emerald-600'
                         />
                       </div>

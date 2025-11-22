@@ -639,7 +639,7 @@ function CreateProduct() {
 
               <div>
                 <Label htmlFor='material' className='text-sm font-medium'>
-                  Xuất xứ / Material <span className='text-red-500'>*</span>
+                  Xuất xứ <span className='text-red-500'>*</span>
                 </Label>
                 <Input
                   id='material'
@@ -805,9 +805,7 @@ function CreateProduct() {
 
               {/* Product Video */}
               <div>
-                <Label className='text-sm font-medium'>
-                  Video sản phẩm <span className='text-red-500'>*</span>
-                </Label>
+                <Label className='text-sm font-medium'>Video sản phẩm</Label>
                 <div
                   className='mt-2 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-400 hover:bg-green-50 transition-all duration-200 cursor-pointer bg-gradient-to-br from-white to-gray-50'
                   onClick={() => document.getElementById('product-video')?.click()}
@@ -938,10 +936,11 @@ function CreateProduct() {
                     {categories.map((category) => (
                       <div
                         key={category.id}
-                        className={`flex items-start space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${productData.categoryId === category.id
-                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 shadow-sm'
-                          : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-300 hover:shadow-sm'
-                          }`}
+                        className={`flex items-start space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                          productData.categoryId === category.id
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 shadow-sm'
+                            : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-300 hover:shadow-sm'
+                        }`}
                         onClick={() => handleCategorySelect(category.id)}
                       >
                         <div className='flex items-center'>

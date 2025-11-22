@@ -287,8 +287,8 @@ function ProductsSeller() {
       case 'rejected':
         return {
           variant: 'secondary' as const,
-          className: 'bg-red-100 text-red-800 hover:bg-red-100',
-          text: 'Từ chối'
+          className: 'bg-orange-100 text-orange-800 hover:bg-orange-100',
+          text: 'Đang xử lý'
         }
       case 'confirmed':
         return {

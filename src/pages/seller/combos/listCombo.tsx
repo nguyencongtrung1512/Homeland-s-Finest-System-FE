@@ -186,6 +186,10 @@ function ComboSeller() {
   }
 
   const handleEditCombo = (combo: Combo) => {
+    // Chỉ cho phép mở modal chỉnh sửa khi status là 'Draft'
+    if (!canEditCombo(combo.status)) {
+      return
+    }
     setSelectedCombo(combo)
     setShowUpdateModal(true)
   }
@@ -238,6 +242,12 @@ function ComboSeller() {
     } finally {
       setToggling(false)
     }
+  }
+
+  // Helper function để kiểm tra có thể chỉnh sửa combo không
+  // Chỉ cho phép chỉnh sửa khi status là 'Draft'
+  const canEditCombo = (status: string): boolean => {
+    return status === 'Draft'
   }
 
   const getStatusBadge = (status: string, isActive: boolean) => {
@@ -426,6 +436,7 @@ function ComboSeller() {
                     const statusInfo = getStatusBadge(combo.status, combo.isActive)
                     const totalPrice = calculateTotalPrice(combo.comboItems.filter((item) => item.isActive))
                     const activeItemsCount = combo.comboItems.filter((item) => item.isActive).length
+                    const editable = canEditCombo(combo.status)
 
                     return (
                       <tr key={combo.id} className='border-b hover:bg-gray-50'>
@@ -452,9 +463,17 @@ function ComboSeller() {
                             >
                               <Eye className='w-4 h-4' />
                             </Button>
-                            <Button variant='ghost' size='sm' onClick={() => handleEditCombo(combo)} title='Chỉnh sửa'>
-                              <Edit className='w-4 h-4' />
-                            </Button>
+                            {/* Chỉ hiển thị nút Edit khi status là Draft */}
+                            {editable && (
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={() => handleEditCombo(combo)}
+                                title='Chỉnh sửa'
+                              >
+                                <Edit className='w-4 h-4' />
+                              </Button>
+                            )}
                             <Button
                               variant='ghost'
                               size='sm'

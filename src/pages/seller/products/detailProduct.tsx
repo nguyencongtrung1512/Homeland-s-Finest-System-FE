@@ -279,35 +279,32 @@ function DetailProductSeller() {
   const hasNumericValue = (value: number | null | undefined): value is number => value !== null && value !== undefined
 
   // Helper function để kiểm tra có thể chỉnh sửa product info không (trừ variant)
-  // Theo tài liệu: Draft, Cancelled, Denied, Approved có thể chỉnh sửa
+  // Chỉ cho phép chỉnh sửa khi: Draft, Cancelled, Denied (không bao gồm Approved)
   const canEditProductInfo = (): boolean => {
     if (!product) return false
     const status = product.status?.toLowerCase()
-    // Có thể chỉnh sửa khi: Draft, Cancelled, Denied, Approved
-    // Theo productState.md: "(Draft | Cancelled | Denied | Approved) → (Pending | Processing)"
-    return status === 'draft' || status === 'cancelled' || status === 'denied' || status === 'approved'
+    // Có thể chỉnh sửa khi: Draft, Cancelled, Denied
+    // Approved không cho phép chỉnh sửa và gửi lại
+    return status === 'draft' || status === 'cancelled' || status === 'denied'
   }
 
   // Helper function để kiểm tra có thể submit không
-  // Theo tài liệu: Draft, Cancelled, Denied, Approved có thể submit
+  // Chỉ cho phép submit khi: Draft, Cancelled, Denied (không bao gồm Approved)
   const canSubmitProduct = (): boolean => {
     if (!product) return false
     const status = product.status?.toLowerCase()
-    // Có thể submit khi: Draft, Cancelled, Denied, Approved
-    // Theo productState.md: "(Draft | Cancelled | Denied | Approved) → (Pending | Processing)"
-    return status === 'draft' || status === 'cancelled' || status === 'denied' || status === 'approved'
+    // Có thể submit khi: Draft, Cancelled, Denied
+    // Approved không cho phép gửi duyệt lại
+    return status === 'draft' || status === 'cancelled' || status === 'denied'
   }
 
   // Helper function để kiểm tra có đang ở trạng thái không cho phép chỉnh sửa không
-  // Theo tài liệu: Processing, Confirmed không cho phép chỉnh sửa (trừ variant)
-  // Approved cho phép chỉnh sửa để gửi duyệt lại
+  // Processing, Confirmed, Approved, Rejected: không cho phép chỉnh sửa (trừ variant)
   const isInReadOnlyStatus = (): boolean => {
     if (!product) return false
     const status = product.status?.toLowerCase()
-    // Processing, Confirmed: không cho phép chỉnh sửa (trừ variant)
-    // Theo productState.md: "Ở trạng thái này (Confirmed), Seller không thể sửa đổi cây sản phẩm"
-    // Approved KHÔNG nằm trong danh sách này vì có thể chỉnh sửa để gửi lại
-    return status === 'processing' || status === 'confirmed'
+    // Processing, Confirmed, Approved, Rejected: không cho phép chỉnh sửa (trừ variant)
+    return status === 'processing' || status === 'confirmed' || status === 'approved' || status === 'rejected'
   }
 
   const getStatusBadge = (status: string, isActive: boolean) => {
@@ -322,9 +319,13 @@ function DetailProductSeller() {
       case 'Confirmed':
         return <Badge className='bg-yellow-100 text-yellow-800'>Đang xử lý</Badge>
       case 'Approved':
+        // Nếu Approved nhưng isActive = false thì hiển thị "Dừng hoạt động"
+        if (!isActive) {
+          return <Badge className='bg-red-100 text-red-800'>Dừng hoạt động</Badge>
+        }
         return <Badge className='bg-green-100 text-green-800'>Hoạt động</Badge>
       case 'Rejected':
-        return <Badge className='bg-red-100 text-red-800'>Đang xử lý</Badge>
+        return <Badge className='bg-orange-100 text-orange-800'>Đang xử lý</Badge>
       case 'Denied':
         return <Badge className='bg-red-100 text-red-800'>Bị từ chối</Badge>
       case 'Cancelled':
@@ -836,7 +837,7 @@ function DetailProductSeller() {
                 {product && getStatusBadge(product.status, product.isActive)}
               </div>
               <div className='flex items-center gap-2'>
-                {/* Hiển thị button Submit khi có thể submit (Draft, Cancelled, Denied, Approved) */}
+                {/* Hiển thị button Submit khi có thể submit (Draft, Cancelled, Denied) */}
                 {canSubmitProduct() && (
                   <Button
                     onClick={handleOpenSubmitConfirm}
@@ -862,7 +863,7 @@ function DetailProductSeller() {
                   )}
               </div>
             </div>
-            {/* Hiển thị thông báo khi đang ở trạng thái Processing, Confirmed (không cho phép chỉnh sửa) */}
+            {/* Hiển thị thông báo khi đang ở trạng thái Processing, Confirmed, Approved, Rejected (không cho phép chỉnh sửa) */}
             {isInReadOnlyStatus() && (
               <div className='mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg'>
                 <div className='flex items-start gap-3'>
@@ -873,18 +874,41 @@ function DetailProductSeller() {
                         ? 'Đang gửi duyệt, không được chỉnh sửa'
                         : product?.status?.toLowerCase() === 'confirmed'
                           ? 'Sản phẩm đã được xác nhận, không được chỉnh sửa'
-                          : 'Sản phẩm đã được duyệt, không được chỉnh sửa'}
+                          : product?.status?.toLowerCase() === 'approved'
+                            ? 'Sản phẩm đã được duyệt, không được chỉnh sửa'
+                            : product?.status?.toLowerCase() === 'rejected'
+                              ? 'Đang xử lý, không thể chỉnh sửa'
+                              : 'Sản phẩm đã được duyệt, không được chỉnh sửa'}
                     </p>
                     <p className='text-xs text-yellow-700'>
                       {product?.status?.toLowerCase() === 'processing'
                         ? 'Sản phẩm đang được xử lý bởi hệ thống. Bạn có thể hủy để chỉnh sửa hoặc chờ kết quả duyệt.'
-                        : 'Bạn chỉ có thể chỉnh sửa thông tin biến thể sản phẩm (Product Variant).'}
+                        : product?.status?.toLowerCase() === 'approved'
+                          ? 'Sản phẩm đã được duyệt và đang hoạt động. Bạn chỉ có thể chỉnh sửa thông tin biến thể sản phẩm (Product Variant).'
+                          : product?.status?.toLowerCase() === 'rejected'
+                            ? 'Sản phẩm đang được admin và staff xử lý, chưa đưa ra quyết định cuối cùng. Vui lòng chờ kết quả duyệt.'
+                            : 'Bạn chỉ có thể chỉnh sửa thông tin biến thể sản phẩm (Product Variant).'}
                     </p>
                   </div>
                 </div>
               </div>
             )}
-            {/* Hiển thị checklist các bước cần hoàn thành - chỉ hiển thị khi có thể submit (Draft, Cancelled, Denied, Approved) */}
+            {/* Hiển thị thông báo hướng dẫn cho trạng thái Denied - có thể chỉnh sửa và gửi lại */}
+            {product?.status?.toLowerCase() === 'denied' && (
+              <div className='mt-4 p-4 bg-red-50 border border-red-200 rounded-lg'>
+                <div className='flex items-start gap-3'>
+                  <AlertCircle className='w-5 h-5 text-red-600 flex-shrink-0 mt-0.5' />
+                  <div>
+                    <p className='text-sm font-medium text-red-800 mb-1'>Sản phẩm đã bị từ chối</p>
+                    <p className='text-xs text-red-700'>
+                      Sản phẩm của bạn đã bị từ chối bởi nhân viên. Vui lòng chỉnh sửa thông tin sản phẩm theo ghi chú
+                      từ nhân (nếu có) và gửi duyệt lại.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Hiển thị checklist các bước cần hoàn thành - chỉ hiển thị khi có thể submit (Draft, Cancelled, Denied) */}
             {canSubmitProduct() && (
               <div className='mt-4 space-y-3'>
                 <div className='p-4 bg-gray-50 border border-gray-200 rounded-lg'>
@@ -2032,6 +2056,7 @@ function DetailProductSeller() {
                   onCancelEdit={handleCancelEdit}
                   onSaveSection={handleSaveSection}
                   onRefresh={refreshValidationData}
+                  canEdit={canEditProductInfo()}
                 />
               </motion.div>
             )}
@@ -2048,6 +2073,7 @@ function DetailProductSeller() {
                   onCancelEdit={handleCancelEdit}
                   onSaveSection={handleSaveSection}
                   onRefresh={refreshValidationData}
+                  canEdit={canEditProductInfo()}
                 />
               </motion.div>
             )}

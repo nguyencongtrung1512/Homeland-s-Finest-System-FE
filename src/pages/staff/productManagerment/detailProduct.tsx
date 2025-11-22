@@ -663,7 +663,7 @@ function DetailProductStaff() {
 
                             {certificate.staffNotes && (
                               <div className='mb-3'>
-                                <span className='text-sm text-gray-600'>Ghi chú từ staff:</span>
+                                <span className='text-sm text-gray-600'>Ghi chú từ nhân viên:</span>
                                 <p className='text-gray-900'>{certificate.staffNotes}</p>
                               </div>
                             )}
@@ -1228,7 +1228,7 @@ function DetailProductStaff() {
           </DialogHeader>
           <div className='space-y-4 py-4'>
             <div>
-              <Label htmlFor='action-note'>Ghi chú (tùy chọn)</Label>
+              <Label htmlFor='action-note'>Ghi chú</Label>
               <Textarea
                 id='action-note'
                 value={actionNote}
