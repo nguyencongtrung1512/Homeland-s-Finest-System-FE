@@ -37,11 +37,11 @@ function DetailComboSeller() {
   const [savingFinalPrice, setSavingFinalPrice] = useState(false)
   const isEditingRef = useRef(false)
 
-  // Gửi duyệt: chỉ khi status là Draft hoặc Rejected (Denied) và có ≥ 2 combo items
+  // Gửi duyệt: chỉ khi status là Draft, Rejected (Denied), hoặc Cancelled và có ≥ 2 combo items
   // Combo Dừng hoạt động (isActive = false) vẫn có thể gửi duyệt lại nếu status phù hợp
   const canSubmitStatus = (status: string) => {
-    // Cho phép gửi duyệt nếu status là Draft hoặc Rejected, bất kể isActive
-    return status === 'Draft' || status === 'Rejected'
+    // Cho phép gửi duyệt nếu status là Draft, Rejected, hoặc Cancelled, bất kể isActive
+    return status === 'Draft' || status === 'Rejected' || status === 'Cancelled' || status === 'Denied'
   }
 
   // Hủy: chỉ khi status là Pending hoặc Processing
@@ -77,8 +77,21 @@ function DetailComboSeller() {
         toast.error(res.message || 'Gửi duyệt combo thất bại')
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Gửi duyệt combo thất bại'
-      toast.error(msg)
+      // Lấy thông báo lỗi từ backend response
+      let errorMessage = 'Gửi duyệt combo thất bại'
+      if (e && typeof e === 'object') {
+        // Error từ axios interceptor có dạng { status, message, data }
+        if ('message' in e && typeof e.message === 'string') {
+          errorMessage = e.message
+        } else if ('response' in e) {
+          // Fallback cho axios error structure
+          const axiosError = e as { response?: { data?: { message?: string } } }
+          if (axiosError.response?.data?.message) {
+            errorMessage = axiosError.response.data.message
+          }
+        }
+      }
+      toast.error(errorMessage)
     }
   }
 
@@ -105,8 +118,21 @@ function DetailComboSeller() {
         toast.error(res.message || 'Hủy combo thất bại')
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Hủy combo thất bại'
-      toast.error(msg)
+      // Lấy thông báo lỗi từ backend response
+      let errorMessage = 'Hủy combo thất bại'
+      if (e && typeof e === 'object') {
+        // Error từ axios interceptor có dạng { status, message, data }
+        if ('message' in e && typeof e.message === 'string') {
+          errorMessage = e.message
+        } else if ('response' in e) {
+          // Fallback cho axios error structure
+          const axiosError = e as { response?: { data?: { message?: string } } }
+          if (axiosError.response?.data?.message) {
+            errorMessage = axiosError.response.data.message
+          }
+        }
+      }
+      toast.error(errorMessage)
     }
   }
 
@@ -194,10 +220,19 @@ function DetailComboSeller() {
         toast.error('Có lỗi xảy ra khi cập nhật giá combo')
       }
     } catch (error) {
+      // Lấy thông báo lỗi từ backend response
       let errorMessage = 'Có lỗi xảy ra khi cập nhật giá combo'
-
-      if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = (error as { message?: string }).message || errorMessage
+      if (error && typeof error === 'object') {
+        // Error từ axios interceptor có dạng { status, message, data }
+        if ('message' in error && typeof error.message === 'string') {
+          errorMessage = error.message
+        } else if ('response' in error) {
+          // Fallback cho axios error structure
+          const axiosError = error as { response?: { data?: { message?: string } } }
+          if (axiosError.response?.data?.message) {
+            errorMessage = axiosError.response.data.message
+          }
+        }
       }
 
       toast.error(errorMessage)
@@ -236,11 +271,19 @@ function DetailComboSeller() {
         await fetchCombo()
       }
     } catch (error) {
+      // Lấy thông báo lỗi từ backend response
       let errorMessage = 'Có lỗi xảy ra khi thêm sản phẩm'
-
-      if (error && typeof error === 'object' && 'message' in error) {
-        // Error từ axios interceptor đã là error.response.data
-        errorMessage = (error as { message?: string }).message || errorMessage
+      if (error && typeof error === 'object') {
+        // Error từ axios interceptor có dạng { status, message, data }
+        if ('message' in error && typeof error.message === 'string') {
+          errorMessage = error.message
+        } else if ('response' in error) {
+          // Fallback cho axios error structure
+          const axiosError = error as { response?: { data?: { message?: string } } }
+          if (axiosError.response?.data?.message) {
+            errorMessage = axiosError.response.data.message
+          }
+        }
       }
 
       toast.error(errorMessage)
@@ -272,21 +315,20 @@ function DetailComboSeller() {
     } catch (error) {
       console.error('Error updating item:', error)
 
+      // Lấy thông báo lỗi từ backend response
       let errorMessage = 'Có lỗi xảy ra khi cập nhật sản phẩm'
-
       if (error && typeof error === 'object') {
-        if ('response' in error) {
-          const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string }
-
+        // Error từ axios interceptor có dạng { status, message, data }
+        if ('message' in error && typeof error.message === 'string') {
+          errorMessage = error.message
+        } else if ('response' in error) {
+          // Fallback cho axios error structure
+          const axiosError = error as { response?: { data?: { message?: string; error?: string } } }
           if (axiosError.response?.data?.message) {
             errorMessage = axiosError.response.data.message
           } else if (axiosError.response?.data?.error) {
             errorMessage = axiosError.response.data.error
-          } else if (axiosError.message) {
-            errorMessage = axiosError.message
           }
-        } else if ('message' in error) {
-          errorMessage = (error as Error).message
         }
       }
 
@@ -328,21 +370,20 @@ function DetailComboSeller() {
     } catch (error) {
       console.error('Error removing item:', error)
 
+      // Lấy thông báo lỗi từ backend response
       let errorMessage = 'Có lỗi xảy ra khi xóa sản phẩm'
-
       if (error && typeof error === 'object') {
-        if ('response' in error) {
-          const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string }
-
+        // Error từ axios interceptor có dạng { status, message, data }
+        if ('message' in error && typeof error.message === 'string') {
+          errorMessage = error.message
+        } else if ('response' in error) {
+          // Fallback cho axios error structure
+          const axiosError = error as { response?: { data?: { message?: string; error?: string } } }
           if (axiosError.response?.data?.message) {
             errorMessage = axiosError.response.data.message
           } else if (axiosError.response?.data?.error) {
             errorMessage = axiosError.response.data.error
-          } else if (axiosError.message) {
-            errorMessage = axiosError.message
           }
-        } else if ('message' in error) {
-          errorMessage = (error as Error).message
         }
       }
 
@@ -395,15 +436,27 @@ function DetailComboSeller() {
         }
       case 'Rejected':
         return {
-          text: 'Bị từ chối',
-          className: 'bg-red-100 text-red-800 hover:bg-red-100',
-          icon: <XCircle className='w-4 h-4' />
+          text: 'Đang xử lý',
+          className: 'bg-orange-100 text-orange-800 hover:bg-orange-100',
+          icon: <Clock className='w-4 h-4' />
         }
       case 'Cancelled':
         return {
           text: 'Đã hủy',
           className: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
           icon: <XCircle className='w-4 h-4' />
+        }
+      case 'Denied':
+        return {
+          text: 'Bị từ chối',
+          className: 'bg-red-100 text-red-800 hover:bg-red-100',
+          icon: <XCircle className='w-4 h-4' />
+        }
+      case 'Confirmed':
+        return {
+          text: 'Đã xác nhận',
+          className: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
+          icon: <CheckCircle className='w-4 h-4' />
         }
       default:
         return {
@@ -416,8 +469,9 @@ function DetailComboSeller() {
 
   const getStatusMessage = (status: string, isActive: boolean) => {
     if (!isActive) {
-      // Combo Dừng hoạt động nhưng vẫn có thể gửi duyệt lại nếu status là Draft hoặc Rejected
-      if (status === 'Draft' || status === 'Rejected') {
+      // Combo Dừng hoạt động nhưng vẫn có thể gửi duyệt lại nếu status là Draft hoặc Cancelled
+      // Processing, Approved, Rejected, Confirmed không thể chỉnh sửa
+      if (status === 'Draft' || status === 'Cancelled' || status === 'Denied') {
         return {
           message: 'Combo đã bị xóa. Bạn có thể chỉnh sửa và gửi duyệt lại khi đã có ít nhất 2 sản phẩm.',
           className: 'text-orange-600 bg-orange-50'
@@ -453,13 +507,23 @@ function DetailComboSeller() {
         }
       case 'Rejected':
         return {
-          message: 'Combo đã bị từ chối và không thể sử dụng nữa.',
-          className: 'text-red-600 bg-red-50'
+          message: 'Combo đang xử lý và không thể chỉnh sửa',
+          className: 'text-orange-600 bg-orange-50'
         }
       case 'Cancelled':
         return {
           message: 'Combo đã bị hủy. Bạn có thể chỉnh sửa và gửi duyệt lại.',
           className: 'text-gray-600 bg-gray-50'
+        }
+      case 'Denied':
+        return {
+          message: 'Combo đã bị từ chối. Bạn có thể chỉnh sửa và gửi duyệt lại.',
+          className: 'text-red-600 bg-red-50'
+        }
+      case 'Confirmed':
+        return {
+          message: 'Combo đang xử lý và không thể chỉnh sửa',
+          className: 'text-orange-600 bg-orange-50'
         }
       default:
         return {
@@ -484,9 +548,10 @@ function DetailComboSeller() {
     return combo.comboItems.filter((item) => item.isActive).length
   }
 
-  // Cho phép edit khi ở trạng thái Draft, bất kể isActive
-  // Combo Dừng hoạt động (isActive = false) vẫn có thể edit nếu status là Draft
-  const canEdit = combo?.status === 'Draft'
+  // Cho phép edit khi ở trạng thái Draft, Cancelled, hoặc Denied, bất kể isActive
+  // Processing, Approved, Rejected, Confirmed không thể chỉnh sửa
+  // Combo Dừng hoạt động (isActive = false) vẫn có thể edit nếu status phù hợp
+  const canEdit = combo?.status === 'Draft' || combo?.status === 'Cancelled' || combo?.status === 'Denied'
 
   if (loading) {
     return (
@@ -582,7 +647,7 @@ function DetailComboSeller() {
 
               {/* Các nút hành động */}
               <div className='flex items-center gap-4'>
-                {/* Button Gửi duyệt: chỉ hiển thị khi Draft hoặc Rejected */}
+                {/* Button Gửi duyệt: chỉ hiển thị khi Draft, Rejected, hoặc Cancelled */}
                 {/* Button sẽ bị disable nếu chưa đủ 2 items active */}
                 {canSubmitStatus(combo.status) && (
                   <Button

@@ -15,17 +15,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '../../../components/ui/alert-dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
-import { Plus, Edit, Trash2, Package, Clock, CheckCircle, XCircle } from 'lucide-react'
+import ComboBox from '../../../components/ui/combo-box'
+import { Plus, Edit, Trash2, Package, Clock, XCircle, CheckCircle } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import { productApi } from '../../../apis/product.api'
 import type { ComboItem, CreateComboItemRequest, UpdateComboItemRequest } from '../../../types/combo.type'
 import type { ProductForCombo, ProductSku } from '../../../apis/product.api'
 
+const DEFAULT_IMAGE_URL = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+
 interface ComboItemsManagerProps {
   items: ComboItem[]
   canEdit: boolean
-  comboStatus?: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Cancelled'
+  comboStatus?: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Cancelled' | 'Denied' | 'Confirmed'
   onAddItem: (itemData: CreateComboItemRequest) => Promise<void>
   onUpdateItem: (itemId: string, itemData: UpdateComboItemRequest) => Promise<void>
   onRemoveItem: (itemId: string) => Promise<void>
@@ -313,7 +315,8 @@ function ComboItemsManager({
   const activeItemsCount = items.filter((item) => item.isActive).length
   const totalItemsCount = items.length
 
-  const isEditable = canEdit && comboStatus !== 'Approved' && comboStatus !== 'Processing'
+  // Processing, Approved, Rejected, Confirmed không thể chỉnh sửa
+  const isEditable = canEdit && comboStatus !== 'Approved' && comboStatus !== 'Processing' && comboStatus !== 'Rejected' && comboStatus !== 'Confirmed'
 
   const getStatusMessage = () => {
     switch (comboStatus) {
@@ -329,8 +332,18 @@ function ComboItemsManager({
         }
       case 'Rejected':
         return {
+          message: 'Combo đang xử lý, không thể chỉnh sửa',
+          type: 'warning' as const
+        }
+      case 'Denied':
+        return {
           message: 'Combo bị từ chối, có thể chỉnh sửa',
           type: 'error' as const
+        }
+      case 'Confirmed':
+        return {
+          message: 'Combo đang xử lý, không thể chỉnh sửa',
+          type: 'warning' as const
         }
       case 'Processing':
         return {
@@ -356,9 +369,7 @@ function ComboItemsManager({
           <div
             className={`mb-4 p-3 rounded-lg ${statusInfo.type === 'warning'
               ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-              : statusInfo.type === 'success'
-                ? 'bg-green-100 text-green-800 border border-green-200'
-                : 'bg-red-100 text-red-800 border border-red-200'
+              : 'bg-red-100 text-red-800 border border-red-200'
               }`}
           >
             <div className='flex items-center gap-2'>
@@ -383,83 +394,97 @@ function ComboItemsManager({
                   Thêm sản phẩm
                 </Button>
               </DialogTrigger>
-              <DialogContent className='max-w-md'>
-                <DialogHeader>
+              <DialogContent className='max-w-xl max-h-[95vh] min-h-[500px] flex flex-col'>
+                <DialogHeader className='flex-shrink-0'>
                   <DialogTitle>Thêm sản phẩm vào combo</DialogTitle>
                 </DialogHeader>
-                <div className='space-y-4'>
+                <div className='space-y-4 overflow-y-auto flex-1 pr-2 min-h-[400px]'>
                   <div className='space-y-2'>
                     <Label htmlFor='productId'>Chọn sản phẩm *</Label>
-                    <Select
-                      value={selectedProductId}
-                      onValueChange={(value) => handleProductSelect(value, false)}
-                      disabled={loadingProducts}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={loadingProducts ? 'Đang tải...' : 'Chọn sản phẩm'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {!products || products.length === 0 ? (
-                          <div className='p-4 text-center text-gray-500'>
-                            {loadingProducts ? 'Đang tải sản phẩm...' : 'Không có sản phẩm nào'}
+                    {loadingProducts ? (
+                      <div className='p-4 text-center text-gray-500'>Đang tải sản phẩm...</div>
+                    ) : !products || products.length === 0 ? (
+                      <div className='p-4 text-center text-gray-500'>Không có sản phẩm nào</div>
+                    ) : (
+                      <ComboBox
+                        options={products}
+                        placeholder='Chọn sản phẩm'
+                        value={selectedProductId}
+                        disabled={loadingProducts}
+                        getOptionLabel={(product) => product.name}
+                        getOptionValue={(product) => product.id}
+                        onSelect={(product) => {
+                          if (product) {
+                            handleProductSelect(product.id, false)
+                          }
+                        }}
+                        filterFunction={(product, searchValue) => {
+                          const search = searchValue.toLowerCase()
+                          return (
+                            product.name.toLowerCase().includes(search) ||
+                            product.categoryName?.toLowerCase().includes(search) ||
+                            false
+                          )
+                        }}
+                        renderOption={(product) => (
+                          <div className='flex items-center gap-2'>
+                            <img
+                              src={product.thumbnailUrl || DEFAULT_IMAGE_URL}
+                              alt={product.name}
+                              className='w-8 h-8 object-cover rounded'
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                if (target.src !== DEFAULT_IMAGE_URL) {
+                                  target.src = DEFAULT_IMAGE_URL
+                                }
+                              }}
+                            />
+                            <div>
+                              <div className='font-medium'>{product.name}</div>
+                              <div className='text-sm text-gray-500'>{product.categoryName}</div>
+                            </div>
                           </div>
-                        ) : (
-                          products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              <div className='flex items-center gap-2'>
-                                {product.thumbnailUrl && (
-                                  <img
-                                    src={product.thumbnailUrl}
-                                    alt={product.name}
-                                    className='w-8 h-8 object-cover rounded'
-                                  />
-                                )}
-                                <div>
-                                  <div className='font-medium'>{product.name}</div>
-                                  <div className='text-sm text-gray-500'>{product.categoryName}</div>
-                                </div>
-                              </div>
-                            </SelectItem>
-                          ))
                         )}
-                      </SelectContent>
-                    </Select>
+                      />
+                    )}
                   </div>
 
                   {selectedProductId && (
                     <div className='space-y-2'>
                       <Label htmlFor='skuId'>Chọn SKU *</Label>
-                      <Select
-                        value={newItemData.productVariantId}
-                        onValueChange={(value) => handleSkuSelect(value, false)}
-                        disabled={loadingSkus || !selectedProductId}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={loadingSkus ? 'Đang tải SKU...' : 'Chọn SKU'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {loadingSkus ? (
-                            <div className='p-4 text-center text-gray-500'>Đang tải SKU...</div>
-                          ) : !skus || skus.length === 0 ? (
-                            <div className='p-4 text-center text-gray-500'>Không có SKU nào</div>
-                          ) : (
-                            skus
-                              .filter((sku) => sku.isActive)
-                              .map((sku) => (
-                                <SelectItem key={sku.id} value={sku.id}>
-                                  <div className='flex items-center justify-between'>
-                                    <div>
-                                      <div className='font-medium'>{sku.name}</div>
-                                      <div className='text-sm text-gray-500'>
-                                        Tồn kho: {sku.quantity} | Giá: {sku.finalPrice.toLocaleString()}₫
-                                      </div>
-                                    </div>
-                                  </div>
-                                </SelectItem>
-                              ))
+                      {loadingSkus ? (
+                        <div className='p-4 text-center text-gray-500'>Đang tải SKU...</div>
+                      ) : !skus || skus.length === 0 ? (
+                        <div className='p-4 text-center text-gray-500'>Không có SKU nào</div>
+                      ) : (
+                        <ComboBox
+                          options={skus.filter((sku) => sku.isActive)}
+                          placeholder='Chọn SKU'
+                          value={newItemData.productVariantId}
+                          disabled={loadingSkus || !selectedProductId}
+                          getOptionLabel={(sku) => sku.name}
+                          getOptionValue={(sku) => sku.id}
+                          onSelect={(sku) => {
+                            if (sku) {
+                              handleSkuSelect(sku.id, false)
+                            }
+                          }}
+                          filterFunction={(sku, searchValue) => {
+                            const search = searchValue.toLowerCase()
+                            return sku.name.toLowerCase().includes(search)
+                          }}
+                          renderOption={(sku) => (
+                            <div className='flex items-center justify-between'>
+                              <div>
+                                <div className='font-medium'>{sku.name}</div>
+                                <div className='text-sm text-gray-500'>
+                                  Tồn kho: {sku.quantity} | Giá: {sku.finalPrice.toLocaleString()}₫
+                                </div>
+                              </div>
+                            </div>
                           )}
-                        </SelectContent>
-                      </Select>
+                        />
+                      )}
                     </div>
                   )}
 
@@ -475,19 +500,18 @@ function ComboItemsManager({
                       min='1'
                     />
                   </div>
-
-                  <div className='flex gap-2 pt-4'>
-                    <Button variant='outline' onClick={() => setShowAddDialog(false)} className='flex-1'>
-                      Hủy
-                    </Button>
-                    <Button
-                      onClick={handleAddItem}
-                      disabled={saving}
-                      className='flex-1 bg-green-600 hover:bg-green-700'
-                    >
-                      {saving ? 'Đang thêm...' : 'Thêm'}
-                    </Button>
-                  </div>
+                </div>
+                <div className='flex gap-2 pt-4 border-t mt-4 flex-shrink-0'>
+                  <Button variant='outline' onClick={() => setShowAddDialog(false)} className='flex-1'>
+                    Hủy
+                  </Button>
+                  <Button
+                    onClick={handleAddItem}
+                    disabled={saving}
+                    className='flex-1 bg-green-600 hover:bg-green-700'
+                  >
+                    {saving ? 'Đang thêm...' : 'Thêm'}
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -514,17 +538,17 @@ function ComboItemsManager({
                 className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${!item.isActive ? 'opacity-50' : ''}`}
               >
                 <div className='flex gap-4'>
-                  {item.comboItemImageUrl ? (
-                    <img
-                      src={item.comboItemImageUrl}
-                      alt={item.comboItemName}
-                      className='w-16 h-16 object-cover rounded-lg'
-                    />
-                  ) : (
-                    <div className='w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center'>
-                      <Package className='w-8 h-8 text-gray-400' />
-                    </div>
-                  )}
+                  <img
+                    src={item.comboItemImageUrl || DEFAULT_IMAGE_URL}
+                    alt={item.comboItemName}
+                    className='w-16 h-16 object-cover rounded-lg'
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      if (target.src !== DEFAULT_IMAGE_URL) {
+                        target.src = DEFAULT_IMAGE_URL
+                      }
+                    }}
+                  />
                   <div className='flex-1'>
                     <h4 className='font-medium text-gray-900'>{item.comboItemName}</h4>
                     <p className='text-sm text-gray-600'>
@@ -577,83 +601,97 @@ function ComboItemsManager({
 
         {/* Edit Item Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className='max-w-md'>
-            <DialogHeader>
+          <DialogContent className='max-w-xl max-h-[95vh] min-h-[500px] flex flex-col'>
+            <DialogHeader className='flex-shrink-0'>
               <DialogTitle>Chỉnh sửa sản phẩm</DialogTitle>
             </DialogHeader>
-            <div className='space-y-4'>
+            <div className='space-y-4 overflow-y-auto flex-1 pr-2 min-h-[400px]'>
               <div className='space-y-2'>
                 <Label htmlFor='edit-productId'>Chọn sản phẩm *</Label>
-                <Select
-                  value={selectedEditProductId}
-                  onValueChange={(value) => handleProductSelect(value, true)}
-                  disabled={loadingProducts}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={loadingProducts ? 'Đang tải...' : 'Chọn sản phẩm'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {!products || products.length === 0 ? (
-                      <div className='p-4 text-center text-gray-500'>
-                        {loadingProducts ? 'Đang tải sản phẩm...' : 'Không có sản phẩm nào'}
+                {loadingProducts ? (
+                  <div className='p-4 text-center text-gray-500'>Đang tải sản phẩm...</div>
+                ) : !products || products.length === 0 ? (
+                  <div className='p-4 text-center text-gray-500'>Không có sản phẩm nào</div>
+                ) : (
+                  <ComboBox
+                    options={products}
+                    placeholder='Chọn sản phẩm'
+                    value={selectedEditProductId}
+                    disabled={loadingProducts}
+                    getOptionLabel={(product) => product.name}
+                    getOptionValue={(product) => product.id}
+                    onSelect={(product) => {
+                      if (product) {
+                        handleProductSelect(product.id, true)
+                      }
+                    }}
+                    filterFunction={(product, searchValue) => {
+                      const search = searchValue.toLowerCase()
+                      return (
+                        product.name.toLowerCase().includes(search) ||
+                        product.categoryName?.toLowerCase().includes(search) ||
+                        false
+                      )
+                    }}
+                    renderOption={(product) => (
+                      <div className='flex items-center gap-2'>
+                        <img
+                          src={product.thumbnailUrl || DEFAULT_IMAGE_URL}
+                          alt={product.name}
+                          className='w-8 h-8 object-cover rounded'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            if (target.src !== DEFAULT_IMAGE_URL) {
+                              target.src = DEFAULT_IMAGE_URL
+                            }
+                          }}
+                        />
+                        <div>
+                          <div className='font-medium'>{product.name}</div>
+                          <div className='text-sm text-gray-500'>{product.categoryName}</div>
+                        </div>
                       </div>
-                    ) : (
-                      products.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          <div className='flex items-center gap-2'>
-                            {product.thumbnailUrl && (
-                              <img
-                                src={product.thumbnailUrl}
-                                alt={product.name}
-                                className='w-8 h-8 object-cover rounded'
-                              />
-                            )}
-                            <div>
-                              <div className='font-medium'>{product.name}</div>
-                              <div className='text-sm text-gray-500'>{product.categoryName}</div>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      ))
                     )}
-                  </SelectContent>
-                </Select>
+                  />
+                )}
               </div>
 
               {selectedEditProductId && (
                 <div className='space-y-2'>
                   <Label htmlFor='edit-skuId'>Chọn SKU *</Label>
-                  <Select
-                    value={editItemData.productVariantId}
-                    onValueChange={(value) => handleSkuSelect(value, true)}
-                    disabled={loadingEditSkus || !selectedEditProductId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={loadingEditSkus ? 'Đang tải SKU...' : 'Chọn SKU'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {loadingEditSkus ? (
-                        <div className='p-4 text-center text-gray-500'>Đang tải SKU...</div>
-                      ) : !editSkus || editSkus.length === 0 ? (
-                        <div className='p-4 text-center text-gray-500'>Không có SKU nào</div>
-                      ) : (
-                        editSkus
-                          .filter((sku) => sku.isActive)
-                          .map((sku) => (
-                            <SelectItem key={sku.id} value={sku.id}>
-                              <div className='flex items-center justify-between'>
-                                <div>
-                                  <div className='font-medium'>{sku.name}</div>
-                                  <div className='text-sm text-gray-500'>
-                                    Tồn kho: {sku.quantity} | Giá: {sku.finalPrice.toLocaleString()}₫
-                                  </div>
-                                </div>
-                              </div>
-                            </SelectItem>
-                          ))
+                  {loadingEditSkus ? (
+                    <div className='p-4 text-center text-gray-500'>Đang tải SKU...</div>
+                  ) : !editSkus || editSkus.length === 0 ? (
+                    <div className='p-4 text-center text-gray-500'>Không có SKU nào</div>
+                  ) : (
+                    <ComboBox
+                      options={editSkus.filter((sku) => sku.isActive)}
+                      placeholder='Chọn SKU'
+                      value={editItemData.productVariantId}
+                      disabled={loadingEditSkus || !selectedEditProductId}
+                      getOptionLabel={(sku) => sku.name}
+                      getOptionValue={(sku) => sku.id}
+                      onSelect={(sku) => {
+                        if (sku) {
+                          handleSkuSelect(sku.id, true)
+                        }
+                      }}
+                      filterFunction={(sku, searchValue) => {
+                        const search = searchValue.toLowerCase()
+                        return sku.name.toLowerCase().includes(search)
+                      }}
+                      renderOption={(sku) => (
+                        <div className='flex items-center justify-between'>
+                          <div>
+                            <div className='font-medium'>{sku.name}</div>
+                            <div className='text-sm text-gray-500'>
+                              Tồn kho: {sku.quantity} | Giá: {sku.finalPrice.toLocaleString()}₫
+                            </div>
+                          </div>
+                        </div>
                       )}
-                    </SelectContent>
-                  </Select>
+                    />
+                  )}
                 </div>
               )}
 
@@ -669,15 +707,14 @@ function ComboItemsManager({
                   min='1'
                 />
               </div>
-
-              <div className='flex gap-2 pt-4'>
-                <Button variant='outline' onClick={() => setShowEditDialog(false)} className='flex-1'>
-                  Hủy
-                </Button>
-                <Button onClick={handleUpdateItem} disabled={saving} className='flex-1 bg-green-600 hover:bg-green-700'>
-                  {saving ? 'Đang cập nhật...' : 'Cập nhật'}
-                </Button>
-              </div>
+            </div>
+            <div className='flex gap-2 pt-4 border-t mt-4 flex-shrink-0'>
+              <Button variant='outline' onClick={() => setShowEditDialog(false)} className='flex-1'>
+                Hủy
+              </Button>
+              <Button onClick={handleUpdateItem} disabled={saving} className='flex-1 bg-green-600 hover:bg-green-700'>
+                {saving ? 'Đang cập nhật...' : 'Cập nhật'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -706,7 +743,7 @@ function ComboItemsManager({
           </AlertDialogContent>
         </AlertDialog>
       </CardContent>
-    </Card>
+    </Card >
   )
 }
 

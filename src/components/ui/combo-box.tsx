@@ -1,25 +1,34 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from 'react'
+import type { ReactNode } from 'react'
 
-interface ComboBoxProps {
-  options: string[];
+interface ComboBoxProps<T = string> {
+  options: T[];
   placeholder?: string;
-  onSelect?: (option: string | null) => void;
+  onSelect?: (option: T | null) => void;
   value?: string;
   disabled?: boolean;
+  getOptionLabel?: (option: T) => string;
+  getOptionValue?: (option: T) => string;
+  renderOption?: (option: T, isHighlighted?: boolean) => ReactNode;
+  filterFunction?: (option: T, searchValue: string) => boolean;
 }
 
-const ComboBox = ({
+const ComboBox = <T,>({
   options = [],
   placeholder = "Select an option...",
   onSelect,
   value,
   disabled = false,
-}: ComboBoxProps) => {
+  getOptionLabel = (option: T) => String(option),
+  getOptionValue = (option: T) => String(option),
+  renderOption,
+  filterFunction,
+}: ComboBoxProps<T>) => {
 
   const [inputValue, setInputValue] = useState<string>(value || "");
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [selectedOption, setSelectedOption] = useState<string | null>(value || null);
-  const [filteredOptions, setFilteredOptions] = useState<string[]>(options);
+  const [selectedOption, setSelectedOption] = useState<T | null>(null);
+  const [filteredOptions, setFilteredOptions] = useState<T[]>(options);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
 
   const comboBoxRef = useRef<HTMLDivElement>(null);
@@ -28,10 +37,19 @@ const ComboBox = ({
   // Update input value when value prop changes
   useEffect(() => {
     if (value !== undefined) {
-      setInputValue(value);
-      setSelectedOption(value || null);
+      // Find option by value
+      const foundOption = options.find((opt) => getOptionValue(opt) === value);
+      if (foundOption) {
+        // Display label instead of ID
+        setInputValue(getOptionLabel(foundOption));
+        setSelectedOption(foundOption);
+      } else {
+        // If option not found, clear the input
+        setInputValue("");
+        setSelectedOption(null);
+      }
     }
-  }, [value]);
+  }, [value, options, getOptionValue, getOptionLabel]);
 
   // Close dropdown when disabled
   useEffect(() => {
@@ -44,16 +62,22 @@ const ComboBox = ({
     if (inputValue === "") {
       setFilteredOptions(options);
     } else {
-      setFilteredOptions(
-        options.filter((option) =>
-          option.toLowerCase().includes(inputValue.toLowerCase())
-        )
-      );
+      if (filterFunction) {
+        setFilteredOptions(
+          options.filter((option) => filterFunction(option, inputValue))
+        );
+      } else {
+        setFilteredOptions(
+          options.filter((option) =>
+            getOptionLabel(option).toLowerCase().includes(inputValue.toLowerCase())
+          )
+        );
+      }
     }
     setHighlightedIndex(-1); // Reset highlighted index when filtering
     // Reset option refs array
     optionRefs.current = [];
-  }, [inputValue, options]);
+  }, [inputValue, options, filterFunction, getOptionLabel]);
 
   // Scroll to highlighted option
   useEffect(() => {
@@ -140,9 +164,9 @@ const ComboBox = ({
     }
   };
 
-  const handleOptionSelect = (option: string) => {
+  const handleOptionSelect = (option: T) => {
     setSelectedOption(option);
-    setInputValue(option);
+    setInputValue(getOptionLabel(option));
     setIsOpen(false);
     setHighlightedIndex(-1);
     onSelect?.(option);
@@ -159,7 +183,7 @@ const ComboBox = ({
     setSelectedOption(null);
     setIsOpen(false);
     setHighlightedIndex(-1);
-    onSelect?.(null);
+    onSelect?.(null as T | null);
   };
 
   return (
@@ -184,7 +208,7 @@ const ComboBox = ({
             highlightedIndex >= 0 ? `option-${highlightedIndex}` : undefined
           }
         />
-        {selectedOption && (
+        {selectedOption && inputValue && (
           <button
             type="button"
             onClick={handleClearSelection}
@@ -233,13 +257,13 @@ const ComboBox = ({
       {isOpen && !disabled && (
         <div
           id="combobox-options"
-          className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-scroll"
+          className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto"
           role="listbox"
         >
           {filteredOptions.length > 0 ? (
             filteredOptions.map((option, index) => (
               <button
-                key={index}
+                key={getOptionValue(option)}
                 ref={(el) => {
                   optionRefs.current[index] = el;
                 }}
@@ -253,7 +277,7 @@ const ComboBox = ({
                 aria-selected={selectedOption === option}
                 onMouseEnter={() => setHighlightedIndex(index)}
               >
-                {option}
+                {renderOption ? renderOption(option, index === highlightedIndex) : getOptionLabel(option)}
               </button>
             ))
           ) : (
