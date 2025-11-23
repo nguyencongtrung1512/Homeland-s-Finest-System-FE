@@ -107,11 +107,10 @@ export default function ReportModal({ isOpen, onClose, product }: ReportModalPro
                     key={reason}
                     type='button'
                     onClick={() => setReportReason(reason)}
-                    className={`px-3 py-2 text-sm border rounded-xl text-left ${
-                      reportReason === reason
+                    className={`px-3 py-2 text-sm border rounded-xl text-left ${reportReason === reason
                         ? 'border-green-600 bg-green-50 text-green-600'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {reason}
                   </button>

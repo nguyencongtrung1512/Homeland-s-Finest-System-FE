@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Button } from '../../../../../components/ui/button'
 import {
   Dialog,
@@ -8,10 +8,10 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../../../components/ui/dialog'
-import { Camera, Star } from 'lucide-react'
+import { Camera, Star, CheckCircle2, Edit2 } from 'lucide-react'
 import { productReviewApi } from '../../../../../apis/productReview.api'
 import { toast } from '../../../../../utils/toast'
-import type { ProductReviewCreateInput } from '../../../../../types/productReviewType'
+import type { ProductReviewCreateInput, ReviewResponse } from '../../../../../types/productReviewType'
 
 export interface ReviewProduct {
   orderItemId?: string
@@ -59,6 +59,9 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   const [qualityComment, setQualityComment] = useState('')
   const [uploadedImages, setUploadedImages] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [existingReviews, setExistingReviews] = useState<Record<string, ReviewResponse>>({}) // Map orderItemId -> ReviewResponse
+  const [loadingReviews, setLoadingReviews] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
 
   // Group products by combo - use useMemo to calculate before useEffect
   const { comboGroups, regularProducts, selectionItems, hasMultipleItems } = useMemo(() => {
@@ -129,6 +132,50 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
     }
   }, [selectionItems])
 
+  // Fetch existing reviews for all order items
+  const fetchExistingReviews = useCallback(async () => {
+    setLoadingReviews(true)
+    const reviewsMap: Record<string, ReviewResponse> = {}
+
+    try {
+      // Fetch reviews for all order items in parallel
+      const reviewPromises = products
+        .filter((product) => product.orderItemId)
+        .map(async (product) => {
+          try {
+            const response = await productReviewApi.getMyReviewByOrderItem(product.orderItemId!)
+            if (response.data) {
+              reviewsMap[product.orderItemId!] = response.data
+            }
+          } catch (error) {
+            // If review doesn't exist, API will return error - that's fine, just skip it
+            // Only log actual errors (network issues, etc.)
+            if (error && typeof error === 'object' && 'response' in error) {
+              const httpError = error as { response?: { status?: number } }
+              // 404 or similar means no review exists, which is expected
+              if (httpError.response?.status && httpError.response.status !== 404) {
+                console.error(`Error fetching review for orderItem ${product.orderItemId}:`, error)
+              }
+            }
+          }
+        })
+
+      await Promise.all(reviewPromises)
+      setExistingReviews(reviewsMap)
+    } catch (error) {
+      console.error('Error fetching reviews:', error)
+    } finally {
+      setLoadingReviews(false)
+    }
+  }, [products])
+
+  // Fetch existing reviews when modal opens
+  useEffect(() => {
+    if (isOpen && products.length > 0) {
+      fetchExistingReviews()
+    }
+  }, [isOpen, products, fetchExistingReviews])
+
   // Reset form when modal closes or product changes
   useEffect(() => {
     if (!isOpen) {
@@ -138,8 +185,30 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       setQualityComment('')
       setUploadedImages([])
       setIsSubmitting(false)
+      setExistingReviews({})
+      setIsEditMode(false)
     }
   }, [isOpen])
+
+  // Check if a product/combo has an existing review
+  const getExistingReview = useCallback(
+    (orderItemId?: string): ReviewResponse | null => {
+      if (!orderItemId) return null
+      return existingReviews[orderItemId] || null
+    },
+    [existingReviews]
+  )
+
+  // Check if selected item has review
+  const selectedItemReview = useMemo(() => {
+    if (selectedCombo && selectedCombo.items.length > 0) {
+      return getExistingReview(selectedCombo.items[0].orderItemId)
+    }
+    if (selectedProduct) {
+      return getExistingReview(selectedProduct.orderItemId)
+    }
+    return null
+  }, [selectedCombo, selectedProduct, getExistingReview])
 
   if (!isOpen || products.length === 0) return null
 
@@ -200,19 +269,37 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
         return
       }
 
-      // Prepare review data - only send orderItemId, rating, comment, images
-      // Backend will automatically detect if it's a combo or product based on orderItemId
-      const reviewData: ProductReviewCreateInput = {
-        orderItemId, // Backend will validate and get product/combo info from this
-        rating: overallRating,
-        comment: qualityComment.trim() || undefined,
-        images: uploadedImages.length > 0 ? uploadedImages : undefined
+      // Check if we're updating an existing review
+      const existingReview = getExistingReview(orderItemId)
+
+      if (existingReview && isEditMode) {
+        // Update existing review
+        const updateData = {
+          rating: overallRating,
+          comment: qualityComment.trim() || undefined,
+          keepImages: existingReview.images || [], // Keep existing images
+          newImages: uploadedImages.length > 0 ? uploadedImages : undefined
+        }
+
+        await productReviewApi.updateReview(existingReview.id, updateData)
+        toast.success('Cập nhật đánh giá thành công!')
+      } else {
+        // Create new review
+        const reviewData: ProductReviewCreateInput = {
+          orderItemId, // Backend will validate and get product/combo info from this
+          rating: overallRating,
+          comment: qualityComment.trim() || undefined,
+          images: uploadedImages.length > 0 ? uploadedImages : undefined
+        }
+
+        await productReviewApi.createReview(reviewData)
+        toast.success(isComboSelected ? 'Đánh giá combo thành công!' : 'Đánh giá sản phẩm thành công!')
       }
 
-      await productReviewApi.createReview(reviewData)
-
-      toast.success(isComboSelected ? 'Đánh giá combo thành công!' : 'Đánh giá sản phẩm thành công!')
-      onClose()
+      // Refresh reviews
+      await fetchExistingReviews()
+      setIsEditMode(false)
+      setUploadedImages([])
 
       // Callback to refresh orders list
       if (onReviewSubmitted) {
@@ -283,30 +370,39 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
               <h3 className='font-semibold mb-3 text-gray-800'>Chọn sản phẩm hoặc combo đánh giá</h3>
               <div className='space-y-2'>
                 {/* Combo Groups */}
-                {comboGroups.map((combo) => (
-                  <button
-                    key={combo.comboGroupKey}
-                    onClick={() => {
-                      setSelectedCombo(combo)
-                      setSelectedProduct(null)
-                    }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${selectedCombo?.comboGroupKey === combo.comboGroupKey
-                      ? 'border-orange-500 bg-orange-50'
-                      : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                      }`}
-                  >
-                    <div className='flex-1 text-left'>
-                      <div className='flex items-center gap-2'>
-                        <h4 className='font-medium text-gray-900 text-sm'>{combo.comboName}</h4>
-                        <span className='bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full font-medium'>
-                          Combo
-                        </span>
+                {comboGroups.map((combo) => {
+                  const comboReview = combo.items[0]?.orderItemId ? getExistingReview(combo.items[0].orderItemId) : null
+                  return (
+                    <button
+                      key={combo.comboGroupKey}
+                      onClick={() => {
+                        setSelectedCombo(combo)
+                        setSelectedProduct(null)
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${selectedCombo?.comboGroupKey === combo.comboGroupKey
+                        ? 'border-orange-500 bg-orange-50'
+                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                        }`}
+                    >
+                      <div className='flex-1 text-left'>
+                        <div className='flex items-center gap-2'>
+                          <h4 className='font-medium text-gray-900 text-sm'>{combo.comboName}</h4>
+                          <span className='bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full font-medium'>
+                            Combo
+                          </span>
+                          {comboReview && (
+                            <span className='bg-green-100 mb-1 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1'>
+                              <CheckCircle2 size={12} />
+                              Đã đánh giá
+                            </span>
+                          )}
+                        </div>
+                        <p className='text-xs text-gray-600 mt-1'>{combo.items.length} sản phẩm trong combo</p>
                       </div>
-                      <p className='text-xs text-gray-600 mt-1'>{combo.items.length} sản phẩm trong combo</p>
-                    </div>
-                    {selectedCombo?.comboGroupKey === combo.comboGroupKey && <div className='text-orange-600'>✓</div>}
-                  </button>
-                ))}
+                      {selectedCombo?.comboGroupKey === combo.comboGroupKey && <div className='text-orange-600'>✓</div>}
+                    </button>
+                  )
+                })}
 
                 {/* Regular Products */}
                 {regularProducts.map((product) => {
@@ -314,6 +410,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                     (!!selectedProduct?.orderItemId && selectedProduct.orderItemId === product.orderItemId) ||
                     (!!selectedProduct?.productId && selectedProduct.productId === product.productId) ||
                     selectedProduct?.name === product.name
+                  const productReview = product.orderItemId ? getExistingReview(product.orderItemId) : null
 
                   return (
                     <button
@@ -326,7 +423,15 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                         }`}
                     >
                       <div className='flex-1 text-left'>
-                        <h4 className='font-medium text-gray-900 text-sm'>{product.name}</h4>
+                        <div className='flex items-center gap-2'>
+                          <h4 className='font-medium text-gray-900 text-sm'>{product.name}</h4>
+                          {productReview && (
+                            <span className='bg-green-100 mb-2 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1'>
+                              <CheckCircle2 size={12} />
+                              Đã đánh giá
+                            </span>
+                          )}
+                        </div>
                         {product.category && <p className='text-xs text-gray-600 mt-1'>{product.category}</p>}
                       </div>
                       {isSelected ? <div className='text-green-600'>✓</div> : null}
@@ -396,79 +501,195 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
             </>
           )}
 
-          {/* Overall Rating - Only show when item is selected */}
+          {/* Show existing review or create form */}
           {(selectedProduct || selectedCombo) && (
             <>
-              <div>
-                <h3 className='font-semibold mb-3 text-gray-800'>Đánh giá tổng thể</h3>
-                <div className='flex items-center gap-2 mb-2'>
-                  {[1, 2, 3, 4, 5].map((star) => {
-                    const isActive = star <= (hoveredRating || overallRating)
-                    return (
-                      <button
-                        key={star}
-                        type='button'
-                        onClick={() => handleStarClick(star)}
-                        onMouseEnter={() => handleStarHover(star)}
-                        onMouseLeave={handleStarLeave}
-                        className={`transition-all duration-200 hover:scale-110 ${isActive ? 'transform scale-105' : ''
-                          }`}
-                        aria-label={`Đánh giá ${star} sao`}
-                      >
-                        <Star
-                          size={32}
-                          className={`${getStarColor(star)} transition-all duration-200 ${isActive ? 'drop-shadow-sm' : ''
-                            }`}
-                          fill={isActive ? 'currentColor' : 'none'}
-                        />
-                      </button>
-                    )
-                  })}
+              {loadingReviews ? (
+                <div className='text-center py-8 text-gray-500'>
+                  <p>Đang tải thông tin đánh giá...</p>
                 </div>
-              </div>
-
-              {/* Quality Comment */}
-              <div>
-                <h3 className='font-semibold mb-3 text-gray-800'>Chất lượng sản phẩm</h3>
-                <textarea
-                  value={qualityComment}
-                  onChange={(e) => setQualityComment(e.target.value)}
-                  placeholder='Hãy chia sẻ trải nghiệm thực tế để giúp sản phẩm được cải thiện tốt hơn'
-                  className='w-full h-24 p-3 border border-gray-300 rounded-xl resize-none text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent'
-                />
-              </div>
-
-              {/* Upload Section */}
-              <div>
-                <h3 className='font-semibold mb-3 text-gray-800'>Thêm hình ảnh & video (tùy chọn)</h3>
-                <div className='gap-2'>
-                  {/* Image Upload */}
-                  <label className='flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-400 hover:bg-green-50'>
-                    <div className='text-green-600 text-lg mb-1'>
-                      <Camera />
+              ) : selectedItemReview && !isEditMode ? (
+                // Show existing review
+                <div className='space-y-4'>
+                  <div className='flex items-center justify-between mb-4'>
+                    <div className='flex items-center gap-2'>
+                      <h3 className='font-semibold text-gray-800'>Đánh giá của bạn</h3>
                     </div>
-                    <span className='text-xs text-gray-600 text-center'>Thêm Hình ảnh</span>
-                    <input type='file' multiple accept='image/*' onChange={handleImageUpload} className='hidden' />
-                  </label>
-                </div>
-                <p className='text-xs text-gray-500 text-center mt-2'>
-                  Hình ảnh thực tế sẽ giúp đánh giá của bạn hữu ích hơn
-                </p>
-              </div>
-
-              {/* Uploaded Images Preview */}
-              {uploadedImages.length > 0 && (
-                <div>
-                  <h4 className='font-medium mb-2 text-gray-700'>Hình ảnh đã tải lên:</h4>
-                  <div className='space-y-1'>
-                    {uploadedImages.map((file, index) => (
-                      <div key={`img-${index}`} className='text-xs text-gray-600 flex items-center gap-2'>
-                        <span>📷</span>
-                        <span>{file.name}</span>
-                      </div>
-                    ))}
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => {
+                        setIsEditMode(true)
+                        setOverallRating(selectedItemReview.rating)
+                        setQualityComment(selectedItemReview.comment || '')
+                      }}
+                      className='flex items-center gap-1'
+                    >
+                      <Edit2 size={14} />
+                      Chỉnh sửa
+                    </Button>
                   </div>
+
+                  {/* Rating Display */}
+                  <div>
+                    <div className='flex items-center gap-2 mb-2'>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          size={24}
+                          className={`${star <= selectedItemReview.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300 fill-gray-300'}`}
+                          fill={star <= selectedItemReview.rating ? 'currentColor' : 'none'}
+                        />
+                      ))}
+                      <span className='text-sm text-gray-600 ml-2'>
+                        {new Date(selectedItemReview.createdAt).toLocaleDateString('vi-VN')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Comment Display */}
+                  {selectedItemReview.comment && (
+                    <div className='bg-gray-50 rounded-xl p-4'>
+                      <p className='text-sm text-gray-700 whitespace-pre-wrap'>{selectedItemReview.comment}</p>
+                    </div>
+                  )}
+
+                  {/* Images Display */}
+                  {selectedItemReview.images && selectedItemReview.images.length > 0 && (
+                    <div>
+                      <h4 className='font-medium mb-2 text-gray-700 text-sm'>Hình ảnh đánh giá:</h4>
+                      <div className='grid grid-cols-3 gap-2'>
+                        {selectedItemReview.images.map((imageUrl, index) => (
+                          <img
+                            key={index}
+                            src={imageUrl}
+                            alt={`Review image ${index + 1}`}
+                            className='w-full h-24 object-cover rounded-lg border border-gray-200'
+                            onError={(e) => {
+                              e.currentTarget.src = DEFAULT_PRODUCT_IMAGE
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Seller Reply */}
+                  {selectedItemReview.sellerReply && (
+                    <div className='bg-orange-50 rounded-xl p-4 border border-orange-200'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <span className='font-semibold text-sm text-orange-800'>
+                          Phản hồi từ {selectedItemReview.sellerReply.shopName}
+                        </span>
+                        <span className='text-xs text-gray-500'>
+                          {new Date(selectedItemReview.sellerReply.createdAt).toLocaleDateString('vi-VN')}
+                        </span>
+                      </div>
+                      <p className='text-sm text-gray-700'>{selectedItemReview.sellerReply.content}</p>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                // Show create/edit form
+                <>
+                  <div>
+                    <h3 className='font-semibold mb-3 text-gray-800'>
+                      {isEditMode ? 'Chỉnh sửa đánh giá' : 'Đánh giá tổng thể'}
+                    </h3>
+                    <div className='flex items-center gap-2 mb-2'>
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const isActive = star <= (hoveredRating || overallRating)
+                        return (
+                          <button
+                            key={star}
+                            type='button'
+                            onClick={() => handleStarClick(star)}
+                            onMouseEnter={() => handleStarHover(star)}
+                            onMouseLeave={handleStarLeave}
+                            className={`transition-all duration-200 hover:scale-110 ${isActive ? 'transform scale-105' : ''
+                              }`}
+                            aria-label={`Đánh giá ${star} sao`}
+                          >
+                            <Star
+                              size={32}
+                              className={`${getStarColor(star)} transition-all duration-200 ${isActive ? 'drop-shadow-sm' : ''
+                                }`}
+                              fill={isActive ? 'currentColor' : 'none'}
+                            />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Quality Comment */}
+                  <div>
+                    <h3 className='font-semibold mb-3 text-gray-800'>Chất lượng sản phẩm</h3>
+                    <textarea
+                      value={qualityComment}
+                      onChange={(e) => setQualityComment(e.target.value)}
+                      placeholder='Hãy chia sẻ trải nghiệm thực tế để giúp sản phẩm được cải thiện tốt hơn'
+                      className='w-full h-24 p-3 border border-gray-300 rounded-xl resize-none text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                    />
+                  </div>
+
+                  {/* Upload Section */}
+                  <div>
+                    <h3 className='font-semibold mb-3 text-gray-800'>Thêm hình ảnh & video (tùy chọn)</h3>
+                    <div className='gap-2'>
+                      {/* Image Upload */}
+                      <label className='flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-400 hover:bg-green-50'>
+                        <div className='text-green-600 text-lg mb-1'>
+                          <Camera />
+                        </div>
+                        <span className='text-xs text-gray-600 text-center'>Thêm Hình ảnh</span>
+                        <input type='file' multiple accept='image/*' onChange={handleImageUpload} className='hidden' />
+                      </label>
+                    </div>
+                    <p className='text-xs text-gray-500 text-center mt-2'>
+                      Hình ảnh thực tế sẽ giúp đánh giá của bạn hữu ích hơn
+                    </p>
+                  </div>
+
+                  {/* Uploaded Images Preview */}
+                  {uploadedImages.length > 0 && (
+                    <div>
+                      <h4 className='font-medium mb-2 text-gray-700'>Hình ảnh đã tải lên:</h4>
+                      <div className='space-y-1'>
+                        {uploadedImages.map((file, index) => (
+                          <div key={`img-${index}`} className='text-xs text-gray-600 flex items-center gap-2'>
+                            <span>📷</span>
+                            <span>{file.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show existing images if in edit mode */}
+                  {isEditMode && selectedItemReview?.images && selectedItemReview.images.length > 0 && (
+                    <div>
+                      <h4 className='font-medium mb-2 text-gray-700 text-sm'>Hình ảnh hiện tại:</h4>
+                      <div className='grid grid-cols-3 gap-2 mb-2'>
+                        {selectedItemReview.images.map((imageUrl, index) => (
+                          <div key={index} className='relative'>
+                            <img
+                              src={imageUrl}
+                              alt={`Current image ${index + 1}`}
+                              className='w-full h-24 object-cover rounded-lg border border-gray-200'
+                              onError={(e) => {
+                                e.currentTarget.src = DEFAULT_PRODUCT_IMAGE
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <p className='text-xs text-gray-500'>
+                        Hình ảnh hiện tại sẽ được giữ lại. Bạn có thể thêm hình ảnh mới.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
@@ -482,16 +703,39 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
 
         {/* Action Buttons */}
         <DialogFooter className='p-4 border-t shrink-0'>
-          <Button variant='outline' className='flex-1 rounded-xl' onClick={onClose}>
-            Trở lại
-          </Button>
-          <Button
-            className='flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl'
-            onClick={handleSubmit}
-            disabled={(!selectedProduct && !selectedCombo) || overallRating === 0 || isSubmitting}
-          >
-            {isSubmitting ? 'Đang gửi...' : 'Hoàn thành'}
-          </Button>
+          {selectedItemReview && !isEditMode ? (
+            // Show close button only when viewing existing review
+            <Button variant='outline' className='flex-1 rounded-xl' onClick={onClose}>
+              Đóng
+            </Button>
+          ) : (
+            // Show cancel and submit buttons when creating/editing
+            <>
+              <Button
+                variant='outline'
+                className='flex-1 rounded-xl'
+                onClick={() => {
+                  if (isEditMode) {
+                    setIsEditMode(false)
+                    setOverallRating(selectedItemReview?.rating || 0)
+                    setQualityComment(selectedItemReview?.comment || '')
+                    setUploadedImages([])
+                  } else {
+                    onClose()
+                  }
+                }}
+              >
+                {isEditMode ? 'Hủy' : 'Trở lại'}
+              </Button>
+              <Button
+                className='flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl'
+                onClick={handleSubmit}
+                disabled={(!selectedProduct && !selectedCombo) || overallRating === 0 || isSubmitting}
+              >
+                {isSubmitting ? 'Đang gửi...' : isEditMode ? 'Cập nhật' : 'Hoàn thành'}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

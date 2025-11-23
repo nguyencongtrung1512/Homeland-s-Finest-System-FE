@@ -158,6 +158,12 @@ export const productReviewApi = {
     const url = `${API_URL}/store/${storeId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
     const response = await axiosInstance.get(url)
     return response as unknown as ReviewListResponse
+  },
+
+  // 9. Get my review by order item ID
+  getMyReviewByOrderItem: async (orderItemId: string): Promise<ReviewApiResponse> => {
+    const response = await axiosInstance.get(`${API_URL}/my-review/${orderItemId}`)
+    return response as unknown as ReviewApiResponse
   }
 }
 

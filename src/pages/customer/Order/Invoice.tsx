@@ -172,9 +172,42 @@ function Invoice() {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A'
     try {
-      const [, date] = dateString.split(' ')
-      const [day, month, year] = date.split('-')
-      return `${day}/${month}/${year}`
+      // API format: "HH:mm:ss DD/MM/YYYY" (e.g., "22:25:28 19/11/2025")
+      const timeDateMatch = dateString.match(/(\d{2}:\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/)
+
+      if (timeDateMatch) {
+        // Format đã đúng, chỉ cần trả về
+        const [, time, date] = timeDateMatch
+        return `${time} ${date}`
+      }
+
+      // Thử parse với Date constructor nếu format khác
+      const date = new Date(dateString)
+      if (!isNaN(date.getTime())) {
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        const seconds = String(date.getSeconds()).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const year = date.getFullYear()
+        return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`
+      }
+
+      // Fallback: thử parse format cũ "DD-MM-YYYY"
+      const parts = dateString.split(' ')
+      if (parts.length >= 2) {
+        const datePart = parts[1] || parts[0]
+        const timePart = parts[0] || ''
+        const [day, month, year] = datePart.split('-')
+        if (day && month && year) {
+          if (timePart && timePart.includes(':')) {
+            return `${timePart} ${day}/${month}/${year}`
+          }
+          return `${day}/${month}/${year}`
+        }
+      }
+
+      return dateString
     } catch {
       return dateString
     }
