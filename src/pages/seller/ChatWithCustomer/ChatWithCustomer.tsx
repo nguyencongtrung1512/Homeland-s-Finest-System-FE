@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Badge } from '../../../components/ui/badge'
-import { Search, Phone, Video, MoreVertical, Paperclip, Image as ImageIcon, Send, Share2 } from 'lucide-react'
+import { Search, Paperclip, Image as ImageIcon, Send, Share2 } from 'lucide-react'
 import { useAuth } from '../../../contexts/auth.context'
 import { getAllChatRoomsByUserId, getChatRoomMessages, sendChatRoomMessage } from '../../../apis/chat.api'
 import { signalRService } from '../../../service/signalRService'
@@ -33,6 +33,87 @@ interface Conversation {
   sellerId: string
 }
 
+// Utility functions to parse Vietnamese timestamp format "HH:mm:ss DD/MM/YYYY"
+const parseVietnameseTimestamp = (timestamp: string): Date => {
+  // Try to parse format "11:54:27 23/11/2025"
+  const match = timestamp.match(/(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})/)
+  if (match) {
+    const [, hours, minutes, seconds, day, month, year] = match
+    return new Date(
+      parseInt(year, 10),
+      parseInt(month, 10) - 1, // Month is 0-indexed
+      parseInt(day, 10),
+      parseInt(hours, 10),
+      parseInt(minutes, 10),
+      parseInt(seconds, 10)
+    )
+  }
+  // Fallback to standard Date parsing
+  return new Date(timestamp)
+}
+
+const formatTime = (timestamp: string): string => {
+  const date = parseVietnameseTimestamp(timestamp)
+  if (isNaN(date.getTime())) {
+    // If parsing fails, try to extract time from original string
+    const timeMatch = timestamp.match(/(\d{2}):(\d{2}):(\d{2})/)
+    if (timeMatch) {
+      return `${timeMatch[1]}:${timeMatch[2]}`
+    }
+    return timestamp
+  }
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+const formatDate = (timestamp: string): string => {
+  const date = parseVietnameseTimestamp(timestamp)
+  if (isNaN(date.getTime())) {
+    // If parsing fails, try to extract date from original string
+    const dateMatch = timestamp.match(/(\d{2})\/(\d{2})\/(\d{4})/)
+    if (dateMatch) {
+      const [, day, month, year] = dateMatch
+      return `${day}/${month}/${year}`
+    }
+    return timestamp
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  const dateOnly = new Date(date)
+  dateOnly.setHours(0, 0, 0, 0)
+
+  if (dateOnly.getTime() === today.getTime()) {
+    return 'Hôm nay'
+  } else if (dateOnly.getTime() === yesterday.getTime()) {
+    return 'Hôm qua'
+  } else {
+    return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric', year: 'numeric' })
+  }
+}
+
+const getDateKey = (timestamp: string): string => {
+  const date = parseVietnameseTimestamp(timestamp)
+  if (isNaN(date.getTime())) {
+    // If parsing fails, try to extract date from original string
+    const dateMatch = timestamp.match(/(\d{2})\/(\d{2})\/(\d{4})/)
+    if (dateMatch) {
+      const [, day, month, year] = dateMatch
+      return `${year}-${month}-${day}` // Return as YYYY-MM-DD for consistent key
+    }
+    return timestamp
+  }
+  const year = date.getFullYear()
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+
 function ChatWithCustomer() {
   const { user } = useAuth()
   const [selectedChat, setSelectedChat] = useState<string | null>(null)
@@ -42,14 +123,22 @@ function ChatWithCustomer() {
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null)
   const [loadingRooms, setLoadingRooms] = useState(false)
   const [loadingMessages, setLoadingMessages] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMoreMessages, setHasMoreMessages] = useState<{ [roomId: string]: boolean }>({})
+  const [allMessages, setAllMessages] = useState<{ [roomId: string]: Message[] }>({}) // Store all loaded messages
+  const [messagePage, setMessagePage] = useState<{ [roomId: string]: number }>({})
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set())
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [previewImages, setPreviewImages] = useState<string[]>([])
   const [previewIndex, setPreviewIndex] = useState(0)
+  const [searchTerm, setSearchTerm] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const MESSAGES_PER_PAGE = 20
 
   // Load chat rooms từ API
   useEffect(() => {
@@ -202,17 +291,35 @@ function ChatWithCustomer() {
           }
         })
 
-        // Chuyển Map thành Array và sort theo timestamp
+        // Chuyển Map thành Array và sort theo timestamp (oldest first)
         const mappedMessages: Message[] = Array.from(messageMap.values()).sort((a, b) => {
           const timeA = new Date(a.timestamp).getTime()
           const timeB = new Date(b.timestamp).getTime()
           return timeA - timeB
         })
 
-        // Replace messages thay vì merge để tránh duplicate khi reload
-        setMessages((prev) => ({
+        // Store all messages
+        setAllMessages((prev) => ({
           ...prev,
           [selectedChat]: mappedMessages
+        }))
+
+        // For bottom-up: show latest N messages initially
+        const initialCount = Math.min(MESSAGES_PER_PAGE, mappedMessages.length)
+        const initialMessages = mappedMessages.slice(-initialCount)
+        setHasMoreMessages((prev) => ({
+          ...prev,
+          [selectedChat]: mappedMessages.length > MESSAGES_PER_PAGE
+        }))
+        setMessagePage((prev) => ({
+          ...prev,
+          [selectedChat]: 1
+        }))
+
+        // Set visible messages (latest N)
+        setMessages((prev) => ({
+          ...prev,
+          [selectedChat]: initialMessages
         }))
 
         // Cập nhật lastMessage trong conversations
@@ -224,6 +331,13 @@ function ChatWithCustomer() {
             )
           )
         }
+
+        // Scroll to bottom after initial load
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+          }
+        }, 100)
       } catch (error) {
         console.error('Error loading messages:', error)
       } finally {
@@ -336,8 +450,104 @@ function ChatWithCustomer() {
     }
   }, [messages, selectedChat])
 
+  // Filter conversations based on search term
+  const filteredConversations = conversations.filter((chat) => {
+    if (!searchTerm.trim()) return true
+    const searchLower = searchTerm.toLowerCase().trim()
+    return chat.name.toLowerCase().includes(searchLower) || chat.lastMessage.toLowerCase().includes(searchLower)
+  })
+
+  // Load more messages when scrolling up
+  const loadMoreMessages = async () => {
+    if (!selectedChat || loadingMore || !hasMoreMessages[selectedChat]) return
+
+    const allMsgs = allMessages[selectedChat] || []
+    const currentPage = messagePage[selectedChat] || 1
+    const nextPage = currentPage + 1
+    const totalLoaded = currentPage * MESSAGES_PER_PAGE
+
+    if (totalLoaded >= allMsgs.length) {
+      setHasMoreMessages((prev) => ({
+        ...prev,
+        [selectedChat]: false
+      }))
+      return
+    }
+
+    try {
+      setLoadingMore(true)
+
+      // Save current scroll position
+      const container = messagesContainerRef.current
+      const previousScrollHeight = container?.scrollHeight || 0
+
+      // Load more messages (older ones)
+      const startIndex = Math.max(0, allMsgs.length - (nextPage * MESSAGES_PER_PAGE))
+      const endIndex = allMsgs.length - (currentPage * MESSAGES_PER_PAGE)
+      const newMessages = allMsgs.slice(startIndex, endIndex)
+
+      // Append older messages to the beginning (visually top)
+      setMessages((prev) => {
+        const current = prev[selectedChat] || []
+        return {
+          ...prev,
+          [selectedChat]: [...newMessages, ...current]
+        }
+      })
+
+      setMessagePage((prev) => ({
+        ...prev,
+        [selectedChat]: nextPage
+      }))
+
+      // Restore scroll position after new messages are added
+      setTimeout(() => {
+        if (container) {
+          const newScrollHeight = container.scrollHeight
+          const scrollDiff = newScrollHeight - previousScrollHeight
+          container.scrollTop = scrollDiff
+        }
+      }, 0)
+    } catch (error) {
+      console.error('Error loading more messages:', error)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  // Handle scroll to detect when user scrolls to top (bottom of reversed container)
+  const handleScroll = () => {
+    const container = messagesContainerRef.current
+    if (!container || !selectedChat || loadingMore) return
+
+    // In column-reverse, scrollTop = 0 means at the "top" (which is actually the oldest messages)
+    const scrollThreshold = 100 // Load when within 100px of top
+    if (container.scrollTop <= scrollThreshold && hasMoreMessages[selectedChat]) {
+      loadMoreMessages()
+    }
+  }
+
   const currentChat = conversations.find((chat) => chat.id === selectedChat)
   const currentMessages = selectedChat ? messages[selectedChat] || [] : []
+
+  // Group messages by date for date headers
+  const messagesByDate = currentMessages.reduce((acc, msg) => {
+    const dateKey = getDateKey(msg.timestamp)
+    if (!acc[dateKey]) {
+      acc[dateKey] = []
+    }
+    acc[dateKey].push(msg)
+    return acc
+  }, {} as Record<string, Message[]>)
+
+  // Debug: Log messagesByDate to check if grouping works
+  if (currentMessages.length > 0 && Object.keys(messagesByDate).length === 0) {
+    console.warn('[ChatWithCustomer] messagesByDate is empty but currentMessages has items:', {
+      currentMessagesCount: currentMessages.length,
+      firstMessageTimestamp: currentMessages[0]?.timestamp,
+      parsedDateKey: currentMessages[0] ? getDateKey(currentMessages[0].timestamp) : 'N/A'
+    })
+  }
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -444,7 +654,12 @@ function ChatWithCustomer() {
         <div className='p-4 border-b border-gray-200'>
           <div className='relative'>
             <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
-            <Input placeholder='Tìm kiếm cuộc trò chuyện...' className='pl-10 bg-gray-50 border-gray-200' />
+            <Input
+              placeholder='Tìm kiếm cuộc trò chuyện...'
+              className='pl-10 bg-gray-50 border-gray-200'
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
 
@@ -452,10 +667,12 @@ function ChatWithCustomer() {
         <div className='flex-1 overflow-y-auto'>
           {loadingRooms ? (
             <div className='p-4 text-center text-gray-500'>Đang tải...</div>
-          ) : conversations.length === 0 ? (
-            <div className='p-4 text-center text-gray-500'>Chưa có cuộc trò chuyện nào</div>
+          ) : filteredConversations.length === 0 ? (
+            <div className='p-4 text-center text-gray-500'>
+              {searchTerm.trim() ? 'Không tìm thấy cuộc trò chuyện nào' : 'Chưa có cuộc trò chuyện nào'}
+            </div>
           ) : (
-            conversations.map((chat) => (
+            filteredConversations.map((chat) => (
               <div
                 key={chat.id}
                 onClick={() => setSelectedChat(chat.id)}
@@ -508,27 +725,10 @@ function ChatWithCustomer() {
                   <div className='w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center'>
                     <span className='text-sm font-medium text-gray-600'>{currentChat?.name.charAt(0)}</span>
                   </div>
-                  <div className='absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white'></div>
                 </div>
                 <div>
                   <h2 className='font-semibold text-gray-900'>{currentChat?.name}</h2>
-                  <div className='text-sm text-green-600 flex items-center gap-1'>
-                    <span className='w-2 h-2 bg-green-500 rounded-full'></span>
-                    Đang hoạt động
-                  </div>
                 </div>
-              </div>
-
-              <div className='flex items-center gap-2'>
-                <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                  <Phone className='w-4 h-4' />
-                </Button>
-                <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                  <Video className='w-4 h-4' />
-                </Button>
-                <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                  <MoreVertical className='w-4 h-4' />
-                </Button>
               </div>
             </div>
 
@@ -553,7 +753,12 @@ function ChatWithCustomer() {
         )}
 
         {/* Messages Area */}
-        <div className='flex-1 overflow-y-auto p-4 space-y-4'>
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
+          className='flex-1 overflow-y-auto overflow-x-hidden p-4'
+          style={{ display: 'flex', flexDirection: 'column-reverse', overflowAnchor: 'auto' }}
+        >
           {!selectedChat ? (
             <div className='h-full flex items-center justify-center text-gray-500'>
               Chọn một cuộc trò chuyện để bắt đầu
@@ -562,153 +767,209 @@ function ChatWithCustomer() {
             <div className='h-full flex items-center justify-center text-gray-500'>Đang tải tin nhắn...</div>
           ) : (
             <>
-              {/* Date Separator */}
-              {currentMessages.length > 0 && (
-                <div className='text-center'>
-                  <span className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>Hôm nay</span>
+              {/* Loading more indicator */}
+              {loadingMore && (
+                <div className='text-center py-2'>
+                  <div className='inline-flex items-center gap-2 text-sm text-gray-500'>
+                    <div className='w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin'></div>
+                    Đang tải thêm...
+                  </div>
                 </div>
               )}
 
-              {/* Messages */}
-              {currentMessages.map((msg, msgIndex) => {
-                // Chuẩn bị danh sách ảnh để preview
-                const handleImageClick = (idx: number) => {
-                  const allImages = msg.images
-                    ? msg.images.map((img) => {
-                      const urlString = typeof img === 'string' ? img : String(img || '')
-                      return urlString.startsWith('http://') || urlString.startsWith('https://')
-                        ? urlString
-                        : resolveImageUrl(urlString)
-                    })
-                    : []
-                  setPreviewImages(allImages)
-                  setPreviewIndex(idx)
-                  setIsPreviewOpen(true)
-                }
-
-                return (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{
-                      duration: 0.3,
-                      delay: msgIndex * 0.05,
-                      ease: 'easeOut'
-                    }}
-                    className={`flex ${msg.sender === 'shop' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`flex gap-2 max-w-[85%] sm:max-w-xs lg:max-w-md ${msg.sender === 'shop' ? 'flex-row-reverse' : ''}`}>
-                      {msg.sender === 'customer' && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-                          className='w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0'
-                        >
-                          <span className='text-xs font-medium text-gray-600'>C</span>
-                        </motion.div>
-                      )}
-
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        className={`rounded-lg px-3 py-2 ${msg.sender === 'shop' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
-                          }`}
-                      >
-                        {msg.isTyping ? (
-                          <div className='flex items-center gap-1'>
-                            <div className='flex gap-1'>
-                              <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'></div>
-                              <div
-                                className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
-                                style={{ animationDelay: '0.1s' }}
-                              ></div>
-                              <div
-                                className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
-                                style={{ animationDelay: '0.2s' }}
-                              ></div>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            {Array.isArray(msg.images) && msg.images.length > 0 && (
-                              <div className='mt-2 flex flex-wrap gap-2'>
-                                {msg.images.map((imageUrl, idx) => {
-                                  // Đảm bảo imageUrl là string
-                                  const imageUrlString = typeof imageUrl === 'string' ? imageUrl : String(imageUrl || '')
-
-                                  // Nếu đã là full URL (bắt đầu với http:// hoặc https://) thì dùng trực tiếp
-                                  // Nếu không thì resolve với base URL
-                                  const finalUrl =
-                                    imageUrlString.startsWith('http://') || imageUrlString.startsWith('https://')
-                                      ? imageUrlString
-                                      : resolveImageUrl(imageUrlString)
-
-                                  const imageKey = `${msg.id}-${idx}`
-                                  const hasFailed = failedImages.has(imageKey)
-                                  const fallbackImage = 'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
-
-                                  return hasFailed ? (
-                                    <motion.img
-                                      key={idx}
-                                      initial={{ opacity: 0, scale: 0.8 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      src={fallbackImage}
-                                      alt={`Image ${idx + 1} (fallback)`}
-                                      className='max-w-[200px] sm:max-w-[250px] max-h-[200px] sm:max-h-[300px] object-contain rounded-lg cursor-pointer shadow-md'
-                                      onClick={() => handleImageClick(idx)}
-                                      onError={() => {
-                                        console.error('[ChatWithCustomer] Fallback image also failed to load')
-                                      }}
-                                    />
-                                  ) : (
-                                    <motion.img
-                                      key={idx}
-                                      initial={{ opacity: 0, scale: 0.8 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      transition={{ duration: 0.2, delay: idx * 0.05 }}
-                                      src={finalUrl}
-                                      alt={`Image ${idx + 1}`}
-                                      className='max-w-[200px] sm:max-w-[250px] max-h-[200px] sm:max-h-[300px] object-contain rounded-lg cursor-pointer shadow-md'
-                                      onClick={() => handleImageClick(idx)}
-                                      loading='lazy'
-                                      onError={(e) => {
-                                        // Khi ảnh gốc fail, thử fallback
-                                        const img = e.currentTarget as HTMLImageElement
-                                        console.error('[ChatWithCustomer] Image load error:', {
-                                          attemptedUrl: img.src,
-                                          originalUrl: imageUrl,
-                                          finalUrl: finalUrl
-                                        })
-                                        if (img && img.src !== fallbackImage) {
-                                          console.log('[ChatWithCustomer] Trying fallback image')
-                                          img.src = fallbackImage
-                                        } else {
-                                          console.log('[ChatWithCustomer] Fallback also failed, marking as failed')
-                                          setFailedImages((prev) => new Set(prev).add(imageKey))
-                                        }
-                                      }}
-                                      onLoad={() => {
-                                        console.log('[ChatWithCustomer] Image loaded successfully:', finalUrl)
-                                      }}
-                                    />
-                                  )
-                                })}
-                              </div>
-                            )}
-                            {msg.content && <p className='text-sm'>{msg.content}</p>}
-                          </>
-                        )}
-                      </motion.div>
+              {/* Messages - rendered in reverse order for bottom-up */}
+              {Object.keys(messagesByDate).length === 0 && currentMessages.length > 0 ? (
+                // Fallback: if grouping fails, show all messages without date headers
+                <div className='text-center my-4'>
+                  <span className='text-xs text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm'>
+                    {formatDate(currentMessages[0]?.timestamp || '')}
+                  </span>
+                </div>
+              ) : null}
+              {Object.entries(messagesByDate)
+                .sort(([dateKeyA], [dateKeyB]) => {
+                  // Sort by date key (YYYY-MM-DD format) - oldest first for column-reverse
+                  return dateKeyA.localeCompare(dateKeyB)
+                })
+                .map(([dateKey, dateMessages]) => (
+                  <div key={dateKey} className='mb-4'>
+                    {/* Date Header */}
+                    <div className='sticky top-0 z-10 text-center my-4 bg-transparent pointer-events-none'>
+                      <span className='text-xs text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm pointer-events-auto'>
+                        {formatDate(dateMessages[0]?.timestamp || '')}
+                      </span>
                     </div>
-                  </motion.div>
-                )
-              })}
-              <div ref={messagesEndRef} />
+
+                    {/* Messages for this date */}
+                    {dateMessages.map((msg) => {
+                      const isHovered = hoveredMessageId === msg.id
+
+                      // Chuẩn bị danh sách ảnh để preview
+                      const handleImageClick = (idx: number) => {
+                        const allImages = msg.images
+                          ? msg.images.map((img) => {
+                            const urlString = typeof img === 'string' ? img : String(img || '')
+                            return urlString.startsWith('http://') || urlString.startsWith('https://')
+                              ? urlString
+                              : resolveImageUrl(urlString)
+                          })
+                          : []
+                        setPreviewImages(allImages)
+                        setPreviewIndex(idx)
+                        setIsPreviewOpen(true)
+                      }
+
+                      // Check if this is an old message (loaded from history)
+                      const isOldMessage = loadingMore
+
+                      return (
+                        <motion.div
+                          key={msg.id}
+                          layout
+                          initial={
+                            isOldMessage
+                              ? { opacity: 0 }
+                              : { opacity: 0, y: 20, scale: 0.9 }
+                          }
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={
+                            isOldMessage
+                              ? { duration: 0.2 }
+                              : {
+                                type: 'spring',
+                                stiffness: 300,
+                                damping: 20
+                              }
+                          }
+                          className={`flex ${msg.sender === 'shop' ? 'justify-end' : 'justify-start'} mb-2 group items-end gap-2`}
+                          onMouseEnter={() => setHoveredMessageId(msg.id)}
+                          onMouseLeave={() => setHoveredMessageId(null)}
+                        >
+                          {msg.sender === 'customer' && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                              className='w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 self-end'
+                            >
+                              <span className='text-xs font-medium text-gray-600'>C</span>
+                            </motion.div>
+                          )}
+
+                          <div className='flex flex-col relative max-w-[80%]'>
+                            <motion.div
+                              layout
+                              whileHover={{ scale: 1.02 }}
+                              className={`w-fit max-w-full rounded-xl px-4 py-2.5 relative break-words ${msg.sender === 'shop' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
+                                }`}
+                            >
+                              {msg.isTyping ? (
+                                <div className='flex items-center gap-1'>
+                                  <div className='flex gap-1'>
+                                    <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'></div>
+                                    <div
+                                      className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
+                                      style={{ animationDelay: '0.1s' }}
+                                    ></div>
+                                    <div
+                                      className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
+                                      style={{ animationDelay: '0.2s' }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {Array.isArray(msg.images) && msg.images.length > 0 && (
+                                    <div className='mt-2 flex flex-wrap gap-2'>
+                                      {msg.images.map((imageUrl, idx) => {
+                                        // Đảm bảo imageUrl là string
+                                        const imageUrlString = typeof imageUrl === 'string' ? imageUrl : String(imageUrl || '')
+
+                                        // Nếu đã là full URL (bắt đầu với http:// hoặc https://) thì dùng trực tiếp
+                                        // Nếu không thì resolve với base URL
+                                        const finalUrl =
+                                          imageUrlString.startsWith('http://') || imageUrlString.startsWith('https://')
+                                            ? imageUrlString
+                                            : resolveImageUrl(imageUrlString)
+
+                                        const imageKey = `${msg.id}-${idx}`
+                                        const hasFailed = failedImages.has(imageKey)
+                                        const fallbackImage = 'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
+
+                                        return hasFailed ? (
+                                          <motion.img
+                                            key={idx}
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            src={fallbackImage}
+                                            alt={`Image ${idx + 1} (fallback)`}
+                                            className='max-w-[200px] sm:max-w-[250px] max-h-[200px] sm:max-h-[300px] object-contain rounded-lg cursor-pointer shadow-md'
+                                            onClick={() => handleImageClick(idx)}
+                                            onError={() => {
+                                              console.error('[ChatWithCustomer] Fallback image also failed to load')
+                                            }}
+                                          />
+                                        ) : (
+                                          <motion.img
+                                            key={idx}
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            transition={{ duration: 0.2, delay: idx * 0.05 }}
+                                            src={finalUrl}
+                                            alt={`Image ${idx + 1}`}
+                                            className='max-w-[200px] sm:max-w-[250px] max-h-[200px] sm:max-h-[300px] object-contain rounded-lg cursor-pointer shadow-md'
+                                            onClick={() => handleImageClick(idx)}
+                                            loading='lazy'
+                                            onError={(e) => {
+                                              // Khi ảnh gốc fail, thử fallback
+                                              const img = e.currentTarget as HTMLImageElement
+                                              console.error('[ChatWithCustomer] Image load error:', {
+                                                attemptedUrl: img.src,
+                                                originalUrl: imageUrl,
+                                                finalUrl: finalUrl
+                                              })
+                                              if (img && img.src !== fallbackImage) {
+                                                console.log('[ChatWithCustomer] Trying fallback image')
+                                                img.src = fallbackImage
+                                              } else {
+                                                console.log('[ChatWithCustomer] Fallback also failed, marking as failed')
+                                                setFailedImages((prev) => new Set(prev).add(imageKey))
+                                              }
+                                            }}
+                                            onLoad={() => {
+                                              console.log('[ChatWithCustomer] Image loaded successfully:', finalUrl)
+                                            }}
+                                          />
+                                        )
+                                      })}
+                                    </div>
+                                  )}
+                                  {msg.content && <p className='text-sm break-words whitespace-normal'>{msg.content}</p>}
+                                </>
+                              )}
+                            </motion.div>
+
+                            {/* Time display - show on hover at bottom corner, outside bubble */}
+                            {isHovered && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`absolute bottom-0 ${msg.sender === 'shop' ? 'right-0' : 'left-0'} text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-sm border border-gray-200 whitespace-nowrap`}
+                                style={{ fontSize: '10px', lineHeight: '1', transform: 'translateY(100%)' }}
+                              >
+                                {formatTime(msg.timestamp)}
+                              </motion.div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                ))}
             </>
           )}
         </div>

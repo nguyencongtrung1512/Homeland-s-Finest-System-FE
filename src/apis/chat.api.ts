@@ -37,14 +37,51 @@ export const sendChatMessage = async (data: ChatMessageRequest): Promise<ChatMes
  */
 export const createOrGetChatRoom = async (data: CreateChatRoomRequest): Promise<ChatRoomResponse> => {
   try {
-    const response = await axiosInstance.post<ChatRoomResponse>('/Chat', {
+    // Validate input
+    if (!data.sellerId || !data.customerId) {
+      throw new Error('sellerId and customerId are required')
+    }
+
+    // Log request data for debugging
+    console.log('[chat.api] Creating/getting chat room:', {
       sellerId: data.sellerId,
       customerId: data.customerId
     })
+
+    const requestBody = {
+      sellerId: data.sellerId,
+      customerId: data.customerId
+    }
+
+    const response = await axiosInstance.post<ChatRoomResponse>('/Chat', requestBody, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
     // Interceptor đã trả về response.data
+    console.log('[chat.api] Chat room created/retrieved successfully:', response)
     return response as unknown as ChatRoomResponse
-  } catch (error) {
-    console.error('Error creating or getting chat room:', error)
+  } catch (error: unknown) {
+    console.error('[chat.api] Error creating or getting chat room:', error)
+
+    // Log detailed error information
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as {
+        response?: { status?: number; statusText?: string; data?: { message?: string } }
+        message?: string
+      }
+      console.error('[chat.api] Error response:', {
+        status: axiosError.response?.status,
+        statusText: axiosError.response?.statusText,
+        data: axiosError.response?.data,
+        message: axiosError.response?.data?.message || axiosError.message || 'Unknown error'
+      })
+    } else if (error && typeof error === 'object' && 'message' in error) {
+      const errorWithMessage = error as { message: string }
+      console.error('[chat.api] Error message:', errorWithMessage.message)
+    }
+
     throw error
   }
 }
@@ -90,7 +127,6 @@ export const sendChatRoomMessage = async (data: SendChatRoomMessageRequest): Pro
  */
 export const getChatRoomMessages = async (roomId: string): Promise<ChatRoomMessagesResponse> => {
   try {
-
     const token = localStorage.getItem('token')
     const baseURL = import.meta.env.VITE_API_URL || 'http://154.26.130.248:8080'
 
