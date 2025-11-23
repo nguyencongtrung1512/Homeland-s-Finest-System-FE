@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { User, LogOut, Menu, X } from 'lucide-react'
+import { User, LogOut, Menu, ChevronRight } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Button } from '../../components/ui/button'
@@ -42,7 +42,7 @@ function AdminLayout() {
           <div className='flex items-center gap-3'>
             {/* Toggle Button */}
             <Button variant='ghost' size='icon' onClick={toggleSidebar} className='h-8 w-8 hover:bg-gray-100'>
-              {isCollapsed ? <Menu size={18} /> : <X size={18} />}
+              {isCollapsed ? <ChevronRight size={18} /> : <Menu size={18} />}
             </Button>
 
             {/* Logo */}

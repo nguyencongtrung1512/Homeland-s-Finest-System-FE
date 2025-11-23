@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Search, Filter, Eye, CalendarIcon } from 'lucide-react'
+import { Search, Filter, Eye, CalendarIcon, RefreshCw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -18,6 +18,7 @@ import { useAuth } from '../../../contexts/auth.context'
 import { toast } from '../../../utils/toast'
 import { formatDate } from '../../../utils/formatDate'
 import path from '../../../constants/path'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 const DEFAULT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
@@ -182,12 +183,34 @@ function ManagerProduct() {
   }, [filteredProducts, currentPage, pageSize])
 
   return (
-    <div className='space-y-6'>
+    <div className='space-y-6 p-6'>
       {/* Header */}
-      <div>
-        <h1 className='text-2xl font-bold text-gray-900'>Quản lý sản phẩm</h1>
-        <p className='text-gray-600 mt-1'>Duyệt và quản lý tất cả sản phẩm được phân công</p>
-      </div>
+      <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent className='py-4'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <h2 className='text-3xl font-bold text-white m-0'>Quản lý sản phẩm</h2>
+            </div>
+            <ShimmerBorder
+              className='cursor-pointer'
+              color='#ffffff'
+              animationDuration='3s'
+              contentClassName='bg-white/10 rounded-lg'
+            >
+              <Button
+                onClick={() => fetchProductsForReview(currentPage, searchText, statusFilter)}
+                disabled={loading}
+                variant='outline'
+                className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </ShimmerBorder>
+          </div>
+          <p className='text-white/90 mt-2'>Duyệt và quản lý tất cả sản phẩm được phân công ({filteredProducts.length} sản phẩm)</p>
+        </CardContent>
+      </Card>
 
       {/* Search and Filters */}
       <Card>

@@ -13,7 +13,8 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -27,6 +28,7 @@ import type { StaffForm } from '../../../apis/staff.api'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from 'react-toastify'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 function ReportManagement() {
   const navigate = useNavigate()
@@ -209,14 +211,34 @@ function ReportManagement() {
   return (
     <div className='space-y-6 p-6 bg-gray-50 min-h-screen'>
       {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-3'>
-          <h1 className='text-2xl font-bold text-gray-900'>Khiếu nại được phân công</h1>
-          <span className='bg-blue-100 text-blue-600 px-2 py-1 rounded-full text-sm font-medium'>
-            {forms.length} khiếu nại
-          </span>
-        </div>
-      </div>
+      <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent className='py-4'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <h2 className='text-3xl font-bold text-white m-0'>Khiếu nại được phân công</h2>
+            </div>
+            <ShimmerBorder
+              className='cursor-pointer'
+              color='#ffffff'
+              animationDuration='3s'
+              contentClassName='bg-white/10 rounded-lg'
+            >
+              <Button
+                onClick={loadAssignedForms}
+                disabled={loading}
+                variant='outline'
+                className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </ShimmerBorder>
+          </div>
+          <p className='text-white/90 mt-2'>
+            Quản lý và xử lý tất cả khiếu nại được phân công ({forms.length} khiếu nại)
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Search and Filter Section */}
       <Card className='bg-white shadow-sm'>

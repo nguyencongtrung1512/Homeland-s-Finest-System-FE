@@ -1,14 +1,32 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Search, Filter, Package, Eye, Calendar, Star, Tag, ChevronLeft } from 'lucide-react'
+import {
+  Search,
+  Filter,
+  Package,
+  Eye,
+  Calendar,
+  Star,
+  Tag,
+  ChevronLeft,
+  RefreshCw,
+  Component,
+  Store
+} from 'lucide-react'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
+import { getAllCombos } from '../../../apis/combo.api'
+import { type ComboParams, type Combo } from '../../../types/combo.type'
 import { toast } from '../../../utils/toast'
 import { Card as ShadcnCard, CardContent, Card } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Badge } from '../../../components/ui/badge'
+import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
+import path from '../../../constants/path'
 
 // Interface for product from store API
 interface StoreProduct {
@@ -40,10 +58,63 @@ interface ProductData {
   isActive: boolean
 }
 
+// Status badge component for Combo
+const StatusBadge = ({ status }: { status: string }) => {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Approved':
+        return 'bg-green-100 text-green-800'
+      case 'Confirmed':
+        return 'bg-purple-100 text-purple-800'
+      case 'Pending':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'Rejected':
+        return 'bg-red-100 text-red-800'
+      case 'Denied':
+        return 'bg-red-100 text-red-800'
+      case 'Draft':
+        return 'bg-gray-100 text-gray-800'
+      case 'Processing':
+        return 'bg-orange-100 text-orange-800'
+      case 'Cancelled':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'Approved':
+        return 'Đã duyệt'
+      case 'Pending':
+        return 'Chờ duyệt'
+      case 'Rejected':
+        return 'Từ chối'
+      case 'Denied':
+        return 'Bị từ chối'
+      case 'Confirmed':
+        return 'Đã xác nhận'
+      case 'Draft':
+        return 'Nháp'
+      case 'Processing':
+        return 'Cần xử lý'
+      case 'Cancelled':
+        return 'Đã hủy'
+      default:
+        return status
+    }
+  }
+
+  return <Badge className={getStatusColor(status)}>{getStatusText(status)}</Badge>
+}
+
 function ListProductByStoreStaff() {
   const { storeId } = useParams<{ storeId: string }>()
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<'products' | 'combos'>('products')
 
+  // Product states
   const [searchText, setSearchText] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -57,10 +128,16 @@ function ListProductByStoreStaff() {
   const [storeName, setStoreName] = useState('')
   const pageSize = 12
 
+  // Combo states
+  const [comboData, setComboData] = useState<Combo[]>([])
+  const [comboLoading, setComboLoading] = useState(false)
+  const [comboSearchText, setComboSearchText] = useState('')
+  const [comboStatusFilter, setComboStatusFilter] = useState<string>('all')
+  const [comboCurrentPage, setComboCurrentPage] = useState(1)
+
   // Convert Store Product to ProductData
   const convertProduct = (storeProduct: StoreProduct): ProductData => {
     const formatDate = (dateString: string) => {
-      // Format: "19:23:34 22/10/2025" -> "22/10/2025"
       if (dateString.includes(' ')) {
         return dateString.split(' ')[1] || dateString
       }
@@ -80,7 +157,7 @@ function ListProductByStoreStaff() {
         id: storeProduct.id
       },
       description: storeProduct.description || '',
-      category: 'N/A', // Not available in store product data
+      category: 'N/A',
       createdDate: formatDate(storeProduct.createdAt),
       status: storeProduct.status as 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Confirmed' | 'Denied',
       rating: storeProduct.rating,
@@ -88,6 +165,21 @@ function ListProductByStoreStaff() {
       isActive: storeProduct.isActive
     }
   }
+
+  // Fetch store info
+  const fetchStoreInfo = useCallback(async () => {
+    if (!storeId) return
+
+    try {
+      const response = await storeApi.getStoreById(storeId)
+      const storeData: StoreResponse = response.data?.data || response.data || (response as unknown as StoreResponse)
+      if (storeData) {
+        setStoreName(storeData.storeName || '')
+      }
+    } catch (error) {
+      console.error('Error fetching store info:', error)
+    }
+  }, [storeId])
 
   // Fetch product categories
   const fetchProductCategories = async () => {
@@ -112,7 +204,7 @@ function ListProductByStoreStaff() {
     }
   }
 
-  // Fetch products by store using getStoreById
+  // Fetch products by store
   const fetchProductsByStore = async () => {
     if (!storeId) return
 
@@ -121,24 +213,18 @@ function ListProductByStoreStaff() {
       setError(null)
 
       const response = await storeApi.getStoreById(storeId)
-
-      // Extract store info and products from response
       const storeData: StoreResponse = response.data?.data || response.data || (response as unknown as StoreResponse)
 
       if (storeData) {
-        // Set store name
         setStoreName(storeData.storeName || '')
 
-        // Extract products from storeData.products
         let products: StoreProduct[] = []
         if (Array.isArray(storeData.products)) {
           products = storeData.products as StoreProduct[]
         }
 
-        // Apply filters
         let filteredProducts = products
 
-        // Apply search filter
         if (searchText.trim()) {
           const searchLower = searchText.trim().toLowerCase()
           filteredProducts = filteredProducts.filter(
@@ -148,14 +234,10 @@ function ListProductByStoreStaff() {
           )
         }
 
-        // Apply status filter
         if (statusFilter !== 'all') {
           filteredProducts = filteredProducts.filter((p) => p.status.toLowerCase() === statusFilter.toLowerCase())
         }
 
-        // Note: Category filter is not available in store product data, so we skip it
-
-        // Convert to ProductData
         const convertedProducts = filteredProducts.map(convertProduct)
         setProductData(convertedProducts)
         setTotalProducts(convertedProducts.length)
@@ -175,30 +257,81 @@ function ListProductByStoreStaff() {
     }
   }
 
-  useEffect(() => {
-    fetchProductCategories()
-  }, [])
+  // Fetch combos by store
+  const fetchCombos = useCallback(async () => {
+    if (!storeId) return
 
-  useEffect(() => {
-    fetchProductsByStore()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    try {
+      setComboLoading(true)
+      const params: ComboParams = {
+        pageSize: 0,
+        pageNumber: 1,
+        storeId: storeId
+      }
+
+      const combos = await getAllCombos(params)
+      setComboData(Array.isArray(combos) ? combos : [])
+    } catch (error) {
+      console.error('Error fetching combos:', error)
+      toast.error('Có lỗi xảy ra khi tải danh sách combo')
+    } finally {
+      setComboLoading(false)
+    }
   }, [storeId])
 
-  // Reset to page 1 when filters change
+  useEffect(() => {
+    fetchStoreInfo()
+    fetchProductCategories()
+  }, [fetchStoreInfo])
+
+  useEffect(() => {
+    if (activeTab === 'products') {
+      fetchProductsByStore()
+    } else {
+      fetchCombos()
+    }
+  }, [storeId, activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     setCurrentPage(1)
     fetchProductsByStore()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText, statusFilter])
+  }, [searchText, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Paginate products for display
+  // Filter combo data
+  const filteredComboData = useMemo(() => {
+    let filtered = comboData
+    filtered = filtered.filter((combo) => combo.status !== 'Draft')
+
+    if (comboSearchText) {
+      const searchLower = comboSearchText.toLowerCase()
+      filtered = filtered.filter(
+        (combo) =>
+          combo.name.toLowerCase().includes(searchLower) || combo.provinceName?.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (comboStatusFilter !== 'all') {
+      filtered = filtered.filter((combo) => combo.status === comboStatusFilter)
+    }
+
+    return filtered
+  }, [comboData, comboSearchText, comboStatusFilter])
+
+  // Pagination
   const totalFilteredProducts = totalProducts
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = Math.min(startIndex + pageSize, totalFilteredProducts)
   const paginatedProducts = productData.slice(startIndex, endIndex)
+
+  const comboTotalPages = Math.ceil(filteredComboData.length / pageSize)
+  const comboStartIndex = (comboCurrentPage - 1) * pageSize
+  const comboEndIndex = comboStartIndex + pageSize
+  const paginatedCombos = filteredComboData.slice(comboStartIndex, comboEndIndex)
+
   const handleBack = () => {
     navigate(-1)
   }
+
   const handleFilter = () => {
     setCurrentPage(1)
     fetchProductsByStore()
@@ -206,6 +339,50 @@ function ListProductByStoreStaff() {
 
   const handleViewProduct = (productId: string) => {
     navigate(`/staff/manager-product/detail-product/${productId}`)
+  }
+
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString || dateString === 'null' || dateString === 'undefined') {
+      return '-'
+    }
+
+    const timeDateMatch = dateString.match(/(\d{2}:\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/)
+
+    if (timeDateMatch) {
+      const [, time, date] = timeDateMatch
+      const [day, month, year] = date.split('/')
+      const [hours, minutes, seconds] = time.split(':')
+
+      const dateObj = new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hours),
+        parseInt(minutes),
+        parseInt(seconds)
+      )
+
+      if (isNaN(dateObj.getTime())) {
+        return '-'
+      }
+
+      return dateObj.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      })
+    }
+
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return '-'
+    }
+
+    return date.toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
   }
 
   // Render product card
@@ -258,7 +435,6 @@ function ListProductByStoreStaff() {
         className='h-full hover:shadow-lg transition-all duration-300 border-2 hover:border-green-300'
       >
         <CardContent className='p-4'>
-          {/* Product Image */}
           <div className='relative mb-4'>
             <div className='aspect-square rounded-lg overflow-hidden bg-gray-100'>
               {product.product.image ? (
@@ -283,19 +459,14 @@ function ListProductByStoreStaff() {
             )}
           </div>
 
-          {/* Product Info */}
           <div className='space-y-3'>
             <h3 className='text-lg font-semibold text-gray-900 line-clamp-2 min-h-[3.5rem]'>{product.product.name}</h3>
-
             <p className='text-sm text-gray-600 line-clamp-2 min-h-[2.5rem]'>{product.description}</p>
 
-            {/* Stats */}
             <div className='flex items-center justify-between text-sm text-gray-600'>
               <div className='flex items-center gap-1'>
                 <Star size={14} className='text-yellow-500' />
-                <span>
-                  {product.rating !== null && product.rating !== undefined ? product.rating.toFixed(1) : '0.0'}
-                </span>
+                <span>{product.rating !== null && product.rating !== undefined ? product.rating.toFixed(1) : '0.0'}</span>
               </div>
               <div className='flex items-center gap-1'>
                 <Tag size={14} className='text-gray-400' />
@@ -308,7 +479,6 @@ function ListProductByStoreStaff() {
               <span>Ngày tạo: {product.createdDate}</span>
             </div>
 
-            {/* Action Button */}
             <Button
               onClick={() => handleViewProduct(product.product.id)}
               className='w-full bg-green-600 hover:bg-green-700 flex items-center justify-center gap-2'
@@ -322,12 +492,99 @@ function ListProductByStoreStaff() {
     )
   }
 
+  // Render combo card
+  const renderComboCard = (combo: Combo) => {
+    return (
+      <Card
+        key={combo.id}
+        className='h-full hover:shadow-lg transition-all duration-300 border-2 hover:border-blue-300'
+      >
+        <CardContent className='p-4'>
+          <div className='flex items-start gap-4 mb-4'>
+            <div className='relative'>
+              <Avatar className='h-14 w-14'>
+                {combo.thumbnailUrl ? (
+                  <img
+                    src={combo.thumbnailUrl}
+                    alt={combo.name}
+                    className='w-full h-full object-cover'
+                    onError={(e) => {
+                      const target = e.currentTarget
+                      const fallback = target.nextElementSibling as HTMLElement
+                      if (fallback) {
+                        target.style.display = 'none'
+                        fallback.style.display = 'flex'
+                      }
+                    }}
+                  />
+                ) : null}
+                <AvatarFallback className='text-white font-semibold bg-gradient-to-br from-blue-500 to-blue-600'>
+                  {combo.name
+                    .split(' ')
+                    .map((word) => word.charAt(0))
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className='absolute -bottom-1 -right-1 bg-white rounded-full p-1 border-2 border-gray-200'>
+                <Component size={14} className='text-blue-600' />
+              </div>
+            </div>
+            <div className='flex-1 min-w-0'>
+              <h3 className='text-lg font-semibold text-gray-900 truncate mb-1'>{combo.name}</h3>
+              <StatusBadge status={combo.status} />
+            </div>
+          </div>
+
+          <div className='space-y-3 mb-6'>
+            <div className='flex items-center gap-2 text-sm text-gray-600'>
+              <Calendar size={14} className='text-gray-400' />
+              <span>Ngày tạo: {formatDate(combo.createdAt)}</span>
+            </div>
+
+            <div className='flex items-center gap-2 text-sm text-gray-600'>
+              <Package size={14} className='text-gray-400' />
+              <span>{combo.comboItems?.length || 0} sản phẩm</span>
+            </div>
+
+            {combo.totalFinalPrice && (
+              <div className='flex items-center gap-2 text-sm text-gray-600'>
+                <span className='font-medium text-green-600'>{combo.totalFinalPrice.toLocaleString('vi-VN')} đ</span>
+              </div>
+            )}
+          </div>
+
+          <div className='flex gap-2'>
+            <Button
+              variant='outline'
+              onClick={() => navigate(path.detailComboStaff.replace(':id', combo.id))}
+              className='flex-1 flex items-center justify-center gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300'
+            >
+              <Eye size={16} />
+              Xem chi tiết
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const handleRefresh = () => {
+    fetchStoreInfo()
+    if (activeTab === 'products') {
+      fetchProductsByStore()
+    } else {
+      fetchCombos()
+    }
+  }
+
   return (
     <div className='space-y-6 p-6'>
       {/* Header */}
       <ShadcnCard className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
         <CardContent>
-          <div className='flex items-center justify-between'>
+          <div className='flex items-center justify-between py-4'>
             <div className='flex items-center gap-3'>
               <Button
                 variant='outline'
@@ -337,123 +594,265 @@ function ListProductByStoreStaff() {
               >
                 <ChevronLeft size={20} />
               </Button>
-              <h2 className='text-3xl font-bold text-white m-0'>Danh sách sản phẩm - cửa hàng {storeName}</h2>
+              <div>
+                <h2 className='text-3xl font-bold text-white m-0'>Cửa hàng {storeName}</h2>
+                <p className='text-white/90 mt-1 flex items-center gap-2'>
+                  <Store size={16} />
+                  Quản lý sản phẩm và combo
+                </p>
+              </div>
             </div>
+            <ShimmerBorder
+              className='cursor-pointer'
+              color='#ffffff'
+              animationDuration='3s'
+              contentClassName='bg-white/10 rounded-lg'
+            >
+              <Button
+                onClick={handleRefresh}
+                disabled={loading || comboLoading}
+                variant='outline'
+                className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+              >
+                <RefreshCw size={16} className={loading || comboLoading ? 'animate-spin' : ''} />
+                {loading || comboLoading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </ShimmerBorder>
           </div>
         </CardContent>
       </ShadcnCard>
 
-      {/* Search and Filters */}
-      <Card>
-        <CardContent className='pt-6'>
-          <div className='flex flex-wrap items-center gap-4'>
-            <div className='flex-1 min-w-[300px] relative'>
-              <Search size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
-              <Input
-                placeholder='Tìm kiếm theo tên sản phẩm...'
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className='pl-10'
-              />
-            </div>
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as 'products' | 'combos')}
+        className='w-full'
+      >
+        <TabsList className='grid w-full max-w-md grid-cols-2'>
+          <TabsTrigger value='products' className='flex items-center gap-2'>
+            <Package size={16} />
+            Sản phẩm ({totalProducts})
+          </TabsTrigger>
+          <TabsTrigger value='combos' className='flex items-center gap-2'>
+            <Component size={16} />
+            Combo ({filteredComboData.length})
+          </TabsTrigger>
+        </TabsList>
 
-            <Select value={categoryFilter} onValueChange={setCategoryFilter} disabled={categoriesLoading}>
-              <SelectTrigger className='w-48'>
-                <SelectValue placeholder={categoriesLoading ? 'Đang tải...' : 'Tất cả ngành hàng'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>Tất cả ngành hàng</SelectItem>
-                {productCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Products Tab */}
+        <TabsContent value='products' className='space-y-6 mt-6'>
+          {/* Search and Filters */}
+          <Card>
+            <CardContent className='pt-6'>
+              <div className='flex flex-wrap items-center gap-4'>
+                <div className='flex-1 min-w-[300px] relative'>
+                  <Search size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+                  <Input
+                    placeholder='Tìm kiếm theo tên sản phẩm...'
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    className='pl-10'
+                  />
+                </div>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className='w-40'>
-                <SelectValue placeholder='Tất cả trạng thái' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>Tất cả trạng thái</SelectItem>
-                <SelectItem value='Pending'>Chờ duyệt</SelectItem>
-                <SelectItem value='Approved'>Đã duyệt</SelectItem>
-                <SelectItem value='Rejected'>Từ chối</SelectItem>
-                <SelectItem value='Processing'>Đang xử lý</SelectItem>
-              </SelectContent>
-            </Select>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter} disabled={categoriesLoading}>
+                  <SelectTrigger className='w-48'>
+                    <SelectValue placeholder={categoriesLoading ? 'Đang tải...' : 'Tất cả ngành hàng'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='all'>Tất cả ngành hàng</SelectItem>
+                    {productCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-            <Button onClick={handleFilter} className='bg-green-600 hover:bg-green-700'>
-              <Filter size={16} className='mr-2' />
-              Lọc
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className='w-40'>
+                    <SelectValue placeholder='Tất cả trạng thái' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='all'>Tất cả trạng thái</SelectItem>
+                    <SelectItem value='Pending'>Chờ duyệt</SelectItem>
+                    <SelectItem value='Approved'>Đã duyệt</SelectItem>
+                    <SelectItem value='Rejected'>Từ chối</SelectItem>
+                    <SelectItem value='Processing'>Đang xử lý</SelectItem>
+                  </SelectContent>
+                </Select>
 
-      {/* Products Grid */}
-      <div>
-        {loading ? (
-          <div className='flex items-center justify-center py-12'>
-            <span className='text-gray-600'>Đang tải danh sách sản phẩm...</span>
-          </div>
-        ) : error ? (
-          <div className='flex items-center justify-center py-12'>
-            <div className='text-center'>
-              <div className='text-red-500 text-lg mb-2'>⚠️</div>
-              <p className='text-red-600 font-medium mb-4'>{error}</p>
-              <Button onClick={fetchProductsByStore} className='bg-green-600 hover:bg-green-700'>
-                Thử lại
-              </Button>
-            </div>
-          </div>
-        ) : productData.length === 0 ? (
-          <div className='flex items-center justify-center py-12'>
-            <div className='text-center'>
-              <div className='text-gray-400 text-lg mb-2'>📦</div>
-              <p className='text-gray-600'>Cửa hàng chưa có sản phẩm nào</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Products Grid */}
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
-              {paginatedProducts.map(renderProductCard)}
-            </div>
-
-            {/* Pagination */}
-            <div className='flex items-center justify-between mt-8 pt-6 border-t border-gray-200'>
-              <div className='text-sm text-gray-600'>
-                Hiển thị {startIndex + 1} đến {endIndex} của {totalFilteredProducts} kết quả
-              </div>
-              <div className='flex items-center gap-2'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Trước
-                </Button>
-                <span className='text-sm text-gray-600'>
-                  Trang {currentPage} / {Math.ceil(totalFilteredProducts / pageSize)}
-                </span>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(Math.ceil(totalFilteredProducts / pageSize), prev + 1))
-                  }
-                  disabled={currentPage >= Math.ceil(totalFilteredProducts / pageSize)}
-                >
-                  Sau
+                <Button onClick={handleFilter} className='bg-green-600 hover:bg-green-700'>
+                  <Filter size={16} className='mr-2' />
+                  Lọc
                 </Button>
               </div>
-            </div>
-          </>
-        )}
-      </div>
+            </CardContent>
+          </Card>
+
+          {/* Products Grid */}
+          <div>
+            {loading ? (
+              <div className='flex items-center justify-center py-12'>
+                <span className='text-gray-600'>Đang tải danh sách sản phẩm...</span>
+              </div>
+            ) : error ? (
+              <div className='flex items-center justify-center py-12'>
+                <div className='text-center'>
+                  <div className='text-red-500 text-lg mb-2'>⚠️</div>
+                  <p className='text-red-600 font-medium mb-4'>{error}</p>
+                  <Button onClick={fetchProductsByStore} className='bg-green-600 hover:bg-green-700'>
+                    Thử lại
+                  </Button>
+                </div>
+              </div>
+            ) : productData.length === 0 ? (
+              <div className='flex items-center justify-center py-12'>
+                <div className='text-center'>
+                  <div className='text-gray-400 text-lg mb-2'>📦</div>
+                  <p className='text-gray-600'>Cửa hàng chưa có sản phẩm nào</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+                  {paginatedProducts.map(renderProductCard)}
+                </div>
+
+                <div className='flex items-center justify-between mt-8 pt-6 border-t border-gray-200'>
+                  <div className='text-sm text-gray-600'>
+                    Hiển thị {startIndex + 1} đến {endIndex} của {totalFilteredProducts} kết quả
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Trước
+                    </Button>
+                    <span className='text-sm text-gray-600'>
+                      Trang {currentPage} / {Math.ceil(totalFilteredProducts / pageSize)}
+                    </span>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(Math.ceil(totalFilteredProducts / pageSize), prev + 1))
+                      }
+                      disabled={currentPage >= Math.ceil(totalFilteredProducts / pageSize)}
+                    >
+                      Sau
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Combos Tab */}
+        <TabsContent value='combos' className='space-y-6 mt-6'>
+          {/* Search and Filters */}
+          <Card>
+            <CardContent className='pt-6'>
+              <div className='flex flex-wrap items-center gap-4'>
+                <div className='flex-1 min-w-[300px] relative'>
+                  <Search size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+                  <Input
+                    placeholder='Tìm kiếm theo tên combo'
+                    value={comboSearchText}
+                    onChange={(e) => {
+                      setComboSearchText(e.target.value)
+                      setComboCurrentPage(1)
+                    }}
+                    className='pl-10'
+                  />
+                </div>
+
+                <Select
+                  value={comboStatusFilter}
+                  onValueChange={(value) => {
+                    setComboStatusFilter(value)
+                    setComboCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className='w-48'>
+                    <SelectValue placeholder='Tất cả trạng thái' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='all'>Tất cả trạng thái</SelectItem>
+                    <SelectItem value='Pending'>Chờ duyệt</SelectItem>
+                    <SelectItem value='Approved'>Đã duyệt</SelectItem>
+                    <SelectItem value='Confirmed'>Đã xác nhận</SelectItem>
+                    <SelectItem value='Rejected'>Từ chối</SelectItem>
+                    <SelectItem value='Denied'>Bị từ chối</SelectItem>
+                    <SelectItem value='Processing'>Cần xử lý</SelectItem>
+                    <SelectItem value='Cancelled'>Đã hủy</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Combos Grid */}
+          <div>
+            {comboLoading ? (
+              <div className='flex items-center justify-center py-12'>
+                <span className='text-gray-600'>Đang tải danh sách combo...</span>
+              </div>
+            ) : filteredComboData.length === 0 ? (
+              <div className='flex items-center justify-center py-12'>
+                <div className='text-center'>
+                  <div className='text-gray-400 text-lg mb-2'>📦</div>
+                  <p className='text-gray-600'>
+                    {comboSearchText || comboStatusFilter !== 'all'
+                      ? 'Không tìm thấy combo phù hợp với bộ lọc'
+                      : 'Cửa hàng này chưa có combo nào'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+                  {paginatedCombos.map(renderComboCard)}
+                </div>
+
+                {comboTotalPages > 1 && (
+                  <div className='flex items-center justify-between mt-8 pt-6 border-t border-gray-200'>
+                    <div className='text-sm text-gray-600'>
+                      Hiển thị {comboStartIndex + 1} đến {Math.min(comboEndIndex, filteredComboData.length)} của{' '}
+                      {filteredComboData.length} kết quả
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => setComboCurrentPage((prev) => Math.max(1, prev - 1))}
+                        disabled={comboCurrentPage === 1}
+                      >
+                        Trước
+                      </Button>
+                      <span className='text-sm text-gray-600'>
+                        Trang {comboCurrentPage} / {comboTotalPages}
+                      </span>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => setComboCurrentPage((prev) => Math.min(comboTotalPages, prev + 1))}
+                        disabled={comboCurrentPage >= comboTotalPages}
+                      >
+                        Sau
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

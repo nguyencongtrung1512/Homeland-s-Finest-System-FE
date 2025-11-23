@@ -24,6 +24,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../contexts/auth.context'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 interface ComboData {
   key: string
@@ -418,20 +419,34 @@ function ManagerComboStaff() {
   return (
     <div className='space-y-6 p-6'>
       {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div>
-          <p className='text-gray-600 mt-1'>Xét duyệt các combo được phân công ({totalCombos} combo)</p>
-        </div>
-        <Button
-          onClick={fetchCombosForReview}
-          disabled={loading}
-          variant='outline'
-          className='flex items-center gap-2 bg-transparent'
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Đang tải...' : 'Làm mới'}
-        </Button>
-      </div>
+      <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent className='py-4'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <h2 className='text-3xl font-bold text-white m-0'>Xét duyệt Combo</h2>
+            </div>
+            <ShimmerBorder
+              className='cursor-pointer'
+              color='#ffffff'
+              animationDuration='3s'
+              contentClassName='bg-white/10 rounded-lg'
+            >
+              <Button
+                onClick={fetchCombosForReview}
+                disabled={loading}
+                variant='blue'
+                className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </ShimmerBorder>
+          </div>
+          <p className='text-white/90 mt-2'>
+            Xét duyệt các combo được phân công ({totalCombos} combo)
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Search and Filters */}
       <Card>

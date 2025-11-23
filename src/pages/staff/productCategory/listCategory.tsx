@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Eye, Calendar, CheckCircle, XCircle, Plus, Edit } from 'lucide-react'
+import { Search, Eye, Calendar, CheckCircle, XCircle, Plus, Edit, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -24,6 +24,8 @@ import {
   type ProductCategoryItem
 } from '../../../apis/productCategory.api'
 import { toast } from 'react-toastify'
+import Pagination from '../../../components/Pagination/Pagination'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 function ListCategory() {
   // State management
@@ -31,6 +33,8 @@ function ListCategory() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchText, setSearchText] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -75,12 +79,29 @@ function ListCategory() {
     fetchProductCategory()
   }, [fetchProductCategory])
 
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchText])
+
   // Filter data based on search
   const filteredData = productCategoryData.filter(
     (item) =>
       item.name.toLowerCase().includes(searchText.toLowerCase()) ||
       item.description.toLowerCase().includes(searchText.toLowerCase())
   )
+
+  // Pagination logic
+  const totalFilteredItems = filteredData.length
+  const totalPages = Math.ceil(totalFilteredItems / pageSize)
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedData = filteredData.slice(startIndex, endIndex)
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
 
   // Handle view details
   const handleViewDetails = (item: ProductCategoryItem) => {
@@ -198,16 +219,25 @@ function ListCategory() {
   return (
     <div className='space-y-6 p-6 bg-gray-50 min-h-screen'>
       {/* Header */}
-      <div className='flex items-center justify-between'>
-        <h1 className='text-2xl font-bold text-gray-900'>Danh mục sản phẩm</h1>
-        <div className='flex items-center gap-4'>
-          <div className='text-sm text-gray-600'>Tổng cộng: {filteredData.length} danh mục</div>
-          <Button onClick={handleCreateNew} className='bg-green-600 hover:bg-green-700 text-white'>
-            <Plus className='w-4 h-4 mr-2' />
-            Thêm mới
-          </Button>
-        </div>
-      </div>
+      <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent className='py-4'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <h2 className='text-3xl font-bold text-white m-0'>Danh mục sản phẩm</h2>
+            </div>
+            <div className='flex items-center gap-3'>
+
+              <Button onClick={handleCreateNew} className='bg-white/10 hover:bg-white/20 text-white border-white/20'>
+                <Plus className='w-4 h-4 mr-2' />
+                Thêm mới
+              </Button>
+            </div>
+          </div>
+          <p className='text-white/90 mt-2'>
+            Quản lý và theo dõi tất cả danh mục sản phẩm ({totalFilteredItems} danh mục)
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Search and Filters */}
       <Card className='bg-white shadow-sm'>
@@ -222,9 +252,22 @@ function ListCategory() {
                 className='pl-10'
               />
             </div>
-            <Button variant='outline' onClick={fetchProductCategory} disabled={loading}>
-              {loading ? 'Đang tải...' : 'Làm mới'}
-            </Button>
+            <ShimmerBorder
+              className='cursor-pointer'
+              color='#fff'
+              animationDuration='3s'
+              contentClassName='bg-white/10 rounded-lg'
+            >
+              <Button
+                onClick={fetchProductCategory}
+                disabled={loading}
+                variant='outline'
+                className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </ShimmerBorder>
           </div>
         </CardContent>
       </Card>
@@ -266,7 +309,7 @@ function ListCategory() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredData.map((item) => (
+                  paginatedData.map((item) => (
                     <TableRow key={item.id} className='hover:bg-gray-50'>
                       <TableCell className='px-6 py-4'>
                         <div className='font-medium text-gray-900'>{item.name}</div>
@@ -317,6 +360,18 @@ function ListCategory() {
               </TableBody>
             </Table>
           )}
+          {/* Pagination */}
+          {!loading && !error && filteredData.length > 0 && (
+            <div className='mt-6'>
+              <div className='flex items-center justify-between mb-4'>
+                <div className='text-sm text-gray-600'>
+                  Hiển thị {startIndex + 1} đến {Math.min(endIndex, totalFilteredItems)} của {totalFilteredItems} kết
+                  quả
+                </div>
+              </div>
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -360,18 +415,16 @@ function ListCategory() {
                     setNameError('')
                   }
                 }}
-                className={`border-green-300 focus:border-green-500 focus:ring-green-500 ${
-                  nameError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
-                }`}
+                className={`border-green-300 focus:border-green-500 focus:ring-green-500 ${nameError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                  }`}
                 placeholder='Nhập tên danh mục...'
                 maxLength={10}
               />
               <div className='mt-2 flex items-center justify-between'>
                 <span className={`text-xs ${nameError ? 'text-red-500' : 'text-gray-500'}`}>
-                  {nameError 
+                  {nameError
                     ? `Tên danh mục không được vượt quá 10 ký tự (${formData.name.length}/10 ký tự)`
-                    : `Số ký tự: ${formData.name.length}/10`
-                  }
+                    : `Số ký tự: ${formData.name.length}/10`}
                 </span>
               </div>
             </div>
@@ -395,19 +448,17 @@ function ListCategory() {
                     setDescriptionError('')
                   }
                 }}
-                className={`border-green-300 focus:border-green-500 focus:ring-green-500 ${
-                  descriptionError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
-                }`}
+                className={`border-green-300 focus:border-green-500 focus:ring-green-500 ${descriptionError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                  }`}
                 placeholder='Nhập mô tả danh mục...'
                 rows={3}
                 maxLength={20}
               />
               <div className='mt-2 flex items-center justify-between'>
                 <span className={`text-xs ${descriptionError ? 'text-red-500' : 'text-gray-500'}`}>
-                  {descriptionError 
+                  {descriptionError
                     ? `Mô tả không được vượt quá 20 ký tự (${formData.description.length}/20 ký tự)`
-                    : `Số ký tự: ${formData.description.length}/20`
-                  }
+                    : `Số ký tự: ${formData.description.length}/20`}
                 </span>
               </div>
             </div>

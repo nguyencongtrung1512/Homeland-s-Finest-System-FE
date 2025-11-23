@@ -9,6 +9,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        white: 'bg-white text-black hover:bg-white/80',
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         yellow: 'bg-yellow-500 text-white hover:bg-[#FFD700]',
         destructive:
@@ -19,7 +20,7 @@ const buttonVariants = cva(
         ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
         link: 'text-primary underline-offset-4 hover:underline',
         green: 'bg-[#50c303]/90 text-white hover:bg-[#65de15]',
-        blue: 'bg-[#1E40AF]/90 text-white hover:bg-[#1E40AF]',
+        blue: 'bg-[#3e84c5]/90 text-white hover:bg-[#4c72f1]',
         greenLight: 'border border-green-600 text-green-600 py-3 px-4 sm:px-6 rounded-lg font-semibold hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base'
       },
       size: {

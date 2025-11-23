@@ -259,11 +259,12 @@ function ListStore() {
           <div className='grid grid-cols-2 gap-2 mt-auto'>
             <Button
               variant='outline'
+              title='Xem sản phẩm'
               onClick={() => navigate(`/staff/store-detail/${store.store.id}/list-product`)}
               className='flex items-center justify-center gap-1.5 border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300 text-xs px-2 py-1.5 h-auto'
             >
               <Package size={14} className='flex-shrink-0' />
-              <span className='truncate'>Xem sản phẩm</span>
+              <span className='truncate'>Sản phẩm</span>
             </Button>
             <Button
               variant='outline'
@@ -272,7 +273,7 @@ function ListStore() {
               className='flex items-center justify-center gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 text-xs px-2 py-1.5 h-auto'
             >
               <ExternalLink size={14} className='flex-shrink-0' />
-              <span className='truncate'>Thăm cửa hàng</span>
+              <span className='truncate'>Chi tiết</span>
             </Button>
           </div>
         </CardContent>
@@ -284,7 +285,7 @@ function ListStore() {
     <div className='space-y-6 p-6'>
       {/* Header */}
       <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
-        <CardContent className=''>
+        <CardContent className='py-4'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
               <h2 className='text-3xl font-bold text-white m-0'>Quản lí cửa hàng</h2>
@@ -293,13 +294,13 @@ function ListStore() {
               className='cursor-pointer'
               color='#ffffff'
               animationDuration='3s'
-              contentClassName='bg-transparent'
+              contentClassName='bg-white/10 rounded-lg'
             >
               <Button
                 onClick={fetchAllStores}
                 disabled={loading}
                 variant='outline'
-                className='flex items-center gap-2 bg-white/10 border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+                className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
               >
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                 {loading ? 'Đang tải...' : 'Làm mới'}
@@ -329,7 +330,7 @@ function ListStore() {
                 <SelectValue placeholder={categoriesLoading ? 'Đang tải...' : 'Tất cả ngành hàng'} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='all'>Tất cả ngành hàng</SelectItem>
+                <SelectItem value='all'>Tất cả thể loại</SelectItem>
                 {productCategories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}

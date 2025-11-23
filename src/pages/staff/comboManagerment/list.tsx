@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import path from '../../../constants/path'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 // Status badge component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -271,7 +272,8 @@ function ComboListStaff() {
               <div className='flex items-center gap-2 text-sm text-gray-600'>
                 <User size={14} className='text-gray-400' />
                 <span>
-                  Nhân viên xử lý: <span className='font-medium'>{staffMap.get(combo.assignedToId) || 'Chưa xác định'}</span>
+                  Nhân viên xử lý:{' '}
+                  <span className='font-medium'>{staffMap.get(combo.assignedToId) || 'Chưa xác định'}</span>
                 </span>
               </div>
             )}
@@ -304,26 +306,37 @@ function ComboListStaff() {
   return (
     <div className='space-y-6 p-6'>
       {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div>
-          <h1 className='text-2xl font-bold text-gray-900'>Danh sách Combo</h1>
-          <p className='text-gray-600 mt-1'>
+      <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent className='py-4'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <h2 className='text-3xl font-bold text-white m-0'>Danh sách Combo</h2>
+            </div>
+            <ShimmerBorder
+              className='cursor-pointer'
+              color='#ffffff'
+              animationDuration='3s'
+              contentClassName='bg-white/10 rounded-lg'
+            >
+              <Button
+                onClick={() => {
+                  fetchCombos()
+                  fetchStaffList()
+                }}
+                disabled={loading}
+                variant='outline'
+                className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </ShimmerBorder>
+          </div>
+          <p className='text-white/90 mt-2'>
             Quản lý và theo dõi tất cả combo trong hệ thống ({filteredData.length} combo)
           </p>
-        </div>
-        <Button
-          onClick={() => {
-            fetchCombos()
-            fetchStaffList()
-          }}
-          disabled={loading}
-          variant='outline'
-          className='flex items-center gap-2 bg-transparent'
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Đang tải...' : 'Làm mới'}
-        </Button>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Search and Filters */}
       <Card>

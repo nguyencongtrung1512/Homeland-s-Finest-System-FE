@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import {
-  Card,
+  Card as AntCard,
   Input,
   Select,
   DatePicker,
-  Button,
+  Button as AntButton,
   Table,
   Avatar,
   Tag,
@@ -19,6 +19,9 @@ import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
 import { staffApi, type AssignedStore, type ReviewStoreRequest } from '../../../apis/staff.api'
 import { toast } from 'react-toastify'
+import { Card, CardContent } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 const { Search: AntSearch } = Input
 const { Option } = Select
@@ -152,11 +155,11 @@ function ApproveStores() {
   const handleImageChange = (info: { fileList: Array<{ originFileObj?: File }> }) => {
     const fileList = info.fileList
     const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB in bytes
-    
+
     // Filter và validate file size
     const validFiles: File[] = []
     const invalidFiles: string[] = []
-    
+
     fileList.forEach((file) => {
       if (file.originFileObj) {
         if (file.originFileObj.size > MAX_FILE_SIZE) {
@@ -326,7 +329,7 @@ function ApproveStores() {
       key: 'action',
       render: (_, record) => (
         <div className='flex items-center gap-2'>
-          <Button
+          <AntButton
             type='text'
             icon={<Eye size={16} />}
             onClick={() => navigate(`/staff/store-detail/${record.store.id}`)}
@@ -334,7 +337,7 @@ function ApproveStores() {
             title='Xem chi tiết'
           />
           {record.status === 'Processing' && (
-            <Button
+            <AntButton
               type='text'
               icon={<FileText size={16} />}
               onClick={() => handleReviewStore(record)}
@@ -352,25 +355,39 @@ function ApproveStores() {
   }
 
   return (
-    <div className='space-y-6'>
+    <div className='space-y-6 p-6'>
       {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div>
-          <h1 className='text-2xl font-bold text-gray-900'>Duyệt cửa hàng</h1>
-          <p className='text-gray-600 mt-1'>Xem xét và phê duyệt các cửa hàng được phân công</p>
-        </div>
-        <Button
-          onClick={fetchAssignedStores}
-          disabled={loading}
-          icon={<RefreshCw size={16} className={loading ? 'animate-spin' : ''} />}
-          className='flex items-center gap-2'
-        >
-          {loading ? 'Đang tải...' : 'Làm mới'}
-        </Button>
-      </div>
+      <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent className='py-4'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <h2 className='text-3xl font-bold text-white m-0'>Duyệt cửa hàng</h2>
+            </div>
+            <ShimmerBorder
+              className='cursor-pointer'
+              color='#ffffff'
+              animationDuration='3s'
+              contentClassName='bg-white/10 rounded-lg'
+            >
+              <Button
+                onClick={fetchAssignedStores}
+                disabled={loading}
+                variant='outline'
+                className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </ShimmerBorder>
+          </div>
+          <p className='text-white/90 mt-2'>
+            Xem xét và phê duyệt các cửa hàng được phân công ({totalStores} cửa hàng)
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Search and Filters */}
-      <Card>
+      <AntCard>
         <div className='flex flex-wrap items-center gap-4'>
           <div className='flex-1 min-w-[300px]'>
             <AntSearch
@@ -391,19 +408,19 @@ function ApproveStores() {
 
           <DatePicker placeholder='mm/dd/yyyy' value={dateFilter} onChange={setDateFilter} className='w-40' />
 
-          <Button
+          <AntButton
             type='primary'
             icon={<Filter size={16} />}
             onClick={handleFilter}
             className='bg-blue-600 hover:bg-blue-700'
           >
             Lọc
-          </Button>
+          </AntButton>
         </div>
-      </Card>
+      </AntCard>
 
       {/* Table */}
-      <Card>
+      <AntCard>
         {loading ? (
           <div className='flex items-center justify-center py-12'>
             <Spin size='large' />
@@ -414,9 +431,9 @@ function ApproveStores() {
             <div className='text-center'>
               <div className='text-red-500 text-lg mb-2'>⚠️</div>
               <p className='text-red-600 font-medium mb-4'>{error}</p>
-              <Button onClick={fetchAssignedStores} type='primary'>
+              <AntButton onClick={fetchAssignedStores} type='primary'>
                 Thử lại
-              </Button>
+              </AntButton>
             </div>
           </div>
         ) : storeData.length === 0 ? (
@@ -446,7 +463,7 @@ function ApproveStores() {
             </div>
           </>
         )}
-      </Card>
+      </AntCard>
 
       {/* Review Modal */}
       <Modal
@@ -499,15 +516,15 @@ function ApproveStores() {
             hasFeedback={false}
             help={
               <span className={wordCount > 20 ? 'text-red-500' : 'text-gray-500'}>
-                {wordCount > 20 
+                {wordCount > 20
                   ? `Ghi chú không được vượt quá 20 từ (${wordCount}/20 từ)`
                   : `Số từ: ${wordCount}/20 từ`
                 }
               </span>
             }
           >
-            <Input.TextArea 
-              rows={4} 
+            <Input.TextArea
+              rows={4}
               placeholder='Nhập ghi chú về cửa hàng...'
               onChange={handleNotesChange}
             />
@@ -527,7 +544,7 @@ function ApproveStores() {
                 showUploadList={false}
                 accept='image/*'
               >
-                <Button icon={<UploadIcon size={16} />}>Chọn hình ảnh</Button>
+                <AntButton icon={<UploadIcon size={16} />}>Chọn hình ảnh</AntButton>
               </Upload>
 
               {/* Image Previews */}
@@ -552,7 +569,7 @@ function ApproveStores() {
           </Form.Item>
 
           <div className='flex justify-end gap-2 mt-4'>
-            <Button
+            <AntButton
               onClick={() => {
                 setReviewModalOpen(false)
                 reviewForm.resetFields()
@@ -563,10 +580,10 @@ function ApproveStores() {
               }}
             >
               Hủy
-            </Button>
-            <Button type='primary' htmlType='submit' loading={reviewLoading}>
+            </AntButton>
+            <AntButton type='primary' htmlType='submit' loading={reviewLoading}>
               Xác nhận Thẩm định
-            </Button>
+            </AntButton>
           </div>
         </Form>
       </Modal>
