@@ -27,8 +27,7 @@ function ManagerProduct() {
   const [loading, setLoading] = useState(true)
   const [searchText, setSearchText] = useState('')
   const [productStatusFilter, setProductStatusFilter] = useState<string>('Processing')
-  const [productTypeFilter, setProductTypeFilter] = useState<string>('ProductMaster')
-  const [isActiveFilter, setIsActiveFilter] = useState<string>('true')
+  const [isActiveFilter, setIsActiveFilter] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(10)
@@ -60,11 +59,6 @@ function ManagerProduct() {
       // Add productStatus filter
       if (productStatusFilter !== 'all') {
         params.productStatus = productStatusFilter
-      }
-
-      // Add productType filter
-      if (productTypeFilter !== 'all') {
-        params.productType = productTypeFilter
       }
 
       // Add isActive filter
@@ -105,7 +99,7 @@ function ManagerProduct() {
   useEffect(() => {
     fetchProducts(currentPage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, productStatusFilter, productTypeFilter, isActiveFilter])
+  }, [currentPage, productStatusFilter, isActiveFilter])
 
   // Apply client-side filters (date)
   const filteredProducts = useMemo(() => {
@@ -172,7 +166,6 @@ function ManagerProduct() {
     return text.substring(0, maxLength).trim() + '...'
   }
 
-
   // Reset to page 1 when date filter changes
   useEffect(() => {
     setCurrentPage(1)
@@ -185,6 +178,35 @@ function ManagerProduct() {
     const hasClientSideFilters = dateFilter !== undefined
     if (!hasClientSideFilters) {
       fetchProducts(page)
+    }
+  }
+
+  const handleClearFilter = async () => {
+    setSearchText('')
+    setProductStatusFilter('all')
+    setIsActiveFilter('all')
+    setDateFilter(undefined)
+    setCurrentPage(1)
+    // Fetch with default filters (all filters set to 'all')
+    try {
+      const params = {
+        pageNumber: 1,
+        pageSize: pageSize
+      }
+      const response: ProductListResponse = await productApi.getAll(params)
+      if (response && response.data) {
+        setAllProducts(response.data || [])
+        if (response.pagination) {
+          setTotalPages(response.pagination.totalPages || 1)
+          setTotalItems(response.pagination.totalItems || 0)
+        } else {
+          setTotalPages(1)
+          setTotalItems(response.data?.length || 0)
+        }
+      }
+    } catch (error) {
+      console.error('Error clearing filters:', error)
+      toast.error('Có lỗi xảy ra khi xóa lọc')
     }
   }
 
@@ -258,12 +280,14 @@ function ManagerProduct() {
       {/* Search and Filters */}
       <Card>
         <CardContent className='pt-6'>
-          <div className='flex flex-wrap items-center gap-4'>
+          <div className='flex flex-wrap items-end gap-4'>
+            {/* Search */}
             <div className='flex-1 min-w-[300px]'>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Tìm kiếm</label>
               <div className='relative'>
                 <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' size={16} />
                 <Input
-                  placeholder='Tên sản phẩm hoặc ID...'
+                  placeholder='Tên sản phẩm...'
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   onKeyDown={(e) => {
@@ -276,54 +300,65 @@ function ManagerProduct() {
               </div>
             </div>
 
-            <Select value={productStatusFilter} onValueChange={setProductStatusFilter}>
-              <SelectTrigger className='w-48'>
-                <SelectValue placeholder='Trạng thái sản phẩm' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>Tất cả trạng thái</SelectItem>
-                <SelectItem value='Processing'>Chờ xử lý</SelectItem>
-                <SelectItem value='Approved'>Đã duyệt</SelectItem>
-                <SelectItem value='Confirmed'>Đã xác nhận</SelectItem>
-                <SelectItem value='Rejected'>Từ chối xử lý</SelectItem>
-                <SelectItem value='Denied'>Từ chối duyệt</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Trạng thái sản phẩm */}
+            <div className='flex-1 min-w-[180px]'>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái</label>
+              <Select value={productStatusFilter} onValueChange={setProductStatusFilter}>
+                <SelectTrigger className='w-full'>
+                  <SelectValue placeholder='Trạng thái sản phẩm' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Tất cả trạng thái</SelectItem>
+                  <SelectItem value='Processing'>Chờ xử lý</SelectItem>
+                  <SelectItem value='Approved'>Đã duyệt</SelectItem>
+                  <SelectItem value='Confirmed'>Đã xác nhận</SelectItem>
+                  <SelectItem value='Rejected'>Từ chối xử lý</SelectItem>
+                  <SelectItem value='Denied'>Từ chối duyệt</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
-              <SelectTrigger className='w-48'>
-                <SelectValue placeholder='Loại sản phẩm' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>Tất cả loại</SelectItem>
-                <SelectItem value='ProductMaster'>Sản phẩm chính</SelectItem>
-                <SelectItem value='ProductDetail'>Sản phẩm chi tiết</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Trạng thái bán */}
+            <div className='flex-1 min-w-[180px]'>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái bán</label>
+              <Select value={isActiveFilter} onValueChange={setIsActiveFilter}>
+                <SelectTrigger className='w-full'>
+                  <SelectValue placeholder='Trạng thái bán' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Tất cả trạng thái bán</SelectItem>
+                  <SelectItem value='true'>Đang hoạt động</SelectItem>
+                  <SelectItem value='false'>Dừng bán</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={isActiveFilter} onValueChange={setIsActiveFilter}>
-              <SelectTrigger className='w-40'>
-                <SelectValue placeholder='Trạng thái hoạt động' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='true'>Đang hoạt động</SelectItem>
-                <SelectItem value='false'>Dừng bán</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Ngày */}
+            <div className='flex-1 min-w-[180px]'>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày tạo</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {dateFilter ? format(dateFilter, 'dd/MM/yyyy', { locale: vi }) : 'mm/dd/yyyy'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar mode='single' selected={dateFilter} onSelect={setDateFilter} initialFocus locale={vi} />
+                </PopoverContent>
+              </Popover>
+            </div>
 
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant='outline' className='w-40 justify-start text-left font-normal'>
-                  <CalendarIcon className='mr-2 h-4 w-4' />
-                  {dateFilter ? format(dateFilter, 'dd/MM/yyyy', { locale: vi }) : 'mm/dd/yyyy'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className='w-auto p-0' align='start'>
-                <Calendar mode='single' selected={dateFilter} onSelect={setDateFilter} initialFocus locale={vi} />
-              </PopoverContent>
-            </Popover>
-
-
+            {/* Clear Filter Button */}
+            <div className='flex items-end'>
+              <Button
+                onClick={handleClearFilter}
+                variant='outline'
+                className='h-10 px-4 border-gray-300 hover:bg-gray-100'
+              >
+                Xóa lọc
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -344,6 +379,7 @@ function ManagerProduct() {
                       <TableHead>Sản phẩm</TableHead>
                       <TableHead>Ngày tạo</TableHead>
                       <TableHead>Trạng thái</TableHead>
+                      <TableHead>Trạng thái bán</TableHead>
                       <TableHead>Hành động</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -396,17 +432,15 @@ function ManagerProduct() {
                               })()}
                             </span>
                           </TableCell>
+                          <TableCell>{getStatusTag(record.status)}</TableCell>
                           <TableCell>
-                            <div className='flex flex-col gap-1'>
-                              {getStatusTag(record.status)}
-                              {record.isActive ? (
-                                <Badge className='bg-green-100 text-green-800 hover:bg-green-200 w-fit'>
-                                  Đang hoạt động
-                                </Badge>
-                              ) : (
-                                <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-200 w-fit'>Dừng bán</Badge>
-                              )}
-                            </div>
+                            {record.isActive ? (
+                              <Badge className='bg-green-100 text-green-800 hover:bg-green-200 w-fit'>
+                                Đang hoạt động
+                              </Badge>
+                            ) : (
+                              <Badge className='bg-gray-100 text-gray-800 hover:bg-gray-200 w-fit'>Dừng bán</Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Button
