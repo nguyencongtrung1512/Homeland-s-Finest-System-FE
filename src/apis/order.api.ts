@@ -100,10 +100,8 @@ export const confirmOrderReceived = async (orderId: string): Promise<Order> => {
 }
 
 // PUT /api/Order/refund/{orderId} - Hoàn tiền
-export const refundOrder = async (orderId: string, note?: string): Promise<Order> => {
-  const response: OrderResponse = await axiosInstance.put(`${API_URL}/refund/${orderId}`, {
-    note
-  })
+export const refundOrder = async (orderId: string): Promise<Order> => {
+  const response: OrderResponse = await axiosInstance.put(`${API_URL}/refund/${orderId}`)
   return response.data
 }
 

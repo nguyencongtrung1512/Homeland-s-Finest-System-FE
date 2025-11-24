@@ -176,7 +176,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
           <span className='admin-menu-icon mr-2'>
             <AlertTriangle size={18} />
           </span>
-          {!isCollapsed && <span className='truncate'>Quản lý khiếu nại</span>}
+          {!isCollapsed && <span className='truncate'>Quản lý đơn</span>}
           {!isCollapsed &&
             (complaintOpen ? (
               <ChevronDown size={16} className='ml-auto' />

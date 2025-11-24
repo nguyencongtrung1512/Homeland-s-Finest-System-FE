@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../../components/ui/card'
 import { Button } from '../../../../../components/ui/button'
@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger
 } from '../../../../../components/ui/alert-dialog'
 
-import { MessageSquare, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Edit } from 'lucide-react'
+import { MessageSquare, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Edit, Store } from 'lucide-react'
 import type { FormDTO } from '../../../../../types/form.type'
 import type { FormStatus, FormType } from '../../../../../types/form.type'
 import { formApi } from '../../../../../apis/form.api'
@@ -24,14 +24,31 @@ import EmptyState from '../../../../../components/EmptyState/emptyState'
 import { toast } from '../../../../../utils/toast'
 import UpdateFormModal from './UpdateFormModal'
 import ImagePreviewModal from '../../../../../components/ui/image-preview-modal'
+import { storeApi } from '../../../../../apis/store.api'
+import { useNavigate } from 'react-router-dom'
+import { path } from '../../../../../constants/path'
+import GeneralSupportFormModal from './GeneralSupportFormModal'
+import { CopyButton } from '../../../../../components/ui/copy'
 
 interface FormsContentProps {
   forms: FormDTO[]
   loading: boolean
   onRefresh: () => void
+  userId?: string
 }
 
-const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
+const SUPPORT_FORM_TYPES: FormType[] = [
+  'SupportAccount',
+  'SupportPayment',
+  'SupportTechnical',
+  'RequestInformation',
+  'FeedbackSuggestion',
+  'PrivacyDataRequest',
+  'SupportMarketing',
+  'SupportOther'
+]
+
+const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) => {
   const [selectedStatus, setSelectedStatus] = useState<FormStatus | 'all'>('all')
   const [cancellingFormId, setCancellingFormId] = useState<string | null>(null)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
@@ -40,6 +57,83 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
   const [previewImages, setPreviewImages] = useState<string[]>([])
   const [previewIndex, setPreviewIndex] = useState(0)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [storeNames, setStoreNames] = useState<Record<string, string>>({})
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [creatingForm, setCreatingForm] = useState(false)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const fetchStoreNames = async () => {
+      const storeIdList = (forms || [])
+        .map((form) => form.storeId)
+        .filter((id): id is string => {
+          if (typeof id !== 'string') {
+            return false
+          }
+          return !storeNames[id]
+        })
+      const uniqueStoreIds = Array.from(new Set(storeIdList))
+      if (uniqueStoreIds.length === 0) return
+
+      const results = await Promise.all(
+        uniqueStoreIds.map(async (id) => {
+          try {
+            const response = await storeApi.getStoreById(id)
+            return { id, name: response.data?.storeName || id }
+          } catch (error) {
+            console.error('Failed to fetch store info for', id, error)
+            return { id, name: id }
+          }
+        })
+      )
+
+      setStoreNames((prev) => {
+        const next = { ...prev }
+        results.forEach(({ id, name }) => {
+          next[id] = name
+        })
+        return next
+      })
+    }
+
+    fetchStoreNames()
+  }, [forms, storeNames])
+
+  const handleStoreClick = (storeId: string) => {
+    const storePath = path.store.replace(':storeId', storeId)
+    navigate(storePath)
+  }
+
+  const handleCreateForm = async (payload: {
+    type: FormType
+    subject: string
+    description: string
+    images?: File[]
+  }) => {
+    if (!userId) {
+      toast.error('Vui lòng đăng nhập để gửi khiếu nại')
+      return
+    }
+
+    try {
+      setCreatingForm(true)
+      await formApi.createForm({
+        userId,
+        type: payload.type,
+        subject: payload.subject,
+        description: payload.description,
+        imageFiles: payload.images
+      })
+      toast.success('Gửi khiếu nại thành công! Chúng tôi sẽ phản hồi sớm nhất.')
+      setShowCreateModal(false)
+      onRefresh()
+    } catch (error) {
+      console.error('Error creating form:', error)
+      toast.error('Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.')
+    } finally {
+      setCreatingForm(false)
+    }
+  }
   const openImagePreview = (images: string[], index: number) => {
     if (!images || images.length === 0) return
     setPreviewImages(images)
@@ -52,7 +146,6 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
     setPreviewImages([])
     setPreviewIndex(0)
   }
-
 
   const getStatusIcon = (status: FormStatus) => {
     switch (status) {
@@ -271,7 +364,7 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
           transition={{ duration: 0.5, delay: 0.1 }}
           className='flex items-center justify-between'
         >
-          <h3 className='text-lg font-semibold text-gray-900'>Khiếu nại của tôi</h3>
+          <h3 className='text-lg font-semibold text-gray-900'>Đơn hỗ trợ của tôi</h3>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button onClick={onRefresh} variant='outline' size='sm'>
               Làm mới
@@ -305,14 +398,27 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className='flex items-center justify-between'
+        className='flex items-center justify-between gap-3 flex-wrap'
       >
-        <h3 className='text-lg font-semibold text-gray-900'>Khiếu nại của tôi</h3>
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Button onClick={onRefresh} variant='outline' size='sm'>
-            Làm mới
-          </Button>
-        </motion.div>
+        <h3 className='text-lg font-semibold text-gray-900'>Đơn hỗ trợ của tôi</h3>
+        <div className='flex items-center gap-2'>
+          {userId && (
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className='bg-green-600 hover:bg-green-700 text-white'
+                size='sm'
+              >
+                Tạo đơn hỗ trợ
+              </Button>
+            </motion.div>
+          )}
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button onClick={onRefresh} variant='outline' size='sm'>
+              Làm mới
+            </Button>
+          </motion.div>
+        </div>
       </motion.div>
 
       {/* Filter */}
@@ -360,32 +466,53 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
               }}
               layout
             >
-              <Card className='hover:shadow-md transition-shadow'>
-                <CardHeader className='pb-3'>
-                  <div className='flex items-start justify-between'>
-                    <div className='flex-1'>
-                      <CardTitle className='text-base font-medium text-gray-900 mb-2'>{form.subject}</CardTitle>
-                      <div className='flex items-center gap-2 mb-2'>
-                        <Badge variant={getStatusBadgeVariant(form.status)} className='text-xs'>
-                          <div className='flex items-center gap-1'>
-                            {getStatusIcon(form.status)}
-                            {getStatusText(form.status)}
-                          </div>
-                        </Badge>
-                        <Badge variant='outline' className='text-xs'>
-                          {getTypeText(form.type)}
-                        </Badge>
-                      </div>
+              <Card className='hover:shadow-lg transition-shadow border border-gray-100'>
+                <CardHeader className='pb-4 border-b border-gray-100'>
+                  <div className='flex flex-col gap-3'>
+                    <div className='flex flex-wrap items-center gap-2 text-xs font-medium text-gray-700'>
+                      <span className='px-3 text-center text-xl py-1 rounded-full bg-green-50 text-green-700'>
+                        {getTypeText(form.type)}
+                      </span>
+                      <Badge variant={getStatusBadgeVariant(form.status)} className='text-xs flex items-center gap-1'>
+                        {getStatusIcon(form.status)}
+                        {getStatusText(form.status)}
+                      </Badge>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      {form.storeId &&
+                        (() => {
+                          const currentStoreId = form.storeId as string
+                          return (
+                            <button
+                              type='button'
+                              className='flex items-center gap-1 text-xs text-green-600 hover:text-green-700 underline-offset-2 hover:underline'
+                              onClick={() => handleStoreClick(currentStoreId)}
+                            >
+                              <Store className='w-3 h-3' />
+                              {storeNames[currentStoreId] || 'Đang tải cửa hàng...'}
+                            </button>
+                          )
+                        })()}
+                      {form.orderId && (
+                        <div className='flex items-center gap-2'>
+
+                          <CopyButton
+                            textToCopy={form.orderId}
+                            idleText={`${form.orderId}`}
+                            copiedText='Đã copy'
+                            className='h-7 px-3 text-xs bg-white text-green-700 border border-green-200 hover:bg-green-50'
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <CardTitle className='text-base font-semibold text-gray-900'>{form.subject}</CardTitle>
+                      <p className='text-sm text-gray-600 mt-1'>{form.description}</p>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className='pt-0'>
+                <CardContent className='pt-4'>
                   <div className='space-y-3'>
-                    {/* Description */}
-                    <div>
-                      <p className='text-sm text-gray-600 line-clamp-3'>{form.description}</p>
-                    </div>
-
                     {/* Images */}
                     {form.imageUrl && form.imageUrl.length > 0 && (
                       <div>
@@ -436,7 +563,7 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
                             <Calendar className='w-3 h-3' />
                             Tạo: {form.createdAt}
                           </div>
-                          {form.updatedAt !== form.createdAt && (
+                          {form.updatedAt && form.updatedAt !== form.createdAt && (
                             <div className='flex items-center gap-1'>
                               <Clock className='w-3 h-3' />
                               Cập nhật: {form.updatedAt}
@@ -567,6 +694,13 @@ const FormsContent = ({ forms, loading, onRefresh }: FormsContentProps) => {
         images={previewImages}
         initialIndex={previewIndex}
         alt='Ảnh khiếu nại'
+      />
+      <GeneralSupportFormModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreateForm}
+        isSubmitting={creatingForm}
+        allowedTypes={SUPPORT_FORM_TYPES}
       />
     </motion.div>
   )

@@ -49,17 +49,17 @@ const ComplaintModal = ({
 
   const formTypeOptions = [
     { value: 'ComplaintOrder' as FormType, label: 'Khiếu nại đơn hàng' },
-    { value: 'ComplaintContent' as FormType, label: 'Khiếu nại nội dung' },
     { value: 'SupportRefundMoney' as FormType, label: 'Hỗ trợ hoàn tiền' },
-    { value: 'ReportSeller' as FormType, label: 'Báo cáo người bán' }
+    { value: 'ReportSeller' as FormType, label: 'Báo cáo người bán' },
+    { value: 'SupportOther' as FormType, label: 'Khác' }
   ]
 
   const getFormTypeDescription = (type: FormType) => {
     switch (type) {
       case 'ComplaintOrder':
         return 'Khiếu nại liên quan trực tiếp đến đơn hàng (giao nhận, thiếu/hư hỏng)'
-      case 'ComplaintContent':
-        return 'Khiếu nại về chất lượng sản phẩm, dịch vụ hoặc nội dung'
+      case 'SupportOther':
+        return 'Khiếu nại về chất lượng sản phẩm, dịch vụ hoặc nội dung khác'
       case 'SupportRefundMoney':
         return 'Yêu cầu hoàn tiền cho đơn hàng'
       case 'ReportSeller':

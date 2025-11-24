@@ -23,6 +23,7 @@ export type OrderStatus =
   | 'Paid' // Đã thanh toán cho người bán - Đã thanh toán tiền cho người bán
 
   // === TRẠNG THÁI TRẢ HÀNG VÀ HOÀN TIỀN ===
+  | 'Refunding' // Đang hoàn tiền - Đơn hàng đang được hoàn tiền
   | 'Returning' // Đang trả hàng - Đơn hàng đang được trả lại
   | 'Returned' // Đã trả hàng - Đơn hàng đã được trả lại thành công
   | 'Refunded' // Đã hoàn tiền - Đã hoàn tiền cho khách hàng
@@ -68,7 +69,7 @@ export const ORDER_STATUS_GROUPS = {
   CONFIRMED: ['Confirmed', 'ReadyToPick', 'Picking', 'Picked'] as const,
   SHIPPING: ['Storing', 'Transporting', 'Sorting', 'Delivering'] as const,
   COMPLETED: ['Delivered', 'Paid'] as const,
-  RETURNING: ['Returning', 'Returned', 'Refunded', 'DeliveryFail'] as const,
+  RETURNING: ['Returning', 'Returned', 'Refunded', 'DeliveryFail', 'Refunding'] as const,
   ISSUE: ['Exception', 'Damaged', 'Lost', 'Complaining', 'Complained'] as const,
   CANCELLED: ['Cancel'] as const
 } as const

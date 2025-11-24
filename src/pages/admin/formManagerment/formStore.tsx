@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -7,12 +8,25 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, Search, Filter, Store } from 'lucide-react'
+import {
+  Calendar,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  UserPlus,
+  Search,
+  Store,
+  BarChart2,
+  RotateCcw
+} from 'lucide-react'
 import { formApi } from '../../../apis/form.api'
+import { storeApi } from '../../../apis/store.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
 import { toast } from 'react-toastify'
 import AssignStaffModal from './components/AssignStaffModal'
 import FormDetailModal from './components/FormDetailModal'
+import { CopyButton } from '../../../components/ui/copy'
 
 export default function FormStoreManagement() {
   const [forms, setForms] = useState<FormDTO[]>([])
@@ -24,6 +38,19 @@ export default function FormStoreManagement() {
   const [selectedFormForAssign, setSelectedFormForAssign] = useState<{ id: string; subject: string } | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedFormId, setSelectedFormId] = useState<string>('')
+  const [storeNames, setStoreNames] = useState<Record<string, string>>({})
+
+  const navigate = useNavigate()
+  const hasStoreId = useCallback((id: FormDTO['storeId']): id is string => Boolean(id), [])
+  const handleResetFilters = () => {
+    setSelectedStatus('all')
+    setSelectedType('all')
+    setSearchTerm('')
+  }
+  const hasActiveFilters = useMemo(
+    () => selectedStatus !== 'all' || selectedType !== 'all' || Boolean(searchTerm.trim()),
+    [searchTerm, selectedStatus, selectedType]
+  )
 
   // Load store-related forms (exclude ComplaintOrder)
   const loadForms = async () => {
@@ -48,6 +75,41 @@ export default function FormStoreManagement() {
   useEffect(() => {
     loadForms()
   }, [])
+
+  useEffect(() => {
+    const storeIds = Array.from(new Set(forms.map((form) => form.storeId).filter(hasStoreId)))
+    const missingIds = storeIds.filter((id) => !storeNames[id])
+    if (missingIds.length === 0) return
+
+    const fetchStoreNames = async () => {
+      try {
+        const results = await Promise.all(
+          missingIds.map(async (id) => {
+            try {
+              const response = await storeApi.getStoreById(id)
+              const storeName = response?.storeName || response?.data?.storeName || id
+              return { id, storeName }
+            } catch (error) {
+              console.error(`Error fetching store ${id}:`, error)
+              return { id, storeName: 'Không tìm thấy' }
+            }
+          })
+        )
+
+        setStoreNames((prev) => {
+          const updated = { ...prev }
+          results.forEach(({ id, storeName }) => {
+            updated[id] = storeName
+          })
+          return updated
+        })
+      } catch (error) {
+        console.error('Error fetching store names:', error)
+      }
+    }
+
+    fetchStoreNames()
+  }, [forms, hasStoreId, storeNames])
 
   // Filter forms based on status, type and search
   const filteredForms = useMemo(() => {
@@ -77,6 +139,20 @@ export default function FormStoreManagement() {
     return filtered
   }, [forms, selectedStatus, selectedType, searchTerm])
 
+  const stats = useMemo(() => {
+    const pendingCount = forms.filter((form) => form.status === 'Pending').length
+    const processingCount = forms.filter((form) => form.status === 'Processing').length
+    const uniqueStoreCount = new Set(forms.map((form) => form.storeId).filter(hasStoreId)).size
+
+    return {
+      pendingCount,
+      processingCount,
+      uniqueStoreCount,
+      total: forms.length,
+      filtered: filteredForms.length
+    }
+  }, [filteredForms, forms, hasStoreId])
+
   // Get status icon and styling
   const getStatusInfo = (status: FormStatus) => {
     switch (status) {
@@ -92,7 +168,7 @@ export default function FormStoreManagement() {
         return {
           icon: <AlertCircle className='w-4 h-4 text-blue-500' />,
           badge: 'default',
-          text: 'Đang xử lý',
+          text: 'Chờ xử lý',
           color: 'text-blue-700',
           bgColor: 'bg-blue-50'
         }
@@ -100,7 +176,7 @@ export default function FormStoreManagement() {
         return {
           icon: <CheckCircle className='w-4 h-4 text-green-500' />,
           badge: 'default',
-          text: 'Đã duyệt (Staff)',
+          text: 'Chấp nhận bởi nhân viên',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -108,7 +184,7 @@ export default function FormStoreManagement() {
         return {
           icon: <XCircle className='w-4 h-4 text-red-500' />,
           badge: 'destructive',
-          text: 'Từ chối (Staff)',
+          text: 'Từ chối bởi nhân viên',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -116,7 +192,7 @@ export default function FormStoreManagement() {
         return {
           icon: <CheckCircle className='w-4 h-4 text-green-500' />,
           badge: 'default',
-          text: 'Đã duyệt (Admin)',
+          text: 'Đã duyệt',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -124,7 +200,7 @@ export default function FormStoreManagement() {
         return {
           icon: <XCircle className='w-4 h-4 text-red-500' />,
           badge: 'destructive',
-          text: 'Từ chối (Admin)',
+          text: 'Từ chối',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -140,7 +216,7 @@ export default function FormStoreManagement() {
         return {
           icon: <CheckCircle className='w-4 h-4 text-green-500' />,
           badge: 'default',
-          text: 'Đã xác nhận',
+          text: 'Nhân viên đang xử lý',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -216,6 +292,10 @@ export default function FormStoreManagement() {
     setSelectedFormId('')
   }
 
+  const handleStoreClick = (storeId: string) => {
+    navigate(`/admin/storeManagement/store-detail/${storeId}`)
+  }
+
   if (loading) {
     return <Loading size='lg' text='Đang tải khiếu nại cửa hàng...' />
   }
@@ -225,10 +305,8 @@ export default function FormStoreManagement() {
       {/* Header */}
       <div className='flex items-center justify-between mb-6'>
         <div className='flex items-center gap-2'>
-          <Store className='w-6 h-6 text-blue-600' />
           <div>
             <h1 className='text-2xl font-bold text-gray-900'>Khiếu nại cửa hàng</h1>
-            <p className='text-gray-600 mt-1'>Bao gồm tất cả loại form ngoại trừ Khiếu nại đơn hàng</p>
           </div>
         </div>
         <Button onClick={loadForms} variant='outline' className='text-green-600 border-green-600 hover:bg-green-50'>
@@ -236,35 +314,59 @@ export default function FormStoreManagement() {
         </Button>
       </div>
 
-      {/* Filters */}
-      <Card className='mb-6'>
-        <CardHeader>
-          <CardTitle className='flex items-center gap-2'>
-            <Filter className='w-5 h-5' />
-            Bộ lọc
+      {/* Stats */}
+      <Card className='mb-6 border border-gray-100 shadow-sm py-2'>
+        <CardHeader className='pb-2'>
+          <CardTitle className='flex items-center gap-2 text-base   text-gray-800'>
+            <BarChart2 className='w-5 h-5 text-blue-600' />
+            Thống kê
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+          <div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
+            <div className='rounded-xl border border-blue-100 bg-blue-50/60 p-4'>
+              <p className=' uppercase text-blue-600'>Tổng form</p>
+              <p className='text-2xl   text-blue-900 mt-1'>{stats.total}</p>
+              <p className='text-xs text-blue-700 mt-1'>Tất cả khiếu nại cửa hàng</p>
+            </div>
+            <div className='rounded-xl border border-green-100 bg-green-50/70 p-4'>
+              <p className=' uppercase text-green-600'>Đang hiển thị</p>
+              <p className='text-2xl   text-green-900 mt-1'>{stats.filtered}</p>
+              <p className='text-xs text-green-700 mt-1'>Theo bộ lọc hiện tại</p>
+            </div>
+            <div className='rounded-xl border border-amber-100 bg-amber-50/70 p-4'>
+              <p className=' uppercase tracking-wide text-amber-600'>Cần xử lý</p>
+              <p className='text-2xl   text-amber-900 mt-1'>{stats.pendingCount}</p>
+              <p className='text-xs text-amber-700 mt-1'>Trạng thái chờ phân công</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Filters */}
+      <Card className='mb-6 py-2'>
+        <CardContent>
+          <div className='flex flex-nowrap gap-4 overflow-x-auto pb-2'>
             {/* Search */}
-            <div>
+            <div className='min-w-[260px] flex-1'>
               <Label className='text-sm font-medium text-gray-700 mb-2 block'>Tìm kiếm</Label>
               <div className='relative'>
                 <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400' />
                 <Input
-                  placeholder='Tìm theo tiêu đề, mô tả, ID...'
+                  placeholder='Tìm theo tiêu đề, mô tả'
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className='pl-10'
                 />
+
               </div>
             </div>
 
             {/* Status Filter */}
-            <div>
+            <div className='min-w-[220px]'>
               <Label className='text-sm font-medium text-gray-700 mb-2 block'>Trạng thái</Label>
               <Select value={selectedStatus} onValueChange={(value: FormStatus | 'all') => setSelectedStatus(value)}>
-                <SelectTrigger>
+                <SelectTrigger className='capitalize w-[250px]'>
                   <SelectValue placeholder='Chọn trạng thái'>
                     {selectedStatus === 'all' ? 'Tất cả' : getStatusInfo(selectedStatus as FormStatus).text}
                   </SelectValue>
@@ -272,23 +374,23 @@ export default function FormStoreManagement() {
                 <SelectContent>
                   <SelectItem value='all'>Tất cả</SelectItem>
                   <SelectItem value='Pending'>Chờ phân công</SelectItem>
-                  <SelectItem value='Processing'>Đang xử lý</SelectItem>
-                  <SelectItem value='ApprovedByStaff'>Đã duyệt (Staff)</SelectItem>
-                  <SelectItem value='DeniedByStaff'>Từ chối (Staff)</SelectItem>
-                  <SelectItem value='ApprovedByAdmin'>Đã duyệt (Admin)</SelectItem>
-                  <SelectItem value='DeniedByAdmin'>Từ chối (Admin)</SelectItem>
+                  <SelectItem value='Processing'>Chờ xử lý</SelectItem>
+                  <SelectItem value='ApprovedByStaff'>Chấp nhận bởi nhân viên</SelectItem>
+                  <SelectItem value='DeniedByStaff'>Từ chối bởi nhân viên</SelectItem>
+                  <SelectItem value='ApprovedByAdmin'>Đã duyệt</SelectItem>
+                  <SelectItem value='DeniedByAdmin'>Từ chối</SelectItem>
                   <SelectItem value='Rejected'>Bị từ chối</SelectItem>
-                  <SelectItem value='Confirmed'>Đã xác nhận</SelectItem>
+                  <SelectItem value='Confirmed'>Nhân viên đang xử lý</SelectItem>
                   <SelectItem value='Cancel'>Đã hủy</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Type Filter */}
-            <div>
+            <div className='min-w-[220px]'>
               <Label className='text-sm font-medium text-gray-700 mb-2 block'>Loại khiếu nại</Label>
               <Select value={selectedType} onValueChange={(value: FormType | 'all') => setSelectedType(value)}>
-                <SelectTrigger>
+                <SelectTrigger className='capitalize w-[250px]'>
                   <SelectValue placeholder='Chọn loại'>
                     {selectedType === 'all' ? 'Tất cả' : getTypeText(selectedType as FormType)}
                   </SelectValue>
@@ -309,19 +411,6 @@ export default function FormStoreManagement() {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Stats */}
-            <div>
-              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Thống kê</Label>
-              <div className='bg-gray-50 rounded-lg p-3'>
-                <p className='text-sm text-gray-600'>
-                  Tổng: <span className='font-medium'>{forms.length}</span>
-                </p>
-                <p className='text-sm text-gray-600'>
-                  Hiển thị: <span className='font-medium'>{filteredForms.length}</span>
-                </p>
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -331,32 +420,47 @@ export default function FormStoreManagement() {
         <div className='space-y-4'>
           {filteredForms.map((form) => {
             const statusInfo = getStatusInfo(form.status)
+            const storeId = form.storeId
             return (
-              <Card key={form.id} className='hover:shadow-md transition-shadow'>
-                <CardHeader className='pb-3'>
-                  <div className='flex items-start justify-between'>
-                    <div className='flex-1'>
-                      <div className='flex items-center gap-3 mb-2'>
-                        <span className='font-medium text-gray-900'>#{form.id}</span>
-                        <Badge
-                          variant={statusInfo.badge as 'default' | 'secondary' | 'destructive' | 'outline'}
-                          className={`${statusInfo.bgColor} ${statusInfo.color} border-0`}
+              <Card key={form.id} className='hover:shadow-lg transition-shadow border border-gray-100'>
+                <CardHeader className='pb-4 border-b border-gray-100'>
+                  <div className='flex flex-col gap-3'>
+                    <div className='flex flex-wrap items-center gap-2 text-xs font-medium text-gray-700'>
+                      <span className='px-3 py-1 text-center text-xl rounded-full bg-green-50 text-green-700 border border-green-100'>
+                        {getTypeText(form.type)}
+                      </span>
+                      <Badge
+                        variant={statusInfo.badge as 'default' | 'secondary' | 'destructive' | 'outline'}
+                        className={`${statusInfo.bgColor} ${statusInfo.color} border-0 flex items-center gap-1`}
+                      >
+                        {statusInfo.icon}
+                        {statusInfo.text}
+                      </Badge>
+                    </div>
+                    <div className='flex flex-wrap items-center gap-2 text-xs font-medium text-gray-700'>
+                      {hasStoreId(storeId) && (
+                        <button
+                          type='button'
+                          onClick={() => handleStoreClick(storeId)}
+                          className='flex items-center gap-1 text-xs text-green-600 hover:text-green-700 underline-offset-2 hover:underline'
+                          title='Xem chi tiết cửa hàng'
                         >
-                          <div className='flex items-center gap-1'>
-                            {statusInfo.icon}
-                            {statusInfo.text}
-                          </div>
-                        </Badge>
-                        <Badge variant='outline' className='text-xs'>
-                          {getTypeText(form.type)}
-                        </Badge>
-                        {form.storeId && (
-                          <Badge variant='outline' className='text-xs bg-blue-50 text-blue-700 border-blue-200'>
-                            Store: {form.storeId.slice(0, 8)}...
-                          </Badge>
-                        )}
-                      </div>
-                      <h3 className='text-lg font-semibold text-gray-900 mb-2'>{form.subject}</h3>
+                          Cửa hàng: {storeNames[storeId] || 'Đang tải...'}
+                        </button>
+                      )}
+                      {form.orderId && (
+                        <div className='flex items-center gap-2'>
+                          <CopyButton
+                            textToCopy={form.orderId}
+                            idleText={`${form.orderId}`}
+                            copiedText='Đã copy'
+                            className='h-7 px-3 text-xs bg-white text-green-700 border border-green-200 hover:bg-green-50'
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className='text-lg   text-gray-900 mb-1'>{form.subject}</h3>
                       <p className='text-sm text-gray-600 line-clamp-2'>{form.description}</p>
                     </div>
                   </div>
@@ -401,7 +505,7 @@ export default function FormStoreManagement() {
                         <Calendar className='w-3 h-3' />
                         Tạo: {form.createdAt}
                       </div>
-                      {form.updatedAt !== form.createdAt && (
+                      {form.updatedAt && form.updatedAt !== form.createdAt && (
                         <div className='flex items-center gap-1'>
                           <Clock className='w-3 h-3' />
                           Cập nhật: {form.updatedAt}

@@ -1,19 +1,31 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { EllipsisVertical, MessageCircle } from 'lucide-react'
 import { Button } from '../../../../../components/ui/button'
 import { Badge } from '../../../../../components/ui/badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../../../../../components/ui/alert-dialog'
 import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
 import ReviewModal, { type ReviewProduct } from './ReviewModal'
 import ComplaintModal from '../form/ComplaintModal'
 import ViewComplaintModal from '../form/ViewComplaintModal'
-import { confirmOrderReceived, getOrderDetail } from '../../../../../apis/order.api'
+import { confirmOrderReceived, getOrderDetail, refundOrder } from '../../../../../apis/order.api'
 import { purchaseOrder } from '../../../../../apis/transaction.api'
 import { formApi } from '../../../../../apis/form.api'
 import { path } from '../../../../../constants/path'
 import type { Order as APIOrder, OrderStatus } from '../../../../../types/orderType'
 import { toast } from '../../../../../utils/toast'
 import { useAuth } from '../../../../../contexts/auth.context'
+import { useChat } from '../../../../../contexts/chat.context'
 import type { CreateFormRequest, FormType } from '../../../../../types/form.type'
 
 const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
@@ -257,6 +269,13 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           statusBgColor: 'bg-red-50',
           statusText: 'Đơn hàng đã bị hủy'
         }
+      case 'Refunding':
+        return {
+          status: 'Trả hàng/Hoàn tiền' as const,
+          statusColor: 'text-orange-700',
+          statusBgColor: 'bg-orange-50',
+          statusText: 'Đang hoàn tiền'
+        }
       default:
         return {
           status: 'Chưa xác nhận' as const,
@@ -367,6 +386,7 @@ export default function OrdersContent({
   onFilterByStatus
 }: OrdersContentProps) {
   const { user } = useAuth()
+  const { openChatWithStore } = useChat()
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
@@ -382,6 +402,8 @@ export default function OrdersContent({
   const [submittingComplaintOrderId, setSubmittingComplaintOrderId] = useState<string>('')
   const [reviewProducts, setReviewProducts] = useState<ReviewProduct[]>([])
   const [loadingReviewOrderId, setLoadingReviewOrderId] = useState<string>('')
+  const [showRefundConfirmDialog, setShowRefundConfirmDialog] = useState(false)
+  const [refundingOrderId, setRefundingOrderId] = useState<string>('')
   const ordersPerPage = 3
 
   const extractReviewProducts = (orderDetail?: APIOrder | null): ReviewProduct[] => {
@@ -398,11 +420,7 @@ export default function OrdersContent({
     const comboItems: ReviewProduct[] = (orderDetail.orderItemsWithCombo || []).map((item, index) => {
       const comboNameKey = item?.comboName ? `${orderDetail.id || ''}-${item.comboName}` : ''
       const comboGroupKey =
-        item?.comboId ||
-        comboNameKey ||
-        item?.id ||
-        item?.comboItemId ||
-        `${orderDetail.id || 'order'}-combo-${index}`
+        item?.comboId || comboNameKey || item?.id || item?.comboItemId || `${orderDetail.id || 'order'}-combo-${index}`
 
       return {
         orderItemId: item?.id || '',
@@ -454,7 +472,8 @@ export default function OrdersContent({
           'Damaged',
           'Lost',
           'Complaining',
-          'Complained'
+          'Complained',
+          'Refunding'
         ]
       case 'Đã hủy':
         return ['Cancel']
@@ -655,6 +674,39 @@ export default function OrdersContent({
     setSelectedOrderId('')
   }
 
+  const handleOpenRefundConfirmDialog = (orderId: string) => {
+    setSelectedOrderId(orderId)
+    setShowRefundConfirmDialog(true)
+  }
+
+  const handleCloseRefundConfirmDialog = () => {
+    setShowRefundConfirmDialog(false)
+    setSelectedOrderId('')
+    setRefundingOrderId('')
+  }
+
+  const handleConfirmRefund = async () => {
+    if (!selectedOrderId) return
+
+    try {
+      setRefundingOrderId(selectedOrderId)
+      await refundOrder(selectedOrderId)
+      toast.success('Yêu cầu hoàn tiền đã được gửi thành công!')
+      setShowRefundConfirmDialog(false)
+      onRefreshOrders()
+    } catch (error) {
+      console.error('Lỗi khi yêu cầu hoàn tiền:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error).message ||
+        'Có lỗi xảy ra khi yêu cầu hoàn tiền'
+      toast.error(errorMessage)
+    } finally {
+      setRefundingOrderId('')
+      setSelectedOrderId('')
+    }
+  }
+
   const handleContinuePaymentFromModal = async () => {
     if (!selectedOrderId || selectedOrderStatus !== 'PendingPayment') {
       return
@@ -726,8 +778,10 @@ export default function OrdersContent({
             <div key={order.id} className='bg-white border rounded-lg p-6'>
               <div className='flex justify-between items-start mb-4'>
                 <div>
-                  <div className='flex items-center gap-3 mb-2'>
-                    <span className=''>Cửa hàng: {order.fromName}</span>
+                  <div className='flex items-center gap-3 mb-2 flex-wrap'>
+                    <div className='flex items-center gap-2'>
+                      <span className=''>Cửa hàng: {order.fromName}</span>
+                    </div>
                     <Badge className={`${order.statusBgColor} ${order.statusColor} border-0`}>{order.status}</Badge>
                     {order.isFreeship && (
                       <Badge className='bg-green-100 text-green-700 border-0 text-xs'>Miễn phí ship</Badge>
@@ -741,14 +795,25 @@ export default function OrdersContent({
                     )}
                   </p>
                 </div>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => handleOpenOrderDetailModal(order.id)}
-                  className='text-green-600 border-green-600 hover:bg-green-50'
-                >
-                  Xem chi tiết
-                </Button>
+                <div>
+                  <Button
+                    variant='yellow'
+                    size='sm'
+                    onClick={() => openChatWithStore(order.storeId, order.fromName)}
+                    className='h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50'
+                    title='Nhắn tin với cửa hàng'
+                  >
+                    <MessageCircle className='h-4 w-4 mr-1' />
+                    <span className='text-xs'>Nhắn tin</span>
+                  </Button>
+                  <button
+                    className='text-gray-600 hover:text-green-900 pl-2'
+                    onClick={() => handleOpenOrderDetailModal(order.id)}
+
+                  >
+                    <EllipsisVertical className='h-4 w-4' />
+                  </button>
+                </div>
               </div>
 
               <div className='flex justify-between items-center pt-4 border-t'>
@@ -853,16 +918,38 @@ export default function OrdersContent({
                     Xem khiếu nại
                   </Button>
                 )}
-                {order.originalStatus === 'Cancel' && (
+                {order.originalStatus === 'Returned' && (
                   <Button
                     variant='outline'
                     size='sm'
-                    onClick={() => handleBuyAgain(order)}
-                    className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                    onClick={() => handleOpenRefundConfirmDialog(order.id)}
+                    disabled={refundingOrderId === order.id}
+                    className='text-orange-600 border-orange-600 hover:bg-orange-50 disabled:opacity-50'
                   >
-                    Mua lại
+                    {refundingOrderId === order.id ? (
+                      <>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2'></div>
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      'Yêu cầu hoàn tiền'
+                    )}
                   </Button>
                 )}
+                {(order.originalStatus === 'Cancel' ||
+                  order.originalStatus === 'Refunding' ||
+                  order.originalStatus === 'Delivered' ||
+                  order.originalStatus === 'Paid' ||
+                  order.originalStatus === 'Returned') && (
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleBuyAgain(order)}
+                      className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                    >
+                      Mua lại
+                    </Button>
+                  )}
               </div>
             </div>
           ))
@@ -961,6 +1048,38 @@ export default function OrdersContent({
         onClose={handleCloseViewComplaintModal}
         orderId={selectedOrderId}
       />
+
+      {/* Refund Confirmation Dialog */}
+      <AlertDialog open={showRefundConfirmDialog} onOpenChange={setShowRefundConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận yêu cầu hoàn tiền</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn yêu cầu hoàn tiền cho đơn hàng này? Yêu cầu của bạn sẽ được xử lý và tiền sẽ được
+              hoàn lại vào tài khoản của bạn.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCloseRefundConfirmDialog} disabled={!!refundingOrderId}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRefund}
+              disabled={!!refundingOrderId}
+              className='bg-orange-600 hover:bg-orange-700 text-white'
+            >
+              {refundingOrderId ? (
+                <>
+                  <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline-block'></div>
+                  Đang xử lý...
+                </>
+              ) : (
+                'Xác nhận'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

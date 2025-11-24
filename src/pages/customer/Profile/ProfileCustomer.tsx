@@ -38,6 +38,7 @@ import WalletContent from './components/wallet/WalletContent'
 import AvatarUploadModal from './components/profile/AvatarUploadModal'
 import { Camera } from 'lucide-react'
 import type { FormDTO } from '../../../types/form.type'
+import ChatSystem from '../Chat/chatSystem'
 
 export default function Profile() {
   const location = useLocation()
@@ -67,6 +68,8 @@ export default function Profile() {
       setActiveTab('promotions')
     } else if (tab === 'forms') {
       setActiveTab('forms')
+    } else if (tab === 'support') {
+      setActiveTab('support')
     }
   }, [location.search])
 
@@ -159,9 +162,9 @@ export default function Profile() {
     }
   }, [authUser?.userId])
 
-  // Load forms when component mounts or when switching to forms tab
+  // Load forms when component mounts or when switching to forms or support tab
   useEffect(() => {
-    if (activeTab === 'forms') {
+    if (activeTab === 'forms' || activeTab === 'support') {
       loadUserForms()
     }
   }, [activeTab, authUser?.userId, loadUserForms])
@@ -460,7 +463,7 @@ export default function Profile() {
                   { id: 'wallet', icon: Wallet, label: 'Ví của tôi' },
                   { id: 'addresses', icon: MapPin, label: 'Sổ địa chỉ' },
                   { id: 'promotions', icon: Gift, label: 'Khuyến mãi của tôi' },
-                  { id: 'forms', icon: MessageSquare, label: 'Khiếu nại của tôi' }
+                  { id: 'forms', icon: MessageSquare, label: 'Đơn các loại' }
                 ].map((tab, index) => {
                   const Icon = tab.icon
                   const isActive = activeTab === tab.id
@@ -583,13 +586,20 @@ export default function Profile() {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <FormsContent forms={forms} loading={formsLoading} onRefresh={loadUserForms} />
+                    <FormsContent
+                      forms={forms}
+                      loading={formsLoading}
+                      onRefresh={loadUserForms}
+                      userId={authUser?.userId}
+                    />
                   </motion.div>
                 )}
+
               </AnimatePresence>
             </CardContent>
           </Card>
         </motion.div>
+        <ChatSystem />
       </div>
 
       {/* Address Modal */}
