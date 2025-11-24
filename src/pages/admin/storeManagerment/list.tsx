@@ -4,7 +4,7 @@ import { Search, Eye, ChevronLeft, ChevronRight, Loader2, UserPlus, Users, Refre
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
+import { Avatar, AvatarImage, AvatarFallback } from '../../../components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import StaffComboBox from '../../../components/ui/staff-combo-box'
@@ -53,13 +53,6 @@ function StoreManagement() {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
 
   const convertStoreResponse = (apiStore: StoreResponse): Store => {
-    const avatarText = apiStore.storeName
-      .split(' ')
-      .map((word) => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-
     const formatDate = (dateString: string) => {
       const date = new Date(dateString)
       return date.toLocaleDateString('vi-VN')
@@ -70,13 +63,15 @@ function StoreManagement() {
       name: apiStore.storeName,
       ownerName: 'Chủ cửa hàng',
       ownerEmail: 'N/A',
-      logoUrl: avatarText,
+      logoUrl: apiStore.logoUrl || '',
       createDate: formatDate(apiStore.createdAt),
       createDateTimestamp: new Date(apiStore.createdAt).getTime(),
       productCount: 0,
       status: apiStore.status as Store['status']
     }
   }
+
+  const DEFAULT_STORE_LOGO = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
   const fetchStores = async () => {
     try {
@@ -320,8 +315,18 @@ function StoreManagement() {
                         <div className='flex items-center justify-between'>
                           <div className='flex items-center gap-4 flex-1'>
                             <Avatar className='w-10 h-10 border border-gray-200'>
+                              <AvatarImage
+                                src={store.logoUrl || DEFAULT_STORE_LOGO}
+                                alt={store.name}
+                                className='object-cover'
+                              />
                               <AvatarFallback className='bg-gray-100 text-blue-500 text-sm font-medium'>
-                                {store.logoUrl}
+                                {store.name
+                                  .split(' ')
+                                  .map((word) => word.charAt(0))
+                                  .join('')
+                                  .toUpperCase()
+                                  .slice(0, 2)}
                               </AvatarFallback>
                             </Avatar>
                             <div className='flex-1 min-w-0'>

@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   Building2,
   User,
-  FileText,
   Mail,
   Phone,
   CreditCard as IdCard,
@@ -19,7 +18,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
+import { Avatar, AvatarImage, AvatarFallback } from '../../../components/ui/avatar'
 import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
@@ -60,6 +59,8 @@ function StoreDetailAdmin() {
   const [comboError, setComboError] = useState<string | null>(null)
   const [comboCurrentPage, setComboCurrentPage] = useState(1)
   const comboItemsPerPage = 6
+
+  const DEFAULT_STORE_LOGO = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
   const handleApiError = (error: any, defaultMessage: string) => {
     console.error('API Error:', error)
@@ -228,15 +229,40 @@ function StoreDetailAdmin() {
     if (!dateString) return 'Chưa có'
 
     try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('vi-VN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    } catch (error) {
+      // Format từ backend: "11:10:06 12/11/2025" hoặc các format khác
+      let date: Date
+
+      // Kiểm tra format "HH:mm:ss dd/MM/yyyy" hoặc "HH:mm:ss dd-MM-yyyy"
+      const timeDateMatch = dateString.match(/(\d{1,2}):(\d{1,2}):(\d{1,2})\s+(\d{1,2})[/-](\d{1,2})[/-](\d{4})/)
+      if (timeDateMatch) {
+        const [, hours, minutes, seconds, day, month, year] = timeDateMatch
+        date = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hours),
+          parseInt(minutes),
+          parseInt(seconds)
+        )
+      } else {
+        // Thử parse với Date constructor
+        date = new Date(dateString)
+      }
+
+      // Kiểm tra date hợp lệ
+      if (isNaN(date.getTime())) {
+        return 'Ngày không hợp lệ'
+      }
+
+      // Format: "HH:mm dd/MM/yyyy" (bỏ giây)
+      const hours = date.getHours().toString().padStart(2, '0')
+      const minutes = date.getMinutes().toString().padStart(2, '0')
+      const day = date.getDate().toString().padStart(2, '0')
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const year = date.getFullYear()
+
+      return `${hours}:${minutes} ${day}/${month}/${year}`
+    } catch {
       return 'Ngày không hợp lệ'
     }
   }
@@ -444,9 +470,16 @@ function StoreDetailAdmin() {
             <Card className='border-0 shadow-sm'>
               <CardContent className='p-6'>
                 <div className='flex items-start gap-4'>
-                  <div className='w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center'>
-                    <Building2 className='w-8 h-8 text-blue-600' />
-                  </div>
+                  <Avatar className='w-16 h-16 border-2 border-blue-200'>
+                    <AvatarImage
+                      src={store.logoUrl || DEFAULT_STORE_LOGO}
+                      alt={store.storeName || 'Store logo'}
+                      className='object-cover'
+                    />
+                    <AvatarFallback className='bg-blue-100 text-blue-600 text-lg font-medium'>
+                      <Building2 className='w-8 h-8' />
+                    </AvatarFallback>
+                  </Avatar>
                   <div className='flex-1'>
                     <div className='flex items-center gap-3 mb-4'>
                       <h2 className='text-xl font-semibold text-gray-900'>
@@ -547,38 +580,70 @@ function StoreDetailAdmin() {
                           <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh CMND/CCCD:</p>
                           <div className='flex gap-4'>
                             <div className='text-center'>
-                              <div className='w-24 h-16 bg-gray-100 border rounded-lg flex items-center justify-center mb-1'>
-                                {store.sellerInfo.identifyFrontImage ? (
-                                  <img
-                                    src={store.sellerInfo.identifyFrontImage}
-                                    alt='Mặt trước CMND'
-                                    className='w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity'
-                                    onClick={() =>
-                                      store.sellerInfo.identifyFrontImage &&
-                                      handleImagePreview(store.sellerInfo.identifyFrontImage)
+                              <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
+                                <img
+                                  src={
+                                    store.sellerInfo?.identifyFrontImage &&
+                                      store.sellerInfo.identifyFrontImage.trim() !== '' &&
+                                      store.sellerInfo.identifyFrontImage !== 'null' &&
+                                      store.sellerInfo.identifyFrontImage !== 'undefined'
+                                      ? store.sellerInfo.identifyFrontImage
+                                      : DEFAULT_STORE_LOGO
+                                  }
+                                  alt='Mặt trước CMND'
+                                  className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
+                                  style={{ display: 'block', minHeight: '100%' }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    if (!target.src.includes(DEFAULT_STORE_LOGO)) {
+                                      target.src = DEFAULT_STORE_LOGO
                                     }
-                                  />
-                                ) : (
-                                  <FileText className='w-6 h-6 text-gray-400' />
-                                )}
+                                  }}
+                                  onClick={() =>
+                                    handleImagePreview(
+                                      store.sellerInfo?.identifyFrontImage &&
+                                        store.sellerInfo.identifyFrontImage.trim() !== '' &&
+                                        store.sellerInfo.identifyFrontImage !== 'null' &&
+                                        store.sellerInfo.identifyFrontImage !== 'undefined'
+                                        ? store.sellerInfo.identifyFrontImage
+                                        : DEFAULT_STORE_LOGO
+                                    )
+                                  }
+                                />
                               </div>
                               <p className='text-xs text-gray-500'>Mặt trước</p>
                             </div>
                             <div className='text-center'>
-                              <div className='w-24 h-16 bg-gray-100 border rounded-lg flex items-center justify-center mb-1'>
-                                {store.sellerInfo.identifyBackImage ? (
-                                  <img
-                                    src={store.sellerInfo.identifyBackImage}
-                                    alt='Mặt sau CMND'
-                                    className='w-full h-full object-cover rounded cursor-pointer hover:opacity-80 transition-opacity'
-                                    onClick={() =>
-                                      store.sellerInfo.identifyBackImage &&
-                                      handleImagePreview(store.sellerInfo.identifyBackImage)
+                              <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
+                                <img
+                                  src={
+                                    store.sellerInfo?.identifyBackImage &&
+                                      store.sellerInfo.identifyBackImage.trim() !== '' &&
+                                      store.sellerInfo.identifyBackImage !== 'null' &&
+                                      store.sellerInfo.identifyBackImage !== 'undefined'
+                                      ? store.sellerInfo.identifyBackImage
+                                      : DEFAULT_STORE_LOGO
+                                  }
+                                  alt='Mặt sau CMND'
+                                  className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
+                                  style={{ display: 'block', minHeight: '100%' }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    if (!target.src.includes(DEFAULT_STORE_LOGO)) {
+                                      target.src = DEFAULT_STORE_LOGO
                                     }
-                                  />
-                                ) : (
-                                  <FileText className='w-6 h-6 text-gray-400' />
-                                )}
+                                  }}
+                                  onClick={() =>
+                                    handleImagePreview(
+                                      store.sellerInfo?.identifyBackImage &&
+                                        store.sellerInfo.identifyBackImage.trim() !== '' &&
+                                        store.sellerInfo.identifyBackImage !== 'null' &&
+                                        store.sellerInfo.identifyBackImage !== 'undefined'
+                                        ? store.sellerInfo.identifyBackImage
+                                        : DEFAULT_STORE_LOGO
+                                    )
+                                  }
+                                />
                               </div>
                               <p className='text-xs text-gray-500'>Mặt sau</p>
                             </div>
@@ -617,14 +682,38 @@ function StoreDetailAdmin() {
                           <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh CMND/CCCD:</p>
                           <div className='flex gap-4'>
                             <div className='text-center'>
-                              <div className='w-24 h-16 bg-gray-100 border rounded-lg flex items-center justify-center mb-1'>
-                                <FileText className='w-6 h-6 text-gray-400' />
+                              <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
+                                <img
+                                  src={DEFAULT_STORE_LOGO}
+                                  alt='Mặt trước CMND'
+                                  className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
+                                  style={{ display: 'block', minHeight: '100%' }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    if (!target.src.includes(DEFAULT_STORE_LOGO)) {
+                                      target.src = DEFAULT_STORE_LOGO
+                                    }
+                                  }}
+                                  onClick={() => handleImagePreview(DEFAULT_STORE_LOGO)}
+                                />
                               </div>
                               <p className='text-xs text-gray-500'>Mặt trước</p>
                             </div>
                             <div className='text-center'>
-                              <div className='w-24 h-16 bg-gray-100 border rounded-lg flex items-center justify-center mb-1'>
-                                <FileText className='w-6 h-6 text-gray-400' />
+                              <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
+                                <img
+                                  src={DEFAULT_STORE_LOGO}
+                                  alt='Mặt sau CMND'
+                                  className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
+                                  style={{ display: 'block', minHeight: '100%' }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    if (!target.src.includes(DEFAULT_STORE_LOGO)) {
+                                      target.src = DEFAULT_STORE_LOGO
+                                    }
+                                  }}
+                                  onClick={() => handleImagePreview(DEFAULT_STORE_LOGO)}
+                                />
                               </div>
                               <p className='text-xs text-gray-500'>Mặt sau</p>
                             </div>
@@ -699,19 +788,21 @@ function StoreDetailAdmin() {
                         </div>
                       )}
 
-                      {store.staffImage && (
-                        <div>
-                          <span className='text-sm text-gray-500'>Ảnh chứng minh:</span>
-                          <div className='mt-2'>
-                            <img
-                              src={store.staffImage}
-                              alt='Ảnh chứng minh của nhân viên'
-                              className='w-32 h-32 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity'
-                              onClick={() => store.staffImage && handleImagePreview(store.staffImage)}
-                            />
-                          </div>
+                      <div>
+                        <span className='text-sm text-gray-500'>Ảnh chứng minh:</span>
+                        <div className='mt-2'>
+                          <img
+                            src={store.staffImage || DEFAULT_STORE_LOGO}
+                            alt='Ảnh chứng minh của nhân viên'
+                            className='w-32 h-32 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity'
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = DEFAULT_STORE_LOGO
+                            }}
+                            onClick={() => handleImagePreview(store.staffImage || DEFAULT_STORE_LOGO)}
+                          />
                         </div>
-                      )}
+                      </div>
 
                       {!store.reviewedBy && !store.staffNotes && !store.staffImage && (
                         <div className='text-center py-8 text-gray-500'>

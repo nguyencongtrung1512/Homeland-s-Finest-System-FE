@@ -50,7 +50,11 @@ export interface Product {
   name: string // varchar(255)
   description: string // text
   productImages: string[] // JSONB - Array of image URLs
-  productVideo: string // varchar(500) - Video URL
+  productVideo: string // varchar(500) - Video URL (legacy, kept for backward compatibility)
+  // Video URLs from backend - priority: videoFallBackUrl > videoPlayBackUrl > videoPreviewUrl > productVideo
+  videoPreviewUrl?: string | null // Video preview URL
+  videoPlayBackUrl?: string | null // Video playback URL (HLS/DASH)
+  videoFallBackUrl?: string | null // Video fallback URL (highest priority)
   material: string // varchar(255) - Brand/Manufacturer
   saleCount: number // integer
   rating: number // numeric(3,2) - Average rating
