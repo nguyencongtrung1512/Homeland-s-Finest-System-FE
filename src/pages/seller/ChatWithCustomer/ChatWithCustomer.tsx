@@ -291,11 +291,11 @@ function ChatWithCustomer() {
           }
         })
 
-        // Chuyển Map thành Array và sort theo timestamp (oldest first)
+        // Chuyển Map thành Array và sort theo timestamp (newest first - giống Facebook/Instagram)
         const mappedMessages: Message[] = Array.from(messageMap.values()).sort((a, b) => {
           const timeA = new Date(a.timestamp).getTime()
           const timeB = new Date(b.timestamp).getTime()
-          return timeA - timeB
+          return timeB - timeA // Descending: newest first
         })
 
         // Store all messages
@@ -304,9 +304,9 @@ function ChatWithCustomer() {
           [selectedChat]: mappedMessages
         }))
 
-        // For bottom-up: show latest N messages initially
+        // For bottom-up: show latest N messages initially (now sorted newest first)
         const initialCount = Math.min(MESSAGES_PER_PAGE, mappedMessages.length)
-        const initialMessages = mappedMessages.slice(-initialCount)
+        const initialMessages = mappedMessages.slice(0, initialCount)
         setHasMoreMessages((prev) => ({
           ...prev,
           [selectedChat]: mappedMessages.length > MESSAGES_PER_PAGE
@@ -324,7 +324,7 @@ function ChatWithCustomer() {
 
         // Cập nhật lastMessage trong conversations
         if (mappedMessages.length > 0) {
-          const lastMsg = mappedMessages[mappedMessages.length - 1]
+          const lastMsg = mappedMessages[0] // Lấy message đầu tiên (newest)
           setConversations((prev) =>
             prev.map((conv) =>
               conv.id === selectedChat ? { ...conv, lastMessage: lastMsg.content, timestamp: lastMsg.timestamp } : conv
@@ -335,7 +335,8 @@ function ChatWithCustomer() {
         // Scroll to bottom after initial load
         setTimeout(() => {
           if (messagesContainerRef.current) {
-            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+            // With flex-col-reverse, scrollTop = 0 means newest messages (at bottom)
+            messagesContainerRef.current.scrollTop = 0
           }
         }, 100)
       } catch (error) {
@@ -731,24 +732,6 @@ function ChatWithCustomer() {
                 </div>
               </div>
             </div>
-
-            {/* Product Card */}
-            <div className='mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-3'>
-                  <div className='w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center'>
-                    <span className='text-xs text-gray-600'>IMG</span>
-                  </div>
-                  <div>
-                    <h4 className='font-medium text-gray-900'>Bánh tam giác mạch Hà Giang</h4>
-                    <p className='text-sm text-green-600 font-medium'>120.000₫ - 150.000₫</p>
-                  </div>
-                </div>
-                <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                  <Share2 className='w-4 h-4' />
-                </Button>
-              </div>
-            </div>
           </div>
         )}
 
@@ -788,8 +771,8 @@ function ChatWithCustomer() {
               ) : null}
               {Object.entries(messagesByDate)
                 .sort(([dateKeyA], [dateKeyB]) => {
-                  // Sort by date key (YYYY-MM-DD format) - oldest first for column-reverse
-                  return dateKeyA.localeCompare(dateKeyB)
+                  // Sort by date key (YYYY-MM-DD format) - newest first for column-reverse
+                  return dateKeyB.localeCompare(dateKeyA)
                 })
                 .map(([dateKey, dateMessages]) => (
                   <div key={dateKey} className='mb-4'>
@@ -999,9 +982,6 @@ function ChatWithCustomer() {
             )}
 
             <div className='flex items-center gap-3'>
-              <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                <Paperclip className='w-4 h-4' />
-              </Button>
               <input
                 type='file'
                 ref={fileInputRef}

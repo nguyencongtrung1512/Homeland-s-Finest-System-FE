@@ -408,24 +408,23 @@ const ChatSystem: React.FC = () => {
           }
         })
 
-        // Chuyển Map thành Array và sort theo timestamp (oldest first)
+        // Chuyển Map thành Array và sort theo timestamp (newest first - giống Facebook/Instagram)
         const mappedMessages: Message[] = Array.from(messageMap.values()).sort(
           (a, b) => {
             const timeA = typeof a.timestamp === 'string' ? parseVietnameseTimestamp(a.timestamp).getTime() : a.timestamp.getTime()
             const timeB = typeof b.timestamp === 'string' ? parseVietnameseTimestamp(b.timestamp).getTime() : b.timestamp.getTime()
-            return timeA - timeB
+            return timeB - timeA
           }
         )
-
         // Store all messages
         setAllMessages((prev) => ({
           ...prev,
           [selectedConversation]: mappedMessages
         }))
 
-        // For bottom-up: show latest N messages initially
+        // For bottom-up: show latest N messages initially (now sorted newest first)
         const initialCount = Math.min(MESSAGES_PER_PAGE, mappedMessages.length)
-        const initialMessages = mappedMessages.slice(-initialCount)
+        const initialMessages = mappedMessages.slice(0, initialCount)
         setHasMoreMessages((prev) => ({
           ...prev,
           [selectedConversation]: mappedMessages.length > MESSAGES_PER_PAGE
@@ -444,7 +443,8 @@ const ChatSystem: React.FC = () => {
         // Scroll to bottom after initial load
         setTimeout(() => {
           if (messagesContainerRef.current) {
-            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+            // With flex-col-reverse, scrollTop = 0 means newest messages (at bottom)
+            messagesContainerRef.current.scrollTop = 0
           }
         }, 100)
       } catch (error) {
@@ -563,11 +563,11 @@ const ChatSystem: React.FC = () => {
             // Check if message already exists in allMessages
             const existsInAll = allMsgs.some((m) => m.id === message.id)
             if (!existsInAll) {
-              // Insert in sorted order (by timestamp)
+              // Insert in sorted order (by timestamp, newest first)
               const sorted = [...allMsgs, newMessage].sort((a, b) => {
                 const timeA = typeof a.timestamp === 'string' ? parseVietnameseTimestamp(a.timestamp).getTime() : a.timestamp.getTime()
                 const timeB = typeof b.timestamp === 'string' ? parseVietnameseTimestamp(b.timestamp).getTime() : b.timestamp.getTime()
-                return timeA - timeB
+                return timeB - timeA
               })
               return {
                 ...prevAll,
@@ -1134,18 +1134,7 @@ const ChatSystem: React.FC = () => {
                               Đang hoạt động
                             </p>
                           )}
-                        </div>
-                        <div className='flex items-center gap-1 flex-shrink-0'>
-                          <Button variant='ghost' size='icon' className='h-8 w-8'>
-                            <Phone className='h-4 w-4' />
-                          </Button>
-                          <Button variant='ghost' size='icon' className='h-8 w-8'>
-                            <Video className='h-4 w-4' />
-                          </Button>
-                          <Button variant='ghost' size='icon' className='h-8 w-8'>
-                            <MoreVertical className='h-4 w-4' />
-                          </Button>
-                        </div>
+                        </div>                     
                       </div>
 
                       {/* Messages */}
@@ -1199,8 +1188,8 @@ const ChatSystem: React.FC = () => {
                             ) : null}
                             {Object.entries(messagesByDate)
                               .sort(([dateKeyA], [dateKeyB]) => {
-                                // Sort by date key (YYYY-MM-DD format) - oldest first for column-reverse
-                                return dateKeyA.localeCompare(dateKeyB)
+                                // Sort by date key (YYYY-MM-DD format) - newest first for column-reverse
+                                return dateKeyB.localeCompare(dateKeyA)
                               })
                               .map(([dateKey, dateMessages]) => (
                                 <div key={dateKey} className='mb-4'>
@@ -1410,9 +1399,6 @@ const ChatSystem: React.FC = () => {
                         )}
 
                         <div className='flex items-center gap-2'>
-                          <Button variant='ghost' size='icon' className='h-9 w-9 flex-shrink-0'>
-                            <Paperclip className='h-4 w-4 text-gray-500' />
-                          </Button>
                           <input
                             type='file'
                             ref={fileInputRef}
