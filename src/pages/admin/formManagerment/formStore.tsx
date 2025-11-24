@@ -25,6 +25,7 @@ import { toast } from 'react-toastify'
 import AssignStaffModal from './components/AssignStaffModal'
 import FormDetailModal from './components/FormDetailModal'
 import { CopyButton } from '../../../components/ui/copy'
+import Pagination from '../../../components/Pagination/Pagination'
 
 export default function FormStoreManagement() {
   const [forms, setForms] = useState<FormDTO[]>([])
@@ -32,6 +33,8 @@ export default function FormStoreManagement() {
   const [selectedStatus, setSelectedStatus] = useState<FormStatus | 'all'>('all')
   const [selectedType, setSelectedType] = useState<FormType | 'all'>('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedFormForAssign, setSelectedFormForAssign] = useState<{ id: string; subject: string } | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -136,6 +139,15 @@ export default function FormStoreManagement() {
 
     return filtered
   }, [forms, selectedStatus, selectedType, searchTerm])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedStatus, selectedType, searchTerm])
+
+  const totalPages = Math.max(1, Math.ceil(filteredForms.length / pageSize))
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const currentForms = filteredForms.slice(startIndex, endIndex)
 
   const stats = useMemo(() => {
     const pendingCount = forms.filter((form) => form.status === 'Pending').length
@@ -416,7 +428,7 @@ export default function FormStoreManagement() {
       {/* Forms List */}
       {filteredForms.length > 0 ? (
         <div className='space-y-4'>
-          {filteredForms.map((form) => {
+          {currentForms.map((form) => {
             const statusInfo = getStatusInfo(form.status)
             const storeId = form.storeId
             return (
@@ -538,6 +550,13 @@ export default function FormStoreManagement() {
               </Card>
             )
           })}
+          <div className='flex flex-col gap-3 border-t border-gray-100 pt-4'>
+            <p className='text-sm text-gray-600'>
+              Hiển thị {filteredForms.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredForms.length)} của{' '}
+              {filteredForms.length} kết quả
+            </p>
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+          </div>
         </div>
       ) : (
         <EmptyState
