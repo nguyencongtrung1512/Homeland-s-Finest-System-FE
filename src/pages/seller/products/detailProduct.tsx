@@ -782,17 +782,6 @@ function DetailProductSeller() {
               Chỉnh sửa sản phẩm
             </Button>
           )}
-          {canEditProductInfo() && (
-            <Button
-              onClick={() => setShowCreateDetailDialog(true)}
-              className='bg-green-600 hover:bg-green-700 text-white'
-              variant='outline'
-              size='sm'
-            >
-              <Plus className='w-4 h-4 mr-2' />
-              Thêm sản phẩm liên quan
-            </Button>
-          )}
           {product?.isActive ? (
             <Button
               onClick={handleToggleActiveClick}
@@ -1517,7 +1506,7 @@ function DetailProductSeller() {
                         size='sm'
                       >
                         <Plus className='w-4 h-4 mr-2' />
-                        Thêm Product variant
+                        Thêm biến thể sản phẩm
                       </Button>
                     </div>
                   </CardHeader>
@@ -1995,7 +1984,7 @@ function DetailProductSeller() {
                         <h3 className='text-lg font-semibold text-green-800 mb-2'>Tổng quan</h3>
                         <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
                           <div>
-                            <span className='text-green-700 font-medium'>Tổng số variant cha:</span>
+                            <span className='text-green-700 font-medium'>Tổng số biến thể:</span>
                             <span className='ml-2 text-green-900'>{parentVariants.length} loại</span>
                           </div>
                           <div>

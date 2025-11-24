@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { Upload, Video, Trash2, X, Loader2 } from 'lucide-react'
+import { Upload, Video, Image as ImageIcon, X, Loader2 } from 'lucide-react'
 import { productApi } from '../../../apis/product.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { toast } from '../../../utils/toast'
@@ -52,11 +52,10 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
   const [imagesError, setImagesError] = useState<string>('')
 
   // Constants for validation
-  const MAX_NAME_LENGTH = 20
-  const MAX_MATERIAL_LENGTH = 20
+  const MAX_NAME_WORDS = 20
+  const MAX_MATERIAL_WORDS = 10
   const MAX_DESCRIPTION_WORDS = 500
   const MAX_IMAGES = 10
-  const MIN_NAME_LENGTH = 1
 
   // Helper function to count words
   const countWords = (text: string): number => {
@@ -208,8 +207,9 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
     if (field === 'name') {
       setNameError('')
       const stringValue = value as string
-      if (stringValue.length > MAX_NAME_LENGTH) {
-        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự.`)
+      const wordCount = countWords(stringValue)
+      if (wordCount > MAX_NAME_WORDS) {
+        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_WORDS} từ.`)
         return
       }
     }
@@ -217,8 +217,9 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
     if (field === 'material') {
       setMaterialError('')
       const stringValue = value as string
-      if (stringValue.length > MAX_MATERIAL_LENGTH) {
-        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự.`)
+      const wordCount = countWords(stringValue)
+      if (wordCount > MAX_MATERIAL_WORDS) {
+        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_WORDS} từ.`)
         return
       }
     }
@@ -246,39 +247,29 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
     }))
   }
 
-  const handleMediaChange = (field: string, value: File | File[] | null) => {
-    if (field === 'newProductImages' && Array.isArray(value)) {
-      addNewImages(value)
-    } else {
-      setMediaData((prev) => ({
-        ...prev,
-        [field]: value
-      }))
-    }
-  }
-
   const handleUpdateProduct = async () => {
     if (!product?.id) return
 
     try {
       setIsSubmitting(true)
 
-      // Validation
+      // Validate name
       if (!productData.name.trim()) {
         toast.error('Vui lòng nhập tên sản phẩm')
         setNameError('Vui lòng nhập tên sản phẩm')
         return
       }
 
-      if (productData.name.trim().length < MIN_NAME_LENGTH) {
-        toast.error('Tên sản phẩm phải có ít nhất 1 ký tự')
-        setNameError('Tên sản phẩm phải có ít nhất 1 ký tự')
+      const nameWordCount = countWords(productData.name)
+      if (nameWordCount === 0) {
+        toast.error('Tên sản phẩm phải có ít nhất 1 từ')
+        setNameError('Tên sản phẩm phải có ít nhất 1 từ')
         return
       }
 
-      if (productData.name.trim().length > MAX_NAME_LENGTH) {
-        toast.error(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự`)
-        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự`)
+      if (nameWordCount > MAX_NAME_WORDS) {
+        toast.error(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_WORDS} từ`)
+        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_WORDS} từ`)
         return
       }
 
@@ -303,9 +294,10 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
         return
       }
 
-      if (productData.material.trim().length > MAX_MATERIAL_LENGTH) {
-        toast.error(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
-        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
+      const materialWordCount = countWords(productData.material)
+      if (materialWordCount > MAX_MATERIAL_WORDS) {
+        toast.error(`Material chỉ được tối đa ${MAX_MATERIAL_WORDS} từ`)
+        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_WORDS} từ`)
         return
       }
 
@@ -487,9 +479,9 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                   Tên sản phẩm <span className='text-red-500'>*</span>
                 </Label>
                 <span
-                  className={`text-xs ${productData.name.length > MAX_NAME_LENGTH ? 'text-red-500' : 'text-gray-500'}`}
+                  className={`text-xs ${countWords(productData.name) > MAX_NAME_WORDS ? 'text-red-500' : 'text-gray-500'}`}
                 >
-                  {productData.name.length} / {MAX_NAME_LENGTH} ký tự
+                  {countWords(productData.name)} / {MAX_NAME_WORDS} từ
                 </span>
               </div>
               <Input
@@ -509,9 +501,9 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                   Xuất xứ (Material) <span className='text-red-500'>*</span>
                 </Label>
                 <span
-                  className={`text-xs ${productData.material.length > MAX_MATERIAL_LENGTH ? 'text-red-500' : 'text-gray-500'}`}
+                  className={`text-xs ${countWords(productData.material) > MAX_MATERIAL_WORDS ? 'text-red-500' : 'text-gray-500'}`}
                 >
-                  {productData.material.length} / {MAX_MATERIAL_LENGTH} ký tự
+                  {countWords(productData.material)} / {MAX_MATERIAL_WORDS} từ
                 </span>
               </div>
               <Input
@@ -564,8 +556,9 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                   Mô tả sản phẩm <span className='text-red-500'>*</span>
                 </Label>
                 <span
-                  className={`text-xs ${countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'
-                    }`}
+                  className={`text-xs ${
+                    countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'
+                  }`}
                 >
                   {countWords(productData.description)} / {MAX_DESCRIPTION_WORDS} từ
                 </span>
@@ -611,25 +604,34 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             {/* Existing Images */}
             {existingImageUrls.length > 0 && (
               <div>
-                <div className='flex items-center justify-between mb-2'>
+                <div className='flex items-center justify-between mb-1'>
                   <Label className='text-sm font-medium'>
-                    Ảnh hiện tại <span className='text-red-500'>*</span>
+                    Ảnh hiện có (click để xóa) <span className='text-red-500'>*</span>
                   </Label>
                   <span className='text-xs text-gray-500'>
                     {existingImageUrls.length + mediaData.newProductImages.length} / {MAX_IMAGES} ảnh
                   </span>
                 </div>
-                <div className='grid grid-cols-3 gap-4 mt-2'>
+                <div className='mt-2 grid grid-cols-4 gap-2'>
                   {existingImageUrls.map((imageUrl, index) => (
                     <div key={index} className='relative group'>
-                      <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden border'>
-                        <img src={imageUrl} alt={`Existing ${index + 1}`} className='w-full h-full object-cover' />
+                      <div className='aspect-square rounded-lg overflow-hidden border-2 border-gray-200'>
+                        <img
+                          src={imageUrl}
+                          alt={`Existing ${index + 1}`}
+                          className='w-full h-full object-cover'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.src = '/placeholder-image.png'
+                          }}
+                        />
                       </div>
                       <button
+                        type='button'
                         onClick={() => removeExistingImage(index)}
-                        className='absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity'
+                        className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all'
                       >
-                        <X className='w-4 h-4' />
+                        <X className='w-3 h-3' />
                       </button>
                     </div>
                   ))}
@@ -639,7 +641,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
 
             {/* New Product Images */}
             <div>
-              <div className='flex items-center justify-between mb-2'>
+              <div className='flex items-center justify-between mb-1'>
                 <Label className='text-sm font-medium'>
                   Ảnh sản phẩm {existingImageUrls.length === 0 && <span className='text-red-500'>*</span>}
                 </Label>
@@ -650,12 +652,61 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
               {imagesError && <p className='mb-2 text-sm text-red-500'>{imagesError}</p>}
               {existingImageUrls.length + mediaData.newProductImages.length < MAX_IMAGES ? (
                 <div
-                  className={`grid grid-cols-3 gap-4 ${imagesError ? 'border-2 border-red-500 rounded-lg p-2' : ''}`}
+                  className={`mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer ${imagesError ? 'border-red-500' : ''}`}
+                  onClick={() => document.getElementById('new-product-images')?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                    const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'))
+                    if (files.length > 0) {
+                      addNewImages(files)
+                    }
+                  }}
                 >
-                  {/* Existing new images */}
+                  <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                  <p className='text-gray-600 mb-2'>
+                    {mediaData.newProductImages.length > 0 ? 'Thêm ảnh khác' : 'Kéo thả hoặc click để tải ảnh lên'}
+                  </p>
+                  <input
+                    type='file'
+                    multiple
+                    accept='image/*'
+                    className='hidden'
+                    id='new-product-images'
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || [])
+                      if (files.length > 0) {
+                        addNewImages(files)
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                  <Button type='button' variant='outline' size='sm' className='mt-3'>
+                    <Upload className='w-4 h-4 mr-2' />
+                    {mediaData.newProductImages.length > 0 ? 'Thêm ảnh' : 'Chọn ảnh'}
+                  </Button>
+                </div>
+              ) : (
+                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'>
+                  <p className='text-sm text-amber-600'>
+                    Đã đạt giới hạn tối đa {MAX_IMAGES} hình ảnh. Vui lòng xóa ảnh cũ để thêm ảnh mới.
+                  </p>
+                </div>
+              )}
+
+              {mediaData.newProductImages.length > 0 && (
+                <div className='mt-4 grid grid-cols-4 gap-2'>
                   {mediaData.newProductImages.map((file, index) => (
-                    <div key={index} className='relative group'>
-                      <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden border'>
+                    <div key={`${file.name}-${index}`} className='relative group'>
+                      <div className='aspect-square rounded-lg overflow-hidden border-2 border-gray-200'>
                         <img
                           src={createPreviewUrl(file)}
                           alt={`New ${index + 1}`}
@@ -663,43 +714,21 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                         />
                       </div>
                       <button
+                        type='button'
                         onClick={() => removeNewImage(index)}
-                        className='absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity'
+                        className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all'
                       >
-                        <X className='w-4 h-4' />
+                        <X className='w-3 h-3' />
                       </button>
                     </div>
                   ))}
-
-                  {/* Add image button */}
-                  <label className='aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-green-600 hover:bg-green-50 transition-colors'>
-                    <Upload className='w-8 h-8 text-gray-400 mb-2' />
-                    <span className='text-sm text-gray-600 text-center px-2'>Thêm ảnh</span>
-                    <input
-                      type='file'
-                      accept='image/*'
-                      multiple
-                      className='hidden'
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                          handleMediaChange('newProductImages', Array.from(e.target.files))
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
-              ) : (
-                <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'>
-                  <p className='text-sm text-amber-600'>
-                    Đã đạt giới hạn tối đa {MAX_IMAGES} hình ảnh. Vui lòng xóa ảnh cũ để thêm ảnh mới.
-                  </p>
                 </div>
               )}
             </div>
 
-            {/* Remove Existing Video */}
+            {/* Product Video */}
             <div>
-              <div className='flex items-center justify-between mb-2'>
+              <div className='flex items-center justify-between mb-1'>
                 <Label className='text-sm font-medium'>Video sản phẩm</Label>
                 <span className='text-xs text-gray-500'>
                   {(fetchedProduct?.productVideo && !mediaData.removeExistingVideo) || mediaData.newProductVideo
@@ -707,98 +736,106 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                     : '0 / 1 video'}
                 </span>
               </div>
-              {fetchedProduct?.productVideo && !mediaData.removeExistingVideo && (
-                <div className='mt-2 mb-4'>
-                  <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border'>
-                    <video controls className='w-full h-full'>
-                      <source src={fetchedProduct.productVideo} type='video/mp4' />
-                    </video>
+              <div className='mt-2 space-y-2'>
+                {fetchedProduct?.productVideo && !mediaData.removeExistingVideo && (
+                  <div className='space-y-2'>
+                    <div className='relative group'>
+                      <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200'>
+                        <video
+                          src={fetchedProduct.productVideo}
+                          controls
+                          className='w-full h-full'
+                          onError={(e) => {
+                            console.error('Error loading video:', e)
+                          }}
+                        >
+                          Trình duyệt của bạn không hỗ trợ video.
+                        </video>
+                      </div>
+                      <button
+                        type='button'
+                        onClick={() => setMediaData((prev) => ({ ...prev, removeExistingVideo: true }))}
+                        className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all'
+                      >
+                        <X className='w-3 h-3' />
+                      </button>
+                    </div>
+                    <div className='flex items-center justify-between p-2 bg-gray-50 rounded-lg border'>
+                      <div className='flex items-center gap-2'>
+                        <Video className='w-4 h-4 text-gray-500' />
+                        <span className='text-xs text-gray-600 truncate max-w-md'>{fetchedProduct.productVideo}</span>
+                      </div>
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        onClick={() => setMediaData((prev) => ({ ...prev, removeExistingVideo: true }))}
+                      >
+                        Xóa video
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() =>
-                      setMediaData((prev) => ({
-                        ...prev,
-                        removeExistingVideo: true
-                      }))
-                    }
-                    className='mt-2 text-red-600 hover:text-red-700'
+                )}
+
+                {(!fetchedProduct?.productVideo || mediaData.removeExistingVideo) && (
+                  <div
+                    className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                    onClick={() => document.getElementById('product-video')?.click()}
                   >
-                    <Trash2 className='w-4 h-4 mr-2' />
-                    Xóa video hiện tại
-                  </Button>
-                </div>
-              )}
-
-              {/* Upload new video */}
-              {mediaData.removeExistingVideo && (
-                <div className='mt-2'>
-                  <Label htmlFor='upload-video' className='cursor-pointer'>
-                    <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center hover:border-green-600 hover:bg-green-50 transition-colors'>
-                      <Video className='w-8 h-8 text-gray-400 mb-2' />
-                      <span className='text-sm text-gray-600'>Chọn video mới</span>
-                    </div>
+                    <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                    <p className='text-gray-600 mb-2'>
+                      {mediaData.newProductVideo ? 'Thay đổi video' : 'Kéo thả hoặc click để tải video lên'}
+                    </p>
                     <input
-                      id='upload-video'
                       type='file'
                       accept='video/*'
                       className='hidden'
+                      id='product-video'
                       onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          const file = e.target.files[0]
+                        const file = e.target.files?.[0]
+                        if (file) {
                           // Validate video file size (50MB max)
                           if (file.size > 50 * 1024 * 1024) {
                             toast.error('Video quá lớn. Tối đa 50MB.')
                             return
                           }
-                          handleMediaChange('newProductVideo', file)
+                          setMediaData((prev) => ({
+                            ...prev,
+                            newProductVideo: file,
+                            removeExistingVideo: false
+                          }))
                         }
+                        e.target.value = ''
                       }}
                     />
-                  </Label>
-                </div>
-              )}
-
-              {/* Show new video preview */}
-              {mediaData.newProductVideo && (
-                <div className='mt-2'>
-                  <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border'>
-                    <video controls className='w-full h-full'>
-                      <source src={createPreviewUrl(mediaData.newProductVideo)} type='video/mp4' />
-                    </video>
+                    <Button type='button' variant='outline' size='sm' className='mt-3'>
+                      <Upload className='w-4 h-4 mr-2' />
+                      {mediaData.newProductVideo ? 'Thay đổi video' : 'Chọn video'}
+                    </Button>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* If not removed existing video and no new video, show upload option */}
-              {!fetchedProduct?.productVideo && !mediaData.removeExistingVideo && (
-                <div className='mt-2'>
-                  <Label htmlFor='upload-new-video' className='cursor-pointer'>
-                    <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center hover:border-green-600 hover:bg-green-50 transition-colors'>
-                      <Video className='w-8 h-8 text-gray-400 mb-2' />
-                      <span className='text-sm text-gray-600'>Chọn video</span>
+                {mediaData.newProductVideo && (
+                  <div className='relative group'>
+                    <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200'>
+                      <video src={createPreviewUrl(mediaData.newProductVideo)} controls className='w-full h-full' />
                     </div>
-                    <input
-                      id='upload-new-video'
-                      type='file'
-                      accept='video/*'
-                      className='hidden'
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          const file = e.target.files[0]
-                          // Validate video file size (50MB max)
-                          if (file.size > 50 * 1024 * 1024) {
-                            toast.error('Video quá lớn. Tối đa 50MB.')
-                            return
-                          }
-                          handleMediaChange('newProductVideo', file)
-                        }
+                    <button
+                      type='button'
+                      onClick={() => {
+                        setMediaData((prev) => ({
+                          ...prev,
+                          newProductVideo: null,
+                          removeExistingVideo: true
+                        }))
                       }}
-                    />
-                  </Label>
-                </div>
-              )}
+                      className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all'
+                    >
+                      <X className='w-3 h-3' />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
