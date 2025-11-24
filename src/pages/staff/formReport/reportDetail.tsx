@@ -468,7 +468,7 @@ function ReportDetail() {
                             const target = e.target as HTMLImageElement
                             if (target.dataset.fallbackApplied) return
                             target.dataset.fallbackApplied = 'true'
-                            target.src = FALLBACK_IMAGE
+                            target.src = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
                           }}
                         />
                         <div className='pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all rounded-lg flex items-center justify-center'>

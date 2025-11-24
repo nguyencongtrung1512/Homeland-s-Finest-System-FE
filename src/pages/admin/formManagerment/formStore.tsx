@@ -8,16 +8,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
-import {
-  Calendar,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  UserPlus,
-  Search,
-  BarChart2,
-} from 'lucide-react'
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, Search, BarChart2 } from 'lucide-react'
 import { formApi } from '../../../apis/form.api'
 import { storeApi } from '../../../apis/store.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
@@ -368,7 +359,6 @@ export default function FormStoreManagement() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className='pl-10'
                 />
-
               </div>
             </div>
 

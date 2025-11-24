@@ -918,6 +918,16 @@ export default function OrdersContent({
                     Xem khiếu nại
                   </Button>
                 )}
+                {order.isComplained && order.originalStatus !== 'Complaining' && order.originalStatus !== 'Complained' && (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleOpenViewComplaintModal(order.id)}
+                    className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                  >
+                    Xem khiếu nại
+                  </Button>
+                )}
                 {order.originalStatus === 'Returned' && (
                   <Button
                     variant='outline'
