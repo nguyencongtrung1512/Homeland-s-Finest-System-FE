@@ -2,9 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search,
-  Filter,
   RotateCcw,
-  Download,
   Eye,
   User,
   ShoppingCart,
@@ -29,6 +27,7 @@ import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from 'react-toastify'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
+import Pagination from '../../../components/Pagination/Pagination'
 import { formatDate } from '../../../utils/formatDate'
 
 function ReportManagement() {
@@ -305,10 +304,6 @@ function ReportManagement() {
     navigate(`/staff/formReport/${form.id}`)
   }
 
-  const handleExport = () => {
-    console.log('Export to Excel')
-  }
-
   const handleReset = () => {
     setSearchText('')
     setTypeFilter('all')
@@ -569,44 +564,12 @@ function ReportManagement() {
           </div>
 
           {/* Pagination */}
-          <div className='flex items-center justify-between px-6 py-4 border-t border-gray-200'>
+          <div className='flex flex-col gap-3 px-6 py-4 border-t border-gray-200'>
             <p className='text-sm text-gray-600'>
-              Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredForms.length)} của {filteredForms.length} kết quả
+              Hiển thị {filteredForms.length === 0 ? 0 : startIndex + 1}-
+              {Math.min(endIndex, filteredForms.length)} của {filteredForms.length} kết quả
             </p>
-            <div className='flex items-center gap-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className='h-8 w-8 p-0'
-              >
-                ←
-              </Button>
-              {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
-                const pageNum = i + 1
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? 'default' : 'outline'}
-                    size='sm'
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`h-8 w-8 p-0 ${currentPage === pageNum ? 'bg-blue-600 text-white' : ''}`}
-                  >
-                    {pageNum}
-                  </Button>
-                )
-              })}
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className='h-8 w-8 p-0'
-              >
-                →
-              </Button>
-            </div>
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           </div>
         </CardContent>
       </Card>
