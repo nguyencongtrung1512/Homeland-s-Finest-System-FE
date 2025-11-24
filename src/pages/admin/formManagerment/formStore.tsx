@@ -16,9 +16,7 @@ import {
   AlertCircle,
   UserPlus,
   Search,
-  Store,
   BarChart2,
-  RotateCcw
 } from 'lucide-react'
 import { formApi } from '../../../apis/form.api'
 import { storeApi } from '../../../apis/store.api'
@@ -42,15 +40,15 @@ export default function FormStoreManagement() {
 
   const navigate = useNavigate()
   const hasStoreId = useCallback((id: FormDTO['storeId']): id is string => Boolean(id), [])
-  const handleResetFilters = () => {
-    setSelectedStatus('all')
-    setSelectedType('all')
-    setSearchTerm('')
-  }
-  const hasActiveFilters = useMemo(
-    () => selectedStatus !== 'all' || selectedType !== 'all' || Boolean(searchTerm.trim()),
-    [searchTerm, selectedStatus, selectedType]
-  )
+  // const handleResetFilters = () => {
+  //   setSelectedStatus('all')
+  //   setSelectedType('all')
+  //   setSearchTerm('')
+  // }
+  // const hasActiveFilters = useMemo(
+  //   () => selectedStatus !== 'all' || selectedType !== 'all' || Boolean(searchTerm.trim()),
+  //   [searchTerm, selectedStatus, selectedType]
+  // )
 
   // Load store-related forms (exclude ComplaintOrder)
   const loadForms = async () => {

@@ -5,7 +5,6 @@ import {
   CreditCard,
   FileText,
   Shield,
-  Settings,
   Leaf,
   LibraryBig,
   ShoppingCart,

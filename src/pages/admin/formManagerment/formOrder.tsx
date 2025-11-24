@@ -8,19 +8,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
-import {
-  Calendar,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  UserPlus,
-  Search,
-  Filter,
-  Package,
-  BarChart2,
-  RotateCcw
-} from 'lucide-react'
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, Search, Package, BarChart2 } from 'lucide-react'
 import { formApi } from '../../../apis/form.api'
 import { storeApi } from '../../../apis/store.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
@@ -42,14 +30,14 @@ export default function FormOrderManagement() {
 
   const navigate = useNavigate()
   const hasStoreId = useCallback((id: FormDTO['storeId']): id is string => Boolean(id), [])
-  const handleResetFilters = () => {
-    setSelectedStatus('all')
-    setSearchTerm('')
-  }
-  const hasActiveFilters = useMemo(
-    () => selectedStatus !== 'all' || Boolean(searchTerm.trim()),
-    [searchTerm, selectedStatus]
-  )
+  // const handleResetFilters = () => {
+  //   setSelectedStatus('all')
+  //   setSearchTerm('')
+  // }
+  // const hasActiveFilters = useMemo(
+  //   () => selectedStatus !== 'all' || Boolean(searchTerm.trim()),
+  //   [searchTerm, selectedStatus]
+  // )
 
   // Load only complaint order forms from API
   const loadForms = async () => {
@@ -284,10 +272,8 @@ export default function FormOrderManagement() {
       {/* Header */}
       <div className='flex items-center justify-between mb-6'>
         <div className='flex items-center gap-2'>
-          <Package className='w-6 h-6 text-blue-600' />
           <div>
             <h1 className='text-2xl font-bold text-gray-900'>Khiếu nại đơn hàng</h1>
-            <p className='text-gray-600 mt-1'>Chỉ hiển thị các form loại Khiếu nại đơn hàng</p>
           </div>
         </div>
         <Button onClick={loadForms} variant='outline' className='text-green-600 border-green-600 hover:bg-green-50'>

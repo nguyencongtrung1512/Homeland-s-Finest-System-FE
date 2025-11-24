@@ -29,6 +29,8 @@ import type { StoreResponse } from '../../../apis/store.api'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from 'react-toastify'
+import ImagePreviewModal from '../../../components/ui/image-preview-modal'
+import { resolveImageUrl } from '../../../utils/image'
 
 function ReportDetail() {
   const { formId } = useParams<{ formId: string }>()
@@ -45,6 +47,12 @@ function ReportDetail() {
   const [selectedStatus, setSelectedStatus] = useState<'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected'>(
     'ApprovedByStaff'
   )
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewIndex, setPreviewIndex] = useState(0)
+  const rawImages = form?.imageUrl
+  const attachmentImages = Array.isArray(rawImages)
+    ? rawImages.map((img) => resolveImageUrl(img)).filter((url): url is string => Boolean(url))
+    : []
 
   // Set default status based on current form status
   useEffect(() => {
@@ -67,12 +75,9 @@ function ReportDetail() {
       return
     }
 
-    console.log('Loading form detail for ID:', formId)
     try {
       setLoading(true)
-      console.log('Calling formApi.getFormById with ID:', formId)
       const response = await formApi.getFormById(formId)
-      console.log('Form API response:', response)
       setForm(response)
       setStaffReply(response.reply || '')
 
@@ -81,7 +86,6 @@ function ReportDetail() {
         try {
           setLoadingUser(true)
           const user = await getUserById(response.userId)
-          console.log('User API response:', user)
           setUserInfo({
             firstName: user.firstName,
             lastName: user.lastName,
@@ -100,7 +104,6 @@ function ReportDetail() {
         try {
           setLoadingStore(true)
           const storeResponse = await storeApi.getStoreById(response.storeId)
-          console.log('Store API response:', storeResponse)
           setStoreInfo(storeResponse.data)
         } catch (error) {
           console.error('Error loading store info:', error)
@@ -212,6 +215,8 @@ function ReportDetail() {
     switch (type) {
       case 'SupportAccount':
         return 'Hỗ trợ tài khoản'
+      case 'ComplaintOrder':
+        return 'Khiếu nại đơn hàng'
       case 'SupportPayment':
         return 'Hỗ trợ thanh toán'
       case 'SupportTechnical':
@@ -266,6 +271,12 @@ function ReportDetail() {
     navigate('/staff/formReport')
   }
 
+  const handleStoreClick = () => {
+    if (form?.storeId) {
+      navigate(`/staff/store-detail/${form.storeId}`)
+    }
+  }
+
   if (loading) {
     return <Loading />
   }
@@ -293,7 +304,6 @@ function ReportDetail() {
         </Button>
         <div>
           <h1 className='text-2xl font-bold text-gray-900'>Chi tiết khiếu nại</h1>
-          <p className='text-sm text-gray-600'>#{form.id}</p>
         </div>
       </div>
 
@@ -301,14 +311,13 @@ function ReportDetail() {
         {/* Left Column */}
         <div className='space-y-6'>
           {/* Customer Information */}
-          <Card className='bg-white shadow-sm'>
-            <CardHeader className='pb-3'>
+          <Card className='bg-white shadow-sm gap-3'>
+            <CardHeader className='pt-4 pb-2'>
               <CardTitle className='flex items-center gap-2 text-lg'>
-                <User className='w-5 h-5 text-blue-600' />
                 Thông tin khách hàng
               </CardTitle>
             </CardHeader>
-            <CardContent className='space-y-4'>
+            <CardContent className='pt-0 pb-4'>
               <div className='flex items-center gap-4'>
                 <div className='w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center'>
                   <User className='w-8 h-8 text-blue-600' />
@@ -339,23 +348,19 @@ function ReportDetail() {
                   )}
                 </div>
               </div>
-              <div className='flex items-center gap-2 pt-2 border-t border-gray-200'>
-                <Calendar className='w-4 h-4 text-gray-400' />
-                <span className='text-sm text-gray-600'>Thời gian tạo: {form.createdAt}</span>
-              </div>
             </CardContent>
           </Card>
 
           {/* Store Information */}
           {form.storeId && (
-            <Card className='bg-white shadow-sm'>
-              <CardHeader className='pb-3'>
+            <Card className='bg-white shadow-sm gap-3'>
+              <CardHeader className='pt-4 pb-2'>
                 <CardTitle className='flex items-center gap-2 text-lg'>
                   <Store className='w-5 h-5 text-green-600' />
                   Thông tin cửa hàng
                 </CardTitle>
               </CardHeader>
-              <CardContent className='space-y-4'>
+              <CardContent className='space-y-4 pt-0 pb-4'>
                 {loadingStore ? (
                   <div className='flex items-center justify-center py-8'>
                     <div className='flex items-center gap-2'>
@@ -369,8 +374,15 @@ function ReportDetail() {
                       <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center'>
                         {storeInfo.logoUrl ? (
                           <img
-                            src={storeInfo.logoUrl}
+                            src={
+                              storeInfo.logoUrl ||
+                              'http://154.26.130.248:8080/images/FormImages/3d8e4b7b-948b-44de-8ad4-97e9af520e11.png'
+                            }
                             alt={storeInfo.storeName}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+                            }}
                             className='w-12 h-12 rounded-full object-cover'
                           />
                         ) : (
@@ -378,7 +390,7 @@ function ReportDetail() {
                         )}
                       </div>
                       <div>
-                        <h3 className='font-semibold text-gray-900 text-lg'>{storeInfo.storeName}</h3>
+                        <button className='font-semibold text-gray-900 text-lg hover:text-blue-600 hover:underline' onClick={handleStoreClick}>{storeInfo.storeName}</button>
                         <div className='space-y-1 mt-2'>
                           <div className='flex items-center gap-2'>
                             <span className='text-sm text-gray-700'>{storeInfo.address}</span>
@@ -391,14 +403,7 @@ function ReportDetail() {
                         </div>
                       </div>
                     </div>
-                    <div className='pt-2 border-t border-gray-200'>
-                      <div className='flex items-center gap-2'>
-                        <Badge variant={storeInfo.status === 'Active' ? 'default' : 'secondary'} className='text-xs'>
-                          {storeInfo.status === 'Active' ? 'Hoạt động' : storeInfo.status}
-                        </Badge>
-                        <span className='text-sm text-gray-500'>ID: {storeInfo.id}</span>
-                      </div>
-                    </div>
+
                   </>
                 ) : (
                   <div className='text-center py-4'>
@@ -411,8 +416,8 @@ function ReportDetail() {
           )}
 
           {/* Form Content */}
-          <Card className='bg-white shadow-sm'>
-            <CardHeader className='pb-3'>
+          <Card className='bg-white shadow-sm gap-3'>
+            <CardHeader className='pt-4 pb-2'>
               <div className='flex items-center gap-3 mb-2'>
                 <Badge
                   variant={statusInfo.badge as 'default' | 'secondary' | 'destructive' | 'outline'}
@@ -429,7 +434,7 @@ function ReportDetail() {
               </div>
               <CardTitle className='text-xl'>{form.subject}</CardTitle>
             </CardHeader>
-            <CardContent className='space-y-4'>
+            <CardContent className='space-y-4 pt-0 pb-4'>
               {/* Description */}
               <div>
                 <Label className='text-sm font-medium text-gray-700 mb-2 block'>Mô tả chi tiết</Label>
@@ -439,22 +444,34 @@ function ReportDetail() {
               </div>
 
               {/* Images */}
-              {form.imageUrl && form.imageUrl.length > 0 && (
+              {attachmentImages.length > 0 && (
                 <div>
                   <Label className='text-sm font-medium text-gray-700 mb-2 block flex items-center gap-2'>
                     <ImageIcon className='w-4 h-4' />
-                    Hình ảnh đính kèm ({form.imageUrl.length})
+                    Hình ảnh đính kèm ({attachmentImages.length})
                   </Label>
                   <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
-                    {form.imageUrl.map((imageUrl: string, index: number) => (
-                      <div key={index} className='relative group'>
+                    {attachmentImages.map((imageUrl: string, index: number) => (
+                      <div
+                        key={index}
+                        className='relative group cursor-pointer'
+                        onClick={() => {
+                          setPreviewIndex(index)
+                          setIsPreviewOpen(true)
+                        }}
+                      >
                         <img
                           src={imageUrl}
                           alt={`Attachment ${index + 1}`}
-                          className='w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition-opacity'
-                          onClick={() => window.open(imageUrl, '_blank')}
+                          className='w-full h-32 object-cover rounded-lg border hover:opacity-90 transition-opacity'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            if (target.dataset.fallbackApplied) return
+                            target.dataset.fallbackApplied = 'true'
+                            target.src = FALLBACK_IMAGE
+                          }}
                         />
-                        <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center'>
+                        <div className='pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all rounded-lg flex items-center justify-center'>
                           <span className='text-white opacity-0 group-hover:opacity-100 text-sm font-medium'>
                             Click để xem
                           </span>
@@ -485,14 +502,14 @@ function ReportDetail() {
         {/* Right Column */}
         <div className='space-y-6'>
           {/* Form Details */}
-          <Card className='bg-white shadow-sm'>
-            <CardHeader className='pb-3'>
+          <Card className='bg-white shadow-sm gap-3'>
+            <CardHeader className='pt-4 pb-2'>
               <CardTitle className='flex items-center gap-2 text-lg'>
                 <Flag className='w-5 h-5 text-blue-600' />
                 Thông tin chi tiết
               </CardTitle>
             </CardHeader>
-            <CardContent className='space-y-3'>
+            <CardContent className='space-y-3 pt-0 pb-4'>
               <div>
                 <Label className='text-sm font-medium text-gray-500'>Loại</Label>
                 <p className='text-sm text-gray-900'>{getTypeText(form.type)}</p>
@@ -615,6 +632,13 @@ function ReportDetail() {
           )}
         </div>
       </div>
+
+      <ImagePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        images={attachmentImages}
+        initialIndex={previewIndex}
+      />
 
       {/* Staff Update Modal */}
       <Dialog open={showUpdateModal} onOpenChange={setShowUpdateModal}>

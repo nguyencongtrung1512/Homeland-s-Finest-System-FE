@@ -29,6 +29,7 @@ import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from 'react-toastify'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
+import { formatDate } from '../../../utils/formatDate'
 
 function ReportManagement() {
   const navigate = useNavigate()
@@ -41,6 +42,14 @@ function ReportManagement() {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
+
+  const isFutureDate = (date: Date) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const compareDate = new Date(date)
+    compareDate.setHours(0, 0, 0, 0)
+    return compareDate > today
+  }
 
   // Load assigned forms
   const loadAssignedForms = useCallback(async () => {
@@ -61,66 +70,114 @@ function ReportManagement() {
     loadAssignedForms()
   }, [loadAssignedForms])
 
+  const handleStartDateChange = (date: Date | undefined) => {
+    if (!date) {
+      setStartDate(undefined)
+      return
+    }
+
+    if (isFutureDate(date)) {
+      toast.error('Không thể chọn ngày ở tương lai')
+      return
+    }
+
+    if (endDate && date > endDate) {
+      toast.error('Ngày bắt đầu không được sau ngày kết thúc')
+      return
+    }
+
+    setStartDate(date)
+  }
+
+  const handleEndDateChange = (date: Date | undefined) => {
+    if (!date) {
+      setEndDate(undefined)
+      return
+    }
+
+    if (isFutureDate(date)) {
+      toast.error('Không thể chọn ngày ở tương lai')
+      return
+    }
+
+    if (startDate && date < startDate) {
+      toast.error('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu')
+      return
+    }
+
+    setEndDate(date)
+  }
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchText, typeFilter, statusFilter, startDate, endDate])
+
   const getTypeConfig = (type: string) => {
     const configs: Record<string, { text: string; bgColor: string; textColor: string; icon: React.ReactElement }> = {
       SupportAccount: {
         text: 'Hỗ trợ tài khoản',
-        bgColor: 'bg-blue-100',
-        textColor: 'text-blue-600',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <User className='w-3 h-3' />
       },
       SupportPayment: {
         text: 'Hỗ trợ thanh toán',
-        bgColor: 'bg-green-100',
-        textColor: 'text-green-600',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <CreditCard className='w-3 h-3' />
       },
       SupportTechnical: {
         text: 'Hỗ trợ kỹ thuật',
-        bgColor: 'bg-purple-100',
-        textColor: 'text-purple-600',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <User className='w-3 h-3' />
+      },
+      ComplaintOrder: {
+        text: 'Khiếu nại đơn hàng',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
+        icon: <ShoppingCart className='w-3 h-3' />
       },
       ComplaintContent: {
         text: 'Khiếu nại nội dung',
-        bgColor: 'bg-red-100',
-        textColor: 'text-red-600',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <ShoppingCart className='w-3 h-3' />
       },
       RequestInformation: {
         text: 'Yêu cầu thông tin',
-        bgColor: 'bg-yellow-100',
-        textColor: 'text-yellow-600',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <User className='w-3 h-3' />
       },
       ReportSeller: {
         text: 'Báo cáo người bán',
-        bgColor: 'bg-orange-100',
-        textColor: 'text-orange-600',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <Store className='w-3 h-3' />
       },
       FeedbackSuggestion: {
         text: 'Phản hồi góp ý',
-        bgColor: 'bg-indigo-100',
-        textColor: 'text-indigo-600',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <User className='w-3 h-3' />
       },
       PrivacyDataRequest: {
         text: 'Yêu cầu dữ liệu cá nhân',
-        bgColor: 'bg-gray-100',
-        textColor: 'text-gray-600',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <User className='w-3 h-3' />
       },
       SupportMarketing: {
         text: 'Hỗ trợ marketing',
-        bgColor: 'bg-pink-100',
-        textColor: 'text-pink-600',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <User className='w-3 h-3' />
       },
       SupportOther: {
         text: 'Hỗ trợ khác',
-        bgColor: 'bg-gray-100',
-        textColor: 'text-gray-600',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <User className='w-3 h-3' />
       },
       SupportRefundMoney: {
@@ -135,39 +192,91 @@ function ReportManagement() {
 
   const getStatusConfig = (status: string) => {
     const configs: Record<string, { text: string; bgColor: string; textColor: string; icon: React.ReactElement }> = {
-      Processing: {
-        text: 'Đang xử lý',
-        bgColor: 'bg-blue-100',
-        textColor: 'text-blue-600',
+      Pending: {
+        text: 'Chờ phân công',
+        bgColor: 'bg-yellow-100',
+        textColor: 'text-yellow-600',
         icon: <AlertCircle className='w-3 h-3' />
       },
+      Processing: {
+        text: 'Chờ xử lý',
+        bgColor: 'bg-blue-100',
+        textColor: 'text-blue-600',
+        icon: <RefreshCw className='w-3 h-3' />
+      },
       ApprovedByStaff: {
-        text: 'Đã duyệt (Staff)',
-        bgColor: 'bg-green-100',
-        textColor: 'text-green-600',
+        text: 'Chấp nhận bởi nhân viên',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-600',
         icon: <CheckCircle className='w-3 h-3' />
       },
       DeniedByStaff: {
-        text: 'Đã từ chối (Staff)',
-        bgColor: 'bg-red-100',
-        textColor: 'text-red-600',
+        text: 'Từ chối bởi nhân viên',
+        bgColor: 'bg-rose-100',
+        textColor: 'text-rose-600',
         icon: <XCircle className='w-3 h-3' />
       },
-      Confirmed: {
-        text: 'Đã xác nhận',
+      ApprovedByAdmin: {
+        text: 'Đã duyệt',
         bgColor: 'bg-green-100',
         textColor: 'text-green-600',
         icon: <CheckCircle className='w-3 h-3' />
       },
-      Rejected: {
-        text: 'Đã từ chối',
+      DeniedByAdmin: {
+        text: 'Từ chối',
         bgColor: 'bg-red-100',
         textColor: 'text-red-600',
         icon: <XCircle className='w-3 h-3' />
+      },
+      Rejected: {
+        text: 'Bị từ chối',
+        bgColor: 'bg-gray-100',
+        textColor: 'text-gray-600',
+        icon: <XCircle className='w-3 h-3' />
+      },
+      Confirmed: {
+        text: 'Nhân viên đang xử lý',
+        bgColor: 'bg-indigo-100',
+        textColor: 'text-indigo-600',
+        icon: <AlertCircle className='w-3 h-3' />
+      },
+      Cancel: {
+        text: 'Đã hủy',
+        bgColor: 'bg-slate-100',
+        textColor: 'text-slate-600',
+        icon: <XCircle className='w-3 h-3' />
       }
     }
-    return configs[status] || configs.Processing
+    return configs[status] || configs.Pending
   }
+
+  const normalizeDateValue = (input?: string | number | Date | null) => {
+    if (input === null || input === undefined) return undefined
+    if (input instanceof Date) return isNaN(input.getTime()) ? undefined : input
+
+    const raw = typeof input === 'string' ? input.trim() : input
+    if (raw === '' || raw === 'null' || raw === 'undefined' || raw === '0' || raw === 0) return undefined
+
+    if (typeof raw === 'number' || /^[0-9]+$/.test(String(raw))) {
+      const num = Number(raw)
+      const ms = num < 1e12 ? num * 1000 : num
+      const date = new Date(ms)
+      return isNaN(date.getTime()) ? undefined : date
+    }
+
+    const match = String(raw).match(/(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})/)
+    if (match) {
+      const [, hh, mm, ss, dd, MM, yyyy] = match
+      const date = new Date(Number(yyyy), Number(MM) - 1, Number(dd), Number(hh), Number(mm), Number(ss))
+      return isNaN(date.getTime()) ? undefined : date
+    }
+
+    const parsed = new Date(String(raw))
+    return isNaN(parsed.getTime()) ? undefined : parsed
+  }
+
+  const startTimestamp = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : undefined
+  const endTimestamp = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : undefined
 
   const filteredForms = forms.filter((form) => {
     const matchesSearch =
@@ -178,8 +287,13 @@ function ReportManagement() {
 
     const matchesType = typeFilter === 'all' || form.type === typeFilter
     const matchesStatus = statusFilter === 'all' || form.status === statusFilter
+    const normalizedCreatedAt = normalizeDateValue(form.createdAt)
+    const formCreatedAt = normalizedCreatedAt?.getTime()
+    const matchesDateRange =
+      (!startTimestamp || (formCreatedAt && formCreatedAt >= startTimestamp)) &&
+      (!endTimestamp || (formCreatedAt && formCreatedAt <= endTimestamp))
 
-    return matchesSearch && matchesType && matchesStatus
+    return matchesSearch && matchesType && matchesStatus && matchesDateRange
   })
 
   const totalPages = Math.ceil(filteredForms.length / pageSize)
@@ -251,7 +365,7 @@ function ReportManagement() {
                 <div className='relative'>
                   <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400' />
                   <Input
-                    placeholder='Mã báo cáo hoặc tên khách hàng...'
+                    placeholder='Tiêu đề hoặc nội dung...'
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     className='pl-10 h-10'
@@ -259,9 +373,9 @@ function ReportManagement() {
                 </div>
               </div>
               <div className='w-56'>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>Loại khiếu nại</label>
+                <label className='block text-sm font-medium text-gray-700 mb-2 '>Loại khiếu nại</label>
                 <Select value={typeFilter} onValueChange={(value: string) => setTypeFilter(value)}>
-                  <SelectTrigger className='h-10'>
+                  <SelectTrigger className='h-10 w-[200px]'>
                     <SelectValue placeholder='Tất cả' />
                   </SelectTrigger>
                   <SelectContent>
@@ -269,6 +383,7 @@ function ReportManagement() {
                     <SelectItem value='ComplaintContent'>Khiếu nại nội dung</SelectItem>
                     <SelectItem value='ReportSeller'>Báo cáo người bán</SelectItem>
                     <SelectItem value='SupportRefundMoney'>Hỗ trợ hoàn tiền</SelectItem>
+                    <SelectItem value='ComplaintOrder'>Khiếu nại đơn hàng</SelectItem>
                     <SelectItem value='SupportAccount'>Hỗ trợ tài khoản</SelectItem>
                     <SelectItem value='SupportPayment'>Hỗ trợ thanh toán</SelectItem>
                     <SelectItem value='SupportTechnical'>Hỗ trợ kỹ thuật</SelectItem>
@@ -283,16 +398,20 @@ function ReportManagement() {
               <div className='w-56'>
                 <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái</label>
                 <Select value={statusFilter} onValueChange={(value: string) => setStatusFilter(value)}>
-                  <SelectTrigger className='h-10'>
+                  <SelectTrigger className='h-10 w-[200px]'>
                     <SelectValue placeholder='Tất cả' />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='all'>Tất cả</SelectItem>
-                    <SelectItem value='Processing'>Đang xử lý</SelectItem>
-                    <SelectItem value='ApprovedByStaff'>Đã duyệt (Staff)</SelectItem>
-                    <SelectItem value='DeniedByStaff'>Từ chối (Staff)</SelectItem>
-                    <SelectItem value='Confirmed'>Đã xác nhận</SelectItem>
-                    <SelectItem value='Rejected'>Đã từ chối</SelectItem>
+                    <SelectItem value='Pending'>Chờ phân công</SelectItem>
+                    <SelectItem value='Processing'>Chờ xử lý</SelectItem>
+                    <SelectItem value='ApprovedByStaff'>Chấp nhận bởi nhân viên</SelectItem>
+                    <SelectItem value='DeniedByStaff'>Từ chối bởi nhân viên</SelectItem>
+                    <SelectItem value='ApprovedByAdmin'>Đã duyệt</SelectItem>
+                    <SelectItem value='DeniedByAdmin'>Từ chối</SelectItem>
+                    <SelectItem value='Rejected'>Bị từ chối</SelectItem>
+                    <SelectItem value='Confirmed'>Nhân viên đang xử lý</SelectItem>
+                    <SelectItem value='Cancel'>Đã hủy</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -318,7 +437,8 @@ function ReportManagement() {
                       <CalendarComponent
                         mode='single'
                         selected={startDate}
-                        onSelect={setStartDate}
+                        onSelect={handleStartDateChange}
+                        disabled={(date) => isFutureDate(date)}
                         initialFocus
                         showOutsideDays={false}
                       />
@@ -342,7 +462,8 @@ function ReportManagement() {
                       <CalendarComponent
                         mode='single'
                         selected={endDate}
-                        onSelect={setEndDate}
+                        onSelect={handleEndDateChange}
+                        disabled={(date) => isFutureDate(date)}
                         initialFocus
                         showOutsideDays={false}
                       />
@@ -353,13 +474,6 @@ function ReportManagement() {
 
               {/* Action buttons */}
               <div className='flex items-end gap-2'>
-                <Button
-                  onClick={() => { }}
-                  className='bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 rounded-lg shadow-sm'
-                >
-                  <Filter className='w-4 h-4 mr-2' />
-                  Lọc
-                </Button>
                 <Button
                   variant='outline'
                   onClick={handleReset}
@@ -379,14 +493,7 @@ function ReportManagement() {
         <CardHeader className='flex flex-row items-center justify-between p-6 border-b border-gray-200'>
           <div>
             <CardTitle className='text-lg font-semibold text-gray-900'>Danh sách khiếu nại</CardTitle>
-            <p className='text-sm text-gray-600 mt-1'>
-              Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredForms.length)} của {filteredForms.length} khiếu nại
-            </p>
           </div>
-          <Button onClick={handleExport} className='bg-green-600 hover:bg-green-700 text-white'>
-            <Download className='w-4 h-4 mr-2' />
-            Xuất Excel
-          </Button>
         </CardHeader>
         <CardContent className='p-0'>
           <div className='overflow-x-auto'>
@@ -405,13 +512,12 @@ function ReportManagement() {
                   currentForms.map((form) => {
                     const typeConfig = getTypeConfig(form.type)
                     const statusConfig = getStatusConfig(form.status)
-
                     return (
                       <tr key={form.id} className='border-b border-gray-100 hover:bg-gray-50'>
                         <td className='px-6 py-3'>
-                          <div>
-                            <p className='font-medium text-gray-900 text-sm'>{form.subject}</p>
-                            <p className='text-xs text-gray-600 mt-1 line-clamp-2'>{form.description}</p>
+                          <div className='max-w-[250px]'>
+                            <p className='font-medium text-gray-900 text-sm line-clamp-1'>{form.subject}</p>
+                            <p className='text-xs text-gray-600 mt-1 line-clamp-1'>{form.description}</p>
                           </div>
                         </td>
                         <td className='px-6 py-3'>
@@ -431,12 +537,13 @@ function ReportManagement() {
                           </div>
                         </td>
                         <td className='px-6 py-3'>
-                          <span className='text-sm text-gray-700'>{form.createdAt}</span>
+                          <span className='text-sm text-gray-700'>{formatDate(form.createdAt || 'null')}</span>
                         </td>
                         <td className='px-6 py-3'>
                           <Button
                             variant='ghost'
                             size='sm'
+                            title='Xem chi tiết'
                             onClick={() => handleView(form)}
                             className='h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full'
                           >
