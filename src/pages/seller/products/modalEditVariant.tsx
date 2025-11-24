@@ -940,7 +940,7 @@ export default function ModalEditVariant({
                   className='w-4 h-4 rounded border-gray-300'
                 />
                 <Label htmlFor='edit-is-active' className='text-sm font-medium'>
-                  Kích hoạt variant
+                  Kích hoạt biến thể
                 </Label>
               </div>
             </div>
@@ -958,7 +958,7 @@ export default function ModalEditVariant({
                 Đang cập nhật...
               </>
             ) : (
-              'Cập nhật Variant'
+              'Cập nhật biến thể'
             )}
           </Button>
         </DialogFooter>

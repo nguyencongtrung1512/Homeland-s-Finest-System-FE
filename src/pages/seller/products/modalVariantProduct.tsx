@@ -367,7 +367,7 @@ export default function ModalVariantProduct({
     // So sánh không phân biệt hoa thường
     if (attributeType.trim().toLowerCase() === parentAttributeType.trim().toLowerCase()) {
       setAttributeTypeError(
-        `Loại thuộc tính không được trùng với loại thuộc tính của variant cha (${parentAttributeType})`
+        `Loại thuộc tính không được trùng với loại thuộc tính của biến thể cha (${parentAttributeType})`
       )
       return false
     }
@@ -425,7 +425,7 @@ export default function ModalVariantProduct({
 
       // Validate attributeType không trùng với variant cha
       if (selectedParentVariant && !validateAttributeType(variantData.attributeType)) {
-        toast.error(attributeTypeError || 'Loại thuộc tính không được trùng với loại thuộc tính của variant cha')
+        toast.error(attributeTypeError || 'Loại thuộc tính không được trùng với loại thuộc tính của biến thể cha')
         return
       }
 
@@ -506,17 +506,17 @@ export default function ModalVariantProduct({
       const response = await productVariantApi.create(formData)
 
       if (response) {
-        toast.success('Tạo product variant thành công!')
+        toast.success('Tạo biến thể thành công!')
         onSuccess()
         onOpenChange(false)
       } else {
-        toast.error('Không thể tạo product variant')
+        toast.error('Không thể tạo biến thể sản phẩm.')
       }
     } catch (error: unknown) {
       console.error('Error creating product variant:', error)
 
       // Extract error message from backend response
-      let errorMessage = 'Có lỗi xảy ra khi tạo product variant'
+      let errorMessage = 'Có lỗi xảy ra khi tạo biến thể sản phẩm.'
 
       if (error && typeof error === 'object') {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -592,7 +592,7 @@ export default function ModalVariantProduct({
     <Dialog open={open} onOpenChange={handleDialogClose}>
       <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
-          <DialogTitle>Tạo Product Variant</DialogTitle>
+          <DialogTitle>Tạo biến thể sản phẩm</DialogTitle>
         </DialogHeader>
 
         <div className='space-y-6 mt-4'>
@@ -629,7 +629,7 @@ export default function ModalVariantProduct({
                 {attributeTypeError && <p className='mt-1 text-sm text-red-500'>{attributeTypeError}</p>}
                 {selectedParentVariant && (
                   <p className='mt-1 text-xs text-gray-500'>
-                    Loại thuộc tính của variant cha:{' '}
+                    Loại thuộc tính của biến thể cha:{' '}
                     <span className='font-medium'>{getParentVariantAttributeType()}</span>
                   </p>
                 )}
@@ -669,7 +669,7 @@ export default function ModalVariantProduct({
                 {attributeTypeError && <p className='mt-1 text-sm text-red-500'>{attributeTypeError}</p>}
                 {selectedParentVariant && (
                   <p className='mt-1 text-xs text-gray-500'>
-                    Loại thuộc tính của variant cha:{' '}
+                    Loại thuộc tính của biến thể cha:{' '}
                     <span className='font-medium'>{getParentVariantAttributeType()}</span>
                   </p>
                 )}
@@ -898,7 +898,7 @@ export default function ModalVariantProduct({
           {/* Variant Images */}
           <div>
             <div className='flex items-center justify-between mb-1'>
-              <Label className='text-sm font-medium'>Hình ảnh variant</Label>
+              <Label className='text-sm font-medium'>Hình ảnh biến thể sản phẩm</Label>
               <span className={`text-xs ${variantImages.length > MAX_IMAGES ? 'text-red-500' : 'text-gray-500'}`}>
                 {variantImages.length} / {MAX_IMAGES} ảnh
               </span>
@@ -993,7 +993,7 @@ export default function ModalVariantProduct({
                 Đang tạo...
               </>
             ) : (
-              'Tạo Product Variant'
+              'Tạo biến thể sản phẩm'
             )}
           </Button>
         </DialogFooter>

@@ -43,11 +43,10 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
   const [imagesError, setImagesError] = useState<string>('')
 
   // Constants for validation
-  const MAX_NAME_LENGTH = 20
-  const MAX_MATERIAL_LENGTH = 20
+  const MAX_NAME_WORDS = 20
+  const MAX_MATERIAL_WORDS = 10
   const MAX_DESCRIPTION_WORDS = 500
   const MAX_IMAGES = 10
-  const MIN_NAME_LENGTH = 1
 
   // Helper function to count words
   const countWords = (text: string): number => {
@@ -155,8 +154,9 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
     if (field === 'name') {
       setNameError('')
       const stringValue = value as string
-      if (stringValue.length > MAX_NAME_LENGTH) {
-        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự.`)
+      const wordCount = countWords(stringValue)
+      if (wordCount > MAX_NAME_WORDS) {
+        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_WORDS} từ.`)
         return
       }
     }
@@ -164,8 +164,9 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
     if (field === 'material') {
       setMaterialError('')
       const stringValue = value as string
-      if (stringValue.length > MAX_MATERIAL_LENGTH) {
-        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự.`)
+      const wordCount = countWords(stringValue)
+      if (wordCount > MAX_MATERIAL_WORDS) {
+        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_WORDS} từ.`)
         return
       }
     }
@@ -209,15 +210,16 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
         return
       }
 
-      if (productData.name.trim().length < MIN_NAME_LENGTH) {
-        toast.error('Tên sản phẩm phải có ít nhất 1 ký tự')
-        setNameError('Tên sản phẩm phải có ít nhất 1 ký tự')
+      const nameWordCount = countWords(productData.name)
+      if (nameWordCount === 0) {
+        toast.error('Tên sản phẩm phải có ít nhất 1 từ')
+        setNameError('Tên sản phẩm phải có ít nhất 1 từ')
         return
       }
 
-      if (productData.name.trim().length > MAX_NAME_LENGTH) {
-        toast.error(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự`)
-        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_LENGTH} ký tự`)
+      if (nameWordCount > MAX_NAME_WORDS) {
+        toast.error(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_WORDS} từ`)
+        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_WORDS} từ`)
         return
       }
 
@@ -242,9 +244,10 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
         return
       }
 
-      if (productData.material.trim().length > MAX_MATERIAL_LENGTH) {
-        toast.error(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
-        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_LENGTH} ký tự`)
+      const materialWordCount = countWords(productData.material)
+      if (materialWordCount > MAX_MATERIAL_WORDS) {
+        toast.error(`Material chỉ được tối đa ${MAX_MATERIAL_WORDS} từ`)
+        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_WORDS} từ`)
         return
       }
 
@@ -424,9 +427,9 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
                   Tên sản phẩm <span className='text-red-500'>*</span>
                 </Label>
                 <span
-                  className={`text-xs ${productData.name.length > MAX_NAME_LENGTH ? 'text-red-500' : 'text-gray-500'}`}
+                  className={`text-xs ${countWords(productData.name) > MAX_NAME_WORDS ? 'text-red-500' : 'text-gray-500'}`}
                 >
-                  {productData.name.length} / {MAX_NAME_LENGTH} ký tự
+                  {countWords(productData.name)} / {MAX_NAME_WORDS} từ
                 </span>
               </div>
               <Input
@@ -446,9 +449,9 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
                   Xuất xứ (Material) <span className='text-red-500'>*</span>
                 </Label>
                 <span
-                  className={`text-xs ${productData.material.length > MAX_MATERIAL_LENGTH ? 'text-red-500' : 'text-gray-500'}`}
+                  className={`text-xs ${countWords(productData.material) > MAX_MATERIAL_WORDS ? 'text-red-500' : 'text-gray-500'}`}
                 >
-                  {productData.material.length} / {MAX_MATERIAL_LENGTH} ký tự
+                  {countWords(productData.material)} / {MAX_MATERIAL_WORDS} từ
                 </span>
               </div>
               <Input
