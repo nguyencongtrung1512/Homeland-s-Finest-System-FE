@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '../../../../../components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../../../../components/ui/dialog'
 import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
 import ReviewModal, { type ReviewProduct } from './ReviewModal'
@@ -21,14 +22,28 @@ import ViewComplaintModal from '../form/ViewComplaintModal'
 import { confirmOrderReceived, getOrderDetail, refundOrder } from '../../../../../apis/order.api'
 import { purchaseOrder } from '../../../../../apis/transaction.api'
 import { formApi } from '../../../../../apis/form.api'
+import { getRequestWalletMoney } from '../../../../../apis/requestWalletMoney.api'
 import { path } from '../../../../../constants/path'
 import type { Order as APIOrder, OrderStatus } from '../../../../../types/orderType'
+import type { RequestWalletMoney } from '../../../../../types/requestWalletMoneyType'
 import { toast } from '../../../../../utils/toast'
 import { useAuth } from '../../../../../contexts/auth.context'
 import { useChat } from '../../../../../contexts/chat.context'
 import type { CreateFormRequest, FormType } from '../../../../../types/form.type'
 
 const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+
+const formatPrice = (price?: number) => {
+  if (typeof price !== 'number' || isNaN(price)) {
+    return '0đ'
+  }
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND'
+  })
+    .format(price)
+    .replace('₫', 'đ')
+}
 
 interface Order {
   id: string
@@ -37,14 +52,14 @@ interface Order {
   date: string
   originalStatus: OrderStatus
   status:
-    | 'Chưa xác nhận'
-    | 'Chờ xác nhận'
-    | 'Chờ thanh toán'
-    | 'Đã xác nhận'
-    | 'Vận chuyển'
-    | 'Hoàn thành'
-    | 'Trả hàng/Hoàn tiền'
-    | 'Đã hủy'
+  | 'Chưa xác nhận'
+  | 'Chờ xác nhận'
+  | 'Chờ thanh toán'
+  | 'Đã xác nhận'
+  | 'Vận chuyển'
+  | 'Hoàn thành'
+  | 'Trả hàng/Hoàn tiền'
+  | 'Đã hủy'
   statusColor: string
   statusBgColor: string
   statusText: string
@@ -78,6 +93,7 @@ interface Order {
   autoConfirmDays?: number // Số ngày tự động xác nhận nhận hàng
   canConfirmReceived?: boolean // Có thể click "Đã nhận được hàng"
   canComplain?: boolean // Có thể khiếu nại (ẩn nếu đã Complaining/Complained)
+  isRefunded?: boolean // Đã yêu cầu hoàn tiền
   // Detail modal data
   shippingInfo?: {
     recipientName: string
@@ -322,18 +338,6 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     }))
   ]
 
-  const formatPrice = (price?: number) => {
-    if (typeof price !== 'number' || isNaN(price)) {
-      return '0đ'
-    }
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
-    })
-      .format(price)
-      .replace('₫', 'đ')
-  }
-
   const orderHistories = apiOrder?.orderHistories || []
 
   const statusVal: OrderStatus = apiOrder?.status || 'NotYet'
@@ -350,6 +354,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     date: apiOrder?.createdAt,
     originalStatus: statusVal,
     isComplained: isComplainedValue,
+    isRefunded: apiOrder?.isRefunded || false,
     ...statusInfo,
     isFreeship: apiOrder?.isFreeship || false,
     products,
@@ -404,6 +409,9 @@ export default function OrdersContent({
   const [loadingReviewOrderId, setLoadingReviewOrderId] = useState<string>('')
   const [showRefundConfirmDialog, setShowRefundConfirmDialog] = useState(false)
   const [refundingOrderId, setRefundingOrderId] = useState<string>('')
+  const [showRefundInfoModal, setShowRefundInfoModal] = useState(false)
+  const [refundInfo, setRefundInfo] = useState<RequestWalletMoney | null>(null)
+  const [loadingRefundInfo, setLoadingRefundInfo] = useState(false)
   const ordersPerPage = 3
 
   const extractReviewProducts = (orderDetail?: APIOrder | null): ReviewProduct[] => {
@@ -414,7 +422,8 @@ export default function OrdersContent({
       productId: item?.productId || item?.productVariantId || '',
       name: item?.orderItemName || 'Sản phẩm không xác định',
       image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
-      isCombo: false
+      isCombo: false,
+      isReviewed: item?.isReviewed || false
     }))
 
     const comboItems: ReviewProduct[] = (orderDetail.orderItemsWithCombo || []).map((item, index) => {
@@ -431,7 +440,8 @@ export default function OrdersContent({
         comboId: item?.comboId || undefined,
         comboItemId: item?.comboItemId || undefined,
         comboName: item?.comboName || 'Combo',
-        comboGroupKey
+        comboGroupKey,
+        isReviewed: item?.isReviewed || false
       }
     })
 
@@ -717,6 +727,50 @@ export default function OrdersContent({
     }
   }
 
+  const handleOpenRefundInfoModal = async (orderId: string) => {
+    try {
+      setLoadingRefundInfo(true)
+      setSelectedOrderId(orderId)
+      const response = await getRequestWalletMoney({
+        orderId,
+        type: 'Refund',
+        pageSize: 1,
+        pageNumber: 0
+      })
+
+      if (response.data && response.data.length > 0) {
+        setRefundInfo(response.data[0])
+        setShowRefundInfoModal(true)
+      } else {
+        toast.error('Không tìm thấy thông tin hoàn tiền cho đơn hàng này')
+      }
+    } catch (error) {
+      console.error('Error fetching refund info:', error)
+      toast.error('Không thể tải thông tin hoàn tiền. Vui lòng thử lại.')
+    } finally {
+      setLoadingRefundInfo(false)
+    }
+  }
+
+  const handleCloseRefundInfoModal = () => {
+    setShowRefundInfoModal(false)
+    setRefundInfo(null)
+    setSelectedOrderId('')
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Pending':
+        return { text: 'Đang chờ xử lý', className: 'bg-yellow-100 text-yellow-800' }
+      case 'Completed':
+        return { text: 'Đã hoàn thành', className: 'bg-green-100 text-green-800' }
+      case 'Cancel':
+        return { text: 'Đã hủy', className: 'bg-red-100 text-red-800' }
+      default:
+        return { text: status, className: 'bg-gray-100 text-gray-800' }
+    }
+  }
+
   const handleBuyAgain = (order: Order) => {
     const firstProduct = order.products[0]
 
@@ -764,9 +818,8 @@ export default function OrdersContent({
           <button
             key={filter.key}
             onClick={() => handleFilterChange(filter.key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-              selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-            }`}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
             {filter.label}
           </button>
@@ -791,9 +844,7 @@ export default function OrdersContent({
                   <p className='text-sm text-gray-600'>{order.date}</p>
                   <p className={`text-sm ${order.statusColor} mt-1`}>
                     {order.statusText}
-                    {order.isComplained && (
-                      <span className='ml-1 text-xs text-red-600 font-medium'>(Đơn đã khiếu nại)</span>
-                    )}
+
                   </p>
                 </div>
                 <div>
@@ -844,15 +895,15 @@ export default function OrdersContent({
                 {(order.originalStatus === 'NotYet' ||
                   order.originalStatus === 'Processing' ||
                   order.originalStatus === 'PendingPayment') && (
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handleOpenCancelModal(order.id)}
-                    className='text-red-600 border-red-600 hover:bg-red-50'
-                  >
-                    Hủy đơn hàng
-                  </Button>
-                )}
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleOpenCancelModal(order.id)}
+                      className='text-red-600 border-red-600 hover:bg-red-50'
+                    >
+                      Hủy đơn hàng
+                    </Button>
+                  )}
                 {order.canConfirmReceived && (
                   <Button
                     size='sm'
@@ -930,10 +981,10 @@ export default function OrdersContent({
                       Xem khiếu nại
                     </Button>
                   )}
-                {order.originalStatus === 'Returned' ||
+                {(order.originalStatus === 'Lost' ||
                   order.originalStatus === 'Exception' ||
                   order.originalStatus === 'Damaged' ||
-                  (order.originalStatus === 'Lost' && (
+                  order.originalStatus === 'Returned') && (
                     <Button
                       variant='outline'
                       size='sm'
@@ -950,21 +1001,39 @@ export default function OrdersContent({
                         'Yêu cầu hoàn tiền'
                       )}
                     </Button>
-                  ))}
+                  )}
+                {order.isRefunded && (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleOpenRefundInfoModal(order.id)}
+                    disabled={loadingRefundInfo && selectedOrderId === order.id}
+                    className='text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50'
+                  >
+                    {loadingRefundInfo && selectedOrderId === order.id ? (
+                      <>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2'></div>
+                        Đang tải...
+                      </>
+                    ) : (
+                      'Xem thông tin hoàn tiền'
+                    )}
+                  </Button>
+                )}
                 {(order.originalStatus === 'Cancel' ||
                   order.originalStatus === 'Refunding' ||
                   order.originalStatus === 'Delivered' ||
                   order.originalStatus === 'Paid' ||
                   order.originalStatus === 'Returned') && (
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handleBuyAgain(order)}
-                    className='text-blue-600 border-blue-600 hover:bg-blue-50'
-                  >
-                    Mua lại
-                  </Button>
-                )}
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleBuyAgain(order)}
+                      className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                    >
+                      Mua lại
+                    </Button>
+                  )}
               </div>
             </div>
           ))
@@ -1008,11 +1077,10 @@ export default function OrdersContent({
               <button
                 key={page}
                 onClick={() => goToPage(page)}
-                className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${
-                  currentPage === page
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${currentPage === page
+                  ? 'bg-green-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 {page}
               </button>
@@ -1096,6 +1164,88 @@ export default function OrdersContent({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Refund Info Modal */}
+      <Dialog open={showRefundInfoModal} onOpenChange={setShowRefundInfoModal}>
+        <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2'>
+              <span>Thông tin hoàn tiền</span>
+            </DialogTitle>
+          </DialogHeader>
+          {refundInfo && (
+            <div className='space-y-4 mt-4'>
+              {/* Status Badge */}
+              <div className='flex items-center gap-2'>
+                <span className='text-sm font-medium text-gray-700'>Trạng thái:</span>
+                <Badge className={getStatusBadge(refundInfo.status).className}>
+                  {getStatusBadge(refundInfo.status).text}
+                </Badge>
+              </div>
+
+              {/* Amount */}
+              <div className='p-4 bg-gray-50 rounded-lg'>
+                <div className='text-sm text-gray-600 mb-1'>Số tiền hoàn lại</div>
+                <div className='text-2xl font-bold text-green-600'>
+                  {formatPrice(refundInfo.amount)}
+                </div>
+              </div>
+
+              {/* Bank Information */}
+              <div className='grid grid-cols-2 gap-4'>
+                <div>
+                  <div className='text-sm text-gray-600 mb-1'>Ngân hàng</div>
+                  <div className='text-sm font-medium text-gray-900'>{refundInfo.bankName || '-'}</div>
+                </div>
+                <div>
+                  <div className='text-sm text-gray-600 mb-1'>Số tài khoản</div>
+                  <div className='text-sm font-medium text-gray-900'>{refundInfo.bankAccount || '-'}</div>
+                </div>
+                <div className='col-span-2'>
+                  <div className='text-sm text-gray-600 mb-1'>Tên chủ tài khoản</div>
+                  <div className='text-sm font-medium text-gray-900'>{refundInfo.accountHolderName || '-'}</div>
+                </div>
+              </div>
+
+              {/* Process Information */}
+              {refundInfo.processedBy && (
+                <div className='p-4 bg-blue-50 rounded-lg'>
+                  <div className='text-sm font-medium text-gray-900 mb-2'>Thông tin xử lý</div>
+                  <div className='text-sm text-gray-700'>
+                    <div>Người xử lý: {refundInfo.processedBy}</div>
+                    {refundInfo.processedAt && <div>Thời gian: {refundInfo.processedAt}</div>}
+                  </div>
+                </div>
+              )}
+
+              {/* Process Note */}
+              {refundInfo.processNote && (
+                <div>
+                  <div className='text-sm text-gray-600 mb-1'>Ghi chú xử lý</div>
+                  <div className='p-3 bg-gray-50 rounded-lg text-sm text-gray-900'>{refundInfo.processNote}</div>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className='grid grid-cols-2 gap-4 pt-4 border-t'>
+                <div>
+                  <div className='text-sm text-gray-600 mb-1'>Ngày tạo yêu cầu</div>
+                  <div className='text-sm text-gray-900'>{refundInfo.createdAt || '-'}</div>
+                </div>
+                <div>
+                  <div className='text-sm text-gray-600 mb-1'>Cập nhật lần cuối</div>
+                  <div className='text-sm text-gray-900'>{refundInfo.updatedAt || '-'}</div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant='outline' onClick={handleCloseRefundInfoModal}>
+              Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

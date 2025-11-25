@@ -44,23 +44,29 @@ function ReportDetail() {
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [staffReply, setStaffReply] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState<'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected'>(
+  const [selectedStatus, setSelectedStatus] = useState<'ApprovedByStaff' | 'DeniedByStaff' | 'WaitingSellerResponse' | 'Rejected'>(
     'ApprovedByStaff'
   )
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [previewIndex, setPreviewIndex] = useState(0)
+  const [isSellerPreviewOpen, setIsSellerPreviewOpen] = useState(false)
+  const [sellerPreviewIndex, setSellerPreviewIndex] = useState(0)
   const rawImages = form?.imageUrl
   const attachmentImages = Array.isArray(rawImages)
     ? rawImages.map((img) => resolveImageUrl(img)).filter((url): url is string => Boolean(url))
+    : []
+  const rawSellerImages = form?.sellerImages
+  const sellerImages = Array.isArray(rawSellerImages)
+    ? rawSellerImages.map((img) => resolveImageUrl(img)).filter((url): url is string => Boolean(url))
     : []
 
   // Set default status based on current form status
   useEffect(() => {
     if (form) {
       if (form.status === 'Processing') {
-        setSelectedStatus('Confirmed') // Default to confirm for initial processing
-      } else if (form.status === 'Confirmed' || form.status === 'Rejected') {
-        setSelectedStatus('ApprovedByStaff') // Default to approve for confirmed/rejected
+        setSelectedStatus('WaitingSellerResponse') // Default to waiting seller response for initial processing
+      } else if (form.status === 'WaitingSellerResponse' || form.status === 'Rejected') {
+        setSelectedStatus('ApprovedByStaff') // Default to approve for waiting seller response/rejected
       }
     }
   }, [form])
@@ -147,7 +153,7 @@ function ReportDetail() {
         return {
           icon: <CheckCircle className='w-5 h-5 text-green-500' />,
           badge: 'default',
-          text: 'Đã duyệt (Staff)',
+          text: 'Đã xử lý khiếu nại',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -155,7 +161,7 @@ function ReportDetail() {
         return {
           icon: <XCircle className='w-5 h-5 text-red-500' />,
           badge: 'destructive',
-          text: 'Từ chối (Staff)',
+          text: 'Từ chối khiếu nại',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -163,7 +169,7 @@ function ReportDetail() {
         return {
           icon: <CheckCircle className='w-5 h-5 text-green-500' />,
           badge: 'default',
-          text: 'Đã duyệt (Admin)',
+          text: 'Đã duyệt khiếu nại',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -171,7 +177,7 @@ function ReportDetail() {
         return {
           icon: <XCircle className='w-5 h-5 text-red-500' />,
           badge: 'destructive',
-          text: 'Từ chối (Admin)',
+          text: 'Từ chối khiếu nại',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -183,19 +189,19 @@ function ReportDetail() {
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
-      case 'Confirmed':
+      case 'WaitingSellerResponse':
         return {
-          icon: <CheckCircle className='w-5 h-5 text-green-500' />,
+          icon: <Clock className='w-5 h-5 text-orange-500' />,
           badge: 'default',
-          text: 'Đã chấp nhận',
-          color: 'text-green-700',
-          bgColor: 'bg-green-50'
+          text: 'Chờ phản hồi từ người bán',
+          color: 'text-orange-700',
+          bgColor: 'bg-orange-50'
         }
       case 'Cancel':
         return {
           icon: <XCircle className='w-5 h-5 text-gray-500' />,
           badge: 'outline',
-          text: 'Đã hủy',
+          text: 'Khách hàng hủy khiếu nại',
           color: 'text-gray-700',
           bgColor: 'bg-gray-50'
         }
@@ -311,9 +317,9 @@ function ReportDetail() {
         {/* Left Column */}
         <div className='space-y-6'>
           {/* Customer Information */}
-          <Card className='bg-white shadow-sm gap-3'>
-            <CardHeader className='pt-4 pb-2'>
-              <CardTitle className='flex items-center gap-2 text-lg'>
+          <Card className='bg-white shadow-sm gap-3 border-gray-200'>
+            <CardHeader className='pt-4 pb-2 bg-gray-50/50'>
+              <CardTitle className='flex items-center gap-2 text-lg text-gray-700'>
                 Thông tin khách hàng
               </CardTitle>
             </CardHeader>
@@ -353,9 +359,9 @@ function ReportDetail() {
 
           {/* Store Information */}
           {form.storeId && (
-            <Card className='bg-white shadow-sm gap-3'>
-              <CardHeader className='pt-4 pb-2'>
-                <CardTitle className='flex items-center gap-2 text-lg'>
+            <Card className='bg-white shadow-sm gap-3 border-gray-200'>
+              <CardHeader className='pt-4 pb-2 bg-gray-50/50'>
+                <CardTitle className='flex items-center gap-2 text-lg text-gray-700'>
                   <Store className='w-5 h-5 text-green-600' />
                   Thông tin cửa hàng
                 </CardTitle>
@@ -416,30 +422,32 @@ function ReportDetail() {
           )}
 
           {/* Form Content */}
-          <Card className='bg-white shadow-sm gap-3'>
-            <CardHeader className='pt-4 pb-2'>
-              <div className='flex items-center gap-3 mb-2'>
+          <Card className='bg-white shadow-sm gap-3 border-gray-200'>
+            <CardHeader className='pt-4 pb-2 bg-gray-50/50'>
+              <div className='flex items-center gap-3 mb-3'>
                 <Badge
                   variant={statusInfo.badge as 'default' | 'secondary' | 'destructive' | 'outline'}
-                  className={`${statusInfo.bgColor} ${statusInfo.color} border-0`}
+                  className={`${statusInfo.bgColor} ${statusInfo.color} border-0 px-3 py-1`}
                 >
-                  <div className='flex items-center gap-1'>
+                  <div className='flex items-center gap-1.5'>
                     {statusInfo.icon}
-                    {statusInfo.text}
+                    <span className='font-medium'>{statusInfo.text}</span>
                   </div>
                 </Badge>
-                <Badge variant='outline' className='text-xs'>
+                <Badge variant='outline' className='text-xs px-2.5 py-1 border-gray-300'>
                   {getTypeText(form.type)}
                 </Badge>
               </div>
-              <CardTitle className='text-xl'>{form.subject}</CardTitle>
+              <CardTitle className='text-xl text-gray-900 font-bold'>{form.subject}</CardTitle>
             </CardHeader>
-            <CardContent className='space-y-4 pt-0 pb-4'>
+            <CardContent className='space-y-4 pt-4 pb-4'>
               {/* Description */}
               <div>
                 <Label className='text-sm font-medium text-gray-700 mb-2 block'>Mô tả chi tiết</Label>
-                <div className='bg-gray-50 border border-gray-200 rounded-lg p-3'>
-                  <p className='text-gray-700 text-sm leading-relaxed'>{form.description}</p>
+                <div className='bg-gray-50 border border-gray-200 rounded-lg p-4'>
+                  <p className='text-gray-800 text-sm leading-relaxed whitespace-pre-wrap break-words'>
+                    {form.description}
+                  </p>
                 </div>
               </div>
 
@@ -447,7 +455,7 @@ function ReportDetail() {
               {attachmentImages.length > 0 && (
                 <div>
                   <Label className='text-sm font-medium text-gray-700 mb-2 block flex items-center gap-2'>
-                    <ImageIcon className='w-4 h-4' />
+                    <ImageIcon className='w-4 h-4 text-gray-600' />
                     Hình ảnh đính kèm ({attachmentImages.length})
                   </Label>
                   <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
@@ -463,7 +471,7 @@ function ReportDetail() {
                         <img
                           src={imageUrl}
                           alt={`Attachment ${index + 1}`}
-                          className='w-full h-32 object-cover rounded-lg border hover:opacity-90 transition-opacity'
+                          className='w-full h-32 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-all duration-200 shadow-sm hover:shadow-md'
                           onError={(e) => {
                             const target = e.target as HTMLImageElement
                             if (target.dataset.fallbackApplied) return
@@ -483,15 +491,17 @@ function ReportDetail() {
               )}
 
               {/* Timestamps */}
-              <div className='flex items-center gap-6 text-sm text-gray-500 pt-4 border-t'>
+              <div className='flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm text-gray-500 pt-4 border-t border-gray-200'>
                 <div className='flex items-center gap-2'>
-                  <Calendar className='w-4 h-4' />
-                  Tạo: {form.createdAt}
+                  <Calendar className='w-4 h-4 text-gray-400' />
+                  <span className='font-medium'>Tạo:</span>
+                  <span>{form.createdAt}</span>
                 </div>
                 {form.updatedAt !== form.createdAt && (
                   <div className='flex items-center gap-2'>
-                    <Clock className='w-4 h-4' />
-                    Cập nhật: {form.updatedAt}
+                    <Clock className='w-4 h-4 text-gray-400' />
+                    <span className='font-medium'>Cập nhật:</span>
+                    <span>{form.updatedAt}</span>
                   </div>
                 )}
               </div>
@@ -509,61 +519,160 @@ function ReportDetail() {
                 Thông tin chi tiết
               </CardTitle>
             </CardHeader>
-            <CardContent className='space-y-3 pt-0 pb-4'>
-              <div>
-                <Label className='text-sm font-medium text-gray-500'>Loại</Label>
-                <p className='text-sm text-gray-900'>{getTypeText(form.type)}</p>
+            <CardContent className='space-y-4 pt-0 pb-4'>
+              <div className='pb-3 border-b border-gray-100'>
+                <Label className='text-sm font-medium text-gray-500 mb-1 block'>Loại</Label>
+                <p className='text-sm text-gray-900 font-medium mt-1'>{getTypeText(form.type)}</p>
               </div>
-              <div>
-                <Label className='text-sm font-medium text-gray-500'>Trạng thái</Label>
+              <div className='pb-3 border-b border-gray-100'>
+                <Label className='text-sm font-medium text-gray-500 mb-1 block'>Trạng thái</Label>
                 <div className='flex items-center gap-2 mt-1'>
                   {statusInfo.icon}
-                  <span className='text-sm text-gray-900'>{statusInfo.text}</span>
+                  <span className='text-sm text-gray-900 font-medium'>{statusInfo.text}</span>
                 </div>
               </div>
+              {form.orderId && (
+                <div className='pb-3 border-b border-gray-100'>
+                  <Label className='text-sm font-medium text-gray-500 mb-1 block'>ID đơn hàng</Label>
+                  <p className='text-sm text-gray-900 font-mono break-all mt-1'>{form.orderId}</p>
+                </div>
+              )}
+              {form.deadlineForSellerReply && (
+                <div>
+                  <Label className='text-sm font-medium text-gray-500 mb-1 block'>Hạn phản hồi từ người bán</Label>
+                  <div className='flex items-center gap-2 mt-1'>
+                    <Clock className='w-4 h-4 text-orange-500' />
+                    <p className='text-sm text-gray-900'>{form.deadlineForSellerReply}</p>
+                  </div>
+                  {form.isSellerReplied !== undefined && (
+                    <div className='mt-2'>
+                      <Badge
+                        variant={form.isSellerReplied ? 'default' : 'secondary'}
+                        className={form.isSellerReplied ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}
+                      >
+                        {form.isSellerReplied ? 'Đã phản hồi' : 'Chưa phản hồi'}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Staff Reply (if exists) */}
           {form.reply && (
-            <Card className='bg-white shadow-sm'>
-              <CardHeader className='pb-3'>
-                <CardTitle className='flex items-center gap-2 text-lg'>
+            <Card className='bg-white shadow-sm border-blue-200'>
+              <CardHeader className='pb-3 bg-blue-50/50'>
+                <CardTitle className='flex items-center gap-2 text-lg text-blue-700'>
                   <User className='w-5 h-5 text-blue-600' />
                   Phản hồi từ nhân viên
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
-                  <p className='text-blue-800 whitespace-pre-wrap'>{form.reply}</p>
-                  {form.staffName && <p className='text-blue-600 text-sm mt-2 font-medium'>- {form.staffName}</p>}
+                  <p className='text-blue-800 whitespace-pre-wrap break-words leading-relaxed'>{form.reply}</p>
+                  {form.staffName && (
+                    <p className='text-blue-600 text-sm mt-3 font-medium border-t border-blue-200 pt-2'>
+                      - {form.staffName}
+                    </p>
+                  )}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Seller Reply (if exists) */}
+          {form.sellerReply && (
+            <Card className='bg-white shadow-sm border-purple-200'>
+              <CardHeader className='pb-3 bg-purple-50/50'>
+                <CardTitle className='flex items-center gap-2 text-lg text-purple-700'>
+                  <Store className='w-5 h-5 text-purple-600' />
+                  Phản hồi từ người bán
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-4'>
+                <div className='bg-purple-50 border border-purple-200 rounded-lg p-4'>
+                  <p className='text-purple-800 whitespace-pre-wrap break-words leading-relaxed'>
+                    {form.sellerReply}
+                  </p>
+                  {form.sellerReplyAt && (
+                    <p className='text-purple-600 text-xs mt-3 border-t border-purple-200 pt-2'>
+                      Phản hồi lúc: {form.sellerReplyAt}
+                    </p>
+                  )}
+                </div>
+
+                {/* Seller Images */}
+                {sellerImages.length > 0 && (
+                  <div>
+                    <Label className='text-sm font-medium text-purple-700 mb-2 block flex items-center gap-2'>
+                      <ImageIcon className='w-4 h-4 text-purple-600' />
+                      Hình ảnh từ người bán ({sellerImages.length})
+                    </Label>
+                    <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
+                      {sellerImages.map((imageUrl: string, index: number) => (
+                        <div
+                          key={index}
+                          className='relative group cursor-pointer'
+                          onClick={() => {
+                            setSellerPreviewIndex(index)
+                            setIsSellerPreviewOpen(true)
+                          }}
+                        >
+                          <img
+                            src={imageUrl}
+                            alt={`Seller image ${index + 1}`}
+                            className='w-full h-32 object-cover rounded-lg border border-purple-200 hover:opacity-90 transition-all duration-200 shadow-sm hover:shadow-md'
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              if (target.dataset.fallbackApplied) return
+                              target.dataset.fallbackApplied = 'true'
+                              target.src = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+                            }}
+                          />
+                          <div className='pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all rounded-lg flex items-center justify-center'>
+                            <span className='text-white opacity-0 group-hover:opacity-100 text-sm font-medium'>
+                              Click để xem
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {form.deadlineForSellerReply && (
+                  <div className='text-xs text-purple-600 bg-purple-50 border border-purple-200 rounded-lg p-2'>
+                    <Clock className='w-3 h-3 inline mr-1' />
+                    Hạn phản hồi: {form.deadlineForSellerReply}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
           {/* Admin Reply (if exists) */}
           {form.adminText && (
-            <Card className='bg-white shadow-sm'>
-              <CardHeader className='pb-3'>
-                <CardTitle className='flex items-center gap-2 text-lg'>
+            <Card className='bg-white shadow-sm border-green-200'>
+              <CardHeader className='pb-3 bg-green-50/50'>
+                <CardTitle className='flex items-center gap-2 text-lg text-green-700'>
                   <CheckCircle className='w-5 h-5 text-green-600' />
                   Phản hồi quản trị viên
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className='bg-green-50 border border-green-200 rounded-lg p-4'>
-                  <p className='text-green-800 whitespace-pre-wrap'>{form.adminText}</p>
+                  <p className='text-green-800 whitespace-pre-wrap break-words'>{form.adminText}</p>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Staff Actions - Show for Processing, Confirmed, and Rejected status */}
-          {(form.status === 'Processing' || form.status === 'Confirmed' || form.status === 'Rejected') && (
-            <Card className='bg-white shadow-sm'>
-              <CardHeader className='pb-3'>
-                <CardTitle className='flex items-center gap-2 text-lg'>
+          {/* Staff Actions - Show for Processing, WaitingSellerResponse, and Rejected status */}
+          {(form.status === 'Processing' || form.status === 'WaitingSellerResponse' || form.status === 'Rejected') && (
+            <Card className='bg-white shadow-sm border-blue-200'>
+              <CardHeader className='pb-3 bg-blue-50/50'>
+                <CardTitle className='flex items-center gap-2 text-lg text-blue-700'>
                   <RefreshCw className='w-5 h-5 text-blue-600' />
                   Hành động xử lý
                 </CardTitle>
@@ -576,7 +685,7 @@ function ReportDetail() {
                       <div className='grid grid-cols-2 gap-3'>
                         <Button
                           onClick={() => {
-                            setSelectedStatus('Confirmed')
+                            setSelectedStatus('WaitingSellerResponse')
                             setShowUpdateModal(true)
                           }}
                           disabled={updating}
@@ -598,7 +707,7 @@ function ReportDetail() {
                         </Button>
                       </div>
                     </div>
-                  ) : form.status === 'Confirmed' || form.status === 'Rejected' ? (
+                  ) : form.status === 'WaitingSellerResponse' || form.status === 'Rejected' ? (
                     <div className='space-y-3'>
                       <div className='grid grid-cols-2 gap-3'>
                         <Button
@@ -640,6 +749,13 @@ function ReportDetail() {
         initialIndex={previewIndex}
       />
 
+      <ImagePreviewModal
+        isOpen={isSellerPreviewOpen}
+        onClose={() => setIsSellerPreviewOpen(false)}
+        images={sellerImages}
+        initialIndex={sellerPreviewIndex}
+      />
+
       {/* Staff Update Modal */}
       <Dialog open={showUpdateModal} onOpenChange={setShowUpdateModal}>
         <DialogContent className='max-w-md mx-auto'>
@@ -650,7 +766,7 @@ function ReportDetail() {
                 ? 'Chấp nhận khiếu nại'
                 : selectedStatus === 'DeniedByStaff'
                   ? 'Từ chối khiếu nại'
-                  : selectedStatus === 'Confirmed'
+                  : selectedStatus === 'WaitingSellerResponse'
                     ? 'Tiếp nhận khiếu nại'
                     : selectedStatus === 'Rejected'
                       ? 'Từ chối xử lý khiếu nại'
@@ -672,7 +788,7 @@ function ReportDetail() {
               <Label className='text-sm font-medium text-gray-700 mb-2 block'>Trạng thái</Label>
               <Select
                 value={selectedStatus}
-                onValueChange={(value: 'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected') =>
+                onValueChange={(value: 'ApprovedByStaff' | 'DeniedByStaff' | 'WaitingSellerResponse' | 'Rejected') =>
                   setSelectedStatus(value)
                 }
                 disabled={updating}
@@ -683,10 +799,10 @@ function ReportDetail() {
                 <SelectContent>
                   {form.status === 'Processing' ? (
                     <>
-                      <SelectItem value='Confirmed'>Tiếp nhận</SelectItem>
+                      <SelectItem value='WaitingSellerResponse'>Tiếp nhận</SelectItem>
                       <SelectItem value='Rejected'>Từ chối</SelectItem>
                     </>
-                  ) : form.status === 'Confirmed' || form.status === 'Rejected' ? (
+                  ) : form.status === 'WaitingSellerResponse' || form.status === 'Rejected' ? (
                     <>
                       <SelectItem value='ApprovedByStaff'>Chấp nhận</SelectItem>
                       <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
@@ -695,7 +811,7 @@ function ReportDetail() {
                     <>
                       <SelectItem value='ApprovedByStaff'>Duyệt</SelectItem>
                       <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
-                      <SelectItem value='Confirmed'>Chấp nhận</SelectItem>
+                      <SelectItem value='WaitingSellerResponse'>Chờ phản hồi người bán</SelectItem>
                       <SelectItem value='Rejected'>Từ chối</SelectItem>
                     </>
                   )}
@@ -739,7 +855,7 @@ function ReportDetail() {
                   'Chấp nhận'
                 ) : selectedStatus === 'DeniedByStaff' ? (
                   'Từ chối'
-                ) : selectedStatus === 'Confirmed' ? (
+                ) : selectedStatus === 'WaitingSellerResponse' ? (
                   'Tiếp nhận'
                 ) : selectedStatus === 'Rejected' ? (
                   'Từ chối'
@@ -747,20 +863,7 @@ function ReportDetail() {
                   'Cập nhật'
                 )}
               </Button>
-            </div>
-
-            {/* Footer Note */}
-            <p className='text-xs text-gray-500 text-center'>
-              {selectedStatus === 'ApprovedByStaff'
-                ? 'Khiếu nại sẽ được chấp nhận và chuyển sang trạng thái "Đã duyệt (Staff)".'
-                : selectedStatus === 'DeniedByStaff'
-                  ? 'Khiếu nại sẽ bị từ chối và chuyển sang trạng thái "Từ chối (Staff)".'
-                  : selectedStatus === 'Confirmed'
-                    ? 'Khiếu nại sẽ được tiếp nhận và chuyển sang trạng thái "Đã chấp nhận".'
-                    : selectedStatus === 'Rejected'
-                      ? 'Khiếu nại sẽ bị từ chối và chuyển sang trạng thái "Đã từ chối".'
-                      : 'Phản hồi này sẽ được gửi đến khách hàng và admin sẽ được thông báo.'}
-            </p>
+            </div>           
           </div>
         </DialogContent>
       </Dialog>

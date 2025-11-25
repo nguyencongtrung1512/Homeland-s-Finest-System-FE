@@ -24,6 +24,7 @@ export interface ReviewProduct {
   comboItemId?: string
   comboName?: string
   comboGroupKey?: string
+  isReviewed?: boolean
 }
 
 interface ReviewModalProps {
@@ -62,6 +63,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   const [existingReviews, setExistingReviews] = useState<Record<string, ReviewResponse>>({}) // Map orderItemId -> ReviewResponse
   const [loadingReviews, setLoadingReviews] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
+  const [uploadedImagePreviews, setUploadedImagePreviews] = useState<string[]>([])
 
   // Group products by combo - use useMemo to calculate before useEffect
   const { comboGroups, regularProducts, selectionItems, hasMultipleItems } = useMemo(() => {
@@ -184,11 +186,24 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       setOverallRating(0)
       setQualityComment('')
       setUploadedImages([])
+      // Clean up preview URLs
+      setUploadedImagePreviews((prev) => {
+        prev.forEach((url) => URL.revokeObjectURL(url))
+        return []
+      })
       setIsSubmitting(false)
       setExistingReviews({})
       setIsEditMode(false)
     }
   }, [isOpen])
+
+  // Cleanup preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      uploadedImagePreviews.forEach((url) => URL.revokeObjectURL(url))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Check if a product/combo has an existing review
   const getExistingReview = useCallback(
@@ -209,6 +224,17 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
     }
     return null
   }, [selectedCombo, selectedProduct, getExistingReview])
+
+  // Check if selected item is reviewed (from order data)
+  const isItemReviewed = useMemo(() => {
+    if (selectedCombo && selectedCombo.items.length > 0) {
+      return selectedCombo.items[0].isReviewed === true
+    }
+    if (selectedProduct) {
+      return selectedProduct.isReviewed === true
+    }
+    return false
+  }, [selectedCombo, selectedProduct])
 
   if (!isOpen || products.length === 0) return null
 
@@ -236,7 +262,12 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setUploadedImages((prev) => [...prev, ...Array.from(e.target.files!)])
+      const newFiles = Array.from(e.target.files)
+      setUploadedImages((prev) => [...prev, ...newFiles])
+
+      // Create preview URLs for new files
+      const newPreviews = newFiles.map((file) => URL.createObjectURL(file))
+      setUploadedImagePreviews((prev) => [...prev, ...newPreviews])
     }
   }
 
@@ -300,11 +331,19 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       await fetchExistingReviews()
       setIsEditMode(false)
       setUploadedImages([])
+      // Clean up preview URLs
+      setUploadedImagePreviews((prev) => {
+        prev.forEach((url) => URL.revokeObjectURL(url))
+        return []
+      })
 
       // Callback to refresh orders list
       if (onReviewSubmitted) {
         onReviewSubmitted()
       }
+
+      // Close modal after successful review
+      onClose()
     } catch (error: unknown) {
       console.error('Error submitting review:', error)
 
@@ -371,7 +410,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
               <div className='space-y-2'>
                 {/* Combo Groups */}
                 {comboGroups.map((combo) => {
-                  const comboReview = combo.items[0]?.orderItemId ? getExistingReview(combo.items[0].orderItemId) : null
+                  const isComboReviewed = combo.items[0]?.isReviewed === true
                   return (
                     <button
                       key={combo.comboGroupKey}
@@ -380,8 +419,8 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                         setSelectedProduct(null)
                       }}
                       className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${selectedCombo?.comboGroupKey === combo.comboGroupKey
-                        ? 'border-orange-500 bg-orange-50'
-                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                          ? 'border-orange-500 bg-orange-50'
+                          : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                         }`}
                     >
                       <div className='flex-1 text-left'>
@@ -390,7 +429,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                           <span className='bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full font-medium'>
                             Combo
                           </span>
-                          {comboReview && (
+                          {isComboReviewed && (
                             <span className='bg-green-100 mb-1 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1'>
                               <CheckCircle2 size={12} />
                               Đã đánh giá
@@ -410,7 +449,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                     (!!selectedProduct?.orderItemId && selectedProduct.orderItemId === product.orderItemId) ||
                     (!!selectedProduct?.productId && selectedProduct.productId === product.productId) ||
                     selectedProduct?.name === product.name
-                  const productReview = product.orderItemId ? getExistingReview(product.orderItemId) : null
+                  const isProductReviewed = product.isReviewed === true
 
                   return (
                     <button
@@ -425,7 +464,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                       <div className='flex-1 text-left'>
                         <div className='flex items-center gap-2'>
                           <h4 className='font-medium text-gray-900 text-sm'>{product.name}</h4>
-                          {productReview && (
+                          {isProductReviewed && (
                             <span className='bg-green-100 mb-2 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1'>
                               <CheckCircle2 size={12} />
                               Đã đánh giá
@@ -470,7 +509,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                       <img
                         src={getProductImage(item.image)}
                         alt={item.name}
-                        className='w-10 h-10 object-cover rounded'
+                        className='w-10 h-10 object-contain rounded bg-gray-50'
                         onError={handleImageError}
                       />
                       <div className='flex-1 min-w-0'>
@@ -490,7 +529,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                 <img
                   src={getProductImage(selectedProduct.image)}
                   alt={selectedProduct.name}
-                  className='w-16 h-16 object-cover rounded-xl'
+                  className='w-16 h-16 object-contain rounded-xl bg-gray-50'
                   onError={handleImageError}
                 />
                 <div className='flex-1'>
@@ -508,7 +547,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                 <div className='text-center py-8 text-gray-500'>
                   <p>Đang tải thông tin đánh giá...</p>
                 </div>
-              ) : selectedItemReview && !isEditMode ? (
+              ) : isItemReviewed && selectedItemReview && !isEditMode ? (
                 // Show existing review
                 <div className='space-y-4'>
                   <div className='flex items-center justify-between mb-4'>
@@ -555,7 +594,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                   )}
 
                   {/* Images Display */}
-                  {selectedItemReview.images && selectedItemReview.images.length > 0 && (
+                  {selectedItemReview?.images && selectedItemReview.images.length > 0 && (
                     <div>
                       <h4 className='font-medium mb-2 text-gray-700 text-sm'>Hình ảnh đánh giá:</h4>
                       <div className='grid grid-cols-3 gap-2'>
@@ -564,7 +603,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                             key={index}
                             src={imageUrl}
                             alt={`Review image ${index + 1}`}
-                            className='w-full h-24 object-cover rounded-lg border border-gray-200'
+                            className='w-full h-24 object-contain rounded-lg border border-gray-200 bg-gray-50'
                             onError={(e) => {
                               e.currentTarget.src = DEFAULT_PRODUCT_IMAGE
                             }}
@@ -588,6 +627,12 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                       <p className='text-sm text-gray-700'>{selectedItemReview.sellerReply.content}</p>
                     </div>
                   )}
+                </div>
+              ) : isItemReviewed && !selectedItemReview && !isEditMode ? (
+                // Show message if reviewed but review data not loaded yet
+                <div className='text-center py-8 text-gray-500'>
+                  <p>Bạn đã đánh giá sản phẩm này</p>
+                  <p className='text-xs mt-2'>Đang tải thông tin đánh giá...</p>
                 </div>
               ) : (
                 // Show create/edit form
@@ -654,14 +699,23 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                   {/* Uploaded Images Preview */}
                   {uploadedImages.length > 0 && (
                     <div>
-                      <h4 className='font-medium mb-2 text-gray-700'>Hình ảnh đã tải lên:</h4>
-                      <div className='space-y-1'>
-                        {uploadedImages.map((file, index) => (
-                          <div key={`img-${index}`} className='text-xs text-gray-600 flex items-center gap-2'>
-                            <span>📷</span>
-                            <span>{file.name}</span>
-                          </div>
-                        ))}
+                      <h4 className='font-medium mb-2 text-gray-700 text-sm'>Hình ảnh đã tải lên:</h4>
+                      <div className='grid grid-cols-3 gap-2'>
+                        {uploadedImages.map((file, index) => {
+                          const previewUrl = uploadedImagePreviews[index]
+                          return (
+                            <div key={`img-${index}`} className='relative group'>
+                              <img
+                                src={previewUrl}
+                                alt={file.name}
+                                className='w-full h-24 object-contain rounded-lg border border-gray-200 bg-gray-50'
+                                onError={(e) => {
+                                  e.currentTarget.src = DEFAULT_PRODUCT_IMAGE
+                                }}
+                              />
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )}
@@ -676,7 +730,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                             <img
                               src={imageUrl}
                               alt={`Current image ${index + 1}`}
-                              className='w-full h-24 object-cover rounded-lg border border-gray-200'
+                              className='w-full h-24 object-contain rounded-lg border border-gray-200 bg-gray-50'
                               onError={(e) => {
                                 e.currentTarget.src = DEFAULT_PRODUCT_IMAGE
                               }}
@@ -720,6 +774,11 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                     setOverallRating(selectedItemReview?.rating || 0)
                     setQualityComment(selectedItemReview?.comment || '')
                     setUploadedImages([])
+                    // Clean up preview URLs
+                    setUploadedImagePreviews((prev) => {
+                      prev.forEach((url) => URL.revokeObjectURL(url))
+                      return []
+                    })
                   } else {
                     onClose()
                   }

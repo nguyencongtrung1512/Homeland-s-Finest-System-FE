@@ -11,7 +11,8 @@ import {
   Leaf,
   Component,
   Gift,
-  Star
+  Star,
+  Flag
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../../contexts/store.context'
@@ -149,6 +150,15 @@ function SideBar() {
       icon: (
         <AnimatedIcon animationType='bounce'>
           <BookOpen size={18} />
+        </AnimatedIcon>
+      )
+    },
+    {
+      key: path.complaintSeller,
+      label: 'Khiếu nại',
+      icon: (
+        <AnimatedIcon animationType='bounce'>
+          <Flag size={18} />
         </AnimatedIcon>
       )
     },

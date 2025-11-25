@@ -153,6 +153,8 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
         return <Clock className='w-4 h-4 text-yellow-500' />
       case 'Processing':
         return <AlertCircle className='w-4 h-4 text-blue-500' />
+      case 'WaitingSellerResponse':
+        return <AlertCircle className='w-4 h-4 text-blue-500' />
       case 'ApprovedByStaff':
       case 'ApprovedByAdmin':
         return <CheckCircle className='w-4 h-4 text-green-500' />
@@ -172,6 +174,8 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
       case 'Pending':
         return 'secondary'
       case 'Processing':
+        return 'default'
+      case 'WaitingSellerResponse':
         return 'default'
       case 'ApprovedByStaff':
       case 'ApprovedByAdmin':
@@ -203,7 +207,7 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
         return 'Đã xử lí'
       case 'Rejected':
         return 'Đã từ chối'
-      case 'Confirmed':
+      case 'WaitingSellerResponse':
         return 'Đang xử lý'
       case 'Cancel':
         return 'Đã hủy'

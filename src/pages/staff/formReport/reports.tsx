@@ -12,7 +12,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Clock
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -233,11 +234,11 @@ function ReportManagement() {
         textColor: 'text-gray-600',
         icon: <XCircle className='w-3 h-3' />
       },
-      Confirmed: {
-        text: 'Nhân viên đang xử lý',
-        bgColor: 'bg-indigo-100',
-        textColor: 'text-indigo-600',
-        icon: <AlertCircle className='w-3 h-3' />
+      WaitingSellerResponse: {
+        text: 'Chờ phản hồi từ người bán',
+        bgColor: 'bg-orange-100',
+        textColor: 'text-orange-600',
+        icon: <Clock className='w-3 h-3' />
       },
       Cancel: {
         text: 'Đã hủy',
@@ -405,7 +406,7 @@ function ReportManagement() {
                     <SelectItem value='ApprovedByAdmin'>Đã duyệt</SelectItem>
                     <SelectItem value='DeniedByAdmin'>Từ chối</SelectItem>
                     <SelectItem value='Rejected'>Bị từ chối</SelectItem>
-                    <SelectItem value='Confirmed'>Nhân viên đang xử lý</SelectItem>
+                    <SelectItem value='WaitingSellerResponse'>Chờ phản hồi</SelectItem>
                     <SelectItem value='Cancel'>Đã hủy</SelectItem>
                   </SelectContent>
                 </Select>

@@ -21,7 +21,7 @@ export type FormStatus =
   | 'ApprovedByStaff'
   | 'ApprovedByAdmin'
   | 'Rejected'
-  | 'Confirmed'
+  | 'WaitingSellerResponse'
   | 'Cancel'
 
 export interface CreateFormRequest {
@@ -46,7 +46,7 @@ export interface UpdateFormRequest {
 
 export interface StaffUpdateRequest {
   reply: string
-  status: 'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected'
+  status: 'ApprovedByStaff' | 'DeniedByStaff' | 'WaitingSellerResponse' | 'Rejected'
 }
 
 export interface AdminUpdateRequest {
@@ -67,6 +67,12 @@ export interface FormDTO {
   reply?: string
   staffId?: string
   staffName?: string
+  lastEditId?: string
+  sellerReply?: string
+  sellerImages?: string[]
+  sellerReplyAt?: string
+  deadlineForSellerReply?: string
+  isSellerReplied?: boolean
   adminId?: string
   adminText?: string
   createdAt: string

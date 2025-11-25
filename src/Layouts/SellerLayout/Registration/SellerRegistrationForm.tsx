@@ -8,7 +8,7 @@ import { Checkbox } from '../../../components/ui/checkbox'
 import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-import { ChevronDownIcon, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { ChevronDownIcon, Eye, EyeOff, Loader2, MapPinIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { Upload as AntUpload, message } from 'antd'
@@ -17,7 +17,7 @@ import 'antd/dist/reset.css'
 import { toast } from '../../../utils/toast'
 import { path } from '../../../constants/path'
 import { registerSeller } from '../../../apis/auth.api'
-import type { GHNProvince, GHNDistrict, GHNWard } from '../../../apis/address.api'
+import { getProvinces, getDistricts, getWards, type Province, type District, type Ward } from '../../../apis/province'
 import Loading from '../../../components/Loading/loading'
 import { extractCCCDInfo, type ExtractedCCCDInfo } from '../../../apis/fptai.api'
 
@@ -74,6 +74,7 @@ interface FormData {
   businessLicense: File[]
   description: string
   taxCode: string
+  bankName: string
   bankAccount: string
   identifyCard: string
   identifyFrontImage: File[]
@@ -358,6 +359,7 @@ function SellerRegistrationForm() {
     businessLicense: [],
     description: '',
     taxCode: '',
+    bankName: '',
     bankAccount: '',
     identifyCard: '',
     identifyFrontImage: [],
@@ -379,16 +381,29 @@ function SellerRegistrationForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  const [provinces, setProvinces] = useState<GHNProvince[]>([])
-  const [districts, setDistricts] = useState<GHNDistrict[]>([])
-  const [wards, setWards] = useState<GHNWard[]>([])
-  const [selectedProvince, setSelectedProvince] = useState<GHNProvince | null>(null)
-  const [selectedDistrict, setSelectedDistrict] = useState<GHNDistrict | null>(null)
-  const [selectedWard, setSelectedWard] = useState<GHNWard | null>(null)
+  // States cho địa chỉ cửa hàng (chọn thủ công)
+  const [provinces, setProvinces] = useState<Province[]>([])
+  const [districts, setDistricts] = useState<District[]>([])
+  const [wards, setWards] = useState<Ward[]>([])
+  const [selectedProvince, setSelectedProvince] = useState<Province | null>(null)
+  const [selectedDistrict, setSelectedDistrict] = useState<District | null>(null)
+  const [selectedWard, setSelectedWard] = useState<Ward | null>(null)
   const [specificAddress, setSpecificAddress] = useState<string>('')
   const [isLoadingProvinces, setIsLoadingProvinces] = useState(false)
   const [isLoadingDistricts, setIsLoadingDistricts] = useState(false)
   const [isLoadingWards, setIsLoadingWards] = useState(false)
+
+  // States cho địa chỉ user (từ CCCD)
+  const [userProvinces, setUserProvinces] = useState<Province[]>([])
+  const [userDistricts, setUserDistricts] = useState<District[]>([])
+  const [userWards, setUserWards] = useState<Ward[]>([])
+  const [selectedUserProvince, setSelectedUserProvince] = useState<Province | null>(null)
+  const [selectedUserDistrict, setSelectedUserDistrict] = useState<District | null>(null)
+  const [selectedUserWard, setSelectedUserWard] = useState<Ward | null>(null)
+  const [userStreetAddress, setUserStreetAddress] = useState<string>('')
+  const [isLoadingUserProvinces, setIsLoadingUserProvinces] = useState(false)
+  const [isLoadingUserDistricts, setIsLoadingUserDistricts] = useState(false)
+  const [isLoadingUserWards, setIsLoadingUserWards] = useState(false)
 
   // ===== Xử lý dữ liệu từ OCR =====
   const handleOCRData = async (ocrData: ExtractedCCCDInfo) => {
@@ -426,103 +441,83 @@ function SellerRegistrationForm() {
       lastName,
       identifyCard: ocrData.id,
       gender: ocrData.sex,
-      dateOfBirth: ocrData.dob,
-      address: ocrData.address
+      dateOfBirth: ocrData.dob
     }))
 
-    setSpecificAddress(ocrData.street || '')
+    // Set địa chỉ user từ CCCD
+    setUserStreetAddress(ocrData.street || '')
 
-    // Auto-fill địa chỉ: Province → District → Ward
-    if (ocrData.province && provinces.length > 0) {
+    // Load user provinces nếu chưa có
+    let provincesToSearch = userProvinces
+    if (provincesToSearch.length === 0) {
+      await loadUserProvinces()
+      // Reload provinces sau khi load xong
+      provincesToSearch = await getProvinces()
+    }
+
+    // Auto-fill địa chỉ user: Province → District → Ward
+    if (ocrData.province) {
       // Tìm province
-      const foundProvince = provinces.find(
+      const foundProvince = provincesToSearch.find(
         (p) =>
-          p.ProvinceName.toLowerCase().includes(ocrData.province.toLowerCase()) ||
-          ocrData.province.toLowerCase().includes(p.ProvinceName.toLowerCase())
+          p.name.toLowerCase().includes(ocrData.province.toLowerCase()) ||
+          ocrData.province.toLowerCase().includes(p.name.toLowerCase())
       )
 
       if (foundProvince) {
-        setSelectedProvince(foundProvince)
+        setSelectedUserProvince(foundProvince)
 
         // Load districts và tìm district
         if (ocrData.district) {
           try {
-            setIsLoadingDistricts(true)
-            const response = await fetch(
-              `${import.meta.env.VITE_GHN_API_URL}/master-data/district?province_id=${foundProvince.ProvinceID}`,
-              {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Token: import.meta.env.VITE_GHN_TOKEN
-                }
-              }
+            setIsLoadingUserDistricts(true)
+            const districtList = await getDistricts(foundProvince.id)
+            setUserDistricts(districtList)
+
+            // Tìm district
+            const foundDistrict = districtList.find(
+              (d) =>
+                d.name.toLowerCase().includes(ocrData.district.toLowerCase()) ||
+                ocrData.district.toLowerCase().includes(d.name.toLowerCase())
             )
 
-            if (response.ok) {
-              const data = await response.json()
-              const districtList = data.data
-              setDistricts(districtList)
+            if (foundDistrict) {
+              setSelectedUserDistrict(foundDistrict)
 
-              // Tìm district
-              const foundDistrict = districtList.find(
-                (d: GHNDistrict) =>
-                  d.DistrictName.toLowerCase().includes(ocrData.district.toLowerCase()) ||
-                  ocrData.district.toLowerCase().includes(d.DistrictName.toLowerCase())
-              )
+              // Load wards và tìm ward
+              if (ocrData.ward) {
+                try {
+                  setIsLoadingUserWards(true)
+                  const wardList = await getWards(foundDistrict.id)
+                  setUserWards(wardList)
 
-              if (foundDistrict) {
-                setSelectedDistrict(foundDistrict)
+                  // Tìm ward
+                  const foundWard = wardList.find(
+                    (w) =>
+                      w.name.toLowerCase().includes(ocrData.ward.toLowerCase()) ||
+                      ocrData.ward.toLowerCase().includes(w.name.toLowerCase())
+                  )
 
-                // Load wards và tìm ward
-                if (ocrData.ward) {
-                  try {
-                    setIsLoadingWards(true)
-                    const wardResponse = await fetch(
-                      `${import.meta.env.VITE_GHN_API_URL}/master-data/ward?district_id=${foundDistrict.DistrictID}`,
-                      {
-                        method: 'GET',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          Token: import.meta.env.VITE_GHN_TOKEN
-                        }
-                      }
-                    )
-
-                    if (wardResponse.ok) {
-                      const wardData = await wardResponse.json()
-                      const wardList = wardData.data
-                      setWards(wardList)
-
-                      // Tìm ward
-                      const foundWard = wardList.find(
-                        (w: GHNWard) =>
-                          w.WardName.toLowerCase().includes(ocrData.ward.toLowerCase()) ||
-                          ocrData.ward.toLowerCase().includes(w.WardName.toLowerCase())
-                      )
-
-                      if (foundWard) {
-                        setSelectedWard(foundWard)
-                        console.log('Auto-filled address:', {
-                          province: foundProvince.ProvinceName,
-                          district: foundDistrict.DistrictName,
-                          ward: foundWard.WardName,
-                          street: ocrData.street
-                        })
-                      }
-                    }
-                  } catch (error) {
-                    console.error('Error loading wards:', error)
-                  } finally {
-                    setIsLoadingWards(false)
+                  if (foundWard) {
+                    setSelectedUserWard(foundWard)
+                    console.log('Auto-filled user address from CCCD:', {
+                      province: foundProvince.name,
+                      district: foundDistrict.name,
+                      ward: foundWard.name,
+                      street: ocrData.street
+                    })
                   }
+                } catch (error) {
+                  console.error('Error loading user wards:', error)
+                } finally {
+                  setIsLoadingUserWards(false)
                 }
               }
             }
           } catch (error) {
-            console.error('Error loading districts:', error)
+            console.error('Error loading user districts:', error)
           } finally {
-            setIsLoadingDistricts(false)
+            setIsLoadingUserDistricts(false)
           }
         }
       }
@@ -593,20 +588,8 @@ function SellerRegistrationForm() {
   const loadProvinces = async () => {
     setIsLoadingProvinces(true)
     try {
-      const response = await fetch(`${import.meta.env.VITE_GHN_API_URL}/master-data/province`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Token: import.meta.env.VITE_GHN_TOKEN
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      setProvinces(data.data)
+      const data = await getProvinces()
+      setProvinces(data)
     } catch (error) {
       console.error('Error loading provinces:', error)
       toast.error('Không thể tải danh sách tỉnh/thành phố')
@@ -622,23 +605,8 @@ function SellerRegistrationForm() {
     setSelectedDistrict(null)
     setSelectedWard(null)
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_GHN_API_URL}/master-data/district?province_id=${provinceId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Token: import.meta.env.VITE_GHN_TOKEN
-          }
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      setDistricts(data.data)
+      const data = await getDistricts(provinceId)
+      setDistricts(data)
     } catch (error) {
       console.error('Error loading districts:', error)
       toast.error('Không thể tải danh sách quận/huyện')
@@ -652,20 +620,8 @@ function SellerRegistrationForm() {
     setWards([])
     setSelectedWard(null)
     try {
-      const response = await fetch(`${import.meta.env.VITE_GHN_API_URL}/master-data/ward?district_id=${districtId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Token: import.meta.env.VITE_GHN_TOKEN
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      setWards(data.data)
+      const data = await getWards(districtId)
+      setWards(data)
     } catch (error) {
       console.error('Error loading wards:', error)
       toast.error('Không thể tải danh sách phường/xã')
@@ -675,31 +631,100 @@ function SellerRegistrationForm() {
   }
 
   const handleProvinceChange = (provinceId: string) => {
-    const province = provinces.find((p) => p.ProvinceID.toString() === provinceId)
+    const province = provinces.find((p) => p.id.toString() === provinceId)
     if (province) {
       setSelectedProvince(province)
-      loadDistricts(province.ProvinceID)
+      loadDistricts(province.id)
     }
   }
 
   const handleDistrictChange = (districtId: string) => {
-    const district = districts.find((d) => d.DistrictID.toString() === districtId)
+    const district = districts.find((d) => d.id.toString() === districtId)
     if (district) {
       setSelectedDistrict(district)
-      loadWards(district.DistrictID)
+      loadWards(district.id)
     }
   }
 
-  const handleWardChange = (wardCode: string) => {
-    const ward = wards.find((w) => w.WardCode === wardCode)
+  const handleWardChange = (wardId: string) => {
+    const ward = wards.find((w) => w.id.toString() === wardId)
     if (ward) {
       setSelectedWard(ward)
     }
   }
 
+  // Load user provinces khi component mount
+  const loadUserProvinces = async () => {
+    setIsLoadingUserProvinces(true)
+    try {
+      const data = await getProvinces()
+      setUserProvinces(data)
+    } catch (error) {
+      console.error('Error loading user provinces:', error)
+      toast.error('Không thể tải danh sách tỉnh/thành phố')
+    } finally {
+      setIsLoadingUserProvinces(false)
+    }
+  }
+
+  const loadUserDistricts = async (provinceId: number) => {
+    setIsLoadingUserDistricts(true)
+    setUserDistricts([])
+    setUserWards([])
+    setSelectedUserDistrict(null)
+    setSelectedUserWard(null)
+    try {
+      const data = await getDistricts(provinceId)
+      setUserDistricts(data)
+    } catch (error) {
+      console.error('Error loading user districts:', error)
+      toast.error('Không thể tải danh sách quận/huyện')
+    } finally {
+      setIsLoadingUserDistricts(false)
+    }
+  }
+
+  const loadUserWards = async (districtId: number) => {
+    setIsLoadingUserWards(true)
+    setUserWards([])
+    setSelectedUserWard(null)
+    try {
+      const data = await getWards(districtId)
+      setUserWards(data)
+    } catch (error) {
+      console.error('Error loading user wards:', error)
+      toast.error('Không thể tải danh sách phường/xã')
+    } finally {
+      setIsLoadingUserWards(false)
+    }
+  }
+
+  const handleUserProvinceChange = (provinceId: string) => {
+    const province = userProvinces.find((p) => p.id.toString() === provinceId)
+    if (province) {
+      setSelectedUserProvince(province)
+      loadUserDistricts(province.id)
+    }
+  }
+
+  const handleUserDistrictChange = (districtId: string) => {
+    const district = userDistricts.find((d) => d.id.toString() === districtId)
+    if (district) {
+      setSelectedUserDistrict(district)
+      loadUserWards(district.id)
+    }
+  }
+
+  const handleUserWardChange = (wardId: string) => {
+    const ward = userWards.find((w) => w.id.toString() === wardId)
+    if (ward) {
+      setSelectedUserWard(ward)
+    }
+  }
+
   React.useEffect(() => {
     if (selectedProvince && selectedDistrict && selectedWard && specificAddress.trim()) {
-      const fullAddress = `${specificAddress}, ${selectedWard.WardName}, ${selectedDistrict.DistrictName}, ${selectedProvince.ProvinceName}`
+      const fullAddress = `${specificAddress}, ${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`
       setFormData((prev) => ({
         ...prev,
         address: fullAddress
@@ -709,6 +734,7 @@ function SellerRegistrationForm() {
 
   React.useEffect(() => {
     loadProvinces()
+    loadUserProvinces()
   }, [])
 
   const validateForm = (): boolean => {
@@ -725,6 +751,7 @@ function SellerRegistrationForm() {
       'dateOfBirth',
       'businessName',
       'taxCode',
+      'bankName',
       'bankAccount',
       'identifyCard',
       'storeName'
@@ -783,14 +810,26 @@ function SellerRegistrationForm() {
       }
     }
 
+    // Validate địa chỉ user (từ CCCD)
+    if (!selectedUserProvince) {
+      newErrors.userAddress = 'Vui lòng chọn tỉnh/thành phố cho địa chỉ từ CCCD'
+    } else if (!selectedUserDistrict) {
+      newErrors.userAddress = 'Vui lòng chọn quận/huyện cho địa chỉ từ CCCD'
+    } else if (!selectedUserWard) {
+      newErrors.userAddress = 'Vui lòng chọn phường/xã cho địa chỉ từ CCCD'
+    } else if (!userStreetAddress.trim()) {
+      newErrors.userAddress = 'Vui lòng nhập địa chỉ cụ thể cho địa chỉ từ CCCD'
+    }
+
+    // Validate địa chỉ cửa hàng
     if (!selectedProvince) {
-      newErrors.address = 'Vui lòng chọn tỉnh/thành phố'
+      newErrors.address = 'Vui lòng chọn tỉnh/thành phố cho cửa hàng'
     } else if (!selectedDistrict) {
-      newErrors.address = 'Vui lòng chọn quận/huyện'
+      newErrors.address = 'Vui lòng chọn quận/huyện cho cửa hàng'
     } else if (!selectedWard) {
-      newErrors.address = 'Vui lòng chọn phường/xã'
+      newErrors.address = 'Vui lòng chọn phường/xã cho cửa hàng'
     } else if (!specificAddress.trim()) {
-      newErrors.address = 'Vui lòng nhập địa chỉ cụ thể'
+      newErrors.address = 'Vui lòng nhập địa chỉ cụ thể cho cửa hàng'
     }
 
     if (!formData.identifyFrontImage || formData.identifyFrontImage.length === 0) {
@@ -842,11 +881,16 @@ function SellerRegistrationForm() {
           lastName: formData.lastName,
           phoneNumber: formData.phoneNumber,
           gender: formData.gender,
-          dateOfBirth: formData.dateOfBirth
+          dateOfBirth: formData.dateOfBirth,
+          province: selectedUserProvince?.name || '',
+          district: selectedUserDistrict?.name || '',
+          ward: selectedUserWard?.name || '',
+          streetAddress: userStreetAddress
         },
         sellerInfo: {
           businessName: formData.businessName,
           taxCode: formData.taxCode,
+          bankName: formData.bankName,
           bankAccount: formData.bankAccount,
           identifyCard: formData.identifyCard,
           identifyFrontImage: formData.identifyFrontImage[0] || null,
@@ -856,12 +900,12 @@ function SellerRegistrationForm() {
         storeInfo: {
           storeName: formData.storeName,
           address: formData.address,
-          province: selectedProvince?.ProvinceName || '',
-          district: selectedDistrict?.DistrictName || '',
-          ward: selectedWard?.WardName || '',
-          provinceID: selectedProvince?.ProvinceID || 0,
-          districtID: selectedDistrict?.DistrictID || 0,
-          wardID: selectedWard ? parseInt(selectedWard.WardCode) || 0 : 0,
+          province: selectedProvince?.name || '',
+          district: selectedDistrict?.name || '',
+          ward: selectedWard?.name || '',
+          provinceID: selectedProvince?.id || 0,
+          districtID: selectedDistrict?.id || 0,
+          wardID: selectedWard?.id || 0,
           description: formData.description.trim(),
           vendorApplicationImageUrl: formData.vendorApplicationImageUrl
         }
@@ -1128,6 +1172,115 @@ function SellerRegistrationForm() {
                 {errors.dateOfBirth && <p className='text-sm text-red-500'>{errors.dateOfBirth}</p>}
               </div>
             </div>
+
+            {/* Địa chỉ từ CCCD */}
+            <div className='rounded-xl p-6 border border-blue-200'>
+              <div className='flex items-center gap-3 mb-6'>
+                <MapPinIcon className='w-4 h-4 text-blue-600 mb-4' />
+                <div>
+                  <p>Địa chỉ thường trú</p>
+                </div>
+              </div>
+              <div className='space-y-4'>
+                <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                  <div className='space-y-2'>
+                    <Label htmlFor='userProvince' className='text-sm text-gray-600'>
+                      Tỉnh/Thành phố <span className='text-red-500'>*</span>
+                    </Label>
+                    <Select
+                      value={selectedUserProvince?.id?.toString() || ''}
+                      onValueChange={handleUserProvinceChange}
+                      disabled={isLoadingUserProvinces}
+                    >
+                      <SelectTrigger id='userProvince'>
+                        <SelectValue placeholder={isLoadingUserProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userProvinces.map((province) => (
+                          <SelectItem key={province.id} value={province.id.toString()}>
+                            {province.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className='space-y-2'>
+                    <Label htmlFor='userDistrict' className='text-sm text-gray-600'>
+                      Quận/Huyện <span className='text-red-500'>*</span>
+                    </Label>
+                    <Select
+                      value={selectedUserDistrict?.id?.toString() || ''}
+                      onValueChange={handleUserDistrictChange}
+                      disabled={!selectedUserProvince || isLoadingUserDistricts}
+                    >
+                      <SelectTrigger id='userDistrict'>
+                        <SelectValue
+                          placeholder={
+                            !selectedUserProvince
+                              ? 'Chọn tỉnh/thành phố trước'
+                              : isLoadingUserDistricts
+                                ? 'Đang tải...'
+                                : 'Chọn quận/huyện'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userDistricts.map((district) => (
+                          <SelectItem key={district.id} value={district.id.toString()}>
+                            {district.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className='space-y-2'>
+                    <Label htmlFor='userWard' className='text-sm text-gray-600'>
+                      Phường/Xã <span className='text-red-500'>*</span>
+                    </Label>
+                    <Select
+                      value={selectedUserWard?.id?.toString() || ''}
+                      onValueChange={handleUserWardChange}
+                      disabled={!selectedUserDistrict || isLoadingUserWards}
+                    >
+                      <SelectTrigger id='userWard'>
+                        <SelectValue
+                          placeholder={
+                            !selectedUserDistrict
+                              ? 'Chọn quận/huyện trước'
+                              : isLoadingUserWards
+                                ? 'Đang tải...'
+                                : 'Chọn phường/xã'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userWards.map((ward) => (
+                          <SelectItem key={ward.id} value={ward.id.toString()}>
+                            {ward.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='userStreetAddress' className='text-sm text-gray-600'>
+                    Địa chỉ cụ thể (số nhà, tên đường) <span className='text-red-500'>*</span>
+                  </Label>
+                  <Input
+                    id='userStreetAddress'
+                    value={userStreetAddress}
+                    onChange={(e) => setUserStreetAddress(e.target.value)}
+                    placeholder='Số nhà, tên đường, tòa nhà...'
+                    className='w-full'
+                  />
+                </div>
+                {errors.userAddress && <p className='text-sm text-red-500'>{errors.userAddress}</p>}
+              </div>
+            </div>
           </div>
 
           {/* Thông tin cửa hàng */}
@@ -1167,7 +1320,7 @@ function SellerRegistrationForm() {
                     Tỉnh/Thành phố <span className='text-red-500'>*</span>
                   </Label>
                   <Select
-                    value={selectedProvince?.ProvinceID.toString() || ''}
+                    value={selectedProvince?.id?.toString() || ''}
                     onValueChange={handleProvinceChange}
                     disabled={isLoadingProvinces}
                   >
@@ -1176,8 +1329,8 @@ function SellerRegistrationForm() {
                     </SelectTrigger>
                     <SelectContent>
                       {provinces.map((province) => (
-                        <SelectItem key={province.ProvinceID} value={province.ProvinceID.toString()}>
-                          {province.ProvinceName}
+                        <SelectItem key={province.id} value={province.id.toString()}>
+                          {province.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1189,7 +1342,7 @@ function SellerRegistrationForm() {
                     Quận/Huyện <span className='text-red-500'>*</span>
                   </Label>
                   <Select
-                    value={selectedDistrict?.DistrictID.toString() || ''}
+                    value={selectedDistrict?.id?.toString() || ''}
                     onValueChange={handleDistrictChange}
                     disabled={!selectedProvince || isLoadingDistricts}
                   >
@@ -1206,8 +1359,8 @@ function SellerRegistrationForm() {
                     </SelectTrigger>
                     <SelectContent>
                       {districts.map((district) => (
-                        <SelectItem key={district.DistrictID} value={district.DistrictID.toString()}>
-                          {district.DistrictName}
+                        <SelectItem key={district.id} value={district.id.toString()}>
+                          {district.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1219,7 +1372,7 @@ function SellerRegistrationForm() {
                     Phường/Xã <span className='text-red-500'>*</span>
                   </Label>
                   <Select
-                    value={selectedWard?.WardCode || ''}
+                    value={selectedWard?.id?.toString() || ''}
                     onValueChange={handleWardChange}
                     disabled={!selectedDistrict || isLoadingWards}
                   >
@@ -1236,8 +1389,8 @@ function SellerRegistrationForm() {
                     </SelectTrigger>
                     <SelectContent>
                       {wards.map((ward) => (
-                        <SelectItem key={ward.WardCode} value={ward.WardCode}>
-                          {ward.WardName}
+                        <SelectItem key={ward.id} value={ward.id.toString()}>
+                          {ward.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1320,6 +1473,19 @@ function SellerRegistrationForm() {
                   placeholder='Mã số thuế doanh nghiệp'
                 />
                 {errors.taxCode && <p className='text-sm text-red-500'>{errors.taxCode}</p>}
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='bankName'>
+                  Tên ngân hàng <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  id='bankName'
+                  value={formData.bankName}
+                  onChange={(e) => handleInputChange('bankName', e.target.value)}
+                  placeholder='Tên ngân hàng (VD: Vietcombank, BIDV, Techcombank...)'
+                />
+                {errors.bankName && <p className='text-sm text-red-500'>{errors.bankName}</p>}
               </div>
 
               <div className='space-y-2'>

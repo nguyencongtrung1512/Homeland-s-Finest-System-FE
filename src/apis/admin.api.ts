@@ -254,5 +254,13 @@ export const adminApi = {
       newStaffId
     })
     return response.data
+  },
+
+  // Gán nhân viên cho combo
+  reassignCombo: async (comboId: string, newStaffId: string): Promise<any> => {
+    const response = await axiosInstance.patch(`${API_URL}/${comboId}/reassign-combo`, {
+      newStaffId
+    })
+    return response
   }
 }

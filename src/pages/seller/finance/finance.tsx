@@ -30,7 +30,8 @@ import {
   Info,
   RefreshCw,
   Plus,
-  ArrowDownCircle
+  ArrowDownCircle,
+  ArrowUpRight
 } from 'lucide-react'
 
 function FinanceManagement() {
@@ -131,7 +132,8 @@ function FinanceManagement() {
     debtBalance: 200000,
     grossRevenue: 10000000,
     totalCommissionPaid: 1000000,
-    netRevenue: 8000000
+    netRevenue: 8000000,
+    TotalWithdrawn: 0
   }
 
   // 3. Derived (Tính toán)
@@ -775,6 +777,38 @@ function FinanceManagement() {
               </Card>
             </motion.div>
           </motion.div>
+
+          {/* Total Withdrawn */}
+          {walletDataDisplay.TotalWithdrawn !== undefined && (
+            <motion.div variants={itemVariants}>
+              <motion.div variants={cardHoverVariants} whileHover='hover'>
+                <Card className='relative overflow-hidden h-full'>
+                  <CardContent className='p-4 sm:p-6'>
+                    <div className='flex justify-between items-start'>
+                      <div className='flex-1'>
+                        <div className='flex items-center gap-2 mb-2'>
+                          <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Tổng đã rút</h3>
+                        </div>
+                        <motion.p
+                          className='text-2xl sm:text-3xl font-bold text-indigo-600'
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.4, duration: 0.3 }}
+                          key={walletDataDisplay.TotalWithdrawn}
+                        >
+                          {walletDataDisplay.TotalWithdrawn.toLocaleString()} ₫
+                        </motion.p>
+                        <p className='text-xs text-gray-500 mt-2'>Tổng số tiền đã rút</p>
+                      </div>
+                      <div className='w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                        <ArrowUpRight className='w-5 h-5 sm:w-6 sm:h-6 text-indigo-600' />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </motion.div>
+          )}
         </div>
       </motion.div>
 

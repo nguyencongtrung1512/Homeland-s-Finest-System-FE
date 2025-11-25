@@ -11,7 +11,9 @@ import {
   XCircle,
   Clock
 } from 'lucide-react'
-import { staffApi, type ComboForReview } from '../../../apis/staff.api'
+import { staffApi } from '../../../apis/staff.api'
+import { getAllCombos } from '../../../apis/combo.api'
+import type { Combo } from '../../../types/combo.type'
 import { toast } from 'react-toastify'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -62,8 +64,8 @@ function ManagerComboStaff() {
   const [actionNote, setActionNote] = useState('')
   const pageSize = 12
 
-  const convertComboResponse = (apiCombo: ComboForReview): ComboData => {
-    const formatDate = (dateString: string) => {
+  const convertComboResponse = (apiCombo: Combo): ComboData => {
+    const formatDate = (dateString: string | undefined) => {
       if (!dateString || dateString === 'null' || dateString === 'undefined') {
         return '-'
       }
@@ -112,11 +114,11 @@ function ManagerComboStaff() {
         id: apiCombo.id
       },
       store: {
-        name: apiCombo.storeName,
-        id: apiCombo.storeId
+        name: apiCombo.storeName || 'Chưa xác định',
+        id: apiCombo.storeId || ''
       },
       seller: {
-        name: apiCombo.sellerName
+        name: 'Chưa xác định' // Combo API không trả về sellerName trực tiếp
       },
       createdAt: formatDate(apiCombo.createdAt),
       updatedAt: formatDate(apiCombo.updatedAt),
@@ -136,17 +138,24 @@ function ManagerComboStaff() {
         return
       }
 
-      const response = await staffApi.getCombosForReview(user.userId, {
+      // Gọi API Combo với pageSize=0 và pageNumber=1
+      const allCombos = await getAllCombos({
         pageSize: 0,
         pageNumber: 1
       })
 
-      if (response && response.data && Array.isArray(response.data)) {
-        const convertedCombos = response.data.map((combo: unknown) => convertComboResponse(combo as ComboForReview))
+      // Lọc các combo có assignedToId trùng với userId của tài khoản
+      const filteredCombos = Array.isArray(allCombos)
+        ? allCombos.filter((combo: Combo) => combo.assignedToId === user.userId)
+        : []
+
+      if (filteredCombos.length > 0) {
+        const convertedCombos = filteredCombos.map((combo: Combo) => convertComboResponse(combo))
         setComboData(convertedCombos)
         setTotalCombos(convertedCombos.length)
       } else {
-        setError('Định dạng dữ liệu không đúng')
+        setComboData([])
+        setTotalCombos(0)
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải danh sách combo'

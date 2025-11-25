@@ -32,7 +32,7 @@ export const useProductDetailContext = () => {
 function ProductsDetail() {
   const { isAuthenticated } = useAuth()
   const { id } = useParams<{ id: string }>()
-  
+
   // Sử dụng custom hook
   const { product, loading, error, refetch } = useProductDetail(id)
 
@@ -42,7 +42,7 @@ function ProductsDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className='min-h-screen flex items-center justify-center'>
         <Loading />
       </div>
     )
@@ -50,12 +50,12 @@ function ProductsDetail() {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className='min-h-screen flex items-center justify-center'>
         <EmptyState
-          type="error"
-          title="Không thể tải thông tin sản phẩm"
+          type='error'
+          title='Không thể tải thông tin sản phẩm'
           description={error || 'Sản phẩm không tồn tại hoặc đã bị xóa'}
-          actionLabel="Thử lại"
+          actionLabel='Thử lại'
           onAction={handleRetry}
         />
       </div>
@@ -79,9 +79,7 @@ function ProductsDetail() {
           <ViewRating />
         </div>
       </div>
-      <div>
-        {isAuthenticated ? <ChatSystem /> : <ChatBot />}
-      </div>
+      <div>{isAuthenticated ? <ChatSystem /> : <ChatBot />}</div>
     </ProductDetailContext.Provider>
   )
 }

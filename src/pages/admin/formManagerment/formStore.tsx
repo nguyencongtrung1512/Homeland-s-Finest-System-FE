@@ -213,13 +213,13 @@ export default function FormStoreManagement() {
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
-      case 'Confirmed':
+      case 'WaitingSellerResponse':
         return {
-          icon: <CheckCircle className='w-4 h-4 text-green-500' />,
+          icon: <Clock className='w-4 h-4 text-orange-500' />,
           badge: 'default',
-          text: 'Nhân viên đang xử lý',
-          color: 'text-green-700',
-          bgColor: 'bg-green-50'
+          text: 'Chờ phản hồi từ người bán',
+          color: 'text-orange-700',
+          bgColor: 'bg-orange-50'
         }
       case 'Cancel':
         return {
@@ -380,7 +380,7 @@ export default function FormStoreManagement() {
                   <SelectItem value='ApprovedByAdmin'>Đã duyệt</SelectItem>
                   <SelectItem value='DeniedByAdmin'>Từ chối</SelectItem>
                   <SelectItem value='Rejected'>Bị từ chối</SelectItem>
-                  <SelectItem value='Confirmed'>Nhân viên đang xử lý</SelectItem>
+                  <SelectItem value='WaitingSellerResponse'>Chờ phản hồi từ người bán</SelectItem>
                   <SelectItem value='Cancel'>Đã hủy</SelectItem>
                 </SelectContent>
               </Select>

@@ -235,6 +235,19 @@ export default function WalletContent({
               </div>
             </div>
 
+            {/* Total Withdrawn */}
+            {walletData && walletData.TotalWithdrawn !== undefined && (
+              <div className='flex items-center gap-3'>
+                <CreditCard className='w-6 h-6 text-blue-100' />
+                <div className='text-center'>
+                  <div className='text-sm text-blue-100/80 mb-1'>Tổng đã rút</div>
+                  <div className='text-2xl font-semibold text-white'>
+                    {walletData.TotalWithdrawn.toLocaleString('vi-VN')} ₫
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Revenue Info (if available) */}
             {/* {walletData && (walletData.netRevenue > 0 || walletData.grossRevenue > 0) && (
               <div className='grid grid-cols-2 gap-4 w-full mt-2'>

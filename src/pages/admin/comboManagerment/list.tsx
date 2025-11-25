@@ -1,10 +1,19 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Calendar, CheckCircle, Eye, Store } from 'lucide-react'
-
-import { adminApi, type ComboAdminParams } from '../../../apis/admin.api'
+import { useState, useEffect, useCallback } from 'react'
+import { Calendar, CheckCircle, Eye, Store, Loader2, UserPlus } from 'lucide-react'
+import { adminApi, type ComboAdminParams, type Staff } from '../../../apis/admin.api'
 import { type Combo } from '../../../types/combo.type'
 import ComboDetailPopup from './detail'
 import { Button } from '../../../components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../../components/ui/dialog'
+import StaffComboBox from '../../../components/ui/staff-combo-box'
+import Pagination from '../../../components/Pagination/Pagination'
 
 // Status badge component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -61,6 +70,8 @@ function ManagerComboAdmin() {
   const [data, setData] = useState<Combo[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
   const itemsPerPage = 10
 
   // Filter states
@@ -73,70 +84,162 @@ function ManagerComboAdmin() {
   const [selectedComboId, setSelectedComboId] = useState<string | null>(null)
   const [isDetailPopupOpen, setIsDetailPopupOpen] = useState(false)
 
+  // Assign staff modal states
+  const [isAssignStaffModalOpen, setIsAssignStaffModalOpen] = useState(false)
+  const [selectedComboForAssign, setSelectedComboForAssign] = useState<Combo | null>(null)
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null)
+  const [staffList, setStaffList] = useState<Staff[]>([])
+  const [loadingStaff, setLoadingStaff] = useState(false)
+  const [assigning, setAssigning] = useState(false)
+
   // Fetch data
   const fetchCombos = useCallback(async () => {
     try {
       setLoading(true)
       const params: ComboAdminParams = {
-        pageSize: 0, // Get all data
-        pageNumber: 1
+        pageSize: itemsPerPage,
+        pageNumber: currentPage
       }
 
       if (statusFilter) {
         params.status = statusFilter
       }
 
-      const combos = await adminApi.getAllCombos(params)
-      setData([...combos])
+      if (storeSearch) {
+        params.storeId = storeSearch // Assuming storeId can be used for search
+      }
+
+      const response = await adminApi.getAllCombos(params)
+
+      // Handle response - could be array or object with data and pagination
+      let combos: Combo[] = []
+      let pagination: { totalPages: number; totalItems: number } | null = null
+
+      if (Array.isArray(response)) {
+        combos = response
+      } else if (response && typeof response === 'object') {
+        // Check if response has data and pagination properties
+        interface ResponseWithData {
+          data?: Combo[]
+          pagination?: {
+            totalPages?: number
+            totalItems?: number
+            pageSize?: number
+            pageNumber?: number
+          }
+        }
+
+        const responseObj = response as ResponseWithData | Combo[]
+
+        if (Array.isArray(responseObj)) {
+          combos = responseObj
+        } else if ('data' in responseObj && Array.isArray(responseObj.data)) {
+          combos = responseObj.data
+
+          // Extract pagination if available
+          if (responseObj.pagination) {
+            const pag = responseObj.pagination
+            pagination = {
+              totalPages: pag.totalPages || Math.ceil((pag.totalItems || 0) / itemsPerPage),
+              totalItems: pag.totalItems || 0
+            }
+          }
+        } else {
+          // Fallback: treat as array of combos
+          combos = response as Combo[]
+        }
+      }
+
+      setData(combos)
+
+      // Set pagination info
+      if (pagination) {
+        setTotalPages(pagination.totalPages)
+        setTotalItems(pagination.totalItems)
+      } else {
+        // Fallback: calculate from data length if no pagination info
+        setTotalPages(Math.ceil(combos.length / itemsPerPage))
+        setTotalItems(combos.length)
+      }
     } catch (error) {
       console.error('Error fetching combos:', error)
+      setData([])
+      setTotalPages(1)
+      setTotalItems(0)
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [currentPage, statusFilter, storeSearch, itemsPerPage])
 
   useEffect(() => {
     fetchCombos()
   }, [fetchCombos])
 
-  // Filter data based on frontend filters
-  const filteredData = useMemo(() => {
-    let filtered = data
+  // Fetch staff list
+  const fetchStaffList = useCallback(async () => {
+    try {
+      setLoadingStaff(true)
+      const response = await adminApi.getAllStaff()
+      // Response structure: { status, message, data: Staff[] }
+      const staffData = response?.data || response || []
+      setStaffList(Array.isArray(staffData) ? staffData : [])
+    } catch (error) {
+      console.error('Error fetching staff list:', error)
+      setStaffList([])
+    } finally {
+      setLoadingStaff(false)
+    }
+  }, [])
 
-    // Hide Draft status combos from UI
-    filtered = filtered.filter((combo) => combo.status !== 'Draft')
+  // Open assign staff modal
+  const handleOpenAssignStaff = (combo: Combo) => {
+    setSelectedComboForAssign(combo)
+    setSelectedStaffId(null)
+    setIsAssignStaffModalOpen(true)
+    if (staffList.length === 0) {
+      fetchStaffList()
+    }
+  }
 
-    // Store search filter
-    if (storeSearch) {
-      filtered = filtered.filter((combo) =>
-        (combo.comboItems || []).some((item) => item.storeName.toLowerCase().includes(storeSearch.toLowerCase()))
-      )
+  // Close assign staff modal
+  const handleCloseAssignStaff = () => {
+    setIsAssignStaffModalOpen(false)
+    setSelectedComboForAssign(null)
+    setSelectedStaffId(null)
+  }
+
+  // Handle staff assignment
+  const handleAssignStaff = async () => {
+    if (!selectedComboForAssign || !selectedStaffId) {
+      return
     }
 
-    // Date range filter
-    if (dateFrom && dateTo) {
-      filtered = filtered.filter((combo) => {
-        if (!combo.createdAt) return false
-        const comboDate = new Date(combo.createdAt)
-        // Validate that the date is valid
-        if (isNaN(comboDate.getTime())) return false
-        const fromDate = new Date(dateFrom)
-        const toDate = new Date(dateTo)
-        return comboDate >= fromDate && comboDate <= toDate
-      })
+    try {
+      setAssigning(true)
+      await adminApi.reassignCombo(selectedComboForAssign.id, selectedStaffId)
+      // Refresh combo list
+      await fetchCombos()
+      handleCloseAssignStaff()
+      // You can add a toast notification here if needed
+    } catch (error) {
+      console.error('Error assigning staff:', error)
+      // You can add error toast notification here
+    } finally {
+      setAssigning(false)
     }
+  }
 
-    return filtered
-  }, [data, storeSearch, dateFrom, dateTo])
-
-  // Pagination
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentData = filteredData.slice(startIndex, endIndex)
+  // Filter out Draft status combos from UI (client-side filter only)
+  const filteredData = data.filter((combo) => combo.status !== 'Draft')
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleFilterChange = () => {
+    setCurrentPage(1) // Reset to first page when filter changes
   }
 
   const handleViewDetail = (comboId: string) => {
@@ -219,7 +322,15 @@ function ManagerComboAdmin() {
               type='text'
               placeholder='Tìm kiếm cửa hàng...'
               value={storeSearch}
-              onChange={(e) => setStoreSearch(e.target.value)}
+              onChange={(e) => {
+                setStoreSearch(e.target.value)
+                handleFilterChange()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  fetchCombos()
+                }
+              }}
               className='w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent'
             />
           </div>
@@ -227,13 +338,16 @@ function ManagerComboAdmin() {
           {/* Status Filter */}
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              handleFilterChange()
+            }}
             className='px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent'
           >
             <option value=''>Tất cả trạng thái</option>
             <option value='Pending'>Chờ duyệt</option>
             <option value='Approved'>Đã duyệt</option>
-            <option value='Confirmed'>Đã xác nhận bởi nhân viênviên</option>
+            <option value='Confirmed'>Đã xác nhận bởi nhân viên</option>
             <option value='Rejected'>Đã từ chối bởi nhân viên</option>
             <option value='Denied'>Bị từ chối</option>
             <option value='Processing'>Đang xử lý</option>
@@ -246,14 +360,20 @@ function ManagerComboAdmin() {
             <input
               type='date'
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                handleFilterChange()
+              }}
               className='px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent'
             />
             <span className='text-gray-500'>đến</span>
             <input
               type='date'
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                handleFilterChange()
+              }}
               className='px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent'
             />
           </div>
@@ -299,8 +419,8 @@ function ManagerComboAdmin() {
               </tr>
             </thead>
             <tbody className='bg-white divide-y divide-gray-200'>
-              {currentData.length > 0 ? (
-                currentData.map((combo) => {
+              {filteredData.length > 0 ? (
+                filteredData.map((combo) => {
                   // Ưu tiên dùng storeName trực tiếp từ combo object (backend trả về)
                   // Nếu không có, thì lấy từ comboItems
                   let displayStoreName = combo.storeName || ''
@@ -311,10 +431,24 @@ function ManagerComboAdmin() {
                     displayStoreName = uniqueStoreNames.join(', ')
                   }
 
+                  const comboImage = combo.thumbnailUrl || ''
+
                   return (
                     <tr key={combo.id} className='hover:bg-gray-50'>
                       <td className='px-6 py-4 whitespace-nowrap'>
-                        <div className='text-sm font-medium text-gray-900 max-w-[200px] truncate'>{combo.name}</div>
+                        <div className='flex items-center gap-3'>
+                          <div className='w-15 h-15 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0'>
+                            {comboImage ? (
+                              <img src={comboImage} alt={combo.name} className='w-full h-full object-cover' />
+                            ) : (
+                              <span className='text-xs text-gray-500'>IMG</span>
+                            )}
+                          </div>
+                          <div className='min-w-0'>
+                            <div className='text-sm font-medium text-gray-900 truncate max-w-[200px]'>{combo.name}</div>
+                            <div className='text-xs text-gray-500'>#{combo.id.slice(0, 8)}...</div>
+                          </div>
+                        </div>
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap'>
                         <StatusBadge status={combo.status} />
@@ -323,9 +457,7 @@ function ManagerComboAdmin() {
                         <div className='text-sm text-gray-900 max-w-[150px] truncate'>{combo.provinceName}</div>
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap'>
-                        <div className='text-sm text-gray-900 max-w-[200px] truncate'>
-                          {displayStoreName || '-'}
-                        </div>
+                        <div className='text-sm text-gray-900 max-w-[200px] truncate'>{displayStoreName || '-'}</div>
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
                         {formatDate(combo.createdAt || '-')}
@@ -342,12 +474,12 @@ function ManagerComboAdmin() {
                         </Button>
                         <Button
                           variant='outline'
-                          title='Xử lý'
+                          title='Gán nhân viên'
                           size='sm'
-
+                          onClick={() => handleOpenAssignStaff(combo)}
                           className='text-green-600 hover:text-green-900'
                         >
-                          <CheckCircle className='w-4 h-4' />
+                          <UserPlus className='w-4 h-4' />
                         </Button>
                       </td>
                     </tr>
@@ -367,41 +499,82 @@ function ManagerComboAdmin() {
         {/* Pagination */}
         <div className='flex items-center justify-between mt-6'>
           <div className='text-sm text-gray-700'>
-            Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredData.length)} trong {filteredData.length} kết quả
+            Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến {Math.min(currentPage * itemsPerPage, totalItems)} trong{' '}
+            {totalItems} kết quả
           </div>
-          <div className='flex items-center space-x-2'>
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className='px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              Trước
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                className={`px-3 py-2 text-sm font-medium rounded-md ${currentPage === page
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-                  }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className='px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              Sau
-            </button>
-          </div>
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
         </div>
       </div>
 
       {/* Combo Detail Popup */}
       <ComboDetailPopup comboId={selectedComboId} isOpen={isDetailPopupOpen} onClose={handleCloseDetail} />
+
+      {/* Assign Staff Modal */}
+      <Dialog open={isAssignStaffModalOpen} onOpenChange={setIsAssignStaffModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-gray-900'>
+              <CheckCircle className='w-5 h-5 text-green-500' />
+              Gán nhân viên xử lý combo
+            </DialogTitle>
+            <DialogDescription>
+              Chọn nhân viên để gán xử lý combo <strong>{selectedComboForAssign?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-4 mt-4'>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Chọn nhân viên</label>
+              {loadingStaff ? (
+                <div className='flex items-center justify-center py-8'>
+                  <Loader2 className='w-6 h-6 animate-spin text-gray-400' />
+                  <span className='ml-2 text-sm text-gray-500'>Đang tải danh sách nhân viên...</span>
+                </div>
+              ) : (
+                <StaffComboBox
+                  options={staffList}
+                  placeholder='Chọn nhân viên...'
+                  onSelect={(staffId) => setSelectedStaffId(staffId)}
+                  value={selectedStaffId || undefined}
+                />
+              )}
+            </div>
+
+            {selectedComboForAssign && (
+              <div className='p-4 bg-gray-50 border rounded-lg'>
+                <p className='text-xs text-gray-500 mb-1'>Thông tin combo:</p>
+                <p className='text-sm font-medium text-gray-900'>{selectedComboForAssign.name}</p>
+                <p className='text-xs text-gray-600 mt-1'>
+                  Trạng thái: <StatusBadge status={selectedComboForAssign.status} />
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className='mt-6'>
+            <Button variant='outline' onClick={handleCloseAssignStaff} disabled={assigning}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleAssignStaff}
+              disabled={assigning || !selectedStaffId || loadingStaff}
+              className='bg-green-500 hover:bg-green-600 text-white'
+            >
+              {assigning ? (
+                <>
+                  <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                  Đang xử lý...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className='w-4 h-4 mr-2' />
+                  Gán nhân viên
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

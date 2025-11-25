@@ -3,6 +3,9 @@ export interface ProductStoryContent {
   contentType: string // varchar - loại nội dung (text, image, video, etc.)
   contentData: string // text - dữ liệu nội dung
   order: number // int - thứ tự hiển thị
+  videoPreviewUrl?: string | null // Video preview URL
+  videoPlayBackUrl?: string | null // Video playback URL (HLS/DASH)
+  videoFallBackUrl?: string | null // Video fallback URL (highest priority)
 }
 
 export interface ProductStory {

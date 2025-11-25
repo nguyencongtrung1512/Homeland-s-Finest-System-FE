@@ -1,40 +1,72 @@
-import { useState, useEffect } from 'react'
-import { Card, Input, Select, DatePicker, Button, Table, Tag, Pagination, message } from 'antd'
-import { Search, Filter, Eye, UserPlus } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Search, Eye, UserPlus, CheckCircle, Loader2, Calendar, Filter } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { ColumnsType } from 'antd/es/table'
 import { adminApi, type AdminProduct, type Staff } from '../../../apis/admin.api'
 import { staffApi, type StaffInfo } from '../../../apis/staff.api'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
-import { Label } from '../../../components/ui/label'
-import { Button as UIButton } from '../../../components/ui/button'
+import { Button } from '../../../components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../../components/ui/dialog'
 import StaffComboBox from '../../../components/ui/staff-combo-box'
+import Pagination from '../../../components/Pagination/Pagination'
 import { toast } from '../../../utils/toast'
 
-const { Search: AntSearch } = Input
-const { Option } = Select
-
-interface ProductTableData {
-  key: string
-  product: {
-    image: string
-    name: string
-    id: string
+// Status badge component
+const StatusBadge = ({ status }: { status: string }) => {
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'approved':
+        return 'bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm font-medium'
+      case 'confirmed':
+        return 'bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm font-medium'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-sm font-medium'
+      case 'rejected':
+        return 'bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm font-medium'
+      case 'denied':
+        return 'bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm font-medium'
+      case 'processing':
+        return 'bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-sm font-medium'
+      default:
+        return 'bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-sm font-medium'
+    }
   }
-  storeId: string
-  createdDate: string
-  price: number | null
-  status: string
-  assignedToId: string | null
+
+  const getStatusText = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'approved':
+        return 'Đã duyệt'
+      case 'pending':
+        return 'Chờ duyệt'
+      case 'rejected':
+        return 'Từ chối xử lý'
+      case 'denied':
+        return 'Từ chối'
+      case 'confirmed':
+        return 'Đã xác nhận'
+      case 'processing':
+        return 'Đang xử lý'
+      default:
+        return status
+    }
+  }
+
+  return <span className={getStatusColor(status)}>{getStatusText(status)}</span>
 }
 
 function ManagerProductAdmin() {
   const navigate = useNavigate()
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('Approved')
-  const [dateFilter, setDateFilter] = useState(null)
+  const [dateFrom, setDateFrom] = useState<string>('')
+  const [dateTo, setDateTo] = useState<string>('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [pageSize] = useState(10) // Fixed page size, can be made dynamic in future if needed
   const [totalItems, setTotalItems] = useState(0)
   const [loading, setLoading] = useState(false)
   const [products, setProducts] = useState<AdminProduct[]>([])
@@ -44,12 +76,13 @@ function ManagerProductAdmin() {
   // States for assign staff modal
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
-  const [selectedStaffId, setSelectedStaffId] = useState('')
+  const [selectedProduct, setSelectedProduct] = useState<AdminProduct | null>(null)
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null)
   const [staffList, setStaffList] = useState<Staff[]>([])
   const [loadingStaffList, setLoadingStaffList] = useState(false)
   const [assigning, setAssigning] = useState(false)
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true)
       const params: {
@@ -62,7 +95,7 @@ function ManagerProductAdmin() {
         pageNumber: currentPage
       }
 
-      if (statusFilter !== 'all') {
+      if (statusFilter && statusFilter !== 'all') {
         params.status = statusFilter as 'Pending' | 'Processing' | 'Confirmed' | 'Rejected' | 'Denied' | 'Approved'
       }
 
@@ -85,53 +118,55 @@ function ManagerProductAdmin() {
       }
     } catch (error) {
       console.error('Error fetching products:', error)
-      message.error('Không thể tải danh sách sản phẩm')
+      toast.error('Không thể tải danh sách sản phẩm')
       setProducts([])
       setTotalItems(0)
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, pageSize, statusFilter, searchText])
 
   // Fetch staff info by ID
-  const fetchStaffInfo = async (staffId: string) => {
-    // Check if already in cache or loading
-    if (staffNames.has(staffId) || loadingStaff.has(staffId)) {
-      return
-    }
+  const fetchStaffInfo = useCallback(
+    async (staffId: string) => {
+      // Check if already in cache or loading
+      if (staffNames.has(staffId) || loadingStaff.has(staffId)) {
+        return
+      }
 
-    try {
-      setLoadingStaff((prev) => new Set(prev).add(staffId))
-      const response = await staffApi.getStaffInfo(staffId)
+      try {
+        setLoadingStaff((prev) => new Set(prev).add(staffId))
+        const response = await staffApi.getStaffInfo(staffId)
 
-      // Response structure: response.data = { status, message, data: StaffInfo }
-      const staffInfo: StaffInfo | undefined =
-        response.data?.data || (response.data as StaffInfo) || (response as unknown as StaffInfo)
+        // Response structure: response.data = { status, message, data: StaffInfo }
+        const staffInfo: StaffInfo | undefined =
+          response.data?.data || (response.data as StaffInfo) || (response as unknown as StaffInfo)
 
-      if (staffInfo && staffInfo.firstName && staffInfo.lastName) {
-        const fullName = `${staffInfo.firstName} ${staffInfo.lastName}`.trim()
+        if (staffInfo && staffInfo.firstName && staffInfo.lastName) {
+          const fullName = `${staffInfo.firstName} ${staffInfo.lastName}`.trim()
 
-        setStaffNames((prev) => {
-          const newMap = new Map(prev)
-          newMap.set(staffId, fullName)
-          return newMap
+          setStaffNames((prev) => {
+            const newMap = new Map(prev)
+            newMap.set(staffId, fullName)
+            return newMap
+          })
+        }
+      } catch (error) {
+        console.error(`Error fetching staff info for ${staffId}:`, error)
+      } finally {
+        setLoadingStaff((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(staffId)
+          return newSet
         })
       }
-    } catch (error) {
-      console.error(`Error fetching staff info for ${staffId}:`, error)
-    } finally {
-      setLoadingStaff((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(staffId)
-        return newSet
-      })
-    }
-  }
+    },
+    [staffNames, loadingStaff]
+  )
 
   useEffect(() => {
     fetchProducts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, pageSize, statusFilter])
+  }, [fetchProducts])
 
   // Fetch staff info for all assigned staff when products change
   useEffect(() => {
@@ -140,11 +175,10 @@ function ManagerProductAdmin() {
         fetchStaffInfo(product.assignedToId)
       }
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products])
+  }, [products, staffNames, loadingStaff, fetchStaffInfo])
 
   // Load staff list for assign modal
-  const loadStaffList = async () => {
+  const loadStaffList = useCallback(async () => {
     try {
       setLoadingStaffList(true)
       const response = await adminApi.getAllStaff()
@@ -152,7 +186,8 @@ function ManagerProductAdmin() {
       if (response && response.data && Array.isArray(response.data)) {
         setStaffList(response.data)
       } else {
-        setStaffList([])
+        const staffData = response?.data || response || []
+        setStaffList(Array.isArray(staffData) ? staffData : [])
       }
     } catch (error) {
       console.error('Error loading staff list:', error)
@@ -161,22 +196,25 @@ function ManagerProductAdmin() {
     } finally {
       setLoadingStaffList(false)
     }
-  }
+  }, [])
 
   // Handle open assign modal
-  const handleOpenAssignModal = (productId: string) => {
-    setSelectedProductId(productId)
-    setSelectedStaffId('')
+  const handleOpenAssignModal = (product: AdminProduct) => {
+    setSelectedProductId(product.id)
+    setSelectedProduct(product)
+    setSelectedStaffId(null)
     setShowAssignModal(true)
-    loadStaffList()
+    if (staffList.length === 0) {
+      loadStaffList()
+    }
   }
 
   // Handle close assign modal
   const handleCloseAssignModal = () => {
     setShowAssignModal(false)
     setSelectedProductId(null)
-    setSelectedStaffId('')
-    setStaffList([])
+    setSelectedProduct(null)
+    setSelectedStaffId(null)
   }
 
   // Handle assign staff
@@ -212,264 +250,334 @@ function ManagerProductAdmin() {
     }
   }
 
-  // Transform products to table data
-  const productTableData: ProductTableData[] = products.map((product) => ({
-    key: product.id,
-    product: {
-      image: product.productImages && product.productImages.length > 0 ? product.productImages[0] : '',
-      name: product.name,
-      id: product.id
-    },
-    storeId: product.storeId,
-    createdDate: product.createdAt,
-    price: product.price,
-    status: product.status,
-    assignedToId: product.assignedToId
-  }))
-
-  const getStatusTag = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'pending':
-        return <Tag color='orange'>Chờ duyệt</Tag>
-      case 'processing':
-        return <Tag color='blue'>Đang xử lý</Tag>
-      case 'confirmed':
-        return <Tag color='cyan'>Đã xác nhận</Tag>
-      case 'approved':
-        return <Tag color='green'>Đã duyệt</Tag>
-      case 'rejected':
-        return <Tag color='red'>Từ chối xử lí </Tag>
-      case 'denied':
-        return <Tag color='red'>Từ chối</Tag>
-      default:
-        return <Tag>{status}</Tag>
-    }
-  }
-
   const formatDate = (dateString: string) => {
+    if (!dateString || dateString === 'null' || dateString === 'undefined') {
+      return '-'
+    }
+
     // Format: "19:23:34 21/10/2025" -> "21/10/2025"
     if (dateString.includes(' ')) {
       return dateString.split(' ')[1] || dateString
     }
-    return dateString
+
+    // Xử lý định dạng "HH:MM:SS DD/MM/YYYY" từ API
+    const timeDateMatch = dateString.match(/(\d{2}:\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/)
+
+    if (timeDateMatch) {
+      const [, time, date] = timeDateMatch
+      const [day, month, year] = date.split('/')
+
+      // Tạo Date object với định dạng chuẩn
+      const dateObj = new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        ...(time ? time.split(':').map(Number) : [0, 0, 0])
+      )
+
+      if (isNaN(dateObj.getTime())) {
+        return dateString
+      }
+
+      return dateObj.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      })
+    }
+
+    // Fallback cho các định dạng khác
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return dateString
+    }
+
+    return date.toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
   }
 
-  const columns: ColumnsType<ProductTableData> = [
-    {
-      title: 'Sản phẩm',
-      dataIndex: 'product',
-      key: 'product',
-      render: (product) => (
-        <div className='flex items-center gap-3'>
-          <div className='w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden'>
-            {product.image ? (
-              <img src={product.image} alt={product.name} className='w-full h-full object-cover' />
-            ) : (
-              <span className='text-xs text-gray-500'>IMG</span>
-            )}
-          </div>
-          <div>
-            <div className='font-medium text-gray-900'>{product.name}</div>
-            <div className='text-sm text-gray-500'>#{product.id.slice(0, 8)}...</div>
-          </div>
-        </div>
-      )
-    },
-    // {
-    //   title: 'Cửa hàng',
-    //   dataIndex: 'storeId',
-    //   key: 'storeId',
-    //   render: (storeId) => <span className='text-gray-700'>{storeId.slice(0, 8)}...</span>
-    // },
-    {
-      title: 'Ngày tạo',
-      dataIndex: 'createdDate',
-      key: 'createdDate',
-      render: (date) => <span className='text-gray-700'>{formatDate(date)}</span>
-    },
-    {
-      title: 'Nhân viên xử lý',
-      dataIndex: 'assignedToId',
-      key: 'assignedToId',
-      render: (assignedToId: string | null) => {
-        if (!assignedToId) {
-          return <span className='text-gray-400'>Chưa phân công</span>
-        }
+  // Pagination
+  const totalPages = Math.ceil(totalItems / pageSize)
 
-        const staffName = staffNames.get(assignedToId)
-        const isLoading = loadingStaff.has(assignedToId)
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
-        if (isLoading) {
-          return <span className='text-gray-400'>Đang tải...</span>
-        }
-
-        return <span className='text-gray-700'>{staffName || assignedToId.slice(0, 8) + '...'}</span>
-      }
-    },
-
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => getStatusTag(status)
-    },
-    {
-      title: 'Hành động',
-      key: 'action',
-      render: (_, record) => (
-        <div className='flex items-center gap-2'>
-          <Button
-            type='text'
-            icon={<Eye size={16} />}
-            onClick={() => navigate(`/admin/productManagement/detail-product/${record.product.id}`)}
-            className='flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
-            title='Xem chi tiết'
-          />
-          <Button
-            type='text'
-            icon={<UserPlus size={16} />}
-            onClick={() => handleOpenAssignModal(record.product.id)}
-            className='flex items-center justify-center w-8 h-8 rounded-full bg-green-50 text-green-600 hover:bg-green-100'
-            title='Gán nhân viên'
-          />
-        </div>
-      )
-    }
-  ]
+  const handleSearch = () => {
+    setCurrentPage(1)
+    fetchProducts()
+  }
 
   const handleFilter = () => {
     setCurrentPage(1)
     fetchProducts()
   }
 
-  const handleSearch = (value: string) => {
-    setSearchText(value)
+  const handleClearFilters = () => {
+    setSearchText('')
+    setStatusFilter('Approved')
+    setDateFrom('')
+    setDateTo('')
     setCurrentPage(1)
-    fetchProducts()
   }
 
-  const handlePageChange = (page: number, size?: number) => {
-    setCurrentPage(page)
-    if (size) {
-      setPageSize(size)
-    }
+  if (loading && products.length === 0) {
+    return (
+      <div className='flex items-center justify-center h-64'>
+        <div className='text-lg'>Đang tải...</div>
+      </div>
+    )
   }
 
   return (
-    <div className='space-y-6'>
-      {/* Header */}
-      <div>
-        <h1 className='text-2xl font-bold text-gray-900'>Quản lý sản phẩm</h1>
-        <p className='text-gray-600 mt-1'>Duyệt và quản lý tất cả sản phẩm trên hệ thống</p>
-      </div>
+    <div className='w-full space-y-4 p-6'>
+      <div className='bg-white rounded-lg shadow-sm border p-6'>
+        <h1 className='text-2xl font-bold text-gray-900 mb-2'>Quản lý sản phẩm</h1>
+        <p className='text-gray-600 mb-6'>Duyệt và quản lý tất cả sản phẩm trên hệ thống</p>
 
-      {/* Search and Filters */}
-      <Card>
-        <div className='flex flex-wrap items-center gap-4'>
-          <div className='flex-1 min-w-[300px]'>
-            <AntSearch
+        {/* Search and Filters */}
+        <div className='flex items-center gap-4 mb-6 flex-wrap'>
+          {/* Search */}
+          <div className='relative flex-1 min-w-[200px]'>
+            <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400' />
+            <input
+              type='text'
               placeholder='Tên sản phẩm hoặc ID...'
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              onSearch={handleSearch}
-              prefix={<Search size={16} className='text-gray-400' />}
-              className='w-full'
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearch()
+                }
+              }}
+              className='w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent'
             />
           </div>
 
-          <Select value={statusFilter} onChange={setStatusFilter} className='w-40' placeholder='Trạng thái'>
-            <Option value='Pending'>Chờ duyệt</Option>
-            <Option value='Processing'>Đang xử lý</Option>
-            <Option value='Confirmed'>Đã xác nhận</Option>
-            <Option value='Approved'>Đã duyệt</Option>
-            <Option value='Rejected'>Từ chối</Option>
-            <Option value='Denied'>Từ chối xử lý</Option>
-          </Select>
-
-          <DatePicker placeholder='mm/dd/yyyy' value={dateFilter} onChange={setDateFilter} className='w-40' />
-
-          <Button
-            type='primary'
-            icon={<Filter size={16} />}
-            onClick={handleFilter}
-            className='bg-blue-600 hover:bg-blue-700'
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className='px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent'
           >
+            <option value='all'>Tất cả trạng thái</option>
+            <option value='Pending'>Chờ duyệt</option>
+            <option value='Processing'>Đang xử lý</option>
+            <option value='Confirmed'>Đã xác nhận</option>
+            <option value='Approved'>Đã duyệt</option>
+            <option value='Rejected'>Từ chối</option>
+            <option value='Denied'>Từ chối xử lý</option>
+          </select>
+
+          {/* Date Range */}
+          <div className='flex items-center gap-2'>
+            <Calendar className='h-4 w-4 text-gray-400' />
+            <input
+              type='date'
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className='px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+            />
+            <span className='text-gray-500'>đến</span>
+            <input
+              type='date'
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className='px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+            />
+          </div>
+
+          {/* Filter Button */}
+          <Button onClick={handleFilter} className='bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2'>
+            <Filter className='w-4 h-4' />
             Lọc
           </Button>
-        </div>
-      </Card>
 
-      {/* Table */}
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={productTableData}
-          pagination={false}
-          loading={loading}
-          rowKey='key'
-          className='w-full'
-        />
+          {/* Clear Filters */}
+          <button
+            onClick={handleClearFilters}
+            className='px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50'
+          >
+            Xóa bộ lọc
+          </button>
+        </div>
+
+        {/* Table */}
+        <div className='overflow-x-auto'>
+          <table className='min-w-full divide-y divide-gray-200'>
+            <thead className='bg-gray-50'>
+              <tr>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Sản phẩm
+                </th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Ngày tạo
+                </th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Nhân viên xử lý
+                </th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Trạng thái
+                </th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Hành động
+                </th>
+              </tr>
+            </thead>
+            <tbody className='bg-white divide-y divide-gray-200'>
+              {products.length > 0 ? (
+                products.map((product) => {
+                  const staffName = product.assignedToId ? staffNames.get(product.assignedToId) : null
+                  const isLoadingStaff = product.assignedToId ? loadingStaff.has(product.assignedToId) : false
+                  const productImage =
+                    product.productImages && product.productImages.length > 0 ? product.productImages[0] : ''
+
+                  return (
+                    <tr key={product.id} className='hover:bg-gray-50'>
+                      <td className='px-6 py-4 whitespace-nowrap'>
+                        <div className='flex items-center gap-3'>
+                          <div className='w-15 h-15 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0'>
+                            {productImage ? (
+                              <img src={productImage} alt={product.name} className='w-full h-full object-cover' />
+                            ) : (
+                              <span className='text-xs text-gray-500'>IMG</span>
+                            )}
+                          </div>
+                          <div className='min-w-0'>
+                            <div className='text-sm font-medium text-gray-900 truncate max-w-[200px]'>
+                              {product.name}
+                            </div>
+                            <div className='text-xs text-gray-500'>#{product.id.slice(0, 8)}...</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
+                        {formatDate(product.createdAt)}
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
+                        {!product.assignedToId ? (
+                          <span className='text-gray-400'>Chưa phân công</span>
+                        ) : isLoadingStaff ? (
+                          <span className='text-gray-400'>Đang tải...</span>
+                        ) : (
+                          <span className='text-gray-700'>{staffName || product.assignedToId.slice(0, 8) + '...'}</span>
+                        )}
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap'>
+                        <StatusBadge status={product.status} />
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap text-sm flex items-center gap-2 font-medium'>
+                        <Button
+                          variant='outline'
+                          title='Xem chi tiết'
+                          size='sm'
+                          onClick={() => navigate(`/admin/productManagement/detail-product/${product.id}`)}
+                          className='text-blue-600 hover:text-blue-900'
+                        >
+                          <Eye className='w-4 h-4' />
+                        </Button>
+                        <Button
+                          variant='outline'
+                          title='Gán nhân viên'
+                          size='sm'
+                          onClick={() => handleOpenAssignModal(product)}
+                          className='text-green-600 hover:text-green-900'
+                        >
+                          <UserPlus className='w-4 h-4' />
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={5} className='px-6 py-12 text-center text-gray-500'>
+                    Không có kết quả.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination */}
         <div className='flex items-center justify-between mt-6'>
-          <div className='text-sm text-gray-600'>
-            Hiển thị {(currentPage - 1) * pageSize + 1} đến {Math.min(currentPage * pageSize, totalItems)} của{' '}
+          <div className='text-sm text-gray-700'>
+            Hiển thị {(currentPage - 1) * pageSize + 1} đến {Math.min(currentPage * pageSize, totalItems)} trong{' '}
             {totalItems} kết quả
           </div>
-          <Pagination
-            current={currentPage}
-            total={totalItems}
-            pageSize={pageSize}
-            onChange={handlePageChange}
-            showSizeChanger={false}
-            disabled={loading}
-            className='flex items-center gap-2'
-          />
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
         </div>
-      </Card>
+      </div>
 
       {/* Assign Staff Modal */}
-      <Dialog open={showAssignModal} onOpenChange={handleCloseAssignModal}>
+      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Gán nhân viên xử lý</DialogTitle>
+            <DialogTitle className='flex items-center gap-2 text-gray-900'>
+              <CheckCircle className='w-5 h-5 text-green-500' />
+              Gán nhân viên xử lý sản phẩm
+            </DialogTitle>
+            <DialogDescription>
+              Chọn nhân viên để gán xử lý sản phẩm <strong>{selectedProduct?.name}</strong>
+            </DialogDescription>
           </DialogHeader>
-          <div className='space-y-4 py-4'>
+
+          <div className='space-y-4 mt-4'>
             <div>
-              <Label htmlFor='staff-select' className='text-sm font-medium'>
-                Chọn nhân viên
-              </Label>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Chọn nhân viên</label>
               {loadingStaffList ? (
-                <div className='mt-2 flex items-center justify-center py-4 border border-gray-300 rounded-lg'>
-                  <span className='text-sm text-gray-500'>Đang tải danh sách nhân viên...</span>
+                <div className='flex items-center justify-center py-8'>
+                  <Loader2 className='w-6 h-6 animate-spin text-gray-400' />
+                  <span className='ml-2 text-sm text-gray-500'>Đang tải danh sách nhân viên...</span>
                 </div>
               ) : (
-                <div className='mt-2'>
-                  <StaffComboBox
-                    options={staffList}
-                    placeholder='Chọn nhân viên xử lý...'
-                    value={selectedStaffId}
-                    onSelect={(staffId) => setSelectedStaffId(staffId || '')}
-                    disabled={assigning}
-                  />
-                </div>
-              )}
-              {staffList.length > 0 && !loadingStaffList && (
-                <p className='text-xs text-gray-500 mt-1'>Tìm thấy {staffList.length} nhân viên</p>
+                <StaffComboBox
+                  options={staffList}
+                  placeholder='Chọn nhân viên...'
+                  onSelect={(staffId) => setSelectedStaffId(staffId)}
+                  value={selectedStaffId || undefined}
+                />
               )}
             </div>
+
+            {selectedProduct && (
+              <div className='p-4 bg-gray-50 border rounded-lg'>
+                <p className='text-xs text-gray-500 mb-1'>Thông tin sản phẩm:</p>
+                <p className='text-sm font-medium text-gray-900'>{selectedProduct.name}</p>
+                <p className='text-xs text-gray-600 mt-1'>
+                  Trạng thái: <StatusBadge status={selectedProduct.status} />
+                </p>
+              </div>
+            )}
           </div>
-          <DialogFooter>
-            <UIButton variant={'outline'} onClick={handleCloseAssignModal} disabled={assigning}>
+
+          <DialogFooter className='mt-6'>
+            <Button variant='outline' onClick={handleCloseAssignModal} disabled={assigning}>
               Hủy
-            </UIButton>
-            <UIButton
+            </Button>
+            <Button
               onClick={handleAssignStaff}
-              disabled={!selectedStaffId || assigning}
-              className='bg-green-600 hover:bg-green-700 text-white'
+              disabled={assigning || !selectedStaffId || loadingStaffList}
+              className='bg-green-500 hover:bg-green-600 text-white'
             >
-              {assigning ? 'Đang gán...' : 'Xác nhận'}
-            </UIButton>
+              {assigning ? (
+                <>
+                  <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                  Đang xử lý...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className='w-4 h-4 mr-2' />
+                  Gán nhân viên
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

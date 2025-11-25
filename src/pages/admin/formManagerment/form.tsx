@@ -135,13 +135,13 @@ export default function AdminFormManagement() {
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
-      case 'Confirmed':
+      case 'WaitingSellerResponse':
         return {
-          icon: <CheckCircle className='w-4 h-4 text-green-500' />,
+          icon: <Clock className='w-4 h-4 text-orange-500' />,
           badge: 'default',
-          text: 'Đã xác nhận',
-          color: 'text-green-700',
-          bgColor: 'bg-green-50'
+          text: 'Chờ phản hồi từ người bán',
+          color: 'text-orange-700',
+          bgColor: 'bg-orange-50'
         }
       case 'Cancel':
         return {
@@ -278,7 +278,7 @@ export default function AdminFormManagement() {
                   <SelectItem value='ApprovedByAdmin'>Đã duyệt (Admin)</SelectItem>
                   <SelectItem value='DeniedByAdmin'>Từ chối (Admin)</SelectItem>
                   <SelectItem value='Rejected'>Bị từ chối</SelectItem>
-                  <SelectItem value='Confirmed'>Đã xác nhận</SelectItem>
+                  <SelectItem value='WaitingSellerResponse'>Chờ phản hồi từ người bán</SelectItem>
                   <SelectItem value='Cancel'>Đã hủy</SelectItem>
                 </SelectContent>
               </Select>

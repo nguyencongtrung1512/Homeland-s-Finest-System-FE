@@ -153,5 +153,39 @@ export const formApi = {
 
     const response = await axiosInstance.get(`/Form?${queryParams.toString()}`)
     return response.data
+  },
+
+  // Seller APIs
+  getFormsByStoreId: async (storeId: string, params?: Partial<FormQueryParams>): Promise<FormDTO[]> => {
+    const queryParams = new URLSearchParams()
+    queryParams.append('storeId', storeId)
+
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString())
+        }
+      })
+    }
+
+    const response = await axiosInstance.get(`/Form?${queryParams.toString()}`)
+    return response.data
+  },
+
+  sellerUpdateForm: async (formId: string, data: { sellerReply: string; sellerImageFiles?: File[] }): Promise<void> => {
+    const formData = new FormData()
+    formData.append('SellerReply', data.sellerReply)
+
+    if (data.sellerImageFiles && data.sellerImageFiles.length > 0) {
+      data.sellerImageFiles.forEach((file) => {
+        formData.append('SellerImageFiles', file)
+      })
+    }
+
+    await axiosInstance.put(`/Form/seller-update/${formId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
   }
 }

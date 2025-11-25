@@ -332,9 +332,7 @@ function ComboListStaff() {
               </Button>
             </ShimmerBorder>
           </div>
-          <p className='text-white/90 mt-2'>
-            Quản lý và theo dõi tất cả combo trong hệ thống ({filteredData.length} combo)
-          </p>
+          <p className='text-white/90 mt-2'>Theo dõi tất cả combo trong hệ thống ({filteredData.length} combo)</p>
         </CardContent>
       </Card>
 

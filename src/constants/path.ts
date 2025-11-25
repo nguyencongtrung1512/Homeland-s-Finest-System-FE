@@ -43,6 +43,7 @@ export const path = {
   helpSeller: 'help',
   detailHelpSeller: 'help/:requestId',
   productReviewsSeller: 'product-reviews',
+  complaintSeller: 'complaint',
   // ============ STAFF========
   BASE_STAFF: '/staff',
   // Staff nested routes (relative paths)
@@ -92,6 +93,7 @@ export const path = {
   // Admin complaint subpages
   FORM_ORDER_MANAGEMENT_ADMIN: 'formManagement/order',
   FORM_STORE_MANAGEMENT_ADMIN: 'formManagement/store',
+  FORM_OTHER_MANAGEMENT_ADMIN: 'formManagement/otherSupport',
   // ============ BLOG =============
   CREATE_BLOG: '/admin/blogManagement/detail/:id/create-blog',
   BLOG_CATEGORY_EDIT: '/admin/blogManagement/edit/:id'

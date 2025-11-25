@@ -72,6 +72,7 @@ import StaffManagement from './pages/admin/staffManagerment/list'
 import AdminFormManagement from './pages/admin/formManagerment/form'
 import FormOrderManagement from './pages/admin/formManagerment/formOrder'
 import FormStoreManagement from './pages/admin/formManagerment/formStore'
+import FormOtherManagement from './pages/admin/formManagerment/formOther'
 import ManagerComboStaff from './pages/staff/comboManagerment/managerCombo'
 import ComboListStaff from './pages/staff/comboManagerment/list'
 import DetailComboStaff from './pages/staff/comboManagerment/detailCombo'
@@ -79,6 +80,7 @@ import ManagerProductAdmin from './pages/admin/productManagerment/list'
 import ManagerComboAdmin from './pages/admin/comboManagerment/list'
 import ComboDetail from './pages/customer/combo/detail'
 import DetailProductAdmin from './pages/admin/productManagerment/detail'
+import ComplainSeller from './pages/seller/complain/complain'
 
 
 export default function useRouteElements() {
@@ -241,6 +243,10 @@ export default function useRouteElements() {
             {
               path: path.productReviewsSeller,
               element: <ProductReviews />
+            },
+            {
+              path: path.complaintSeller,
+              element: <ComplainSeller />
             }
           ]
         }
@@ -417,6 +423,10 @@ export default function useRouteElements() {
             {
               path: path.FORM_STORE_MANAGEMENT_ADMIN,
               element: <FormStoreManagement />
+            },
+            {
+              path: path.FORM_OTHER_MANAGEMENT_ADMIN,
+              element: <FormOtherManagement />
             },
             {
               path: '/admin/promotions/stats',

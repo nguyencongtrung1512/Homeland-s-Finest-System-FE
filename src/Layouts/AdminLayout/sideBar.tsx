@@ -14,7 +14,8 @@ import {
   Store,
   Wallet,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  CircleQuestionMark
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '../../lib/utils'
@@ -107,6 +108,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
   const [complaintOpen, setComplaintOpen] = useState(false)
   const complaintOrderPath = `${path.BASE_ADMIN}/${path.FORM_ORDER_MANAGEMENT_ADMIN}`
   const complaintStorePath = `${path.BASE_ADMIN}/${path.FORM_STORE_MANAGEMENT_ADMIN}`
+  const complaintOtherPath = `${path.BASE_ADMIN}/${path.FORM_OTHER_MANAGEMENT_ADMIN}`
 
 
   return (
@@ -170,7 +172,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
           title={isCollapsed ? 'Quản lý khiếu nại' : undefined}
           className={cn(
             'admin-menu-item flex items-center h-10 w-full transition-all duration-300 rounded-md px-3 outline-none',
-            isCollapsed ? 'justify-center px-2' : 'justify-start gap-3',
+            isCollapsed ? 'justify-center px-2' : 'justify-start gap-3'
           )}
         >
           <span className='admin-menu-icon mr-2'>
@@ -218,6 +220,22 @@ function SideBar({ isCollapsed }: SideBarProps) {
                 <Store size={16} />
               </span>
               <span className='truncate'>Khiếu nại cửa hàng</span>
+            </button>
+
+            <button
+              type='button'
+              onClick={() => handleMenuClick(path.FORM_OTHER_MANAGEMENT_ADMIN)}
+              className={cn(
+                'admin-menu-item flex items-center h-9 w-full transition-all duration-300 rounded-md px-3 outline-none',
+                location.pathname === complaintOtherPath || location.pathname.startsWith(complaintOtherPath + '/')
+                  ? 'active text-white'
+                  : 'text-gray-700'
+              )}
+            >
+              <span className='admin-menu-icon mr-2'>
+                <CircleQuestionMark size={16} />
+              </span>
+              <span className='truncate'>Hỗ trợ/Khác</span>
             </button>
           </div>
         )}

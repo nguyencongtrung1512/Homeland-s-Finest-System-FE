@@ -69,8 +69,8 @@ export const ORDER_STATUS_GROUPS = {
   CONFIRMED: ['Confirmed', 'ReadyToPick', 'Picking', 'Picked'] as const,
   SHIPPING: ['Storing', 'Transporting', 'Sorting', 'Delivering'] as const,
   COMPLETED: ['Delivered', 'Paid'] as const,
-  RETURNING: ['Returning', 'Returned', 'Refunded', 'DeliveryFail', 'Refunding'] as const,
-  ISSUE: ['Exception', 'Damaged', 'Lost', 'Complaining', 'Complained'] as const,
+  RETURNING: ['Returned', 'DeliveryFail'] as const,
+  ISSUE: ['Exception', 'Damaged', 'Lost'] as const,
   CANCELLED: ['Cancel'] as const
 } as const
 
@@ -94,6 +94,7 @@ export interface Transaction {
   id: string
   userId: string
   orderId: string
+  type: 'Sale' | 'Refund' | 'Payout' | 'Withdrawal'
   paymentMethod: string
   payosOrderCode: string
   checkoutUrl: string
@@ -178,7 +179,9 @@ export interface Order {
   status: OrderStatus
   isComplained: boolean
   isFreeship: boolean
+  isRefunded?: boolean
   isPayOut?: boolean
+  isVerification?: boolean
   shipPrice: number
   totalOrder: number
   totalCommission: number
@@ -189,6 +192,8 @@ export interface Order {
   cancelDate: string | null
   createdAt: string
   updatedAt: string
+  VerificationImages: string[]
+  VerificationAt: string | null
   note: string | null
   orderItems: OrderItem[]
   orderItemsWithCombo: OrderItemWithCombo[]
@@ -256,18 +261,19 @@ export interface UpdateOrderStatusInput {
   note?: string
 }
 
-export type PaymentMethod = 'COD' | 'Banking' | 'MyWallet'
+export type PaymentMethod = 'COD' | 'Banking' | 'MyWallet' | 'BankTransfer'
 
 // Helper types cho Payment Method
 export type PaymentMethodCOD = 'COD'
 export type PaymentMethodBanking = 'Banking'
 export type PaymentMethodWallet = 'MyWallet'
-
+export type PaymentMethodBankTransfer = 'BankTransfer'
 // Payment Method display names
 export const PAYMENT_METHOD_NAMES: Record<PaymentMethod, string> = {
   COD: 'Thanh toán khi nhận hàng',
   Banking: 'Chuyển khoản ngân hàng',
-  MyWallet: 'Ví của tôi'
+  MyWallet: 'Ví của tôi',
+  BankTransfer: 'Rút tiền về ngân hàng'
 } as const
 
 // Complaint Order type - dùng cho dữ liệu khiếu nại đơn hàng

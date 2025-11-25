@@ -7,7 +7,7 @@ import { Label } from '../../../../../components/ui/label'
 import { Input } from '../../../../../components/ui/input'
 import { Textarea } from '../../../../../components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select'
-import { AlertTriangle, Loader2, Eye, Edit } from 'lucide-react'
+import { AlertTriangle, Loader2, Eye, Edit, XCircle } from 'lucide-react'
 import { formApi } from '../../../../../apis/form.api'
 import type { FormDTO, FormStatus, FormType } from '../../../../../types/form.type'
 import { toast } from '../../../../../utils/toast'
@@ -46,14 +46,14 @@ const getStatusLabel = (status: FormStatus): string => {
     ApprovedByStaff: 'Đang xử lý',
     ApprovedByAdmin: 'Đã xử lí',
     Rejected: 'Đang xử lý',
-    Confirmed: 'Đang xử lý',
+    WaitingSellerResponse: 'Đang xử lý',
     Cancel: 'Đã hủy'
   }
   return statusMap[status] || status
 }
 
 const getStatusColor = (status: FormStatus): string => {
-  if (status === 'ApprovedByStaff' || status === 'ApprovedByAdmin' || status === 'Confirmed') {
+  if (status === 'ApprovedByStaff' || status === 'ApprovedByAdmin' || status === 'WaitingSellerResponse') {
     return 'bg-green-100 text-green-700'
   }
   if (status === 'DeniedByAdmin' || status === 'DeniedByStaff' || status === 'Rejected') {
@@ -74,6 +74,7 @@ const ViewComplaintModal = ({ isOpen, onClose, orderId }: ViewComplaintModalProp
   const [error, setError] = useState<string | null>(null)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [isCanceling, setIsCanceling] = useState(false)
 
   const loadComplaint = useCallback(async () => {
     try {
@@ -93,6 +94,27 @@ const ViewComplaintModal = ({ isOpen, onClose, orderId }: ViewComplaintModalProp
       setLoading(false)
     }
   }, [orderId])
+
+  const handleCancel = useCallback(async () => {
+    if (!complaint?.id) return
+
+    try {
+      setIsCanceling(true)
+      await formApi.cancelForm(complaint.id)
+      toast.success('Hủy khiếu nại thành công!')
+      // Reload complaint data to reflect the new status
+      await loadComplaint()
+    } catch (err) {
+      console.error('Error canceling form:', err)
+      const errorMessage =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (err as Error).message ||
+        'Không thể hủy khiếu nại'
+      toast.error(errorMessage)
+    } finally {
+      setIsCanceling(false)
+    }
+  }, [complaint?.id, loadComplaint])
 
   useEffect(() => {
     if (isOpen && orderId) {
@@ -254,25 +276,22 @@ const ViewComplaintModal = ({ isOpen, onClose, orderId }: ViewComplaintModalProp
                 })()}
 
                 {/* Reply */}
-                {complaint.reply && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.8 }}
-                  >
-                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>Phản hồi từ nhân viên</Label>
-                    {complaint.staffName && (
-                      <p className='text-xs text-gray-500 mb-2'>
-                        Nhân viên: <span className='font-medium'>{complaint.staffName}</span>
-                      </p>
-                    )}
-                    <Textarea
-                      value={complaint.reply}
-                      disabled
-                      className='min-h-[100px] resize-none bg-green-50 border-green-200'
-                    />
-                  </motion.div>
-                )}
+                {complaint.reply &&
+                  (complaint.status === 'DeniedByAdmin' || complaint.status === 'ApprovedByAdmin') && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.8 }}
+                    >
+                      <Label className='text-sm font-medium text-gray-700 mb-2 block'>Phản hồi từ hệ thống</Label>
+  
+                      <Textarea
+                        value={complaint.reply}
+                        disabled
+                        className='min-h-[100px] resize-none bg-green-50 border-green-200'
+                      />
+                    </motion.div>
+                  )}
 
                 {/* Admin Text */}
                 {complaint.adminText && (
@@ -281,7 +300,7 @@ const ViewComplaintModal = ({ isOpen, onClose, orderId }: ViewComplaintModalProp
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.9 }}
                   >
-                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>Phản hồi từ Admin</Label>
+                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>Phản hồi từ quản trị viên</Label>
                     <Textarea
                       value={complaint.adminText}
                       disabled
@@ -315,15 +334,36 @@ const ViewComplaintModal = ({ isOpen, onClose, orderId }: ViewComplaintModalProp
                   className='flex gap-3 pt-4'
                 >
                   {complaint.status === 'Pending' && (
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className='flex-1'>
-                      <Button
-                        onClick={() => setIsUpdateModalOpen(true)}
-                        className='w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2'
-                      >
-                        <Edit className='w-4 h-4' />
-                        Chỉnh sửa
-                      </Button>
-                    </motion.div>
+                    <>
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className='flex-1'>
+                        <Button
+                          onClick={() => setIsUpdateModalOpen(true)}
+                          className='w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2'
+                        >
+                          <Edit className='w-4 h-4' />
+                          Chỉnh sửa
+                        </Button>
+                      </motion.div>
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className='flex-1'>
+                        <Button
+                          onClick={handleCancel}
+                          disabled={isCanceling}
+                          className='w-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed'
+                        >
+                          {isCanceling ? (
+                            <>
+                              <Loader2 className='w-4 h-4 animate-spin' />
+                              Đang hủy...
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className='w-4 h-4' />
+                              Hủy khiếu nại
+                            </>
+                          )}
+                        </Button>
+                      </motion.div>
+                    </>
                   )}
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className='flex-1'>
                     <Button onClick={onClose} className='w-full bg-green-600 hover:bg-green-700 text-white'>

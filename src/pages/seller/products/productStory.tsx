@@ -6,6 +6,8 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { BookOpen, Edit, Save, X, Trash2, Image, Video, Upload, AlertCircle } from 'lucide-react'
+import { Stream } from '@cloudflare/stream-react'
+import ThreeDCarousel from '../../../components/ui/3d-caroseu'
 import { productStoryApi } from '../../../apis/productStory.api'
 import type { ProductStory } from '../../../types/productStoryType'
 
@@ -25,12 +27,16 @@ interface StoryEditData {
   content: string
   images: string[]
   video: string
+  videoId?: string // Cloudflare Stream video ID (UID)
+  videoSources?: { hls?: string; dash?: string; preview?: string; fallback?: string } // Multiple video sources for HLS/DASH
   // Add file storage for actual files
   imageFiles: File[]
   videoFile: File | null
   // Track original images/video from server (to distinguish old vs new)
   originalImages: string[]
   originalVideo: string
+  originalVideoId?: string
+  originalVideoSources?: { hls?: string; dash?: string; preview?: string; fallback?: string }
 }
 
 function ProductStoryComponent({
@@ -48,10 +54,14 @@ function ProductStoryComponent({
     content: '',
     images: [],
     video: '',
+    videoId: undefined,
+    videoSources: undefined,
     imageFiles: [],
     videoFile: null,
     originalImages: [],
-    originalVideo: ''
+    originalVideo: '',
+    originalVideoId: undefined,
+    originalVideoSources: undefined
   })
 
   // Fix: Add setters for upload states
@@ -348,7 +358,9 @@ function ProductStoryComponent({
         imageFiles: [],
         videoFile: null,
         originalImages: processedData.images,
-        originalVideo: processedData.video
+        originalVideo: processedData.video,
+        originalVideoId: processedData.videoId,
+        originalVideoSources: processedData.videoSources
       })
     } else {
       // Reset to default when no story exists
@@ -357,10 +369,14 @@ function ProductStoryComponent({
         content: '',
         images: [],
         video: '',
+        videoId: undefined,
+        videoSources: undefined,
         imageFiles: [],
         videoFile: null,
         originalImages: [],
-        originalVideo: ''
+        originalVideo: '',
+        originalVideoId: undefined,
+        originalVideoSources: undefined
       })
     }
   }
@@ -429,7 +445,8 @@ function ProductStoryComponent({
           imageFiles: [], // New files start empty
           videoFile: null,
           originalImages: processedData.images, // Store original images from server
-          originalVideo: processedData.video // Store original video from server
+          originalVideo: processedData.video, // Store original video from server
+          originalVideoId: processedData.videoId // Store original video ID from server
         })
       } else {
         // Reset to default when creating new story
@@ -438,10 +455,14 @@ function ProductStoryComponent({
           content: '',
           images: [],
           video: '',
+          videoId: undefined,
+          videoSources: undefined,
           imageFiles: [],
           videoFile: null,
           originalImages: [],
-          originalVideo: ''
+          originalVideo: '',
+          originalVideoId: undefined,
+          originalVideoSources: undefined
         })
       }
     }
@@ -472,54 +493,171 @@ function ProductStoryComponent({
 
   // Process ProductStory data to match component's expected format
   const processStoryData = (story: ProductStory): StoryEditData => {
-    const textContents = story.contents
-      .filter((content) => content.contentType === 'text')
-      .sort((a, b) => a.order - b.order)
-      .map((content) => content.contentData)
-      .join('\n\n')
+    // Sort all contents by order
+    const sortedContents = [...story.contents].sort((a, b) => a.order - b.order)
 
-    const mediaContents = story.contents
-      .filter((content) => content.contentType === 'media')
-      .sort((a, b) => a.order - b.order)
-
+    const textParts: string[] = []
     const images: string[] = []
     let video = ''
+    let videoId: string | undefined = undefined
+    let videoSources: { hls?: string; dash?: string; preview?: string; fallback?: string } | undefined = undefined
 
-    mediaContents.forEach((content) => {
+    // Helper function to check if a string is a URL
+    const isUrl = (str: string): boolean => {
       try {
-        // Check if contentData is a JSON array (for images)
-        if (content.contentData.startsWith('[')) {
-          const parsedImages = JSON.parse(content.contentData)
-          if (Array.isArray(parsedImages)) {
-            images.push(...parsedImages)
-          }
-        } else {
-          // Single media file - check if it's video or image
-          if (content.contentData.includes('.mp4') || content.contentData.includes('.mov')) {
-            video = content.contentData
-          } else {
-            images.push(content.contentData)
-          }
-        }
+        return str.startsWith('http://') || str.startsWith('https://')
       } catch {
-        // If not JSON, treat as single media file
-        if (content.contentData.includes('.mp4') || content.contentData.includes('.mov')) {
-          video = content.contentData
-        } else {
-          images.push(content.contentData)
+        return false
+      }
+    }
+
+    // Helper function to check if a string is a JSON array
+    const isJsonArray = (str: string): boolean => {
+      return str.trim().startsWith('[') && str.trim().endsWith(']')
+    }
+
+    // Helper function to extract Cloudflare Stream video ID from URL
+    const extractVideoId = (url: string): string | undefined => {
+      try {
+        // Cloudflare Stream URL format: https://customer-xxx.cloudflarestream.com/{videoId}/watch
+        // or: https://customer-xxx.cloudflarestream.com/{videoId}/manifest/video.m3u8
+        const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
+        return match ? match[1] : undefined
+      } catch {
+        return undefined
+      }
+    }
+
+    // Process each content item based on actual data structure, not contentType
+    sortedContents.forEach((content) => {
+      const contentData = content.contentData?.trim() || ''
+
+      // Check for video URLs (for Cloudflare Stream videos)
+      // Priority according to document: videoPlayBackUrl (Priority 1) > videoPreviewUrl (Priority 2) > videoFallBackUrl (Priority 3)
+      // Only set video if not already set (first video found wins)
+      if (!video) {
+        // Try to extract video ID from any Cloudflare Stream URL
+        const previewVideoId = content.videoPreviewUrl ? extractVideoId(content.videoPreviewUrl) : undefined
+        const playbackVideoId = content.videoPlayBackUrl ? extractVideoId(content.videoPlayBackUrl) : undefined
+        const fallbackVideoId = content.videoFallBackUrl ? extractVideoId(content.videoFallBackUrl) : undefined
+
+        // Use the first available video ID
+        videoId = previewVideoId || playbackVideoId || fallbackVideoId
+
+        if (content.videoPlayBackUrl) {
+          // Parse videoPlayBackUrl: contains both HLS (.m3u8) and DASH (.mpd) URLs
+          const playbackUrls = content.videoPlayBackUrl.split(',').map((url) => url.trim())
+          const hlsUrl = playbackUrls.find((url) => url.includes('.m3u8'))
+          const dashUrl = playbackUrls.find((url) => url.includes('.mpd'))
+
+          // Build videoSources object, only including URLs that exist
+          videoSources = {}
+          if (hlsUrl) videoSources.hls = hlsUrl
+          if (dashUrl) videoSources.dash = dashUrl
+          // Include preview as fallback for browsers that don't support HLS/DASH
+          if (content.videoPreviewUrl?.trim()) {
+            videoSources.preview = content.videoPreviewUrl.trim()
+          }
+          if (content.videoFallBackUrl?.trim()) {
+            videoSources.fallback = content.videoFallBackUrl.trim()
+          }
+
+          // Use preview URL as primary (most compatible), fallback to HLS/DASH if preview not available
+          video =
+            content.videoPreviewUrl?.trim() ||
+            hlsUrl ||
+            dashUrl ||
+            content.videoFallBackUrl?.trim() ||
+            playbackUrls[0] ||
+            ''
+        } else if (content.videoPreviewUrl) {
+          video = content.videoPreviewUrl.trim()
+          videoSources = {
+            preview: content.videoPreviewUrl.trim(),
+            fallback: content.videoFallBackUrl?.trim() || undefined
+          }
+        } else if (content.videoFallBackUrl) {
+          video = content.videoFallBackUrl.trim()
+          videoSources = {
+            fallback: content.videoFallBackUrl.trim()
+          }
         }
+      }
+
+      // Process contentData (skip if empty)
+      if (!contentData) {
+        return
+      }
+
+      // Check if contentData is a JSON array (for images)
+      if (isJsonArray(contentData)) {
+        try {
+          const parsed = JSON.parse(contentData)
+          if (Array.isArray(parsed)) {
+            // Check if array contains URLs (images/videos)
+            const urls = parsed.filter((item) => typeof item === 'string' && isUrl(item))
+            if (urls.length > 0) {
+              // Check if any URL is a video (only if we don't already have a video from video URLs)
+              if (!video) {
+                const videoUrl = urls.find(
+                  (url) =>
+                    url.includes('.mp4') ||
+                    url.includes('.mov') ||
+                    url.includes('video.m3u8') ||
+                    url.includes('video.mpd')
+                )
+                if (videoUrl) {
+                  video = videoUrl
+                  // Remove video from images array
+                  const imageUrls = urls.filter((url) => url !== videoUrl)
+                  images.push(...imageUrls)
+                } else {
+                  // All are images
+                  images.push(...urls)
+                }
+              } else {
+                // We already have a video, treat all as images
+                images.push(...urls)
+              }
+            }
+          }
+        } catch {
+          // If parsing fails, treat as text
+          textParts.push(contentData)
+        }
+      } else if (isUrl(contentData)) {
+        // Single URL - check if it's video or image
+        if (
+          !video &&
+          (contentData.includes('.mp4') ||
+            contentData.includes('.mov') ||
+            contentData.includes('video.m3u8') ||
+            contentData.includes('video.mpd'))
+        ) {
+          video = contentData
+        } else {
+          // Assume it's an image (or we already have a video)
+          images.push(contentData)
+        }
+      } else {
+        // Plain text content
+        textParts.push(contentData)
       }
     })
 
     return {
       title: story.title || '',
-      content: textContents,
+      content: textParts.join('\n\n'),
       images,
       video,
+      videoId,
+      videoSources,
       imageFiles: [], // New files start empty
       videoFile: null,
       originalImages: images, // Store original images
-      originalVideo: video // Store original video
+      originalVideo: video, // Store original video
+      originalVideoId: videoId, // Store original video ID
+      originalVideoSources: videoSources // Store original video sources
     }
   }
 
@@ -651,9 +789,7 @@ function ProductStoryComponent({
             <div>
               <div className='flex items-center justify-between mb-1'>
                 <Label className='text-sm font-medium'>Hình ảnh minh họa</Label>
-                <span
-                  className={`text-xs ${editData.images.length > MAX_IMAGES ? 'text-red-500' : 'text-gray-500'}`}
-                >
+                <span className={`text-xs ${editData.images.length > MAX_IMAGES ? 'text-red-500' : 'text-gray-500'}`}>
                   {editData.images.length} / {MAX_IMAGES} ảnh
                 </span>
               </div>
@@ -814,16 +950,8 @@ function ProductStoryComponent({
                 {currentStory.images && currentStory.images.length > 0 && (
                   <div>
                     <h4 className='text-lg font-medium text-gray-900 mb-3'>Hình ảnh minh họa</h4>
-                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                      {currentStory.images.map((image: string, index: number) => (
-                        <div key={index} className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
-                          <img
-                            src={image}
-                            alt={`Story ${index + 1}`}
-                            className='w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer'
-                          />
-                        </div>
-                      ))}
+                    <div className='w-full h-[600px]'>
+                      <ThreeDCarousel images={currentStory.images} cardW={240} cardH={320} radius={300} />
                     </div>
                   </div>
                 )}
@@ -832,7 +960,52 @@ function ProductStoryComponent({
                 {currentStory.video && (
                   <div>
                     <h4 className='text-lg font-medium text-gray-900 mb-3'>Video câu chuyện</h4>
-                    <video src={currentStory.video} controls className='w-full max-w-2xl rounded-lg' />
+                    {/* Use Cloudflare Stream component if video ID is available */}
+                    {currentStory.videoId ? (
+                      <div className='flex justify-center'>
+                        <div className='w-full max-w-2xl rounded-lg overflow-hidden'>
+                          <Stream
+                            src={currentStory.videoId}
+                            controls
+                            responsive
+                            className='w-full'
+                            preload='metadata'
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      /* Fallback to regular video tag if no video ID */
+                      <div className='flex justify-center'>
+                        <video controls className='w-full max-w-2xl rounded-lg' preload='metadata' playsInline>
+                          {/* Priority: Preview (for compatibility) > HLS > DASH > Fallback > Direct URL */}
+                          {/* Preview URL first - works on all browsers, including those without HLS/DASH support */}
+                          {currentStory.videoSources?.preview && (
+                            <source src={currentStory.videoSources.preview} type='video/mp4' />
+                          )}
+                          {/* HLS - supported by Safari, iOS, and some Android browsers */}
+                          {currentStory.videoSources?.hls && (
+                            <source src={currentStory.videoSources.hls} type='application/vnd.apple.mpegurl' />
+                          )}
+                          {/* DASH - supported by Chrome, Firefox, Edge (with proper codec support) */}
+                          {currentStory.videoSources?.dash && (
+                            <source src={currentStory.videoSources.dash} type='application/dash+xml' />
+                          )}
+                          {/* Fallback URL */}
+                          {currentStory.videoSources?.fallback && (
+                            <source src={currentStory.videoSources.fallback} type='video/mp4' />
+                          )}
+                          {/* Fallback to direct video URL if no sources or if videoSources is empty */}
+                          {(!currentStory.videoSources ||
+                            (!currentStory.videoSources.hls &&
+                              !currentStory.videoSources.dash &&
+                              !currentStory.videoSources.preview &&
+                              !currentStory.videoSources.fallback)) && (
+                              <source src={currentStory.video} type='video/mp4' />
+                            )}
+                          Trình duyệt của bạn không hỗ trợ video.
+                        </video>
+                      </div>
+                    )}
                   </div>
                 )}
               </>

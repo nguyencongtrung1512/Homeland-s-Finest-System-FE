@@ -556,9 +556,33 @@ function RequestWalletMoneyManagement() {
             </CardContent>
           </Card>
         </motion.div>
-
-
       </div>
+
+      {/* Total Withdrawn Card */}
+      {walletData && walletData.TotalWithdrawn !== undefined && (
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+          className='mt-4 md:mt-6'
+        >
+          <Card className='bg-white shadow-sm'>
+            <CardContent className='p-4 md:p-6'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <p className='text-xs md:text-sm text-gray-600 mb-1'>Tổng đã rút</p>
+                  <p className='text-xl md:text-2xl font-bold text-indigo-600'>
+                    {walletData.TotalWithdrawn.toLocaleString('vi-VN')}₫
+                  </p>
+                </div>
+                <div className='w-10 h-10 md:w-12 md:h-12 bg-indigo-100 rounded-lg flex items-center justify-center'>
+                  <ArrowUpRight className='w-5 h-5 md:w-6 md:h-6 text-indigo-600' />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Filters */}
       <motion.div
@@ -775,7 +799,9 @@ function RequestWalletMoneyManagement() {
                   <div className='space-y-2'>
                     <div className='flex justify-between items-start'>
                       <span className='text-sm text-gray-600'>Loại yêu cầu:</span>
-                      <span className='text-sm font-medium text-gray-900'>{getTypeConfig(selectedRequest.type).text}</span>
+                      <span className='text-sm font-medium text-gray-900'>
+                        {getTypeConfig(selectedRequest.type).text}
+                      </span>
                     </div>
                     <div className='flex justify-between items-start'>
                       <span className='text-sm text-gray-600'>Số tiền:</span>
@@ -833,7 +859,9 @@ function RequestWalletMoneyManagement() {
                     {selectedRequest.processedAt && (
                       <div className='flex justify-between items-start'>
                         <span className='text-sm text-gray-600'>Ngày xử lý:</span>
-                        <span className='text-sm font-medium text-gray-900'>{formatDate(selectedRequest.processedAt)}</span>
+                        <span className='text-sm font-medium text-gray-900'>
+                          {formatDate(selectedRequest.processedAt)}
+                        </span>
                       </div>
                     )}
                     {selectedRequest.processedBy && (
