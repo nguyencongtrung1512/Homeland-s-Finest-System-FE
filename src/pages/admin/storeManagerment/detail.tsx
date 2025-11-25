@@ -497,6 +497,12 @@ function StoreDetailAdmin() {
                           <span>Cửa hàng đáng tin cậy</span>
                         </div>
                       )}
+                      {!isTrustworthyStore && reportCount > 0 && (
+                        <div className='flex items-center gap-2 text-sm text-red-600'>
+                          <AlertTriangle className='w-4 h-4 text-red-500' />
+                          <span>Bị báo cáo {reportCount} lần</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>

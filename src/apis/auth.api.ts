@@ -119,6 +119,10 @@ export const changePassword = async (data: ChangePasswordRequest): Promise<any> 
 // Seller Registration Interfaces
 export interface SellerRegistrationData {
   userInfo: {
+    province: string
+    district: string
+    ward: string
+    streetAddress: string
     email: string
     password: string
     confirmPassword: string
@@ -129,6 +133,7 @@ export interface SellerRegistrationData {
     dateOfBirth: string
   }
   sellerInfo: {
+    bankName: string
     businessName: string
     taxCode: string
     bankAccount: string
@@ -157,6 +162,10 @@ export const registerSeller = async (data: SellerRegistrationData) => {
 
   // Add userInfo
   formData.append('UserInfo.Email', data.userInfo.email)
+  formData.append('UserInfo.Province', data.userInfo.province)
+  formData.append('UserInfo.District', data.userInfo.district)
+  formData.append('UserInfo.Ward', data.userInfo.ward)
+  formData.append('UserInfo.StreetAddress', data.userInfo.streetAddress)
   formData.append('UserInfo.Password', data.userInfo.password)
   formData.append('UserInfo.ConfirmPassword', data.userInfo.confirmPassword)
   formData.append('UserInfo.FirstName', data.userInfo.firstName)
@@ -173,6 +182,7 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   formData.append('SellerInfo.IdentifyFrontImage', data.sellerInfo.identifyFrontImage)
   formData.append('SellerInfo.IdentifyBackImage', data.sellerInfo.identifyBackImage)
   formData.append('SellerInfo.BusinessLicense', data.sellerInfo.businessLicense)
+  formData.append('SellerInfo.BankName', data.sellerInfo.bankName)
 
   // Add storeInfo
   formData.append('StoreInfo.StoreName', data.storeInfo.storeName)
@@ -181,7 +191,7 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   formData.append('StoreInfo.District', data.storeInfo.district)
   formData.append('StoreInfo.Ward', data.storeInfo.ward)
   formData.append('StoreInfo.ProvinceId', data.storeInfo.provinceID.toString())
-  formData.append('StoreInfo.ProvinceId', data.storeInfo.districtID.toString())
+  formData.append('StoreInfo.DistrictId', data.storeInfo.districtID.toString())
   formData.append('StoreInfo.WardId', data.storeInfo.wardID.toString())
   formData.append('StoreInfo.Description', data.storeInfo.description)
 

@@ -269,7 +269,7 @@ const GeneralSupportFormModal = ({
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className='mt-3 grid grid-cols-3 gap-2'>
                   {previewUrls.map((url, index) => (
                     <div key={url} className='relative group'>
-                      <img src={url} alt={`support-${index}`} className='w-full h-24 object-cover rounded-md border' />
+                      <img src={url} alt={`support-${index}`} className='w-full h-24 object-contain rounded-md border bg-gray-50' />
                       <button
                         type='button'
                         className='absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity'

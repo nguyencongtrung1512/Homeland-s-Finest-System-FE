@@ -3,10 +3,15 @@ import { motion } from 'framer-motion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../../components/ui/dialog'
 import { Button } from '../../../../../components/ui/button'
 import { Badge } from '../../../../../components/ui/badge'
-import { AlertTriangle, Loader2, Eye } from 'lucide-react'
+import { Label } from '../../../../../components/ui/label'
+import { Input } from '../../../../../components/ui/input'
+import { Textarea } from '../../../../../components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select'
+import { AlertTriangle, Loader2, Eye, Edit } from 'lucide-react'
 import { formApi } from '../../../../../apis/form.api'
-import type { FormDTO, FormStatus } from '../../../../../types/form.type'
+import type { FormDTO, FormStatus, FormType } from '../../../../../types/form.type'
 import { toast } from '../../../../../utils/toast'
+import UpdateFormModal from './UpdateFormModal'
 
 interface ViewComplaintModalProps {
   isOpen: boolean
@@ -67,6 +72,8 @@ const ViewComplaintModal = ({ isOpen, onClose, orderId }: ViewComplaintModalProp
   const [complaint, setComplaint] = useState<FormDTO | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const loadComplaint = useCallback(async () => {
     try {
@@ -93,15 +100,20 @@ const ViewComplaintModal = ({ isOpen, onClose, orderId }: ViewComplaintModalProp
     } else {
       setComplaint(null)
       setError(null)
+      setIsUpdateModalOpen(false)
     }
   }, [isOpen, orderId, loadComplaint])
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className='max-w-3xl max-h-[70vh] flex flex-col p-0'>
-        <div className='flex flex-col h-full overflow-hidden'>
-          {/* Fixed Header */}
-          <DialogHeader className='px-6 pt-6 pb-4 border-b border-gray-200 flex-shrink-0'>
+      <DialogContent className='max-w-2xl mx-auto max-h-[90vh] overflow-y-auto'>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.3 }}
+        >
+          <DialogHeader>
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -113,200 +125,268 @@ const ViewComplaintModal = ({ isOpen, onClose, orderId }: ViewComplaintModalProp
                   animate={{ rotate: 0, scale: 1 }}
                   transition={{ duration: 0.5, delay: 0.2, type: 'spring', stiffness: 200 }}
                 >
-                  <Eye className='w-5 h-5 text-blue-500' />
+                  <Eye className='w-5 h-5 text-green-500' />
                 </motion.div>
                 Chi tiết khiếu nại
               </DialogTitle>
             </motion.div>
           </DialogHeader>
 
-          {/* Scrollable Content */}
-          <div className='flex-1 overflow-y-auto px-6 py-4'>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className='space-y-6'
-            >
-              {loading ? (
-                <div className='flex flex-col items-center justify-center py-12'>
-                  <Loader2 className='w-8 h-8 animate-spin text-green-600 mb-4' />
-                  <p className='text-gray-600'>Đang tải thông tin khiếu nại...</p>
-                </div>
-              ) : error ? (
-                <div className='flex flex-col items-center justify-center py-12'>
-                  <AlertTriangle className='w-12 h-12 text-red-500 mb-4' />
-                  <p className='text-red-600 font-medium mb-2'>Không thể tải thông tin</p>
-                  <p className='text-gray-600 text-sm text-center'>{error}</p>
-                  <Button onClick={loadComplaint} variant='outline' className='mt-4'>
-                    Thử lại
-                  </Button>
-                </div>
-              ) : complaint ? (
-                <>
-                  {/* Order Info */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.3 }}
-                    className='bg-gray-50 rounded-lg p-4'
-                  >
-                    <p className='text-sm text-gray-600 mb-1'>
-                      <span className='font-medium'>Mã đơn hàng:</span> {complaint.orderId || orderId}
-                    </p>
-                    <p className='text-sm text-gray-600'>
-                      <span className='font-medium'>Mã khiếu nại:</span> {complaint.id}
-                    </p>
-                  </motion.div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className='space-y-6'
+          >
+            {loading ? (
+              <div className='flex flex-col items-center justify-center py-12'>
+                <Loader2 className='w-8 h-8 animate-spin text-green-600 mb-4' />
+                <p className='text-gray-600'>Đang tải thông tin khiếu nại...</p>
+              </div>
+            ) : error ? (
+              <div className='flex flex-col items-center justify-center py-12'>
+                <AlertTriangle className='w-12 h-12 text-red-500 mb-4' />
+                <p className='text-red-600 font-medium mb-2'>Không thể tải thông tin</p>
+                <p className='text-gray-600 text-sm text-center'>{error}</p>
+                <Button onClick={loadComplaint} variant='outline' className='mt-4'>
+                  Thử lại
+                </Button>
+              </div>
+            ) : complaint ? (
+              <>
+                {/* Order Info */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.3 }}
+                >
+                  <Label className='text-sm font-medium text-gray-700 mb-2 block'>Mã đơn hàng</Label>
+                  <Input value={complaint.orderId || orderId} disabled className='bg-gray-50' />
+                </motion.div>
 
-                  {/* Status and Type */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.4 }}
-                    className='flex gap-3 flex-wrap'
-                  >
-                    <div>
-                      <p className='text-xs text-gray-500 mb-1'>Loại khiếu nại</p>
-                      <Badge className='bg-blue-100 text-blue-700 border-0'>{getFormTypeLabel(complaint.type)}</Badge>
-                    </div>
-                    <div>
-                      <p className='text-xs text-gray-500 mb-1'>Trạng thái</p>
-                      <Badge className={`${getStatusColor(complaint.status)} border-0`}>
-                        {getStatusLabel(complaint.status)}
-                      </Badge>
-                    </div>
-                  </motion.div>
+                {/* Status and Type */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.4 }}
+                  className='grid grid-cols-2 gap-4'
+                >
+                  <div>
+                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>Loại khiếu nại</Label>
+                    <Select value={complaint.type} disabled>
+                      <SelectTrigger className='bg-gray-50'>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={complaint.type}>{getFormTypeLabel(complaint.type)}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>Trạng thái</Label>
+                    <Badge className={`${getStatusColor(complaint.status)} border-0 w-full justify-center py-2`}>
+                      {getStatusLabel(complaint.status)}
+                    </Badge>
+                  </div>
+                </motion.div>
 
-                  {/* Subject */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.5 }}
-                  >
-                    <p className='text-sm font-medium text-gray-700 mb-2'>Tiêu đề khiếu nại</p>
-                    <div className='bg-gray-50 rounded-lg p-3 border border-gray-200'>
-                      <p className='text-gray-900'>{complaint.subject}</p>
-                    </div>
-                  </motion.div>
+                {/* Subject */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.5 }}
+                >
+                  <Label className='text-sm font-medium text-gray-700 mb-2 block'>Tiêu đề khiếu nại</Label>
+                  <Input value={complaint.subject} disabled className='bg-gray-50' />
+                </motion.div>
 
-                  {/* Description */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.6 }}
-                  >
-                    <p className='text-sm font-medium text-gray-700 mb-2'>Mô tả chi tiết</p>
-                    <div className='bg-gray-50 rounded-lg p-3 border border-gray-200 min-h-[100px]'>
-                      <p className='text-gray-900 whitespace-pre-wrap'>{complaint.description}</p>
-                    </div>
-                  </motion.div>
+                {/* Description */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.6 }}
+                >
+                  <Label className='text-sm font-medium text-gray-700 mb-2 block'>Mô tả chi tiết</Label>
+                  <Textarea
+                    value={complaint.description}
+                    disabled
+                    className='min-h-[120px] resize-none bg-gray-50'
+                  />
+                </motion.div>
 
-                  {/* Images */}
-                  {complaint.imageUrl && complaint.imageUrl.length > 0 && (
+                {/* Images */}
+                {(() => {
+                  const validImages = complaint.imageUrl?.filter((url) => url && url.trim() !== '') || []
+                  if (validImages.length === 0) return null
+
+                  return (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: 0.7 }}
                     >
-                      <p className='text-sm font-medium text-gray-700 mb-2'>Hình ảnh minh chứng</p>
-                      <div className='grid grid-cols-3 gap-3'>
-                        {complaint.imageUrl.map((url, idx) => (
+                      <Label className='text-sm font-medium text-gray-700 mb-2 block'>
+                        Hình ảnh minh chứng ({validImages.length}/5)
+                      </Label>
+                      <div className='grid grid-cols-4 gap-2'>
+                        {validImages.map((url, idx) => (
                           <motion.div
                             key={idx}
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.2, delay: 0.8 + idx * 0.1 }}
-                            className='relative group'
+                            className='relative'
                           >
                             <img
                               src={url}
                               alt={`complaint-image-${idx + 1}`}
-                              className='w-full h-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity'
-                              onClick={() => window.open(url, '_blank')}
+                              className='w-full h-20 object-contain rounded-md border bg-gray-50'
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                              }}
                             />
                           </motion.div>
                         ))}
                       </div>
                     </motion.div>
-                  )}
+                  )
+                })()}
 
-                  {/* Reply */}
-                  {complaint.reply && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.8 }}
-                    >
-                      <p className='text-sm font-medium text-gray-700 mb-2'>Phản hồi từ nhân viên</p>
-                      {complaint.staffName && (
-                        <p className='text-xs text-gray-500 mb-1'>
-                          Nhân viên: <span className='font-medium'>{complaint.staffName}</span>
-                        </p>
-                      )}
-                      <div className='bg-green-50 rounded-lg p-3 border border-green-200'>
-                        <p className='text-gray-900 whitespace-pre-wrap'>{complaint.reply}</p>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Admin Text */}
-                  {complaint.adminText && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.9 }}
-                    >
-                      <p className='text-sm font-medium text-gray-700 mb-2'>Phản hồi từ Admin</p>
-                      <div className='bg-blue-50 rounded-lg p-3 border border-blue-200'>
-                        <p className='text-gray-900 whitespace-pre-wrap'>{complaint.adminText}</p>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Timestamps */}
+                {/* Reply */}
+                {complaint.reply && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 1.0 }}
-                    className='bg-gray-50 rounded-lg p-3 border border-gray-200'
+                    transition={{ duration: 0.3, delay: 0.8 }}
                   >
-                    <div className='grid grid-cols-2 gap-3 text-sm'>
-                      <div>
-                        <p className='text-gray-500 mb-1'>Ngày tạo</p>
-                        <p className='text-gray-900 font-medium'>{complaint.createdAt}</p>
-                      </div>
-                      <div>
-                        <p className='text-gray-500 mb-1'>Ngày cập nhật</p>
-                        <p className='text-gray-900 font-medium'>{complaint.updatedAt}</p>
-                      </div>
-                    </div>
+                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>Phản hồi từ nhân viên</Label>
+                    {complaint.staffName && (
+                      <p className='text-xs text-gray-500 mb-2'>
+                        Nhân viên: <span className='font-medium'>{complaint.staffName}</span>
+                      </p>
+                    )}
+                    <Textarea
+                      value={complaint.reply}
+                      disabled
+                      className='min-h-[100px] resize-none bg-green-50 border-green-200'
+                    />
                   </motion.div>
-                </>
-              ) : (
-                <div className='flex flex-col items-center justify-center py-12'>
-                  <AlertTriangle className='w-12 h-12 text-gray-400 mb-4' />
-                  <p className='text-gray-600'>Không tìm thấy thông tin khiếu nại</p>
-                </div>
-              )}
-            </motion.div>
-          </div>
+                )}
 
-          {/* Fixed Footer */}
-          <div className='px-6 py-4 border-t border-gray-200 flex-shrink-0 bg-white'>
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 1.1 }}
-              className='flex justify-end'
-            >
-              <Button onClick={onClose} className='bg-green-600 hover:bg-green-700 text-white'>
-                Đóng
-              </Button>
-            </motion.div>
-          </div>
-        </div>
+                {/* Admin Text */}
+                {complaint.adminText && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.9 }}
+                  >
+                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>Phản hồi từ Admin</Label>
+                    <Textarea
+                      value={complaint.adminText}
+                      disabled
+                      className='min-h-[100px] resize-none bg-blue-50 border-blue-200'
+                    />
+                  </motion.div>
+                )}
+
+                {/* Timestamps */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 1.0 }}
+                  className='grid grid-cols-2 gap-4'
+                >
+                  <div>
+                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>Ngày tạo</Label>
+                    <Input value={complaint.createdAt} disabled className='bg-gray-50' />
+                  </div>
+                  <div>
+                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>Ngày cập nhật</Label>
+                    <Input value={complaint.updatedAt} disabled className='bg-gray-50' />
+                  </div>
+                </motion.div>
+
+                {/* Action Buttons */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 1.1 }}
+                  className='flex gap-3 pt-4'
+                >
+                  {complaint.status === 'Pending' && (
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className='flex-1'>
+                      <Button
+                        onClick={() => setIsUpdateModalOpen(true)}
+                        className='w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2'
+                      >
+                        <Edit className='w-4 h-4' />
+                        Chỉnh sửa
+                      </Button>
+                    </motion.div>
+                  )}
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className='flex-1'>
+                    <Button onClick={onClose} className='w-full bg-green-600 hover:bg-green-700 text-white'>
+                      Đóng
+                    </Button>
+                  </motion.div>
+                </motion.div>
+              </>
+            ) : (
+              <div className='flex flex-col items-center justify-center py-12'>
+                <AlertTriangle className='w-12 h-12 text-gray-400 mb-4' />
+                <p className='text-gray-600'>Không tìm thấy thông tin khiếu nại</p>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
       </DialogContent>
+
+      {/* Update Form Modal */}
+      {complaint && (
+        <UpdateFormModal
+          isOpen={isUpdateModalOpen}
+          onClose={() => setIsUpdateModalOpen(false)}
+          form={complaint}
+          onSubmit={async (
+            formId: string,
+            data: {
+              type: FormType
+              subject: string
+              description: string
+              images?: File[]
+              existingImageUrls?: string[]
+            }
+          ) => {
+            try {
+              setIsUpdating(true)
+              await formApi.updateForm(formId, {
+                storeId: complaint.storeId || '',
+                orderId: complaint.orderId || '',
+                type: data.type,
+                subject: data.subject,
+                description: data.description,
+                imageFiles: data.images,
+                existingImageUrls: data.existingImageUrls
+              })
+              toast.success('Cập nhật khiếu nại thành công!')
+              setIsUpdateModalOpen(false)
+              // Reload complaint data
+              await loadComplaint()
+            } catch (err) {
+              console.error('Error updating form:', err)
+              const errorMessage =
+                (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+                (err as Error).message ||
+                'Không thể cập nhật khiếu nại'
+              toast.error(errorMessage)
+            } finally {
+              setIsUpdating(false)
+            }
+          }}
+          isLoading={isUpdating}
+        />
+      )}
     </Dialog>
   )
 }

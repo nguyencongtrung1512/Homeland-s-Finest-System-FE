@@ -274,7 +274,7 @@ const ComplaintModal = ({
                             <img
                               src={url}
                               alt={`complaint-image-${idx + 1}`}
-                              className='w-full h-20 object-cover rounded-md border'
+                              className='w-full h-20 object-contain rounded-md border bg-gray-50'
                             />
                           </motion.div>
                         ))}

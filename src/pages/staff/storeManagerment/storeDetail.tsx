@@ -13,7 +13,8 @@ import {
   Upload as UploadIcon,
   Loader2,
   CheckCircle,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -223,6 +224,8 @@ function StaffStoreDetail() {
   }
 
   const statusDisplay = getStatusDisplay(store.status)
+  const reportCount = store.sellerInfo?.reportCount ?? 0
+  const isTrustworthyStore = reportCount === 0
 
   return (
     <div className='space-y-6 p-6'>
@@ -270,8 +273,19 @@ function StaffStoreDetail() {
                 <div className='flex-1'>
                   <div className='flex items-center gap-3 mb-2 flex-wrap'>
                     <h2 className='text-xl font-bold text-gray-900'>{store.storeName}</h2>
-
                   </div>
+                  {isTrustworthyStore && (
+                    <div className='flex items-center gap-2 text-sm text-green-600 p-2 rounded-lg bg-green-50 border border-green-200'>
+                      <AlertTriangle className='w-4 h-4 text-green-500' />
+                      <span>Cửa hàng đáng tin cậy</span>
+                    </div>
+                  )}
+                  {!isTrustworthyStore && reportCount > 0 && (
+                    <div className='flex items-center gap-2 text-sm text-red-600 p-2 rounded-lg bg-red-50 border border-red-200'>
+                      <AlertTriangle className='w-4 h-4 text-red-500' />
+                      <span>Bị báo cáo {reportCount} lần</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

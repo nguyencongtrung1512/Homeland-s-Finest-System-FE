@@ -37,14 +37,14 @@ interface Order {
   date: string
   originalStatus: OrderStatus
   status:
-  | 'Chưa xác nhận'
-  | 'Chờ xác nhận'
-  | 'Chờ thanh toán'
-  | 'Đã xác nhận'
-  | 'Vận chuyển'
-  | 'Hoàn thành'
-  | 'Trả hàng/Hoàn tiền'
-  | 'Đã hủy'
+    | 'Chưa xác nhận'
+    | 'Chờ xác nhận'
+    | 'Chờ thanh toán'
+    | 'Đã xác nhận'
+    | 'Vận chuyển'
+    | 'Hoàn thành'
+    | 'Trả hàng/Hoàn tiền'
+    | 'Đã hủy'
   statusColor: string
   statusBgColor: string
   statusText: string
@@ -764,8 +764,9 @@ export default function OrdersContent({
           <button
             key={filter.key}
             onClick={() => handleFilterChange(filter.key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-              }`}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            }`}
           >
             {filter.label}
           </button>
@@ -809,7 +810,6 @@ export default function OrdersContent({
                   <button
                     className='text-gray-600 hover:text-green-900 pl-2'
                     onClick={() => handleOpenOrderDetailModal(order.id)}
-
                   >
                     <EllipsisVertical className='h-4 w-4' />
                   </button>
@@ -844,15 +844,15 @@ export default function OrdersContent({
                 {(order.originalStatus === 'NotYet' ||
                   order.originalStatus === 'Processing' ||
                   order.originalStatus === 'PendingPayment') && (
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => handleOpenCancelModal(order.id)}
-                      className='text-red-600 border-red-600 hover:bg-red-50'
-                    >
-                      Hủy đơn hàng
-                    </Button>
-                  )}
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleOpenCancelModal(order.id)}
+                    className='text-red-600 border-red-600 hover:bg-red-50'
+                  >
+                    Hủy đơn hàng
+                  </Button>
+                )}
                 {order.canConfirmReceived && (
                   <Button
                     size='sm'
@@ -918,48 +918,53 @@ export default function OrdersContent({
                     Xem khiếu nại
                   </Button>
                 )}
-                {order.isComplained && order.originalStatus !== 'Complaining' && order.originalStatus !== 'Complained' && (
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handleOpenViewComplaintModal(order.id)}
-                    className='text-blue-600 border-blue-600 hover:bg-blue-50'
-                  >
-                    Xem khiếu nại
-                  </Button>
-                )}
-                {order.originalStatus === 'Returned' && (
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handleOpenRefundConfirmDialog(order.id)}
-                    disabled={refundingOrderId === order.id}
-                    className='text-orange-600 border-orange-600 hover:bg-orange-50 disabled:opacity-50'
-                  >
-                    {refundingOrderId === order.id ? (
-                      <>
-                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2'></div>
-                        Đang xử lý...
-                      </>
-                    ) : (
-                      'Yêu cầu hoàn tiền'
-                    )}
-                  </Button>
-                )}
+                {order.isComplained &&
+                  order.originalStatus !== 'Complaining' &&
+                  order.originalStatus !== 'Complained' && (
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleOpenViewComplaintModal(order.id)}
+                      className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                    >
+                      Xem khiếu nại
+                    </Button>
+                  )}
+                {order.originalStatus === 'Returned' ||
+                  order.originalStatus === 'Exception' ||
+                  order.originalStatus === 'Damaged' ||
+                  (order.originalStatus === 'Lost' && (
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleOpenRefundConfirmDialog(order.id)}
+                      disabled={refundingOrderId === order.id}
+                      className='text-orange-600 border-orange-600 hover:bg-orange-50 disabled:opacity-50'
+                    >
+                      {refundingOrderId === order.id ? (
+                        <>
+                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2'></div>
+                          Đang xử lý...
+                        </>
+                      ) : (
+                        'Yêu cầu hoàn tiền'
+                      )}
+                    </Button>
+                  ))}
                 {(order.originalStatus === 'Cancel' ||
                   order.originalStatus === 'Refunding' ||
                   order.originalStatus === 'Delivered' ||
                   order.originalStatus === 'Paid' ||
                   order.originalStatus === 'Returned') && (
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => handleBuyAgain(order)}
-                      className='text-blue-600 border-blue-600 hover:bg-blue-50'
-                    >
-                      Mua lại
-                    </Button>
-                  )}
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleBuyAgain(order)}
+                    className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                  >
+                    Mua lại
+                  </Button>
+                )}
               </div>
             </div>
           ))
@@ -1003,10 +1008,11 @@ export default function OrdersContent({
               <button
                 key={page}
                 onClick={() => goToPage(page)}
-                className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${currentPage === page
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
+                className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${
+                  currentPage === page
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
               >
                 {page}
               </button>

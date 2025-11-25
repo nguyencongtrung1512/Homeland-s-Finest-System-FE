@@ -279,7 +279,7 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
                 <div className='grid grid-cols-4 gap-2'>
                   {existingImageUrls.map((url, idx) => (
                     <div key={idx} className='relative group'>
-                      <img src={url} alt={`existing-${idx}`} className='w-full h-20 object-cover rounded-md border' />
+                      <img src={url} alt={`existing-${idx}`} className='w-full h-20 object-contain rounded-md border bg-gray-50' />
                       <button
                         type='button'
                         onClick={() => removeExistingImage(idx)}
@@ -353,7 +353,7 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
                           <img
                             src={url}
                             alt={`new-image-${idx + 1}`}
-                            className='w-full h-20 object-cover rounded-md border'
+                            className='w-full h-20 object-contain rounded-md border bg-gray-50'
                           />
                           <button
                             type='button'

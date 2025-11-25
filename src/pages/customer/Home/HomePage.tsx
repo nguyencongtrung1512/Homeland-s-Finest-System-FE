@@ -25,9 +25,14 @@ function HomePage() {
           <p className='mt-4 max-w-2xl text-sm text-white/90 md:text-base'>
             Kết nối bạn với những câu chuyện đích thực từ các làng nghề, nông trại trên khắp đất nước
           </p>
-          <button className='mt-6 rounded-full bg-[#D4A017] px-6 py-3 text-sm font-semibold text-white hover:opacity-90'>
+          <a
+            href='https://homeland-finest-homepage.vercel.app/'
+            target='_blank'
+            rel='noopener noreferrer'
+            className='mt-6 rounded-full bg-[#D4A017] px-6 py-3 text-sm font-semibold text-black hover:opacity-90'
+          >
             Bắt Đầu Khám Phá
-          </button>
+          </a>
         </div>
       </section>
       <section className='bg-[#F6FAF3] py-8 text-center'>
