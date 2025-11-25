@@ -6,6 +6,8 @@ import Loading from '../../../components/Loading/loading'
 import Pagination from '../../../components/Pagination/Pagination'
 import { getAllCombos } from '../../../apis/combo.api'
 import { type Combo } from '../../../types/combo.type'
+import { Eye, ShoppingCart } from 'lucide-react'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 // ComboCard component for displaying individual combo cards
 interface ComboCardProps {
@@ -25,25 +27,15 @@ export const ComboCard = ({ combo, onAddToCart }: ComboCardProps) => {
   }
 
   return (
-    <div className='bg-white rounded-lg border shadow-sm overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer' onClick={handleCardClick}>
+    <div className='bg-white rounded-lg border shadow-sm overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer'>
       <div className='relative h-40 bg-gray-100'>
         <img
           src={combo.thumbnailUrl || '/src/assets/react.svg'}
           alt={combo.name}
           className='w-full h-full object-cover'
         />
-
-        {/* Savings Badge - Yellow in top-right */}
-        {(combo.savingsAmount > 0 || combo.savingsAmount < 0) && (
-          <span className='absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-medium'>
-            {combo.savingsAmount > 0
-              ? `Tiết kiệm ${combo.savingsPercentage}%`
-              : `đắt hơn ${Math.abs(combo.savingsPercentage)}%`}
-          </span>
-        )}
-
         {combo.totalBasePrice > combo.totalFinalPrice && (
-          <span className='absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full'>
+          <span className='absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-medium'>
             Giảm giá {Math.round(((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100)}%
           </span>
         )}
@@ -103,32 +95,25 @@ export const ComboCard = ({ combo, onAddToCart }: ComboCardProps) => {
           </svg>
           <span className='text-xs text-gray-600'>Gồm {combo.comboItems?.length || 0} sản phẩm</span>
         </div>
-
-        {/* Debug Info - Temporary */}
-        <div className='text-xs text-gray-400 mb-2 border-t pt-2'>
-          <div>
-            Individual:{' '}
-            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(combo.individualItemsTotal)}
-          </div>
-          <div>
-            Combo:{' '}
-            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(combo.totalFinalPrice)}
-          </div>
-          <div>
-            Savings: {combo.savingsAmount > 0 ? '+' : ''}
-            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(combo.savingsAmount)}
-          </div>
+        <div className='flex items-center gap-2'>
+          <ShimmerBorder>
+            <Button variant='success' title='Xem chi tiết' onClick={handleCardClick}>
+              <Eye className='w-4 h-4' />
+              Xem chi tiết
+            </Button>
+          </ShimmerBorder>
+          <Button
+            variant='success'
+            size='icon'
+            title='Thêm vào giỏ hàng'
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddToCart(combo.id)
+            }}
+          >
+            <ShoppingCart className='w-4 h-4' />
+          </Button>
         </div>
-
-        <Button
-          onClick={(e) => {
-            e.stopPropagation()
-            onAddToCart(combo.id)
-          }}
-          className='w-full bg-green-600 hover:bg-green-700 text-white'
-        >
-          Thêm combo vào giỏ
-        </Button>
       </div>
     </div>
   )
@@ -160,17 +145,6 @@ export const ComboList = ({ combos, loading, error, onAddToCart, currentPage, on
     const savingsAmount = individualItemsTotal - combo.totalFinalPrice
     // Correct formula: Savings percentage = (Savings / Combo) × 100%
     const savingsPercentage = combo.totalFinalPrice > 0 ? Math.round((savingsAmount / combo.totalFinalPrice) * 100) : 0
-
-    // Debug logging
-    console.log('Combo:', combo.name)
-    console.log(
-      'Individual items:',
-      combo.comboItems?.map((item) => `${item.comboItemName}: ${item.finalPrice} x ${item.quantity}`)
-    )
-    console.log('Individual total (sum of finalPrice only):', individualItemsTotal)
-    console.log('Combo final price:', combo.totalFinalPrice)
-    console.log('Savings amount:', savingsAmount)
-    console.log('Savings percentage:', savingsPercentage)
 
     return {
       ...combo,
@@ -248,9 +222,7 @@ export const ComboList = ({ combos, loading, error, onAddToCart, currentPage, on
       />
 
       {/* Results info */}
-      <div className='text-center text-sm text-gray-600 mt-4'>
-        Hiển thị {combosWithSavings.length} combo
-      </div>
+      <div className='text-center text-sm text-gray-600 mt-4'>Hiển thị {combosWithSavings.length} combo</div>
     </>
   )
 }

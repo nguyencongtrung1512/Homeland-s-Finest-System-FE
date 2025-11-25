@@ -7,10 +7,19 @@ import { getComboById } from '../../../apis/combo.api'
 import { type Combo } from '../../../types/combo.type'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { ComboReview } from './review'
 import path from '../../../constants/path'
+import ChatSystem from '../Chat/chatSystem'
+import ThreeDCard from '../../../components/ui/threed-card'
 
 // Context for sharing combo data across components
 interface ComboDetailContextType {
@@ -152,9 +161,10 @@ function ComboDetail() {
   }
 
   // Calculate savings
-  const individualItemsTotal = combo.comboItems?.reduce((sum, item) => {
-    return sum + item.finalPrice
-  }, 0) || 0
+  const individualItemsTotal =
+    combo.comboItems?.reduce((sum, item) => {
+      return sum + item.finalPrice
+    }, 0) || 0
 
   const savingsAmount = individualItemsTotal - combo.totalFinalPrice
   const savingsPercentage = combo.totalFinalPrice > 0 ? Math.round((savingsAmount / combo.totalFinalPrice) * 100) : 0
@@ -173,33 +183,34 @@ function ComboDetail() {
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12'>
             {/* Combo Image */}
             <div className='space-y-4'>
-              <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden relative'>
-                <img
-                  src={combo.thumbnailUrl || '/images/placeholder.jpg'}
-                  alt={combo.name}
-                  className='w-full h-full object-cover'
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.src = 'https://via.placeholder.com/600x600?text=No+Image'
-                  }}
-                />
+              <ThreeDCard
+                className='aspect-square [&>div]:bg-transparent [&>div]:p-0'
+                enableGlow={true}
+                enableShadow={true}
+                enableParallax={true}
+                maxRotation={15}
+                glowOpacity={0.2}
+              >
+                <div className='relative w-full h-full rounded-2xl overflow-hidden bg-gray-100'>
+                  <img
+                    src={combo.thumbnailUrl || '/images/placeholder.jpg'}
+                    alt={combo.name}
+                    className='w-full h-full object-cover'
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.src = 'https://via.placeholder.com/600x600?text=No+Image'
+                    }}
+                  />
 
-                {/* Savings Badge - Yellow in top-right */}
-                {(savingsAmount > 0 || savingsAmount < 0) && (
-                  <span className='absolute top-2 right-2 sm:top-4 sm:right-4 bg-yellow-500 text-white text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full font-medium'>
-                    {savingsAmount > 0
-                      ? `Tiết kiệm ${savingsPercentage}%`
-                      : `đắt hơn ${Math.abs(savingsPercentage)}%`}
-                  </span>
-                )}
-
-                {/* Discount Badge - Red in top-left */}
-                {combo.totalBasePrice > combo.totalFinalPrice && (
-                  <span className='absolute top-2 left-2 sm:top-4 sm:left-4 bg-red-500 text-white text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full'>
-                    Giảm giá {Math.round(((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100)}%
-                  </span>
-                )}
-              </div>
+                  {/* Discount Badge */}
+                  {combo.totalBasePrice > combo.totalFinalPrice && (
+                    <span className='absolute top-2 right-2 sm:top-4 sm:right-4 bg-yellow-500 text-white text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full font-medium z-20 shadow-lg'>
+                      Giảm giá{' '}
+                      {Math.round(((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100)}%
+                    </span>
+                  )}
+                </div>
+              </ThreeDCard>
             </div>
 
             {/* Combo Information */}
@@ -211,7 +222,12 @@ function ComboDetail() {
                 <div className='flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4'>
                   <div className='flex items-center gap-1'>
                     <svg className='w-4 h-4 text-gray-500' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' />
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth='2'
+                        d='M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
+                      />
                     </svg>
                     <span className='text-sm sm:text-base text-gray-600 truncate'>{combo.storeName}</span>
                   </div>
@@ -219,10 +235,12 @@ function ComboDetail() {
 
                 {/* Status */}
                 <div className='flex flex-wrap items-center gap-2 mb-3 sm:mb-4'>
-                  <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${combo.isActive && combo.status === 'Approved'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-800'
-                    }`}>
+                  <span
+                    className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${combo.isActive && combo.status === 'Approved'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-800'
+                      }`}
+                  >
                     {combo.isActive && combo.status === 'Approved' ? 'Còn hàng' : 'Không có sẵn'}
                   </span>
                   <span className='text-gray-500 hidden sm:inline'>•</span>
@@ -247,27 +265,6 @@ function ComboDetail() {
                     }).format(combo.totalBasePrice)}
                   </div>
                 )}
-
-                {/* Savings Info */}
-                {savingsAmount !== 0 && (
-                  <div className='mt-2 text-xs sm:text-sm'>
-                    {savingsAmount > 0 ? (
-                      <span className='text-green-600 font-medium'>
-                        Tiết kiệm {new Intl.NumberFormat('vi-VN', {
-                          style: 'currency',
-                          currency: 'VND'
-                        }).format(savingsAmount)} so với mua lẻ
-                      </span>
-                    ) : (
-                      <span className='text-red-600 font-medium'>
-                        Đắt hơn {new Intl.NumberFormat('vi-VN', {
-                          style: 'currency',
-                          currency: 'VND'
-                        }).format(Math.abs(savingsAmount))} so với mua lẻ
-                      </span>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Combo Items */}
@@ -276,9 +273,14 @@ function ComboDetail() {
                   <h3 className='text-base sm:text-lg font-semibold mb-3'>Sản phẩm trong combo:</h3>
                   <div className='space-y-2 sm:space-y-3'>
                     {combo.comboItems.map((item, index) => (
-                      <div key={index} className='flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-gray-200 rounded-lg gap-2 sm:gap-0'>
+                      <div
+                        key={index}
+                        className='flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-gray-200 rounded-lg gap-2 sm:gap-0'
+                      >
                         <div className='flex-1'>
-                          <div className='font-medium text-gray-900 text-sm sm:text-base truncate'>{item.comboItemName}</div>
+                          <div className='font-medium text-gray-900 text-sm sm:text-base truncate'>
+                            {item.comboItemName}
+                          </div>
                           <div className='text-xs sm:text-sm text-gray-600'>Số lượng: {item.quantity}</div>
                         </div>
                         <div className='text-left sm:text-right'>
@@ -286,14 +288,9 @@ function ComboDetail() {
                             {new Intl.NumberFormat('vi-VN', {
                               style: 'currency',
                               currency: 'VND'
-                            }).format(item.finalPrice)}
+                            }).format(item.basePrice)}
                           </div>
-                          <div className='text-xs sm:text-sm text-gray-500'>
-                            Tổng: {new Intl.NumberFormat('vi-VN', {
-                              style: 'currency',
-                              currency: 'VND'
-                            }).format(item.finalPrice * item.quantity)}
-                          </div>
+                          
                         </div>
                       </div>
                     ))}
@@ -313,7 +310,9 @@ function ComboDetail() {
                     >
                       -
                     </button>
-                    <span className='px-3 sm:px-4 py-2 border-l border-r border-gray-300 text-sm sm:text-base'>{quantity}</span>
+                    <span className='px-3 sm:px-4 py-2 border-l border-r border-gray-300 text-sm sm:text-base'>
+                      {quantity}
+                    </span>
                     <button
                       onClick={() => handleQuantityChange(quantity + 1)}
                       className='px-2 sm:px-3 py-2 hover:bg-gray-100 text-sm sm:text-base'
@@ -339,9 +338,7 @@ function ComboDetail() {
                         <span className='sm:hidden'>Đang thêm...</span>
                       </>
                     ) : (
-                      <>
-                        {!combo.isActive || combo.status !== 'Approved' ? 'Không có sẵn' : 'Thêm vào giỏ hàng'}
-                      </>
+                      <>{!combo.isActive || combo.status !== 'Approved' ? 'Không có sẵn' : 'Thêm vào giỏ hàng'}</>
                     )}
                   </Button>
 
@@ -363,15 +360,6 @@ function ComboDetail() {
                   <p className='text-sm sm:text-base text-gray-700 leading-relaxed'>{combo.description}</p>
                 </div>
               )}
-
-              {/* Debug Info - Temporary */}
-              <div className='text-xs text-gray-400 border-t pt-3 sm:pt-4'>
-                <div className='space-y-1'>
-                  <div>Individual total: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(individualItemsTotal)}</div>
-                  <div>Combo price: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(combo.totalFinalPrice)}</div>
-                  <div>Savings: {savingsAmount > 0 ? '+' : ''}{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(savingsAmount)}</div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -401,8 +389,8 @@ function ComboDetail() {
                       <div className='flex-1'>
                         <h2 className='text-2xl font-bold text-gray-900 mb-2'>{combo.storeName}</h2>
                         <p className='text-gray-700 text-base leading-6 mb-4'>
-                          Cửa hàng chuyên cung cấp combo và sản phẩm chất lượng cao.
-                          Cam kết mang đến những sản phẩm tốt nhất cho khách hàng.
+                          Cửa hàng chuyên cung cấp combo và sản phẩm chất lượng cao. Cam kết mang đến những sản phẩm tốt
+                          nhất cho khách hàng.
                         </p>
 
                         {/* Send Message Button */}
@@ -422,23 +410,7 @@ function ComboDetail() {
                       </div>
                     </div>
 
-                    {/* Store Stats */}
-                    <div className='grid grid-cols-2 md:grid-cols-3 gap-4 mb-6'>
-                      <div className='text-center p-3 bg-white rounded-lg border border-gray-200'>
-                        <div className='text-2xl font-bold text-green-600'>{combo.comboItems?.length || 0}</div>
-                        <div className='text-sm text-gray-600'>Sản phẩm trong combo</div>
-                      </div>
-                      <div className='text-center p-3 bg-white rounded-lg border border-gray-200'>
-                        <div className='text-2xl font-bold text-green-600'>{combo.provinceName || 'N/A'}</div>
-                        <div className='text-sm text-gray-600'>Tỉnh/Thành phố</div>
-                      </div>
-                      <div className='text-center p-3 bg-white rounded-lg border border-gray-200'>
-                        <div className='text-2xl font-bold text-green-600'>
-                          {combo.isActive && combo.status === 'Approved' ? 'Hoạt động' : 'Tạm ngưng'}
-                        </div>
-                        <div className='text-sm text-gray-600'>Trạng thái</div>
-                      </div>
-                    </div>
+
                   </div>
 
                   {/* Right Section - Action Buttons */}
@@ -487,6 +459,7 @@ function ComboDetail() {
         <div className='mt-8'>
           <ComboReview />
         </div>
+        <ChatSystem />
       </div>
 
       <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
