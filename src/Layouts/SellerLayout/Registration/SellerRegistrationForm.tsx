@@ -885,7 +885,10 @@ function SellerRegistrationForm() {
           province: selectedUserProvince?.name || '',
           district: selectedUserDistrict?.name || '',
           ward: selectedUserWard?.name || '',
-          streetAddress: userStreetAddress
+          streetAddress: userStreetAddress,
+          provinceId: selectedUserProvince?.id || 0,
+          districtId: selectedUserDistrict?.id || 0,
+          wardId: selectedUserWard?.id || 0
         },
         sellerInfo: {
           businessName: formData.businessName,

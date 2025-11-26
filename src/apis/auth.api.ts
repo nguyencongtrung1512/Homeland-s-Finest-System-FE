@@ -131,6 +131,9 @@ export interface SellerRegistrationData {
     phoneNumber: string
     gender: string
     dateOfBirth: string
+    provinceId: number
+    districtId: number
+    wardId: number
   }
   sellerInfo: {
     bankName: string
@@ -173,6 +176,9 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   formData.append('UserInfo.PhoneNumber', data.userInfo.phoneNumber)
   formData.append('UserInfo.Gender', data.userInfo.gender)
   formData.append('UserInfo.DateOfBirth', data.userInfo.dateOfBirth)
+  formData.append('UserInfo.ProvinceId', data.userInfo.provinceId.toString())
+  formData.append('UserInfo.DistrictId', data.userInfo.districtId.toString())
+  formData.append('UserInfo.WardId', data.userInfo.wardId.toString())
 
   // Add sellerInfo
   formData.append('SellerInfo.BusinessName', data.sellerInfo.businessName)
@@ -186,13 +192,13 @@ export const registerSeller = async (data: SellerRegistrationData) => {
 
   // Add storeInfo
   formData.append('StoreInfo.StoreName', data.storeInfo.storeName)
-  formData.append('StoreInfo.Address', data.storeInfo.address)
-  formData.append('StoreInfo.Province', data.storeInfo.province)
-  formData.append('StoreInfo.District', data.storeInfo.district)
-  formData.append('StoreInfo.Ward', data.storeInfo.ward)
-  formData.append('StoreInfo.ProvinceId', data.storeInfo.provinceID.toString())
-  formData.append('StoreInfo.DistrictId', data.storeInfo.districtID.toString())
-  formData.append('StoreInfo.WardId', data.storeInfo.wardID.toString())
+  formData.append('StoreInfo.StoreAddress', data.storeInfo.address)
+  formData.append('StoreInfo.StoreProvince', data.storeInfo.province)
+  formData.append('StoreInfo.StoreDistrict', data.storeInfo.district)
+  formData.append('StoreInfo.StoreWard', data.storeInfo.ward)
+  formData.append('StoreInfo.StoreProvinceID', data.storeInfo.provinceID.toString())
+  formData.append('StoreInfo.StoreDistrictID', data.storeInfo.districtID.toString())
+  formData.append('StoreInfo.StoreWardID', data.storeInfo.wardID.toString())
   formData.append('StoreInfo.Description', data.storeInfo.description)
 
   // Add vendor application images
