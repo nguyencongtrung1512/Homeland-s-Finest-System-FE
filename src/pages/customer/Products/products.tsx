@@ -19,7 +19,7 @@ function Products() {
   const { isAuthenticated, user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1) // 1-based for UI
-  const [pageSize] = useState(10) // Items per page
+  const [pageSize] = useState(12) // Items per page
   const { addToCart } = useCart()
   const [activeTab, setActiveTab] = useState<'product' | 'combo'>('product')
   const [combos, setCombos] = useState<Combo[]>([])
@@ -40,6 +40,22 @@ function Products() {
     subRegionFilters?: string[]
   }>({})
 
+  // Handler để nhận filters từ AsideFilter
+  const handleFilterChange = (filterState: {
+    minPrice?: number
+    maxPrice?: number
+    categoryFilters?: string[]
+    subRegionFilters?: string[]
+  }) => {
+    setFilters({
+      minPrice: filterState.minPrice,
+      maxPrice: filterState.maxPrice,
+      categoryFilters: filterState.categoryFilters,
+      subRegionFilters: filterState.subRegionFilters
+    })
+    setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
+  }
+
   // Fetch products using search API
   useEffect(() => {
     const fetchProducts = async () => {
@@ -49,10 +65,13 @@ function Products() {
         setLoading(true)
         setError(null)
 
+        // Calculate limit based on current page: page 1 = 10, page 2 = 20, page 3 = 30, etc.
+        const limit = currentPage * pageSize
+
         const searchRequest: SearchRequest = {
           queryText: searchQuery.trim() || '', // Empty string for trending
           userId: user?.userId || null,
-          limit: 10, // Get more results for client-side pagination
+          limit: limit,
           sortBy: sortBy || null,
           minPrice: filters.minPrice || null,
           maxPrice: filters.maxPrice || null,
@@ -75,7 +94,7 @@ function Products() {
     }
 
     fetchProducts()
-  }, [activeTab, searchQuery, sortBy, filters, user?.userId])
+  }, [activeTab, searchQuery, sortBy, filters, currentPage, pageSize, user?.userId])
 
   // Fetch combos
   useEffect(() => {
@@ -95,13 +114,24 @@ function Products() {
     fetchCombos()
   }, [activeTab, currentPage])
 
-  // Client-side pagination
+  // Client-side pagination - slice products for current page
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * pageSize
-    return products.slice(start, start + pageSize)
+    const end = start + pageSize
+    return products.slice(start, end)
   }, [products, currentPage, pageSize])
 
-  const totalPages = Math.ceil(products.length / pageSize)
+  // Calculate total pages: if we got fewer results than requested, we're on the last page
+  const totalPages = useMemo(() => {
+    const limit = currentPage * pageSize
+    if (products.length < limit) {
+      // We got fewer results than requested, so this is the last page
+      return currentPage
+    }
+    // If we got exactly the limit, there might be more pages
+    // Estimate based on current results, add 1 more page if we got full results
+    return Math.ceil(products.length / pageSize) + (products.length === limit ? 1 : 0)
+  }, [products.length, currentPage, pageSize])
 
   const productCardData: ProductCardData[] = paginatedProducts.map((product) => ({
     ...product,
@@ -141,7 +171,7 @@ function Products() {
     <div>
       <div className='max-w-7xl mx-auto px-6 py-8 flex flex-col lg:flex-row gap-6'>
         <div className='lg:w-64 flex-shrink-0'>
-          <AsideFilter />
+          <AsideFilter onFilterChange={handleFilterChange} />
         </div>
 
         {/* Main content */}
