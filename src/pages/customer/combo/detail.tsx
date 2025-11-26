@@ -170,15 +170,6 @@ function ComboDetail() {
     )
   }
 
-  // Calculate savings
-  const individualItemsTotal =
-    combo.comboItems?.reduce((sum, item) => {
-      return sum + item.finalPrice
-    }, 0) || 0
-
-  const savingsAmount = individualItemsTotal - combo.totalFinalPrice
-  const savingsPercentage = combo.totalFinalPrice > 0 ? Math.round((savingsAmount / combo.totalFinalPrice) * 100) : 0
-
   const contextValue: ComboDetailContextType = {
     combo,
     loading,

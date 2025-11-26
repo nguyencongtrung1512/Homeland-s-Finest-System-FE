@@ -4,11 +4,21 @@ export interface ChatMessageRequest {
   messageText: string
 }
 
+export interface RecommendedProduct {
+  productId: string
+  productName: string
+  price: number
+  imageUrl: string
+  productLink: string
+}
+
 export interface ChatMessageData {
   roomId: string
   senderId: string
   userMessageText: string
   homeLandFinestText: string
+  productImages?: string[] // Array of image URLs
+  recommendedProducts?: RecommendedProduct[] // Recommended products from AI
 }
 
 export interface ChatMessageResponse {

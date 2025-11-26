@@ -14,7 +14,7 @@ import { getUserById, updateUser, getBanks, type User as UserType, type Bank } f
 import { getProvinces, type Province } from '../../../../../apis/province'
 import { changePassword } from '../../../../../apis/auth.api'
 import { toast } from '../../../../../utils/toast'
-import { MapPin, CreditCard, Building2, User, CalendarIcon, ChevronDown, ChevronUp } from 'lucide-react'
+import { MapPin, CreditCard, User, CalendarIcon, ChevronDown, ChevronUp } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 

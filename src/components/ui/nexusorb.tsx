@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Handshake, Heart, House, Leaf, Package, ShieldCheck, Truck } from 'lucide-react'
+import { Handshake, House, Leaf, Package, ShieldCheck, Truck } from 'lucide-react'
 
 // Wrapper for individual icons to give them the glassy container style and hover effects
 const IconWrapper = ({

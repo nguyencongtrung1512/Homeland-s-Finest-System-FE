@@ -673,8 +673,14 @@ const ChatSystem: React.FC = () => {
         text: response.data.homeLandFinestText,
         isUser: false,
         timestamp: new Date(),
-        images: response.data.productImages && Array.isArray(response.data.productImages) ? response.data.productImages : undefined,
-        recommendedProducts: response.data.recommendedProducts && Array.isArray(response.data.recommendedProducts) ? response.data.recommendedProducts : undefined
+        images:
+          response.data.productImages && Array.isArray(response.data.productImages)
+            ? response.data.productImages
+            : undefined,
+        recommendedProducts:
+          response.data.recommendedProducts && Array.isArray(response.data.recommendedProducts)
+            ? response.data.recommendedProducts
+            : undefined
       }
       setAiMessages((prev) => [...prev, botMessage])
     } catch (error) {
@@ -1013,8 +1019,8 @@ const ChatSystem: React.FC = () => {
                       <div className='flex flex-col gap-3 pb-2'>
                         {aiMessages.map((message) => {
                           // Parse markdown (bold với **text**)
-                          const parseMarkdown = (text: string, baseKey: number): (string | JSX.Element)[] => {
-                            const parts: (string | JSX.Element)[] = []
+                          const parseMarkdown = (text: string, baseKey: number): (string | React.JSX.Element)[] => {
+                            const parts: (string | React.JSX.Element)[] = []
                             const boldRegex = /\*\*(.+?)\*\*/g
                             let lastIndex = 0
                             let match
@@ -1048,10 +1054,10 @@ const ChatSystem: React.FC = () => {
                           const parseTextWithFormatting = (text: string) => {
                             // Tách text thành các dòng để xử lý line breaks
                             const lines = text.split('\n')
-                            const result: (string | JSX.Element)[][] = []
+                            const result: (string | React.JSX.Element)[][] = []
 
                             lines.forEach((line, lineIndex) => {
-                              const lineParts: (string | JSX.Element)[] = []
+                              const lineParts: (string | React.JSX.Element)[] = []
 
                               // Tìm pattern: /products/{productId} hoặc /product/{productId}
                               const productLinkRegex = /\/product[s]?\/([a-f0-9-]+)/gi
@@ -1103,7 +1109,7 @@ const ChatSystem: React.FC = () => {
                             })
 
                             // Flatten và thêm line breaks giữa các dòng
-                            const flattened: (string | JSX.Element)[] = []
+                            const flattened: (string | React.JSX.Element)[] = []
                             result.forEach((lineParts, index) => {
                               flattened.push(...lineParts)
                               if (index < result.length - 1) {
