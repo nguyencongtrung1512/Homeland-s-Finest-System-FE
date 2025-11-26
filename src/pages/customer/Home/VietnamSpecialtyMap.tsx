@@ -6,6 +6,8 @@ import { getProvincesDetail, type Province } from '../../../apis/province'
 import type { Product } from '../../../types'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import path from '../../../constants/path'
+import { VideoText } from '../../../components/ui/video-text'
+import NexusOrb from '../../../components/ui/nexusorb'
 
 function VietnamSpecialtyMap() {
   const navigate = useNavigate()
@@ -375,30 +377,46 @@ function VietnamSpecialtyMap() {
         ) : (
           /* Empty state */
           <div className='flex-1 flex flex-col items-center justify-center text-center'>
-            <div className='w-40 h-40 bg-gradient-to-r from-red-500 to-yellow-500 rounded-full flex items-center justify-center text-7xl text-white mb-8 shadow-2xl animate-bounce'>
-              🗺️
-            </div>
-            <h2 className='text-4xl font-bold mb-4 bg-gradient-to-r from-red-600 to-yellow-600 bg-clip-text text-transparent'>
-              Chọn một tỉnh thành
-            </h2>
-            <p className='text-gray-600 text-xl mb-12 max-w-md leading-relaxed'>
-              Nhấp vào bản đồ để khám phá đặc sản địa phương đầy hấp dẫn
-            </p>
-
-            <div className='grid grid-cols-3 gap-6 mt-8'>
-              {[
-                { emoji: '🍜', name: 'Phở', color: 'from-red-400 to-red-500' },
-                { emoji: '🥖', name: 'Bánh mì', color: 'from-yellow-400 to-orange-500' },
-                { emoji: '🦀', name: 'Hải sản', color: 'from-blue-400 to-cyan-500' }
-              ].map((item, index) => (
-                <div
-                  key={index}
-                  className={`bg-gradient-to-br ${item.color} p-6 rounded-2xl text-center text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer`}
-                >
-                  <div className='text-4xl mb-3'>{item.emoji}</div>
-                  <p className='font-semibold'>{item.name}</p>
+            <div className='w-full flex flex-col items-center justify-center gap-8'>
+              <div className='w-full h-[280px] flex flex-col items-center justify-center gap-2'>
+                <div className='w-full h-[40%]'>
+                  <VideoText
+                    src='https://ls29t3z55w.ufs.sh/f/JEKFIJDsOBct0vrmLYJRG8BKHmvZQkWJ9ElIVcNfzPg63Mbo'
+                    fontFamily='Helvetica, Arial, sans-serif'
+                    fontSize={12}
+                    letterSpacing='0.15em'
+                    textTransform='uppercase'
+                    className='w-full h-full'
+                  >
+                    Tinh Hoa
+                  </VideoText>
                 </div>
-              ))}
+                <div className='w-full h-[40%] py-2'>
+                  <VideoText
+                    src='https://ls29t3z55w.ufs.sh/f/JEKFIJDsOBct0vrmLYJRG8BKHmvZQkWJ9ElIVcNfzPg63Mbo'
+                    fontFamily='Helvetica, Arial, sans-serif'
+                    fontSize={12}
+                    letterSpacing='0.05em'
+                    textTransform='uppercase'
+                    className='w-full h-full'
+                  >
+                    Quê Nhà
+                  </VideoText>
+                </div>
+              </div>
+              <div className='flex flex-row items-center justify-center gap-10'>
+                <div className='mb-12'>
+                  <h2 className='text-4xl font-bold mb-4 bg-gradient-to-r from-red-600 to-yellow-600 bg-clip-text text-transparent'>
+                    Chọn một tỉnh thành
+                  </h2>
+                  <p className='text-gray-600 text-xl mb-12 max-w-md leading-relaxed'>
+                    Nhấp vào bản đồ để khám phá đặc sản địa phương đầy hấp dẫn
+                  </p>
+                </div>
+                <div>
+                  <NexusOrb />
+                </div>
+              </div>
             </div>
           </div>
         )}
