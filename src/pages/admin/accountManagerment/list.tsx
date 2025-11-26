@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import {
   Search,
   Users,
-  UserX,
-  ChevronLeft,
-  ChevronRight,
-  Lock,
   Eye,
-  UserPlus,
-  Calendar as CalendarIcon
+  Ban,
+  CheckCircle,
+  AlertCircle,
+  Calendar as CalendarIcon,
+  XCircle
 } from 'lucide-react'
+import { format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -26,9 +26,12 @@ import {
 } from '../../../components/ui/dialog'
 import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
+import { Label } from '../../../components/ui/label'
 import { getUsers, updateUser, type User } from '../../../apis/user.api'
-import { registerStaff, type StaffRegistrationData } from '../../../apis/auth.api'
 import { toast } from 'react-toastify'
+import { formatDate } from '../../../utils/formatDate'
+import { Badge } from '../../../components/ui/badge'
+import Pagination from '../../../components/Pagination/Pagination'
 
 // Sử dụng User interface từ API, thêm một số field computed
 interface Customer extends User {
@@ -40,33 +43,25 @@ interface Customer extends User {
 
 function CustomerManagement() {
   const [searchText, setSearchText] = useState('')
-  const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined)
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined)
+  const [dateFromOpen, setDateFromOpen] = useState(false)
+  const [dateToOpen, setDateToOpen] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
-  const [showLockConfirm, setShowLockConfirm] = useState(false)
-  const [customerToLock, setCustomerToLock] = useState<Customer | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
-  // Staff creation states
-  const [showCreateStaffModal, setShowCreateStaffModal] = useState(false)
-  const [staffFormData, setStaffFormData] = useState<StaffRegistrationData>({
-    email: '',
-    password: '',
-    firstName: '',
-    lastName: '',
-    gender: 'Male',
-    phoneNumber: '',
-    dateOfBirth: '',
-    hireDate: ''
-  })
-  const [staffFormLoading, setStaffFormLoading] = useState(false)
-  const [dateOfBirthOpen, setDateOfBirthOpen] = useState(false)
-  const [hireDateOpen, setHireDateOpen] = useState(false)
+  // Ban states
+  const [showBanModal, setShowBanModal] = useState(false)
+  const [customerToBan, setCustomerToBan] = useState<Customer | null>(null)
+  const [banType, setBanType] = useState<'permanent' | 'temporary'>('permanent')
+  const [banUntilDate, setBanUntilDate] = useState<Date | undefined>(undefined)
+  const [banUntilOpen, setBanUntilOpen] = useState(false)
 
   // API states
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -94,7 +89,7 @@ function CustomerManagement() {
     setError('')
 
     try {
-      // Prepare API parameters
+      // Prepare API parameters - chỉ lấy role customer
       const apiParams: {
         pageSize: number
         pageNumber: number
@@ -103,17 +98,13 @@ function CustomerManagement() {
         isActive?: boolean
       } = {
         pageSize: 100,
-        pageNumber: 1
+        pageNumber: 1,
+        role: 'customer' // Chỉ lấy customer
       }
 
       // Add search term if provided
       if (searchText.trim()) {
         apiParams.searchTerm = searchText.trim()
-      }
-
-      // Add role filter if not 'all'
-      if (roleFilter !== 'all') {
-        apiParams.role = roleFilter
       }
 
       // Add status filter if not 'all'
@@ -146,53 +137,55 @@ function CustomerManagement() {
   // Fetch data khi component mount và khi có thay đổi filter
   useEffect(() => {
     fetchUsers()
-  }, [searchText, roleFilter, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchText, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const getRoleConfig = (role: string) => {
-    const configs = {
-      Staff: {
-        text: 'Nhân viên',
-        bgColor: 'bg-blue-100',
-        textColor: 'text-blue-600'
-      },
-      Customer: {
-        text: 'Khách hàng',
-        bgColor: 'bg-green-100',
-        textColor: 'text-green-600'
-      },
-      Seller: {
-        text: 'Người bán',
-        bgColor: 'bg-purple-100',
-        textColor: 'text-purple-600'
-      }
+  const getStatusBadge = (isActive: boolean) => {
+    if (isActive) {
+      return (
+        <Badge className='bg-green-100 text-green-800 hover:bg-green-100'>
+          <CheckCircle className='w-3 h-3 mr-1' />
+          Hoạt động
+        </Badge>
+      )
+    } else {
+      return (
+        <Badge className='bg-red-100 text-red-800 hover:bg-red-100'>
+          <XCircle className='w-3 h-3 mr-1' />
+          Không hoạt động
+        </Badge>
+      )
     }
-    return configs[role as keyof typeof configs] || configs.Customer
   }
 
-  const getStatusConfig = (status: string) => {
-    const configs = {
-      active: {
-        text: 'Hoạt động',
-        bgColor: 'bg-green-100',
-        textColor: 'text-green-600'
-      },
-      temporarily_locked: {
-        text: 'Tạm khóa',
-        bgColor: 'bg-yellow-100',
-        textColor: 'text-yellow-600'
-      },
-      banned: {
-        text: 'Bị cấm',
-        bgColor: 'bg-red-100',
-        textColor: 'text-red-600'
+  // Filter customers by date range
+  const filterByDateRange = (customers: Customer[]) => {
+    if (!dateFrom && !dateTo) return customers
+
+    return customers.filter((customer) => {
+      const customerDate = new Date(customer.createdAt)
+      customerDate.setHours(0, 0, 0, 0)
+
+      if (dateFrom && dateTo) {
+        const from = new Date(dateFrom)
+        from.setHours(0, 0, 0, 0)
+        const to = new Date(dateTo)
+        to.setHours(23, 59, 59, 999)
+        return customerDate >= from && customerDate <= to
+      } else if (dateFrom) {
+        const from = new Date(dateFrom)
+        from.setHours(0, 0, 0, 0)
+        return customerDate >= from
+      } else if (dateTo) {
+        const to = new Date(dateTo)
+        to.setHours(23, 59, 59, 999)
+        return customerDate <= to
       }
-    }
-    return configs[status as keyof typeof configs] || configs.active
+      return true
+    })
   }
 
-  // No need for client-side filtering since we're using API search
-  const filteredCustomers = customers
-
+  // Calculate summary statistics
+  const filteredCustomers = filterByDateRange(customers)
   const totalPages = Math.ceil(filteredCustomers.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
@@ -201,41 +194,6 @@ function CustomerManagement() {
   const handleView = (customer: Customer) => {
     setSelectedCustomer(customer)
     setShowDetailModal(true)
-  }
-
-  const handleLock = (customer: Customer) => {
-    setCustomerToLock(customer)
-    setShowLockConfirm(true)
-  }
-
-  const confirmLock = async () => {
-    if (customerToLock) {
-      setActionLoading(true)
-      try {
-        await updateUser(customerToLock.id, {
-          isPermission: false
-        })
-
-        toast.success(`Đã khóa quyền hạn của ${customerToLock.name}`, {
-          position: 'top-right',
-          autoClose: 3000
-        })
-
-        // Refresh data
-        await fetchUsers()
-      } catch (err: unknown) {
-        const error = err as { message?: string }
-        const errorMessage = error.message || 'Có lỗi xảy ra khi khóa quyền hạn'
-        toast.error(errorMessage, {
-          position: 'top-right',
-          autoClose: 5000
-        })
-      } finally {
-        setActionLoading(false)
-        setShowLockConfirm(false)
-        setCustomerToLock(null)
-      }
-    }
   }
 
   const handleDelete = (customer: Customer) => {
@@ -278,335 +236,268 @@ function CustomerManagement() {
     setSelectedCustomer(null)
   }
 
-  const closeLockConfirm = () => {
-    setShowLockConfirm(false)
-    setCustomerToLock(null)
-  }
-
   const closeDeleteConfirm = () => {
     setShowDeleteConfirm(false)
     setCustomerToDelete(null)
   }
 
-  // Staff creation functions
-  const handleCreateStaff = () => {
-    setShowCreateStaffModal(true)
-    // Reset form data
-    setStaffFormData({
-      email: '',
-      password: '',
-      firstName: '',
-      lastName: '',
-      gender: 'Male',
-      phoneNumber: '',
-      dateOfBirth: '',
-      hireDate: ''
-    })
+  // Handle ban
+  const handleBan = (customer: Customer) => {
+    setCustomerToBan(customer)
+    setBanType('permanent')
+    setBanUntilDate(undefined)
+    setShowBanModal(true)
   }
 
-  const handleStaffFormChange = (field: keyof StaffRegistrationData, value: string) => {
-    setStaffFormData((prev) => ({
-      ...prev,
-      [field]: value
-    }))
+  const confirmBan = async () => {
+    if (customerToBan) {
+      setActionLoading(true)
+      try {
+        const now = new Date().toISOString()
+        const banAt = now
+        let banUntil = ''
+
+        if (banType === 'temporary' && banUntilDate) {
+          // Ban có thời hạn
+          banUntil = banUntilDate.toISOString()
+        } else {
+          // Ban vĩnh viễn - banUntil để rỗng
+          banUntil = ''
+        }
+
+        // Khi ban: tự động set isActive = false
+        await updateUser(customerToBan.id, {
+          banAt,
+          banUntil,
+          isActive: false, // Tự động set isActive = false khi ban
+          role: 'Customer'
+        })
+
+        toast.success(`Đã ${banType === 'permanent' ? 'cấm vĩnh viễn' : 'cấm có thời hạn'} ${customerToBan.name}`, {
+          position: 'top-right',
+          autoClose: 3000
+        })
+
+        // Refresh data
+        await fetchUsers()
+        setShowBanModal(false)
+        setCustomerToBan(null)
+        setBanType('permanent')
+        setBanUntilDate(undefined)
+      } catch (err: unknown) {
+        const error = err as { message?: string }
+        const errorMessage = error.message || 'Có lỗi xảy ra khi cấm khách hàng'
+        toast.error(errorMessage, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } finally {
+        setActionLoading(false)
+      }
+    }
   }
 
-  const handleStaffFormSubmit = async () => {
-    // Basic validation
-    if (
-      !staffFormData.email ||
-      !staffFormData.password ||
-      !staffFormData.firstName ||
-      !staffFormData.lastName ||
-      !staffFormData.phoneNumber ||
-      !staffFormData.dateOfBirth ||
-      !staffFormData.hireDate
-    ) {
-      toast.error('Vui lòng điền đầy đủ thông tin', {
+  // Handle unban
+  const handleUnban = async (customer: Customer) => {
+    setActionLoading(true)
+    try {
+      // Khi unban: tự động set isActive = true và gửi banAt = '', banUntil = ''
+      await updateUser(customer.id, {
+        banAt: '',
+        banUntil: '',
+        isActive: true, // Tự động set isActive = true khi unban
+        role: 'Customer'
+      })
+
+      toast.success(`Đã mở khóa ${customer.name}`, {
         position: 'top-right',
         autoClose: 3000
       })
-      return
-    }
 
-    // Password validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
-    if (!passwordRegex.test(staffFormData.password)) {
-      toast.error('Mật khẩu phải chứa ít nhất một chữ hoa, một chữ thường, một số và một ký tự đặc biệt', {
+      // Refresh data
+      await fetchUsers()
+    } catch (err: unknown) {
+      const error = err as { message?: string }
+      const errorMessage = error.message || 'Có lỗi xảy ra khi mở khóa khách hàng'
+      toast.error(errorMessage, {
         position: 'top-right',
         autoClose: 5000
       })
-      return
-    }
-
-    // Email validation
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-    if (!emailRegex.test(staffFormData.email)) {
-      toast.error('Email không hợp lệ', {
-        position: 'top-right',
-        autoClose: 3000
-      })
-      return
-    }
-
-    // Phone validation
-    const phoneRegex = /^[0-9]{10,12}$/
-    if (!phoneRegex.test(staffFormData.phoneNumber)) {
-      toast.error('Số điện thoại phải có 10-12 chữ số', {
-        position: 'top-right',
-        autoClose: 3000
-      })
-      return
-    }
-
-    setStaffFormLoading(true)
-    try {
-      await registerStaff(staffFormData)
-
-      toast.success('Tạo tài khoản nhân viên thành công!', {
-        position: 'top-right',
-        autoClose: 3000
-      })
-
-      // Close modal and refresh data
-      setShowCreateStaffModal(false)
-      await fetchUsers()
-    } catch (err: unknown) {
-      console.error('Staff creation error:', err)
-
-      // Handle different types of errors
-      if (err && typeof err === 'object' && 'response' in err) {
-        const axiosError = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
-
-        if (axiosError.response?.data?.errors) {
-          // Handle validation errors from backend
-          const errors = axiosError.response.data.errors
-          const errorMessages = Object.values(errors).flat()
-          const firstError = errorMessages[0] || 'Có lỗi xảy ra khi tạo tài khoản nhân viên'
-          toast.error(firstError, {
-            position: 'top-right',
-            autoClose: 5000
-          })
-        } else if (axiosError.response?.data?.message) {
-          // Handle backend error message
-          toast.error(axiosError.response.data.message, {
-            position: 'top-right',
-            autoClose: 5000
-          })
-        } else {
-          toast.error('Có lỗi xảy ra khi tạo tài khoản nhân viên', {
-            position: 'top-right',
-            autoClose: 5000
-          })
-        }
-      } else if (err && typeof err === 'object' && 'message' in err) {
-        const errorWithMessage = err as { message: string }
-        toast.error(errorWithMessage.message, {
-          position: 'top-right',
-          autoClose: 5000
-        })
-      } else {
-        toast.error('Có lỗi xảy ra khi tạo tài khoản nhân viên', {
-          position: 'top-right',
-          autoClose: 5000
-        })
-      }
     } finally {
-      setStaffFormLoading(false)
+      setActionLoading(false)
     }
   }
 
-  const closeCreateStaffModal = () => {
-    setShowCreateStaffModal(false)
-    setStaffFormData({
-      email: '',
-      password: '',
-      firstName: '',
-      lastName: '',
-      gender: 'Male',
-      phoneNumber: '',
-      dateOfBirth: '',
-      hireDate: ''
-    })
-    setDateOfBirthOpen(false)
-    setHireDateOpen(false)
-  }
-
-  // Date formatting functions
-  const formatDate = (date: Date | undefined): string => {
-    if (!date) return ''
-    return date.toISOString().split('T')[0] // Format as YYYY-MM-DD
-  }
-
-  const formatDisplayDate = (dateString: string): string => {
-    if (!dateString) return ''
-    const date = new Date(dateString)
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    })
+  const closeBanModal = () => {
+    setShowBanModal(false)
+    setCustomerToBan(null)
+    setBanType('permanent')
+    setBanUntilDate(undefined)
   }
 
   // Calculate summary statistics
   const totalCustomers = customers.length
-  const bannedCustomers = customers.filter((c) => c.status === 'banned').length
 
   return (
-    <div className='space-y-6 p-6 bg-gray-50 min-h-screen'>
+    <div className='space-y-6'>
       {/* Header */}
       <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-3'>
-          <h1 className='text-2xl font-bold text-gray-900'>Quản lý tài khoản</h1>
+        <div>
+          <h1 className='text-3xl font-bold text-gray-900'>Quản lý khách hàng</h1>
+          <p className='text-gray-600 mt-1'>Quản lý thông tin và trạng thái của các khách hàng</p>
         </div>
-        <div className='flex items-center gap-3'>
-          <Button
-            onClick={handleCreateStaff}
-            className='bg-green-600 hover:bg-green-700 text-white flex items-center gap-2'
-          >
-            <UserPlus className='w-4 h-4' />
-            Tạo nhân viên
-          </Button>
-          <Button onClick={fetchUsers} disabled={loading} className='bg-blue-600 hover:bg-blue-700 text-white'>
-            {loading ? 'Đang tải...' : 'Làm mới'}
-          </Button>
+        <div className='flex items-center space-x-2'>
+          <Users className='w-8 h-8 text-blue-600' />
+          <span className='text-2xl font-bold text-blue-600'>{filteredCustomers.length}</span>
+          <span className='text-sm text-gray-500'>/ {totalCustomers} tổng</span>
         </div>
       </div>
 
       {/* Error Message */}
       {error && <div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg'>{error}</div>}
 
-      {/* Summary Cards */}
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-        <Card className='bg-white shadow-sm'>
-          <CardContent className='p-6'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <p className='text-sm font-medium text-gray-600'>Tổng khách hàng</p>
-                <p className='text-3xl font-bold text-gray-900'>{totalCustomers.toLocaleString()}</p>
-              </div>
-              <div className='p-3 bg-blue-100 rounded-full'>
-                <Users className='w-6 h-6 text-blue-600' />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className='bg-white shadow-sm'>
-          <CardContent className='p-6'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <p className='text-sm font-medium text-gray-600'>Khách hàng bị cấm</p>
-                <p className='text-3xl font-bold text-gray-900'>{bannedCustomers}</p>
-              </div>
-              <div className='p-3 bg-red-100 rounded-full'>
-                <UserX className='w-6 h-6 text-red-600' />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search and Filter Section */}
-      <Card className='bg-white shadow-sm'>
-        <CardContent className='p-6'>
-          <div className='flex items-end gap-4'>
-            {/* Search Bar */}
-            <div className='flex-1'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Tìm kiếm</label>
-              <div className='relative'>
-                <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400' />
+      {/* Filters */}
+      <Card>
+        <CardContent>
+          <div className='flex flex-col sm:flex-row gap-4 items-end'>
+            <div className='flex-1 py-5'>
+              <Label className='text-sm font-medium text-gray-700 mb-2'>Tìm kiếm</Label>
+              <div className='w-full sm:w-120'>
                 <Input
-                  placeholder='Tìm kiếm khách hàng...'
+                  placeholder='Tìm kiếm theo tên, email, số điện thoại...'
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
-                  className='pl-10 h-10'
+                  onKeyPress={(e) => e.key === 'Enter' && fetchUsers()}
+                  className='w-full'
                 />
               </div>
             </div>
-
-            {/* Role Filter */}
-            <div className='w-48'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Vai trò</label>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className='h-10'>
-                  <SelectValue placeholder='Tất cả vai trò' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>Tất cả vai trò</SelectItem>
-                  <SelectItem value='staff'>Nhân viên</SelectItem>
-                  <SelectItem value='customer'>Khách hàng</SelectItem>
-                  <SelectItem value='seller'>Người bán</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status Filter */}
-            <div className='w-48'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái</label>
+            <div className='w-full sm:w-48 py-5'>
+              <Label className='text-sm font-medium text-gray-700 mb-2'>Trạng thái</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className='h-10'>
-                  <SelectValue placeholder='Tất cả trạng thái' />
+                <SelectTrigger className='w-full'>
+                  <SelectValue placeholder='Trạng thái' />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='all'>Tất cả trạng thái</SelectItem>
+                  <SelectItem value='all'>Tất cả</SelectItem>
                   <SelectItem value='active'>Hoạt động</SelectItem>
-                  <SelectItem value='temporarily_locked'>Tạm khóa</SelectItem>
-                  <SelectItem value='banned'>Bị cấm</SelectItem>
+                  <SelectItem value='inactive'>Không hoạt động</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            <div className='w-full sm:w-48 py-5'>
+              <Label className='text-sm font-medium text-gray-700 mb-2'>Từ ngày</Label>
+              <Popover open={dateFromOpen} onOpenChange={setDateFromOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Chọn ngày bắt đầu'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar
+                    mode='single'
+                    selected={dateFrom}
+                    onSelect={(date) => {
+                      setDateFrom(date)
+                      setDateFromOpen(false)
+                    }}
+                    disabled={(date) => {
+                      const today = new Date()
+                      today.setHours(23, 59, 59, 999)
+                      return date > today
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className='w-full sm:w-48 py-5'>
+              <Label className='text-sm font-medium text-gray-700 mb-2'>Đến ngày</Label>
+              <Popover open={dateToOpen} onOpenChange={setDateToOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Chọn ngày kết thúc'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar
+                    mode='single'
+                    selected={dateTo}
+                    onSelect={(date) => {
+                      setDateTo(date)
+                      setDateToOpen(false)
+                    }}
+                    disabled={(date) => {
+                      const today = new Date()
+                      today.setHours(23, 59, 59, 999)
+                      // Không cho chọn ngày trong tương lai
+                      if (date > today) return true
+                      // Không cho chọn ngày trước dateFrom nếu đã chọn
+                      if (dateFrom) {
+                        const from = new Date(dateFrom)
+                        from.setHours(0, 0, 0, 0)
+                        return date < from
+                      }
+                      return false
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            {(dateFrom || dateTo) && (
+              <div>
+                <Button
+                  variant='outline'
+                  onClick={() => {
+                    setDateFrom(undefined)
+                    setDateTo(undefined)
+                  }}
+                >
+                  Xóa lọc ngày
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Customers List Section */}
-      <Card className='bg-white shadow-sm'>
-        <CardHeader className='flex flex-row items-center justify-between p-6 border-b border-gray-200'>
-          <div>
-            <CardTitle className='text-lg font-semibold text-gray-900'>Danh sách khách hàng</CardTitle>
-            <p className='text-sm text-gray-600 mt-1'>
-              Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredCustomers.length)} của {filteredCustomers.length}{' '}
-              khách hàng
-            </p>
-          </div>
+      <Card>
+        <CardHeader className='py-2'>
+          <CardTitle>Danh sách khách hàng</CardTitle>
         </CardHeader>
-        <CardContent className='p-0'>
+        <CardContent>
           {loading ? (
-            <div className='flex items-center justify-center py-12'>
-              <div className='text-center'>
-                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
-                <p className='text-gray-600'>Đang tải dữ liệu...</p>
-              </div>
+            <div className='flex justify-center items-center py-8'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className='px-6 py-3'>Tên khách hàng</TableHead>
-                  <TableHead className='px-6 py-3'>Email / SDT</TableHead>
-                  <TableHead className='px-6 py-3'>Ngày tham gia</TableHead>
-                  <TableHead className='px-6 py-3'>Vai trò</TableHead>
-                  <TableHead className='px-6 py-3'>Trạng thái</TableHead>
-                  <TableHead className='px-6 py-3'>Hành động</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentCustomers.length === 0 ? (
+            <div className='overflow-x-auto'>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className='text-center py-12 text-gray-500'>
-                      Không có dữ liệu
-                    </TableCell>
+                    <TableHead>Khách hàng</TableHead>
+                    <TableHead>Email / Số điện thoại</TableHead>
+                    <TableHead>Ngày tham gia</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead>Hành động</TableHead>
                   </TableRow>
-                ) : (
-                  currentCustomers.map((customer) => {
-                    const roleConfig = getRoleConfig(customer.role)
-                    const statusConfig = getStatusConfig(customer.status)
-
-                    return (
+                </TableHeader>
+                <TableBody>
+                  {currentCustomers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className='text-center py-12 text-gray-500'>
+                        Không có dữ liệu
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    currentCustomers.map((customer) => (
                       <TableRow key={customer.id}>
-                        <TableCell className='px-6 py-3'>
-                          <div className='flex items-center gap-3'>
+                        <TableCell>
+                          <div className='flex items-center space-x-3'>
                             <Avatar className='w-10 h-10'>
                               <AvatarFallback className='bg-blue-100 text-blue-600 text-sm font-semibold'>
                                 {customer.avatar ||
@@ -618,108 +509,69 @@ function CustomerManagement() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className='font-medium text-gray-900 text-sm'>{customer.name}</p>
+                              <div className='font-medium'>{customer.name}</div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className='px-6 py-3'>
-                          <div>
-                            <p className='font-medium text-gray-900 text-sm'>{customer.email}</p>
-                            <p className='text-xs text-gray-600'>{customer.phone}</p>
+                        <TableCell>
+                          <div className='space-y-1'>
+                            <div className='text-sm font-medium'>{customer.email}</div>
+                            <div className='text-sm text-gray-500'>{customer.phone}</div>
                           </div>
                         </TableCell>
-                        <TableCell className='px-6 py-3'>
-                          <span className='text-sm text-gray-700'>{customer.joinDate}</span>
+                        <TableCell>
+                          <div className='text-sm'>{formatDate(customer.createdAt)}</div>
                         </TableCell>
-                        <TableCell className='px-6 py-3'>
-                          <div
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${roleConfig.bgColor} ${roleConfig.textColor}`}
-                          >
-                            {roleConfig.text}
-                          </div>
-                        </TableCell>
-                        <TableCell className='px-6 py-3'>
-                          <div
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusConfig.bgColor} ${statusConfig.textColor}`}
-                          >
-                            {statusConfig.text}
-                          </div>
-                        </TableCell>
-                        <TableCell className='px-6 py-3'>
+                        <TableCell>{getStatusBadge(customer.isActive)}</TableCell>
+                        <TableCell>
                           <div className='flex items-center gap-2'>
                             <Button
-                              variant='ghost'
+                              variant='outline'
                               size='sm'
                               onClick={() => handleView(customer)}
-                              className='text-black hover:text-blue-800 hover:bg-blue-50 px-3 py-1 text-sm flex items-center gap-1'
+                              className='flex items-center'
                             >
-                              <Eye className='w-4 h-4' />
+                              <Eye className='w-4 h-4 mr-2' />
                               Xem chi tiết
                             </Button>
-                            {customer.isPermission && (
+                            {customer.isActive ? (
                               <Button
-                                variant='ghost'
+                                variant='outline'
                                 size='sm'
-                                onClick={() => handleLock(customer)}
-                                className='text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1 text-sm flex items-center gap-1'
+                                onClick={() => handleBan(customer)}
+                                className='text-orange-600 hover:text-orange-800 hover:bg-orange-50 flex items-center'
                               >
-                                <Lock className='w-4 h-4' />
-                                Khóa quyền hạn
+                                <Ban className='w-4 h-4 mr-2' />
+                                Khóa
+                              </Button>
+                            ) : (
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                onClick={() => handleUnban(customer)}
+                                className='text-blue-600 hover:text-blue-800 hover:bg-blue-50 flex items-center'
+                              >
+                                <CheckCircle className='w-4 h-4 mr-2' />
+                                Mở khóa
                               </Button>
                             )}
                           </div>
                         </TableCell>
                       </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           {/* Pagination */}
-          <div className='flex items-center justify-between px-6 py-4 border-t border-gray-200'>
-            <p className='text-sm text-gray-600'>
-              Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredCustomers.length)} của {filteredCustomers.length}{' '}
-              kết quả
-            </p>
-            <div className='flex items-center gap-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className='h-8 px-3 flex items-center gap-1'
-              >
-                <ChevronLeft className='w-4 h-4' />
-                Trước
-              </Button>
-              {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
-                const pageNum = i + 1
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? 'default' : 'outline'}
-                    size='sm'
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`h-8 w-8 p-0 ${currentPage === pageNum ? 'bg-blue-600 text-white' : ''}`}
-                  >
-                    {pageNum}
-                  </Button>
-                )
-              })}
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className='h-8 px-3 flex items-center gap-1'
-              >
-                Sau
-                <ChevronRight className='w-4 h-4' />
-              </Button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            maxVisiblePages={2}
+          />
         </CardContent>
       </Card>
 
@@ -781,35 +633,6 @@ function CustomerManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Lock Confirmation Modal */}
-      <Dialog open={showLockConfirm} onOpenChange={setShowLockConfirm}>
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Xác nhận khóa tài khoản</DialogTitle>
-            <DialogDescription>
-              {customerToLock && (
-                <>
-                  Bạn có muốn khóa người dùng <span className='font-semibold'>{customerToLock.name}</span> không?
-                  <br />
-                  <span className='text-sm text-gray-500 mt-2 block'>
-                    Người dùng sẽ không thể thực hiện các chức năng trên hệ thống sau khi bị khóa.
-                  </span>
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter>
-            <Button variant='outline' onClick={closeLockConfirm} disabled={actionLoading}>
-              Hủy
-            </Button>
-            <Button onClick={confirmLock} className='bg-red-600 hover:bg-red-700 text-white' disabled={actionLoading}>
-              {actionLoading ? 'Đang xử lý...' : 'Khóa quyền hạn'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Confirmation Modal */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className='sm:max-w-md'>
@@ -839,171 +662,105 @@ function CustomerManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Staff Modal */}
-      <Dialog open={showCreateStaffModal} onOpenChange={setShowCreateStaffModal}>
-        <DialogContent className='sm:max-w-lg'>
+      {/* Ban Modal */}
+      <Dialog open={showBanModal} onOpenChange={setShowBanModal}>
+        <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle>Tạo tài khoản nhân viên</DialogTitle>
-            <DialogDescription>Điền thông tin để tạo tài khoản nhân viên mới</DialogDescription>
+            <DialogTitle className='flex items-center'>
+              <Ban className='w-5 h-5 mr-2 text-orange-600' />
+              Cấm khách hàng
+            </DialogTitle>
+            <DialogDescription>
+              {customerToBan && (
+                <>
+                  Bạn đang cấm khách hàng <span className='font-semibold'>{customerToBan.name}</span>
+                </>
+              )}
+            </DialogDescription>
           </DialogHeader>
 
-          <div className='space-y-4'>
-            {/* First Name and Last Name */}
-            <div className='grid grid-cols-2 gap-4'>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>Họ *</label>
-                <Input
-                  type='text'
-                  placeholder='Nhập họ'
-                  value={staffFormData.firstName}
-                  onChange={(e) => handleStaffFormChange('firstName', e.target.value)}
-                  className='h-10'
-                />
+          {customerToBan && (
+            <div className='space-y-4 py-4'>
+              <div className='space-y-3'>
+                <Label>Loại cấm</Label>
+                <div className='space-y-2'>
+                  <label className='flex items-center space-x-2 cursor-pointer'>
+                    <input
+                      type='radio'
+                      name='banType'
+                      value='permanent'
+                      checked={banType === 'permanent'}
+                      onChange={(e) => setBanType(e.target.value as 'permanent' | 'temporary')}
+                      className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                    />
+                    <span className='text-sm text-gray-900'>Cấm vĩnh viễn</span>
+                  </label>
+                  <label className='flex items-center space-x-2 cursor-pointer'>
+                    <input
+                      type='radio'
+                      name='banType'
+                      value='temporary'
+                      checked={banType === 'temporary'}
+                      onChange={(e) => setBanType(e.target.value as 'permanent' | 'temporary')}
+                      className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                    />
+                    <span className='text-sm text-gray-900'>Cấm có thời hạn</span>
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>Tên *</label>
-                <Input
-                  type='text'
-                  placeholder='Nhập tên'
-                  value={staffFormData.lastName}
-                  onChange={(e) => handleStaffFormChange('lastName', e.target.value)}
-                  className='h-10'
-                />
-              </div>
-            </div>
 
-            {/* Email */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Email *</label>
-              <Input
-                type='email'
-                placeholder='Nhập email nhân viên'
-                value={staffFormData.email}
-                onChange={(e) => handleStaffFormChange('email', e.target.value)}
-                className='h-10'
-              />
-            </div>
+              {banType === 'temporary' && (
+                <div className='space-y-2'>
+                  <Label>Ngày hết hạn cấm</Label>
+                  <Popover open={banUntilOpen} onOpenChange={setBanUntilOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                        <CalendarIcon className='mr-2 h-4 w-4' />
+                        {banUntilDate ? format(banUntilDate, 'dd/MM/yyyy') : 'Chọn ngày hết hạn'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className='w-auto p-0' align='start'>
+                      <Calendar
+                        mode='single'
+                        selected={banUntilDate}
+                        onSelect={(date) => {
+                          setBanUntilDate(date)
+                          setBanUntilOpen(false)
+                        }}
+                        disabled={(date) => date <= new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
 
-            {/* Password */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Mật khẩu *</label>
-              <Input
-                type='password'
-                placeholder='Nhập mật khẩu'
-                value={staffFormData.password}
-                onChange={(e) => handleStaffFormChange('password', e.target.value)}
-                className='h-10'
-              />
-            </div>
+              {banType === 'permanent' && (
+                <div className='rounded-md bg-orange-50 p-3 text-sm text-orange-800'>
+                  <AlertCircle className='w-4 h-4 inline mr-2' />
+                  Khách hàng sẽ bị cấm vĩnh viễn và không thể đăng nhập vào hệ thống.
+                </div>
+              )}
 
-            {/* Phone Number */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Số điện thoại *</label>
-              <Input
-                type='tel'
-                placeholder='Nhập số điện thoại'
-                value={staffFormData.phoneNumber}
-                onChange={(e) => handleStaffFormChange('phoneNumber', e.target.value)}
-                className='h-10'
-              />
+              {banType === 'temporary' && banUntilDate && (
+                <div className='rounded-md bg-blue-50 p-3 text-sm text-blue-800'>
+                  <AlertCircle className='w-4 h-4 inline mr-2' />
+                  Khách hàng sẽ bị cấm đến ngày {format(banUntilDate, 'dd/MM/yyyy')}.
+                </div>
+              )}
             </div>
+          )}
 
-            {/* Gender */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Giới tính *</label>
-              <Select value={staffFormData.gender} onValueChange={(value) => handleStaffFormChange('gender', value)}>
-                <SelectTrigger className='h-10'>
-                  <SelectValue placeholder='Chọn giới tính' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='Male'>Nam</SelectItem>
-                  <SelectItem value='Female'>Nữ</SelectItem>
-                  <SelectItem value='Other'>Khác</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date of Birth */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày sinh *</label>
-              <Popover open={dateOfBirthOpen} onOpenChange={setDateOfBirthOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant='outline'
-                    className={`w-full h-10 justify-start text-left font-normal ${
-                      !staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
-                    }`}
-                  >
-                    <CalendarIcon className='mr-2 h-4 w-4' />
-                    {staffFormData.dateOfBirth ? formatDisplayDate(staffFormData.dateOfBirth) : 'Chọn ngày sinh'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className='w-auto p-0' align='start'>
-                  <Calendar
-                    mode='single'
-                    selected={staffFormData.dateOfBirth ? new Date(staffFormData.dateOfBirth) : undefined}
-                    onSelect={(date) => {
-                      if (date) {
-                        handleStaffFormChange('dateOfBirth', formatDate(date))
-                        setDateOfBirthOpen(false)
-                      }
-                    }}
-                    disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                    captionLayout='dropdown'
-                    fromYear={1900}
-                    toYear={new Date().getFullYear()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Hire Date */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày tuyển dụng *</label>
-              <Popover open={hireDateOpen} onOpenChange={setHireDateOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant='outline'
-                    className={`w-full h-10 justify-start text-left font-normal ${
-                      !staffFormData.hireDate ? 'text-muted-foreground' : ''
-                    }`}
-                  >
-                    <CalendarIcon className='mr-2 h-4 w-4' />
-                    {staffFormData.hireDate ? formatDisplayDate(staffFormData.hireDate) : 'Chọn ngày tuyển dụng'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className='w-auto p-0' align='start'>
-                  <Calendar
-                    mode='single'
-                    selected={staffFormData.hireDate ? new Date(staffFormData.hireDate) : undefined}
-                    onSelect={(date) => {
-                      if (date) {
-                        handleStaffFormChange('hireDate', formatDate(date))
-                        setHireDateOpen(false)
-                      }
-                    }}
-                    disabled={(date) => date < new Date('2020-01-01')}
-                    captionLayout='dropdown'
-                    fromYear={2020}
-                    toYear={new Date().getFullYear() + 1}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
-          <DialogFooter className='flex gap-2'>
-            <Button variant='outline' onClick={closeCreateStaffModal} disabled={staffFormLoading}>
+          <DialogFooter>
+            <Button variant='outline' onClick={closeBanModal} disabled={actionLoading}>
               Hủy
             </Button>
             <Button
-              onClick={handleStaffFormSubmit}
-              className='bg-green-600 hover:bg-green-700 text-white'
-              disabled={staffFormLoading}
+              onClick={confirmBan}
+              className='bg-orange-600 hover:bg-orange-700 text-white'
+              disabled={actionLoading || (banType === 'temporary' && !banUntilDate)}
             >
-              {staffFormLoading ? 'Đang tạo...' : 'Tạo nhân viên'}
+              {actionLoading ? 'Đang xử lý...' : 'Xác nhận cấm'}
             </Button>
           </DialogFooter>
         </DialogContent>

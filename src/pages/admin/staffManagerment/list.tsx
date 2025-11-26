@@ -41,6 +41,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { staffApi, type StaffInfo, type UpdateStaffRequest } from '../../../apis/staff.api'
 import { registerStaff, type StaffRegistrationData } from '../../../apis/auth.api'
 import { toast } from 'react-toastify'
+import Pagination from '../../../components/Pagination/Pagination'
 
 function StaffManagement() {
   const [searchText, setSearchText] = useState('')
@@ -733,34 +734,12 @@ function StaffManagement() {
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className='flex items-center justify-between mt-4'>
-              <div className='text-sm text-gray-500'>
-                Hiển thị {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredStaff.length)}{' '}
-                trong tổng số {filteredStaff.length} staff
-                <br />
-                Trang {currentPage} / {totalPages}
-              </div>
-              <div className='flex space-x-2'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className='w-4 h-4' />
-                </Button>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className='w-4 h-4' />
-                </Button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            maxVisiblePages={2}
+          />
         </CardContent>
       </Card>
 

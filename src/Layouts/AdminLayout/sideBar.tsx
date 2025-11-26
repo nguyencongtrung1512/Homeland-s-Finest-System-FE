@@ -15,7 +15,8 @@ import {
   Wallet,
   ChevronDown,
   ChevronRight,
-  CircleQuestionMark
+  CircleQuestionMark,
+  ContactRound
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '../../lib/utils'
@@ -75,7 +76,7 @@ function SideBar({ isCollapsed }: SideBarProps) {
     {
       key: path.STAFF_MANAGEMENT_ADMIN,
       label: 'Quản lý nhân viên',
-      icon: <User size={18} />
+      icon: <ContactRound size={18} />
     },
     {
       key: path.ACCOUNT_MANAGEMENT_ADMIN,

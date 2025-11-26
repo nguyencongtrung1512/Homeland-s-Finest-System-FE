@@ -116,6 +116,8 @@ export interface UpdateUserData {
   provinceId?: number
   bankAccount?: string
   bankName?: string
+  banAt?: string | null
+  banUntil?: string | null
 }
 
 export interface UpdateUserResponse {
@@ -160,20 +162,45 @@ export const getBanks = async (): Promise<Bank[]> => {
   }
 }
 
+// Helper function to format date from DD-MM-YYYY to YYYY-MM-DD
+const formatDateOfBirthForAPI = (dateString: string): string => {
+  if (!dateString) return ''
+
+  // Check if already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return dateString
+  }
+
+  // Convert from DD-MM-YYYY to YYYY-MM-DD
+  const parts = dateString.split('-')
+  if (parts.length === 3) {
+    const [day, month, year] = parts
+    return `${year}-${month}-${day}`
+  }
+
+  // If format is different, try to parse as Date
+  try {
+    const date = new Date(dateString)
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0] // Returns YYYY-MM-DD
+    }
+  } catch (e) {
+    console.error('Error parsing date:', e)
+  }
+
+  return dateString // Return original if can't parse
+}
+
 export const updateUser = async (userId: string, data: UpdateUserData): Promise<UpdateUserResponse> => {
-  // Lấy thông tin user hiện tại trước khi update
   let currentUser: User | null = null
   try {
-    // Thử lấy thông tin từ các API khác nhau dựa trên role
     currentUser = await getUserInfoByRole(userId, data.role)
 
-    // Nếu không lấy được từ role-specific API, thử getUserById
     if (!currentUser) {
       currentUser = await getUserById(userId)
     }
   } catch (error) {
     console.error('Error fetching current user data:', error)
-    // Nếu không lấy được thông tin hiện tại, vẫn tiếp tục với data được truyền vào
   }
 
   const formData = new FormData()
@@ -184,7 +211,11 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
   formData.append('Email', data.email !== undefined ? data.email : currentUser?.email || '')
   formData.append('PhoneNumber', data.phoneNumber !== undefined ? data.phoneNumber : currentUser?.phoneNumber || '')
   formData.append('Gender', data.gender !== undefined ? data.gender : currentUser?.gender || '')
-  formData.append('DateOfBirth', data.dateOfBirth !== undefined ? data.dateOfBirth : currentUser?.dateOfBirth || '')
+
+  // Format dateOfBirth to YYYY-MM-DD before sending to API
+  const dateOfBirthValue = data.dateOfBirth !== undefined ? data.dateOfBirth : currentUser?.dateOfBirth || ''
+  formData.append('DateOfBirth', formatDateOfBirthForAPI(dateOfBirthValue))
+
   formData.append('Role', data.role !== undefined ? data.role : currentUser?.role || '')
 
   // Handle avatar - if it's a File, append it directly; if it's a string, append the string
@@ -212,6 +243,30 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
   )
   formData.append('BankAccount', data.bankAccount !== undefined ? data.bankAccount : currentUser?.bankAccount || '')
   formData.append('bankName', data.bankName !== undefined ? data.bankName : currentUser?.bankName || '')
+
+  // Handle ban/unban logic
+  // FE tự xử lý: khi ban thì isActive = false, khi unban thì isActive = true và banAt/banUntil = ''
+  if (data.banAt !== undefined || data.banUntil !== undefined) {
+    const banAtValue = data.banAt !== undefined ? data.banAt || '' : ''
+    const banUntilValue = data.banUntil !== undefined ? data.banUntil || '' : ''
+
+    // Unban: cả 2 đều rỗng (FE đã set isActive = true)
+    if (banAtValue === '' && banUntilValue === '') {
+      formData.append('BanAt', '')
+      formData.append('BanUntil', '')
+    }
+    // Ban vĩnh viễn: có banAt nhưng không có banUntil (FE đã set isActive = false)
+    else if (banAtValue !== '' && banUntilValue === '') {
+      formData.append('BanAt', banAtValue)
+      formData.append('BanUntil', '')
+    }
+    // Ban có thời hạn: có cả banAt và banUntil (FE đã set isActive = false)
+    else if (banAtValue !== '' && banUntilValue !== '') {
+      formData.append('BanAt', banAtValue)
+      formData.append('BanUntil', banUntilValue)
+    }
+  }
+  // Nếu không có thông tin ban trong data, không gửi field ban (giữ nguyên giá trị hiện tại)
 
   // Thêm UpdatedAt timestamp
   const now = new Date().toISOString()

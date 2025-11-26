@@ -1,23 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Search,
   Users,
   UserX,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   Building2,
   Phone,
-  Mail,
   Calendar as CalendarIcon,
-  FileText,
   Shield,
   CheckCircle,
   XCircle,
   AlertCircle,
-  Lock,
-  Trash2
+  Ban
 } from 'lucide-react'
+import { format } from 'date-fns'
+import { Calendar } from '../../../components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
+import { Label } from '../../../components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -34,7 +32,8 @@ import {
 import { Badge } from '../../../components/ui/badge'
 import { sellerApi, type SellerInfo } from '../../../apis/seller.api'
 import { updateUser } from '../../../apis/user.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
+import Pagination from '../../../components/Pagination/Pagination'
 
 function SellerManagement() {
   const [searchText, setSearchText] = useState('')
@@ -52,9 +51,20 @@ function SellerManagement() {
   // Lock/Delete states
   const [showLockConfirm, setShowLockConfirm] = useState(false)
   const [sellerToLock, setSellerToLock] = useState<SellerInfo | null>(null)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [sellerToDelete, setSellerToDelete] = useState<SellerInfo | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+
+  // Ban states
+  const [showBanModal, setShowBanModal] = useState(false)
+  const [sellerToBan, setSellerToBan] = useState<SellerInfo | null>(null)
+  const [banType, setBanType] = useState<'permanent' | 'temporary'>('permanent')
+  const [banUntilDate, setBanUntilDate] = useState<Date | undefined>(undefined)
+  const [banUntilOpen, setBanUntilOpen] = useState(false)
+
+  // Date filter states
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined)
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined)
+  const [dateFromOpen, setDateFromOpen] = useState(false)
+  const [dateToOpen, setDateToOpen] = useState(false)
 
   // Fetch sellers data từ API
   const fetchSellers = useCallback(async () => {
@@ -90,7 +100,7 @@ function SellerManagement() {
     }
   }, [searchText, statusFilter])
 
-  // Filter sellers dựa trên search và status
+  // Filter sellers dựa trên search, status và date range
   const applyFilters = useCallback(() => {
     let filtered = [...allSellers]
 
@@ -112,9 +122,34 @@ function SellerManagement() {
       filtered = filtered.filter((seller) => (statusFilter === 'active' ? seller.isActive : !seller.isActive))
     }
 
+    // Apply date range filter
+    if (dateFrom || dateTo) {
+      filtered = filtered.filter((seller) => {
+        const sellerDate = new Date(seller.createdAt)
+        sellerDate.setHours(0, 0, 0, 0)
+
+        if (dateFrom && dateTo) {
+          const from = new Date(dateFrom)
+          from.setHours(0, 0, 0, 0)
+          const to = new Date(dateTo)
+          to.setHours(23, 59, 59, 999)
+          return sellerDate >= from && sellerDate <= to
+        } else if (dateFrom) {
+          const from = new Date(dateFrom)
+          from.setHours(0, 0, 0, 0)
+          return sellerDate >= from
+        } else if (dateTo) {
+          const to = new Date(dateTo)
+          to.setHours(23, 59, 59, 999)
+          return sellerDate <= to
+        }
+        return true
+      })
+    }
+
     setFilteredSellers(filtered)
     setCurrentPage(1) // Reset về trang đầu khi filter
-  }, [allSellers, searchText, statusFilter])
+  }, [allSellers, searchText, statusFilter, dateFrom, dateTo])
 
   // Paginate filtered sellers
   const paginateSellers = useCallback(() => {
@@ -150,14 +185,8 @@ function SellerManagement() {
       setShowDetailModal(true)
     } catch (error) {
       console.error('Error fetching seller detail:', error)
-      toast.error('Không thể tải thông tin chi tiết seller')
+      toast.error('Không thể tải thông tin chi tiết người bán')
     }
-  }
-
-  // Handle lock permission
-  const handleLock = (seller: SellerInfo) => {
-    setSellerToLock(seller)
-    setShowLockConfirm(true)
   }
 
   const confirmLock = async () => {
@@ -191,52 +220,107 @@ function SellerManagement() {
     }
   }
 
-  // Handle delete account
-  const handleDelete = (seller: SellerInfo) => {
-    setSellerToDelete(seller)
-    setShowDeleteConfirm(true)
+  // Handle ban
+  const handleBan = (seller: SellerInfo) => {
+    setSellerToBan(seller)
+    setBanType('permanent')
+    setBanUntilDate(undefined)
+    setShowBanModal(true)
   }
 
-  const confirmDelete = async () => {
-    if (sellerToDelete) {
+  const confirmBan = async () => {
+    if (sellerToBan) {
       setActionLoading(true)
       try {
-        await updateUser(sellerToDelete.id, {
-          isActive: false,
-          role: 'Seller' // Thêm role để API biết cách lấy thông tin hiện tại
+        const now = new Date().toISOString()
+        const banAt = now
+        let banUntil = ''
+
+        if (banType === 'temporary' && banUntilDate) {
+          // Ban có thời hạn
+          banUntil = banUntilDate.toISOString()
+        } else {
+          // Ban vĩnh viễn - banUntil để rỗng
+          banUntil = ''
+        }
+
+        // Khi ban: tự động set isActive = false
+        await updateUser(sellerToBan.id, {
+          banAt,
+          banUntil,
+          isActive: false, // Tự động set isActive = false khi ban
+          role: 'Seller'
         })
 
-        toast.success(`Đã xóa tài khoản ${sellerToDelete.firstName} ${sellerToDelete.lastName}`, {
-          position: 'top-right',
-          autoClose: 3000
-        })
+        toast.success(
+          `Đã ${banType === 'permanent' ? 'cấm vĩnh viễn' : 'cấm có thời hạn'} ${sellerToBan.firstName} ${sellerToBan.lastName}`,
+          {
+            position: 'top-right',
+            autoClose: 3000
+          }
+        )
 
         // Refresh data
         await fetchSellers()
+        setShowBanModal(false)
+        setSellerToBan(null)
+        setBanType('permanent')
+        setBanUntilDate(undefined)
       } catch (err: unknown) {
         const error = err as { message?: string }
-        const errorMessage = error.message || 'Có lỗi xảy ra khi xóa tài khoản'
+        const errorMessage = error.message || 'Có lỗi xảy ra khi cấm người bán'
         toast.error(errorMessage, {
           position: 'top-right',
           autoClose: 5000
         })
       } finally {
         setActionLoading(false)
-        setShowDeleteConfirm(false)
-        setSellerToDelete(null)
       }
     }
+  }
+
+  // Handle unban
+  const handleUnban = async (seller: SellerInfo) => {
+    setActionLoading(true)
+    try {
+      // Khi unban: tự động set isActive = true và gửi banAt = '', banUntil = ''
+      await updateUser(seller.id, {
+        banAt: '',
+        banUntil: '',
+        isActive: true, // Tự động set isActive = true khi unban
+        role: 'Seller'
+      })
+
+      toast.success(`Đã mở khóa ${seller.firstName} ${seller.lastName}`, {
+        position: 'top-right',
+        autoClose: 3000
+      })
+
+      // Refresh data
+      await fetchSellers()
+    } catch (err: unknown) {
+      const error = err as { message?: string }
+      const errorMessage = error.message || 'Có lỗi xảy ra khi mở khóa người bán'
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const closeBanModal = () => {
+    setShowBanModal(false)
+    setSellerToBan(null)
+    setBanType('permanent')
+    setBanUntilDate(undefined)
   }
 
   // Close modal functions
   const closeLockConfirm = () => {
     setShowLockConfirm(false)
     setSellerToLock(null)
-  }
-
-  const closeDeleteConfirm = () => {
-    setShowDeleteConfirm(false)
-    setSellerToDelete(null)
   }
 
   // Get status badge
@@ -263,6 +347,35 @@ function SellerManagement() {
     return new Date(dateString).toLocaleDateString('vi-VN')
   }
 
+  // Format date of birth from DD-MM-YYYY to YYYY-MM-DD
+  const formatDateOfBirth = (dateString: string) => {
+    if (!dateString) return ''
+
+    // Check if already in YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString
+    }
+
+    // Convert from DD-MM-YYYY to YYYY-MM-DD
+    const parts = dateString.split('-')
+    if (parts.length === 3) {
+      const [day, month, year] = parts
+      return `${year}-${month}-${day}`
+    }
+
+    // If format is different, try to parse as Date
+    try {
+      const date = new Date(dateString)
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0] // Returns YYYY-MM-DD
+      }
+    } catch (e) {
+      console.error('Error parsing date:', e)
+    }
+
+    return dateString // Return original if can't parse
+  }
+
   // Get initials for avatar
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
@@ -270,22 +383,20 @@ function SellerManagement() {
 
   // Get avatar URL with fallback
   const getAvatarUrl = (avatar: string) => {
-    const defaultAvatar = 'https://scontent.fsgn2-7.fna.fbcdn.net/v/t39.30808-6/465035753_1661013661514519_1627670806811343264_n.jpg?_nc_cat=100&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=5mOa7Gq6_bUQ7kNvwHRbhKw&_nc_oc=Adn3WhVjw5Wtj6FQhxzAO17d70tHXNI_NFMKYkyiF27-6gP0H454mkF4QLv581AV61I&_nc_zt=23&_nc_ht=scontent.fsgn2-7.fna&_nc_gid=mFuBPxElXDeTfVFh0IcEtw&oh=00_AffkK-HwLzMpjLePHbZSdd8gGf0elGj51mwvEyIxTd0uIg&oe=68FB86F6'
-
-    console.log('Avatar from API:', avatar)
+    const defaultAvatar = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
     // Kiểm tra nếu avatar là URL thật (không phải example.com)
-    if (avatar &&
+    if (
+      avatar &&
       avatar.trim() !== '' &&
       avatar !== 'null' &&
       avatar !== 'undefined' &&
       avatar.startsWith('http') &&
-      !avatar.includes('example.com')) {
-      console.log('Using seller avatar:', avatar)
+      !avatar.includes('example.com')
+    ) {
       return avatar
     }
 
-    console.log('Using default avatar:', defaultAvatar)
     return defaultAvatar
   }
 
@@ -321,26 +432,24 @@ function SellerManagement() {
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className='flex items-center'>
-            <Search className='w-5 h-5 mr-2' />
-            Tìm kiếm và lọc
-          </CardTitle>
-        </CardHeader>
         <CardContent>
-          <div className='flex flex-col sm:flex-row gap-4'>
-            <div className='flex-1'>
-              <Input
-                placeholder='Tìm kiếm theo tên, email, số điện thoại...'
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className='w-full'
-              />
+          <div className='flex flex-col sm:flex-row gap-4 items-end'>
+            <div className='flex-1 py-5'>
+              <Label className='text-sm font-medium text-gray-700 mb-2'>Tìm kiếm</Label>
+              <div className='w-full sm:w-120'>
+                <Input
+                  placeholder='Tìm kiếm theo tên, email, số điện thoại...'
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  className='w-full'
+                />
+              </div>
             </div>
-            <div className='w-full sm:w-48'>
+            <div className='w-full sm:w-48 py-5'>
+              <Label className='text-sm font-medium text-gray-700 mb-2'>Trạng thái</Label>
               <Select value={statusFilter} onValueChange={handleFilterChange}>
-                <SelectTrigger>
+                <SelectTrigger className='w-full'>
                   <SelectValue placeholder='Trạng thái' />
                 </SelectTrigger>
                 <SelectContent>
@@ -350,18 +459,89 @@ function SellerManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleSearch} className='w-full sm:w-auto'>
-              <Search className='w-4 h-4 mr-2' />
-              Tìm kiếm
-            </Button>
+            <div className='w-full sm:w-48 py-5'>
+              <Label className='text-sm font-medium text-gray-700 mb-2'>Từ ngày</Label>
+              <Popover open={dateFromOpen} onOpenChange={setDateFromOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Chọn ngày bắt đầu'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar
+                    mode='single'
+                    selected={dateFrom}
+                    onSelect={(date) => {
+                      setDateFrom(date)
+                      setDateFromOpen(false)
+                    }}
+                    disabled={(date) => {
+                      const today = new Date()
+                      today.setHours(23, 59, 59, 999)
+                      return date > today
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className='w-full sm:w-48 py-5'>
+              <Label className='text-sm font-medium text-gray-700 mb-2'>Đến ngày</Label>
+              <Popover open={dateToOpen} onOpenChange={setDateToOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Chọn ngày kết thúc'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar
+                    mode='single'
+                    selected={dateTo}
+                    onSelect={(date) => {
+                      setDateTo(date)
+                      setDateToOpen(false)
+                    }}
+                    disabled={(date) => {
+                      const today = new Date()
+                      today.setHours(23, 59, 59, 999)
+                      // Không cho chọn ngày trong tương lai
+                      if (date > today) return true
+                      // Không cho chọn ngày trước dateFrom nếu đã chọn
+                      if (dateFrom) {
+                        const from = new Date(dateFrom)
+                        from.setHours(0, 0, 0, 0)
+                        return date < from
+                      }
+                      return false
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            {(dateFrom || dateTo) && (
+              <div>
+                <Button
+                  variant='outline'
+                  onClick={() => {
+                    setDateFrom(undefined)
+                    setDateTo(undefined)
+                  }}
+                >
+                  Xóa lọc ngày
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Sellers Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Danh sách Seller</CardTitle>
+        <CardHeader className='py-5'>
+          <CardTitle>Danh sách người bán</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -374,7 +554,6 @@ function SellerManagement() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Seller</TableHead>
-                    <TableHead>Thông tin liên hệ</TableHead>
                     <TableHead>Doanh nghiệp</TableHead>
                     <TableHead>Trạng thái</TableHead>
                     <TableHead>Ngày tạo</TableHead>
@@ -386,7 +565,7 @@ function SellerManagement() {
                     <TableRow key={seller.id}>
                       <TableCell>
                         <div className='flex items-center space-x-3'>
-                          <div className='w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center'>
+                          <div className='w-15 h-15 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center'>
                             <img
                               src={getAvatarUrl(seller.avatar)}
                               alt={`${seller.firstName} ${seller.lastName}`}
@@ -398,7 +577,10 @@ function SellerManagement() {
                                 if (fallback) fallback.style.display = 'flex'
                               }}
                             />
-                            <div className='w-full h-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-600' style={{ display: 'none' }}>
+                            <div
+                              className='w-full h-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-600'
+                              style={{ display: 'none' }}
+                            >
                               {getInitials(seller.firstName, seller.lastName)}
                             </div>
                           </div>
@@ -406,26 +588,10 @@ function SellerManagement() {
                             <div className='font-medium'>
                               {seller.firstName} {seller.lastName}
                             </div>
-                            <div className='text-sm text-gray-500'>ID: {seller.id.slice(0, 8)}...</div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className='space-y-1'>
-                          <div className='flex items-center text-sm'>
-                            <Mail className='w-4 h-4 mr-2 text-gray-400' />
-                            {seller.email}
-                          </div>
-                          <div className='flex items-center text-sm'>
-                            <Phone className='w-4 h-4 mr-2 text-gray-400' />
-                            {seller.phoneNumber}
-                          </div>
-                          <div className='flex items-center text-sm'>
-                            <CalendarIcon className='w-4 h-4 mr-2 text-gray-400' />
-                            {seller.dateOfBirth}
-                          </div>
-                        </div>
-                      </TableCell>
+
                       <TableCell>
                         <div className='space-y-1'>
                           <div className='flex items-center text-sm font-medium'>
@@ -451,26 +617,25 @@ function SellerManagement() {
                             <Eye className='w-4 h-4 mr-2' />
                             Xem chi tiết
                           </Button>
-                          {seller.isPermission && (
+                          {seller.isActive ? (
                             <Button
                               variant='outline'
                               size='sm'
-                              onClick={() => handleLock(seller)}
-                              className='text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 flex items-center'
+                              onClick={() => handleBan(seller)}
+                              className='text-orange-600 hover:text-orange-800 hover:bg-orange-50 flex items-center'
                             >
-                              <Lock className='w-4 h-4 mr-2' />
-                              Khóa quyền
+                              <Ban className='w-4 h-4 mr-2' />
+                              Khóa
                             </Button>
-                          )}
-                          {seller.isActive && (
+                          ) : (
                             <Button
                               variant='outline'
                               size='sm'
-                              onClick={() => handleDelete(seller)}
-                              className='text-red-600 hover:text-red-800 hover:bg-red-50 flex items-center'
+                              onClick={() => handleUnban(seller)}
+                              className='text-blue-600 hover:text-blue-800 hover:bg-blue-50 flex items-center'
                             >
-                              <Trash2 className='w-4 h-4 mr-2' />
-                              Xóa tài khoản
+                              <CheckCircle className='w-4 h-4 mr-2' />
+                              Mở khóa
                             </Button>
                           )}
                         </div>
@@ -483,34 +648,12 @@ function SellerManagement() {
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className='flex items-center justify-between mt-4'>
-              <div className='text-sm text-gray-500'>
-                Hiển thị {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredSellers.length)}{' '}
-                trong tổng số {filteredSellers.length} sellers
-                <br />
-                Trang {currentPage} / {totalPages}
-              </div>
-              <div className='flex space-x-2'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className='w-4 h-4' />
-                </Button>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className='w-4 h-4' />
-                </Button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            maxVisiblePages={2}
+          />
         </CardContent>
       </Card>
 
@@ -520,7 +663,7 @@ function SellerManagement() {
           <DialogHeader>
             <DialogTitle className='flex items-center'>
               <UserX className='w-5 h-5 mr-2' />
-              Thông tin chi tiết Seller
+              Thông tin chi tiết người bán
             </DialogTitle>
             <DialogDescription>Thông tin đầy đủ về seller và doanh nghiệp</DialogDescription>
           </DialogHeader>
@@ -550,7 +693,10 @@ function SellerManagement() {
                             if (fallback) fallback.style.display = 'flex'
                           }}
                         />
-                        <div className='w-full h-full bg-gray-300 flex items-center justify-center text-lg font-medium text-gray-600' style={{ display: 'none' }}>
+                        <div
+                          className='w-full h-full bg-gray-300 flex items-center justify-center text-lg font-medium text-gray-600'
+                          style={{ display: 'none' }}
+                        >
                           {getInitials(selectedSeller.firstName, selectedSeller.lastName)}
                         </div>
                       </div>
@@ -569,11 +715,15 @@ function SellerManagement() {
                       </div>
                       <div className='flex items-center'>
                         <CalendarIcon className='w-4 h-4 mr-2 text-gray-400' />
-                        <span>{selectedSeller.dateOfBirth}</span>
+                        <span>{formatDateOfBirth(selectedSeller.dateOfBirth)}</span>
                       </div>
                       <div className='flex items-center'>
                         <Shield className='w-4 h-4 mr-2 text-gray-400' />
                         <span>Giới tính: {selectedSeller.gender}</span>
+                      </div>
+                      <div className='flex items-center'>
+                        <AlertCircle className='w-4 h-4 mr-2 text-gray-400' />
+                        <span>Số lượt báo cáo: {selectedSeller.reportCount || 0}</span>
                       </div>
                     </div>
                   </div>
@@ -621,68 +771,6 @@ function SellerManagement() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Status and Dates */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className='flex items-center'>
-                    <CalendarIcon className='w-5 h-5 mr-2' />
-                    Trạng thái và thời gian
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-                    <div>
-                      <label className='text-sm font-medium text-gray-500'>Trạng thái phê duyệt</label>
-                      <div className='mt-1'>
-                        {selectedSeller.isPermission ? (
-                          <Badge className='bg-green-100 text-green-800'>
-                            <CheckCircle className='w-3 h-3 mr-1' />
-                            Đã phê duyệt
-                          </Badge>
-                        ) : (
-                          <Badge className='bg-yellow-100 text-yellow-800'>
-                            <AlertCircle className='w-3 h-3 mr-1' />
-                            Chờ phê duyệt
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className='text-sm font-medium text-gray-500'>Ngày phê duyệt</label>
-                      <p className='text-sm'>{formatDate(selectedSeller.approvedAt)}</p>
-                    </div>
-                    <div>
-                      <label className='text-sm font-medium text-gray-500'>Ngày tạo tài khoản</label>
-                      <p className='text-sm'>{formatDate(selectedSeller.createdAt)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Statistics */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className='flex items-center'>
-                    <FileText className='w-5 h-5 mr-2' />
-                    Thống kê
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className='flex items-center space-x-6'>
-                    <div className='text-center'>
-                      <div className='text-2xl font-bold text-blue-600'>{selectedSeller.reportCount}</div>
-                      <div className='text-sm text-gray-500'>Số lần báo cáo</div>
-                    </div>
-                    <div className='text-center'>
-                      <div className='text-2xl font-bold text-green-600'>
-                        {selectedSeller.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                      </div>
-                      <div className='text-sm text-gray-500'>Trạng thái hiện tại</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           )}
         </DialogContent>
@@ -725,38 +813,108 @@ function SellerManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Modal */}
-      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      {/* Ban Modal */}
+      <Dialog open={showBanModal} onOpenChange={setShowBanModal}>
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle>Xác nhận xóa tài khoản</DialogTitle>
+            <DialogTitle className='flex items-center'>
+              <Ban className='w-5 h-5 mr-2 text-orange-600' />
+              Cấm người bán
+            </DialogTitle>
             <DialogDescription>
-              {sellerToDelete && (
+              {sellerToBan && (
                 <>
-                  Bạn có muốn xóa tài khoản của seller{' '}
+                  Bạn đang cấm người bán{' '}
                   <span className='font-semibold'>
-                    {sellerToDelete.firstName} {sellerToDelete.lastName}
-                  </span>{' '}
-                  không?
-                  <br />
-                  <span className='text-sm text-gray-500 mt-2 block'>
-                    Tài khoản sẽ bị vô hiệu hóa và không thể đăng nhập vào hệ thống.
+                    {sellerToBan.firstName} {sellerToBan.lastName}
                   </span>
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
 
+          {sellerToBan && (
+            <div className='space-y-4 py-4'>
+              <div className='space-y-3'>
+                <Label>Loại cấm</Label>
+                <div className='space-y-2'>
+                  <label className='flex items-center space-x-2 cursor-pointer'>
+                    <input
+                      type='radio'
+                      name='banType'
+                      value='permanent'
+                      checked={banType === 'permanent'}
+                      onChange={(e) => setBanType(e.target.value as 'permanent' | 'temporary')}
+                      className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                    />
+                    <span className='text-sm text-gray-900'>Cấm vĩnh viễn</span>
+                  </label>
+                  <label className='flex items-center space-x-2 cursor-pointer'>
+                    <input
+                      type='radio'
+                      name='banType'
+                      value='temporary'
+                      checked={banType === 'temporary'}
+                      onChange={(e) => setBanType(e.target.value as 'permanent' | 'temporary')}
+                      className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                    />
+                    <span className='text-sm text-gray-900'>Cấm có thời hạn</span>
+                  </label>
+                </div>
+              </div>
+
+              {banType === 'temporary' && (
+                <div className='space-y-2'>
+                  <Label>Ngày hết hạn cấm</Label>
+                  <Popover open={banUntilOpen} onOpenChange={setBanUntilOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                        <CalendarIcon className='mr-2 h-4 w-4' />
+                        {banUntilDate ? format(banUntilDate, 'dd/MM/yyyy') : 'Chọn ngày hết hạn'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className='w-auto p-0' align='start'>
+                      <Calendar
+                        mode='single'
+                        selected={banUntilDate}
+                        onSelect={(date) => {
+                          setBanUntilDate(date)
+                          setBanUntilOpen(false)
+                        }}
+                        disabled={(date) => date <= new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
+
+              {banType === 'permanent' && (
+                <div className='rounded-md bg-orange-50 p-3 text-sm text-orange-800'>
+                  <AlertCircle className='w-4 h-4 inline mr-2' />
+                  Người bán sẽ bị cấm vĩnh viễn và không thể đăng nhập vào hệ thống.
+                </div>
+              )}
+
+              {banType === 'temporary' && banUntilDate && (
+                <div className='rounded-md bg-blue-50 p-3 text-sm text-blue-800'>
+                  <AlertCircle className='w-4 h-4 inline mr-2' />
+                  Người bán sẽ bị cấm đến ngày {format(banUntilDate, 'dd/MM/yyyy')}.
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
-            <Button variant='outline' onClick={closeDeleteConfirm} disabled={actionLoading}>
+            <Button variant='outline' onClick={closeBanModal} disabled={actionLoading}>
               Hủy
             </Button>
             <Button
-              onClick={confirmDelete}
-              className='bg-red-600 hover:bg-red-700 text-white'
-              disabled={actionLoading}
+              onClick={confirmBan}
+              className='bg-orange-600 hover:bg-orange-700 text-white'
+              disabled={actionLoading || (banType === 'temporary' && !banUntilDate)}
             >
-              {actionLoading ? 'Đang xử lý...' : 'Xóa tài khoản'}
+              {actionLoading ? 'Đang xử lý...' : 'Xác nhận cấm'}
             </Button>
           </DialogFooter>
         </DialogContent>
