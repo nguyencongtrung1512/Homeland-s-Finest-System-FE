@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_FPT_AI_API_KEY: string
   readonly VITE_FPT_AI_OCR_URL: string
   readonly VITE_CHAT_API_URL: string
+  readonly VITE_API_VIETQR: string
 }
 
 interface ImportMeta {

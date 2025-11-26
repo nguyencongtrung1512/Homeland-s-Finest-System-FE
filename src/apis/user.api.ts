@@ -1,6 +1,7 @@
 import axiosInstance from '../service/axiosInstance'
 import { staffApi } from './staff.api'
 import { sellerApi } from './seller.api'
+import axios from 'axios'
 
 const API_URL = '/User'
 
@@ -121,6 +122,42 @@ export interface UpdateUserResponse {
   status: number
   message: string
   data: User
+}
+
+// Bank interfaces and API
+export interface Bank {
+  id: number
+  name: string
+  code: string
+  bin: string
+  shortName: string
+  logo: string
+  transferSupported: number
+  lookupSupported: number
+}
+
+export interface GetBanksResponse {
+  code: string
+  desc: string
+  data: Bank[]
+}
+
+export const getBanks = async (): Promise<Bank[]> => {
+  const apiUrl = import.meta.env.VITE_API_VIETQR
+  if (!apiUrl) {
+    throw new Error('VITE_API_VIETQR không được cấu hình trong file .env')
+  }
+
+  try {
+    const response = await axios.get<GetBanksResponse>(apiUrl)
+    if (response.data.code === '00' && response.data.data) {
+      return response.data.data
+    }
+    throw new Error(response.data.desc || 'Không thể lấy danh sách ngân hàng')
+  } catch (error) {
+    console.error('Error fetching banks:', error)
+    throw error
+  }
 }
 
 export const updateUser = async (userId: string, data: UpdateUserData): Promise<UpdateUserResponse> => {

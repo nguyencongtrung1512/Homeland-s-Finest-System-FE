@@ -8,8 +8,9 @@ import { Calendar } from '../../../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../../../components/ui/popover'
 import { ShimmerBorder } from '../../../../../components/ui/shimmer'
 import ProfileCard3D from '../../../../../components/ui/ProfileCard3D'
+import ComboBox from '../../../../../components/ui/combo-box'
 import { useAuth } from '../../../../../contexts/auth.context'
-import { getUserById, updateUser, type User as UserType } from '../../../../../apis/user.api'
+import { getUserById, updateUser, getBanks, type User as UserType, type Bank } from '../../../../../apis/user.api'
 import { getProvinces, type Province } from '../../../../../apis/province'
 import { changePassword } from '../../../../../apis/auth.api'
 import { toast } from '../../../../../utils/toast'
@@ -57,6 +58,8 @@ export default function ProfileContent() {
   })
   const [provinces, setProvinces] = useState<Province[]>([])
   const [loadingProvinces, setLoadingProvinces] = useState(false)
+  const [banks, setBanks] = useState<Bank[]>([])
+  const [loadingBanks, setLoadingBanks] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
   const [showPasswordSection, setShowPasswordSection] = useState(false)
   const [showBankingSection, setShowBankingSection] = useState(false)
@@ -80,6 +83,23 @@ export default function ProfileContent() {
       }
     }
     fetchProvinces()
+  }, [])
+
+  // Load banks
+  useEffect(() => {
+    const fetchBanks = async () => {
+      setLoadingBanks(true)
+      try {
+        const data = await getBanks()
+        setBanks(data)
+      } catch (error) {
+        console.error('Error fetching banks:', error)
+        toast.error('Không thể tải danh sách ngân hàng')
+      } finally {
+        setLoadingBanks(false)
+      }
+    }
+    fetchBanks()
   }, [])
 
   // Load user data
@@ -504,9 +524,56 @@ export default function ProfileContent() {
                       Cập nhật thông tin ngân hàng để thanh toán và nhận hoàn tiền dễ dàng hơn
                     </p>
 
-                    <div className='grid grid-cols-2 gap-6'>
+                    <div className='grid grid-rows-2 gap-6'>
                       <div>
-                        <Label htmlFor='bankAccount'>Số tài khoản ngân hàng</Label>
+                        <Label htmlFor='bankName' className='py-2'>Tên ngân hàng</Label>
+                        <div className='mt-1 relative'>
+                          {(() => {
+                            return (
+                              <>
+                                <div className='w-full'>
+                                  <ComboBox<Bank>
+                                    options={banks}
+                                    placeholder={loadingBanks ? 'Đang tải...' : 'Chọn ngân hàng'}
+                                    value={formData.bankName}
+                                    disabled={loadingBanks}
+                                    getOptionLabel={(bank) => `${bank.name} (${bank.shortName})`}
+                                    getOptionValue={(bank) => bank.name}
+                                    onSelect={(bank) => handleInputChange('bankName', bank?.name || '')}
+                                    filterFunction={(bank, searchValue) => {
+                                      const search = searchValue.toLowerCase()
+                                      return (
+                                        bank.name.toLowerCase().includes(search) ||
+                                        bank.shortName.toLowerCase().includes(search) ||
+                                        bank.code.toLowerCase().includes(search)
+                                      )
+                                    }}
+                                    renderOption={(bank) => (
+                                      <div className='flex items-center gap-3 py-1'>
+                                        <img
+                                          src={bank.logo}
+                                          alt={bank.name}
+                                          className='w-12 h-12 object-contain rounded'
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement
+                                            target.style.display = 'none'
+                                          }}
+                                        />
+                                        <div className='flex flex-col'>
+                                          <span className='text-sm font-medium'>{bank.name}</span>
+                                          <span className='text-xs text-gray-500'>{bank.shortName}</span>
+                                        </div>
+                                      </div>
+                                    )}
+                                  />
+                                </div>
+                              </>
+                            )
+                          })()}
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor='bankAccount' className='py-2'>Số tài khoản ngân hàng</Label>
                         <div className='relative'>
                           <CreditCard className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
                           <Input
@@ -518,24 +585,12 @@ export default function ProfileContent() {
                           />
                         </div>
                       </div>
-                      <div>
-                        <Label htmlFor='bankName'>Tên ngân hàng</Label>
-                        <div className='relative'>
-                          <Building2 className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                          <Input
-                            id='bankName'
-                            value={formData.bankName}
-                            onChange={(e) => handleInputChange('bankName', e.target.value)}
-                            placeholder='Nhập tên ngân hàng (VD: ACBank, Vietcombank)'
-                            className='mt-1 pl-10'
-                          />
-                        </div>
-                      </div>
+
                     </div>
 
                     <div className='mt-4 p-3 bg-blue-50 rounded-lg'>
                       <div className='text-sm text-blue-800'>
-                        <div className='font-medium mb-1'>💳 Lưu ý về thông tin ngân hàng:</div>
+                        <div className='font-medium mb-1'>Lưu ý về thông tin ngân hàng:</div>
                         <ul className='text-xs space-y-1 text-blue-700'>
                           <li>✓ Thông tin ngân hàng sẽ được sử dụng để thanh toán và hoàn tiền</li>
                           <li>✓ Đảm bảo số tài khoản chính xác để tránh lỗi giao dịch</li>
