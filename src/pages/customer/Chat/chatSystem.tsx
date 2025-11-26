@@ -13,7 +13,8 @@ import {
   Image,
   ArrowLeft,
   Store,
-  ShoppingBag
+  ShoppingBag,
+  ExternalLink
 } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -34,6 +35,16 @@ import { signalRService } from '../../../service/signalRService'
 import { resolveImageUrl } from '../../../utils/image'
 import type { ChatRoomData, ChatRoomMessageData } from '../../../types/chat.type'
 import ImagePreviewModal from '../../../components/ui/image-preview-modal'
+import { useNavigate } from 'react-router-dom'
+import path from '../../../constants/path'
+
+interface RecommendedProduct {
+  productId: string
+  productName: string
+  price: number
+  imageUrl: string
+  productLink: string
+}
 
 interface Message {
   id: string
@@ -41,6 +52,7 @@ interface Message {
   isUser: boolean
   timestamp: Date | string // Support both Date and string (Vietnamese format)
   images?: string[] // Array of image URLs
+  recommendedProducts?: RecommendedProduct[] // Recommended products from AI
 }
 
 interface Conversation {
@@ -146,6 +158,7 @@ const getDateKey = (timestamp: string | Date): string => {
 
 const ChatSystem: React.FC = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { isOpen, setIsOpen, activeTab, setActiveTab, selectedStoreId, selectedStoreName, setSelectedStoreId } =
     useChat()
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
@@ -659,7 +672,9 @@ const ChatSystem: React.FC = () => {
         id: (Date.now() + 1).toString(),
         text: response.data.homeLandFinestText,
         isUser: false,
-        timestamp: new Date()
+        timestamp: new Date(),
+        images: response.data.productImages && Array.isArray(response.data.productImages) ? response.data.productImages : undefined,
+        recommendedProducts: response.data.recommendedProducts && Array.isArray(response.data.recommendedProducts) ? response.data.recommendedProducts : undefined
       }
       setAiMessages((prev) => [...prev, botMessage])
     } catch (error) {
@@ -996,20 +1011,175 @@ const ChatSystem: React.FC = () => {
                   <div className='flex-1 min-h-0 bg-white/95'>
                     <ScrollArea className='h-full px-5 py-3'>
                       <div className='flex flex-col gap-3 pb-2'>
-                        {aiMessages.map((message) => (
-                          <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-                            <div
-                              className={`max-w-[95%] sm:max-w-[90%] md:max-w-[80%] rounded-lg px-4 py-3 ${message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
-                                }`}
-                            >
-                              <div className='flex items-start gap-2'>
-                                {!message.isUser && <Bot className='h-4 w-4 mt-0.5 text-green-600 flex-shrink-0' />}
-                                {message.isUser && <User className='h-4 w-4 mt-0.5 text-white flex-shrink-0' />}
-                                <p className='text-sm leading-relaxed break-words'>{message.text}</p>
+                        {aiMessages.map((message) => {
+                          // Parse markdown (bold với **text**)
+                          const parseMarkdown = (text: string, baseKey: number): (string | JSX.Element)[] => {
+                            const parts: (string | JSX.Element)[] = []
+                            const boldRegex = /\*\*(.+?)\*\*/g
+                            let lastIndex = 0
+                            let match
+                            let keyIndex = 0
+
+                            while ((match = boldRegex.exec(text)) !== null) {
+                              // Thêm text trước bold
+                              if (match.index > lastIndex) {
+                                parts.push(text.substring(lastIndex, match.index))
+                              }
+
+                              // Thêm bold text
+                              parts.push(
+                                <strong key={`bold-${baseKey}-${keyIndex++}`} className='font-semibold'>
+                                  {match[1]}
+                                </strong>
+                              )
+
+                              lastIndex = match.index + match[0].length
+                            }
+
+                            // Thêm phần text còn lại
+                            if (lastIndex < text.length) {
+                              parts.push(text.substring(lastIndex))
+                            }
+
+                            return parts.length > 0 ? parts : [text]
+                          }
+
+                          // Parse text để format markdown, links và line breaks
+                          const parseTextWithFormatting = (text: string) => {
+                            // Tách text thành các dòng để xử lý line breaks
+                            const lines = text.split('\n')
+                            const result: (string | JSX.Element)[][] = []
+
+                            lines.forEach((line, lineIndex) => {
+                              const lineParts: (string | JSX.Element)[] = []
+
+                              // Tìm pattern: /products/{productId} hoặc /product/{productId}
+                              const productLinkRegex = /\/product[s]?\/([a-f0-9-]+)/gi
+                              let lastIndex = 0
+                              let match
+                              let linkIndex = 0
+
+                              while ((match = productLinkRegex.exec(line)) !== null) {
+                                // Thêm text trước link
+                                if (match.index > lastIndex) {
+                                  const beforeLink = line.substring(lastIndex, match.index)
+                                  // Parse markdown trong phần text trước link
+                                  lineParts.push(...parseMarkdown(beforeLink, linkIndex++))
+                                }
+
+                                // Thêm link
+                                const productId = match[1]
+                                const fullMatch = match[0]
+                                lineParts.push(
+                                  <a
+                                    key={`link-${linkIndex++}`}
+                                    href={`${window.location.origin}${path.productDetail.replace(':id', productId)}`}
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      navigate(path.productDetail.replace(':id', productId))
+                                    }}
+                                    className='text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1'
+                                  >
+                                    {fullMatch}
+                                    <ExternalLink className='h-3 w-3' />
+                                  </a>
+                                )
+
+                                lastIndex = match.index + fullMatch.length
+                              }
+
+                              // Thêm phần text còn lại
+                              if (lastIndex < line.length) {
+                                const remainingText = line.substring(lastIndex)
+                                lineParts.push(...parseMarkdown(remainingText, linkIndex++))
+                              }
+
+                              // Nếu line rỗng, thêm space để tạo khoảng cách
+                              if (lineParts.length === 0 && line.trim() === '') {
+                                result.push([<br key={`br-${lineIndex}`} />])
+                              } else {
+                                result.push(lineParts)
+                              }
+                            })
+
+                            // Flatten và thêm line breaks giữa các dòng
+                            const flattened: (string | JSX.Element)[] = []
+                            result.forEach((lineParts, index) => {
+                              flattened.push(...lineParts)
+                              if (index < result.length - 1) {
+                                flattened.push(<br key={`line-break-${index}`} />)
+                              }
+                            })
+
+                            return flattened.length > 0 ? flattened : [text]
+                          }
+
+                          return (
+                            <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
+                              <div
+                                className={`max-w-[95%] sm:max-w-[90%] md:max-w-[80%] rounded-lg px-4 py-3 ${message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
+                                  }`}
+                              >
+                                <div className='flex flex-col gap-3'>
+                                  {/* Avatar và Text */}
+                                  <div className='flex items-start gap-2'>
+                                    {!message.isUser && <Bot className='h-4 w-4 mt-0.5 text-green-600 flex-shrink-0' />}
+                                    {message.isUser && <User className='h-4 w-4 mt-0.5 text-white flex-shrink-0' />}
+                                    <div className='flex-1'>
+                                      <div className='text-sm leading-relaxed break-words whitespace-pre-wrap'>
+                                        {!message.isUser ? parseTextWithFormatting(message.text) : message.text}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Hiển thị recommended products dạng list */}
+                                  {!message.isUser && message.recommendedProducts && message.recommendedProducts.length > 0 && (
+                                    <div className='mt-2 bg-white rounded-lg border border-gray-200 overflow-hidden'>
+                                      <div className='max-h-[300px] overflow-y-auto'>
+                                        <div className='divide-y divide-gray-100'>
+                                          {message.recommendedProducts.map((product, index) => (
+                                            <motion.div
+                                              key={product.productId}
+                                              initial={{ opacity: 0, x: -10 }}
+                                              animate={{ opacity: 1, x: 0 }}
+                                              transition={{ duration: 0.3, delay: index * 0.1 }}
+                                              className='p-3 hover:bg-gray-50 transition-colors cursor-pointer'
+                                              onClick={() => {
+                                                const productId = product.productId
+                                                navigate(path.productDetail.replace(':id', productId))
+                                              }}
+                                            >
+                                              <div className='flex gap-3 items-center'>
+                                                {product.imageUrl && (
+                                                  <img
+                                                    src={resolveImageUrl(product.imageUrl) || product.imageUrl}
+                                                    alt={product.productName}
+                                                    className='w-12 h-12 rounded-lg object-cover flex-shrink-0'
+                                                    onError={(e) => {
+                                                      const target = e.target as HTMLImageElement
+                                                      target.src = 'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
+                                                    }}
+                                                  />
+                                                )}
+                                                <div className='flex-1 min-w-0'>
+                                                  <h4 className='font-semibold text-sm text-gray-900 truncate'>{product.productName}</h4>
+                                                  <p className='text-green-600 font-bold text-xs mt-0.5'>
+                                                    {product.price.toLocaleString('vi-VN')}₫
+                                                  </p>
+                                                </div>
+                                                <ExternalLink className='h-4 w-4 text-gray-400 flex-shrink-0' />
+                                              </div>
+                                            </motion.div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
 
                         {isTyping && (
                           <div className='flex justify-start'>
