@@ -26,6 +26,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Badge } from '../../../components/ui/badge'
 import { getRequestWalletMoney, updateRequestWalletMoney } from '../../../apis/requestWalletMoney.api'
 import { getWalletBalance, withdrawal } from '../../../apis/wallet.api'
+import { getOrderDetail } from '../../../apis/order.api'
 import type { RequestWalletMoney, UpdateRequestWalletMoneyInput } from '../../../types/requestWalletMoneyType'
 import type { WalletData } from '../../../types/walletType'
 import { formatDate } from '../../../utils/formatDate'
@@ -37,6 +38,8 @@ function RequestWalletMoneyManagement() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'Pending' | 'Completed' | 'Cancel'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedRequest, setSelectedRequest] = useState<RequestWalletMoney | null>(null)
+  const [orderDetail, setOrderDetail] = useState<{ data: { status: string } } | null>(null)
+  const [loadingOrderDetail, setLoadingOrderDetail] = useState(false)
   const [allRequests, setAllRequests] = useState<RequestWalletMoney[]>([]) // Lưu tất cả requests từ API
   const [filteredRequests, setFilteredRequests] = useState<RequestWalletMoney[]>([]) // Requests sau khi filter
   const [displayedRequests, setDisplayedRequests] = useState<RequestWalletMoney[]>([]) // Requests hiển thị trên trang hiện tại
@@ -202,8 +205,32 @@ function RequestWalletMoneyManagement() {
   }
 
   // Handle view detail
-  const handleViewDetail = (request: RequestWalletMoney) => {
+  const handleViewDetail = async (request: RequestWalletMoney) => {
     setSelectedRequest(request)
+    setOrderDetail(null)
+    
+    // Nếu request có orderId, fetch order detail
+    if (request.orderId) {
+      try {
+        setLoadingOrderDetail(true)
+        const orderData = await getOrderDetail(request.orderId)
+        console.log('Order Detail Response:', orderData)
+        
+        // API trả về Order object trực tiếp có thuộc tính status
+        // Wrap lại để match với type {data: {status: string}}
+        if (orderData?.status) {
+          setOrderDetail({ data: { status: orderData.status } })
+        } else {
+          setOrderDetail(null)
+        }
+      } catch (err) {
+        console.error('Error fetching order detail:', err)
+        // Vẫn mở modal ngay cả khi fetch thất bại
+      } finally {
+        setLoadingOrderDetail(false)
+      }
+    }
+    
     setIsDetailModalOpen(true)
   }
 
@@ -340,6 +367,58 @@ function RequestWalletMoneyManagement() {
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
     }
+  }
+
+  // Get order status config - convert sang tiếng Việt
+  const getOrderStatusConfig = (status: string) => {
+    const statusMap: Record<string, { text: string; bgColor: string; textColor: string }> = {
+      // === TRẠNG THÁI KHỞI TẠO VÀ CHỜ XỬ LÝ ===
+      NotYet: { text: 'Chưa xác nhận', bgColor: 'bg-gray-100', textColor: 'text-gray-800' },
+      Processing: { text: 'Chờ xác nhận', bgColor: 'bg-yellow-100', textColor: 'text-yellow-800' },
+      PendingPayment: { text: 'Chờ thanh toán', bgColor: 'bg-orange-100', textColor: 'text-orange-800' },
+      Pending: { text: 'Đang chờ', bgColor: 'bg-yellow-100', textColor: 'text-yellow-800' },
+
+      // === TRẠNG THÁI ĐÃ XÁC NHẬN VÀ CHUẨN BỊ ===
+      Confirmed: { text: 'Đã xác nhận', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
+      ReadyToPick: { text: 'Sẵn sàng lấy hàng', bgColor: 'bg-purple-100', textColor: 'text-purple-800' },
+      Picking: { text: 'Đang lấy hàng', bgColor: 'bg-purple-100', textColor: 'text-purple-800' },
+      Picked: { text: 'Đã lấy hàng', bgColor: 'bg-purple-100', textColor: 'text-purple-800' },
+
+      // === TRẠNG THÁI VẬN CHUYỂN ===
+      Storing: { text: 'Đang lưu kho', bgColor: 'bg-cyan-100', textColor: 'text-cyan-800' },
+      Transporting: { text: 'Đang vận chuyển', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
+      Sorting: { text: 'Đang phân loại', bgColor: 'bg-cyan-100', textColor: 'text-cyan-800' },
+      Delivering: { text: 'Đang giao hàng', bgColor: 'bg-orange-100', textColor: 'text-orange-800' },
+
+      // === TRẠNG THÁI HOÀN THÀNH ===
+      Delivered: { text: 'Đã giao hàng', bgColor: 'bg-green-100', textColor: 'text-green-800' },
+      Paid: { text: 'Đã thanh toán', bgColor: 'bg-green-100', textColor: 'text-green-800' },
+      Received: { text: 'Đã nhận hàng', bgColor: 'bg-emerald-100', textColor: 'text-emerald-800' },
+
+      // === TRẠNG THÁI TRẢ HÀNG VÀ HOÀN TIỀN ===
+      Refunding: { text: 'Đang hoàn tiền', bgColor: 'bg-amber-100', textColor: 'text-amber-800' },
+      Returning: { text: 'Đang trả hàng', bgColor: 'bg-amber-100', textColor: 'text-amber-800' },
+      Returned: { text: 'Đã trả hàng', bgColor: 'bg-red-100', textColor: 'text-red-800' },
+      Refunded: { text: 'Đã hoàn tiền', bgColor: 'bg-indigo-100', textColor: 'text-indigo-800' },
+      DeliveryFail: { text: 'Giao hàng thất bại', bgColor: 'bg-red-100', textColor: 'text-red-800' },
+
+      // === TRẠNG THÁI SỰ CỐ VÀ KHIẾU NẠI ===
+      Exception: { text: 'Gặp sự cố', bgColor: 'bg-red-100', textColor: 'text-red-800' },
+      Damaged: { text: 'Hàng hư hỏng', bgColor: 'bg-red-100', textColor: 'text-red-800' },
+      Lost: { text: 'Hàng thất lạc', bgColor: 'bg-red-100', textColor: 'text-red-800' },
+      Complaining: { text: 'Đang phản hồi', bgColor: 'bg-orange-100', textColor: 'text-orange-800' },
+      Complained: { text: 'Đã phản hồi', bgColor: 'bg-orange-100', textColor: 'text-orange-800' },
+
+      // === TRẠNG THÁI HỦY ===
+      Cancel: { text: 'Đã hủy', bgColor: 'bg-gray-100', textColor: 'text-gray-800' }
+    }
+    return (
+      statusMap[status] || {
+        text: status || 'Không xác định',
+        bgColor: 'bg-gray-100',
+        textColor: 'text-gray-800'
+      }
+    )
   }
 
   // Render request row
@@ -736,10 +815,11 @@ function RequestWalletMoneyManagement() {
                         size='sm'
                         onClick={() => setCurrentPage(page)}
                         disabled={loading}
-                        className={`h-8 w-8 p-0 ${currentPage === page
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
-                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                          }`}
+                        className={`h-8 w-8 p-0 ${
+                          currentPage === page
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                        }`}
                       >
                         {page}
                       </Button>
@@ -778,6 +858,38 @@ function RequestWalletMoneyManagement() {
               </DialogHeader>
 
               <div className='space-y-6 mt-4 overflow-y-auto flex-1 pr-2'>
+                <div>
+                  <p className='text-sm font-semibold text-gray-900 mb-2'>ID Đơn hàng</p>
+                  <span className='font-mono text-sm text-gray-700'>{selectedRequest.orderId || 'Không có'}</span>
+                </div>
+
+                {/* Thông tin trạng thái đơn hàng */}
+                {orderDetail && (
+                  <div className='space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-100'>
+                    <h3 className='text-sm font-semibold text-gray-900'>Trạng thái đơn hàng</h3>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-sm text-gray-600'>Trạng thái:</span>
+                      {orderDetail?.data?.status ? (
+                        <Badge
+                          className={`${
+                            getOrderStatusConfig(orderDetail.data.status.trim()).bgColor
+                          } ${getOrderStatusConfig(orderDetail.data.status.trim()).textColor} border-0`}
+                        >
+                          {getOrderStatusConfig(orderDetail.data.status.trim()).text}
+                        </Badge>
+                      ) : (
+                        <span className='text-sm text-gray-500'>Không xác định</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {loadingOrderDetail && (
+                  <div className='flex items-center justify-center py-4'>
+                    <Loader2 className='w-4 h-4 animate-spin text-blue-600 mr-2' />
+                    <span className='text-sm text-gray-600'>Đang tải thông tin đơn hàng...</span>
+                  </div>
+                )}
                 {/* Thông tin người dùng */}
                 <div className='space-y-3'>
                   <h3 className='text-sm font-semibold text-gray-900 border-b pb-2'>Thông tin người dùng</h3>
@@ -812,8 +924,9 @@ function RequestWalletMoneyManagement() {
                     <div className='flex justify-between items-start'>
                       <span className='text-sm text-gray-600'>Trạng thái:</span>
                       <Badge
-                        className={`${getStatusConfig(selectedRequest.status).bgColor} ${getStatusConfig(selectedRequest.status).textColor
-                          } border-0`}
+                        className={`${getStatusConfig(selectedRequest.status).bgColor} ${
+                          getStatusConfig(selectedRequest.status).textColor
+                        } border-0`}
                       >
                         {getStatusConfig(selectedRequest.status).text}
                       </Badge>
