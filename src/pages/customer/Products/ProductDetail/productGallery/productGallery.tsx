@@ -28,6 +28,7 @@ interface VariantOption {
   width: number
   height: number
   quantity: number
+  availableQuantity: number
   saleCount: number | null
   rating: number | null
   reviewCount: number | null
@@ -168,7 +169,7 @@ function ProductGallery() {
 
   const currentVariant = getCurrentVariant()
   const currentPrice = currentVariant?.finalPrice || 0
-  const currentStock = currentVariant?.quantity || 0
+  const currentStock = currentVariant?.availableQuantity || 0
 
   // ✅ Auto-select first option in each group on mount
   useEffect(() => {
