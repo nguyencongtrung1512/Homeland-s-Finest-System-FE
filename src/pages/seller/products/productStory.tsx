@@ -218,9 +218,15 @@ function ProductStoryComponent({
         return
       }
 
-      // Validate images count
-      if (editData.images.length > MAX_IMAGES) {
-        toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+      // Validate images count - BẮTBUỘC PHẢI CÓ ĐÚNG 3 ảnh
+      if (editData.images.length !== MAX_IMAGES) {
+        toast.error(`Bắt buộc phải có đúng ${MAX_IMAGES} hình ảnh. Hiện tại bạn có ${editData.images.length} ảnh.`)
+        return
+      }
+
+      // Validate video - BẮT BUỘC PHẢI CÓ VIDEO
+      if (!editData.video || editData.video.trim().length === 0) {
+        toast.error('Bắt buộc phải có video cho câu chuyện.')
         return
       }
 
@@ -232,16 +238,11 @@ function ProductStoryComponent({
         const currentImages = editData.images || []
         const originalImages = editData.originalImages || []
 
-        // Images that are still from server (not blob URLs) = kept images
-        const keptImages = currentImages.filter((img) => !img.startsWith('blob:') && originalImages.includes(img))
+        // Check if user removed any original images
+        const hasRemovedImages = originalImages.length > currentImages.length
 
         // Check if we have new image files uploaded
         const hasNewImageFiles = editData.imageFiles && editData.imageFiles.length > 0
-
-        // If user removed some original images but kept some, we still need to replace
-        // because API doesn't support partial removal - it's all or nothing
-        const hasPartialRemoval =
-          originalImages.length > 0 && keptImages.length > 0 && keptImages.length < originalImages.length
 
         // Determine video status
         const hasOriginalVideo = editData.originalVideo && editData.originalVideo.length > 0
@@ -266,17 +267,20 @@ function ProductStoryComponent({
 
         // Handle Story Images
         // Logic:
-        // - If user uploads new files → replace all (RemoveExisting = true)
-        // - If user removes some/all original images → replace all (RemoveExisting = true)
-        // - If user keeps all original images and no new files → keep existing (RemoveExisting = false)
-        if (hasNewImageFiles || hasPartialRemoval || keptImages.length === 0) {
-          // If we have new files OR removed some/all originals, send new files and remove existing
+        // - removeExistingStoryImages = true CHỈ KHI user xóa ảnh cũ
+        // - removeExistingStoryImages = false khi chỉ thêm ảnh mới (không xóa ảnh cũ)
+        if (hasRemovedImages) {
+          // User đã xóa ảnh → gửi RemoveExisting = true + gửi ảnh mới (nếu có)
           if (hasNewImageFiles) {
             updateData.newStoryImages = editData.imageFiles
           }
           updateData.removeExistingStoryImages = true
+        } else if (hasNewImageFiles) {
+          // User chỉ thêm ảnh mới, không xóa ảnh cũ → RemoveExisting = false
+          updateData.newStoryImages = editData.imageFiles
+          updateData.removeExistingStoryImages = false
         } else {
-          // Keep all existing images, no new files, no removals
+          // Không có thay đổi ảnh → RemoveExisting = false
           updateData.removeExistingStoryImages = false
         }
 
@@ -300,6 +304,19 @@ function ProductStoryComponent({
         toast.success('Cập nhật câu chuyện thành công!')
       } else {
         // Create new story
+        // Bắt buộc phải có 3 ảnh và video
+        if (!editData.videoFile) {
+          toast.error('Bắt buộc phải chọn video cho câu chuyện.')
+          return
+        }
+
+        if (editData.imageFiles.length !== MAX_IMAGES) {
+          toast.error(
+            `Bắt buộc phải có đúng ${MAX_IMAGES} hình ảnh. Hiện tại bạn có ${editData.imageFiles.length} ảnh.`
+          )
+          return
+        }
+
         const createData: {
           productId: string
           title: string
@@ -312,14 +329,9 @@ function ProductStoryComponent({
           storyDetail: editData.content
         }
 
-        // Add files if they exist
-        if (editData.imageFiles && editData.imageFiles.length > 0) {
-          createData.storyImages = editData.imageFiles
-        }
-
-        if (editData.videoFile) {
-          createData.storyVideo = editData.videoFile
-        }
+        // Add files
+        createData.storyImages = editData.imageFiles
+        createData.storyVideo = editData.videoFile
 
         await productStoryApi.create(createData)
         toast.success('Tạo câu chuyện thành công!')
@@ -749,8 +761,9 @@ function ProductStoryComponent({
                   Tiêu đề câu chuyện
                 </Label>
                 <span
-                  className={`text-xs ${countWords(editData.title) > MAX_TITLE_WORDS ? 'text-red-500' : 'text-gray-500'
-                    }`}
+                  className={`text-xs ${
+                    countWords(editData.title) > MAX_TITLE_WORDS ? 'text-red-500' : 'text-gray-500'
+                  }`}
                 >
                   {countWords(editData.title)} / {MAX_TITLE_WORDS} từ
                 </span>
@@ -770,8 +783,9 @@ function ProductStoryComponent({
                   Nội dung câu chuyện
                 </Label>
                 <span
-                  className={`text-xs ${countWords(editData.content) > MAX_CONTENT_WORDS ? 'text-red-500' : 'text-gray-500'
-                    }`}
+                  className={`text-xs ${
+                    countWords(editData.content) > MAX_CONTENT_WORDS ? 'text-red-500' : 'text-gray-500'
+                  }`}
                 >
                   {countWords(editData.content)} / {MAX_CONTENT_WORDS} từ
                 </span>
@@ -789,8 +803,10 @@ function ProductStoryComponent({
             <div>
               <div className='flex items-center justify-between mb-1'>
                 <Label className='text-sm font-medium'>Hình ảnh minh họa</Label>
-                <span className={`text-xs ${editData.images.length > MAX_IMAGES ? 'text-red-500' : 'text-gray-500'}`}>
-                  {editData.images.length} / {MAX_IMAGES} ảnh
+                <span
+                  className={`text-xs ${editData.images.length !== MAX_IMAGES ? 'text-red-500' : 'text-green-600'}`}
+                >
+                  {editData.images.length} / {MAX_IMAGES} ảnh (bắt buộc)
                 </span>
               </div>
               <div className='mt-2 space-y-4'>
@@ -854,8 +870,8 @@ function ProductStoryComponent({
                   </div>
                 )}
                 {editData.images.length >= MAX_IMAGES && (
-                  <p className='text-sm text-amber-600 text-center py-2'>
-                    Đã đạt giới hạn tối đa {MAX_IMAGES} hình ảnh. Vui lòng xóa ảnh cũ để thêm ảnh mới.
+                  <p className='text-sm text-red-600 text-center py-2 font-medium'>
+                    Đã đủ {MAX_IMAGES} hình ảnh. Xóa ảnh nếu muốn thay đổi.
                   </p>
                 )}
               </div>
@@ -865,7 +881,9 @@ function ProductStoryComponent({
             <div>
               <div className='flex items-center justify-between mb-1'>
                 <Label className='text-sm font-medium'>Video câu chuyện</Label>
-                <span className='text-xs text-gray-500'>{editData.video ? '1 / 1 video' : '0 / 1 video'}</span>
+                <span className={`text-xs ${editData.video ? 'text-green-600' : 'text-red-500'}`}>
+                  {editData.video ? '1 / 1 video' : '0 / 1 video'} (bắt buộc)
+                </span>
               </div>
               <div className='mt-2 space-y-4'>
                 {editData.video && (
@@ -1000,12 +1018,17 @@ function ProductStoryComponent({
                               !currentStory.videoSources.dash &&
                               !currentStory.videoSources.preview &&
                               !currentStory.videoSources.fallback)) && (
-                              <source src={currentStory.video} type='video/mp4' />
-                            )}
+                            <source src={currentStory.video} type='video/mp4' />
+                          )}
                           Trình duyệt của bạn không hỗ trợ video.
                         </video>
                       </div>
                     )}
+                  </div>
+                )}
+                {!currentStory.video && (
+                  <div className='mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                    <p className='text-sm text-gray-600'>Không có video câu chuyện</p>
                   </div>
                 )}
               </>

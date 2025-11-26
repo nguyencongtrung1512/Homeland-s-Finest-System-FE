@@ -15,13 +15,11 @@ import {
   MapPin,
   Clock4,
   ShieldCheck,
-  UserRound
+  UserRound,
+  Eye
 } from 'lucide-react'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
-import { storeStoryApi } from '../../../apis/storeStory.api'
-import { Stream } from '@cloudflare/stream-react'
-import ThreeDCarousel from '../../../components/ui/3d-caroseu'
-import type { StoreStory } from '../../../types/storeStoryType'
+import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 import { useAuth } from '../../../contexts/auth.context'
 import { toast } from 'react-toastify'
 
@@ -31,8 +29,9 @@ function SetupStore() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [storeData, setStoreData] = useState<StoreResponse | null>(null)
-  const [storeStory, setStoreStory] = useState<StoreStory | null>(null)
-  const [storyLoading, setStoryLoading] = useState(false)
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0)
 
   // File upload refs
   const logoFileRef = useRef<HTMLInputElement>(null)
@@ -71,50 +70,6 @@ function SetupStore() {
     fetchStoreData()
   }, [fetchStoreData])
 
-  // Fetch store story
-  const fetchStoreStory = useCallback(async () => {
-    if (!storeData?.id) return
-
-    try {
-      setStoryLoading(true)
-      const response = await storeStoryApi.getByStore(storeData.id)
-
-      // Handle different response structures
-      // Response can be: { data: StoreStory } or { data: StoreStory[] } or { status, message, data: StoreStory }
-      let storyData = null
-
-      if (response.status === 200 && response.data) {
-        // If response has status field (like in infoStore.md)
-        storyData = response.data.data || response.data
-      } else if (response.data) {
-        // Direct response.data
-        storyData = response.data
-      }
-
-      // Handle array or single object
-      if (Array.isArray(storyData) && storyData.length > 0) {
-        // Get the first story (or latest)
-        setStoreStory(storyData[0])
-      } else if (storyData && typeof storyData === 'object' && storyData.id) {
-        // Single story object
-        setStoreStory(storyData)
-      } else {
-        setStoreStory(null)
-      }
-    } catch (error) {
-      console.error('Error fetching store story:', error)
-      setStoreStory(null)
-    } finally {
-      setStoryLoading(false)
-    }
-  }, [storeData?.id])
-
-  useEffect(() => {
-    if (storeData?.id) {
-      fetchStoreStory()
-    }
-  }, [storeData?.id, fetchStoreStory])
-
   // Initialize existing vendor application URLs when store data is loaded
   useEffect(() => {
     if (storeData?.vendorApplicationImageUrl && Array.isArray(storeData.vendorApplicationImageUrl)) {
@@ -143,10 +98,6 @@ function SetupStore() {
     return value
   }
 
-  const fullAddress = storeData
-    ? [storeData.address, storeData.ward, storeData.district, storeData.province].filter(Boolean).join(', ')
-    : 'Chưa có địa chỉ cụ thể'
-
   const statusDisplay = (() => {
     switch (storeData?.status) {
       case 'Approved':
@@ -164,17 +115,12 @@ function SetupStore() {
         }
     }
   })()
-
-  const totalProducts = Array.isArray(storeData?.products) ? storeData!.products.length : 0
-  const vendorImageCount = existingVendorAppUrls.length + vendorAppFiles.length
   const sellerFullName = storeData?.sellerInfo
     ? [storeData.sellerInfo.userInfo?.lastName, storeData.sellerInfo.userInfo?.firstName].filter(Boolean).join(' ')
     : ''
 
   const quickStats = [
     { label: 'Trạng thái', value: statusDisplay.label, icon: ShieldCheck, accent: 'bg-emerald-50 text-emerald-700' },
-    { label: 'Sản phẩm nổi bật', value: totalProducts, icon: FileText, accent: 'bg-indigo-50 text-indigo-700' },
-    { label: 'Ảnh minh chứng', value: vendorImageCount, icon: Upload, accent: 'bg-pink-50 text-pink-700' },
     {
       label: 'Ngày đăng ký',
       value: formatDateTime(storeData?.submittedDate),
@@ -594,7 +540,7 @@ function SetupStore() {
                           </div>
                           <div>
                             <p className='text-xs uppercase tracking-widest text-gray-500 mb-1'>Địa chỉ hiện tại</p>
-                            <p className='text-gray-900'>{fullAddress}</p>
+                            <p className='text-gray-900'>{storeData.address}</p>
                           </div>
                         </div>
                       </div>
@@ -631,48 +577,196 @@ function SetupStore() {
               </section>
 
               {storeData.sellerInfo && (
-                <section className='rounded-3xl border border-gray-100 bg-white shadow-inner p-6 space-y-4'>
-                  <div className='flex items-center gap-3'>
-                    <div className='p-3 rounded-xl bg-slate-100 text-slate-700'>
-                      <UserRound className='w-5 h-5' />
-                    </div>
-                    <div>
-                      <p className='text-sm text-gray-500'>Thông tin người bán</p>
-                      <p className='text-lg font-semibold text-gray-900'>{sellerFullName || 'Người bán'}</p>
+                <section className='rounded-3xl border border-gray-100 bg-white shadow-inner p-6 space-y-6'>
+                  {/* Seller Header with Avatar */}
+                  <div className='flex items-start gap-6 pb-6 border-b border-gray-100'>
+                    {storeData.sellerInfo.userInfo?.avatar && (
+                      <div
+                        className='relative flex-shrink-0 cursor-pointer group'
+                        onClick={() => {
+                          setPreviewImages([storeData.sellerInfo.userInfo.avatar || ''])
+                          setPreviewInitialIndex(0)
+                          setImagePreviewOpen(true)
+                        }}
+                      >
+                        <div className='w-24 h-24 rounded-2xl overflow-hidden ring-2 ring-emerald-200 shadow-md'>
+                          <img
+                            src={storeData.sellerInfo.userInfo.avatar}
+                            alt='Seller Avatar'
+                            className='w-full h-full object-cover'
+                          />
+                        </div>
+                        <div className='absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
+                          <Eye className='w-6 h-6 text-white' />
+                        </div>
+                      </div>
+                    )}
+                    <div className='flex-1'>
+                      <div className='flex items-center gap-3 mb-3'>
+                        <div className='p-3 rounded-xl bg-slate-100 text-slate-700'>
+                          <UserRound className='w-5 h-5' />
+                        </div>
+                        <div>
+                          <p className='text-sm text-gray-500'>Thông tin người bán</p>
+                          <p className='text-lg font-semibold text-gray-900'>{sellerFullName || 'Người bán'}</p>
+                        </div>
+                      </div>
+                      <div className='space-y-2 text-sm'>
+                        <p className='text-gray-600'>
+                          <span className='font-medium text-gray-700'>Email:</span>{' '}
+                          <span>{storeData.sellerInfo.userInfo?.email || '---'}</span>
+                        </p>
+                        <p className='text-gray-600'>
+                          <span className='font-medium text-gray-700'>Điện thoại:</span>{' '}
+                          <span>{storeData.sellerInfo.userInfo?.phoneNumber || '---'}</span>
+                        </p>
+                        <p className='text-gray-600'>
+                          <span className='font-medium text-gray-700'>Giới tính:</span>{' '}
+                          <span>{storeData.sellerInfo.userInfo?.gender || '---'}</span>
+                        </p>
+                        <p className='text-gray-600'>
+                          <span className='font-medium text-gray-700'>Ngày sinh:</span>{' '}
+                          <span>
+                            {storeData.sellerInfo.userInfo?.dateOfBirth
+                              ? new Date(storeData.sellerInfo.userInfo.dateOfBirth).toLocaleDateString('vi-VN')
+                              : '---'}
+                          </span>
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div className='grid gap-4 md:grid-cols-2'>
+
+                  {/* Business Information */}
+                  <div className='space-y-4'>
+                    <h4 className='font-semibold text-gray-900 flex items-center gap-2'>
+                      <ShieldCheck className='w-5 h-5 text-emerald-600' />
+                      Thông tin kinh doanh
+                    </h4>
+                    <div className='grid gap-4 md:grid-cols-2'>
+                      <div className='p-4 bg-emerald-50 rounded-2xl border border-emerald-100'>
+                        <p className='text-xs text-gray-500 uppercase tracking-wider font-semibold'>Tên doanh nghiệp</p>
+                        <p className='text-sm font-medium text-gray-900 mt-2'>
+                          {storeData.sellerInfo.businessName || '---'}
+                        </p>
+                      </div>
+                      <div className='p-4 bg-blue-50 rounded-2xl border border-blue-100'>
+                        <p className='text-xs text-gray-500 uppercase tracking-wider font-semibold'>Mã số thuế</p>
+                        <p className='text-sm font-medium text-gray-900 mt-2'>
+                          {storeData.sellerInfo.taxCode || '---'}
+                        </p>
+                      </div>
+                      <div className='p-4 bg-pink-50 rounded-2xl border border-pink-100'>
+                        <p className='text-xs text-gray-500 uppercase tracking-wider font-semibold'>Số CMND/CCCD</p>
+                        <p className='text-sm font-medium text-gray-900 mt-2'>
+                          {storeData.sellerInfo.identifyCard || '---'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Business License Document */}
+                  {storeData.sellerInfo.businessLicense && (
+                    <div className='space-y-4 pt-6 border-t border-gray-100'>
+                      <h4 className='font-semibold text-gray-900 flex items-center gap-2'>
+                        <FileText className='w-5 h-5 text-emerald-600' />
+                        Giấy phép kinh doanh
+                      </h4>
+                      <div
+                        className='relative group cursor-pointer overflow-hidden rounded-2xl shadow-md border-2 border-gray-100 hover:border-emerald-300 transition-all w-full'
+                        onClick={() => {
+                          setPreviewImages([storeData.sellerInfo.businessLicense || ''])
+                          setPreviewInitialIndex(0)
+                          setImagePreviewOpen(true)
+                        }}
+                      >
+                        <img
+                          src={storeData.sellerInfo.businessLicense}
+                          alt='Giấy phép kinh doanh'
+                          className='w-full h-80 object-cover group-hover:scale-105 transition-transform'
+                        />
+                        <div className='absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all'>
+                          <Eye className='w-6 h-6 text-white' />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Identification Documents */}
+                  {(storeData.sellerInfo.identifyFrontImage || storeData.sellerInfo.identifyBackImage) && (
+                    <div className='space-y-4 pt-6 border-t border-gray-100'>
+                      <h4 className='font-semibold text-gray-900 flex items-center gap-2'>
+                        <FileText className='w-5 h-5 text-blue-600' />
+                        Chứng chỉ nhân dân
+                      </h4>
+                      <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                        {storeData.sellerInfo.identifyFrontImage && (
+                          <div
+                            className='relative group cursor-pointer overflow-hidden rounded-2xl shadow-md border-2 border-gray-100 hover:border-emerald-300 transition-all'
+                            onClick={() => {
+                              const docs = [storeData.sellerInfo.identifyFrontImage || '']
+                              if (storeData.sellerInfo.identifyBackImage) {
+                                docs.push(storeData.sellerInfo.identifyBackImage)
+                              }
+                              setPreviewImages(docs)
+                              setPreviewInitialIndex(0)
+                              setImagePreviewOpen(true)
+                            }}
+                          >
+                            <img
+                              src={storeData.sellerInfo.identifyFrontImage}
+                              alt='CMND Mặt trước'
+                              className='w-full h-48 object-cover group-hover:scale-105 transition-transform'
+                            />
+                            <div className='absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all'>
+                              <Eye className='w-6 h-6 text-white' />
+                            </div>
+                            <p className='absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 text-center font-medium'>
+                              Mặt trước
+                            </p>
+                          </div>
+                        )}
+                        {storeData.sellerInfo.identifyBackImage && (
+                          <div
+                            className='relative group cursor-pointer overflow-hidden rounded-2xl shadow-md border-2 border-gray-100 hover:border-emerald-300 transition-all'
+                            onClick={() => {
+                              const docs = []
+                              if (storeData.sellerInfo.identifyFrontImage) {
+                                docs.push(storeData.sellerInfo.identifyFrontImage)
+                              }
+                              docs.push(storeData.sellerInfo.identifyBackImage || '')
+                              setPreviewImages(docs)
+                              setPreviewInitialIndex(docs.length - 1)
+                              setImagePreviewOpen(true)
+                            }}
+                          >
+                            <img
+                              src={storeData.sellerInfo.identifyBackImage}
+                              alt='CMND Mặt sau'
+                              className='w-full h-48 object-cover group-hover:scale-105 transition-transform'
+                            />
+                            <div className='absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all'>
+                              <Eye className='w-6 h-6 text-white' />
+                            </div>
+                            <p className='absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 text-center font-medium'>
+                              Mặt sau
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Seller Status */}
+                  <div className='pt-6 border-t border-gray-100 flex items-center justify-between'>
                     <div>
-                      <p className='text-xs text-gray-500 uppercase'>Doanh nghiệp</p>
-                      <p className='text-sm font-medium text-gray-900 mt-1'>
-                        {storeData.sellerInfo.businessName || '---'}
+                      <p className='text-xs text-gray-500 uppercase tracking-wider font-semibold'>
+                        Trạng thái người bán
                       </p>
+                      <p className='text-sm font-medium text-gray-900 mt-2'>{storeData.sellerInfo.sellerStatus}</p>
                     </div>
                     <div>
-                      <p className='text-xs text-gray-500 uppercase'>Số điện thoại</p>
-                      <p className='text-sm font-medium text-gray-900 mt-1'>
-                        {storeData.sellerInfo.userInfo?.phoneNumber || '---'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className='text-xs text-gray-500 uppercase'>Email</p>
-                      <p className='text-sm font-medium text-gray-900 mt-1'>
-                        {storeData.sellerInfo.userInfo?.email || '---'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className='text-xs text-gray-500 uppercase'>Mã số thuế</p>
-                      <p className='text-sm font-medium text-gray-900 mt-1'>{storeData.sellerInfo.taxCode || '---'}</p>
-                    </div>
-                    <div>
-                      <p className='text-xs text-gray-500 uppercase'>Giấy phép</p>
-                      <p className='text-sm font-medium text-gray-900 mt-1'>
-                        {storeData.sellerInfo.businessLicense || '---'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className='text-xs text-gray-500 uppercase'>Trạng thái</p>
-                      <p className='text-sm font-medium text-gray-900 mt-1'>{storeData.sellerInfo.sellerStatus}</p>
+                      <p className='text-xs text-gray-500 uppercase tracking-wider font-semibold'>Lần báo cáo</p>
+                      <p className='text-sm font-medium text-gray-900 mt-2'>{storeData.sellerInfo.reportCount || 0}</p>
                     </div>
                   </div>
                 </section>
@@ -693,16 +787,27 @@ function SetupStore() {
                         {existingVendorAppUrls.map((url, index) => (
                           <div
                             key={url}
-                            className='relative group overflow-hidden rounded-2xl border border-gray-100 shadow-md'
+                            className='relative group overflow-hidden rounded-2xl border border-gray-100 shadow-md cursor-pointer'
+                            onClick={() => {
+                              setPreviewImages(existingVendorAppUrls)
+                              setPreviewInitialIndex(index)
+                              setImagePreviewOpen(true)
+                            }}
                           >
                             <img
                               src={url}
                               alt={`Vendor Application ${index + 1}`}
                               className='w-full h-40 object-cover'
                             />
+                            <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
+                              <Eye className='w-6 h-6 text-white' />
+                            </div>
                             {isEditMode && (
                               <button
-                                onClick={() => removeExistingVendorAppUrl(index)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  removeExistingVendorAppUrl(index)
+                                }}
                                 className='absolute top-3 right-3 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow'
                               >
                                 <X className='w-4 h-4' />
@@ -721,15 +826,27 @@ function SetupStore() {
                         {vendorAppFiles.map((file, index) => (
                           <div
                             key={file.name}
-                            className='relative group overflow-hidden rounded-2xl border border-gray-100 shadow-md'
+                            className='relative group overflow-hidden rounded-2xl border border-gray-100 shadow-md cursor-pointer'
+                            onClick={() => {
+                              const previewUrls = vendorAppFiles.map((f) => URL.createObjectURL(f))
+                              setPreviewImages(previewUrls)
+                              setPreviewInitialIndex(index)
+                              setImagePreviewOpen(true)
+                            }}
                           >
                             <img
                               src={URL.createObjectURL(file)}
                               alt={`New file ${index + 1}`}
                               className='w-full h-40 object-cover'
                             />
+                            <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
+                              <Eye className='w-6 h-6 text-white' />
+                            </div>
                             <button
-                              onClick={() => removeVendorAppFile(index)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeVendorAppFile(index)
+                              }}
                               className='absolute top-3 right-3 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow'
                             >
                               <Trash2 className='w-4 h-4' />
@@ -773,123 +890,6 @@ function SetupStore() {
                 </div>
               </section>
 
-              {/* Store Story Section */}
-              <section>
-                <div className='flex items-center justify-between mb-4'>
-                  <h3 className='text-lg font-semibold text-gray-900'>Câu chuyện cửa hàng</h3>
-                </div>
-                {storyLoading ? (
-                  <div className='text-center py-10'>
-                    <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto'></div>
-                    <p className='mt-4 text-gray-600'>Đang tải câu chuyện...</p>
-                  </div>
-                ) : storeStory ? (
-                  <div className='space-y-6'>
-                    <div>
-                      <h4 className='text-xl font-semibold text-gray-900 mb-3'>{storeStory.title}</h4>
-                    </div>
-
-                    {/* Render contents in order */}
-                    {storeStory.contents
-                      .sort((a, b) => a.order - b.order)
-                      .map((content) => {
-                        // Helper function to extract Cloudflare Stream video ID
-                        const extractVideoId = (url: string): string | undefined => {
-                          try {
-                            const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
-                            return match ? match[1] : undefined
-                          } catch {
-                            return undefined
-                          }
-                        }
-
-                        const contentType = content.contentType?.toLowerCase() || ''
-
-                        // Text content
-                        if (contentType === 'text') {
-                          return (
-                            <div key={content.id} className='p-4 bg-gray-50 rounded-2xl border border-gray-100'>
-                              <p className='text-gray-900 whitespace-pre-wrap leading-relaxed'>{content.contentData}</p>
-                            </div>
-                          )
-                        }
-
-                        // Image content
-                        if (contentType === 'image' && content.imageUrls && content.imageUrls.length > 0) {
-                          return (
-                            <div key={content.id} className='space-y-3'>
-                              {content.contentData && (
-                                <p className='text-gray-700 whitespace-pre-wrap'>{content.contentData}</p>
-                              )}
-                              {content.imageUrls.length === 1 ? (
-                                <div className='flex justify-center'>
-                                  <img
-                                    src={content.imageUrls[0]}
-                                    alt='Story image'
-                                    className='max-w-full h-auto rounded-2xl shadow-lg'
-                                  />
-                                </div>
-                              ) : (
-                                <div className='w-full h-[600px]'>
-                                  <ThreeDCarousel images={content.imageUrls} cardW={240} cardH={320} radius={300} />
-                                </div>
-                              )}
-                            </div>
-                          )
-                        }
-
-                        // Video content
-                        if (contentType === 'video') {
-                          const videoId =
-                            extractVideoId(content.videoPlayBackUrl || '') ||
-                            extractVideoId(content.videoPreviewUrl || '') ||
-                            extractVideoId(content.videoFallBackUrl || '')
-
-                          const playbackUrls = content.videoPlayBackUrl
-                            ? content.videoPlayBackUrl.split(',').map((url) => url.trim())
-                            : []
-                          const hlsUrl = playbackUrls.find((url) => url.includes('.m3u8'))
-                          const dashUrl = playbackUrls.find((url) => url.includes('.mpd'))
-
-                          return (
-                            <div key={content.id} className='space-y-3'>
-                              {content.contentData && (
-                                <p className='text-gray-700 whitespace-pre-wrap'>{content.contentData}</p>
-                              )}
-                              <div className='flex justify-center'>
-                                {videoId ? (
-                                  <div className='w-full max-w-2xl rounded-lg overflow-hidden'>
-                                    <Stream src={videoId} controls responsive className='w-full' preload='metadata' />
-                                  </div>
-                                ) : (
-                                  <video controls className='w-full max-w-2xl rounded-lg' preload='metadata' playsInline>
-                                    {hlsUrl && <source src={hlsUrl} type='application/vnd.apple.mpegurl' />}
-                                    {dashUrl && <source src={dashUrl} type='application/dash+xml' />}
-                                    {content.videoPreviewUrl && (
-                                      <source src={content.videoPreviewUrl} type='video/mp4' />
-                                    )}
-                                    {content.videoFallBackUrl && (
-                                      <source src={content.videoFallBackUrl} type='video/mp4' />
-                                    )}
-                                    Trình duyệt của bạn không hỗ trợ video.
-                                  </video>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        }
-
-                        return null
-                      })}
-                  </div>
-                ) : (
-                  <div className='text-center py-10 rounded-2xl border border-dashed border-gray-200 bg-white'>
-                    <FileText className='w-12 h-12 text-gray-300 mx-auto mb-4' />
-                    <p className='text-gray-500'>Chưa có câu chuyện cửa hàng</p>
-                  </div>
-                )}
-              </section>
-
               {isEditMode && (
                 <div className='flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-gray-100'>
                   <Button
@@ -923,6 +923,15 @@ function SetupStore() {
           </Card>
         </div>
       )}
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreviewOpen}
+        onClose={() => setImagePreviewOpen(false)}
+        images={previewImages}
+        initialIndex={previewInitialIndex}
+        alt='Xem chi tiết hình ảnh'
+      />
     </div>
   )
 }
