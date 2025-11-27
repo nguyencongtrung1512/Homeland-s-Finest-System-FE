@@ -14,6 +14,7 @@ import ProductCard from '../Products/Product/productCard'
 import { productApi } from '../../../apis/product.api'
 import type { Product } from '../../../types'
 import { PromotionBubble } from '../../../components/PromotionBubble'
+import { formatDate } from '../../../utils/formatDate'
 
 const StorePage = () => {
   const { storeId } = useParams<{ storeId: string }>()
@@ -105,6 +106,19 @@ const StorePage = () => {
     )
   }
 
+  // Transform vendorApplicationImageUrl to certificates format
+  const certificates =
+    store.vendorApplicationImageUrl &&
+      Array.isArray(store.vendorApplicationImageUrl) &&
+      store.vendorApplicationImageUrl.length > 0
+      ? store.vendorApplicationImageUrl.map((imageUrl, index) => ({
+        id: `cert-${index}`,
+        name: `Giấy phép kinh doanh ${index + 1}`,
+        image: imageUrl,
+        issueDate: store.submittedDate ? formatDate(store.submittedDate) : undefined
+      }))
+      : []
+
   // Transform API data to match component expectations
   const storeData = {
     id: store.id,
@@ -129,7 +143,7 @@ const StorePage = () => {
         badge: product.status === 'active' ? { text: 'Đang bán', color: 'bg-green-500' } : undefined
       }
     }),
-    certificates: [] // TODO: Add certificates when available in API
+    certificates: certificates
   }
 
   return (
@@ -181,13 +195,12 @@ const StorePage = () => {
                         </div>
                         <div className='flex items-center gap-1'>
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              store.status === 'Approved'
-                                ? 'bg-green-100 text-green-800'
-                                : store.status === 'Pending'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
-                            }`}
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${store.status === 'Approved'
+                              ? 'bg-green-100 text-green-800'
+                              : store.status === 'Pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                              }`}
                           >
                             {store.status === 'Approved'
                               ? 'Đã duyệt'
@@ -225,7 +238,7 @@ const StorePage = () => {
 
         {/* Câu Chuyện Tab */}
         <TabsContent value='story'>
-          <StorySection storeName={storeData.name} story={storeData.story} />
+          <StorySection storeName={storeData.name} story={storeData.story} storeId={store.id} />
         </TabsContent>
 
         {/* Sản Phẩm Tab */}

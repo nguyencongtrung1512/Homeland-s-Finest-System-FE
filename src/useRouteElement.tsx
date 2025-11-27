@@ -82,6 +82,7 @@ import ManagerComboAdmin from './pages/admin/comboManagerment/list'
 import ComboDetail from './pages/customer/combo/detail'
 import DetailProductAdmin from './pages/admin/productManagerment/detail'
 import ComplainSeller from './pages/seller/complain/complain'
+import PolicyCustomer from './pages/customer/policy/policyCustomer'
 
 
 export default function useRouteElements() {
@@ -136,6 +137,10 @@ export default function useRouteElements() {
           element: <ViewBlog />
         }
       ]
+    },
+    {
+      path: path.portal,
+      element: <PolicyCustomer />
     },
     {
       path: path.loginCustomer,

@@ -3,7 +3,6 @@ import { type FC } from 'react'
 interface Certificate {
   id?: string
   name: string
-  description: string
   image: string
   issuedBy?: string
   issueDate?: string
@@ -15,23 +14,30 @@ interface CertificatesSectionProps {
 }
 
 const CertificatesSection: FC<CertificatesSectionProps> = ({ certificates }) => {
-  // TODO: Replace with actual API call
-  // const { data: certificatesData, isLoading } = useQuery(['store-certificates', storeId], () => fetchStoreCertificates(storeId))
-
   return (
     <div className='bg-white rounded-lg p-6 shadow-sm'>
       <h3 className='text-lg font-semibold mb-4 text-gray-900'>Giấy chứng nhận</h3>
 
       {certificates.length > 0 ? (
-        <div className='grid md:grid-cols-2 gap-4'>
+        <div className='flex flex-col gap-6 items-center justify-center'>
           {certificates.map((cert, index) => (
-            <div key={cert.id || index} className='border rounded-lg p-4 text-center hover:shadow-md transition-shadow'>
-              <img src={cert.image} alt={cert.name} className='w-full h-32 object-cover rounded mb-3' />
+            <div
+              key={cert.id || index}
+              className='border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white'
+            >
               <h4 className='font-medium text-gray-900 mb-2'>{cert.name}</h4>
-              <p className='text-sm text-gray-600 mb-2'>{cert.description}</p>
 
-              {cert.issuedBy && <p className='text-xs text-gray-500'>Cấp bởi: {cert.issuedBy}</p>}
-              {cert.issueDate && <p className='text-xs text-gray-500'>Ngày cấp: {cert.issueDate}</p>}
+              <div className='w-full rounded-lg overflow-hidden border border-gray-100 bg-gray-50'>
+                <img
+                  src={cert.image}
+                  alt={cert.name}
+                  className='w-200 h-auto object-contain'
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    target.src = 'https://i.pinimg.com/736x/d6/8a/12/d68a121e960094f99ad8acd37505fb7d.jpg'
+                  }}
+                />
+              </div>
             </div>
           ))}
         </div>

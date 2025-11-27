@@ -31,6 +31,8 @@ import {
   type CreateDocumentData
 } from '../../../apis/document.api'
 import { toast } from '../../../utils/toast'
+import Pagination from '../../../components/Pagination/Pagination'
+import Loading from '../../../components/Loading/loading'
 
 // Remove old Term interface, using DocumentType from API
 
@@ -45,6 +47,8 @@ function TermsManagement() {
   const [documents, setDocuments] = useState<DocumentType[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
   const [formData, setFormData] = useState<CreateDocumentData>({
     slug: '',
     title: '',
@@ -98,6 +102,11 @@ function TermsManagement() {
     fetchDocuments()
   }, [typeFilter, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchText, typeFilter, statusFilter])
+
   const getStatusConfig = (isPublished: boolean) => {
     return isPublished
       ? {
@@ -131,6 +140,20 @@ function TermsManagement() {
       return matchesSearch
     })
     : []
+
+  // Calculate pagination
+  const totalItems = filteredDocuments.length
+  const totalPages = Math.ceil(totalItems / pageSize) || 1
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedDocuments = filteredDocuments.slice(startIndex, endIndex)
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    // Scroll to top of table when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const handleAdd = () => {
     setFormData({
@@ -434,16 +457,13 @@ function TermsManagement() {
         <CardHeader className='flex flex-row items-center justify-between p-6 border-b border-gray-200'>
           <div>
             <CardTitle className='text-lg font-semibold text-gray-900'>Danh sách tài liệu</CardTitle>
-            <p className='text-sm text-gray-600 mt-1'>Hiển thị {filteredDocuments.length} tài liệu</p>
+
           </div>
         </CardHeader>
         <CardContent className='p-0'>
           {loading ? (
-            <div className='flex items-center justify-center py-12'>
-              <div className='text-center'>
-                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
-                <p className='text-gray-600'>Đang tải dữ liệu...</p>
-              </div>
+            <div className='py-12'>
+              <Loading size='md' text='Đang tải dữ liệu...' />
             </div>
           ) : (
             <Table>
@@ -458,14 +478,14 @@ function TermsManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDocuments.length === 0 ? (
+                {paginatedDocuments.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className='text-center py-12 text-gray-500'>
                       Không có dữ liệu
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredDocuments.map((document) => {
+                  paginatedDocuments.map((document) => {
                     const statusConfig = getStatusConfig(document.isPublished)
 
                     return (
@@ -521,6 +541,13 @@ function TermsManagement() {
             </Table>
           )}
         </CardContent>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className='px-6 pb-6'>
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+          </div>
+        )}
       </Card>
 
       {/* Add Document Modal */}
@@ -591,6 +618,9 @@ function TermsManagement() {
             {/* Content Field */}
             <div className='space-y-2'>
               <Label htmlFor='content'>Nội dung *</Label>
+              <p className='text-xs text-gray-500 mb-2'>
+                Sử dụng các heading levels (#, ##, ###, ####) để tạo cấu trúc rõ ràng cho tài liệu
+              </p>
               <div>
                 <ReactQuill
                   theme='snow'
@@ -599,14 +629,30 @@ function TermsManagement() {
                   placeholder='Nhập nội dung tài liệu...'
                   modules={{
                     toolbar: [
-                      [{ header: [1, 2, false] }],
-                      ['bold', 'italic', 'underline'],
+                      [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                      ['bold', 'italic', 'underline', 'strike'],
                       [{ list: 'ordered' }, { list: 'bullet' }],
-                      ['link'],
+                      [{ indent: '-1' }, { indent: '+1' }],
+                      [{ align: [] }],
+                      ['link', 'blockquote', 'code-block'],
                       ['clean']
                     ]
                   }}
-                  className='h-[200px]'
+                  className='h-[400px] mb-16'
+                  formats={[
+                    'header',
+                    'bold',
+                    'italic',
+                    'underline',
+                    'strike',
+                    'list',
+                    'bullet',
+                    'indent',
+                    'link',
+                    'blockquote',
+                    'code-block',
+                    'align'
+                  ]}
                 />
               </div>
             </div>
@@ -704,6 +750,9 @@ function TermsManagement() {
             {/* Content Field */}
             <div className='space-y-2'>
               <Label htmlFor='edit-content'>Nội dung *</Label>
+              <p className='text-xs text-gray-500 mb-2'>
+                Sử dụng các heading levels (#, ##, ###, ####) để tạo cấu trúc rõ ràng cho tài liệu
+              </p>
               <div>
                 <ReactQuill
                   theme='snow'
@@ -712,14 +761,30 @@ function TermsManagement() {
                   placeholder='Nhập nội dung tài liệu...'
                   modules={{
                     toolbar: [
-                      [{ header: [1, 2, false] }],
-                      ['bold', 'italic', 'underline'],
+                      [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                      ['bold', 'italic', 'underline', 'strike'],
                       [{ list: 'ordered' }, { list: 'bullet' }],
-                      ['link'],
+                      [{ indent: '-1' }, { indent: '+1' }],
+                      [{ align: [] }],
+                      ['link', 'blockquote', 'code-block'],
                       ['clean']
                     ]
                   }}
-                  className='h-[200px]'
+                  className='h-[400px] mb-16'
+                  formats={[
+                    'header',
+                    'bold',
+                    'italic',
+                    'underline',
+                    'strike',
+                    'list',
+                    'bullet',
+                    'indent',
+                    'link',
+                    'blockquote',
+                    'code-block',
+                    'align'
+                  ]}
                 />
               </div>
             </div>
@@ -751,69 +816,77 @@ function TermsManagement() {
 
       {/* View Document Modal */}
       <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
-        <DialogContent className='sm:max-w-4xl max-h-[90vh] overflow-y-auto'>
-          <DialogHeader>
-            <DialogTitle>Chi tiết tài liệu</DialogTitle>
-            <DialogDescription>Thông tin chi tiết về tài liệu</DialogDescription>
-          </DialogHeader>
+        <DialogContent className='sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0'>
+          <div className='flex-1 overflow-y-auto'>
+            <DialogHeader className='px-6 pt-6 pb-4 border-b border-gray-200'>
+              <DialogTitle className='text-xl font-semibold text-gray-900'>Chi tiết tài liệu</DialogTitle>
+              <DialogDescription className='text-sm text-gray-600 mt-1'>
+                Thông tin chi tiết về tài liệu
+              </DialogDescription>
+            </DialogHeader>
 
-          {selectedDocument && (
-            <div className='space-y-4'>
-              <div className='grid grid-cols-2 gap-4'>
-                <div>
-                  <Label className='text-sm font-medium text-gray-700'>Tiêu đề</Label>
-                  <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900 mt-1'>
-                    {selectedDocument.title}
+            {selectedDocument && (
+              <div className='space-y-6 p-6'>
+                {/* Document Info */}
+                <div className='grid grid-cols-2 gap-4'>
+                  <div>
+                    <Label className='text-sm font-medium text-gray-700 mb-1 block'>Loại</Label>
+                    <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedDocument.type}</div>
                   </div>
-                </div>
-                <div>
-                  <Label className='text-sm font-medium text-gray-700'>Slug</Label>
-                  <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900 mt-1'>
-                    {selectedDocument.slug}
+                  <div>
+                    <Label className='text-sm font-medium text-gray-700 mb-1 block'>Phiên bản</Label>
+                    <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>
+                      {selectedDocument.version}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <Label className='text-sm font-medium text-gray-700'>Loại</Label>
-                  <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900 mt-1'>
-                    {selectedDocument.type}
+                  <div>
+                    <Label className='text-sm font-medium text-gray-700 mb-1 block'>Ngày hiệu lực</Label>
+                    <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>
+                      {new Date(selectedDocument.effectiveDate).toLocaleDateString('vi-VN')}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <Label className='text-sm font-medium text-gray-700'>Phiên bản</Label>
-                  <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900 mt-1'>
-                    {selectedDocument.version}
-                  </div>
-                </div>
-                <div>
-                  <Label className='text-sm font-medium text-gray-700'>Ngày hiệu lực</Label>
-                  <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900 mt-1'>
-                    {new Date(selectedDocument.effectiveDate).toLocaleDateString('vi-VN')}
-                  </div>
-                </div>
-                <div>
-                  <Label className='text-sm font-medium text-gray-700'>Trạng thái</Label>
-                  <div className='mt-1'>
-                    <div
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedDocument.isPublished ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
-                        }`}
-                    >
-                      {selectedDocument.isPublished ? 'Đã xuất bản' : 'Bản nháp'}
+                  <div>
+                    <Label className='text-sm font-medium text-gray-700 mb-1 block'>Trạng thái</Label>
+                    <div>
+                      <div
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${selectedDocument.isPublished ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}
+                      >
+                        {selectedDocument.isPublished ? 'Đã xuất bản' : 'Bản nháp'}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <Label className='text-sm font-medium text-gray-700'>Nội dung</Label>
-                <div
-                  className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900 mt-1 max-h-96 overflow-y-auto'
-                  dangerouslySetInnerHTML={{ __html: selectedDocument.content }}
-                />
+                {/* Document Content */}
+                <div className='border-t border-gray-200 pt-6'>
+                  <Label className='text-lg font-semibold text-gray-900 mb-4 block'>Nội dung</Label>
+                  <div
+                    className='prose prose-lg max-w-none 
+                      prose-headings:font-semibold prose-headings:text-gray-900 
+                      prose-h1:text-3xl prose-h1:mb-4 prose-h1:mt-6 prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-3
+                      prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-6 prose-h2:text-green-700
+                      prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-5 prose-h3:text-gray-800
+                      prose-h4:text-lg prose-h4:mb-2 prose-h4:mt-4 prose-h4:text-gray-800
+                      prose-h5:text-base prose-h5:mb-2 prose-h5:mt-3 prose-h5:font-semibold
+                      prose-h6:text-sm prose-h6:mb-2 prose-h6:mt-3 prose-h6:font-semibold prose-h6:text-gray-700
+                      prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-4
+                      prose-strong:text-gray-900 prose-strong:font-semibold
+                      prose-ul:list-disc prose-ul:pl-6 prose-ul:mb-4 prose-ul:text-gray-700
+                      prose-ol:list-decimal prose-ol:pl-6 prose-ol:mb-4 prose-ol:text-gray-700
+                      prose-li:mb-1 prose-li:leading-relaxed
+                      prose-blockquote:border-l-4 prose-blockquote:border-green-500 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-600
+                      prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+                      prose-a:text-green-600 prose-a:no-underline hover:prose-a:underline
+                      prose-pre:bg-gray-900 prose-pre:text-gray-100
+                      bg-white rounded-lg p-6 border border-gray-200'
+                    dangerouslySetInnerHTML={{ __html: selectedDocument.content }}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className='px-6 py-4 border-t border-gray-200 bg-gray-50'>
             <Button variant='outline' onClick={handleCancel}>
               Đóng
             </Button>

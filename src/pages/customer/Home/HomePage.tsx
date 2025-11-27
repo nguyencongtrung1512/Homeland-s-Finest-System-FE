@@ -6,6 +6,7 @@ import ChatBot from '../../../components/ChatBot/chatbot'
 import ChatSystem from '../Chat/chatSystem'
 import { PromotionBubble } from '../../../components/PromotionBubble'
 import { useAuth } from '../../../contexts/auth.context'
+import ListStore from './listStore'
 
 function HomePage() {
   const { isAuthenticated } = useAuth()
@@ -50,6 +51,9 @@ function HomePage() {
       </section>
       <section>
         <HandicraftProducts />
+      </section>
+      <section>
+        <ListStore />
       </section>
       {isAuthenticated ? <ChatSystem /> : <ChatBot />}
       <PromotionBubble />

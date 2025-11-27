@@ -20,7 +20,6 @@ function CreateProduct() {
   const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [storeId, setStoreId] = useState<string | null>(null)
-  const [provinceId, setProvinceId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<ProductCategoryItem[]>([])
@@ -259,7 +258,6 @@ function CreateProduct() {
       console.log('response getStoreBySellerId', response)
       if (response.status === 200 && response.data) {
         setStoreId(response.data.id)
-        setProvinceId(response.data.provinceId.toString())
         return response.data.id
       } else {
         setError('Không tìm thấy thông tin cửa hàng')
@@ -392,8 +390,8 @@ function CreateProduct() {
     }
 
     try {
-      // Check if storeId and provinceId are available
-      if (!storeId || !provinceId) {
+      // Check if storeId is available
+      if (!storeId) {
         toast.error('Không tìm thấy thông tin cửa hàng. Vui lòng thử lại.')
         return
       }
@@ -936,11 +934,10 @@ function CreateProduct() {
                     {categories.map((category) => (
                       <div
                         key={category.id}
-                        className={`flex items-start space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                          productData.categoryId === category.id
-                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 shadow-sm'
-                            : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-300 hover:shadow-sm'
-                        }`}
+                        className={`flex items-start space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${productData.categoryId === category.id
+                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 shadow-sm'
+                          : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-300 hover:shadow-sm'
+                          }`}
                         onClick={() => handleCategorySelect(category.id)}
                       >
                         <div className='flex items-center'>

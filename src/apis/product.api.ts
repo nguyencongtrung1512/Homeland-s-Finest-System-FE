@@ -59,6 +59,26 @@ export interface ProductSkuResponse {
   data: ProductSku[]
 }
 
+// Category Groups Response Type
+export interface CategoryGroupsResponse {
+  status: number
+  message: string
+  data: {
+    foodProducts: Product[]
+    handicraftProducts: Product[]
+  }
+}
+
+// Category Groups Response
+export interface CategoryGroupsResponse {
+  status: number
+  message: string
+  data: {
+    foodProducts: Product[]
+    handicraftProducts: Product[]
+  }
+}
+
 // Form Data interface for creating product with files
 export interface ProductCreateFormData {
   storeId: string
@@ -309,6 +329,12 @@ export const productApi = {
   getSkus: async (id: string): Promise<ProductSkuResponse> => {
     const response = await axiosInstance.get(`${API_URL}/${id}/skus`)
     return response as unknown as ProductSkuResponse
+  },
+
+  // Get products by category groups (foodProducts and handicraftProducts)
+  getCategoryGroups: async (): Promise<CategoryGroupsResponse> => {
+    const response = await axiosInstance.get(`${API_URL}/category-groups`)
+    return response as unknown as CategoryGroupsResponse
   }
 }
 
