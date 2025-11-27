@@ -16,6 +16,7 @@ import { storeStoryApi, type StoreStoryUpdateData } from '../../../apis/storeSto
 import { storeApi } from '../../../apis/store.api'
 import { useAuth } from '../../../contexts/auth.context'
 import { toast } from '../../../utils/toast'
+import { Stream } from '@cloudflare/stream-react'
 
 interface CreateMyStoryProps {
   open: boolean
@@ -169,9 +170,24 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
     if (files) {
       const filesArray = Array.from(files)
       const maxImageSize = 5 * 1024 * 1024 // 5MB
+      const maxImages = 3 // Maximum 3 images total
       const validFiles: File[] = []
       
+      // Check current total images count
+      const currentTotalImages = storyData.GalleryImages.length + storyData.GalleryImageUrls.length
+      const remainingSlots = maxImages - currentTotalImages
+      
+      if (remainingSlots <= 0) {
+        toast.error(`Thư viện ảnh chỉ được tối đa ${maxImages} ảnh`)
+        return
+      }
+      
       filesArray.forEach((file) => {
+        if (validFiles.length >= remainingSlots) {
+          toast.warning(`Chỉ có thể thêm tối đa ${remainingSlots} ảnh nữa (tổng tối đa ${maxImages} ảnh)`)
+          return
+        }
+        
         if (!file.type.startsWith('image/')) {
           toast.error(`File ${file.name} không phải là hình ảnh`)
           return
@@ -209,6 +225,42 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
 
   const countWords = (text: string): number => {
     return text.trim().split(/\s+/).filter(word => word.length > 0).length
+  }
+
+  // Helper function to extract Cloudflare Stream video ID from URL
+  const extractVideoId = (url: string): string | undefined => {
+    try {
+      // Cloudflare Stream URL format: https://customer-xxx.cloudflarestream.com/{videoId}/watch
+      // or: https://customer-xxx.cloudflarestream.com/{videoId}/manifest/video.m3u8
+      const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
+      return match ? match[1] : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  // Component to render video (supports Cloudflare Stream and regular video)
+  const renderVideoPlayer = (videoUrl: string | null) => {
+    if (!videoUrl) return null
+
+    const videoId = extractVideoId(videoUrl)
+
+    if (videoId) {
+      // Use Cloudflare Stream component
+      return (
+        <div className='w-full aspect-video'>
+          <Stream src={videoId} controls responsive className='w-full h-full' preload='metadata' />
+        </div>
+      )
+    } else {
+      // Fallback to regular video tag
+      return (
+        <video src={videoUrl} controls className='w-full h-32 rounded' preload='metadata' playsInline>
+          <source src={videoUrl} type='video/mp4' />
+          Trình duyệt của bạn không hỗ trợ video.
+        </video>
+      )
+    }
   }
 
 
@@ -277,7 +329,12 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
       }
     }
 
-    // Validate Gallery images (max 5MB each)
+    // Validate Gallery images (max 5MB each, max 3 images total)
+    const totalGalleryImages = storyData.GalleryImages.length + storyData.GalleryImageUrls.length
+    if (totalGalleryImages > 3) {
+      return `Thư viện ảnh chỉ được tối đa 3 ảnh (hiện tại: ${totalGalleryImages} ảnh)`
+    }
+    
     for (let i = 0; i < storyData.GalleryImages.length; i++) {
       const galleryImage = storyData.GalleryImages[i]
       if (galleryImage.size > maxImageSize) {
@@ -658,7 +715,9 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
                 </div>
               ) : storyData.VideoOpenerUrl ? (
                 <div className='space-y-2'>
-                  <video src={storyData.VideoOpenerUrl} controls className='w-full h-32 rounded' />
+                  <div className='w-full aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200'>
+                    {renderVideoPlayer(storyData.VideoOpenerUrl)}
+                  </div>
                   <p className='text-sm text-gray-600'>Video hiện tại</p>
                   <Button
                     variant='outline'
@@ -798,10 +857,19 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
 
           {/* Gallery Images */}
           <div className='space-y-2'>
-            <Label className='text-base font-semibold'>Thư viện ảnh</Label>
+            <div className='flex items-center justify-between'>
+              <Label className='text-base font-semibold'>Thư viện ảnh</Label>
+              <span className={`text-xs ${
+                storyData.GalleryImages.length + storyData.GalleryImageUrls.length > 3 
+                  ? 'text-red-500' 
+                  : 'text-gray-500'
+              }`}>
+                {storyData.GalleryImages.length + storyData.GalleryImageUrls.length} / 3 ảnh
+              </span>
+            </div>
             <div className='border-2 border-dashed border-gray-300 rounded-lg p-4'>
               <ImageIcon className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-              <p className='text-gray-500 mb-2 text-sm'>Tải lên nhiều ảnh (có thể chọn nhiều)</p>
+              <p className='text-gray-500 mb-2 text-sm'>Tải lên nhiều ảnh (tối đa 3 ảnh)</p>
               <input
                 type='file'
                 accept='image/*'
@@ -809,11 +877,13 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
                 onChange={(e) => handleGalleryImagesChange(e.target.files)}
                 className='hidden'
                 id='gallery-images-upload'
+                disabled={storyData.GalleryImages.length + storyData.GalleryImageUrls.length >= 3}
               />
               <Button
                 variant='outline'
                 size='sm'
                 onClick={() => document.getElementById('gallery-images-upload')?.click()}
+                disabled={storyData.GalleryImages.length + storyData.GalleryImageUrls.length >= 3}
               >
                 <Upload className='w-4 h-4 mr-1' />
                 Chọn nhiều ảnh
@@ -926,7 +996,9 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
                 </div>
               ) : storyData.VideoProcessUrl ? (
                 <div className='space-y-2'>
-                  <video src={storyData.VideoProcessUrl} controls className='w-full h-32 rounded' />
+                  <div className='w-full aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200'>
+                    {renderVideoPlayer(storyData.VideoProcessUrl)}
+                  </div>
                   <p className='text-sm text-gray-600'>Video hiện tại</p>
                   <Button
                     variant='outline'
@@ -1003,7 +1075,9 @@ function CreateMyStory({ open, onOpenChange, onSuccess, storyId, initialData }: 
                 </div>
               ) : storyData.VideoTestimonialUrl ? (
                 <div className='space-y-2'>
-                  <video src={storyData.VideoTestimonialUrl} controls className='w-full h-32 rounded' />
+                  <div className='w-full aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200'>
+                    {renderVideoPlayer(storyData.VideoTestimonialUrl)}
+                  </div>
                   <p className='text-sm text-gray-600'>Video hiện tại</p>
                   <Button
                     variant='outline'

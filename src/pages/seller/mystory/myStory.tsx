@@ -156,7 +156,6 @@ function MyStory() {
           <div>
             <h1 className='text-3xl font-bold text-green-700'>Câu chuyện của bạn</h1>
             <div className='flex items-center gap-4 mt-2'>
-              <span className='text-sm text-gray-500'>Store ID: {storeId}</span>
               <span className='text-sm text-gray-500'>Số câu chuyện: {storeStories.length}</span>
             </div>
           </div>

@@ -8,11 +8,11 @@ interface Store {
   ID: string
   StoreName: string
   Province: string
-  ProvinceID: number
+  ProvinceID: number | null
   District: string
-  DistrictID: number
+  DistrictID: number | null
   Ward: string
-  WardID: number
+  WardID: number | null
   Address: string
   LogoURL: string | null
   Description: string

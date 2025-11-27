@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { cn } from '../../lib/utils'
+import { formatDate } from '../../utils/formatDate'
 
 interface StepItem {
   title: string
@@ -202,9 +203,7 @@ function StoreStatusNotice() {
                 <div className='flex items-center justify-between'>
                   <div>
                     <h4 className='font-medium text-gray-900'>{store.storeName}</h4>
-                    <p className='text-sm text-gray-500'>
-                      Ngày đăng ký: {new Date(store.createdAt).toLocaleDateString('vi-VN')}
-                    </p>
+                    <p className='text-sm text-gray-500'>Ngày đăng ký: {formatDate(store.createdAt)}</p>
                   </div>
                   <Badge variant={getBadgeVariant()} className={getBadgeClassName()}>
                     {statusInfo.title}

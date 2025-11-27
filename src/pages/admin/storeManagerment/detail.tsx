@@ -912,7 +912,7 @@ function StoreDetailAdmin() {
                   )}
 
                   {store.status === 'ReviewedByStaff' && (
-                    <>
+                    <div className='grid grid-row-2 gap-4'>
                       <Button
                         onClick={() => handleStatusAction('Approve')}
                         className='w-full bg-green-500 hover:bg-green-600 text-white'
@@ -924,11 +924,11 @@ function StoreDetailAdmin() {
                         <X className='w-4 h-4 mr-2' />
                         Từ chối cửa hàng
                       </Button>
-                    </>
+                    </div>
                   )}
 
                   {store.status === 'ApprovedByStaff' && (
-                    <>
+                    <div className='grid grid-row-2 gap-4'>
                       <Button
                         onClick={() => handleStatusAction('Approve')}
                         className='w-full bg-green-500 hover:bg-green-600 text-white'
@@ -940,7 +940,7 @@ function StoreDetailAdmin() {
                         <X className='w-4 h-4 mr-2' />
                         Từ chối cửa hàng
                       </Button>
-                    </>
+                    </div>
                   )}
 
                   {store.status === 'RejectedByStaff' && (

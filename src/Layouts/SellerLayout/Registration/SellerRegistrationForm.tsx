@@ -20,6 +20,8 @@ import { registerSeller } from '../../../apis/auth.api'
 import { getProvinces, getDistricts, getWards, type Province, type District, type Ward } from '../../../apis/province'
 import Loading from '../../../components/Loading/loading'
 import { extractCCCDInfo, type ExtractedCCCDInfo } from '../../../apis/fptai.api'
+import { getBanks, type Bank } from '../../../apis/user.api'
+import ComboBox from '../../../components/ui/combo-box'
 
 const checkboxStyles = `
   .custom-checkbox {
@@ -389,6 +391,7 @@ function SellerRegistrationForm() {
   const [selectedDistrict, setSelectedDistrict] = useState<District | null>(null)
   const [selectedWard, setSelectedWard] = useState<Ward | null>(null)
   const [specificAddress, setSpecificAddress] = useState<string>('')
+  const [fullAddressDisplay, setFullAddressDisplay] = useState<string>('')
   const [isLoadingProvinces, setIsLoadingProvinces] = useState(false)
   const [isLoadingDistricts, setIsLoadingDistricts] = useState(false)
   const [isLoadingWards, setIsLoadingWards] = useState(false)
@@ -404,6 +407,11 @@ function SellerRegistrationForm() {
   const [isLoadingUserProvinces, setIsLoadingUserProvinces] = useState(false)
   const [isLoadingUserDistricts, setIsLoadingUserDistricts] = useState(false)
   const [isLoadingUserWards, setIsLoadingUserWards] = useState(false)
+
+  // States cho ngân hàng
+  const [banks, setBanks] = useState<Bank[]>([])
+  const [isLoadingBanks, setIsLoadingBanks] = useState(false)
+  const [selectedBank, setSelectedBank] = useState<Bank | null>(null)
 
   // ===== Xử lý dữ liệu từ OCR =====
   const handleOCRData = async (ocrData: ExtractedCCCDInfo) => {
@@ -725,16 +733,29 @@ function SellerRegistrationForm() {
   React.useEffect(() => {
     if (selectedProvince && selectedDistrict && selectedWard && specificAddress.trim()) {
       const fullAddress = `${specificAddress}, ${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`
-      setFormData((prev) => ({
-        ...prev,
-        address: fullAddress
-      }))
+      setFullAddressDisplay(fullAddress)
+    } else {
+      setFullAddressDisplay('')
     }
   }, [selectedProvince, selectedDistrict, selectedWard, specificAddress])
+
+  const loadBanks = async () => {
+    setIsLoadingBanks(true)
+    try {
+      const data = await getBanks()
+      setBanks(data)
+    } catch (error) {
+      console.error('Error loading banks:', error)
+      toast.error('Không thể tải danh sách ngân hàng')
+    } finally {
+      setIsLoadingBanks(false)
+    }
+  }
 
   React.useEffect(() => {
     loadProvinces()
     loadUserProvinces()
+    loadBanks()
   }, [])
 
   const validateForm = (): boolean => {
@@ -902,7 +923,7 @@ function SellerRegistrationForm() {
         },
         storeInfo: {
           storeName: formData.storeName,
-          address: formData.address,
+          address: specificAddress,
           province: selectedProvince?.name || '',
           district: selectedDistrict?.name || '',
           ward: selectedWard?.name || '',
@@ -1414,10 +1435,10 @@ function SellerRegistrationForm() {
                 />
               </div>
 
-              {formData.address && (
+              {fullAddressDisplay && (
                 <div className='p-3 bg-gray-50 rounded-lg border'>
                   <Label className='text-sm text-gray-600'>Địa chỉ hoàn chỉnh:</Label>
-                  <p className='text-sm text-gray-800 mt-1'>{formData.address}</p>
+                  <p className='text-sm text-gray-800 mt-1'>{fullAddressDisplay}</p>
                 </div>
               )}
 
@@ -1428,13 +1449,24 @@ function SellerRegistrationForm() {
               <Label htmlFor='description' className='text-sm text-gray-600'>
                 Mô tả cửa hàng <span className='text-red-500'>*</span>
               </Label>
-              <textarea
-                id='description'
-                className='w-full border rounded p-2 min-h-[100px]'
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder='Mô tả sản phẩm/dịch vụ, thế mạnh, nguồn hàng...'
-              />
+              <div className='relative'>
+                <textarea
+                  id='description'
+                  className='w-full border rounded p-2 min-h-[100px] pr-20'
+                  value={formData.description}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value.length <= 200) {
+                      handleInputChange('description', value)
+                    }
+                  }}
+                  placeholder='Mô tả sản phẩm/dịch vụ, thế mạnh, nguồn hàng...'
+                  maxLength={200}
+                />
+                <span className='absolute bottom-2 right-2 text-xs text-gray-500'>
+                  {formData.description.length}/200
+                </span>
+              </div>
               {errors.description && <p className='text-sm text-red-500'>{errors.description}</p>}
             </div>
           </div>
@@ -1482,11 +1514,42 @@ function SellerRegistrationForm() {
                 <Label htmlFor='bankName'>
                   Tên ngân hàng <span className='text-red-500'>*</span>
                 </Label>
-                <Input
-                  id='bankName'
-                  value={formData.bankName}
-                  onChange={(e) => handleInputChange('bankName', e.target.value)}
-                  placeholder='Tên ngân hàng (VD: Vietcombank, BIDV, Techcombank...)'
+                <ComboBox
+                  options={banks}
+                  placeholder={isLoadingBanks ? 'Đang tải danh sách ngân hàng...' : 'Chọn ngân hàng'}
+                  disabled={isLoadingBanks}
+                  value={selectedBank ? selectedBank.id.toString() : ''}
+                  onSelect={(bank) => {
+                    if (bank) {
+                      setSelectedBank(bank)
+                      handleInputChange('bankName', bank.name)
+                    } else {
+                      setSelectedBank(null)
+                      handleInputChange('bankName', '')
+                    }
+                  }}
+                  getOptionLabel={(bank) => bank.name}
+                  getOptionValue={(bank) => bank.id.toString()}
+                  renderOption={(bank) => (
+                    <div className='flex items-center gap-3'>
+                      {bank.logo && (
+                        <img
+                          src={bank.logo}
+                          alt={bank.name}
+                          className='w-15 h-15 object-contain rounded'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                      )}
+                      <span className='flex-1'>{bank.name}</span>
+                    </div>
+                  )}
+                  filterFunction={(bank, searchValue) =>
+                    bank.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+                    bank.shortName.toLowerCase().includes(searchValue.toLowerCase())
+                  }
                 />
                 {errors.bankName && <p className='text-sm text-red-500'>{errors.bankName}</p>}
               </div>

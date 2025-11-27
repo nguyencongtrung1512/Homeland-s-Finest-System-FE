@@ -6,6 +6,8 @@ import { storeStoryApi } from '../../../apis/storeStory.api'
 import type { StoreStory } from '../../../types/storeStoryType'
 import { Edit } from 'lucide-react'
 import CreateMyStory from './createMyStory'
+import { formatDate } from '../../../utils/formatDate'
+import { Stream } from '@cloudflare/stream-react'
 
 interface StoryDetailModalProps {
   open: boolean
@@ -163,6 +165,75 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, storyId])
 
+  // Helper function to extract Cloudflare Stream video ID from URL
+  const extractVideoId = (url: string): string | undefined => {
+    try {
+      // Cloudflare Stream URL format: https://customer-xxx.cloudflarestream.com/{videoId}/watch
+      // or: https://customer-xxx.cloudflarestream.com/{videoId}/manifest/video.m3u8
+      const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
+      return match ? match[1] : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  // Process video data to get video sources and ID
+  const processVideo = (content: StoreStory['contents'][0]) => {
+    let video = ''
+    let videoId: string | undefined = undefined
+    let videoSources: { hls?: string; dash?: string; preview?: string; fallback?: string } | undefined = undefined
+
+    // Priority according to document: videoPlayBackUrl (Priority 1) > videoPreviewUrl (Priority 2) > videoFallBackUrl (Priority 3)
+    if (content.videoPlayBackUrl) {
+      // Try to extract video ID from any Cloudflare Stream URL
+      const playbackVideoId = extractVideoId(content.videoPlayBackUrl)
+      videoId = playbackVideoId
+
+      // Parse videoPlayBackUrl: contains both HLS (.m3u8) and DASH (.mpd) URLs
+      const playbackUrls = content.videoPlayBackUrl.split(',').map((url) => url.trim())
+      const hlsUrl = playbackUrls.find((url) => url.includes('.m3u8'))
+      const dashUrl = playbackUrls.find((url) => url.includes('.mpd'))
+
+      // Build videoSources object, only including URLs that exist
+      videoSources = {}
+      if (hlsUrl) videoSources.hls = hlsUrl
+      if (dashUrl) videoSources.dash = dashUrl
+      // Include preview as fallback for browsers that don't support HLS/DASH
+      if (content.videoPreviewUrl?.trim()) {
+        videoSources.preview = content.videoPreviewUrl.trim()
+      }
+      if (content.videoFallBackUrl?.trim()) {
+        videoSources.fallback = content.videoFallBackUrl.trim()
+      }
+
+      // Use preview URL as primary (most compatible), fallback to HLS/DASH if preview not available
+      video =
+        content.videoPreviewUrl?.trim() ||
+        hlsUrl ||
+        dashUrl ||
+        content.videoFallBackUrl?.trim() ||
+        playbackUrls[0] ||
+        ''
+    } else if (content.videoPreviewUrl) {
+      video = content.videoPreviewUrl.trim()
+      const previewVideoId = extractVideoId(video)
+      videoId = previewVideoId
+      videoSources = {
+        preview: content.videoPreviewUrl.trim(),
+        fallback: content.videoFallBackUrl?.trim() || undefined
+      }
+    } else if (content.videoFallBackUrl) {
+      video = content.videoFallBackUrl.trim()
+      const fallbackVideoId = extractVideoId(video)
+      videoId = fallbackVideoId
+      videoSources = {
+        fallback: content.videoFallBackUrl.trim()
+      }
+    }
+
+    return { video, videoId, videoSources }
+  }
+
   const renderContent = (content: StoreStory['contents'][0]) => {
     // Normalize contentType to handle both lowercase and capitalized versions
     const contentType = content.contentType?.toLowerCase() || ''
@@ -179,36 +250,79 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
       }
 
       case 'video': {
-        // Try to get video URL from any available source
-        const videoUrl = content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
+        const { video, videoId, videoSources } = processVideo(content)
 
-        if (videoUrl) {
-          return (
-            <div className='space-y-2'>
-              <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden'>
-                <video controls className='w-full h-full'>
-                  <source src={videoUrl} type='video/mp4' />
+        if (!video && !videoId) {
+          // If no video URL but has contentData, show as text
+          if (content.contentData && content.contentData !== 'string') {
+            return (
+              <div className='bg-yellow-50 border border-yellow-200 p-4 rounded-lg'>
+                <p className='text-yellow-800 text-sm'>
+                  <strong>Video:</strong> {content.contentData}
+                </p>
+                <p className='text-yellow-600 text-xs mt-1'>Video URL không khả dụng</p>
+              </div>
+            )
+          }
+          return null
+        }
+
+        return (
+          <div className='space-y-2'>
+            <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200'>
+              {/* Use Cloudflare Stream component if video ID is available */}
+              {videoId ? (
+                <div className='w-full aspect-video'>
+                  <Stream
+                    src={videoId}
+                    controls
+                    responsive
+                    className='w-full h-full'
+                    preload='metadata'
+                  />
+                </div>
+              ) : (
+                /* Fallback to regular video tag if no video ID */
+                <video
+                  controls
+                  className='w-full aspect-video'
+                  preload='metadata'
+                  playsInline
+                >
+                  {/* Priority: Preview (for compatibility) > HLS > DASH > Fallback > Direct URL */}
+                  {/* Preview URL first - works on all browsers, including those without HLS/DASH support */}
+                  {videoSources?.preview && (
+                    <source src={videoSources.preview} type='video/mp4' />
+                  )}
+                  {/* HLS - supported by Safari, iOS, and some Android browsers */}
+                  {videoSources?.hls && (
+                    <source src={videoSources.hls} type='application/vnd.apple.mpegurl' />
+                  )}
+                  {/* DASH - supported by Chrome, Firefox, Edge (with proper codec support) */}
+                  {videoSources?.dash && (
+                    <source src={videoSources.dash} type='application/dash+xml' />
+                  )}
+                  {/* Fallback URL */}
+                  {videoSources?.fallback && (
+                    <source src={videoSources.fallback} type='video/mp4' />
+                  )}
+                  {/* Fallback to direct video URL if no sources or if videoSources is empty */}
+                  {(!videoSources ||
+                    (!videoSources.hls &&
+                      !videoSources.dash &&
+                      !videoSources.preview &&
+                      !videoSources.fallback)) && (
+                      <source src={video} type='video/mp4' />
+                    )}
                   Trình duyệt của bạn không hỗ trợ video.
                 </video>
-              </div>
-              {content.contentData && content.contentData !== 'string' && (
-                <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
               )}
             </div>
-          )
-        }
-        // If no video URL but has contentData, show as text
-        if (content.contentData && content.contentData !== 'string') {
-          return (
-            <div className='bg-yellow-50 border border-yellow-200 p-4 rounded-lg'>
-              <p className='text-yellow-800 text-sm'>
-                <strong>Video:</strong> {content.contentData}
-              </p>
-              <p className='text-yellow-600 text-xs mt-1'>Video URL không khả dụng</p>
-            </div>
-          )
-        }
-        return null
+            {content.contentData && content.contentData !== 'string' && (
+              <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
+            )}
+          </div>
+        )
       }
 
       case 'image': {
@@ -228,7 +342,7 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
                       className='w-full h-full object-cover'
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
-                        target.src = 'https://via.placeholder.com/800x400?text=No+Image'
+                        target.src = 'https://i.pinimg.com/736x/d6/8a/12/d68a121e960094f99ad8acd37505fb7d.jpg'
                       }}
                     />
                   </div>
@@ -300,7 +414,7 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
               <div>
                 <h2 className='text-2xl font-bold text-gray-900'>{story.title}</h2>
                 <p className='text-sm text-gray-500 mt-1'>
-                  Ngày tạo: {new Date(story.createdAt).toLocaleDateString('vi-VN')}
+                  Ngày tạo: {formatDate(story.createdAt)}
                 </p>
               </div>
               <Button onClick={() => setShowEditDialog(true)} className='bg-green-600 hover:bg-green-700 text-white'>
