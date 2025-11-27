@@ -97,7 +97,7 @@ export const depositMoney = async (amount: number): Promise<DepositResponse> => 
     if ('data' in response && response.data) {
       return response.data as DepositResponse
     }
-    return response as DepositResponse
+    return response as any
   } catch (error) {
     console.error('Error depositing money:', error)
     throw error

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
@@ -152,7 +152,6 @@ const getStatusBadgeColor = (status: string): string => {
 
 function OrderDetailStaff() {
   const { id: orderId } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -474,8 +473,8 @@ function OrderDetailStaff() {
                           <Badge
                             variant='outline'
                             className={`text-xs ${promotion.promotionType === 'Product'
-                                ? 'border-blue-200 text-blue-700 bg-blue-50'
-                                : 'border-purple-200 text-purple-700 bg-purple-50'
+                              ? 'border-blue-200 text-blue-700 bg-blue-50'
+                              : 'border-purple-200 text-purple-700 bg-purple-50'
                               }`}
                           >
                             {promotion.promotionType === 'Product' ? 'Sản phẩm' : 'Toàn cửa hàng'}
@@ -605,10 +604,10 @@ function OrderDetailStaff() {
                         <div key={history.id} className='flex items-start gap-4 relative'>
                           <div
                             className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${isCurrent
-                                ? 'bg-green-600'
-                                : isCompleted
-                                  ? 'bg-gray-400'
-                                  : 'bg-white border-2 border-gray-300'
+                              ? 'bg-green-600'
+                              : isCompleted
+                                ? 'bg-gray-400'
+                                : 'bg-white border-2 border-gray-300'
                               }`}
                           >
                             {isCurrent || isCompleted ? (

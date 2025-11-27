@@ -33,9 +33,7 @@ import {
   ArrowDownCircle,
   ArrowUpRight,
   BarChart3,
-  PieChart,
-  Package,
-  Filter
+  PieChart
 } from 'lucide-react'
 
 function FinanceManagement() {
@@ -1094,7 +1092,7 @@ function FinanceManagement() {
                       </td>
                     </tr>
                   ) : (
-                    mockProductRevenueData.items.map((product, index) => (
+                    mockProductRevenueData.items.map((product) => (
                       <tr
                         key={product.id}
                         className='border-b border-gray-100 hover:bg-gray-50 transition-colors'

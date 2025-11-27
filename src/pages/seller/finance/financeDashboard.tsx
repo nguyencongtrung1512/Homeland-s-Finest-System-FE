@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
-import { Badge } from '../../../components/ui/badge'
 import {
   Wallet,
   TrendingUp,
@@ -12,11 +11,8 @@ import {
   Calendar,
   BarChart3,
   PieChart,
-  FileText,
   RefreshCw,
   ArrowRight,
-  Download,
-  Filter
 } from 'lucide-react'
 import Loading from '../../../components/Loading/loading'
 import { toast } from '../../../utils/toast'

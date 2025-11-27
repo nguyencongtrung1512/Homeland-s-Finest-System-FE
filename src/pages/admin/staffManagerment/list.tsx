@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Search,
   Users,
   Eye,
   Building2,

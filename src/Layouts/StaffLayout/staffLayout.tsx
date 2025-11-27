@@ -105,21 +105,8 @@ function StaffLayout() {
                                   <span className='text-sm font-medium text-gray-600'>Vai trò:</span>
                                   <span className='text-sm text-gray-900'>{user?.roleName || 'Staff'}</span>
                                 </div>
-                                <div className='flex justify-between items-center py-2 border-b border-gray-100'>
-                                  <span className='text-sm font-medium text-gray-600'>ID người dùng:</span>
-                                  <span className='text-sm text-gray-900'>{user?.userId || 'N/A'}</span>
-                                </div>
-                                <div className='flex justify-between items-center py-2 border-b border-gray-100'>
-                                  <span className='text-sm font-medium text-gray-600'>Quyền truy cập:</span>
-                                  <span
-                                    className={cn(
-                                      'text-sm px-2 py-1 rounded-full',
-                                      user?.isPermission ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                    )}
-                                  >
-                                    {user?.isPermission ? 'Có quyền' : 'Không có quyền'}
-                                  </span>
-                                </div>
+                                
+                              
                                 <div className='flex justify-between items-center py-2'>
                                   <span className='text-sm font-medium text-gray-600'>Token hết hạn:</span>
                                   <span className='text-sm text-gray-900'>
