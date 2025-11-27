@@ -5,6 +5,7 @@ import { productStoryApi } from '../../../../../apis/productStory.api'
 import type { ProductCertificateType } from '../../../../../types/productCertificateType'
 import type { ProductStory } from '../../../../../types/productStoryType'
 import Loading from '../../../../../components/Loading/loading'
+import { Stream } from '@cloudflare/stream-react'
 import ThreeDCarousel from '../../../../../components/ui/3d-caroseu'
 
 interface TabContent {
@@ -22,6 +23,75 @@ export const ProductTabs: React.FC = () => {
   const [storyLoading, setStoryLoading] = useState(false)
   const [certificatesError, setCertificatesError] = useState<string | null>(null)
   const [storyError, setStoryError] = useState<string | null>(null)
+
+  // Helper function to extract Cloudflare Stream video ID from URL
+  const extractVideoId = (url: string): string | undefined => {
+    try {
+      // Cloudflare Stream URL format: https://customer-xxx.cloudflarestream.com/{videoId}/watch
+      // or: https://customer-xxx.cloudflarestream.com/{videoId}/manifest/video.m3u8
+      const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
+      return match ? match[1] : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  // Process content video data to get video sources and ID
+  const processContentVideo = (content: any) => {
+    let video = ''
+    let videoId: string | undefined = undefined
+    let videoSources: { hls?: string; dash?: string; preview?: string; fallback?: string } | undefined = undefined
+
+    // Priority according to document: videoPlayBackUrl (Priority 1) > videoPreviewUrl (Priority 2) > videoFallBackUrl (Priority 3)
+    if (content.videoPlayBackUrl) {
+      // Try to extract video ID from any Cloudflare Stream URL
+      const playbackVideoId = extractVideoId(content.videoPlayBackUrl)
+      videoId = playbackVideoId
+
+      // Parse videoPlayBackUrl: contains both HLS (.m3u8) and DASH (.mpd) URLs
+      const playbackUrls = content.videoPlayBackUrl.split(',').map((url: string) => url.trim())
+      const hlsUrl = playbackUrls.find((url: string) => url.includes('.m3u8'))
+      const dashUrl = playbackUrls.find((url: string) => url.includes('.mpd'))
+
+      // Build videoSources object, only including URLs that exist
+      videoSources = {}
+      if (hlsUrl) videoSources.hls = hlsUrl
+      if (dashUrl) videoSources.dash = dashUrl
+      // Include preview as fallback for browsers that don't support HLS/DASH
+      if (content.videoPreviewUrl?.trim()) {
+        videoSources.preview = content.videoPreviewUrl.trim()
+      }
+      if (content.videoFallBackUrl?.trim()) {
+        videoSources.fallback = content.videoFallBackUrl.trim()
+      }
+
+      // Use preview URL as primary (most compatible), fallback to HLS/DASH if preview not available
+      video =
+        content.videoPreviewUrl?.trim() ||
+        hlsUrl ||
+        dashUrl ||
+        content.videoFallBackUrl?.trim() ||
+        playbackUrls[0] ||
+        ''
+    } else if (content.videoPreviewUrl) {
+      video = content.videoPreviewUrl.trim()
+      const previewVideoId = extractVideoId(video)
+      videoId = previewVideoId
+      videoSources = {
+        preview: content.videoPreviewUrl.trim(),
+        fallback: content.videoFallBackUrl?.trim() || undefined
+      }
+    } else if (content.videoFallBackUrl) {
+      video = content.videoFallBackUrl.trim()
+      const fallbackVideoId = extractVideoId(video)
+      videoId = fallbackVideoId
+      videoSources = {
+        fallback: content.videoFallBackUrl.trim()
+      }
+    }
+
+    return { video, videoId, videoSources }
+  }
 
   // Fetch certificates
   useEffect(() => {
@@ -185,65 +255,70 @@ export const ProductTabs: React.FC = () => {
               <p className='text-gray-500 text-base'>Chưa có câu chuyện sản phẩm.</p>
             </div>
           ) : (
-            <div>
-              {story.thumbnailUrl && (
-                <div className='mb-6'>
-                  <img
-                    src={story.thumbnailUrl}
-                    alt={story.title}
-                    className='w-full h-auto rounded-lg object-cover'
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      target.src = 'https://via.placeholder.com/800x400?text=No+Image'
-                    }}
-                  />
-                </div>
-              )}
-              <h3 className='text-black text-xl font-bold mb-4'>{story.title}</h3>
-              {storyImages.length > 0 && (
-                <div className='my-6' style={{ height: '500px' }}>
-                  <ThreeDCarousel
-                    images={storyImages}
-                    radius={storyImages.length <= 3 ? 100 : 240}
-                    cardW={storyImages.length <= 3 ? 200 : 180}
-                    cardH={storyImages.length <= 3 ? 280 : 240}
-                  />
-                </div>
-              )}
-              {story.contents && story.contents.length > 0 ? (
-                <div className='space-y-4'>
-                  {story.contents
-                    .sort((a: any, b: any) => a.order - b.order)
-                    .map((content: any) => {
-                      if (content.contentType === 'text') {
-                        return (
-                          <p key={content.id} className='text-gray-700 text-base leading-6 whitespace-pre-wrap'>
-                            {content.contentData}
-                          </p>
-                        )
-                      } else if (content.contentType === 'image') {
-                        // Images will be shown in 3D carousel, skip individual rendering
-                        return null
-                      } else if (content.contentType === 'video') {
-                        return (
-                          <div key={content.id} className='my-4 flex justify-center'>
-                            <video controls className='max-w-2xl w-full rounded-lg' style={{ maxHeight: '500px' }}>
-                              <source src={content.contentData} type='video/mp4' />
-                              Trình duyệt của bạn không hỗ trợ video.
-                            </video>
-                          </div>
-                        )
-                      } else if (content.contentType === 'media') {
-                        // Handle media type - can be video URL or JSON array of images
-                        try {
-                          // Try to parse as JSON array (for images)
-                          const parsed = JSON.parse(content.contentData)
-                          if (Array.isArray(parsed)) {
-                            // Images will be shown in 3D carousel, skip individual rendering
+            <div className='space-y-6'>
+              {/* Title */}
+              <div className=' grid grid-cols-1 lg:grid-cols-2'>
+                <div>
+                  <h3 className='text-black text-xl font-bold'>{story.title}</h3>
+                  {story.contents && story.contents.length > 0 ? (
+                    <div className=' mt-22'>
+                      <div className='lg:col-span-2 space-y-4'>
+                        {story.contents
+                          .sort((a: any, b: any) => a.order - b.order)
+                          .map((content: any) => {
+                            if (content.contentType === 'text') {
+                              return (
+                                <p key={content.id} className='text-gray-700 text-base leading-6 whitespace-pre-wrap'>
+                                  {content.contentData}
+                                </p>
+                              )
+                            }
                             return null
-                          }
+                          })}
+                      </div>
+
+                      {/* Images List - Right Side with ThreeDCarousel */}
+
+                    </div>
+                  ) : (
+                    <p className='text-gray-500 text-base'>Chưa có nội dung câu chuyện.</p>
+                  )}
+                </div>
+                {storyImages.length > 0 && (
+                  <div className='lg:col-span-1'>
+                    <div className='sticky top-6'>
+                      <div style={{ height: '500px' }}>
+                        <ThreeDCarousel
+                          images={storyImages}
+                          radius={storyImages.length <= 3 ? 100 : 240}
+                          cardW={storyImages.length <= 3 ? 200 : 180}
+                          cardH={storyImages.length <= 3 ? 280 : 240}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+
+
+              {/* Video - Bottom */}
+              {story.contents &&
+                story.contents.length > 0 &&
+                (() => {
+                  // Find all video contents
+                  const videoContents = story.contents
+                    .sort((a: any, b: any) => a.order - b.order)
+                    .filter((content: any) => {
+                      if (content.contentType === 'video') return true
+                      if (content.contentType === 'media') {
+                        const { video } = processContentVideo(content)
+                        if (video) return true
+                        // Check if contentData is a video URL
+                        try {
+                          const parsed = JSON.parse(content.contentData)
+                          if (Array.isArray(parsed)) return false
                         } catch {
-                          // Not JSON, check if it's a video URL
                           const contentData = content.contentData
                           if (
                             contentData &&
@@ -252,33 +327,123 @@ export const ProductTabs: React.FC = () => {
                               contentData.includes('.ogg') ||
                               contentData.includes('/videos/'))
                           ) {
-                            // It's a video URL
-                            return (
-                              <div key={content.id} className='my-4 flex justify-center'>
-                                <video controls className='max-w-2xl w-full rounded-lg' style={{ maxHeight: '500px' }}>
-                                  <source src={contentData} type='video/mp4' />
-                                  Trình duyệt của bạn không hỗ trợ video.
-                                </video>
-                              </div>
-                            )
-                          } else if (
-                            contentData &&
-                            (contentData.includes('.jpg') ||
-                              contentData.includes('.jpeg') ||
-                              contentData.includes('.png') ||
-                              contentData.includes('/images/'))
-                          ) {
-                            // Images will be shown in 3D carousel, skip individual rendering
-                            return null
+                            return true
                           }
                         }
                       }
-                      return null
-                    })}
-                </div>
-              ) : (
-                <p className='text-gray-500 text-base'>Chưa có nội dung câu chuyện.</p>
-              )}
+                      return false
+                    })
+
+                  if (videoContents.length === 0) return null
+
+                  return (
+                    <div className='space-y-4'>
+                      {videoContents.map((content: any) => {
+                        if (content.contentType === 'video') {
+                          return (
+                            <div key={content.id} className='flex justify-center'>
+                              <div className='w-full max-w-2xl rounded-lg overflow-hidden'>
+                                <video controls className='w-full aspect-video rounded-lg' preload='metadata' playsInline>
+                                  <source src={content.contentData} type='video/mp4' />
+                                  Trình duyệt của bạn không hỗ trợ video.
+                                </video>
+                              </div>
+                            </div>
+                          )
+                        } else if (content.contentType === 'media') {
+                          // First, check if content has video URLs (videoPreviewUrl, videoPlayBackUrl, videoFallBackUrl)
+                          const { video, videoId, videoSources } = processContentVideo(content)
+
+                          // If video URLs exist, render video
+                          if (video) {
+                            return (
+                              <div key={content.id} className='flex justify-center'>
+                                <div className='w-full max-w-2xl rounded-lg overflow-hidden'>
+                                  {/* Use Cloudflare Stream component if video ID is available */}
+                                  {videoId ? (
+                                    <div className='w-full aspect-video'>
+                                      <Stream
+                                        src={videoId}
+                                        controls
+                                        responsive
+                                        className='w-full h-full'
+                                        preload='metadata'
+                                      />
+                                    </div>
+                                  ) : (
+                                    /* Fallback to regular video tag if no video ID */
+                                    <video
+                                      controls
+                                      className='w-full aspect-video rounded-lg'
+                                      preload='metadata'
+                                      playsInline
+                                    >
+                                      {/* Priority: Preview (for compatibility) > HLS > DASH > Fallback > Direct URL */}
+                                      {/* Preview URL first - works on all browsers, including those without HLS/DASH support */}
+                                      {videoSources?.preview && <source src={videoSources.preview} type='video/mp4' />}
+                                      {/* HLS - supported by Safari, iOS, and some Android browsers */}
+                                      {videoSources?.hls && (
+                                        <source src={videoSources.hls} type='application/vnd.apple.mpegurl' />
+                                      )}
+                                      {/* DASH - supported by Chrome, Firefox, Edge (with proper codec support) */}
+                                      {videoSources?.dash && (
+                                        <source src={videoSources.dash} type='application/dash+xml' />
+                                      )}
+                                      {/* Fallback URL */}
+                                      {videoSources?.fallback && (
+                                        <source src={videoSources.fallback} type='video/mp4' />
+                                      )}
+                                      {/* Fallback to direct video URL if no sources or if videoSources is empty */}
+                                      {(!videoSources ||
+                                        (!videoSources.hls &&
+                                          !videoSources.dash &&
+                                          !videoSources.preview &&
+                                          !videoSources.fallback)) && <source src={video} type='video/mp4' />}
+                                      Trình duyệt của bạn không hỗ trợ video.
+                                    </video>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          }
+
+                          // Check if contentData is a video URL
+                          try {
+                            const parsed = JSON.parse(content.contentData)
+                            if (Array.isArray(parsed)) return null
+                          } catch {
+                            const contentData = content.contentData
+                            if (
+                              contentData &&
+                              (contentData.includes('.mp4') ||
+                                contentData.includes('.webm') ||
+                                contentData.includes('.ogg') ||
+                                contentData.includes('/videos/'))
+                            ) {
+                              // It's a video URL
+                              return (
+                                <div key={content.id} className='flex justify-center'>
+                                  <div className='w-full max-w-2xl rounded-lg overflow-hidden'>
+                                    <video
+                                      controls
+                                      className='w-full aspect-video rounded-lg'
+                                      preload='metadata'
+                                      playsInline
+                                    >
+                                      <source src={contentData} type='video/mp4' />
+                                      Trình duyệt của bạn không hỗ trợ video.
+                                    </video>
+                                  </div>
+                                </div>
+                              )
+                            }
+                          }
+                        }
+                        return null
+                      })}
+                    </div>
+                  )
+                })()}
             </div>
           )}
         </div>

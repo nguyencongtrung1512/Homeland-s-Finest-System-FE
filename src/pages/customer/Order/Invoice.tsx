@@ -257,7 +257,7 @@ function Invoice() {
             </div>
             <h2 className='text-2xl font-bold text-gray-900'>Lỗi</h2>
             <p className='text-gray-600'>{error || 'Không tìm thấy thông tin đơn hàng'}</p>
-            <Button onClick={() => navigate('/profile?tab=orders')} className='w-full bg-green-600 hover:bg-green-700'>
+            <Button onClick={() => navigate('/  ')} className='w-full bg-green-600 hover:bg-green-700'>
               Quay lại danh sách đơn hàng
             </Button>
           </div>

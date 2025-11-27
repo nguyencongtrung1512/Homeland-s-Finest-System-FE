@@ -7,27 +7,22 @@ interface User {
   expiresAt: string
   userId: string
   email: string
-  isPermission: boolean
 }
 
 interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
-  hasPermission: boolean
   logout: () => Promise<void>
   login: (userData: User) => void
   clearAuth: () => void
-  checkPermission: () => boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
-  hasPermission: false,
   logout: async () => { },
   login: () => { },
-  clearAuth: () => { },
-  checkPermission: () => false
+  clearAuth: () => { }
 })
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -37,26 +32,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   })
 
   const isAuthenticated = !!user
-  const hasPermission = user?.isPermission ?? false
 
   const login = (userData: User) => {
     setUser(userData)
     localStorage.setItem('user', JSON.stringify(userData))
     localStorage.setItem('token', userData.token)
-    localStorage.setItem('userPermission', userData.isPermission.toString())
   }
 
   const clearAuth = () => {
     setUser(null)
     localStorage.removeItem('user')
     localStorage.removeItem('token')
-    localStorage.removeItem('userPermission')
     localStorage.removeItem('chatbot_msg')
-  }
-
-  const checkPermission = (): boolean => {
-    if (!user) return false
-    return user.isPermission
   }
 
   const logout = async () => {
@@ -76,11 +63,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         isAuthenticated,
-        hasPermission,
         login,
         logout,
-        clearAuth,
-        checkPermission
+        clearAuth
       }}
     >
       {children}

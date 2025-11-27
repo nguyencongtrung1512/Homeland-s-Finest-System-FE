@@ -14,6 +14,8 @@ import {
 import { Button } from '../../../../../components/ui/button'
 import { useProductDetail } from '../../../../../hooks/useProductDetail'
 import ProductImageCarousel from '../../../../../components/ui/product-caroseu'
+import { Stream } from '@cloudflare/stream-react'
+import { Play } from 'lucide-react'
 
 interface VariantOption {
   id: string
@@ -50,6 +52,9 @@ interface ProductWithVariants {
   description: string | null
   productImages: string[] | null
   productVideo: string | null
+  videoPreviewUrl?: string | null
+  videoPlayBackUrl?: string | null
+  videoFallBackUrl?: string | null
   material: string | null
   saleCount: number | null
   rating: number
@@ -82,6 +87,80 @@ function ProductGallery() {
   const productImageRef = useRef<HTMLDivElement>(null)
   const { addToCart } = useCart()
   const { isAuthenticated } = useAuth()
+
+  // Helper function to extract Cloudflare Stream video ID from URL
+  const extractVideoId = (url: string): string | undefined => {
+    try {
+      // Cloudflare Stream URL format: https://customer-xxx.cloudflarestream.com/{videoId}/watch
+      // or: https://customer-xxx.cloudflarestream.com/{videoId}/manifest/video.m3u8
+      const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
+      return match ? match[1] : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  // Process product video data to get video sources and ID
+  const processProductVideo = (productData: ProductWithVariants) => {
+    let video = ''
+    let videoId: string | undefined = undefined
+    let videoSources: { hls?: string; dash?: string; preview?: string; fallback?: string } | undefined = undefined
+
+    // Priority according to document: videoPlayBackUrl (Priority 1) > videoPreviewUrl (Priority 2) > videoFallBackUrl (Priority 3) > productVideo (legacy)
+    if (productData.videoPlayBackUrl) {
+      // Try to extract video ID from any Cloudflare Stream URL
+      const playbackVideoId = extractVideoId(productData.videoPlayBackUrl)
+      videoId = playbackVideoId
+
+      // Parse videoPlayBackUrl: contains both HLS (.m3u8) and DASH (.mpd) URLs
+      const playbackUrls = productData.videoPlayBackUrl.split(',').map((url) => url.trim())
+      const hlsUrl = playbackUrls.find((url) => url.includes('.m3u8'))
+      const dashUrl = playbackUrls.find((url) => url.includes('.mpd'))
+
+      // Build videoSources object, only including URLs that exist
+      videoSources = {}
+      if (hlsUrl) videoSources.hls = hlsUrl
+      if (dashUrl) videoSources.dash = dashUrl
+      // Include preview as fallback for browsers that don't support HLS/DASH
+      if (productData.videoPreviewUrl?.trim()) {
+        videoSources.preview = productData.videoPreviewUrl.trim()
+      }
+      if (productData.videoFallBackUrl?.trim()) {
+        videoSources.fallback = productData.videoFallBackUrl.trim()
+      }
+
+      // Use preview URL as primary (most compatible), fallback to HLS/DASH if preview not available
+      video =
+        productData.videoPreviewUrl?.trim() ||
+        hlsUrl ||
+        dashUrl ||
+        productData.videoFallBackUrl?.trim() ||
+        playbackUrls[0] ||
+        ''
+    } else if (productData.videoPreviewUrl) {
+      video = productData.videoPreviewUrl.trim()
+      const previewVideoId = extractVideoId(video)
+      videoId = previewVideoId
+      videoSources = {
+        preview: productData.videoPreviewUrl.trim(),
+        fallback: productData.videoFallBackUrl?.trim() || undefined
+      }
+    } else if (productData.videoFallBackUrl) {
+      video = productData.videoFallBackUrl.trim()
+      const fallbackVideoId = extractVideoId(video)
+      videoId = fallbackVideoId
+      videoSources = {
+        fallback: productData.videoFallBackUrl.trim()
+      }
+    } else if (productData.productVideo) {
+      // Legacy support
+      video = productData.productVideo
+      const legacyVideoId = extractVideoId(video)
+      videoId = legacyVideoId
+    }
+
+    return { video, videoId, videoSources }
+  }
 
   // ✅ Collect all images from product and all variants (recursive)
   const allImages = useMemo(() => {
@@ -171,7 +250,6 @@ function ProductGallery() {
   const currentPrice = currentVariant?.finalPrice || 0
   const currentStock = currentVariant?.availableQuantity || 0
 
-  // ✅ Auto-select first option in each group on mount
   useEffect(() => {
     const productData = getProductData()
     if (productData?.variantGroups && productData.variantGroups.length > 0) {
@@ -406,6 +484,75 @@ function ProductGallery() {
                   />
                 </div>
               )}
+
+              {/* Product Video */}
+              {(() => {
+                const productData = getProductData()
+                if (!productData) return null
+
+                const { video, videoId, videoSources } = processProductVideo(productData)
+
+                if (!video) return null
+
+                return (
+                  <div className='mt-4'>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <Play size={16} className='text-green-600' />
+                      <span className='text-sm font-medium text-gray-700'>Video sản phẩm</span>
+                    </div>
+                    <div className='w-full rounded-lg overflow-hidden border border-gray-200 bg-gray-100'>
+                      {/* Use Cloudflare Stream component if video ID is available */}
+                      {videoId ? (
+                        <div className='w-full aspect-video'>
+                          <Stream
+                            src={videoId}
+                            controls
+                            responsive
+                            className='w-full h-full'
+                            preload='metadata'
+                          />
+                        </div>
+                      ) : (
+                        /* Fallback to regular video tag if no video ID */
+                        <video
+                          controls
+                          className='w-full aspect-video'
+                          poster={productData.productImages?.[0] || undefined}
+                          preload='metadata'
+                          playsInline
+                        >
+                          {/* Priority: Preview (for compatibility) > HLS > DASH > Fallback > Direct URL */}
+                          {/* Preview URL first - works on all browsers, including those without HLS/DASH support */}
+                          {videoSources?.preview && (
+                            <source src={videoSources.preview} type='video/mp4' />
+                          )}
+                          {/* HLS - supported by Safari, iOS, and some Android browsers */}
+                          {videoSources?.hls && (
+                            <source src={videoSources.hls} type='application/vnd.apple.mpegurl' />
+                          )}
+                          {/* DASH - supported by Chrome, Firefox, Edge (with proper codec support) */}
+                          {videoSources?.dash && (
+                            <source src={videoSources.dash} type='application/dash+xml' />
+                          )}
+                          {/* Fallback URL */}
+                          {videoSources?.fallback && (
+                            <source src={videoSources.fallback} type='video/mp4' />
+                          )}
+                          {/* Fallback to direct video URL if no sources or if videoSources is empty */}
+                          {(!videoSources ||
+                            (!videoSources.hls &&
+                              !videoSources.dash &&
+                              !videoSources.preview &&
+                              !videoSources.fallback)) && (
+                              <source src={video} type='video/mp4' />
+                            )}
+                          Trình duyệt của bạn không hỗ trợ video.
+                        </video>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Product Information */}

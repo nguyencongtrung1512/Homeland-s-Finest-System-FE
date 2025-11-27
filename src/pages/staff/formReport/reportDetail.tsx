@@ -28,9 +28,10 @@ import type { FormDTO, FormStatus } from '../../../types/form.type'
 import type { StoreResponse } from '../../../apis/store.api'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 import { resolveImageUrl } from '../../../utils/image'
+import { CopyButton } from '../../../components/ui/copy'
 
 function ReportDetail() {
   const { formId } = useParams<{ formId: string }>()
@@ -42,9 +43,10 @@ function ReportDetail() {
   const [storeInfo, setStoreInfo] = useState<StoreResponse | null>(null)
   const [loadingStore, setLoadingStore] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [staffReply, setStaffReply] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState<'ApprovedByStaff' | 'DeniedByStaff' | 'WaitingSellerResponse' | 'Rejected'>(
+  const [selectedStatus, setSelectedStatus] = useState<'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected'>(
     'ApprovedByStaff'
   )
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -64,8 +66,8 @@ function ReportDetail() {
   useEffect(() => {
     if (form) {
       if (form.status === 'Processing') {
-        setSelectedStatus('WaitingSellerResponse') // Default to waiting seller response for initial processing
-      } else if (form.status === 'WaitingSellerResponse' || form.status === 'Rejected') {
+        setSelectedStatus('Confirmed') // Default to waiting seller response for initial processing
+      } else if (form.status === 'Confirmed' || form.status === 'Rejected') {
         setSelectedStatus('ApprovedByStaff') // Default to approve for waiting seller response/rejected
       }
     }
@@ -189,11 +191,11 @@ function ReportDetail() {
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
-      case 'WaitingSellerResponse':
+      case 'Confirmed':
         return {
           icon: <Clock className='w-5 h-5 text-orange-500' />,
           badge: 'default',
-          text: 'Chờ phản hồi từ người bán',
+          text: 'Đang xử lí đơn',
           color: 'text-orange-700',
           bgColor: 'bg-orange-50'
         }
@@ -248,22 +250,48 @@ function ReportDetail() {
     }
   }
 
-  // Handle staff update with modal
+  // Handle staff update with modal (for ApprovedByStaff and DeniedByStaff)
   const handleStaffUpdate = async () => {
-    if (!form || !staffReply.trim()) {
-      toast.error('Vui lòng nhập phản hồi từ nhân viên')
+    if (!form) {
+      toast.error('Không tìm thấy khiếu nại')
       return
     }
 
     try {
       setUpdating(true)
       await formApi.staffUpdateForm(form.id, {
-        reply: staffReply.trim(),
+        reply: staffReply.trim() || '',
         status: selectedStatus
       })
 
       toast.success('Cập nhật thành công!')
       setShowUpdateModal(false)
+      setStaffReply('')
+      loadFormDetail() // Reload form data
+    } catch (error) {
+      console.error('Error updating form:', error)
+      toast.error('Có lỗi xảy ra khi cập nhật')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  // Handle status update without reply (for Confirmed and Rejected)
+  const handleStatusUpdate = async () => {
+    if (!form) {
+      toast.error('Không tìm thấy khiếu nại')
+      return
+    }
+
+    try {
+      setUpdating(true)
+      await formApi.staffUpdateForm(form.id, {
+        reply: '', // Send empty reply for Confirmed and Rejected
+        status: selectedStatus
+      })
+
+      toast.success('Cập nhật thành công!')
+      setShowConfirmDialog(false)
       loadFormDetail() // Reload form data
     } catch (error) {
       console.error('Error updating form:', error)
@@ -319,9 +347,7 @@ function ReportDetail() {
           {/* Customer Information */}
           <Card className='bg-white shadow-sm gap-3 border-gray-200'>
             <CardHeader className='pt-4 pb-2 bg-gray-50/50'>
-              <CardTitle className='flex items-center gap-2 text-lg text-gray-700'>
-                Thông tin khách hàng
-              </CardTitle>
+              <CardTitle className='flex items-center gap-2 text-lg text-gray-700'>Thông tin khách hàng</CardTitle>
             </CardHeader>
             <CardContent className='pt-0 pb-4'>
               <div className='flex items-center gap-4'>
@@ -396,7 +422,12 @@ function ReportDetail() {
                         )}
                       </div>
                       <div>
-                        <button className='font-semibold text-gray-900 text-lg hover:text-blue-600 hover:underline' onClick={handleStoreClick}>{storeInfo.storeName}</button>
+                        <button
+                          className='font-semibold text-gray-900 text-lg hover:text-blue-600 hover:underline'
+                          onClick={handleStoreClick}
+                        >
+                          {storeInfo.storeName}
+                        </button>
                         <div className='space-y-1 mt-2'>
                           <div className='flex items-center gap-2'>
                             <span className='text-sm text-gray-700'>{storeInfo.address}</span>
@@ -409,7 +440,6 @@ function ReportDetail() {
                         </div>
                       </div>
                     </div>
-
                   </>
                 ) : (
                   <div className='text-center py-4'>
@@ -425,6 +455,9 @@ function ReportDetail() {
           <Card className='bg-white shadow-sm gap-3 border-gray-200'>
             <CardHeader className='pt-4 pb-2 bg-gray-50/50'>
               <div className='flex items-center gap-3 mb-3'>
+                <Badge variant='outline' className='text-xs px-2.5 py-1 border-gray-300'>
+                  Nội dung khiếu nại
+                </Badge>
                 <Badge
                   variant={statusInfo.badge as 'default' | 'secondary' | 'destructive' | 'outline'}
                   className={`${statusInfo.bgColor} ${statusInfo.color} border-0 px-3 py-1`}
@@ -434,9 +467,7 @@ function ReportDetail() {
                     <span className='font-medium'>{statusInfo.text}</span>
                   </div>
                 </Badge>
-                <Badge variant='outline' className='text-xs px-2.5 py-1 border-gray-300'>
-                  {getTypeText(form.type)}
-                </Badge>
+
               </div>
               <CardTitle className='text-xl text-gray-900 font-bold'>{form.subject}</CardTitle>
             </CardHeader>
@@ -532,9 +563,19 @@ function ReportDetail() {
                 </div>
               </div>
               {form.orderId && (
-                <div className='pb-3 border-b border-gray-100'>
-                  <Label className='text-sm font-medium text-gray-500 mb-1 block'>ID đơn hàng</Label>
-                  <p className='text-sm text-gray-900 font-mono break-all mt-1'>{form.orderId}</p>
+                <div className='flex items-center gap-2 pb-3 border-b border-gray-100'>
+                  <div>
+                    <Label className='text-sm font-medium text-gray-500 mb-1 block'>ID đơn hàng</Label>
+                    <p className='text-sm text-gray-900 font-mono break-all flex-1'>{form.orderId}</p>
+                  </div>
+                  <div className='flex items-center gap-2 ml-2'>
+                    <CopyButton
+                      textToCopy={form.orderId}
+                      idleText='Copy'
+                      copiedText='Đã copy!'
+                      className='h-8 px-3 text-xs'
+                    />
+                  </div>
                 </div>
               )}
               {form.deadlineForSellerReply && (
@@ -548,7 +589,9 @@ function ReportDetail() {
                     <div className='mt-2'>
                       <Badge
                         variant={form.isSellerReplied ? 'default' : 'secondary'}
-                        className={form.isSellerReplied ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}
+                        className={
+                          form.isSellerReplied ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                        }
                       >
                         {form.isSellerReplied ? 'Đã phản hồi' : 'Chưa phản hồi'}
                       </Badge>
@@ -592,9 +635,7 @@ function ReportDetail() {
               </CardHeader>
               <CardContent className='space-y-4'>
                 <div className='bg-purple-50 border border-purple-200 rounded-lg p-4'>
-                  <p className='text-purple-800 whitespace-pre-wrap break-words leading-relaxed'>
-                    {form.sellerReply}
-                  </p>
+                  <p className='text-purple-800 whitespace-pre-wrap break-words leading-relaxed'>{form.sellerReply}</p>
                   {form.sellerReplyAt && (
                     <p className='text-purple-600 text-xs mt-3 border-t border-purple-200 pt-2'>
                       Phản hồi lúc: {form.sellerReplyAt}
@@ -668,8 +709,8 @@ function ReportDetail() {
             </Card>
           )}
 
-          {/* Staff Actions - Show for Processing, WaitingSellerResponse, and Rejected status */}
-          {(form.status === 'Processing' || form.status === 'WaitingSellerResponse' || form.status === 'Rejected') && (
+          {/* Staff Actions - Show for Processing, Confirmed, and Rejected status */}
+          {(form.status === 'Processing' || form.status === 'Confirmed' || form.status === 'Rejected') && (
             <Card className='bg-white shadow-sm border-blue-200'>
               <CardHeader className='pb-3 bg-blue-50/50'>
                 <CardTitle className='flex items-center gap-2 text-lg text-blue-700'>
@@ -685,29 +726,29 @@ function ReportDetail() {
                       <div className='grid grid-cols-2 gap-3'>
                         <Button
                           onClick={() => {
-                            setSelectedStatus('WaitingSellerResponse')
-                            setShowUpdateModal(true)
+                            setSelectedStatus('Confirmed')
+                            setShowConfirmDialog(true)
                           }}
                           disabled={updating}
                           className='w-full bg-green-600 hover:bg-green-700 text-white h-12'
                         >
                           <CheckCircle className='w-4 h-4 mr-2' />
-                          Tiếp nhận
+                          Tiếp nhận xử lí đơn
                         </Button>
                         <Button
                           onClick={() => {
                             setSelectedStatus('Rejected')
-                            setShowUpdateModal(true)
+                            setShowConfirmDialog(true)
                           }}
                           disabled={updating}
                           className='w-full bg-red-600 hover:bg-red-700 text-white h-12'
                         >
                           <XCircle className='w-4 h-4 mr-2' />
-                          Từ chối
+                          Từ chối xử lí đơn
                         </Button>
                       </div>
                     </div>
-                  ) : form.status === 'WaitingSellerResponse' || form.status === 'Rejected' ? (
+                  ) : form.status === 'Confirmed' || form.status === 'Rejected' ? (
                     <div className='space-y-3'>
                       <div className='grid grid-cols-2 gap-3'>
                         <Button
@@ -719,7 +760,7 @@ function ReportDetail() {
                           className='w-full bg-green-600 hover:bg-green-700 text-white h-12'
                         >
                           <CheckCircle className='w-4 h-4 mr-2' />
-                          Chấp nhận
+                          Duyệt đơn
                         </Button>
                         <Button
                           onClick={() => {
@@ -730,7 +771,7 @@ function ReportDetail() {
                           className='w-full bg-red-600 hover:bg-red-700 text-white h-12'
                         >
                           <XCircle className='w-4 h-4 mr-2' />
-                          Từ chối
+                          Từ chối đơn
                         </Button>
                       </div>
                     </div>
@@ -766,7 +807,7 @@ function ReportDetail() {
                 ? 'Chấp nhận khiếu nại'
                 : selectedStatus === 'DeniedByStaff'
                   ? 'Từ chối khiếu nại'
-                  : selectedStatus === 'WaitingSellerResponse'
+                  : selectedStatus === 'Confirmed'
                     ? 'Tiếp nhận khiếu nại'
                     : selectedStatus === 'Rejected'
                       ? 'Từ chối xử lý khiếu nại'
@@ -788,7 +829,7 @@ function ReportDetail() {
               <Label className='text-sm font-medium text-gray-700 mb-2 block'>Trạng thái</Label>
               <Select
                 value={selectedStatus}
-                onValueChange={(value: 'ApprovedByStaff' | 'DeniedByStaff' | 'WaitingSellerResponse' | 'Rejected') =>
+                onValueChange={(value: 'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected') =>
                   setSelectedStatus(value)
                 }
                 disabled={updating}
@@ -799,10 +840,10 @@ function ReportDetail() {
                 <SelectContent>
                   {form.status === 'Processing' ? (
                     <>
-                      <SelectItem value='WaitingSellerResponse'>Tiếp nhận</SelectItem>
-                      <SelectItem value='Rejected'>Từ chối</SelectItem>
+                      <SelectItem value='Confirmed'>Tiếp nhận xử lí đơn</SelectItem>
+                      <SelectItem value='Rejected'>Từ chối xử lí đơn</SelectItem>
                     </>
-                  ) : form.status === 'WaitingSellerResponse' || form.status === 'Rejected' ? (
+                  ) : form.status === 'Confirmed' || form.status === 'Rejected' ? (
                     <>
                       <SelectItem value='ApprovedByStaff'>Chấp nhận</SelectItem>
                       <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
@@ -811,7 +852,7 @@ function ReportDetail() {
                     <>
                       <SelectItem value='ApprovedByStaff'>Duyệt</SelectItem>
                       <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
-                      <SelectItem value='WaitingSellerResponse'>Chờ phản hồi người bán</SelectItem>
+                      <SelectItem value='Confirmed'>Chờ phản hồi người bán</SelectItem>
                       <SelectItem value='Rejected'>Từ chối</SelectItem>
                     </>
                   )}
@@ -821,7 +862,9 @@ function ReportDetail() {
 
             {/* Reply */}
             <div>
-              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Phản hồi</Label>
+              <Label className='text-sm font-medium text-gray-700 mb-2 block'>
+                Phản hồi <span className='text-gray-400 text-xs font-normal'>(Tùy chọn)</span>
+              </Label>
               <Textarea
                 placeholder='Nhập phản hồi từ nhân viên...'
                 value={staffReply}
@@ -843,7 +886,7 @@ function ReportDetail() {
               </Button>
               <Button
                 onClick={handleStaffUpdate}
-                disabled={updating || !staffReply.trim()}
+                disabled={updating}
                 className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
               >
                 {updating ? (
@@ -855,7 +898,7 @@ function ReportDetail() {
                   'Chấp nhận'
                 ) : selectedStatus === 'DeniedByStaff' ? (
                   'Từ chối'
-                ) : selectedStatus === 'WaitingSellerResponse' ? (
+                ) : selectedStatus === 'Confirmed' ? (
                   'Tiếp nhận'
                 ) : selectedStatus === 'Rejected' ? (
                   'Từ chối'
@@ -863,7 +906,71 @@ function ReportDetail() {
                   'Cập nhật'
                 )}
               </Button>
-            </div>           
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog for Confirmed and Rejected */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className='max-w-md mx-auto'>
+          <DialogHeader>
+            <DialogTitle className='text-lg font-semibold text-gray-900 flex items-center gap-2'>
+              {selectedStatus === 'Confirmed' ? (
+                <CheckCircle className='w-5 h-5 text-green-500' />
+              ) : (
+                <XCircle className='w-5 h-5 text-red-500' />
+              )}
+              {selectedStatus === 'Confirmed' ? 'Xác nhận tiếp nhận khiếu nại' : 'Xác nhận từ chối xử lý khiếu nại'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className='space-y-4'>
+            {/* Form Info */}
+            <div className='bg-gray-50 rounded-lg p-3'>
+              <p className='text-sm text-gray-600'>
+                <span className='font-medium'>Khiếu nại:</span> {form?.subject}
+              </p>
+              <p className='text-xs text-gray-500 mt-1'>#{form?.id}</p>
+            </div>
+
+            {/* Confirmation Message */}
+            <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
+              <p className='text-sm text-blue-800'>
+                {selectedStatus === 'Confirmed'
+                  ? 'Bạn có chắc chắn muốn tiếp nhận xử lý khiếu nại này?'
+                  : 'Bạn có chắc chắn muốn từ chối xử lý khiếu nại này?'}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className='flex gap-3 pt-2'>
+              <Button
+                variant='outline'
+                onClick={() => setShowConfirmDialog(false)}
+                className='flex-1'
+                disabled={updating}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={handleStatusUpdate}
+                disabled={updating}
+                className={`flex-1 text-white ${selectedStatus === 'Confirmed' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                  }`}
+              >
+                {updating ? (
+                  <>
+                    <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                    Đang xử lý...
+                  </>
+                ) : selectedStatus === 'Confirmed' ? (
+                  'Xác nhận tiếp nhận'
+                ) : (
+                  'Xác nhận từ chối'
+                )}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

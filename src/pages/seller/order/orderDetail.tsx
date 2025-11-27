@@ -5,7 +5,13 @@ import { Card, CardContent } from '../../../components/ui/card'
 import { Dialog, DialogContent } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
 import { Input } from '../../../components/ui/input'
-import { getOrderDetail, confirmOrder, readyToPickOrder, cancelOrder } from '../../../apis/order.api'
+import {
+  getOrderDetail,
+  confirmOrder,
+  readyToPickOrder,
+  cancelOrder,
+  uploadVerificationImages
+} from '../../../apis/order.api'
 import type { Order as APIOrder } from '../../../types/orderType'
 import {
   Loader2,
@@ -17,7 +23,10 @@ import {
   AlertCircle,
   Gift,
   CheckCircle,
-  XCircle
+  XCircle,
+  Upload,
+  X,
+  Image as ImageIcon
 } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 
@@ -81,6 +90,8 @@ interface Order {
     time: string
   }>
   orderPromotions: OrderPromotion[]
+  VerificationImages?: string[]
+  VerificationAt?: string | null
 }
 
 interface OrderDetailModalProps {
@@ -99,6 +110,10 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [ghnCode, setGhnCode] = useState('')
   const [showShipDialog, setShowShipDialog] = useState(false)
+  const [verificationImages, setVerificationImages] = useState<File[]>([])
+  const [verificationImagePreviews, setVerificationImagePreviews] = useState<string[]>([])
+  const [existingVerificationImages, setExistingVerificationImages] = useState<string[]>([])
+  const [uploadVerificationLoading, setUploadVerificationLoading] = useState(false)
 
   // Transform API order to UI order format
   const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
@@ -154,7 +169,9 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
         discountType: promo?.discountType || '',
         discountValue: promo?.discountValue || 0,
         discountAmount: promo?.discountAmount || 0
-      }))
+      })),
+      VerificationImages: apiOrder?.VerificationImages || [],
+      VerificationAt: apiOrder?.VerificationAt || null
     }
   }
 
@@ -169,6 +186,8 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
       const apiOrder = await getOrderDetail(orderId)
       const transformedOrder = transformAPIOrderToUIOrder(apiOrder)
       setOrder(transformedOrder)
+      // Set existing verification images
+      setExistingVerificationImages(transformedOrder.VerificationImages || [])
     } catch (err) {
       console.error('Error fetching order detail:', err)
       setError('Không thể tải chi tiết đơn hàng')
@@ -194,6 +213,9 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
       setShowCancelDialog(false)
       setGhnCode('')
       setShowShipDialog(false)
+      setVerificationImages([])
+      setVerificationImagePreviews([])
+      setExistingVerificationImages([])
     }
   }, [isOpen])
 
@@ -331,6 +353,156 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
     event.currentTarget.src = DEFAULT_PRODUCT_IMAGE
   }
 
+  // Calculate days since order completed (Delivered or Paid)
+  const calculateDaysSinceCompleted = (order: Order): number | null => {
+    if (order.status !== 'Delivered' && order.status !== 'Paid') {
+      return null
+    }
+
+    let completedTime: Date | null = null
+
+    // First, try to find in orderHistories - look for most recent Delivered/Paid status
+    const histories = order.orderHistories || []
+
+    // Search from newest to oldest
+    for (let i = histories.length - 1; i >= 0; i--) {
+      const history = histories[i]
+      const desc = history.description.toLowerCase()
+
+      if (
+        desc.includes('delivered') ||
+        desc.includes('đã giao hàng') ||
+        desc.includes('đã giao') ||
+        desc.includes('giao hàng thành công') ||
+        (order.status === 'Paid' && (desc.includes('paid') || desc.includes('đã thanh toán')))
+      ) {
+        try {
+          completedTime = new Date(history.time)
+          if (!isNaN(completedTime.getTime())) {
+            break
+          }
+        } catch (e) {
+          console.error('Error parsing history time:', e)
+        }
+      }
+    }
+
+    // If still not found and status is Delivered, check for any status change history
+    if (!completedTime && histories.length > 0) {
+      // Use the latest history entry that might indicate completion
+      const latestHistory = histories[histories.length - 1]
+      try {
+        completedTime = new Date(latestHistory.time)
+        if (isNaN(completedTime.getTime())) {
+          completedTime = null
+        }
+      } catch (e) {
+        console.error('Error parsing latest history time:', e)
+      }
+    }
+
+    if (!completedTime) {
+      return null
+    }
+
+    const now = new Date()
+    const diffTime = now.getTime() - completedTime.getTime()
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+
+    return Math.max(0, diffDays) // Ensure non-negative
+  }
+
+  // Check if verification warning should be shown
+  const shouldShowVerificationWarning = (order: Order): { show: boolean; days: number; isOverdue: boolean } => {
+    if (order.status !== 'Delivered' && order.status !== 'Paid') {
+      return { show: false, days: 0, isOverdue: false }
+    }
+
+    // Check if verification images exist
+    const hasVerificationImages = order.VerificationImages && order.VerificationImages.length > 0
+
+    // If already has verification images, no warning needed
+    if (hasVerificationImages) {
+      return { show: false, days: 0, isOverdue: false }
+    }
+
+    const daysSinceCompleted = calculateDaysSinceCompleted(order)
+
+    if (daysSinceCompleted === null) {
+      // Can't determine completion date, show warning anyway
+      return { show: true, days: 0, isOverdue: false }
+    }
+
+    const isOverdue = daysSinceCompleted >= 2
+
+    return {
+      show: true,
+      days: daysSinceCompleted,
+      isOverdue
+    }
+  }
+
+  // Handle verification image selection
+  const handleVerificationImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
+
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'))
+    if (imageFiles.length !== files.length) {
+      toast.error('Vui lòng chỉ chọn file ảnh')
+      return
+    }
+
+    setVerificationImages((prev) => [...prev, ...imageFiles])
+
+    // Create previews
+    imageFiles.forEach((file) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const previewUrl = e.target?.result as string
+        setVerificationImagePreviews((prev) => [...prev, previewUrl])
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  // Remove verification image
+  const handleRemoveVerificationImage = (index: number) => {
+    setVerificationImages((prev) => prev.filter((_, i) => i !== index))
+    setVerificationImagePreviews((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  // Remove existing verification image
+  const handleRemoveExistingVerificationImage = (index: number) => {
+    setExistingVerificationImages((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  // Handle upload verification images
+  const handleUploadVerificationImages = async () => {
+    if (!order?.id) return
+
+    if (verificationImages.length === 0 && existingVerificationImages.length === 0) {
+      toast.error('Vui lòng chọn ít nhất một ảnh')
+      return
+    }
+
+    setUploadVerificationLoading(true)
+    try {
+      await uploadVerificationImages(order.id, verificationImages, existingVerificationImages)
+      toast.success('Upload ảnh xác minh thành công!')
+      // Refresh order data
+      await fetchOrderDetail()
+      // Reset upload state
+      setVerificationImages([])
+      setVerificationImagePreviews([])
+    } catch (err) {
+      console.error('Error uploading verification images:', err)
+      toast.error('Không thể upload ảnh xác minh')
+    } finally {
+      setUploadVerificationLoading(false)
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className='max-w-7xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0'>
@@ -408,6 +580,71 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                   <p className='text-red-700 text-sm'>{order.note}</p>
                 </div>
               )}
+
+              {/* Verification Warning - Only for Delivered or Paid status without verification images */}
+              {(() => {
+                const warning = shouldShowVerificationWarning(order)
+                if (!warning.show) return null
+
+                return (
+                  <div
+                    className={`rounded-lg p-4 border-2 ${warning.isOverdue ? 'bg-red-50 border-red-300 shadow-md' : 'bg-yellow-50 border-yellow-300'
+                      }`}
+                  >
+                    <div className='flex items-start gap-3'>
+                      <div className={`flex-shrink-0 ${warning.isOverdue ? 'text-red-600' : 'text-yellow-600'}`}>
+                        <AlertCircle className='h-5 w-5' />
+                      </div>
+                      <div className='flex-1'>
+                        <div className='flex items-center gap-2 mb-2'>
+                          <h3 className={`font-bold text-sm ${warning.isOverdue ? 'text-red-800' : 'text-yellow-800'}`}>
+                            {warning.isOverdue ? '⚠️ CẢNH BÁO NGHIÊM TRỌNG' : '⚠️ CẢNH BÁO'}
+                          </h3>
+                        </div>
+                        <p className={`text-sm mb-2 ${warning.isOverdue ? 'text-red-700' : 'text-yellow-700'}`}>
+                          Đơn hàng đã hoàn thành nhưng bạn chưa upload ảnh xác minh giao hàng.
+                        </p>
+                        {warning.days > 0 && (
+                          <p
+                            className={`text-sm font-semibold mb-2 ${warning.isOverdue ? 'text-red-800' : 'text-yellow-800'
+                              }`}
+                          >
+                            Đã qua {warning.days} {warning.days === 1 ? 'ngày' : 'ngày'} kể từ khi đơn hàng hoàn thành.
+                          </p>
+                        )}
+                        {warning.isOverdue ? (
+                          <div className='mt-3 p-3 bg-red-100 rounded-lg border border-red-200'>
+                            <p className='text-sm font-bold text-red-900 mb-1'>⛔ BẠN SẼ BỊ PHẠT TĂNG REPORT COUNT!</p>
+                            <p className='text-sm text-red-800'>
+                              Đã quá 2 ngày kể từ khi đơn hàng hoàn thành. Nếu không upload ảnh xác minh ngay, hệ thống
+                              sẽ tự động tăng số lượng báo cáo vi phạm (report count) của cửa hàng.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className='mt-3 p-3 bg-yellow-100 rounded-lg border border-yellow-200'>
+                            <p className='text-sm font-semibold text-yellow-900 mb-1'>
+                              ⏰ Còn {2 - warning.days} {2 - warning.days === 1 ? 'ngày' : 'ngày'} để upload ảnh
+                            </p>
+                            <p className='text-sm text-yellow-800'>
+                              Vui lòng upload ảnh xác minh giao hàng ngay để tránh bị phạt tăng report count sau 2 ngày.
+                            </p>
+                          </div>
+                        )}
+                        <div className='mt-3 flex items-center gap-2'>
+                          <span
+                            className={`text-xs font-medium ${warning.isOverdue ? 'text-red-600' : 'text-yellow-600'}`}
+                          >
+                            📋 Hành động khuyến nghị:
+                          </span>
+                          <span className={`text-xs ${warning.isOverdue ? 'text-red-700' : 'text-yellow-700'}`}>
+                            Upload ảnh xác minh ngay bây giờ
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Products Section */}
               <div className='bg-white rounded-lg p-4 shadow-sm border border-gray-100'>
@@ -619,6 +856,158 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                   </div>
                 </div>
               )}
+
+              {/* Verification Images Display Section - For all statuses */}
+              <div className='bg-white rounded-lg p-4 shadow-sm border border-gray-100'>
+                <div className='flex items-center gap-2 mb-3'>
+                  <ImageIcon className='h-4 w-4 text-green-600' />
+                  <h3 className='font-semibold text-gray-900'>Ảnh xác minh giao hàng</h3>
+                </div>
+
+                {/* Display verification images if available */}
+                {existingVerificationImages.length > 0 ? (
+                  <div>
+                    {/* Verification timestamp */}
+                    {order.VerificationAt && (
+                      <div className='mb-3 p-2 bg-green-50 rounded-lg border border-green-200'>
+                        <div className='flex items-center gap-2'>
+                          <CheckCircle className='h-4 w-4 text-green-600' />
+                          <span className='text-xs text-gray-600'>Thời gian cập nhật:</span>
+                          <span className='text-sm font-medium text-gray-900'>{order.VerificationAt}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Existing Images */}
+                    <div>
+                      <p className='text-sm font-medium text-gray-700 mb-2'>
+                        {order.status === 'Delivered' || order.status === 'Paid' ? 'Ảnh đã upload:' : 'Ảnh xác minh:'}
+                      </p>
+                      <div className='grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3'>
+                        {existingVerificationImages.map((imageUrl, index) => (
+                          <div key={index} className='relative group'>
+                            <img
+                              src={imageUrl}
+                              alt={`Verification ${index + 1}`}
+                              className='w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity'
+                              onClick={() => {
+                                const newWindow = window.open()
+                                if (newWindow) {
+                                  newWindow.document.write(`
+                                    <html>
+                                      <head><title>Verification Image ${index + 1}</title></head>
+                                      <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;">
+                                        <img src="${imageUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;" />
+                                      </body>
+                                    </html>
+                                  `)
+                                }
+                              }}
+                              onError={handleImageError}
+                            />
+                            <button
+                              onClick={() => handleRemoveExistingVerificationImage(index)}
+                              className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100'
+                            >
+                              <X className='h-4 w-4' />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className='p-6 text-center bg-gray-50 rounded-lg border border-gray-200'>
+                    <div className='flex flex-col items-center justify-center gap-2'>
+                      <AlertCircle className='h-8 w-8 text-gray-400' />
+                      <p className='text-sm font-medium text-gray-600'>Người bán chưa cập nhật</p>
+                      <p className='text-xs text-gray-500 mt-1'>Chưa có ảnh xác minh giao hàng</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Section - Only for Delivered or Paid status */}
+                {(order.status === 'Delivered' || order.status === 'Paid') && (
+                  <>
+                    {/* New Image Previews */}
+                    {verificationImagePreviews.length > 0 && (
+                      <div className='mb-4'>
+                        <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh mới (chưa upload):</p>
+                        <div className='grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3'>
+                          {verificationImagePreviews.map((preview, index) => (
+                            <div key={index} className='relative group'>
+                              <img
+                                src={preview}
+                                alt={`New verification ${index + 1}`}
+                                className='w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity'
+                                onClick={() => {
+                                  const newWindow = window.open()
+                                  if (newWindow) {
+                                    newWindow.document.write(`
+                                    <html>
+                                      <head><title>New Verification Image ${index + 1}</title></head>
+                                      <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;">
+                                        <img src="${preview}" style="max-width:100%;max-height:100vh;object-fit:contain;" />
+                                      </body>
+                                    </html>
+                                  `)
+                                  }
+                                }}
+                              />
+                              <button
+                                onClick={() => handleRemoveVerificationImage(index)}
+                                className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors'
+                              >
+                                <X className='h-4 w-4' />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Upload Button */}
+                    <div className='space-y-3'>
+                      <label className='flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors'>
+                        <div className='flex flex-col items-center justify-center pt-5 pb-6'>
+                          <Upload className='w-8 h-8 mb-2 text-gray-400' />
+                          <p className='mb-2 text-sm text-gray-500'>
+                            <span className='font-semibold'>Chọn ảnh</span> hoặc kéo thả vào đây
+                          </p>
+                          <p className='text-xs text-gray-500'>PNG, JPG, GIF (Tối đa 10MB mỗi ảnh)</p>
+                        </div>
+                        <input
+                          type='file'
+                          className='hidden'
+                          accept='image/*'
+                          multiple
+                          onChange={handleVerificationImageSelect}
+                        />
+                      </label>
+
+                      {(verificationImages.length > 0 || existingVerificationImages.length > 0) && (
+                        <Button
+                          onClick={handleUploadVerificationImages}
+                          disabled={uploadVerificationLoading}
+                          className='w-full bg-green-600 hover:bg-green-700 text-white'
+                        >
+                          {uploadVerificationLoading ? (
+                            <>
+                              <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                              Đang upload...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className='w-4 h-4 mr-2' />
+                              {existingVerificationImages.length > 0 ? 'Cập nhật ảnh' : 'Upload ảnh xác minh'}
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Seller Action Buttons */}
               <div className='flex gap-3 pt-2'>

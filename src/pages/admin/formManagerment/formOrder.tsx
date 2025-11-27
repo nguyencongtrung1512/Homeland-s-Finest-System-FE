@@ -203,15 +203,15 @@ export default function FormOrderManagement() {
         return {
           icon: <XCircle className='w-4 h-4 text-red-500' />,
           badge: 'destructive',
-          text: 'Bị từ chối',
+          text: 'Nhân viên đã từ chối kiểm duyệt',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
-      case 'WaitingSellerResponse':
+      case 'Confirmed':
         return {
-          icon: <Clock className='w-4 h-4 text-orange-500' />,
+          icon: <CheckCircle className='w-4 h-4 text-green-500' />,
           badge: 'default',
-          text: 'Chờ phản hồi từ người bán',
+          text: 'Nhân viên đã xác nhận kiểm duyệt',
           color: 'text-orange-700',
           bgColor: 'bg-orange-50'
         }
@@ -358,7 +358,7 @@ export default function FormOrderManagement() {
                   <SelectItem value='ApprovedByAdmin'>Đã duyệt</SelectItem>
                   <SelectItem value='DeniedByAdmin'>Từ chối</SelectItem>
                   <SelectItem value='Rejected'>Bị từ chối</SelectItem>
-                  <SelectItem value='WaitingSellerResponse'>Chờ phản hồi từ người bán</SelectItem>
+                  <SelectItem value='Confirmed'>Nhân viên đã xác nhận kiểm duyệt</SelectItem>
                   <SelectItem value='Cancel'>Đã hủy</SelectItem>
                 </SelectContent>
               </Select>

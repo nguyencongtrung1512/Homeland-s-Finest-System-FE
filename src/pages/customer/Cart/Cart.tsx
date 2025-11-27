@@ -10,7 +10,8 @@ import {
   removeCartItem,
   getCartByUserId,
   removePromotionFromCart,
-  updateCombo
+  updateCombo,
+  updateSelectedCartItems
 } from '../../../apis/cart.api'
 import { getComboById } from '../../../apis/combo.api'
 import { toast } from '../../../utils/toast'
@@ -405,33 +406,110 @@ export default function Cart() {
     if (cartData) {
       // Get all current item IDs from cart
       const currentItemIds = new Set<string>()
+      const itemStockMap = new Map<string, boolean>()
+      const comboOutOfStockMap = new Map<string, boolean>() // Track combos with out of stock items
       cartData.carts.forEach((store) => {
         store.items.forEach((item) => {
           currentItemIds.add(item.id)
+          // Store stock status, default to true if not provided
+          itemStockMap.set(item.id, item.isStock !== false)
+          // Track combos with out of stock items
+          if (item.isCombo && item.comboId) {
+            if (item.isStock === false) {
+              comboOutOfStockMap.set(item.comboId, true)
+            } else if (!comboOutOfStockMap.has(item.comboId)) {
+              comboOutOfStockMap.set(item.comboId, false)
+            }
+          }
         })
       })
 
-      // If this is the first load, initialize all items as selected
+      // If this is the first load, initialize items using isSelected from API (only if in stock and combo doesn't have out of stock items)
       if (isInitialLoad.current) {
         const initialSelectedItems: Record<string, boolean> = {}
         currentItemIds.forEach((itemId) => {
-          initialSelectedItems[itemId] = true
+          const isInStock = itemStockMap.get(itemId) ?? true
+          // Check if item belongs to a combo with out of stock items
+          let isComboDisabled = false
+          let apiSelectedValue: boolean | undefined = undefined
+          cartData.carts.forEach((store) => {
+            const item = store.items.find((i) => i.id === itemId)
+            if (item) {
+              // Use isSelected from API if available
+              if (apiSelectedValue === undefined) {
+                apiSelectedValue = item.isSelected
+              }
+              if (item.isCombo && item.comboId && comboOutOfStockMap.get(item.comboId)) {
+                isComboDisabled = true
+              }
+            }
+          })
+          // Use API value if available, otherwise default to true for in-stock items not in disabled combos
+          initialSelectedItems[itemId] =
+            apiSelectedValue !== undefined
+              ? apiSelectedValue && isInStock && !isComboDisabled
+              : isInStock && !isComboDisabled
         })
         setSelectedItems(initialSelectedItems)
-        setSelectAll(true)
+        // Check if all in-stock items (not in disabled combos) are selected
+        const inStockItems = Array.from(currentItemIds).filter((id) => {
+          const isInStock = itemStockMap.get(id) ?? true
+          let isComboDisabled = false
+          cartData.carts.forEach((store) => {
+            const item = store.items.find((i) => i.id === id)
+            if (item?.isCombo && item.comboId && comboOutOfStockMap.get(item.comboId)) {
+              isComboDisabled = true
+            }
+          })
+          return isInStock && !isComboDisabled
+        })
+        const allSelected = inStockItems.length > 0 && inStockItems.every((itemId) => initialSelectedItems[itemId])
+        setSelectAll(allSelected)
         isInitialLoad.current = false
       } else {
-        // On reload, preserve existing selections and update for new/removed items
+        // On reload, use isSelected from API for items that exist, preserve for others
         setSelectedItems((prev) => {
           const updated: Record<string, boolean> = {}
 
-          // Preserve existing selections for items that still exist
+          // Use API isSelected value for items that still exist
           currentItemIds.forEach((itemId) => {
-            updated[itemId] = prev[itemId] ?? true // Keep existing selection, default to true for new items
+            const isInStock = itemStockMap.get(itemId) ?? true
+            // Check if item belongs to a combo with out of stock items
+            let isComboDisabled = false
+            let apiSelectedValue: boolean | undefined = undefined
+            cartData.carts.forEach((store) => {
+              const item = store.items.find((i) => i.id === itemId)
+              if (item) {
+                // Use isSelected from API if available
+                if (apiSelectedValue === undefined) {
+                  apiSelectedValue = item.isSelected
+                }
+                if (item.isCombo && item.comboId && comboOutOfStockMap.get(item.comboId)) {
+                  isComboDisabled = true
+                }
+              }
+            })
+            // Use API value if available, otherwise keep existing selection
+            if (apiSelectedValue !== undefined) {
+              updated[itemId] = apiSelectedValue && isInStock && !isComboDisabled
+            } else {
+              updated[itemId] = isInStock && !isComboDisabled ? (prev[itemId] ?? true) : false
+            }
           })
 
-          // Update selectAll based on updated selection state
-          const allSelected = Array.from(currentItemIds).every((itemId) => updated[itemId])
+          // Update selectAll based on updated selection state (only for in-stock items not in disabled combos)
+          const inStockItems = Array.from(currentItemIds).filter((id) => {
+            const isInStock = itemStockMap.get(id) ?? true
+            let isComboDisabled = false
+            cartData.carts.forEach((store) => {
+              const item = store.items.find((i) => i.id === id)
+              if (item?.isCombo && item.comboId && comboOutOfStockMap.get(item.comboId)) {
+                isComboDisabled = true
+              }
+            })
+            return isInStock && !isComboDisabled
+          })
+          const allSelected = inStockItems.length > 0 && inStockItems.every((itemId) => updated[itemId])
           setSelectAll(allSelected)
 
           return updated
@@ -548,25 +626,124 @@ export default function Cart() {
     }
   }
 
-  const toggleItemSelection = (itemId: string) => {
+  const toggleItemSelection = async (itemId: string) => {
+    // Find the item to check if it's out of stock
+    if (!cartData) return
+
+    let isOutOfStock = false
+    let isComboDisabled = false
+    let comboId: string | null = null
+
+    cartData.carts.forEach((store) => {
+      const item = store.items.find((i) => i.id === itemId)
+      if (item) {
+        if (item.isStock === false) {
+          isOutOfStock = true
+        }
+        if (item.isCombo && item.comboId) {
+          comboId = item.comboId
+          // Check if combo has any out of stock items
+          const comboItems = store.items.filter((i) => i.comboId === comboId)
+          if (comboItems.some((i) => i.isStock === false)) {
+            isComboDisabled = true
+          }
+        }
+      }
+    })
+
+    // Don't allow selecting out of stock items or items in disabled combos
+    if (isOutOfStock || isComboDisabled) {
+      if (isComboDisabled && comboId) {
+        toast.error('Combo này có sản phẩm hết hàng, không thể chọn')
+      } else {
+        toast.error('Sản phẩm này đã hết hàng')
+      }
+      return
+    }
+
+    // Update local state immediately for better UX
+    const newSelectedState = !selectedItems[itemId]
     setSelectedItems((prev) => ({
       ...prev,
-      [itemId]: !prev[itemId]
+      [itemId]: newSelectedState
     }))
+
+    // Call API to update selection on backend
+    try {
+      await updateSelectedCartItems([itemId], newSelectedState)
+      // Reload cart data to sync with backend
+      await reloadCartData()
+    } catch (error) {
+      console.error('Error updating item selection:', error)
+      // Revert local state on error
+      setSelectedItems((prev) => ({
+        ...prev,
+        [itemId]: !newSelectedState
+      }))
+      toast.error('Có lỗi xảy ra khi cập nhật lựa chọn sản phẩm')
+    }
   }
 
-  const toggleSelectAll = () => {
+  const toggleSelectAll = async () => {
     const newSelectAll = !selectAll
     setSelectAll(newSelectAll)
     const newSelectedItems: Record<string, boolean> = {}
+    const comboOutOfStockMap = new Map<string, boolean>() // Track combos with out of stock items
+    const itemIdsToUpdate: string[] = []
+
     if (cartData) {
+      // First pass: identify combos with out of stock items
       cartData.carts.forEach((store) => {
         store.items.forEach((item) => {
-          newSelectedItems[item.id] = newSelectAll
+          if (item.isCombo && item.comboId) {
+            if (item.isStock === false) {
+              comboOutOfStockMap.set(item.comboId, true)
+            } else if (!comboOutOfStockMap.has(item.comboId)) {
+              comboOutOfStockMap.set(item.comboId, false)
+            }
+          }
+        })
+      })
+
+      // Second pass: set selection state and collect item IDs to update
+      cartData.carts.forEach((store) => {
+        store.items.forEach((item) => {
+          const isInStock = item.isStock !== false
+          const isComboDisabled = item.isCombo && item.comboId && comboOutOfStockMap.get(item.comboId)
+          // Only select items that are in stock and not in disabled combos
+          const shouldSelect = isInStock && !isComboDisabled ? newSelectAll : false
+          newSelectedItems[item.id] = shouldSelect
+          // Only include items that can be selected (in stock, not in disabled combo)
+          if (isInStock && !isComboDisabled) {
+            itemIdsToUpdate.push(item.id)
+          }
         })
       })
     }
+
+    // Update local state immediately for better UX
     setSelectedItems(newSelectedItems)
+
+    // Call API to update selection on backend
+    if (itemIdsToUpdate.length > 0) {
+      try {
+        await updateSelectedCartItems(itemIdsToUpdate, newSelectAll)
+        // Reload cart data to sync with backend
+        await reloadCartData()
+      } catch (error) {
+        console.error('Error updating item selection:', error)
+        // Revert local state on error
+        setSelectAll(!newSelectAll)
+        setSelectedItems((prev) => {
+          const reverted: Record<string, boolean> = { ...prev }
+          itemIdsToUpdate.forEach((itemId) => {
+            reverted[itemId] = !newSelectAll
+          })
+          return reverted
+        })
+        toast.error('Có lỗi xảy ra khi cập nhật lựa chọn sản phẩm')
+      }
+    }
   }
 
   const getTotalItems = () => {
@@ -575,16 +752,63 @@ export default function Cart() {
 
   const getSelectedTotal = () => {
     let total = 0
+    const comboOutOfStockMap = new Map<string, boolean>() // Track combos with out of stock items
+
     if (cartData) {
+      // First pass: identify combos with out of stock items
       cartData.carts.forEach((store) => {
         store.items.forEach((item) => {
-          if (selectedItems[item.id]) {
+          if (item.isCombo && item.comboId) {
+            if (item.isStock === false) {
+              comboOutOfStockMap.set(item.comboId, true)
+            } else if (!comboOutOfStockMap.has(item.comboId)) {
+              comboOutOfStockMap.set(item.comboId, false)
+            }
+          }
+        })
+      })
+
+      // Second pass: calculate total
+      cartData.carts.forEach((store) => {
+        store.items.forEach((item) => {
+          const isInStock = item.isStock !== false
+          const isComboDisabled = item.isCombo && item.comboId && comboOutOfStockMap.get(item.comboId)
+          // Only count items that are selected, in stock, and not in disabled combos
+          if (selectedItems[item.id] && isInStock && !isComboDisabled) {
             total += item.totalPrice
           }
         })
       })
     }
     return total
+  }
+
+  // Check if any selected items are out of stock or in disabled combos
+  const hasOutOfStockSelectedItems = () => {
+    if (!cartData) return false
+    const comboOutOfStockMap = new Map<string, boolean>() // Track combos with out of stock items
+
+    // First pass: identify combos with out of stock items
+    cartData.carts.forEach((store) => {
+      store.items.forEach((item) => {
+        if (item.isCombo && item.comboId) {
+          if (item.isStock === false) {
+            comboOutOfStockMap.set(item.comboId, true)
+          } else if (!comboOutOfStockMap.has(item.comboId)) {
+            comboOutOfStockMap.set(item.comboId, false)
+          }
+        }
+      })
+    })
+
+    // Second pass: check if any selected items are out of stock or in disabled combos
+    return cartData.carts.some((store) =>
+      store.items.some((item) => {
+        const isInStock = item.isStock !== false
+        const isComboDisabled = item.isCombo && item.comboId && comboOutOfStockMap.get(item.comboId)
+        return selectedItems[item.id] && (!isInStock || isComboDisabled)
+      })
+    )
   }
 
   const getSelectedCount = () => {
@@ -689,11 +913,21 @@ export default function Cart() {
       }
 
       const selectedItemsList = cartData
-        ? cartData.carts.flatMap((store) => store.items.filter((item) => selectedItems[item.id]))
+        ? cartData.carts.flatMap((store) => store.items.filter((item) => selectedItems[item.id] && item.isStock !== false))
         : []
 
       if (selectedItemsList.length === 0) {
-        toast.error('Vui lòng chọn ít nhất một sản phẩm')
+        toast.error('Vui lòng chọn ít nhất một sản phẩm còn hàng')
+        return
+      }
+
+      // Check if there are any out of stock items selected
+      const outOfStockSelected = cartData
+        ? cartData.carts.some((store) => store.items.some((item) => selectedItems[item.id] && item.isStock === false))
+        : false
+
+      if (outOfStockSelected) {
+        toast.error('Vui lòng bỏ chọn các sản phẩm đã hết hàng')
         return
       }
       if (!selectedPaymentMethod) {
@@ -899,7 +1133,13 @@ export default function Cart() {
                   className={checkboxClass}
                   style={checkboxStyle}
                 />
-                <span className='text-gray-700'>Chọn tất cả ({getTotalItems()} sản phẩm)</span>
+                <span className='text-gray-700'>
+                  Chọn tất cả (
+                  {cartData
+                    ? cartData.carts.reduce((sum, store) => sum + store.items.filter((item) => item.isStock !== false).length, 0)
+                    : 0}{' '}
+                  sản phẩm còn hàng)
+                </span>
               </label>
             </div>
 
@@ -951,16 +1191,28 @@ export default function Cart() {
                       const comboItem = item as ComboGroup
                       const comboTitle =
                         (comboItem.comboId && comboNames[comboItem.comboId]) || comboItem.comboName || 'Combo'
+                      // Check if any item in combo is out of stock - if so, disable entire combo
+                      const isComboOutOfStock = comboItem.items.some((i: APICartItem) => i.isStock === false)
+                      // Ensure all items in combo are unselected if combo is disabled
+                      const allComboItemsSelected = comboItem.items.every((i: APICartItem) => selectedItems[i.id])
                       return (
-                        <div key={comboItem.comboId} className='p-4 bg-white rounded-xl '>
+                        <div
+                          key={comboItem.comboId}
+                          className={`p-4 bg-white rounded-xl ${isComboOutOfStock ? 'opacity-60' : ''}`}
+                        >
                           <div className='flex items-start gap-4'>
                             <input
                               type='checkbox'
-                              checked={comboItem.items.every((i: APICartItem) => selectedItems[i.id])}
+                              checked={!isComboOutOfStock && allComboItemsSelected}
                               onChange={() => {
+                                if (isComboOutOfStock) {
+                                  toast.error('Combo này có sản phẩm hết hàng, không thể chọn')
+                                  return
+                                }
                                 comboItem.items.forEach((i: APICartItem) => toggleItemSelection(i.id))
                               }}
-                              className={`${checkboxClass} mt-1`}
+                              disabled={isComboOutOfStock}
+                              className={`${checkboxClass} mt-1 ${isComboOutOfStock ? 'cursor-not-allowed opacity-50' : ''}`}
                               style={checkboxStyle}
                             />
 
@@ -971,6 +1223,11 @@ export default function Cart() {
                                     Sản phẩm combo
                                   </span>
                                   <h3 className='text-base font-semibold text-gray-900 mt-3'>{comboTitle}</h3>
+                                  {isComboOutOfStock && (
+                                    <span className='bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-medium'>
+                                      Hết hàng
+                                    </span>
+                                  )}
                                 </div>
                                 <div className='text-right space-y-2'>
                                   <button
@@ -987,7 +1244,8 @@ export default function Cart() {
                                 <div className='flex items-center gap-3'>
                                   <button
                                     onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity - 1)}
-                                    className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
+                                    className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                    disabled={isComboOutOfStock}
                                   >
                                     <Minus className='w-4 h-4' />
                                   </button>
@@ -996,7 +1254,8 @@ export default function Cart() {
                                   </span>
                                   <button
                                     onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity + 1)}
-                                    className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
+                                    className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                    disabled={isComboOutOfStock}
                                   >
                                     <Plus className='w-4 h-4' />
                                   </button>
@@ -1012,23 +1271,30 @@ export default function Cart() {
                                   const childRequirement =
                                     (comboId && comboChildItems[comboId]?.[childItem.productVariantId]) || null
                                   const requiredQuantity = childRequirement?.requiredQuantity
+                                  const isChildOutOfStock = childItem.isStock === false
                                   return (
-                                    <div key={childItem.id} className='flex items-center gap-3  p-2'>
+                                    <div
+                                      key={childItem.id}
+                                      className={`flex items-center gap-3 p-2 ${isChildOutOfStock ? 'opacity-60' : ''}`}
+                                    >
                                       <div className='w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm'>
                                         <img
-                                          src={
-                                            childItem.imageUrl ||
-                                            childRequirement?.imageUrl ||
-                                            '/api/placeholder/48/48'
-                                          }
+                                          src={childItem.imageUrl || childRequirement?.imageUrl || '/api/placeholder/48/48'}
                                           alt={childItem.name}
                                           className='w-10 h-10 object-cover rounded'
                                         />
                                       </div>
                                       <div className='flex-1'>
-                                        <p className='text-sm font-medium text-gray-800'>
-                                          {childRequirement?.productName || childItem.name}
-                                        </p>
+                                        <div className='flex items-center gap-2'>
+                                          <p className='text-sm font-medium text-gray-800'>
+                                            {childRequirement?.productName || childItem.name}
+                                          </p>
+                                          {isChildOutOfStock && (
+                                            <span className='bg-red-100 text-red-600 text-xs px-1.5 py-0.5 rounded-full font-medium'>
+                                              Hết hàng
+                                            </span>
+                                          )}
+                                        </div>
                                         <p className='text-xs text-gray-500'>
                                           {typeof requiredQuantity === 'number'
                                             ? `Số lượng định mức: ${requiredQuantity}`
@@ -1047,14 +1313,16 @@ export default function Cart() {
 
                     // Regular item
                     const regularItem = item as APICartItem
+                    const isOutOfStock = regularItem.isStock === false
                     return (
-                      <div key={regularItem.id} className='p-4'>
+                      <div key={regularItem.id} className={`p-4 ${isOutOfStock ? 'opacity-60' : ''}`}>
                         <div className='flex items-start gap-4'>
                           <input
                             type='checkbox'
                             checked={selectedItems[regularItem.id] || false}
                             onChange={() => toggleItemSelection(regularItem.id)}
-                            className={`${checkboxClass} mt-1`}
+                            disabled={isOutOfStock}
+                            className={`${checkboxClass} mt-1 ${isOutOfStock ? 'cursor-not-allowed opacity-50' : ''}`}
                             style={checkboxStyle}
                           />
 
@@ -1067,21 +1335,29 @@ export default function Cart() {
                           </div>
 
                           <div className='flex-1 min-w-0'>
-                            <h3 className='font-semibold text-gray-800 mb-1'>{regularItem.name}</h3>
+                            <div className='flex items-center gap-2 mb-1'>
+                              <h3 className='font-semibold text-gray-800'>{regularItem.name}</h3>
+                              {isOutOfStock && (
+                                <span className='bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-medium'>
+                                  Hết hàng
+                                </span>
+                              )}
+                            </div>
 
                             <div className='flex items-center justify-between mt-3'>
                               <div className='flex items-center gap-3'>
                                 <button
                                   onClick={() => updateQuantity(regularItem.id, regularItem.quantity - 1)}
-                                  className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
-                                  disabled={regularItem.quantity <= 1}
+                                  className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                  disabled={regularItem.quantity <= 1 || isOutOfStock}
                                 >
                                   <Minus className='w-4 h-4' />
                                 </button>
                                 <span className='w-12 text-center font-medium'>{regularItem.quantity}</span>
                                 <button
                                   onClick={() => updateQuantity(regularItem.id, regularItem.quantity + 1)}
-                                  className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50'
+                                  className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                  disabled={isOutOfStock}
                                 >
                                   <Plus className='w-4 h-4' />
                                 </button>
@@ -1225,16 +1501,19 @@ export default function Cart() {
                     !selectedAddress ||
                     isSubmitting ||
                     isLoadingWallet ||
-                    (selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient)
+                    (selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient) ||
+                    hasOutOfStockSelectedItems()
                   }
                 >
                   {isSubmitting
                     ? 'Đang tạo đơn hàng...'
                     : isLoadingWallet
                       ? 'Đang kiểm tra số dư...'
-                      : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
-                        ? 'Số dư không đủ'
-                        : 'Mua hàng'}
+                      : hasOutOfStockSelectedItems()
+                        ? 'Có sản phẩm hết hàng'
+                        : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
+                          ? 'Số dư không đủ'
+                          : 'Mua hàng'}
                 </button>
 
                 <button

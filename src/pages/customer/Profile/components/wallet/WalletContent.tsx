@@ -4,11 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../../../compone
 import { Button } from '../../../../../components/ui/button'
 import { Input } from '../../../../../components/ui/input'
 import { Label } from '../../../../../components/ui/label'
-import { Wallet, CreditCard, AlertCircle, CheckCircle2, ArrowRight, User, RefreshCw, History } from 'lucide-react'
+import {
+  Wallet,
+  CreditCard,
+  AlertCircle,
+  CheckCircle2,
+  ArrowRight,
+  User,
+  RefreshCw,
+  History,
+  ArrowDown
+} from 'lucide-react'
 import { Alert, AlertDescription } from '../../../../../components/ui/alert'
 import ThreeDCard from '../../../../../components/ui/threed-card'
 import Loading from '../../../../../components/Loading/loading'
-import { getWalletBalance, getWalletTransactions, withdrawal } from '../../../../../apis/wallet.api'
+import { getWalletBalance, getWalletTransactions, withdrawal, depositMoney } from '../../../../../apis/wallet.api'
 import type { WalletData, WalletTransactionDTO } from '../../../../../types/walletType'
 import { getTransactionTypeLabel, getTransactionStatusLabel } from '../../../../../types/walletType'
 import { toast } from '../../../../../utils/toast'
@@ -34,6 +44,10 @@ export default function WalletContent({
   const [withdrawAmount, setWithdrawAmount] = useState<string>('')
   const [isConfirming, setIsConfirming] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [depositAmount, setDepositAmount] = useState<string>('')
+  const [isConfirmingDeposit, setIsConfirmingDeposit] = useState(false)
+  const [showConfirmDepositModal, setShowConfirmDepositModal] = useState(false)
+  const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit')
   const [transactionPage] = useState(1)
   const [transactionPageSize] = useState(10)
 
@@ -161,7 +175,128 @@ export default function WalletContent({
     }
   }
 
+  const handleDeposit = () => {
+    if (!depositAmount || parseFloat(depositAmount) <= 0) {
+      return
+    }
+
+    const amount = parseFloat(depositAmount)
+    if (amount < 10000) {
+      toast.error('Số tiền nạp tối thiểu là 10,000 ₫')
+      return
+    }
+
+    setShowConfirmDepositModal(true)
+  }
+
+  const handleCancelDeposit = () => {
+    setShowConfirmDepositModal(false)
+    setIsConfirmingDeposit(false)
+  }
+
+  const handleConfirmDeposit = async () => {
+    if (!depositAmount || parseFloat(depositAmount) <= 0) {
+      toast.error('Vui lòng nhập số tiền hợp lệ')
+      return
+    }
+
+    const amount = parseFloat(depositAmount)
+    if (amount < 10000) {
+      toast.error('Số tiền nạp tối thiểu là 10,000 ₫')
+      return
+    }
+
+    try {
+      setIsConfirmingDeposit(true)
+      const response = await depositMoney(amount)
+
+      // Kiểm tra response có hợp lệ không
+      if (!response || typeof response !== 'object') {
+        throw new Error('Response không hợp lệ')
+      }
+
+      // Kiểm tra xem có amountDeposited không
+      const amountDeposited = response.amountDeposited ?? amount
+      const successMessage = response.message || 'Nạp tiền thành công!'
+
+      toast.success(`${successMessage} Đã nạp ${amountDeposited.toLocaleString('vi-VN')} ₫ vào ví.`, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+
+      setShowConfirmDepositModal(false)
+      setIsConfirmingDeposit(false)
+      setDepositAmount('')
+
+      // Refresh wallet data and transactions after deposit
+      await fetchWalletData()
+      await fetchTransactions(transactionPage, transactionPageSize)
+    } catch (error: unknown) {
+      let errorMessage = 'Có lỗi xảy ra khi nạp tiền'
+
+      // Xử lý các trường hợp lỗi khác nhau
+      if (error && typeof error === 'object') {
+        // Lỗi từ axios response
+        if ('response' in error && error.response) {
+          const axiosError = error as { response?: { data?: { message?: string } } }
+          errorMessage = axiosError.response?.data?.message || errorMessage
+        }
+        // Lỗi từ error object có message
+        else if ('message' in error && typeof error.message === 'string') {
+          errorMessage = error.message
+        }
+      }
+
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+      setIsConfirmingDeposit(false)
+    }
+  }
+
   const hasBankAccount = bankAccount && bankAccount.trim() !== ''
+
+  // Helper function to generate quick select options based on input
+  const getQuickSelectOptions = (inputValue: string): number[] => {
+    const trimmedValue = inputValue.trim().replace(/[^\d]/g, '')
+
+    // Default options when input is empty
+    if (!trimmedValue || trimmedValue === '0') {
+      return [50000, 200000, 500000]
+    }
+
+    const numValue = parseInt(trimmedValue, 10)
+    if (isNaN(numValue) || numValue === 0) {
+      return [50000, 200000, 500000]
+    }
+
+    const length = trimmedValue.length
+
+    if (length === 1) {
+      // Input: "1" → [1.000, 100.000, 1.000.000]
+      return [numValue * 1000, numValue * 100000, numValue * 1000000]
+    } else if (length === 2) {
+      // Input: "10" → [10.000, 100.000, 1.000.000]
+      return [numValue * 1000, numValue * 10000, numValue * 100000]
+    } else if (length === 3) {
+      // Input: "100" → [100.000, 1.000.000, 10.000.000]
+      return [numValue * 1000, numValue * 10000, numValue * 100000]
+    } else if (length === 4) {
+      // Input: "1000" → [1.000.000, 10.000.000]
+      return [numValue * 1000, numValue * 10000]
+    } else if (length >= 5) {
+      // Input: "10000" or more → [1.000.000, 10.000.000]
+      // For inputs >= 5 digits, always show [1.000.000, 10.000.000]
+      return [1000000, 10000000]
+    }
+
+    return [50000, 200000, 500000]
+  }
+
+  // Get quick select options for current input
+  const depositQuickOptions = getQuickSelectOptions(depositAmount)
+  const withdrawQuickOptions = getQuickSelectOptions(withdrawAmount)
 
   if (loading) {
     return (
@@ -306,63 +441,188 @@ export default function WalletContent({
         </Card>
       )}
 
-      {/* Withdraw Form */}
-      {hasBankAccount && (
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <CreditCard className='w-5 h-5 text-blue-600' />
+      {/* Deposit/Withdraw Form with Tabs */}
+      <Card>
+        <CardHeader>
+          {/* Tab Buttons */}
+          <div className='flex gap-2 mb-4'>
+            <Button
+              onClick={() => setActiveTab('deposit')}
+              variant={activeTab === 'deposit' ? 'default' : 'outline'}
+              className={`flex-1 ${activeTab === 'deposit' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+            >
+              <ArrowDown className='w-4 h-4 mr-2' />
+              Nạp tiền
+            </Button>
+            <Button
+              onClick={() => setActiveTab('withdraw')}
+              variant={activeTab === 'withdraw' ? 'default' : 'outline'}
+              className={`flex-1 ${activeTab === 'withdraw' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+              disabled={!hasBankAccount}
+            >
+              <CreditCard className='w-4 h-4 mr-2' />
               Rút tiền
-            </CardTitle>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='amount'>Số tiền muốn rút (₫)</Label>
-              <Input
-                id='amount'
-                type='number'
-                placeholder='Nhập số tiền muốn rút'
-                value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
-                min='50000'
-                max={walletBalance.toString()}
-                className='text-lg'
-              />
-              <div className='flex justify-between text-sm text-gray-500'>
-                <span>Số tiền tối thiểu: 50,000 ₫</span>
-                <span>
-                  Có thể rút tối đa: <span className='font-semibold'>{walletBalance.toLocaleString('vi-VN')} ₫</span>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className='space-y-4'>
+          {/* Deposit Form */}
+          {activeTab === 'deposit' && (
+            <>
+              <div className='space-y-2'>
+                <Label htmlFor='depositAmount'>Số tiền muốn nạp (₫)</Label>
+                <Input
+                  id='depositAmount'
+                  type='text'
+                  placeholder='Nhập số tiền muốn nạp'
+                  value={depositAmount}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d]/g, '')
+                    setDepositAmount(value)
+                  }}
+                  className='text-lg'
+                />
+                <div className='flex justify-between text-sm text-gray-500'>
+                  <span>Số tiền tối thiểu: 10,000 ₫</span>
+                  <span className='text-gray-400'>Không giới hạn số tiền nạp</span>
+                </div>
+              </div>
+
+              {/* Quick Select Buttons */}
+              <div className='flex flex-wrap gap-2'>
+                {depositQuickOptions.map((option) => (
+                  <Button
+                    key={option}
+                    type='button'
+                    variant='outline'
+                    onClick={() => setDepositAmount(option.toString())}
+                    className='flex-1 min-w-[100px]'
+                  >
+                    {option.toLocaleString('vi-VN')} ₫
+                  </Button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Withdraw Form */}
+          {activeTab === 'withdraw' && hasBankAccount && (
+            <>
+              <div className='space-y-2'>
+                <Label htmlFor='withdrawAmount'>Số tiền muốn rút (₫)</Label>
+                <Input
+                  id='withdrawAmount'
+                  type='text'
+                  placeholder='Nhập số tiền muốn rút'
+                  value={withdrawAmount}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d]/g, '')
+                    setWithdrawAmount(value)
+                  }}
+                  className='text-lg'
+                />
+                <div className='flex justify-between text-sm text-gray-500'>
+                  <span>Số tiền tối thiểu: 50,000 ₫</span>
+                  <span>
+                    Có thể rút tối đa: <span className='font-semibold'>{walletBalance.toLocaleString('vi-VN')} ₫</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick Select Buttons */}
+              <div className='flex flex-wrap gap-2'>
+                {withdrawQuickOptions.map((option) => (
+                  <Button
+                    key={option}
+                    type='button'
+                    variant='outline'
+                    onClick={() => {
+                      const finalAmount = Math.min(option, walletBalance)
+                      setWithdrawAmount(finalAmount.toString())
+                    }}
+                    className='flex-1 min-w-[100px]'
+                    disabled={option > walletBalance}
+                  >
+                    {option.toLocaleString('vi-VN')} ₫
+                  </Button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Deposit Summary */}
+          {activeTab === 'deposit' && depositAmount && parseFloat(depositAmount) > 0 && (
+            <div className='bg-gray-50 p-4 rounded-lg space-y-2'>
+              <div className='flex justify-between text-sm'>
+                <span className='text-gray-600'>Số tiền nạp:</span>
+                <span className='font-semibold text-lg text-green-600'>
+                  {parseFloat(depositAmount || '0').toLocaleString('vi-VN')} ₫
+                </span>
+              </div>
+              <div className='flex justify-between text-sm'>
+                <span className='text-gray-600'>Phí giao dịch:</span>
+                <span className='font-semibold'>0 ₫</span>
+              </div>
+              <div className='border-t pt-2 flex justify-between'>
+                <span className='font-semibold text-gray-900'>Số tiền nhận được:</span>
+                <span className='font-bold text-lg text-green-600'>
+                  {parseFloat(depositAmount || '0').toLocaleString('vi-VN')} ₫
+                </span>
+              </div>
+              <div className='flex justify-between text-sm mt-2'>
+                <span className='text-gray-600'>Số dư sau nạp:</span>
+                <span className='font-semibold'>
+                  {(walletBalance + parseFloat(depositAmount || '0')).toLocaleString('vi-VN')} ₫
                 </span>
               </div>
             </div>
+          )}
 
-            {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
-              <div className='bg-gray-50 p-4 rounded-lg space-y-2'>
-                <div className='flex justify-between text-sm'>
-                  <span className='text-gray-600'>Số tiền rút:</span>
-                  <span className='font-semibold text-lg text-blue-600'>
-                    {parseFloat(withdrawAmount || '0').toLocaleString('vi-VN')} ₫
-                  </span>
-                </div>
-                <div className='flex justify-between text-sm'>
-                  <span className='text-gray-600'>Phí giao dịch:</span>
-                  <span className='font-semibold'>0 ₫</span>
-                </div>
-                <div className='border-t pt-2 flex justify-between'>
-                  <span className='font-semibold text-gray-900'>Số tiền nhận được:</span>
-                  <span className='font-bold text-lg text-green-600'>
-                    {parseFloat(withdrawAmount || '0').toLocaleString('vi-VN')} ₫
-                  </span>
-                </div>
-                <div className='flex justify-between text-sm mt-2'>
-                  <span className='text-gray-600'>Số dư còn lại:</span>
-                  <span className='font-semibold'>
-                    {(walletBalance - parseFloat(withdrawAmount || '0')).toLocaleString('vi-VN')} ₫
-                  </span>
-                </div>
+          {/* Withdraw Summary */}
+          {activeTab === 'withdraw' && withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+            <div className='bg-gray-50 p-4 rounded-lg space-y-2'>
+              <div className='flex justify-between text-sm'>
+                <span className='text-gray-600'>Số tiền rút:</span>
+                <span className='font-semibold text-lg text-blue-600'>
+                  {parseFloat(withdrawAmount || '0').toLocaleString('vi-VN')} ₫
+                </span>
               </div>
-            )}
+              <div className='flex justify-between text-sm'>
+                <span className='text-gray-600'>Phí giao dịch:</span>
+                <span className='font-semibold'>0 ₫</span>
+              </div>
+              <div className='border-t pt-2 flex justify-between'>
+                <span className='font-semibold text-gray-900'>Số tiền nhận được:</span>
+                <span className='font-bold text-lg text-green-600'>
+                  {parseFloat(withdrawAmount || '0').toLocaleString('vi-VN')} ₫
+                </span>
+              </div>
+              <div className='flex justify-between text-sm mt-2'>
+                <span className='text-gray-600'>Số dư còn lại:</span>
+                <span className='font-semibold'>
+                  {(walletBalance - parseFloat(withdrawAmount || '0')).toLocaleString('vi-VN')} ₫
+                </span>
+              </div>
+            </div>
+          )}
 
+          {/* Action Buttons */}
+          {activeTab === 'deposit' && (
+            <Button
+              onClick={handleDeposit}
+              disabled={
+                !depositAmount ||
+                parseFloat(depositAmount) <= 0 ||
+                parseFloat(depositAmount) < 10000 ||
+                isConfirmingDeposit
+              }
+              className='w-full bg-green-600 hover:bg-green-700 text-white'
+            >
+              {isConfirmingDeposit ? 'Đang xử lý...' : 'Nạp tiền'}
+            </Button>
+          )}
+
+          {activeTab === 'withdraw' && hasBankAccount && (
             <Button
               onClick={handleWithdraw}
               disabled={
@@ -376,75 +636,148 @@ export default function WalletContent({
             >
               {isConfirming ? 'Đang xử lý...' : 'Rút tiền'}
             </Button>
+          )}
 
-            {showConfirmModal && (
+          {showConfirmDepositModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'
+              onClick={handleCancelDeposit}
+            >
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'
-                onClick={handleCancelWithdraw}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className='bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl'
               >
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  onClick={(e) => e.stopPropagation()}
-                  className='bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl'
-                >
-                  <div className='flex items-center gap-3 mb-4'>
-                    <div className='w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center'>
-                      <Wallet className='w-6 h-6 text-blue-600' />
-                    </div>
-                    <h3 className='text-xl font-bold text-gray-900'>Xác nhận rút tiền</h3>
+                <div className='flex items-center gap-3 mb-4'>
+                  <div className='w-12 h-12 bg-green-100 rounded-full flex items-center justify-center'>
+                    <ArrowDown className='w-6 h-6 text-green-600' />
                   </div>
+                  <h3 className='text-xl font-bold text-gray-900'>Xác nhận nạp tiền</h3>
+                </div>
 
-                  <div className='space-y-4 mb-6'>
-                    <div className='bg-gray-50 p-4 rounded-lg space-y-2'>
-                      <div className='flex justify-between text-sm'>
-                        <span className='text-gray-600'>Số tiền rút:</span>
-                        <span className='font-semibold text-lg'>
-                          {parseFloat(withdrawAmount || '0').toLocaleString('vi-VN')} ₫
-                        </span>
-                      </div>
-                      <div className='flex justify-between text-sm'>
-                        <span className='text-gray-600'>Tài khoản nhận:</span>
-                        <span className='font-mono font-semibold'>{bankAccount}</span>
-                      </div>
-                      <div className='flex justify-between text-sm'>
-                        <span className='text-gray-600'>Thời gian xử lý:</span>
-                        <span className='font-semibold'>10-15 phút</span>
-                      </div>
+                <div className='space-y-4 mb-6'>
+                  <div className='bg-gray-50 p-4 rounded-lg space-y-2'>
+                    <div className='flex justify-between text-sm'>
+                      <span className='text-gray-600'>Số tiền nạp:</span>
+                      <span className='font-semibold text-lg'>
+                        {parseFloat(depositAmount || '0').toLocaleString('vi-VN')} ₫
+                      </span>
                     </div>
-                    <p className='text-sm text-gray-500'>
-                      Bạn có chắc chắn muốn rút số tiền này về tài khoản ngân hàng của bạn không?
-                    </p>
+                    <div className='flex justify-between text-sm'>
+                      <span className='text-gray-600'>Số dư hiện tại:</span>
+                      <span className='font-semibold'>{walletBalance.toLocaleString('vi-VN')} ₫</span>
+                    </div>
+                    <div className='flex justify-between text-sm'>
+                      <span className='text-gray-600'>Số dư sau nạp:</span>
+                      <span className='font-semibold text-green-600'>
+                        {(walletBalance + parseFloat(depositAmount || '0')).toLocaleString('vi-VN')} ₫
+                      </span>
+                    </div>
                   </div>
+                  <p className='text-sm text-gray-500'>Bạn có chắc chắn muốn nạp số tiền này vào ví của bạn không?</p>
+                </div>
 
-                  <div className='flex gap-3'>
-                    <Button onClick={handleCancelWithdraw} variant='outline' className='flex-1' disabled={isConfirming}>
-                      Hủy
-                    </Button>
-                    <Button
-                      onClick={handleConfirmWithdraw}
-                      className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
-                      disabled={isConfirming}
-                    >
-                      {isConfirming ? (
-                        'Đang xử lý...'
-                      ) : (
-                        <>
-                          Xác nhận
-                          <ArrowRight className='w-4 h-4 ml-2' />
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </motion.div>
+                <div className='flex gap-3'>
+                  <Button
+                    onClick={handleCancelDeposit}
+                    variant='outline'
+                    className='flex-1'
+                    disabled={isConfirmingDeposit}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    onClick={handleConfirmDeposit}
+                    className='flex-1 bg-green-600 hover:bg-green-700 text-white'
+                    disabled={isConfirmingDeposit}
+                  >
+                    {isConfirmingDeposit ? (
+                      'Đang xử lý...'
+                    ) : (
+                      <>
+                        Xác nhận
+                        <ArrowRight className='w-4 h-4 ml-2' />
+                      </>
+                    )}
+                  </Button>
+                </div>
               </motion.div>
-            )}
-          </CardContent>
-        </Card>
+            </motion.div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Withdraw Confirmation Modal */}
+      {showConfirmModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'
+          onClick={handleCancelWithdraw}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className='bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl'
+          >
+            <div className='flex items-center gap-3 mb-4'>
+              <div className='w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center'>
+                <Wallet className='w-6 h-6 text-blue-600' />
+              </div>
+              <h3 className='text-xl font-bold text-gray-900'>Xác nhận rút tiền</h3>
+            </div>
+
+            <div className='space-y-4 mb-6'>
+              <div className='bg-gray-50 p-4 rounded-lg space-y-2'>
+                <div className='flex justify-between text-sm'>
+                  <span className='text-gray-600'>Số tiền rút:</span>
+                  <span className='font-semibold text-lg'>
+                    {parseFloat(withdrawAmount || '0').toLocaleString('vi-VN')} ₫
+                  </span>
+                </div>
+                <div className='flex justify-between text-sm'>
+                  <span className='text-gray-600'>Tài khoản nhận:</span>
+                  <span className='font-mono font-semibold'>{bankAccount}</span>
+                </div>
+                <div className='flex justify-between text-sm'>
+                  <span className='text-gray-600'>Thời gian xử lý:</span>
+                  <span className='font-semibold'>10-15 phút</span>
+                </div>
+              </div>
+              <p className='text-sm text-gray-500'>
+                Bạn có chắc chắn muốn rút số tiền này về tài khoản ngân hàng của bạn không?
+              </p>
+            </div>
+
+            <div className='flex gap-3'>
+              <Button onClick={handleCancelWithdraw} variant='outline' className='flex-1' disabled={isConfirming}>
+                Hủy
+              </Button>
+              <Button
+                onClick={handleConfirmWithdraw}
+                className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
+                disabled={isConfirming}
+              >
+                {isConfirming ? (
+                  'Đang xử lý...'
+                ) : (
+                  <>
+                    Xác nhận
+                    <ArrowRight className='w-4 h-4 ml-2' />
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {/* Transaction History */}
@@ -500,9 +833,7 @@ export default function WalletContent({
                         </span>
                       </div>
                       <p className='text-sm text-gray-600'>{transaction.description || 'Không có mô tả'}</p>
-                      <p className='text-xs text-gray-500 mt-1'>
-                        {new Date(transaction.createdAt).toLocaleString('vi-VN')}
-                      </p>
+                      <p className='text-xs text-gray-500 mt-1'>{transaction.createdAt}</p>
                     </div>
                     <div className='text-right'>
                       <div className={`text-lg font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
@@ -530,12 +861,25 @@ export default function WalletContent({
       <Card className='bg-gray-50'>
         <CardContent className='p-4'>
           <h4 className='font-semibold text-gray-900 mb-2'>Lưu ý quan trọng:</h4>
-          <ul className='text-sm text-gray-600 space-y-1 list-disc list-inside'>
-            <li>Số tiền rút tối thiểu: 50,000 ₫</li>
-            <li>Thời gian xử lý yêu cầu rút tiền: 10-15 phút</li>
-            <li>Vui lòng đảm bảo thông tin tài khoản ngân hàng chính xác</li>
-            <li>Phí giao dịch: Miễn phí</li>
-          </ul>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <div>
+              <h5 className='font-semibold text-green-700 mb-2'>Nạp tiền:</h5>
+              <ul className='text-sm text-gray-600 space-y-1 list-disc list-inside'>
+                <li>Số tiền nạp tối thiểu: 10,000 ₫</li>
+                <li>Nạp tiền được xử lý ngay lập tức</li>
+                <li>Phí giao dịch: Miễn phí</li>
+              </ul>
+            </div>
+            <div>
+              <h5 className='font-semibold text-blue-700 mb-2'>Rút tiền:</h5>
+              <ul className='text-sm text-gray-600 space-y-1 list-disc list-inside'>
+                <li>Số tiền rút tối thiểu: 50,000 ₫</li>
+                <li>Thời gian xử lý yêu cầu rút tiền: 10-15 phút</li>
+                <li>Vui lòng đảm bảo thông tin tài khoản ngân hàng chính xác</li>
+                <li>Phí giao dịch: Miễn phí</li>
+              </ul>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

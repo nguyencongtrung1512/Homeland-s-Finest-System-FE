@@ -8,7 +8,11 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 
 function Header() {
   const navigate = useNavigate()
+
+  // useCart hook - will throw error if CartProvider is not available
+  // All routes should go through App.tsx which has CartProvider, so this should not happen
   const { cart, cartCount } = useCart()
+
   const { user, isAuthenticated, logout } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
@@ -16,7 +20,7 @@ function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const cartContainerRef = useRef<HTMLDivElement>(null)
   const userDropdownRef = useRef<HTMLDivElement>(null)
-  const displayCount = cartCount || cart.reduce((sum, item) => sum + item.quantity, 0)
+  const displayCount = cartCount || (cart.length > 0 ? cart.reduce((sum, item) => sum + item.quantity, 0) : 0)
 
   // Xử lý đóng dropdown với animation
   const handleCloseDropdown = useCallback(() => {
@@ -128,9 +132,8 @@ function Header() {
             {/* Backdrop overlay */}
             {showDropdown && (
               <div
-                className={`fixed inset-0 bg-black/30 z-[60] cart-backdrop ${
-                  isClosing ? 'animate-fade-out' : 'animate-fade-in'
-                }`}
+                className={`fixed inset-0 bg-black/30 z-[60] cart-backdrop ${isClosing ? 'animate-fade-out' : 'animate-fade-in'
+                  }`}
                 onClick={handleCloseDropdown}
               />
             )}
@@ -138,9 +141,8 @@ function Header() {
             {showDropdown && (
               <div
                 ref={dropdownRef}
-                className={`fixed left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 w-[600px] max-w-[90vw] max-h-[80vh] bg-white shadow-2xl rounded-xl border border-gray-200 z-[70] flex flex-col ${
-                  isClosing ? 'animate-slide-up' : 'animate-slide-down'
-                }`}
+                className={`fixed left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 w-[600px] max-w-[90vw] max-h-[80vh] bg-white shadow-2xl rounded-xl border border-gray-200 z-[70] flex flex-col ${isClosing ? 'animate-slide-up' : 'animate-slide-down'
+                  }`}
               >
                 <div className='p-4 border-b text-gray-500 text-base font-semibold flex-shrink-0'>
                   Sản phẩm mới thêm

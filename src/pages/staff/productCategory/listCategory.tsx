@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Eye, Calendar, CheckCircle, XCircle, Plus, Edit, RefreshCw } from 'lucide-react'
+import { Search, Eye, CheckCircle, XCircle, Plus, Edit, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -190,30 +190,23 @@ function ListCategory() {
     }
   }
 
-  // Handle modal close
-  const handleModalClose = () => {
-    setIsModalOpen(false)
-    setEditingItem(null)
-    setFormData({ name: '', description: '', isActive: true })
-    setNameError('')
-    setDescriptionError('')
+  // Handle modal close with form reset
+  const handleModalClose = (open: boolean) => {
+    setIsModalOpen(open)
+    if (!open) {
+      setEditingItem(null)
+      setFormData({ name: '', description: '', isActive: true })
+      setNameError('')
+      setDescriptionError('')
+    }
   }
 
   // Handle detail modal close
-  const handleDetailModalClose = () => {
-    setIsDetailModalOpen(false)
-    setViewingItem(null)
-  }
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+  const handleDetailModalClose = (open: boolean) => {
+    setIsDetailModalOpen(open)
+    if (!open) {
+      setViewingItem(null)
+    }
   }
 
   return (
@@ -376,31 +369,27 @@ function ListCategory() {
       </Card>
 
       {/* Create/Edit Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className='sm:max-w-[500px] bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'>
+      <Dialog open={isModalOpen} onOpenChange={handleModalClose}>
+        <DialogContent className='sm:max-w-[500px] bg-white border-gray-200'>
           <DialogHeader className='space-y-3'>
             <div className='flex items-center gap-3'>
-              <div className='p-2 bg-green-100 rounded-lg'>
-                {editingItem ? (
-                  <Edit className='w-5 h-5 text-green-600' />
-                ) : (
-                  <Plus className='w-5 h-5 text-green-600' />
-                )}
+              <div className='p-2 bg-gray-100 rounded-lg'>
+                {editingItem ? <Edit className='w-5 h-5 text-gray-600' /> : <Plus className='w-5 h-5 text-gray-600' />}
               </div>
-              <DialogTitle className='text-xl font-bold text-green-800'>
+              <DialogTitle className='text-xl font-bold text-gray-900'>
                 {editingItem ? 'Chỉnh sửa danh mục sản phẩm' : 'Tạo danh mục sản phẩm mới'}
               </DialogTitle>
             </div>
-            <DialogDescription className='text-green-600'>
+            <DialogDescription className='text-gray-600'>
               {editingItem ? 'Cập nhật thông tin danh mục sản phẩm.' : 'Điền thông tin để tạo danh mục sản phẩm mới.'}
             </DialogDescription>
           </DialogHeader>
           <div className='space-y-6 py-4'>
             {/* Tên danh mục */}
-            <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-green-200'>
+            <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
               <div className='flex items-center gap-2 mb-3'>
-                <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                <Label htmlFor='name' className='text-sm font-semibold text-green-700'>
+                <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                <Label htmlFor='name' className='text-sm font-semibold text-gray-900'>
                   Tên danh mục *
                 </Label>
               </div>
@@ -415,7 +404,7 @@ function ListCategory() {
                     setNameError('')
                   }
                 }}
-                className={`border-green-300 focus:border-green-500 focus:ring-green-500 ${nameError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                className={`border-gray-300 focus:border-gray-500 focus:ring-gray-500 ${nameError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
                   }`}
                 placeholder='Nhập tên danh mục...'
                 maxLength={10}
@@ -430,10 +419,10 @@ function ListCategory() {
             </div>
 
             {/* Mô tả */}
-            <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-green-200'>
+            <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
               <div className='flex items-center gap-2 mb-3'>
-                <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                <Label htmlFor='description' className='text-sm font-semibold text-green-700'>
+                <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                <Label htmlFor='description' className='text-sm font-semibold text-gray-900'>
                   Mô tả *
                 </Label>
               </div>
@@ -448,7 +437,7 @@ function ListCategory() {
                     setDescriptionError('')
                   }
                 }}
-                className={`border-green-300 focus:border-green-500 focus:ring-green-500 ${descriptionError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                className={`border-gray-300 focus:border-gray-500 focus:ring-gray-500 ${descriptionError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
                   }`}
                 placeholder='Nhập mô tả danh mục...'
                 rows={3}
@@ -464,10 +453,10 @@ function ListCategory() {
             </div>
 
             {/* Trạng thái */}
-            <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-green-200'>
+            <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
               <div className='flex items-center gap-2 mb-3'>
-                <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                <Label htmlFor='isActive' className='text-sm font-semibold text-green-700'>
+                <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                <Label htmlFor='isActive' className='text-sm font-semibold text-gray-900'>
                   Trạng thái
                 </Label>
               </div>
@@ -493,13 +482,13 @@ function ListCategory() {
               </div>
             </div>
           </div>
-          <DialogFooter className='bg-green-50/50 rounded-lg p-4 border-t border-green-200'>
+          <DialogFooter className='bg-gray-50 rounded-lg p-4 border-t border-gray-200'>
             <div className='flex gap-3 w-full'>
               <Button
                 variant='outline'
-                onClick={handleModalClose}
+                onClick={() => handleModalClose(false)}
                 disabled={formLoading}
-                className='flex-1 border-green-300 text-green-700 hover:bg-green-50'
+                className='flex-1 border-gray-300 text-gray-700 hover:bg-gray-50'
               >
                 Hủy
               </Button>
@@ -531,43 +520,39 @@ function ListCategory() {
       </Dialog>
 
       {/* Detail View Modal */}
-      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-        <DialogContent className='sm:max-w-[500px] bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'>
+      <Dialog open={isDetailModalOpen} onOpenChange={handleDetailModalClose}>
+        <DialogContent className='sm:max-w-[500px] bg-white border-gray-200'>
           <DialogHeader className='space-y-3'>
             <div className='flex items-center gap-3'>
-              <div className='p-2 bg-green-100 rounded-lg'>
-                <Eye className='w-5 h-5 text-green-600' />
-              </div>
-              <DialogTitle className='text-xl font-bold text-green-800'>Chi tiết danh mục sản phẩm</DialogTitle>
+              <DialogTitle className='text-xl font-bold text-gray-900'>Chi tiết danh mục sản phẩm</DialogTitle>
             </div>
-            <DialogDescription className='text-green-600'>Thông tin chi tiết về danh mục sản phẩm</DialogDescription>
           </DialogHeader>
 
           {viewingItem && (
             <div className='space-y-6 py-4'>
               {/* Tên danh mục */}
-              <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-green-200'>
+              <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
                 <div className='flex items-center gap-2 mb-2'>
-                  <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                  <Label className='text-sm font-semibold text-green-700'>Tên danh mục</Label>
+                  <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                  <Label className='text-sm font-semibold text-gray-900'>Tên danh mục</Label>
                 </div>
-                <p className='text-gray-800 font-medium text-lg'>{viewingItem.name}</p>
+                <p className='text-gray-900 font-medium text-lg'>{viewingItem.name}</p>
               </div>
 
               {/* Mô tả */}
-              <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-green-200'>
+              <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
                 <div className='flex items-center gap-2 mb-2'>
-                  <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                  <Label className='text-sm font-semibold text-green-700'>Mô tả</Label>
+                  <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                  <Label className='text-sm font-semibold text-gray-900'>Mô tả</Label>
                 </div>
-                <p className='text-gray-700 leading-relaxed'>{viewingItem.description}</p>
+                <p className='text-gray-900 leading-relaxed'>{viewingItem.description}</p>
               </div>
 
               {/* Trạng thái */}
-              <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-green-200'>
+              <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
                 <div className='flex items-center gap-2 mb-2'>
-                  <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                  <Label className='text-sm font-semibold text-green-700'>Trạng thái</Label>
+                  <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                  <Label className='text-sm font-semibold text-gray-900'>Trạng thái</Label>
                 </div>
                 <Badge
                   variant='outline'
@@ -583,47 +568,21 @@ function ListCategory() {
                   </div>
                 </Badge>
               </div>
-
-              {/* Ngày tạo */}
-              <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-green-200'>
-                <div className='flex items-center gap-2 mb-2'>
-                  <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                  <Label className='text-sm font-semibold text-green-700'>Ngày tạo</Label>
-                </div>
-                <div className='flex items-center gap-2 text-gray-700'>
-                  <Calendar className='w-4 h-4 text-green-600' />
-                  <span className='font-medium'>{formatDate(viewingItem.createdAt)}</span>
-                </div>
-              </div>
-
-              {/* Ngày cập nhật */}
-              <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-green-200'>
-                <div className='flex items-center gap-2 mb-2'>
-                  <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                  <Label className='text-sm font-semibold text-green-700'>Ngày cập nhật</Label>
-                </div>
-                <div className='flex items-center gap-2 text-gray-700'>
-                  <Calendar className='w-4 h-4 text-green-600' />
-                  <span className='font-medium'>
-                    {viewingItem.updatedAt ? formatDate(viewingItem.updatedAt) : 'Chưa cập nhật'}
-                  </span>
-                </div>
-              </div>
             </div>
           )}
 
-          <DialogFooter className='bg-green-50/50 rounded-lg p-4 border-t border-green-200'>
+          <DialogFooter className='bg-gray-50 rounded-lg p-4 border-t border-gray-200'>
             <div className='flex gap-3 w-full'>
               <Button
                 variant='outline'
-                onClick={handleDetailModalClose}
-                className='flex-1 border-green-300 text-green-700 hover:bg-green-50'
+                onClick={() => handleDetailModalClose(false)}
+                className='flex-1 border-gray-300 text-gray-700 hover:bg-gray-50'
               >
                 Đóng
               </Button>
               <Button
                 onClick={() => {
-                  handleDetailModalClose()
+                  handleDetailModalClose(false)
                   handleEdit(viewingItem!)
                 }}
                 className='flex-1 bg-green-600 hover:bg-green-700 text-white'

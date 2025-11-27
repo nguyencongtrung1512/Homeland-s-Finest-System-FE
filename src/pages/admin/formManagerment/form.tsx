@@ -99,7 +99,7 @@ export default function AdminFormManagement() {
         return {
           icon: <CheckCircle className='w-4 h-4 text-green-500' />,
           badge: 'default',
-          text: 'Đã duyệt (Staff)',
+          text: 'Đã duyệt bởi nhân viên',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -107,7 +107,7 @@ export default function AdminFormManagement() {
         return {
           icon: <XCircle className='w-4 h-4 text-red-500' />,
           badge: 'destructive',
-          text: 'Từ chối (Staff)',
+          text: 'Từ chối bởi nhân viên',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -115,7 +115,7 @@ export default function AdminFormManagement() {
         return {
           icon: <CheckCircle className='w-4 h-4 text-green-500' />,
           badge: 'default',
-          text: 'Đã duyệt (Admin)',
+          text: 'Đã duyệt bởi admin',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -123,7 +123,7 @@ export default function AdminFormManagement() {
         return {
           icon: <XCircle className='w-4 h-4 text-red-500' />,
           badge: 'destructive',
-          text: 'Từ chối (Admin)',
+          text: 'Từ chối bởi admin',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -135,11 +135,11 @@ export default function AdminFormManagement() {
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
-      case 'WaitingSellerResponse':
+      case 'Confirmed':
         return {
-          icon: <Clock className='w-4 h-4 text-orange-500' />,
+          icon: <CheckCircle className='w-4 h-4 text-green-500' />,
           badge: 'default',
-          text: 'Chờ phản hồi từ người bán',
+          text: 'Đã xác nhận bởi nhân viên',
           color: 'text-orange-700',
           bgColor: 'bg-orange-50'
         }
@@ -273,12 +273,12 @@ export default function AdminFormManagement() {
                   <SelectItem value='all'>Tất cả</SelectItem>
                   <SelectItem value='Pending'>Chờ phân công</SelectItem>
                   <SelectItem value='Processing'>Đang xử lý</SelectItem>
-                  <SelectItem value='ApprovedByStaff'>Đã duyệt (Staff)</SelectItem>
-                  <SelectItem value='DeniedByStaff'>Từ chối (Staff)</SelectItem>
-                  <SelectItem value='ApprovedByAdmin'>Đã duyệt (Admin)</SelectItem>
-                  <SelectItem value='DeniedByAdmin'>Từ chối (Admin)</SelectItem>
+                  <SelectItem value='ApprovedByStaff'>Đã duyệt bởi nhân viên</SelectItem>
+                  <SelectItem value='DeniedByStaff'>Từ chối bởi nhân viên</SelectItem>
+                  <SelectItem value='ApprovedByAdmin'>Đã duyệt bởi admin</SelectItem>
+                  <SelectItem value='DeniedByAdmin'>Từ chối bởi admin</SelectItem>
                   <SelectItem value='Rejected'>Bị từ chối</SelectItem>
-                  <SelectItem value='WaitingSellerResponse'>Chờ phản hồi từ người bán</SelectItem>
+                  <SelectItem value='Confirmed'>Đã xác nhận bởi nhân viên</SelectItem>
                   <SelectItem value='Cancel'>Đã hủy</SelectItem>
                 </SelectContent>
               </Select>

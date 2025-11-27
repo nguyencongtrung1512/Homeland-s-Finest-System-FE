@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Form, Upload, Input, Select } from 'antd'
 import {
   ArrowLeft,
   Store,
@@ -21,13 +20,15 @@ import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar'
 import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Textarea } from '../../../components/ui/textarea'
+import { Label } from '../../../components/ui/label'
 import { useNavigate, useParams } from 'react-router-dom'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
-import { staffApi, type ReviewStoreRequest } from '../../../apis/staff.api'
-import { toast } from 'react-toastify'
+import { staffApi } from '../../../apis/staff.api'
+import { toast } from '../../../utils/toast'
 import { cn } from '../../../lib/utils'
-
-const { Option } = Select
+import { formatDate } from '../../../utils/formatDate'
 
 function StaffStoreDetail() {
   const navigate = useNavigate()
@@ -38,9 +39,15 @@ function StaffStoreDetail() {
 
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
   const [reviewLoading, setReviewLoading] = useState(false)
-  const [reviewForm] = Form.useForm()
+  const [newStatus, setNewStatus] = useState<'ApprovedByStaff' | 'RejectedByStaff' | ''>('')
+  const [staffNotes, setStaffNotes] = useState('')
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [errors, setErrors] = useState<{
+    newStatus?: string
+    staffNotes?: string
+    staffImages?: string
+  }>({})
 
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('')
@@ -93,24 +100,35 @@ function StaffStoreDetail() {
   const handleReview = () => {
     if (store) {
       setReviewModalOpen(true)
-      reviewForm.resetFields()
+      setNewStatus('')
+      setStaffNotes('')
+      setSelectedImages([])
+      setImagePreviews([])
+      setErrors({})
     }
   }
 
   // Handle image selection and preview
-  const handleImageChange = (info: { fileList: Array<{ originFileObj?: File }> }) => {
-    const fileList = info.fileList
-    const files = fileList.map((file) => file.originFileObj).filter(Boolean) as File[]
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
 
-    setSelectedImages(files)
+    const fileArray = Array.from(files)
+    setSelectedImages((prev) => [...prev, ...fileArray])
 
     // Create previews
-    const previews = files.map((file: File) => URL.createObjectURL(file))
-    setImagePreviews(previews)
+    const newPreviews = fileArray.map((file: File) => URL.createObjectURL(file))
+    setImagePreviews((prev) => [...prev, ...newPreviews])
+
+    // Clear input
+    event.target.value = ''
   }
 
   // Remove image
   const removeImage = (index: number) => {
+    // Cleanup URL object to prevent memory leak
+    URL.revokeObjectURL(imagePreviews[index])
+
     const newImages = selectedImages.filter((_, i) => i !== index)
     const newPreviews = imagePreviews.filter((_, i) => i !== index)
 
@@ -121,20 +139,34 @@ function StaffStoreDetail() {
     setPreviewImageUrl(imageUrl)
     setImagePreviewOpen(true)
   }
-  const handleReviewSubmit = async (values: ReviewStoreRequest) => {
+  const handleReviewSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     if (!store || !storeId) return
 
-    // Kiểm tra có ít nhất 1 ảnh
+    // Validation
+    const newErrors: typeof errors = {}
+    if (!newStatus) {
+      newErrors.newStatus = 'Vui lòng chọn quyết định'
+    }
+    if (!staffNotes.trim()) {
+      newErrors.staffNotes = 'Vui lòng nhập ghi chú'
+    }
     if (selectedImages.length === 0) {
-      toast.error('Vui lòng chọn ít nhất 1 hình ảnh')
+      newErrors.staffImages = 'Vui lòng chọn ít nhất 1 hình ảnh'
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
       return
     }
 
     try {
       setReviewLoading(true)
+      setErrors({})
 
       const response = await staffApi.reviewStore(storeId, {
-        ...values,
+        NewStatus: newStatus as 'ApprovedByStaff' | 'RejectedByStaff',
+        StaffNotes: staffNotes,
         selectedImages: selectedImages
       })
 
@@ -142,7 +174,8 @@ function StaffStoreDetail() {
       if (response) {
         toast.success('Đánh giá cửa hàng thành công!')
         setReviewModalOpen(false)
-        reviewForm.resetFields()
+        setNewStatus('')
+        setStaffNotes('')
         setSelectedImages([])
         setImagePreviews([])
         fetchStoreDetail() // Refresh store data
@@ -157,17 +190,6 @@ function StaffStoreDetail() {
     }
   }
 
-  // Helper functions
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
 
   const getStatusDisplay = (status: string) => {
     const statusMap = {
@@ -276,7 +298,6 @@ function StaffStoreDetail() {
                   </div>
                   {isTrustworthyStore && (
                     <div className='flex items-center gap-2 text-sm text-green-600 p-2 rounded-lg bg-green-50 border border-green-200'>
-                      <AlertTriangle className='w-4 h-4 text-green-500' />
                       <span>Cửa hàng đáng tin cậy</span>
                     </div>
                   )}
@@ -303,7 +324,7 @@ function StaffStoreDetail() {
                 <div className='space-y-4'>
                   <div>
                     <span className='text-sm font-medium text-gray-500 block mb-1'>Ngày đăng ký</span>
-                    <p className='font-semibold text-gray-900'>{formatDate(store.createdAt)}</p>
+                    <p className='font-semibold text-gray-900'>{formatDate(store.createdAt as string)}</p>
                   </div>
                   <div>
                     <span className='text-sm font-medium text-gray-500 block mb-1'>Số lượng sản phẩm</span>
@@ -663,7 +684,7 @@ function StaffStoreDetail() {
                 {store && store.status === 'Processing' && (
                   <Button
                     onClick={handleReview}
-                    className='w-full bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center gap-2'
+                    className='w-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2'
                     size='lg'
                   >
                     <FileText size={18} />
@@ -689,55 +710,78 @@ function StaffStoreDetail() {
           <DialogHeader>
             <DialogTitle>Đánh giá cửa hàng: {store?.storeName}</DialogTitle>
           </DialogHeader>
-          <Form form={reviewForm} layout='vertical' onFinish={handleReviewSubmit}>
-            <Form.Item
-              name='NewStatus'
-              label='Quyết định'
-              rules={[{ required: true, message: 'Vui lòng chọn quyết định' }]}
-            >
-              <Select placeholder='Chọn quyết định đánh giá'>
-                <Option value='ApprovedByStaff'>Chấp nhận cửa hàng</Option>
-                <Option value='RejectedByStaff'>Từ chối cửa hàng</Option>
+          <form onSubmit={handleReviewSubmit} className='space-y-6'>
+            {/* Quyết định */}
+            <div className='space-y-2'>
+              <Label htmlFor='newStatus' className='text-sm font-medium text-gray-700'>
+                Quyết định <span className='text-red-500'>*</span>
+              </Label>
+              <Select value={newStatus} onValueChange={(value) => setNewStatus(value as typeof newStatus)}>
+                <SelectTrigger id='newStatus' className={cn(errors.newStatus && 'border-red-500')}>
+                  <SelectValue placeholder='Chọn quyết định đánh giá' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='ApprovedByStaff'>Chấp nhận cửa hàng</SelectItem>
+                  <SelectItem value='RejectedByStaff'>Từ chối cửa hàng</SelectItem>
+                </SelectContent>
               </Select>
-            </Form.Item>
+              {errors.newStatus && <p className='text-sm text-red-500'>{errors.newStatus}</p>}
+            </div>
 
-            <Form.Item
-              name='StaffNotes'
-              label='Ghi chú của nhân viên'
-              rules={[{ required: true, message: 'Vui lòng nhập ghi chú' }]}
-            >
-              <Input.TextArea rows={4} placeholder='Nhập ghi chú về cửa hàng...' />
-            </Form.Item>
+            {/* Ghi chú */}
+            <div className='space-y-2'>
+              <Label htmlFor='staffNotes' className='text-sm font-medium text-gray-700'>
+                Ghi chú của nhân viên <span className='text-red-500'>*</span>
+              </Label>
+              <Textarea
+                id='staffNotes'
+                rows={4}
+                placeholder='Nhập ghi chú về cửa hàng...'
+                value={staffNotes}
+                onChange={(e) => setStaffNotes(e.target.value)}
+                className={cn(errors.staffNotes && 'border-red-500')}
+              />
+              {errors.staffNotes && <p className='text-sm text-red-500'>{errors.staffNotes}</p>}
+            </div>
 
-            <Form.Item
-              name='StaffImages'
-              label='Hình ảnh đính kèm (Bắt buộc)'
-              rules={[{ required: true, message: 'Vui lòng chọn ít nhất 1 hình ảnh' }]}
-            >
+            {/* Hình ảnh đính kèm */}
+            <div className='space-y-2'>
+              <Label htmlFor='staffImages' className='text-sm font-medium text-gray-700'>
+                Hình ảnh đính kèm (Bắt buộc) <span className='text-red-500'>*</span>
+              </Label>
               <div className='space-y-4'>
-                <Upload
-                  multiple
-                  beforeUpload={() => false} // Prevent auto upload
-                  onChange={handleImageChange}
-                  showUploadList={false}
-                  accept='image/*'
-                >
-                  <Button type='button' className='flex items-center gap-2'>
-                    <UploadIcon size={16} />
-                    Chọn hình ảnh
-                  </Button>
-                </Upload>
+                <div className='relative'>
+                  <input
+                    type='file'
+                    id='staffImages'
+                    multiple
+                    accept='image/*'
+                    onChange={handleImageChange}
+                    className='hidden'
+                  />
+                  <label htmlFor='staffImages'>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      className='w-full flex items-center justify-center gap-2 cursor-pointer'
+                      onClick={() => document.getElementById('staffImages')?.click()}
+                    >
+                      <UploadIcon size={16} />
+                      Chọn hình ảnh
+                    </Button>
+                  </label>
+                </div>
 
                 {/* Image Previews */}
                 {imagePreviews.length > 0 && (
                   <div className='grid grid-cols-2 gap-4'>
                     {imagePreviews.map((preview, index) => (
-                      <div key={index} className='relative border rounded-lg p-2'>
+                      <div key={index} className='relative border border-gray-200 rounded-lg p-2 bg-gray-50'>
                         <img src={preview} alt={`Preview ${index + 1}`} className='w-full h-32 object-cover rounded' />
                         <button
                           type='button'
                           onClick={() => removeImage(index)}
-                          className='absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600'
+                          className='absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors'
                         >
                           ×
                         </button>
@@ -746,26 +790,27 @@ function StaffStoreDetail() {
                     ))}
                   </div>
                 )}
+                {errors.staffImages && <p className='text-sm text-red-500'>{errors.staffImages}</p>}
               </div>
-            </Form.Item>
+            </div>
 
             <DialogFooter>
               <Button
+                type='button'
                 variant='outline'
                 onClick={() => {
                   setReviewModalOpen(false)
-                  reviewForm.resetFields()
+                  setNewStatus('')
+                  setStaffNotes('')
                   setSelectedImages([])
                   setImagePreviews([])
+                  setErrors({})
                 }}
+                disabled={reviewLoading}
               >
                 Hủy
               </Button>
-              <Button
-                onClick={() => reviewForm.submit()}
-                disabled={reviewLoading}
-                className='bg-orange-500 hover:bg-orange-600'
-              >
+              <Button type='submit' disabled={reviewLoading} className='bg-green-500 hover:bg-green-600 text-white'>
                 {reviewLoading ? (
                   <>
                     <Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -776,7 +821,7 @@ function StaffStoreDetail() {
                 )}
               </Button>
             </DialogFooter>
-          </Form>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

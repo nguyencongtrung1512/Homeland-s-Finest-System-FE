@@ -46,6 +46,32 @@ export interface StatusStoreRequest {
   reason: string
 }
 
+// Interface cho ban/unban store request
+export interface BanStoreRequest {
+  reason: string
+}
+
+// Interface cho ban/unban store response data
+export interface BanStoreResponseData {
+  storeId: string
+  storeName: string
+  newStoreStatus: string
+  sellerId: string
+  newSellerStatus: string
+  userId: string
+  isUserActive: boolean
+  adminActionReason: string
+  bannedByAdminId: string
+  decisionDate: string
+}
+
+// Interface cho ban/unban store response
+export interface BanStoreResponse {
+  status: number
+  message: string
+  data?: BanStoreResponseData
+}
+
 // Interface cho review store response
 export interface ReviewStoreResponse {
   status: number
@@ -124,6 +150,37 @@ export interface ProductAdminResponse {
   }
 }
 
+// Interface cho ban staff request
+export interface BanStaffRequest {
+  reason: string
+}
+
+// Interface cho ban staff response data
+export interface BanStaffResponseData {
+  staffId: string
+  isActive: boolean
+  note?: string
+  unassignedProducts?: number
+  unassignedCombos?: number
+  unassignedStores?: number
+  unassignedForms?: number
+  message?: string
+}
+
+// Interface cho unban staff response data
+export interface UnbanStaffResponseData {
+  staffId: string
+  isActive: boolean
+  message?: string
+}
+
+// Interface cho ban/unban staff response
+export interface BanStaffResponse {
+  status: number
+  message: string
+  data?: BanStaffResponseData | UnbanStaffResponseData
+}
+
 // API functions
 export const adminApi = {
   // Lấy danh sách tất cả staff
@@ -179,6 +236,38 @@ export const adminApi = {
     // Accept both 200 and 202 as success statuses
     if (response.status === 200 || response.status === 202) {
       return response.data as ReviewStoreResponse
+    } else {
+      throw new Error(response.data?.message || `API returned status ${response.status}`)
+    }
+  },
+
+  // Ban store
+  banStore: async (storeId: string, banData: BanStoreRequest): Promise<BanStoreResponse> => {
+    const response = await axiosInstance.put(`${API_URL}/Store/${storeId}/ban`, banData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    // Accept both 200 and 202 as success statuses
+    if (response.status === 200 || response.status === 202) {
+      return response.data as BanStoreResponse
+    } else {
+      throw new Error(response.data?.message || `API returned status ${response.status}`)
+    }
+  },
+
+  // Unban store
+  unbanStore: async (storeId: string, unbanData: BanStoreRequest): Promise<BanStoreResponse> => {
+    const response = await axiosInstance.put(`${API_URL}/Store/${storeId}/unban`, unbanData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    // Accept both 200 and 202 as success statuses
+    if (response.status === 200 || response.status === 202) {
+      return response.data as BanStoreResponse
     } else {
       throw new Error(response.data?.message || `API returned status ${response.status}`)
     }
@@ -262,5 +351,41 @@ export const adminApi = {
       newStaffId
     })
     return response
+  },
+
+  // Ban staff
+  banStaff: async (staffId: string, banData: BanStaffRequest): Promise<BanStaffResponse> => {
+    const response = await axiosInstance.put(`${API_URL}/staff/${staffId}/ban`, banData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    // Accept both 200 and 202 as success statuses
+    if (response.status === 200 || response.status === 202) {
+      return response.data as BanStaffResponse
+    } else {
+      throw new Error(response.data?.message || `API returned status ${response.status}`)
+    }
+  },
+
+  // Unban staff
+  unbanStaff: async (staffId: string): Promise<BanStaffResponse> => {
+    const response = await axiosInstance.put(
+      `${API_URL}/staff/${staffId}/unban`,
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+
+    // Accept both 200 and 202 as success statuses
+    if (response.status === 200 || response.status === 202) {
+      return response.data as BanStaffResponse
+    } else {
+      throw new Error(response.data?.message || `API returned status ${response.status}`)
+    }
   }
 }

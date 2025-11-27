@@ -26,10 +26,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
-import { adminApi, type Staff, type StatusStoreRequest } from '../../../apis/admin.api'
+import { adminApi, type Staff, type StatusStoreRequest, type BanStoreRequest } from '../../../apis/admin.api'
+import { staffApi } from '../../../apis/staff.api'
 import { getAllCombos } from '../../../apis/combo.api'
 import { type Combo } from '../../../types/combo.type'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import ProductModal, { type ProductWithCreatedAt } from './modalProduct'
 import { exportStoreToExcel } from './excelExport'
 
@@ -173,11 +174,62 @@ function StoreDetailAdmin() {
 
   const fetchStaffList = async () => {
     try {
-      const response = await adminApi.getAllStaff()
-      if (Array.isArray(response)) setStaffList(response)
-      else if (response && response.data && Array.isArray(response.data)) setStaffList(response.data)
-      else toast.error('Định dạng dữ liệu nhân viên không đúng')
-    } catch (error: any) {
+      const response = await staffApi.getAllStaff({ pageSize: 0, pageNumber: 1 })
+      console.log('response staff', response)
+
+      // Handle different response formats
+      let staffData: unknown[] = []
+
+      if (Array.isArray(response)) {
+        // Response is directly an array
+        staffData = response
+      } else if (response && typeof response === 'object' && 'data' in response) {
+        const responseWithData = response as { data?: unknown[] }
+        if (Array.isArray(responseWithData.data)) {
+          // Response has structure {status, message, data: [...]}
+          staffData = responseWithData.data
+        }
+      }
+
+      if (staffData.length > 0) {
+        // Map StaffInfo to Staff format for compatibility
+        const mappedStaffList: Staff[] = staffData.map((staffInfo: unknown) => {
+          const info = staffInfo as {
+            userId?: string
+            id?: string
+            firstName?: string
+            lastName?: string
+            staffName?: string
+            name?: string
+            email?: string
+          }
+
+          // Generate staff name with fallbacks
+          let staffName = 'Nhân viên'
+          if (info.firstName && info.lastName) {
+            staffName = `${info.firstName} ${info.lastName}`.trim()
+          } else if (info.staffName) {
+            staffName = info.staffName
+          } else if (info.name) {
+            staffName = info.name
+          } else if (info.email) {
+            // Use email username as fallback
+            staffName = info.email.split('@')[0]
+          }
+
+          return {
+            staffId: info.userId || info.id || '',
+            staffName: staffName,
+            email: info.email || '',
+            processingStoreCount: 0 // Default value as this field is not available in StaffInfo
+          }
+        })
+        console.log('mappedStaffList', mappedStaffList)
+        setStaffList(mappedStaffList)
+      } else {
+        toast.error('Không có nhân viên nào')
+      }
+    } catch (error: unknown) {
       const errorMessage = handleApiError(error, 'Có lỗi xảy ra khi tải danh sách nhân viên')
       toast.error(errorMessage)
     }
@@ -301,12 +353,27 @@ function StoreDetailAdmin() {
 
     try {
       setStatusLoading(true)
-      const statusData: StatusStoreRequest = {
-        action: selectedAction,
-        reason: reason.trim()
-      }
+      let response: any
 
-      const response = await adminApi.statusStore(store.id, statusData)
+      // Sử dụng API riêng cho ban/unban
+      if (selectedAction === 'Ban') {
+        const banData: BanStoreRequest = {
+          reason: reason.trim()
+        }
+        response = await adminApi.banStore(store.id, banData)
+      } else if (selectedAction === 'Unban') {
+        const unbanData: BanStoreRequest = {
+          reason: reason.trim()
+        }
+        response = await adminApi.unbanStore(store.id, unbanData)
+      } else {
+        // Sử dụng API statusStore cho Approve và Reject
+        const statusData: StatusStoreRequest = {
+          action: selectedAction,
+          reason: reason.trim()
+        }
+        response = await adminApi.statusStore(store.id, statusData)
+      }
 
       if (response) {
         const actionText = {
@@ -315,7 +382,9 @@ function StoreDetailAdmin() {
           Ban: 'khóa',
           Unban: 'mở khóa'
         }
-        toast.success(`Cửa hàng đã được ${actionText[selectedAction]} thành công!`)
+        // Hiển thị thông báo từ backend nếu có
+        const successMessage = response.data?.message || response.message || `Cửa hàng đã được ${actionText[selectedAction]} thành công!`
+        toast.success(successMessage)
         fetchStoreDetail()
       } else {
         toast.error('Có lỗi xảy ra khi cập nhật trạng thái')
@@ -493,7 +562,6 @@ function StoreDetailAdmin() {
                       </div>
                       {isTrustworthyStore && (
                         <div className='flex items-center gap-2 text-sm text-green-600'>
-                          <AlertTriangle className='w-4 h-4 text-green-500' />
                           <span>Cửa hàng đáng tin cậy</span>
                         </div>
                       )}

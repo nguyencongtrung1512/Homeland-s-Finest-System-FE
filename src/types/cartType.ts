@@ -9,6 +9,9 @@ export interface CartItem {
   isCombo: boolean
   productVariantId: string
   comboId: string
+  isStock?: boolean
+  isSelected?: boolean
+  availableQuantity?: number
 }
 
 // Applied Promotion interface
@@ -79,6 +82,7 @@ export interface ShippingCartItem {
   height: number
   weight: number
   isCombo: boolean
+  isStock: boolean
 }
 
 export interface StoreShippingInfo {

@@ -22,13 +22,12 @@ interface ActualStoreResponse {
   createdAt: string
 }
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Badge } from '../../../components/ui/badge'
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { useNavigate } from 'react-router-dom'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
 
@@ -36,9 +35,11 @@ interface StoreData {
   key: string
   store: {
     avatar: string
+
     name: string
     id: string
   }
+  logoUrl: string | null
   owner: {
     name: string
     email: string
@@ -47,6 +48,8 @@ interface StoreData {
   products: number
   status: 'Processing' | 'Pending' | 'Approved' | 'Rejected' | 'Denied'
 }
+
+const DEFAULT_STORE_LOGO = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
 function ListStore() {
   const navigate = useNavigate()
@@ -82,6 +85,7 @@ function ListStore() {
         name: apiStore.storeName,
         id: apiStore.id
       },
+      logoUrl: apiStore.logoUrl,
       owner: {
         name: apiStore.sellerName || 'Chủ cửa hàng',
         email: 'N/A'
@@ -219,9 +223,29 @@ function ListStore() {
           {/* Header with Avatar and Store Info */}
           <div className='flex items-start gap-3 mb-4 min-w-0'>
             <div className='relative flex-shrink-0'>
-              <Avatar className='h-14 w-14 bg-gradient-to-br from-green-500 to-green-600'>
-                <AvatarFallback className='text-white font-semibold text-sm'>{store.store.avatar}</AvatarFallback>
-              </Avatar>
+              <div className='h-14 w-14 rounded-full overflow-hidden bg-gradient-to-br from-green-500 to-green-600 relative'>
+                <img
+                  src={store.logoUrl && store.logoUrl.trim() !== '' ? store.logoUrl : DEFAULT_STORE_LOGO}
+                  alt={store.store.name}
+                  className='w-full h-full object-cover'
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    if (!target.src.includes(DEFAULT_STORE_LOGO)) {
+                      target.src = DEFAULT_STORE_LOGO
+                    } else {
+                      // If default also fails, hide image and show fallback text
+                      target.style.display = 'none'
+                    }
+                  }}
+                />
+                {/* Fallback text - only visible if image fails to load */}
+                <div
+                  className='absolute inset-0 flex items-center justify-center bg-gradient-to-br from-green-500 to-green-600 text-white font-semibold text-sm'
+                  style={{ display: 'none' }}
+                >
+                  {store.store.avatar}
+                </div>
+              </div>
               <div className='absolute -bottom-1 -right-1 bg-white rounded-full p-1 border-2 border-gray-200'>
                 <Store size={14} className='text-green-600' />
               </div>

@@ -1,51 +1,42 @@
 import { useState, useEffect } from 'react'
-import {
-  Card as AntCard,
-  Input,
-  Select,
-  DatePicker,
-  Button as AntButton,
-  Table,
-  Avatar,
-  Tag,
-  Pagination,
-  Spin,
-  Modal,
-  Form,
-  Upload
-} from 'antd'
-import { Search, Filter, Eye, RefreshCw, Upload as UploadIcon, FileText } from 'lucide-react'
+import { Search, Eye, RefreshCw, Upload as UploadIcon, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { ColumnsType } from 'antd/es/table'
-import { staffApi, type AssignedStore, type ReviewStoreRequest } from '../../../apis/staff.api'
-import { toast } from 'react-toastify'
+import { staffApi, type AssignedStore } from '../../../apis/staff.api'
+import { toast } from '../../../utils/toast'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
-
-const { Search: AntSearch } = Input
-const { Option } = Select
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Textarea } from '../../../components/ui/textarea'
+import { Label } from '../../../components/ui/label'
+import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar'
+import { Badge } from '../../../components/ui/badge'
+import { Input } from '../../../components/ui/input'
+import { cn } from '../../../lib/utils'
+import { formatDate } from '../../../utils/formatDate'
 
 interface StoreData {
   key: string
   store: {
     avatar: string
+    logoUrl: string | null
     storeName: string
     id: string
   }
   owner: {
     sellerName: string
   }
-  createdDate: string
+  createdAt: string
   products: number
   status: 'Processing' | 'ApprovedByStaff' | 'RejectedByStaff'
 }
 
+const DEFAULT_STORE_LOGO = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+
 function ApproveStores() {
   const navigate = useNavigate()
   const [searchText, setSearchText] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('all')
-  const [dateFilter, setDateFilter] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [storeData, setStoreData] = useState<StoreData[]>([])
   const [loading, setLoading] = useState(false)
@@ -57,10 +48,16 @@ function ApproveStores() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
   const [selectedStore, setSelectedStore] = useState<StoreData | null>(null)
   const [reviewLoading, setReviewLoading] = useState(false)
-  const [reviewForm] = Form.useForm()
+  const [newStatus, setNewStatus] = useState<'ApprovedByStaff' | 'RejectedByStaff' | ''>('')
+  const [staffNotes, setStaffNotes] = useState('')
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [wordCount, setWordCount] = useState(0)
+  const [errors, setErrors] = useState<{
+    newStatus?: string
+    staffNotes?: string
+    staffImages?: string
+  }>({})
 
   // Function để convert API response thành UI format
   const convertAssignedStore = (apiStore: AssignedStore): StoreData => {
@@ -72,23 +69,18 @@ function ApproveStores() {
       .toUpperCase()
       .slice(0, 2)
 
-    // Format date
-    const formatDate = (dateString: string) => {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('vi-VN')
-    }
-
     return {
       key: apiStore.id,
       store: {
         avatar: avatarText,
+        logoUrl: apiStore.logoUrl,
         storeName: apiStore.storeName,
         id: apiStore.id
       },
       owner: {
         sellerName: apiStore.sellerName
       },
-      createdDate: formatDate(apiStore.createdAt),
+      createdAt: apiStore.createdAt,
       products: 0,
       status: apiStore.status as 'Processing' | 'ApprovedByStaff' | 'RejectedByStaff'
     }
@@ -152,21 +144,22 @@ function ApproveStores() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle image selection and preview
-  const handleImageChange = (info: { fileList: Array<{ originFileObj?: File }> }) => {
-    const fileList = info.fileList
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
     const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB in bytes
+    const fileArray = Array.from(files)
 
     // Filter và validate file size
     const validFiles: File[] = []
     const invalidFiles: string[] = []
 
-    fileList.forEach((file) => {
-      if (file.originFileObj) {
-        if (file.originFileObj.size > MAX_FILE_SIZE) {
-          invalidFiles.push(file.originFileObj.name)
-        } else {
-          validFiles.push(file.originFileObj)
-        }
+    fileArray.forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        invalidFiles.push(file.name)
+      } else {
+        validFiles.push(file)
       }
     })
 
@@ -175,15 +168,21 @@ function ApproveStores() {
       toast.error(`Các file sau vượt quá 5MB: ${invalidFiles.join(', ')}`)
     }
 
-    setSelectedImages(validFiles)
+    setSelectedImages((prev) => [...prev, ...validFiles])
 
     // Create previews chỉ cho các file hợp lệ
-    const previews = validFiles.map((file: File) => URL.createObjectURL(file))
-    setImagePreviews(previews)
+    const newPreviews = validFiles.map((file: File) => URL.createObjectURL(file))
+    setImagePreviews((prev) => [...prev, ...newPreviews])
+
+    // Clear input
+    event.target.value = ''
   }
 
   // Remove image
   const removeImage = (index: number) => {
+    // Cleanup URL object to prevent memory leak
+    URL.revokeObjectURL(imagePreviews[index])
+
     const newImages = selectedImages.filter((_, i) => i !== index)
     const newPreviews = imagePreviews.filter((_, i) => i !== index)
 
@@ -191,78 +190,84 @@ function ApproveStores() {
     setImagePreviews(newPreviews)
   }
 
-  // Handle review store
-  const handleReviewStore = (store: StoreData) => {
-    setSelectedStore(store)
-    reviewForm.resetFields()
-    setWordCount(0)
-    setReviewModalOpen(true)
-  }
 
   // Count words
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
+    setStaffNotes(value)
     const words = value.trim().split(/\s+/).filter((word: string) => word.length > 0)
     setWordCount(words.length)
   }
 
-  const handleReviewSubmit = async (values: ReviewStoreRequest) => {
+  const handleReviewSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     if (!selectedStore) return
 
-    // Kiểm tra số từ trong ghi chú
-    if (values.StaffNotes) {
-      const words = values.StaffNotes.trim().split(/\s+/).filter((word: string) => word.length > 0)
-      if (words.length > 20) {
-        toast.error(`Ghi chú không được vượt quá 20 từ (${words.length}/20 từ)`)
-        return
-      }
+    // Validation
+    const newErrors: typeof errors = {}
+    if (!newStatus) {
+      newErrors.newStatus = 'Vui lòng chọn quyết định'
+    }
+    if (!staffNotes.trim()) {
+      newErrors.staffNotes = 'Vui lòng nhập ghi chú'
+    }
+    if (selectedImages.length === 0) {
+      newErrors.staffImages = 'Vui lòng chọn ít nhất 1 hình ảnh'
     }
 
-    // Kiểm tra có ít nhất 1 ảnh
-    if (selectedImages.length === 0) {
-      toast.error('Vui lòng chọn ít nhất 1 hình ảnh')
+    // Kiểm tra số từ trong ghi chú
+    const words = staffNotes.trim().split(/\s+/).filter((word: string) => word.length > 0)
+    if (words.length > 20) {
+      toast.error(`Ghi chú không được vượt quá 20 từ (${words.length}/20 từ)`)
+      return
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
       return
     }
 
     try {
       setReviewLoading(true)
+      setErrors({})
 
       const response = await staffApi.reviewStore(selectedStore.store.id, {
-        ...values,
+        NewStatus: newStatus as 'ApprovedByStaff' | 'RejectedByStaff',
+        StaffNotes: staffNotes,
         selectedImages: selectedImages
       })
 
-      // Check success conditions - axiosInstance returns response.data (data payload only)
-      // Success indicators: có storeId, newStatus, reviewedByStaffId, decisionDate
+      // Check success conditions
       if (response && response.storeId && response.newStatus && response.reviewedByStaffId && response.decisionDate) {
         toast.success('Thẩm định cửa hàng thành công!')
         setReviewModalOpen(false)
-        reviewForm.resetFields()
+        setNewStatus('')
+        setStaffNotes('')
         setSelectedImages([])
         setImagePreviews([])
         setSelectedStore(null)
         setWordCount(0)
         fetchAssignedStores() // Refresh data
       } else if (response && response.status === 202) {
-        // Fallback: check status if available
         toast.success('Thẩm định cửa hàng thành công!')
         setReviewModalOpen(false)
-        reviewForm.resetFields()
+        setNewStatus('')
+        setStaffNotes('')
         setSelectedImages([])
         setImagePreviews([])
         setSelectedStore(null)
         setWordCount(0)
-        fetchAssignedStores() // Refresh data
+        fetchAssignedStores()
       } else if (response && response.message && response.message.includes('thành công')) {
-        // Fallback: check if message contains success keywords
         toast.success('Thẩm định cửa hàng thành công!')
         setReviewModalOpen(false)
-        reviewForm.resetFields()
+        setNewStatus('')
+        setStaffNotes('')
         setSelectedImages([])
         setImagePreviews([])
         setSelectedStore(null)
         setWordCount(0)
-        fetchAssignedStores() // Refresh data
+        fetchAssignedStores()
       } else {
         console.error('❌ Unexpected response format:', response)
         toast.error(`Lỗi: ${response?.message || 'Không thể Thẩm định cửa hàng'}`)
@@ -274,85 +279,31 @@ function ApproveStores() {
     }
   }
 
-  const columns: ColumnsType<StoreData> = [
-    {
-      title: 'Cửa hàng',
-      dataIndex: 'store',
-      key: 'store',
-      render: (store) => (
-        <div className='flex items-center gap-3'>
-          <Avatar src={store.avatar} size={40} />
-          <div>
-            <div className='font-medium text-gray-900'>{store.storeName}</div>
-          </div>
-        </div>
-      )
-    },
-    {
-      title: 'Tên Doanh Nghiệp',
-      dataIndex: 'owner',
-      key: 'owner',
-      render: (owner) => (
-        <div>
-          <div className='font-medium text-gray-900'>{owner.sellerName}</div>
-        </div>
-      )
-    },
-    {
-      title: 'Ngày tạo',
-      dataIndex: 'createdDate',
-      key: 'createdDate',
-      render: (date) => <span className='text-gray-700'>{date}</span>
-    },
-    {
-      title: 'Sản phẩm',
-      dataIndex: 'products',
-      key: 'products',
-      render: (products) => <span className='text-gray-700'>{products}</span>
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        const statusConfig = {
-          Processing: { color: 'blue', text: 'Đang xử lý' },
-          ApprovedByStaff: { color: 'green', text: 'Đã chấp nhận' },
-          RejectedByStaff: { color: 'red', text: 'Đã từ chối' }
-        }
-        const config = statusConfig[status as keyof typeof statusConfig] || { color: 'default', text: status }
-        return <Tag color={config.color}>{config.text}</Tag>
-      }
-    },
-    {
-      title: 'Hành động',
-      key: 'action',
-      render: (_, record) => (
-        <div className='flex items-center gap-2'>
-          <AntButton
-            type='text'
-            icon={<Eye size={16} />}
-            onClick={() => navigate(`/staff/store-detail/${record.store.id}`)}
-            className='flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
-            title='Xem chi tiết'
-          />
-          {record.status === 'Processing' && (
-            <AntButton
-              type='text'
-              icon={<FileText size={16} />}
-              onClick={() => handleReviewStore(record)}
-              className='flex items-center justify-center w-8 h-8 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100'
-              title='Thẩm định'
-            />
-          )}
-        </div>
-      )
+  // Get status badge config
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      Pending: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200', text: 'Chờ duyệt' },
+      Processing: { variant: 'secondary' as const, className: 'bg-blue-100 text-blue-800 hover:bg-blue-200', text: 'Đang xử lý' },
+      ApprovedByStaff: { variant: 'secondary' as const, className: 'bg-green-100 text-green-800 hover:bg-green-200', text: 'Đã chấp nhận' },
+      RejectedByStaff: { variant: 'secondary' as const, className: 'bg-red-100 text-red-800 hover:bg-red-200', text: 'Đã từ chối' },
+      Approved: { variant: 'secondary' as const, className: 'bg-green-100 text-green-800 hover:bg-green-200', text: 'Đã chấp nhận' },
+      Rejected: { variant: 'secondary' as const, className: 'bg-red-100 text-red-800 hover:bg-red-200', text: 'Đã từ chối' }
     }
-  ]
-
-  const handleFilter = () => {
-    // Implement filter logic
+    const config = statusConfig[status as keyof typeof statusConfig] || { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', text: status }
+    return config
   }
+
+  // Filter stores based on search
+  const filteredStores = storeData.filter((store) => {
+    const matchesSearch = searchText === '' || store.store.storeName.toLowerCase().includes(searchText.toLowerCase()) || store.store.id.toLowerCase().includes(searchText.toLowerCase())
+    return matchesSearch
+  })
+
+  // Pagination
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedStores = filteredStores.slice(startIndex, endIndex)
+  const totalPages = Math.ceil(filteredStores.length / pageSize)
 
   return (
     <div className='space-y-6 p-6'>
@@ -387,206 +338,291 @@ function ApproveStores() {
       </Card>
 
       {/* Search and Filters */}
-      <AntCard>
-        <div className='flex flex-wrap items-center gap-4'>
-          <div className='flex-1 min-w-[300px]'>
-            <AntSearch
-              placeholder='Tìm kiếm theo tên cửa hàng hoặc ID...'
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              prefix={<Search size={16} className='text-gray-400' />}
-              className='w-full'
-            />
+      <Card>
+        <CardContent className='pt-6'>
+          <div className='flex flex-wrap items-center gap-4'>
+            <div className='flex-1 min-w-[300px]'>
+              <div className='relative'>
+                <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' size={16} />
+                <Input
+                  placeholder='Tìm kiếm theo tên cửa hàng hoặc ID...'
+                  value={searchText}
+                  onChange={(e) => {
+                    setSearchText(e.target.value)
+                    setCurrentPage(1) // Reset to first page when searching
+                  }}
+                  className='pl-10 w-full'
+                />
+              </div>
+            </div>
           </div>
-
-          <Select value={categoryFilter} onChange={setCategoryFilter} className='w-40' placeholder='Tất cả ngành hàng'>
-            <Option value='all'>Tất cả ngành hàng</Option>
-            <Option value='fashion'>Thời trang</Option>
-            <Option value='tech'>Công nghệ</Option>
-            <Option value='home'>Gia dụng</Option>
-          </Select>
-
-          <DatePicker placeholder='mm/dd/yyyy' value={dateFilter} onChange={setDateFilter} className='w-40' />
-
-          <AntButton
-            type='primary'
-            icon={<Filter size={16} />}
-            onClick={handleFilter}
-            className='bg-blue-600 hover:bg-blue-700'
-          >
-            Lọc
-          </AntButton>
-        </div>
-      </AntCard>
+        </CardContent>
+      </Card>
 
       {/* Table */}
-      <AntCard>
-        {loading ? (
-          <div className='flex items-center justify-center py-12'>
-            <Spin size='large' />
-            <span className='ml-3 text-gray-600'>Đang tải danh sách cửa hàng...</span>
-          </div>
-        ) : error ? (
-          <div className='flex items-center justify-center py-12'>
-            <div className='text-center'>
-              <div className='text-red-500 text-lg mb-2'>⚠️</div>
-              <p className='text-red-600 font-medium mb-4'>{error}</p>
-              <AntButton onClick={fetchAssignedStores} type='primary'>
-                Thử lại
-              </AntButton>
+      <Card>
+        <CardContent className='pt-6'>
+          {loading ? (
+            <div className='flex items-center justify-center py-12'>
+              <Loader2 className='h-8 w-8 animate-spin text-cyan-600' />
+              <span className='ml-3 text-gray-600'>Đang tải danh sách cửa hàng...</span>
             </div>
-          </div>
-        ) : storeData.length === 0 ? (
-          <div className='flex items-center justify-center py-12'>
-            <div className='text-center'>
-              <div className='text-gray-400 text-lg mb-2'>📦</div>
-              <p className='text-gray-600'>Chưa có cửa hàng nào được phân công</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            <Table columns={columns} dataSource={storeData} pagination={false} className='w-full' />
-
-            {/* Pagination */}
-            <div className='flex items-center justify-between mt-6'>
-              <div className='text-sm text-gray-600'>
-                Hiển thị 1 đến {Math.min(pageSize, totalStores)} của {totalStores} kết quả
+          ) : error ? (
+            <div className='flex items-center justify-center py-12'>
+              <div className='text-center'>
+                <p className='text-red-600 font-medium mb-4'>{error}</p>
+                <Button onClick={fetchAssignedStores} className='bg-cyan-600 hover:bg-cyan-700 text-white'>
+                  Thử lại
+                </Button>
               </div>
-              <Pagination
-                current={currentPage}
-                total={totalStores}
-                pageSize={pageSize}
-                onChange={setCurrentPage}
-                showSizeChanger={false}
-                className='flex items-center gap-2'
-              />
             </div>
-          </>
-        )}
-      </AntCard>
+          ) : filteredStores.length === 0 ? (
+            <div className='flex items-center justify-center py-12'>
+              <div className='text-center'>
+                <div className='text-gray-400 text-lg mb-2'>📦</div>
+                <p className='text-gray-600'>
+                  {searchText ? 'Không tìm thấy cửa hàng nào' : 'Chưa có cửa hàng nào được phân công'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Table */}
+              <div className='overflow-x-auto'>
+                <table className='w-full'>
+                  <thead>
+                    <tr className='border-b border-gray-200'>
+                      <th className='text-left py-3 px-4 font-semibold text-gray-700'>Cửa hàng</th>
+                      <th className='text-left py-3 px-4 font-semibold text-gray-700'>Tên Doanh Nghiệp</th>
+                      <th className='text-left py-3 px-4 font-semibold text-gray-700'>Ngày tạo</th>
+                      <th className='text-left py-3 px-4 font-semibold text-gray-700'>Trạng thái</th>
+                      <th className='text-left py-3 px-4 font-semibold text-gray-700'>Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedStores.map((store) => {
+                      const statusConfig = getStatusBadge(store.status)
+                      return (
+                        <tr key={store.key} className='border-b border-gray-100 hover:bg-gray-50 transition-colors'>
+                          <td className='py-4 px-4'>
+                            <div className='flex items-center gap-3'>
+                              <Avatar className='w-10 h-10'>
+                                <AvatarImage
+                                  src={store.store.logoUrl || DEFAULT_STORE_LOGO}
+                                  alt={store.store.storeName}
+                                  className='object-cover'
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    if (!target.src.includes(DEFAULT_STORE_LOGO)) {
+                                      target.src = DEFAULT_STORE_LOGO
+                                    }
+                                  }}
+                                />
+                                <AvatarFallback className='bg-cyan-100 text-cyan-700 font-semibold'>
+                                  {store.store.avatar}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className='font-medium text-gray-900'>{store.store.storeName}</div>
+                            </div>
+                          </td>
+                          <td className='py-4 px-4'>
+                            <div className='font-medium text-gray-900'>{store.owner.sellerName}</div>
+                          </td>
+                          <td className='py-4 px-4'>
+                            <span className='text-gray-700'>{formatDate(store.createdAt)}</span>
+                          </td>
+                          <td className='py-4 px-4'>
+                            <Badge variant={statusConfig.variant} className={statusConfig.className}>
+                              {statusConfig.text}
+                            </Badge>
+                          </td>
+                          <td className='py-4 px-4'>
+                            <Button
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => navigate(`/staff/store-detail/${store.store.id}`)}
+                              className='flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100'
+                              title='Xem chi tiết'
+                            >
+                              <Eye size={16} />
+                            </Button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-      {/* Review Modal */}
-      <Modal
-        title={`Thẩm định cửa hàng: ${selectedStore?.store.storeName}`}
-        open={reviewModalOpen}
-        onCancel={() => {
-          setReviewModalOpen(false)
-          reviewForm.resetFields()
-          setSelectedImages([])
-          setImagePreviews([])
-          setSelectedStore(null)
-          setWordCount(0)
-        }}
-        footer={null}
-        width={600}
-      >
-        <Form form={reviewForm} layout='vertical' onFinish={handleReviewSubmit}>
-          <Form.Item
-            name='NewStatus'
-            label='Quyết định'
-            rules={[{ required: true, message: 'Vui lòng chọn quyết định' }]}
-          >
-            <Select placeholder='Chọn quyết định Thẩm định'>
-              <Option value='ApprovedByStaff'>Chấp nhận cửa hàng</Option>
-              <Option value='RejectedByStaff'>Từ chối cửa hàng</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name='StaffNotes'
-            label='Ghi chú của nhân viên'
-            rules={[
-              { required: true, message: 'Vui lòng nhập ghi chú' },
-              {
-                validator: (_, value) => {
-                  if (!value) {
-                    return Promise.resolve()
-                  }
-                  const words = value.trim().split(/\s+/).filter((word: string) => word.length > 0)
-                  if (words.length > 20) {
-                    // Không reject để tránh hiển thị error message, chỉ hiển thị trong help
-                    return Promise.resolve()
-                  }
-                  return Promise.resolve()
-                },
-                validateTrigger: 'onSubmit'
-              }
-            ]}
-            validateStatus={wordCount > 20 ? 'error' : ''}
-            hasFeedback={false}
-            help={
-              <span className={wordCount > 20 ? 'text-red-500' : 'text-gray-500'}>
-                {wordCount > 20
-                  ? `Ghi chú không được vượt quá 20 từ (${wordCount}/20 từ)`
-                  : `Số từ: ${wordCount}/20 từ`
-                }
-              </span>
-            }
-          >
-            <Input.TextArea
-              rows={4}
-              placeholder='Nhập ghi chú về cửa hàng...'
-              onChange={handleNotesChange}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name='StaffImages'
-            label='Hình ảnh đính kèm (Bắt buộc)'
-            rules={[{ required: true, message: 'Vui lòng chọn ít nhất 1 hình ảnh' }]}
-            help='Kích thước tối đa mỗi file: 5MB'
-          >
-            <div className='space-y-4'>
-              <Upload
-                multiple
-                beforeUpload={() => false} // Prevent auto upload
-                onChange={handleImageChange}
-                showUploadList={false}
-                accept='image/*'
-              >
-                <AntButton icon={<UploadIcon size={16} />}>Chọn hình ảnh</AntButton>
-              </Upload>
-
-              {/* Image Previews */}
-              {imagePreviews.length > 0 && (
-                <div className='grid grid-cols-2 gap-4'>
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className='relative border rounded-lg p-2'>
-                      <img src={preview} alt={`Preview ${index + 1}`} className='w-full h-32 object-cover rounded' />
-                      <button
-                        type='button'
-                        onClick={() => removeImage(index)}
-                        className='absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600'
-                      >
-                        ×
-                      </button>
-                      <div className='text-xs text-gray-500 mt-1 truncate'>{selectedImages[index]?.name}</div>
-                    </div>
-                  ))}
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className='flex items-center justify-between mt-6'>
+                  <div className='text-sm text-gray-600'>
+                    Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredStores.length)} của {filteredStores.length} kết quả
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft size={16} />
+                    </Button>
+                    <span className='text-sm text-gray-700'>
+                      Trang {currentPage} / {totalPages}
+                    </span>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
                 </div>
               )}
-            </div>
-          </Form.Item>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
-          <div className='flex justify-end gap-2 mt-4'>
-            <AntButton
-              onClick={() => {
-                setReviewModalOpen(false)
-                reviewForm.resetFields()
-                setSelectedImages([])
-                setImagePreviews([])
-                setSelectedStore(null)
-                setWordCount(0)
-              }}
-            >
-              Hủy
-            </AntButton>
-            <AntButton type='primary' htmlType='submit' loading={reviewLoading}>
-              Xác nhận Thẩm định
-            </AntButton>
-          </div>
-        </Form>
-      </Modal>
+      {/* Review Modal */}
+      <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle>Thẩm định cửa hàng: {selectedStore?.store.storeName}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleReviewSubmit} className='space-y-6'>
+            {/* Quyết định */}
+            <div className='space-y-2'>
+              <Label htmlFor='newStatus' className='text-sm font-medium text-gray-700'>
+                Quyết định <span className='text-red-500'>*</span>
+              </Label>
+              <Select value={newStatus} onValueChange={(value) => setNewStatus(value as typeof newStatus)}>
+                <SelectTrigger id='newStatus' className={cn(errors.newStatus && 'border-red-500')}>
+                  <SelectValue placeholder='Chọn quyết định Thẩm định' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='ApprovedByStaff'>Chấp nhận cửa hàng</SelectItem>
+                  <SelectItem value='RejectedByStaff'>Từ chối cửa hàng</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.newStatus && <p className='text-sm text-red-500'>{errors.newStatus}</p>}
+            </div>
+
+            {/* Ghi chú */}
+            <div className='space-y-2'>
+              <Label htmlFor='staffNotes' className='text-sm font-medium text-gray-700'>
+                Ghi chú của nhân viên <span className='text-red-500'>*</span>
+              </Label>
+              <Textarea
+                id='staffNotes'
+                rows={4}
+                placeholder='Nhập ghi chú về cửa hàng...'
+                value={staffNotes}
+                onChange={handleNotesChange}
+                className={cn(errors.staffNotes && 'border-red-500')}
+              />
+              <div className='flex items-center justify-between'>
+                {errors.staffNotes ? (
+                  <p className='text-sm text-red-500'>{errors.staffNotes}</p>
+                ) : (
+                  <p className='text-sm text-gray-500'>
+                    Kích thước tối đa mỗi file: 5MB
+                  </p>
+                )}
+                <p className={cn('text-sm', wordCount > 20 ? 'text-red-500' : 'text-gray-500')}>
+                  {wordCount > 20
+                    ? `Ghi chú không được vượt quá 20 từ (${wordCount}/20 từ)`
+                    : `Số từ: ${wordCount}/20 từ`}
+                </p>
+              </div>
+            </div>
+
+            {/* Hình ảnh đính kèm */}
+            <div className='space-y-2'>
+              <Label htmlFor='staffImages' className='text-sm font-medium text-gray-700'>
+                Hình ảnh đính kèm (Bắt buộc) <span className='text-red-500'>*</span>
+              </Label>
+              <div className='space-y-4'>
+                <div className='relative'>
+                  <input
+                    type='file'
+                    id='staffImages'
+                    multiple
+                    accept='image/*'
+                    onChange={handleImageChange}
+                    className='hidden'
+                  />
+                  <label htmlFor='staffImages'>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      className='w-full flex items-center justify-center gap-2 cursor-pointer'
+                      onClick={() => document.getElementById('staffImages')?.click()}
+                    >
+                      <UploadIcon size={16} />
+                      Chọn hình ảnh
+                    </Button>
+                  </label>
+                </div>
+
+                {/* Image Previews */}
+                {imagePreviews.length > 0 && (
+                  <div className='grid grid-cols-2 gap-4'>
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className='relative border border-gray-200 rounded-lg p-2 bg-gray-50'>
+                        <img src={preview} alt={`Preview ${index + 1}`} className='w-full h-32 object-cover rounded' />
+                        <button
+                          type='button'
+                          onClick={() => removeImage(index)}
+                          className='absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors'
+                        >
+                          ×
+                        </button>
+                        <div className='text-xs text-gray-500 mt-1 truncate'>{selectedImages[index]?.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {errors.staffImages && <p className='text-sm text-red-500'>{errors.staffImages}</p>}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  setReviewModalOpen(false)
+                  setNewStatus('')
+                  setStaffNotes('')
+                  setSelectedImages([])
+                  setImagePreviews([])
+                  setSelectedStore(null)
+                  setWordCount(0)
+                  setErrors({})
+                }}
+                disabled={reviewLoading}
+              >
+                Hủy
+              </Button>
+              <Button type='submit' disabled={reviewLoading} className='bg-green-500 hover:bg-green-600 text-white'>
+                {reviewLoading ? (
+                  <>
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    Đang xử lý...
+                  </>
+                ) : (
+                  'Xác nhận Thẩm định'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

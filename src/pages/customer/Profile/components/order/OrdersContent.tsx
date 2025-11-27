@@ -888,7 +888,7 @@ export default function OrdersContent({
                     ) : order.originalStatus === 'PendingPayment' ? (
                       'Tiếp tục thanh toán'
                     ) : (
-                      'Thanh toán'
+                      'Xác nhận đặt hàng'
                     )}
                   </Button>
                 )}

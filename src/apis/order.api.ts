@@ -105,6 +105,37 @@ export const refundOrder = async (orderId: string): Promise<Order> => {
   return response.data
 }
 
+// PUT /api/Order/upload-verification/{orderId} - Upload verification images
+export const uploadVerificationImages = async (
+  orderId: string,
+  images: File[],
+  existingImages?: string[]
+): Promise<Order> => {
+  const formData = new FormData()
+
+  // Append new image files
+  if (images && images.length > 0) {
+    images.forEach((file) => {
+      formData.append('Images', file)
+    })
+  }
+
+  // Build URL with query params for existing images
+  // Format: ?ExistingImages=url1&ExistingImages=url2
+  let url = `${API_URL}/upload-verification/${orderId}`
+  if (existingImages && existingImages.length > 0) {
+    const queryParams = existingImages.map((url) => `ExistingImages=${encodeURIComponent(url)}`).join('&')
+    url += `?${queryParams}`
+  }
+
+  const response: OrderResponse = await axiosInstance.put(url, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+  return response.data
+}
+
 // Utility function để lấy orders theo status
 export const getOrdersByStatus = async (
   status: string,
@@ -130,6 +161,7 @@ export default {
   returnOrder,
   confirmOrderReceived,
   refundOrder,
+  uploadVerificationImages,
   getOrdersByStatus,
   getStoreOrders
 }

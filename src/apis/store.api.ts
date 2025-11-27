@@ -86,6 +86,14 @@ export interface StoreListParams {
   pageNumber?: number
 }
 
+// Interface cho filter stores by location params
+export interface StoreFilterByLocationParams {
+  region?: string
+  provinceName?: string
+  pageSize?: number
+  pageNumber?: number
+}
+
 // API function để lấy danh sách store
 export const storeApi = {
   // Lấy danh sách tất cả stores
@@ -136,5 +144,27 @@ export const storeApi = {
         'Content-Type': 'multipart/form-data'
       }
     })
+  },
+
+  // Filter stores by location
+  filterStoresByLocation: async (params: StoreFilterByLocationParams): Promise<StoreListResponse> => {
+    const queryParams = new URLSearchParams()
+
+    if (params.region) {
+      queryParams.append('region', params.region)
+    }
+    if (params.provinceName) {
+      queryParams.append('provinceName', params.provinceName)
+    }
+    if (params.pageSize !== undefined) {
+      queryParams.append('pageSize', params.pageSize.toString())
+    }
+    if (params.pageNumber !== undefined) {
+      queryParams.append('pageNumber', params.pageNumber.toString())
+    }
+
+    const url = `/Store/filter-by-location${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+
+    return await axiosInstance.get(url)
   }
 }

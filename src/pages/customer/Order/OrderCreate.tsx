@@ -11,6 +11,7 @@ import type { Transaction as TransactionResponse } from '../../../types/transact
 import type { WalletData } from '../../../types/walletType'
 import { toast } from '../../../utils/toast'
 import CancelOrderDialog from '../../../components/CancelOrderDialog/CancelOrderDialog'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 interface CartItem {
   id: string
@@ -525,12 +526,10 @@ function OrderCreate() {
                 {ordersFromState.length > 0
                   ? ordersFromState.map((order, orderIndex) => (
                     <div key={order.id} className='space-y-4'>
-                      <div className='flex items-center justify-between gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 flex-wrap'>
-                        <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                        <span className='font-semibold text-blue-800 flex-1 min-w-[200px]'>
+                      <div className='flex items-center justify-between gap-2 p-3 bg-green-100 rounded-lg border border-blue-200 flex-wrap'>
+                        <span className='font-semibold flex-1 min-w-[200px]'>
                           Đơn hàng {orderIndex + 1}: {order.fromName}
                         </span>
-                        <span className='text-xs text-gray-600 font-mono'>Mã đơn: {order.id}</span>
                       </div>
 
                       <div className='space-y-3'>
@@ -745,10 +744,10 @@ function OrderCreate() {
                   <p className='text-xs text-gray-600 mb-1'>Phương thức thanh toán:</p>
                   <p className='text-sm font-semibold text-gray-900'>
                     {paymentMethod === 'COD'
-                      ? '💵 Thanh toán khi nhận hàng (COD)'
+                      ? 'Thanh toán khi nhận hàng (COD)'
                       : paymentMethod === 'Banking'
-                        ? '💳 Chuyển khoản ngân hàng'
-                        : '💼 Thanh toán bằng ví của tôi'}
+                        ? 'Chuyển khoản ngân hàng'
+                        : 'Thanh toán bằng ví của tôi'}
                   </p>
                   {paymentMethod === 'MyWallet' && (
                     <div className='mt-2 pt-2 border-t border-blue-200'>
@@ -769,7 +768,7 @@ function OrderCreate() {
                             </span>
                           </div>
                           {walletBalance.availableBalance < total && (
-                            <p className='text-xs text-red-600'>⚠️ Số dư không đủ để thanh toán</p>
+                            <p className='text-xs text-red-600'>Số dư không đủ để thanh toán</p>
                           )}
                         </div>
                       ) : (
@@ -781,57 +780,66 @@ function OrderCreate() {
 
                 {/* Action buttons */}
                 <div className='space-y-3'>
-                  <Button
-                    onClick={handlePayment}
-                    disabled={
-                      isSubmitting ||
-                      isLoadingWallet ||
-                      (ordersFromState.length === 0 && !order && !existingOrder) ||
-                      (paymentMethod === 'MyWallet' && walletBalance !== null && walletBalance.availableBalance < total)
-                    }
-                    className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all disabled:bg-gray-400 disabled:cursor-not-allowed'
+                  <ShimmerBorder
+                    color='#10b981'
+                    animationDuration='3s'
+                    contentClassName='bg-green-600 rounded-lg'
+                    className='w-full'
                   >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                        Đang xử lý...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className='w-4 h-4 mr-2 py-5' />
-                        {ordersFromState.length > 0
-                          ? paymentMethod === 'COD'
-                            ? 'Đặt hàng'
-                            : paymentMethod === 'MyWallet'
-                              ? 'Thanh toán bằng ví'
-                              : 'Thanh toán'
-                          : order || existingOrder
-                            ? paymentMethod === 'COD'
-                              ? 'Đặt hàng'
-                              : paymentMethod === 'MyWallet'
-                                ? 'Thanh toán bằng ví'
-                                : 'Thanh toán'
-                            : paymentMethod === 'COD'
-                              ? 'Đặt hàng ngay'
-                              : paymentMethod === 'MyWallet'
-                                ? 'Thanh toán bằng ví'
-                                : 'Thanh toán ngay'}
-                      </>
-                    )}
-                  </Button>
+                    <Button
+                      onClick={handlePayment}
+                      disabled={
+                        isSubmitting ||
+                        isLoadingWallet ||
+                        (ordersFromState.length === 0 && !order && !existingOrder) ||
+                        (paymentMethod === 'MyWallet' && walletBalance !== null && walletBalance.availableBalance < total)
+                      }
+                      className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2'
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className='w-4 h-4 animate-spin' />
+                          <span>Đang xử lý...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className='w-4 h-4' />
+                          <span>
+                            {ordersFromState.length > 0
+                              ? paymentMethod === 'COD'
+                                ? 'Đặt hàng'
+                                : paymentMethod === 'MyWallet'
+                                  ? 'Thanh toán bằng ví'
+                                  : 'Thanh toán'
+                              : order || existingOrder
+                                ? paymentMethod === 'COD'
+                                  ? 'Đặt hàng'
+                                  : paymentMethod === 'MyWallet'
+                                    ? 'Thanh toán bằng ví'
+                                    : 'Thanh toán'
+                                : paymentMethod === 'COD'
+                                  ? 'Đặt hàng ngay'
+                                  : paymentMethod === 'MyWallet'
+                                    ? 'Thanh toán bằng ví'
+                                    : 'Thanh toán ngay'}
+                          </span>
+                        </>
+                      )}
+                    </Button>
+                  </ShimmerBorder>
                   <Button
                     onClick={handleCancelOrder}
                     variant='outline'
                     disabled={isSubmitting || isCancelling}
-                    className='w-full border-red-600 text-red-600 hover:bg-red-50 transition-all'
+                    className='w-full border-red-600 text-red-600 hover:bg-red-50 transition-all flex items-center justify-center gap-2'
                   >
                     {isCancelling ? (
                       <>
-                        <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                        Đang hủy...
+                        <Loader2 className='w-4 h-4 animate-spin' />
+                        <span>Đang hủy...</span>
                       </>
                     ) : (
-                      'Hủy đặt hàng'
+                      <span>Hủy đặt hàng</span>
                     )}
                   </Button>
                 </div>

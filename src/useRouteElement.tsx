@@ -43,6 +43,7 @@ import TransactionManagementAdmin from './pages/admin/transactionManager/transac
 import RequestWalletMoneyManagement from './pages/admin/requestWalletMoneyManagement/list'
 import { AdminPromotionList, AdminPromotionStats } from './pages/admin/promotionManagerment'
 import OrderManagementStaff from './pages/staff/orderManager/list'
+import OrderDetailStaff from './pages/staff/orderManager/detail'
 import StoryWithSeller from './pages/customer/storyWithSeller'
 import StorePage from './pages/customer/storeSeller/storePage'
 import NotFound from './components/Error/NotFound'
@@ -324,6 +325,10 @@ export default function useRouteElements() {
             {
               path: path.Order_Management_Staff,
               element: <OrderManagementStaff />
+            },
+            {
+              path: path.orderDetailStaff,
+              element: <OrderDetailStaff />
             },
             {
               path: path.productCategoryStaff,

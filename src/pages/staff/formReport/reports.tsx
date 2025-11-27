@@ -234,8 +234,8 @@ function ReportManagement() {
         textColor: 'text-gray-600',
         icon: <XCircle className='w-3 h-3' />
       },
-      WaitingSellerResponse: {
-        text: 'Chờ phản hồi từ người bán',
+      Confirmed: {
+        text: 'Đang xử lí đơn',
         bgColor: 'bg-orange-100',
         textColor: 'text-orange-600',
         icon: <Clock className='w-3 h-3' />
@@ -406,7 +406,7 @@ function ReportManagement() {
                     <SelectItem value='ApprovedByAdmin'>Đã duyệt</SelectItem>
                     <SelectItem value='DeniedByAdmin'>Từ chối</SelectItem>
                     <SelectItem value='Rejected'>Bị từ chối</SelectItem>
-                    <SelectItem value='WaitingSellerResponse'>Chờ phản hồi</SelectItem>
+                    <SelectItem value='Confirmed'>Đang xử lí đơn</SelectItem>
                     <SelectItem value='Cancel'>Đã hủy</SelectItem>
                   </SelectContent>
                 </Select>

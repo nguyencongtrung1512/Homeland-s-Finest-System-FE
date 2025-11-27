@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Card, CardContent } from '../../../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Badge } from '../../../components/ui/badge'
@@ -31,7 +31,11 @@ import {
   RefreshCw,
   Plus,
   ArrowDownCircle,
-  ArrowUpRight
+  ArrowUpRight,
+  BarChart3,
+  PieChart,
+  Package,
+  Filter
 } from 'lucide-react'
 
 function FinanceManagement() {
@@ -139,6 +143,136 @@ function FinanceManagement() {
   // 3. Derived (Tính toán)
   const netIncome =
     walletDataDisplay.netRevenue || walletDataDisplay.grossRevenue - walletDataDisplay.totalCommissionPaid
+
+  // Mock data cho Dashboard sections (sẽ thay bằng API sau)
+  const [dashboardDays, setDashboardDays] = useState(30)
+  const [productRevenueSalesType, setProductRevenueSalesType] = useState<'All' | 'Retail' | 'Combo'>('All')
+  const [productRevenueSortBy, setProductRevenueSortBy] = useState<'Revenue' | 'Quantity'>('Revenue')
+  const [productRevenuePage, setProductRevenuePage] = useState(1)
+  const productRevenuePageSize = 10
+  
+  // Mock data - Wallet Overview
+  const mockWalletOverview = useMemo(() => ({
+    netAsset: (walletDataDisplay.availableBalance + walletDataDisplay.pendingBalance - walletDataDisplay.debtBalance)
+  }), [walletDataDisplay.availableBalance, walletDataDisplay.pendingBalance, walletDataDisplay.debtBalance])
+
+  // Mock data - Performance Metrics
+  const mockPerformanceMetrics = useMemo(() => ({
+    profitMargin: walletDataDisplay.grossRevenue > 0 
+      ? ((netIncome / walletDataDisplay.grossRevenue) * 100).toFixed(1)
+      : null
+  }), [walletDataDisplay.grossRevenue, netIncome])
+
+  // Mock data - Cash Flow Forecast
+  const mockCashFlowForecast = useMemo(() => ({
+    upcomingPayouts: [
+      {
+        payoutDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        amount: 5000000,
+        orderCount: 15
+      },
+      {
+        payoutDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        amount: 3000000,
+        orderCount: 8
+      }
+    ],
+    frozenAmount: 2000000
+  }), [])
+
+  // Mock data - Revenue Chart (30 days)
+  const mockRevenue30Days = useMemo(() => {
+    const data = []
+    const today = new Date()
+    for (let i = dashboardDays - 1; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(date.getDate() - i)
+      data.push({
+        date: date.toISOString(),
+        netRevenue: Math.floor(Math.random() * 5000000) + 1000000,
+        commission: Math.floor(Math.random() * 500000) + 100000
+      })
+    }
+    return data
+  }, [dashboardDays])
+
+  // Mock data - Payment Method Distribution
+  const mockPaymentMethodDistribution = useMemo(() => ({
+    cod: {
+      count: 50,
+      totalAmount: 5700000
+    },
+    banking: {
+      count: 30,
+      totalAmount: 9500000
+    }
+  }), [])
+
+  // Mock data - Product Revenue Report
+  const mockProductRevenueData = useMemo(() => {
+    const products = [
+      { id: '1', productName: 'Khô Gà Lá Chanh', variantName: 'Gói 500g', totalSold: 150, retailRevenue: 5000000, comboRevenue: 2000000 },
+      { id: '2', productName: 'Bánh Tráng Nướng', variantName: 'Gói 200g', totalSold: 200, retailRevenue: 3200000, comboRevenue: 1500000 },
+      { id: '3', productName: 'Mắm Ruốc', variantName: 'Chai 250ml', totalSold: 120, retailRevenue: 2800000, comboRevenue: 1800000 },
+      { id: '4', productName: 'Khô Bò', variantName: 'Gói 300g', totalSold: 100, retailRevenue: 2500000, comboRevenue: 1200000 },
+      { id: '5', productName: 'Chà Bông', variantName: 'Gói 200g', totalSold: 180, retailRevenue: 2000000, comboRevenue: 1000000 },
+      { id: '6', productName: 'Bánh Phồng Tôm', variantName: 'Gói 150g', totalSold: 90, retailRevenue: 1800000, comboRevenue: 800000 },
+      { id: '7', productName: 'Mắm Tôm', variantName: 'Chai 200ml', totalSold: 80, retailRevenue: 1600000, comboRevenue: 600000 },
+      { id: '8', productName: 'Tương Ớt', variantName: 'Chai 250ml', totalSold: 150, retailRevenue: 1400000, comboRevenue: 500000 },
+      { id: '9', productName: 'Bánh Đa Nem', variantName: 'Gói 500g', totalSold: 110, retailRevenue: 1300000, comboRevenue: 400000 },
+      { id: '10', productName: 'Nước Mắm', variantName: 'Chai 500ml', totalSold: 95, retailRevenue: 1200000, comboRevenue: 300000 },
+      { id: '11', productName: 'Mì Quảng', variantName: 'Gói 400g', totalSold: 85, retailRevenue: 1100000, comboRevenue: 200000 },
+      { id: '12', productName: 'Bún Bò Huế', variantName: 'Gói 350g', totalSold: 75, retailRevenue: 1000000, comboRevenue: 150000 }
+    ]
+
+    // Filter by sales type
+    let filtered = products
+    if (productRevenueSalesType === 'Retail') {
+      filtered = products.filter(p => p.retailRevenue > 0)
+    } else if (productRevenueSalesType === 'Combo') {
+      filtered = products.filter(p => p.comboRevenue > 0)
+    }
+
+    // Sort
+    const sorted = [...filtered].sort((a, b) => {
+      if (productRevenueSortBy === 'Quantity') {
+        return b.totalSold - a.totalSold
+      } else {
+        return (b.retailRevenue + b.comboRevenue) - (a.retailRevenue + a.comboRevenue)
+      }
+    })
+
+    // Pagination
+    const startIndex = (productRevenuePage - 1) * productRevenuePageSize
+    const paginated = sorted.slice(startIndex, startIndex + productRevenuePageSize)
+
+    return {
+      items: paginated.map(p => ({
+        ...p,
+        totalRevenue: p.retailRevenue + p.comboRevenue
+      })),
+      totalItems: sorted.length,
+      pageNumber: productRevenuePage,
+      pageSize: productRevenuePageSize
+    }
+  }, [productRevenueSalesType, productRevenueSortBy, productRevenuePage])
+
+  // Format currency helper
+  const formatCurrency = (amount: number) => {
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1)}M ₫`
+    }
+    if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(0)}k ₫`
+    }
+    return `${amount.toLocaleString()} ₫`
+  }
+
+  // Get max revenue for chart
+  const getMaxRevenue = () => {
+    if (!mockRevenue30Days.length) return 1
+    return Math.max(...mockRevenue30Days.map((d) => Math.max(d.netRevenue, d.commission)))
+  }
 
   // Fetch user info
   useEffect(() => {
@@ -540,6 +674,513 @@ function FinanceManagement() {
           </Button>
         </div>
       </motion.div>
+
+      {/* ========== DASHBOARD SECTIONS (Mock Data) ========== */}
+      
+      {/* Wallet Overview */}
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
+        <h2 className='text-lg font-semibold text-gray-900 mb-4'>Tổng Quan Ví</h2>
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+          <Card className='hover:shadow-md transition-shadow'>
+            <CardContent className='p-6'>
+              <div className='flex justify-between items-start'>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium text-gray-600 mb-2'>Số dư khả dụng</p>
+                  <p className='text-2xl font-bold text-green-600 mb-1'>
+                    {walletDataDisplay.availableBalance.toLocaleString()} ₫
+                  </p>
+                  <p className='text-xs text-gray-500'>Có thể rút ngay</p>
+                </div>
+                <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                  <Wallet className='w-6 h-6 text-green-600' />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='hover:shadow-md transition-shadow'>
+            <CardContent className='p-6'>
+              <div className='flex justify-between items-start'>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium text-gray-600 mb-2'>Tiền đang chờ về</p>
+                  <p className='text-2xl font-bold text-blue-600 mb-1'>
+                    {walletDataDisplay.pendingBalance.toLocaleString()} ₫
+                  </p>
+                  <p className='text-xs text-gray-500'>Từ đơn hàng chưa giao</p>
+                </div>
+                <div className='w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                  <Clock className='w-6 h-6 text-blue-600' />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='hover:shadow-md transition-shadow'>
+            <CardContent className='p-6'>
+              <div className='flex justify-between items-start'>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium text-gray-600 mb-2'>Nợ hoa hồng</p>
+                  <p className='text-2xl font-bold text-red-600 mb-1'>
+                    {walletDataDisplay.debtBalance.toLocaleString()} ₫
+                  </p>
+                  <p className='text-xs text-gray-500'>Hoa hồng COD chưa trả</p>
+                </div>
+                <div className='w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                  <AlertCircle className='w-6 h-6 text-red-600' />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='hover:shadow-md transition-shadow border-2 border-purple-200'>
+            <CardContent className='p-6'>
+              <div className='flex justify-between items-start'>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium text-gray-600 mb-2'>Tổng tài sản thực</p>
+                  <p className='text-2xl font-bold text-purple-600 mb-1'>
+                    {mockWalletOverview.netAsset.toLocaleString()} ₫
+                  </p>
+                  <p className='text-xs text-gray-500'>Số dư + Chờ - Nợ</p>
+                </div>
+                <div className='w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                  <DollarSign className='w-6 h-6 text-purple-600' />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </motion.div>
+
+      {/* Performance Metrics */}
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
+        <h2 className='text-lg font-semibold text-gray-900 mb-4'>Hiệu Quả Kinh Doanh</h2>
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+          <Card className='hover:shadow-md transition-shadow'>
+            <CardContent className='p-6'>
+              <div className='flex justify-between items-start'>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium text-gray-600 mb-2'>Tổng doanh thu</p>
+                  <p className='text-2xl font-bold text-green-600 mb-1'>
+                    {walletDataDisplay.grossRevenue.toLocaleString()} ₫
+                  </p>
+                  <p className='text-xs text-gray-500'>Tổng bán được</p>
+                </div>
+                <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                  <TrendingUp className='w-6 h-6 text-green-600' />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='hover:shadow-md transition-shadow'>
+            <CardContent className='p-6'>
+              <div className='flex justify-between items-start'>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium text-gray-600 mb-2'>Thu nhập ròng</p>
+                  <p className='text-2xl font-bold text-blue-600 mb-1'>
+                    {netIncome.toLocaleString()} ₫
+                  </p>
+                  <p className='text-xs text-gray-500'>Sau khi trừ hoa hồng</p>
+                </div>
+                <div className='w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                  <DollarSign className='w-6 h-6 text-blue-600' />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='hover:shadow-md transition-shadow'>
+            <CardContent className='p-6'>
+              <div className='flex justify-between items-start'>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium text-gray-600 mb-2'>Tổng hoa hồng đã trả</p>
+                  <p className='text-2xl font-bold text-purple-600 mb-1'>
+                    {walletDataDisplay.totalCommissionPaid.toLocaleString()} ₫
+                  </p>
+                  <p className='text-xs text-gray-500'>Đã thanh toán</p>
+                </div>
+                <div className='w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                  <Receipt className='w-6 h-6 text-purple-600' />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='hover:shadow-md transition-shadow border-2 border-orange-200'>
+            <CardContent className='p-6'>
+              <div className='flex justify-between items-start'>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium text-gray-600 mb-2'>Tỷ suất lợi nhuận</p>
+                  <p className='text-2xl font-bold text-orange-600 mb-1'>
+                    {mockPerformanceMetrics.profitMargin !== null
+                      ? `${mockPerformanceMetrics.profitMargin}%`
+                      : 'N/A'}
+                  </p>
+                  <p className='text-xs text-gray-500'>Thu nhập / Doanh thu</p>
+                </div>
+                <div className='w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                  <BarChart3 className='w-6 h-6 text-orange-600' />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </motion.div>
+
+      {/* Cash Flow Forecast */}
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
+        <h2 className='text-lg font-semibold text-gray-900 mb-4'>Dự Báo Dòng Tiền</h2>
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
+          <Card className='lg:col-span-2 hover:shadow-md transition-shadow'>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'>
+                <Calendar className='w-5 h-5' />
+                Lịch về tiền sắp tới
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {mockCashFlowForecast.upcomingPayouts.length === 0 ? (
+                <div className='text-center py-8 text-gray-500'>
+                  <Calendar className='w-12 h-12 mx-auto mb-2 text-gray-300' />
+                  <p>Không có khoản thanh toán sắp tới</p>
+                </div>
+              ) : (
+                <div className='space-y-3'>
+                  {mockCashFlowForecast.upcomingPayouts.map((payout, index) => (
+                    <div
+                      key={index}
+                      className='flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200'
+                    >
+                      <div>
+                        <p className='font-semibold text-gray-900'>
+                          {new Date(payout.payoutDate).toLocaleDateString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </p>
+                        <p className='text-sm text-gray-600'>{payout.orderCount} đơn hàng</p>
+                      </div>
+                      <div className='text-right'>
+                        <p className='text-lg font-bold text-blue-600'>{formatCurrency(payout.amount)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className='hover:shadow-md transition-shadow'>
+            <CardContent className='p-6'>
+              <div className='flex flex-col items-center justify-center h-full'>
+                <div className='w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4'>
+                  <AlertCircle className='w-8 h-8 text-orange-600' />
+                </div>
+                <p className='text-sm font-medium text-gray-600 mb-2 text-center'>Tiền bị đóng băng</p>
+                <p className='text-3xl font-bold text-orange-600 mb-2'>
+                  {mockCashFlowForecast.frozenAmount.toLocaleString()} ₫
+                </p>
+                <p className='text-xs text-gray-500 text-center'>Từ đơn hàng có khiếu nại</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </motion.div>
+
+      {/* Charts */}
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
+        <div className='flex items-center justify-between mb-4'>
+          <h2 className='text-lg font-semibold text-gray-900'>Biểu Đồ Thống Kê</h2>
+          <div className='flex gap-2'>
+            <select
+              value={dashboardDays}
+              onChange={(e) => setDashboardDays(Number(e.target.value))}
+              className='px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+            >
+              <option value={7}>7 ngày</option>
+              <option value={30}>30 ngày</option>
+              <option value={90}>90 ngày</option>
+            </select>
+          </div>
+        </div>
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
+          <Card className='lg:col-span-2 hover:shadow-md transition-shadow'>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'>
+                <BarChart3 className='w-5 h-5' />
+                Doanh thu {dashboardDays} ngày gần nhất
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className='h-64 relative'>
+                <div className='absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500 pr-2'>
+                  <span>{formatCurrency(getMaxRevenue())}</span>
+                  <span>{formatCurrency(getMaxRevenue() * 0.75)}</span>
+                  <span>{formatCurrency(getMaxRevenue() * 0.5)}</span>
+                  <span>{formatCurrency(getMaxRevenue() * 0.25)}</span>
+                  <span>0</span>
+                </div>
+                <div className='ml-8 h-full flex items-end justify-between gap-1'>
+                  {mockRevenue30Days.map((item, index) => {
+                    const maxRevenue = getMaxRevenue()
+                    const netHeight = maxRevenue > 0 ? (item.netRevenue / maxRevenue) * 100 : 0
+                    const commissionHeight = maxRevenue > 0 ? (item.commission / maxRevenue) * 100 : 0
+                    return (
+                      <div key={index} className='flex-1 flex flex-col items-center gap-1'>
+                        <div className='w-full flex flex-col items-end gap-0.5'>
+                          <div
+                            className='w-full bg-green-500 rounded-t hover:bg-green-600 transition-colors cursor-pointer'
+                            style={{ height: `${netHeight}%` }}
+                            title={`${new Date(item.date).toLocaleDateString('vi-VN')}: Doanh thu ${formatCurrency(item.netRevenue)}`}
+                          ></div>
+                          <div
+                            className='w-full bg-purple-500 rounded-t hover:bg-purple-600 transition-colors cursor-pointer'
+                            style={{ height: `${commissionHeight}%` }}
+                            title={`${new Date(item.date).toLocaleDateString('vi-VN')}: Hoa hồng ${formatCurrency(item.commission)}`}
+                          ></div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className='absolute bottom-0 left-8 right-0 flex justify-between text-xs text-gray-500'>
+                  {mockRevenue30Days.map((item, index) => (
+                    <span key={index} className='flex-1 text-center'>
+                      {new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className='flex items-center justify-center gap-4 mt-4'>
+                <div className='flex items-center gap-2'>
+                  <div className='w-4 h-4 bg-green-500 rounded'></div>
+                  <span className='text-xs text-gray-600'>Doanh thu</span>
+                </div>
+                <div className='flex items-center gap-2'>
+                  <div className='w-4 h-4 bg-purple-500 rounded'></div>
+                  <span className='text-xs text-gray-600'>Hoa hồng</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='hover:shadow-md transition-shadow'>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'>
+                <PieChart className='w-5 h-5' />
+                Phân bổ phương thức thanh toán
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className='space-y-4'>
+                <div>
+                  <div className='flex items-center justify-between mb-2'>
+                    <span className='text-sm text-gray-600'>Banking</span>
+                    <span className='text-sm font-medium text-gray-900'>
+                      {formatCurrency(mockPaymentMethodDistribution.banking.totalAmount)}
+                    </span>
+                  </div>
+                  <div className='w-full h-4 bg-gray-200 rounded-full overflow-hidden'>
+                    <div
+                      className='h-full bg-blue-500 rounded-full'
+                      style={{
+                        width: `${
+                          (mockPaymentMethodDistribution.banking.totalAmount /
+                            (mockPaymentMethodDistribution.banking.totalAmount +
+                              mockPaymentMethodDistribution.cod.totalAmount)) *
+                          100
+                        }%`
+                      }}
+                    ></div>
+                  </div>
+                  <p className='text-xs text-gray-500 mt-1'>
+                    {mockPaymentMethodDistribution.banking.count} đơn hàng
+                  </p>
+                </div>
+                <div>
+                  <div className='flex items-center justify-between mb-2'>
+                    <span className='text-sm text-gray-600'>COD</span>
+                    <span className='text-sm font-medium text-gray-900'>
+                      {formatCurrency(mockPaymentMethodDistribution.cod.totalAmount)}
+                    </span>
+                  </div>
+                  <div className='w-full h-4 bg-gray-200 rounded-full overflow-hidden'>
+                    <div
+                      className='h-full bg-orange-500 rounded-full'
+                      style={{
+                        width: `${
+                          (mockPaymentMethodDistribution.cod.totalAmount /
+                            (mockPaymentMethodDistribution.banking.totalAmount +
+                              mockPaymentMethodDistribution.cod.totalAmount)) *
+                          100
+                        }%`
+                      }}
+                    />
+                  </div>
+                  <p className='text-xs text-gray-500 mt-1'>
+                    {mockPaymentMethodDistribution.cod.count} đơn hàng
+                  </p>
+                </div>
+                <div className='pt-4 border-t'>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium text-gray-900'>Tổng cộng</span>
+                    <span className='text-sm font-bold text-gray-900'>
+                      {formatCurrency(
+                        mockPaymentMethodDistribution.banking.totalAmount +
+                          mockPaymentMethodDistribution.cod.totalAmount
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </motion.div>
+
+      {/* Product Revenue Report */}
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
+        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4'>
+          <div>
+            <h2 className='text-lg font-semibold text-gray-900'>Báo Cáo Doanh Thu Sản Phẩm</h2>
+            <p className='text-sm text-gray-600 mt-1'>Phân tích doanh thu theo từng sản phẩm (Bán lẻ vs Combo)</p>
+          </div>
+          <div className='flex flex-wrap gap-2'>
+            <select
+              value={productRevenueSalesType}
+              onChange={(e) => {
+                setProductRevenueSalesType(e.target.value as 'All' | 'Retail' | 'Combo')
+                setProductRevenuePage(1)
+              }}
+              className='px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+            >
+              <option value='All'>Tất cả</option>
+              <option value='Retail'>Chỉ Bán lẻ</option>
+              <option value='Combo'>Chỉ Combo</option>
+            </select>
+            <select
+              value={productRevenueSortBy}
+              onChange={(e) => {
+                setProductRevenueSortBy(e.target.value as 'Revenue' | 'Quantity')
+                setProductRevenuePage(1)
+              }}
+              className='px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+            >
+              <option value='Revenue'>Sắp xếp theo Doanh thu</option>
+              <option value='Quantity'>Sắp xếp theo Số lượng</option>
+            </select>
+          </div>
+        </div>
+        <Card className='hover:shadow-md transition-shadow'>
+          <CardContent className='p-6'>
+            <div className='overflow-x-auto'>
+              <table className='w-full'>
+                <thead>
+                  <tr className='border-b border-gray-200'>
+                    <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Sản phẩm</th>
+                    <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Biến thể</th>
+                    <th className='text-right py-3 px-4 font-medium text-gray-700 text-sm'>Tổng bán</th>
+                    <th className='text-right py-3 px-4 font-medium text-gray-700 text-sm'>Doanh thu Bán lẻ</th>
+                    <th className='text-right py-3 px-4 font-medium text-gray-700 text-sm'>Doanh thu Combo</th>
+                    <th className='text-right py-3 px-4 font-medium text-gray-700 text-sm'>Tổng doanh thu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mockProductRevenueData.items.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className='text-center py-8 text-gray-500'>
+                        Không có dữ liệu
+                      </td>
+                    </tr>
+                  ) : (
+                    mockProductRevenueData.items.map((product, index) => (
+                      <tr
+                        key={product.id}
+                        className='border-b border-gray-100 hover:bg-gray-50 transition-colors'
+                      >
+                        <td className='py-4 px-4 text-gray-900 font-medium text-sm'>{product.productName}</td>
+                        <td className='py-4 px-4 text-gray-700 text-sm'>{product.variantName}</td>
+                        <td className='py-4 px-4 text-gray-900 text-sm text-right font-medium'>
+                          {product.totalSold}
+                        </td>
+                        <td className='py-4 px-4 text-gray-700 text-sm text-right'>
+                          {product.retailRevenue.toLocaleString()} ₫
+                        </td>
+                        <td className='py-4 px-4 text-gray-700 text-sm text-right'>
+                          {product.comboRevenue.toLocaleString()} ₫
+                        </td>
+                        <td className='py-4 px-4 text-gray-900 text-sm text-right font-bold'>
+                          {product.totalRevenue.toLocaleString()} ₫
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                {mockProductRevenueData.items.length > 0 && (
+                  <tfoot>
+                    <tr className='bg-gray-50 border-t-2 border-gray-200'>
+                      <td colSpan={2} className='py-3 px-4 font-semibold text-gray-900 text-sm'>
+                        Tổng cộng
+                      </td>
+                      <td className='py-3 px-4 font-semibold text-gray-900 text-sm text-right'>
+                        {mockProductRevenueData.items.reduce((sum, p) => sum + p.totalSold, 0)}
+                      </td>
+                      <td className='py-3 px-4 font-semibold text-gray-900 text-sm text-right'>
+                        {mockProductRevenueData.items.reduce((sum, p) => sum + p.retailRevenue, 0).toLocaleString()} ₫
+                      </td>
+                      <td className='py-3 px-4 font-semibold text-gray-900 text-sm text-right'>
+                        {mockProductRevenueData.items.reduce((sum, p) => sum + p.comboRevenue, 0).toLocaleString()} ₫
+                      </td>
+                      <td className='py-3 px-4 font-bold text-green-600 text-sm text-right'>
+                        {mockProductRevenueData.items.reduce((sum, p) => sum + p.totalRevenue, 0).toLocaleString()} ₫
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+            {mockProductRevenueData.totalItems > productRevenuePageSize && (
+              <div className='flex items-center justify-between mt-4 pt-4 border-t'>
+                <div className='text-sm text-gray-600'>
+                  Hiển thị {((productRevenuePage - 1) * productRevenuePageSize) + 1}-
+                  {Math.min(productRevenuePage * productRevenuePageSize, mockProductRevenueData.totalItems)} trong tổng số{' '}
+                  {mockProductRevenueData.totalItems} sản phẩm
+                </div>
+                <div className='flex gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => setProductRevenuePage((p) => Math.max(1, p - 1))}
+                    disabled={productRevenuePage === 1}
+                  >
+                    Trước
+                  </Button>
+                  <span className='px-3 py-1 text-sm text-gray-700 flex items-center'>
+                    Trang {productRevenuePage} / {Math.ceil(mockProductRevenueData.totalItems / productRevenuePageSize)}
+                  </span>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() =>
+                      setProductRevenuePage((p) =>
+                        Math.min(Math.ceil(mockProductRevenueData.totalItems / productRevenuePageSize), p + 1)
+                      )
+                    }
+                    disabled={
+                      productRevenuePage >= Math.ceil(mockProductRevenueData.totalItems / productRevenuePageSize)
+                    }
+                  >
+                    Sau
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ========== END DASHBOARD SECTIONS ========== */}
 
       {/* 1. Số dư hiện tại (Real-time) */}
       <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>

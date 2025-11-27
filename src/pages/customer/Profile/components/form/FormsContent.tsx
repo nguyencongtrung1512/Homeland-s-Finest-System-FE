@@ -153,7 +153,7 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
         return <Clock className='w-4 h-4 text-yellow-500' />
       case 'Processing':
         return <AlertCircle className='w-4 h-4 text-blue-500' />
-      case 'WaitingSellerResponse':
+      case 'Confirmed':
         return <AlertCircle className='w-4 h-4 text-blue-500' />
       case 'ApprovedByStaff':
       case 'ApprovedByAdmin':
@@ -175,7 +175,7 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
         return 'secondary'
       case 'Processing':
         return 'default'
-      case 'WaitingSellerResponse':
+      case 'Confirmed':
         return 'default'
       case 'ApprovedByStaff':
       case 'ApprovedByAdmin':
@@ -207,7 +207,7 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
         return 'Đã xử lí'
       case 'Rejected':
         return 'Đã từ chối'
-      case 'WaitingSellerResponse':
+      case 'Confirmed':
         return 'Đang xử lý'
       case 'Cancel':
         return 'Đã hủy'
@@ -548,14 +548,6 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
                       <div className='bg-green-50 border border-green-200 rounded-lg p-3'>
                         <p className='text-xs text-green-600 font-medium mb-1'>Phản hồi từ nhân viên:</p>
                         <p className='text-sm text-green-800'>{form.reply}</p>
-                      </div>
-                    )}
-
-                    {/* Admin Text */}
-                    {form.adminText && (
-                      <div className='bg-green-50 border border-green-200 rounded-lg p-3'>
-                        <p className='text-xs text-green-600 font-medium mb-1'>Phản hồi từ quản trị viên:</p>
-                        <p className='text-sm text-green-800'>{form.adminText}</p>
                       </div>
                     )}
 

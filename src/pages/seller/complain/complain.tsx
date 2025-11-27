@@ -11,17 +11,7 @@ import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
-import {
-  Calendar,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Eye,
-  Image as ImageIcon,
-  Upload,
-  X
-} from 'lucide-react'
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Eye, Image as ImageIcon, Upload, X } from 'lucide-react'
 import { resolveImageUrl } from '../../../utils/image'
 import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 import { CopyButton } from '../../../components/ui/copy'
@@ -88,7 +78,7 @@ function ComplainSeller() {
           color: 'text-blue-700',
           bgColor: 'bg-blue-50'
         }
-      case 'WaitingSellerResponse':
+      case 'Confirmed':
         return {
           icon: <Clock className='w-4 h-4 text-blue-500' />,
           badge: 'default',
@@ -207,9 +197,9 @@ function ComplainSeller() {
     }
   }
 
-  // Handle open reply modal (only allow if status is WaitingSellerResponse)
+  // Handle open reply modal (only allow if status is Confirmed)
   const handleOpenReply = (form: FormDTO) => {
-    if (form.status !== 'WaitingSellerResponse') {
+    if (form.status !== 'Confirmed') {
       toast.error('Chỉ có thể phản hồi khi trạng thái là "Chờ phản hồi từ người bán"')
       return
     }
@@ -251,14 +241,14 @@ function ComplainSeller() {
     })
   }
 
-  // Handle submit reply (only allow if status is WaitingSellerResponse)
+  // Handle submit reply (only allow if status is Confirmed)
   const handleSubmitReply = async () => {
     if (!selectedForm || !sellerReply.trim()) {
       toast.error('Vui lòng nhập phản hồi')
       return
     }
 
-    if (selectedForm.status !== 'WaitingSellerResponse') {
+    if (selectedForm.status !== 'Confirmed') {
       toast.error('Chỉ có thể phản hồi khi trạng thái là "Chờ phản hồi từ người bán"')
       return
     }
@@ -299,9 +289,9 @@ function ComplainSeller() {
     }
   }
 
-  // Filter forms that need seller response (only WaitingSellerResponse status)
+  // Filter forms that need seller response (only Confirmed status)
   const formsNeedingResponse = useMemo(() => {
-    return forms.filter((form) => form.status === 'WaitingSellerResponse')
+    return forms.filter((form) => form.status === 'Confirmed')
   }, [forms])
 
   // Calculate attachment images when selectedForm changes
@@ -384,7 +374,7 @@ function ComplainSeller() {
         <div className='space-y-4'>
           {forms.map((form) => {
             const statusInfo = getStatusInfo(form.status)
-            const canReply = form.status === 'WaitingSellerResponse'
+            const canReply = form.status === 'Confirmed'
             const needsResponse = canReply && !form.isSellerReplied
 
             return (
@@ -491,7 +481,7 @@ function ComplainSeller() {
                         <Eye className='w-4 h-4 mr-2' />
                         Xem chi tiết
                       </Button>
-                      {form.status === 'WaitingSellerResponse' && (
+                      {form.status === 'Confirmed' && (
                         <Button
                           variant='default'
                           size='sm'
@@ -636,8 +626,8 @@ function ComplainSeller() {
                     </div>
                   )}
 
-                  {/* Reply Button in Detail Modal - Only show if status is WaitingSellerResponse */}
-                  {selectedForm.status === 'WaitingSellerResponse' && (
+                  {/* Reply Button in Detail Modal - Only show if status is Confirmed */}
+                  {selectedForm.status === 'Confirmed' && (
                     <div className='pt-4 border-t'>
                       <Button
                         onClick={() => {

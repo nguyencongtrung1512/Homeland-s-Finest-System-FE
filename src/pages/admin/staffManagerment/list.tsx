@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Search,
   Users,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   Building2,
   Phone,
@@ -17,7 +15,8 @@ import {
   UserPlus,
   Edit,
   Save,
-  X
+  X,
+  Ban
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -40,8 +39,10 @@ import { Switch } from '../../../components/ui/switch'
 import { Textarea } from '../../../components/ui/textarea'
 import { staffApi, type StaffInfo, type UpdateStaffRequest } from '../../../apis/staff.api'
 import { registerStaff, type StaffRegistrationData } from '../../../apis/auth.api'
-import { toast } from 'react-toastify'
+import { adminApi } from '../../../apis/admin.api'
+import { toast } from '../../../utils/toast'
 import Pagination from '../../../components/Pagination/Pagination'
+import { Label } from '../../../components/ui/label'
 
 function StaffManagement() {
   const [searchText, setSearchText] = useState('')
@@ -93,6 +94,16 @@ function StaffManagement() {
   const [editHireDateOpen, setEditHireDateOpen] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
+  // Ban states
+  const [showBanModal, setShowBanModal] = useState(false)
+  const [staffToBan, setStaffToBan] = useState<StaffInfo | null>(null)
+  const [banReason, setBanReason] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+
+  // Unban states
+  const [showUnbanModal, setShowUnbanModal] = useState(false)
+  const [staffToUnban, setStaffToUnban] = useState<StaffInfo | null>(null)
+
   // Fetch staff data từ API
   const fetchStaff = useCallback(async () => {
     setLoading(true)
@@ -121,7 +132,7 @@ function StaffManagement() {
     } catch (error) {
       console.error('Error fetching staff:', error)
       setAllStaff([])
-      toast.error('Không thể tải danh sách staff')
+        toast.error('Không thể tải danh sách nhân viên')
     } finally {
       setLoading(false)
     }
@@ -186,7 +197,7 @@ function StaffManagement() {
       setIsEditing(false) // Reset edit mode
     } catch (error) {
       console.error('Error fetching staff detail:', error)
-      toast.error('Không thể tải thông tin chi tiết staff')
+      toast.error('Không thể tải thông tin chi tiết nhân viên')
     }
   }
 
@@ -584,13 +595,106 @@ function StaffManagement() {
     })
   }
 
+  // Handle ban
+  const handleBan = (staff: StaffInfo) => {
+    setStaffToBan(staff)
+    setBanReason('')
+    setShowBanModal(true)
+  }
+
+  const confirmBan = async () => {
+    if (!staffToBan || !banReason.trim()) {
+      toast.error('Vui lòng nhập lý do cấm', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    setActionLoading(true)
+    try {
+      const response = await adminApi.banStaff(staffToBan.userId, { reason: banReason.trim() })
+
+      // Hiển thị thông báo từ backend
+      const successMessage = response.data?.message || response.message || `Đã cấm nhân viên ${staffToBan.firstName} ${staffToBan.lastName}`
+
+      toast.success(successMessage, {
+        position: 'top-right',
+        autoClose: 3000
+      })
+
+      // Refresh data
+      await fetchStaff()
+      setShowBanModal(false)
+      setStaffToBan(null)
+      setBanReason('')
+    } catch (err: unknown) {
+      const error = err as { message?: string }
+      const errorMessage = error.message || 'Có lỗi xảy ra khi cấm nhân viên'
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Handle unban
+  const handleUnban = (staff: StaffInfo) => {
+    setStaffToUnban(staff)
+    setShowUnbanModal(true)
+  }
+
+  const confirmUnban = async () => {
+    if (!staffToUnban) return
+
+    setActionLoading(true)
+    try {
+      const response = await adminApi.unbanStaff(staffToUnban.userId)
+
+      // Hiển thị thông báo từ backend
+      const successMessage = response.data?.message || response.message || `Đã mở khóa nhân viên ${staffToUnban.firstName} ${staffToUnban.lastName}`
+
+      toast.success(successMessage, {
+        position: 'top-right',
+        autoClose: 3000
+      })
+
+      // Refresh data
+      await fetchStaff()
+      setShowUnbanModal(false)
+      setStaffToUnban(null)
+    } catch (err: unknown) {
+      const error = err as { message?: string }
+      const errorMessage = error.message || 'Có lỗi xảy ra khi mở khóa nhân viên'
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const closeUnbanModal = () => {
+    setShowUnbanModal(false)
+    setStaffToUnban(null)
+  }
+
+  const closeBanModal = () => {
+    setShowBanModal(false)
+    setStaffToBan(null)
+    setBanReason('')
+  }
+
   return (
     <div className='space-y-6'>
       {/* Header */}
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Quản lý Staff</h1>
-          <p className='text-gray-600 mt-1'>Quản lý thông tin và trạng thái của các staff</p>
+          <h1 className='text-3xl font-bold text-gray-900'>Quản lý nhân viên</h1>
+          <p className='text-gray-600 mt-1'>Quản lý thông tin và trạng thái của các nhân viên</p>
         </div>
         <div className='flex items-center space-x-2'>
           <Button
@@ -608,14 +712,9 @@ function StaffManagement() {
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className='flex items-center'>
-            <Search className='w-5 h-5 mr-2' />
-            Tìm kiếm và lọc
-          </CardTitle>
-        </CardHeader>
+
         <CardContent>
-          <div className='flex flex-col sm:flex-row gap-4'>
+          <div className='flex flex-col sm:flex-row gap-4 py-5'>
             <div className='flex-1'>
               <Input
                 placeholder='Tìm kiếm theo tên, email, số điện thoại...'
@@ -627,7 +726,7 @@ function StaffManagement() {
             </div>
             <div className='w-full sm:w-48'>
               <Select value={statusFilter} onValueChange={handleFilterChange}>
-                <SelectTrigger>
+                <SelectTrigger className='w-[200px]'>
                   <SelectValue placeholder='Trạng thái' />
                 </SelectTrigger>
                 <SelectContent>
@@ -637,10 +736,7 @@ function StaffManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleSearch} className='w-full sm:w-auto'>
-              <Search className='w-4 h-4 mr-2' />
-              Tìm kiếm
-            </Button>
+
           </div>
         </CardContent>
       </Card>
@@ -648,7 +744,7 @@ function StaffManagement() {
       {/* Staff Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách Staff</CardTitle>
+          <CardTitle>Danh sách nhân viên</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -660,7 +756,7 @@ function StaffManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Staff</TableHead>
+                    <TableHead>Nhân viên</TableHead>
                     <TableHead>Thông tin liên hệ</TableHead>
                     <TableHead>Thông tin cá nhân</TableHead>
                     <TableHead>Trạng thái</TableHead>
@@ -684,7 +780,6 @@ function StaffManagement() {
                             <div className='font-medium'>
                               {staff.firstName} {staff.lastName}
                             </div>
-                            <div className='text-sm text-gray-500'>ID: {staff.userId.slice(0, 8)}...</div>
                           </div>
                         </div>
                       </TableCell>
@@ -724,6 +819,27 @@ function StaffManagement() {
                             <Eye className='w-4 h-4 mr-2' />
                             Xem chi tiết
                           </Button>
+                          {staff.isActive ? (
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              onClick={() => handleBan(staff)}
+                              className='text-orange-600 hover:text-orange-800 hover:bg-orange-50 flex items-center'
+                            >
+                              <Ban className='w-4 h-4 mr-2' />
+                              Khóa
+                            </Button>
+                          ) : (
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              onClick={() => handleUnban(staff)}
+                              className='text-blue-600 hover:text-blue-800 hover:bg-blue-50 flex items-center'
+                            >
+                              <CheckCircle className='w-4 h-4 mr-2' />
+                              Mở khóa
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1296,6 +1412,100 @@ function StaffManagement() {
               disabled={staffFormLoading}
             >
               {staffFormLoading ? 'Đang tạo...' : 'Tạo nhân viên'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ban Modal */}
+      <Dialog open={showBanModal} onOpenChange={setShowBanModal}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center'>
+              <Ban className='w-5 h-5 mr-2 text-orange-600' />
+              Khóa nhân viên
+            </DialogTitle>
+            <DialogDescription>
+              {staffToBan && (
+                <>
+                  Bạn đang Khóa nhân viên <span className='font-semibold'>{staffToBan.firstName} {staffToBan.lastName}</span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {staffToBan && (
+            <div className='space-y-4 py-4'>
+              <div className='space-y-2'>
+                <Label>Lý do cấm *</Label>
+                <Textarea
+                  value={banReason}
+                  onChange={(e) => setBanReason(e.target.value)}
+                  placeholder='Nhập lý do khóa nhân viên...'
+                  rows={4}
+                  className='resize-none'
+                />
+              </div>
+
+              <div className='rounded-md bg-orange-50 p-3 text-sm text-orange-800'>
+                <AlertCircle className='w-4 h-4 inline mr-2' />
+                Nhân viên sẽ bị cấm và không thể đăng nhập vào hệ thống.
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant='outline' onClick={closeBanModal} disabled={actionLoading}>
+              Hủy
+            </Button>
+            <Button
+              variant='red'
+              onClick={confirmBan}
+              disabled={actionLoading || !banReason.trim()}
+            >
+              {actionLoading ? 'Đang xử lý...' : 'Xác nhận cấm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unban Modal */}
+      <Dialog open={showUnbanModal} onOpenChange={setShowUnbanModal}>
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center'>
+              <CheckCircle className='w-5 h-5 mr-2 text-blue-600' />
+              Mở khóa nhân viên
+            </DialogTitle>
+            <DialogDescription>
+              {staffToUnban && (
+                <>
+                  Bạn có chắc chắn muốn mở khóa nhân viên{' '}
+                  <span className='font-semibold'>{staffToUnban.firstName} {staffToUnban.lastName}</span> không?
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {staffToUnban && (
+            <div className='space-y-4 py-4'>
+              <div className='rounded-md bg-blue-50 p-3 text-sm text-blue-800'>
+                <AlertCircle className='w-4 h-4 inline mr-2' />
+                Nhân viên sẽ được mở khóa và có thể đăng nhập vào hệ thống trở lại.
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant='outline' onClick={closeUnbanModal} disabled={actionLoading}>
+              Hủy
+            </Button>
+            <Button
+              onClick={confirmUnban}
+              className='bg-blue-600 hover:bg-blue-700 text-white'
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'Đang xử lý...' : 'Xác nhận mở khóa'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -65,8 +65,7 @@ function SellerLogin() {
           token: response.token,
           expiresAt: response.expiresAt,
           userId: response.userId,
-          email: response.email,
-          isPermission: response.isPermission
+          email: response.email
         }
 
         // Cập nhật Auth Context (sẽ tự động lưu vào localStorage)
@@ -76,18 +75,36 @@ function SellerLogin() {
 
         // Redirect to seller dashboard
         setTimeout(() => {
+          // Xác định đường dẫn redirect theo role
           const redirectPath = getRedirectPath(response.role)
+          console.log('Redirecting to:', redirectPath, 'Role:', response.role)
+
+          // Try navigate first
           navigate(redirectPath)
+
+          // Fallback: direct window.location if navigate doesn't work
+          setTimeout(() => {
+            if (window.location.pathname !== redirectPath) {
+              console.log('Navigate failed, using window.location.href')
+              window.location.href = redirectPath
+            }
+          }, 100)
         }, 1000)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error)
 
       // Handle different types of errors
-      if (error?.response?.data?.message) {
-        toast.error(error.response.data.message)
-      } else if (error?.message) {
-        toast.error(error.message)
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as { response?: { data?: { message?: string } } }
+        if (apiError.response?.data?.message) {
+          toast.error(apiError.response.data.message)
+        } else {
+          toast.error('Đăng nhập thất bại. Vui lòng thử lại.')
+        }
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        const err = error as { message?: string }
+        toast.error(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.')
       } else {
         toast.error('Đăng nhập thất bại. Vui lòng thử lại.')
       }

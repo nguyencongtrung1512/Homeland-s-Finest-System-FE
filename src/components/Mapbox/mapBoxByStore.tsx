@@ -26,13 +26,15 @@ interface MapBoxByStoreProps {
   onStoreSelect?: (store: Store) => void
   selectedStoreId?: string | null
   onStoreIdChange?: (storeId: string | null) => void
+  hidePanel?: boolean
 }
 
 const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
   stores,
   onStoreSelect,
   selectedStoreId: externalSelectedStoreId,
-  onStoreIdChange
+  onStoreIdChange,
+  hidePanel = false
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const map = useRef<mapboxgl.Map | null>(null)
@@ -41,7 +43,7 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
   const [isLoading, setIsLoading] = useState(true)
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
   const [storesWithCoordinates, setStoresWithCoordinates] = useState<Store[]>([])
-  const [isPanelOpen, setIsPanelOpen] = useState(true)
+  const [isPanelOpen, setIsPanelOpen] = useState(!hidePanel)
   const [searchQuery, setSearchQuery] = useState('')
 
   // Sync với external state nếu có
@@ -216,23 +218,15 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
         className: 'custom-popup'
       }).setHTML(`
         <div class="p-3 min-w-[220px] max-w-[280px]">
-          ${store.CoverImageURL
-          ? `
-            <img src="${store.CoverImageURL}" 
-                 alt="${store.StoreName}" 
-                 class="w-full h-28 object-cover rounded-lg mb-2 shadow-sm" />
-          `
-          : ''
-        }
+          <img src="${store.CoverImageURL || ''}" 
+               alt="${store.StoreName}" 
+               class="w-full h-28 object-cover rounded-lg mb-2 shadow-sm" 
+               onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
           <div class="flex items-start gap-2">
-            ${store.LogoURL
-          ? `
-              <img src="${store.LogoURL}" 
-                   alt="${store.StoreName}" 
-                   class="w-10 h-10 object-cover rounded-full border-2 border-gray-200 flex-shrink-0" />
-            `
-          : ''
-        }
+            <img src="${store.LogoURL || ''}" 
+                 alt="${store.StoreName}" 
+                 class="w-10 h-10 object-cover rounded-full border-2 border-gray-200 flex-shrink-0"
+                 onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
             <div class="flex-1 min-w-0">
               <h3 class="font-bold text-gray-900 text-base mb-1 leading-tight">${store.StoreName}</h3>
               <p class="text-xs text-gray-600 mb-0.5 flex items-start gap-1">
@@ -343,61 +337,42 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       <div className='w-full h-full' ref={mapContainer}></div>
 
       {/* Store list panel - Overlay on map */}
-      <div
-        className={`absolute top-0 left-0 h-full bg-white shadow-2xl border-r-4 border-green-600 transition-all duration-300 z-40 ${isPanelOpen ? 'w-80' : 'w-0'
-          } overflow-hidden`}
-      >
-        <div className='h-full flex flex-col'>
-          {/* Header */}
-          <div className='bg-gradient-to-r from-green-600 to-green-700 text-white p-3 shadow-lg border-b-2 border-green-800'>
-            <div className='flex items-center justify-between mb-2'>
-              <h2 className='text-lg font-bold flex items-center gap-2'>
-                <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
-                  />
-                </svg>
-                Danh sách cửa hàng
-              </h2>
-              <span className='bg-white text-green-700 px-2 py-0.5 rounded-full text-xs font-semibold'>
-                {filteredStores.length}
-              </span>
-            </div>
+      {!hidePanel && (
+        <div
+          className={`absolute top-0 left-0 h-full bg-white shadow-2xl border-r-4 border-green-600 transition-all duration-300 z-40 ${isPanelOpen ? 'w-80' : 'w-0'
+            } overflow-hidden`}
+        >
+          <div className='h-full flex flex-col'>
+            {/* Header */}
+            <div className='bg-gradient-to-r from-green-600 to-green-700 text-white p-3 shadow-lg border-b-2 border-green-800'>
+              <div className='flex items-center justify-between mb-2'>
+                <h2 className='text-lg font-bold flex items-center gap-2'>
+                  <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
+                    />
+                  </svg>
+                  Danh sách cửa hàng
+                </h2>
+                <span className='bg-white text-green-700 px-2 py-0.5 rounded-full text-xs font-semibold'>
+                  {filteredStores.length}
+                </span>
+              </div>
 
-            {/* Search box */}
-            <div className='relative'>
-              <input
-                type='text'
-                placeholder='Tìm kiếm...'
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className='w-full px-3 py-1.5 pl-9 rounded-lg text-sm text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400'
-              />
-              <svg
-                className='absolute left-2.5 top-2 w-4 h-4 text-gray-400'
-                fill='none'
-                stroke='currentColor'
-                viewBox='0 0 24 24'
-              >
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
+              {/* Search box */}
+              <div className='relative'>
+                <input
+                  type='text'
+                  placeholder='Tìm kiếm...'
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className='w-full px-3 py-1.5 pl-9 rounded-lg text-sm text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-400'
                 />
-              </svg>
-            </div>
-          </div>
-
-          {/* Store list */}
-          <div className='flex-1 overflow-y-auto p-3 space-y-2'>
-            {filteredStores.length === 0 ? (
-              <div className='text-center py-6 text-gray-500'>
                 <svg
-                  className='w-12 h-12 mx-auto mb-2 text-gray-300'
+                  className='absolute left-2.5 top-2 w-4 h-4 text-gray-400'
                   fill='none'
                   stroke='currentColor'
                   viewBox='0 0 24 24'
@@ -406,68 +381,95 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
                     strokeLinecap='round'
                     strokeLinejoin='round'
                     strokeWidth={2}
-                    d='M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                    d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
                   />
                 </svg>
-                <p className='text-sm'>Không tìm thấy cửa hàng</p>
               </div>
-            ) : (
-              filteredStores.map((store) => (
-                <div
-                  key={store.ID}
-                  onClick={() => handleStoreClick(store)}
-                  className={`p-2.5 rounded-lg cursor-pointer transition-all duration-200 border-2 ${selectedStoreId === store.ID
-                    ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-400 shadow-md scale-[1.02]'
-                    : 'bg-gray-50 border-transparent hover:bg-gray-100 hover:border-gray-200 hover:shadow'
-                    }`}
-                >
-                  {store.CoverImageURL && (
+            </div>
+
+            {/* Store list */}
+            <div className='flex-1 overflow-y-auto p-3 space-y-2'>
+              {filteredStores.length === 0 ? (
+                <div className='text-center py-6 text-gray-500'>
+                  <svg
+                    className='w-12 h-12 mx-auto mb-2 text-gray-300'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                    />
+                  </svg>
+                  <p className='text-sm'>Không tìm thấy cửa hàng</p>
+                </div>
+              ) : (
+                filteredStores.map((store) => (
+                  <div
+                    key={store.ID}
+                    onClick={() => handleStoreClick(store)}
+                    className={`p-2.5 rounded-lg cursor-pointer transition-all duration-200 border-2 ${selectedStoreId === store.ID
+                      ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-400 shadow-md scale-[1.02]'
+                      : 'bg-gray-50 border-transparent hover:bg-gray-100 hover:border-gray-200 hover:shadow'
+                      }`}
+                  >
                     <img
-                      src={store.CoverImageURL}
+                      src={store.CoverImageURL || 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'}
                       alt={store.StoreName}
                       className='w-full h-20 object-cover rounded-md mb-2 shadow-sm'
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+                      }}
                     />
-                  )}
-                  <div className='flex items-start gap-2'>
-                    {store.LogoURL && (
+                    <div className='flex items-start gap-2'>
                       <img
-                        src={store.LogoURL}
+                        src={store.LogoURL || 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'}
                         alt={store.StoreName}
                         className='w-8 h-8 object-cover rounded-full border-2 border-white shadow-sm flex-shrink-0'
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          target.src = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+                        }}
                       />
-                    )}
-                    <div className='flex-1 min-w-0'>
-                      <h3 className='font-semibold text-gray-900 text-sm truncate'>{store.StoreName}</h3>
-                      <p className='text-gray-600 text-xs mt-0.5 line-clamp-1'>{store.Province}</p>
-                      <p className='text-gray-600 text-xs mt-0.5 line-clamp-1'>{store.Address}</p>
-                      <p className='text-gray-500 text-xs mt-0.5'>
-                        {store.Ward}, {store.District}
-                      </p>
+                      <div className='flex-1 min-w-0'>
+                        <h3 className='font-semibold text-gray-900 text-sm truncate'>{store.StoreName}</h3>
+                        <p className='text-gray-600 text-xs mt-0.5 line-clamp-1'>{store.Province}</p>
+                        <p className='text-gray-600 text-xs mt-0.5 line-clamp-1'>{store.Address}</p>
+                        <p className='text-gray-500 text-xs mt-0.5'>
+                          {store.Ward}, {store.District}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Toggle button */}
-      <button
-        onClick={() => setIsPanelOpen(!isPanelOpen)}
-        className={`absolute top-4 z-50 bg-white hover:bg-gray-50 text-gray-700 p-2.5 rounded-lg shadow-xl transition-all duration-300 border-2 border-green-600 ${isPanelOpen ? 'left-[332px]' : 'left-4'
-          }`}
-        title={isPanelOpen ? 'Ẩn danh sách' : 'Hiện danh sách'}
-      >
-        <svg
-          className={`w-5 h-5 transition-transform duration-300 ${isPanelOpen ? 'rotate-180' : ''}`}
-          fill='none'
-          stroke='currentColor'
-          viewBox='0 0 24 24'
+      {!hidePanel && (
+        <button
+          onClick={() => setIsPanelOpen(!isPanelOpen)}
+          className={`absolute top-4 z-50 bg-white hover:bg-gray-50 text-gray-700 p-2.5 rounded-lg shadow-xl transition-all duration-300 border-2 border-green-600 ${isPanelOpen ? 'left-[332px]' : 'left-4'
+            }`}
+          title={isPanelOpen ? 'Ẩn danh sách' : 'Hiện danh sách'}
         >
-          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
-        </svg>
-      </button>
+          <svg
+            className={`w-5 h-5 transition-transform duration-300 ${isPanelOpen ? 'rotate-180' : ''}`}
+            fill='none'
+            stroke='currentColor'
+            viewBox='0 0 24 24'
+          >
+            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
+          </svg>
+        </button>
+      )}
 
       {/* Custom CSS for popup */}
       <style>{`

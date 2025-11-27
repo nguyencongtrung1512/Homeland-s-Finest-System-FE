@@ -68,3 +68,11 @@ export const calculateShippingFee = async (cartItemIds: string[], userAddressId:
   })
   return response
 }
+
+export const updateSelectedCartItems = async (cartItemIds: string[], isSelected: boolean): Promise<any> => {
+  const response = await axiosInstance.put<CartResponse>(`${API_URL}/selected-cart-item`, {
+    cartItemIds,
+    isSelected
+  })
+  return response.data
+}

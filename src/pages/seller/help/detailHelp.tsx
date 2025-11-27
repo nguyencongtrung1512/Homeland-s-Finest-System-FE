@@ -105,7 +105,7 @@ function DetailHelp() {
         icon: <XCircle className='w-4 h-4' />,
         className: 'text-red-600'
       },
-      WaitingSellerResponse: {
+      Confirmed: {
         text: 'Đang xử lý',
         icon: <CheckCircle className='w-4 h-4' />,
         className: 'text-green-600'

@@ -46,14 +46,14 @@ const getStatusLabel = (status: FormStatus): string => {
     ApprovedByStaff: 'Đang xử lý',
     ApprovedByAdmin: 'Đã xử lí',
     Rejected: 'Đang xử lý',
-    WaitingSellerResponse: 'Đang xử lý',
+    Confirmed: 'Đang xử lý',
     Cancel: 'Đã hủy'
   }
   return statusMap[status] || status
 }
 
 const getStatusColor = (status: FormStatus): string => {
-  if (status === 'ApprovedByStaff' || status === 'ApprovedByAdmin' || status === 'WaitingSellerResponse') {
+  if (status === 'ApprovedByStaff' || status === 'ApprovedByAdmin' || status === 'Confirmed') {
     return 'bg-green-100 text-green-700'
   }
   if (status === 'DeniedByAdmin' || status === 'DeniedByStaff' || status === 'Rejected') {

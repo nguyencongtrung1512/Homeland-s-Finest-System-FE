@@ -79,16 +79,25 @@ export interface WithdrawalResponse {
  */
 export const depositMoney = async (amount: number): Promise<DepositResponse> => {
   try {
-    const response = await axiosInstance.post<{
-      status: number
-      message: string
-      data: DepositResponse
-    }>(`${API_URL}/deposit`, amount, {
+    // Axios interceptor đã trả về response.data, nên response ở đây đã là data rồi
+    const response = await axiosInstance.post<
+      | {
+        status?: number
+        message: string
+        data: DepositResponse
+      }
+      | DepositResponse
+    >(`${API_URL}/deposit`, amount, {
       headers: {
         'Content-Type': 'application/json'
       }
     })
-    return response.data.data
+
+    // Xử lý cả 2 trường hợp: response có wrapper hoặc response trực tiếp
+    if ('data' in response && response.data) {
+      return response.data as DepositResponse
+    }
+    return response as DepositResponse
   } catch (error) {
     console.error('Error depositing money:', error)
     throw error

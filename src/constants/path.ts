@@ -56,6 +56,7 @@ export const path = {
   managerProductStaff: 'manager-product',
   detailProductStaff: '/staff/manager-product/detail-product/:id',
   Order_Management_Staff: 'orders',
+  orderDetailStaff: '/staff/orders/:id',
   transactionsStaff: 'transactions',
   reportsStaff: 'formReport',
   reportDetailStaff: 'formReport/:formId',

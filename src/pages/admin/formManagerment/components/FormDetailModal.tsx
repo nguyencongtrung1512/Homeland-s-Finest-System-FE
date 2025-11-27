@@ -167,11 +167,11 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
-      case 'WaitingSellerResponse':
+      case 'Confirmed':
         return {
           icon: <Clock className='w-5 h-5 text-orange-500' />,
           badge: 'default',
-          text: 'Chờ phản hồi từ người bán',
+          text: 'Nhân viên đã xác nhận kiểm duyệt',
           color: 'text-orange-700',
           bgColor: 'bg-orange-50'
         }
