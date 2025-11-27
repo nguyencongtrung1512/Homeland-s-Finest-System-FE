@@ -9,9 +9,9 @@ export interface StoreResponse {
   province: string
   district: string
   ward: string
-  provinceId: number
-  districtId: number
-  wardId: number
+  provinceId: number | null
+  districtId: number | null
+  wardId: number | null
   address: string
   logoUrl: string | null
   coverImageUrl: string | null

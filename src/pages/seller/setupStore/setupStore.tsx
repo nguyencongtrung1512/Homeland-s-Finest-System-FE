@@ -16,7 +16,9 @@ import {
   Clock4,
   ShieldCheck,
   UserRound,
-  Eye
+  Eye,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import ImagePreviewModal from '../../../components/ui/image-preview-modal'
@@ -99,20 +101,22 @@ function SetupStore() {
   }
 
   const statusDisplay = (() => {
-    switch (storeData?.status) {
-      case 'Approved':
-        return { label: 'Đã duyệt', classes: 'bg-green-100 text-green-800 border border-green-200' }
-      case 'Pending':
-        return { label: 'Đang chờ duyệt', classes: 'bg-yellow-100 text-yellow-800 border border-yellow-200' }
-      case 'Rejected':
-        return { label: 'Bị từ chối', classes: 'bg-red-100 text-red-800 border border-red-200' }
-      case 'Active':
-        return { label: 'Đang hoạt động', classes: 'bg-emerald-100 text-emerald-800 border border-emerald-200' }
-      default:
-        return {
-          label: storeData?.status || 'Chưa có trạng thái',
-          classes: 'bg-gray-100 text-gray-700 border border-gray-200'
-        }
+    const statusMap: Record<string, { label: string; classes: string }> = {
+      Pending: { label: 'Đang xử lý', classes: 'bg-blue-100 text-blue-800 border border-blue-200' },
+      Processing: { label: 'Đang xử lý', classes: 'bg-blue-100 text-blue-800 border border-blue-200' },
+      ApprovedByStaff: { label: 'Đang xử lý', classes: 'bg-blue-100 text-blue-800 border border-blue-200' },
+      RejectedByStaff: { label: 'Đang xử lý', classes: 'bg-blue-100 text-blue-800 border border-blue-200' },
+      Approved: { label: 'Hoạt động', classes: 'bg-emerald-100 text-emerald-800 border border-emerald-200' },
+      Rejected: { label: 'Từ chối', classes: 'bg-red-100 text-red-800 border border-red-200' }
+    }
+
+    if (!storeData?.status) {
+      return { label: 'Chưa có trạng thái', classes: 'bg-gray-100 text-gray-700 border border-gray-200' }
+    }
+
+    return statusMap[storeData.status] || {
+      label: storeData.status,
+      classes: 'bg-gray-100 text-gray-700 border border-gray-200'
     }
   })()
   const sellerFullName = storeData?.sellerInfo
@@ -161,9 +165,15 @@ function SetupStore() {
       formData.append('Province', storeData.province || '')
       formData.append('District', storeData.district || '')
       formData.append('Ward', storeData.ward || '')
-      formData.append('ProvinceId', storeData.provinceId?.toString() || '')
-      formData.append('DistrictId', storeData.districtId?.toString() || '')
-      formData.append('WardId', storeData.wardId?.toString() || '')
+      if (storeData.provinceId !== null && storeData.provinceId !== undefined) {
+        formData.append('ProvinceId', storeData.provinceId.toString())
+      }
+      if (storeData.districtId !== null && storeData.districtId !== undefined) {
+        formData.append('DistrictId', storeData.districtId.toString())
+      }
+      if (storeData.wardId !== null && storeData.wardId !== undefined) {
+        formData.append('WardId', storeData.wardId.toString())
+      }
       formData.append('Description', storeData.description || '')
 
       // Add existing URLs
@@ -333,21 +343,59 @@ function SetupStore() {
         </div>
       ) : (
         <div className='max-w-6xl mx-auto space-y-8'>
-          <div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
-            <div>
-              <p className='text-sm uppercase tracking-[0.2em] text-green-600 font-semibold'>Store Studio</p>
-              <h1 className='mt-2 text-3xl md:text-4xl font-bold text-gray-900'>Thiết lập cửa hàng cao cấp</h1>
-              <p className='text-gray-600 mt-2'>Tối ưu hồ sơ để tăng tỉ lệ duyệt và thu hút khách hàng hơn.</p>
+          {/* Hero Section with Cover Image and Logo */}
+          <div className='relative'>
+            {/* Cover Image */}
+            <div className='rounded-3xl border border-gray-100 overflow-hidden shadow-xl bg-gradient-to-r from-emerald-50 to-white'>
+              {storeData.coverImageUrl ? (
+                <img src={storeData.coverImageUrl} alt='Store Cover' className='w-full h-64 md:h-80 object-cover' />
+              ) : (
+                <div className='w-full h-64 md:h-80 flex items-center justify-center text-gray-400 gap-3 bg-gradient-to-br from-emerald-50 to-white'>
+                  <ImageIcon className='w-16 h-16' />
+                </div>
+              )}
             </div>
-            {!isEditMode && (
-              <Button
-                onClick={handleEdit}
-                className='bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-200 px-6 py-5 rounded-2xl text-base'
-              >
-                <Edit3 className='w-4 h-4 mr-2' />
-                Chỉnh sửa thông tin
-              </Button>
-            )}
+
+            {/* Logo Avatar overlapping cover image */}
+            <div className='flex flex-col md:flex-row items-end md:items-center gap-6 px-6 md:px-8 -mt-16 md:-mt-20 relative z-10'>
+              {/* Logo */}
+              <div className='relative'>
+                <div className='w-32 h-32 md:w-40 md:h-40 rounded-full bg-white ring-4 ring-white shadow-2xl flex items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-100 to-white'>
+                  {storeData.logoUrl ? (
+                    <img src={storeData.logoUrl} alt='Store Logo' className='w-full h-full object-cover' />
+                  ) : (
+                    <ImageIcon className='w-16 h-16 text-emerald-400' />
+                  )}
+                </div>
+                {/* Status Badge */}
+                {!isEditMode && (
+                  <div
+                    className={`${statusDisplay.classes} absolute -bottom-3 -right-3 text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap shadow-lg`}
+                  >
+                    {statusDisplay.label}
+                  </div>
+                )}
+              </div>
+
+              {/* Store Name and Edit Button */}
+              <div className='flex-1 pb-4 md:pb-0 mt-6 md:mt-10'>
+                <p className='text-sm uppercase tracking-[0.2em] text-green-600 font-semibold'>Store Studio</p>
+                <h1 className='text-2xl md:text-4xl font-bold text-gray-900 mt-2'>
+                  {storeData.storeName || 'Tên cửa hàng'}
+                </h1>
+              </div>
+
+              {/* Edit Button */}
+              {!isEditMode && (
+                <Button
+                  onClick={handleEdit}
+                  className='bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-200 px-6 py-5 rounded-2xl text-base mb-4 md:mb-0 w-full md:w-auto'
+                >
+                  <Edit3 className='w-4 h-4 mr-2' />
+                  Chỉnh sửa thông tin
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4'>
@@ -371,110 +419,100 @@ function SetupStore() {
           </div>
           <Card className='border-none shadow-2xl backdrop-blur-sm bg-white/95 rounded-3xl'>
             <CardContent className='p-8 space-y-10'>
-              <section className='grid gap-8 lg:grid-cols-[220px,1fr] items-center'>
-                <div className='relative flex justify-center'>
-                  <div className='w-40 h-40 rounded-3xl bg-gradient-to-br from-emerald-100 to-white flex items-center justify-center shadow-inner ring-1 ring-emerald-100 overflow-hidden'>
-                    {storeData.logoUrl ? (
-                      <img src={storeData.logoUrl} alt='Store Logo' className='w-full h-full object-cover' />
-                    ) : (
-                      <ImageIcon className='w-12 h-12 text-emerald-400' />
-                    )}
-                  </div>
-                  {!isEditMode && (
-                    <div
-                      className={`${statusDisplay.classes} absolute -bottom-4 text-xs font-semibold px-4 py-1 rounded-full whitespace-nowrap`}
-                    >
-                      {statusDisplay.label}
+              {/* Admin Note Alert - Show when admin made final decision */}
+              {storeData.status === 'Rejected' && storeData.adminNote && (
+                <div className='rounded-2xl border-2 border-red-200 bg-red-50 p-6 space-y-3'>
+                  <div className='flex items-start gap-3'>
+                    <div className='flex-shrink-0 pt-0.5'>
+                      <AlertCircle className='w-5 h-5 text-red-600' />
                     </div>
-                  )}
-                </div>
-                <div className='space-y-4'>
-                  <div className='flex items-center gap-3'>
-                    <div className='p-3 rounded-xl bg-emerald-50 text-emerald-600'>
-                      <ShieldCheck className='w-5 h-5' />
-                    </div>
-                    <div>
-                      <p className='text-sm text-gray-500'>Điểm nhận diện</p>
-                      <p className='text-lg font-semibold text-gray-900'>Logo thương hiệu cửa hàng</p>
+                    <div className='flex-1'>
+                      <h3 className='font-semibold text-red-900'>Lý do từ chối</h3>
+                      <p className='text-sm text-red-800 mt-2'>{storeData.adminNote}</p>
                     </div>
                   </div>
-                  {isEditMode ? (
-                    <>
-                      <Button
-                        onClick={handleLogoUpload}
-                        className='bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md'
-                      >
-                        <Upload className='w-4 h-4 mr-2' />
-                        {logoFile ? 'Thay đổi Logo' : 'Tải lên Logo'}
-                      </Button>
-                      {logoFile && (
-                        <div className='mb-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl'>
-                          <p className='text-sm text-emerald-700'>File đã chọn: {logoFile.name}</p>
-                        </div>
-                      )}
-                      <p className='text-sm text-gray-500'>Khuyến nghị: 200x200px, PNG/JPG, tối đa 5MB.</p>
-                      <input
-                        ref={logoFileRef}
-                        type='file'
-                        accept='image/*'
-                        onChange={handleLogoFileChange}
-                        className='hidden'
-                      />
-                    </>
-                  ) : (
-                    <p className='text-sm text-gray-500'>
-                      Logo giúp cửa hàng của bạn nổi bật hơn trong mắt khách hàng và đội ngũ kiểm duyệt.
-                    </p>
-                  )}
                 </div>
-              </section>
+              )}
+              {storeData.status === 'Approved' && storeData.adminNote && (
+                <div className='rounded-2xl border-2 border-green-200 bg-green-50 p-6 space-y-3'>
+                  <div className='flex items-start gap-3'>
+                    <div className='flex-shrink-0 pt-0.5'>
+                      <CheckCircle className='w-5 h-5 text-green-600' />
+                    </div>
+                    <div className='flex-1'>
+                      <h3 className='font-semibold text-green-900'>Ghi chú phê duyệt</h3>
+                      <p className='text-sm text-green-800 mt-2'>{storeData.adminNote}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-              <section>
-                <div className='flex items-center justify-between mb-4'>
-                  <h3 className='text-lg font-semibold text-gray-900'>Ảnh bìa cửa hàng</h3>
-                  {!storeData.coverImageUrl && !isEditMode && (
-                    <span className='text-sm text-gray-500'>Cập nhật để tạo ấn tượng chuyên nghiệp hơn.</span>
-                  )}
-                </div>
-                {isEditMode ? (
-                  <div className='border-2 border-dashed border-gray-300 rounded-3xl p-10 text-center hover:border-emerald-300 transition-all bg-gray-50'>
-                    <div className='flex flex-col items-center gap-4'>
-                      <ImageIcon className='w-16 h-16 text-gray-300' />
-                      <Button
-                        onClick={handleCoverUpload}
-                        className='bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-5'
-                      >
-                        <Upload className='w-4 h-4 mr-2' />
-                        {coverFile ? 'Thay đổi ảnh bìa' : 'Tải lên ảnh bìa'}
-                      </Button>
-                      {coverFile && (
-                        <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700'>
-                          File đã chọn: {coverFile.name}
-                        </div>
-                      )}
-                      <p className='text-sm text-gray-500'>Khuyến nghị: 1200x400px, PNG/JPG, tối đa 5MB.</p>
-                      <input
-                        ref={coverFileRef}
-                        type='file'
-                        accept='image/*'
-                        onChange={handleCoverFileChange}
-                        className='hidden'
-                      />
+              {/* Edit Mode: Cover and Logo Upload Section */}
+              {isEditMode && (
+                <section className='space-y-6'>
+                  <div className='space-y-4'>
+                    <div className='flex items-center justify-between'>
+                      <h3 className='text-lg font-semibold text-gray-900'>Ảnh bìa cửa hàng</h3>
+                      <span className='text-sm text-gray-500'>Khuyến nghị: 1200x400px, PNG/JPG, tối đa 5MB.</span>
+                    </div>
+                    <div className='border-2 border-dashed border-gray-300 rounded-3xl p-10 text-center hover:border-emerald-300 transition-all bg-gray-50'>
+                      <div className='flex flex-col items-center gap-4'>
+                        <ImageIcon className='w-16 h-16 text-gray-300' />
+                        <Button
+                          onClick={handleCoverUpload}
+                          className='bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-5'
+                        >
+                          <Upload className='w-4 h-4 mr-2' />
+                          {coverFile ? 'Thay đổi ảnh bìa' : 'Tải lên ảnh bìa'}
+                        </Button>
+                        {coverFile && (
+                          <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700'>
+                            File đã chọn: {coverFile.name}
+                          </div>
+                        )}
+                        <input
+                          ref={coverFileRef}
+                          type='file'
+                          accept='image/*'
+                          onChange={handleCoverFileChange}
+                          className='hidden'
+                        />
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <div className='rounded-3xl border border-gray-100 overflow-hidden shadow-inner bg-gradient-to-r from-emerald-50 to-white'>
-                    {storeData.coverImageUrl ? (
-                      <img src={storeData.coverImageUrl} alt='Store Cover' className='w-full h-60 object-cover' />
-                    ) : (
-                      <div className='h-60 flex items-center justify-center text-gray-400 gap-3'>
-                        <ImageIcon className='w-12 h-12' />
-                        <p>Chưa có ảnh bìa</p>
+
+                  <div className='space-y-4'>
+                    <div className='flex items-center justify-between'>
+                      <h3 className='text-lg font-semibold text-gray-900'>Logo cửa hàng</h3>
+                      <span className='text-sm text-gray-500'>Khuyến nghị: 200x200px, PNG/JPG, tối đa 5MB.</span>
+                    </div>
+                    <div className='border-2 border-dashed border-gray-300 rounded-3xl p-10 text-center hover:border-emerald-300 transition-all bg-gray-50'>
+                      <div className='flex flex-col items-center gap-4'>
+                        <ImageIcon className='w-16 h-16 text-gray-300' />
+                        <Button
+                          onClick={handleLogoUpload}
+                          className='bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-5'
+                        >
+                          <Upload className='w-4 h-4 mr-2' />
+                          {logoFile ? 'Thay đổi Logo' : 'Tải lên Logo'}
+                        </Button>
+                        {logoFile && (
+                          <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700'>
+                            File đã chọn: {logoFile.name}
+                          </div>
+                        )}
+                        <input
+                          ref={logoFileRef}
+                          type='file'
+                          accept='image/*'
+                          onChange={handleLogoFileChange}
+                          className='hidden'
+                        />
                       </div>
-                    )}
+                    </div>
                   </div>
-                )}
-              </section>
+                </section>
+              )}
 
               <section className='grid gap-10 lg:grid-cols-2'>
                 <div className='space-y-6'>
@@ -551,8 +589,7 @@ function SetupStore() {
                     {[
                       { label: 'Tỉnh/Thành', value: storeData.province },
                       { label: 'Quận/Huyện', value: storeData.district },
-                      { label: 'Phường/Xã', value: storeData.ward },
-                      { label: 'Mã khu vực', value: storeData.wardId }
+                      { label: 'Phường/Xã', value: storeData.ward }
                     ].map((item) => (
                       <div key={item.label} className='p-4 bg-gray-50 rounded-2xl border border-gray-100'>
                         <p className='text-xs text-gray-500 uppercase tracking-wide'>{item.label}</p>
