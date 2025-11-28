@@ -30,6 +30,8 @@ import { toast } from '../../../../../utils/toast'
 import { useAuth } from '../../../../../contexts/auth.context'
 import { useChat } from '../../../../../contexts/chat.context'
 import type { CreateFormRequest, FormType } from '../../../../../types/form.type'
+import { Input } from '../../../../../components/ui/input'
+import Pagination from '../../../../../components/Pagination/Pagination'
 
 const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
@@ -47,6 +49,7 @@ const formatPrice = (price?: number) => {
 
 interface Order {
   id: string
+  ghnorderCode?: string
   storeId: string
   fromName: string
   date: string
@@ -349,6 +352,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
 
   return {
     id: apiOrder?.id || '',
+    ghnorderCode: apiOrder?.ghnorderCode || '',
     storeId: apiOrder?.storeId || '',
     fromName: apiOrder?.fromName || '',
     date: apiOrder?.createdAt,
@@ -395,6 +399,7 @@ export default function OrdersContent({
   const [currentPage, setCurrentPage] = useState(1)
   const navigate = useNavigate()
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState<string>('')
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -493,18 +498,77 @@ export default function OrdersContent({
   }
 
   const filteredOrders = useMemo(() => {
-    if (selectedFilter === 'all') return orders
+    let filtered = orders
 
-    const statusesForTab = getStatusesForTab(selectedFilter)
-    return orders.filter((order) => statusesForTab.includes(order.originalStatus))
-  }, [orders, selectedFilter])
+    // Filter by status if not "all"
+    if (selectedFilter !== 'all') {
+      const statusesForTab = getStatusesForTab(selectedFilter)
+      filtered = filtered.filter((order) => statusesForTab.includes(order.originalStatus))
+    }
+
+    // Filter by search query only when "all" tab is selected
+    if (selectedFilter === 'all' && searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase()
+
+      // Try to parse as number for price search
+      const queryAsNumber = parseFloat(query.replace(/[^\d]/g, ''))
+      const isNumericSearch = !isNaN(queryAsNumber) && queryAsNumber > 0
+
+      filtered = filtered.filter((order) => {
+        // Search by order ID
+        if (order.id.toLowerCase().includes(query)) return true
+
+        // Search by GHN order code (mã đơn GHN)
+        if (order.ghnorderCode && order.ghnorderCode.toLowerCase().includes(query)) return true
+
+        // Search by store name (tên cửa hàng)
+        if (order.fromName.toLowerCase().includes(query)) return true
+
+        // Search by product names (tên sản phẩm)
+        const productMatch = order.products.some(
+          (product) => product.name.toLowerCase().includes(query)
+        )
+        if (productMatch) return true
+
+        // Search by note (ghi chú)
+        if (order.note && order.note.toLowerCase().includes(query)) return true
+
+        // Search by recipient name (tên người nhận)
+        if (order.shippingInfo?.recipientName?.toLowerCase().includes(query)) return true
+
+        // Search by shipping address (địa chỉ giao hàng)
+        if (order.shippingInfo?.address?.toLowerCase().includes(query)) return true
+
+        // Search by total amount (tổng tiền) - compare with numeric value
+        if (isNumericSearch && order.totalAmount) {
+          const orderAmount = Math.floor(order.totalAmount)
+          const searchAmount = Math.floor(queryAsNumber)
+          if (orderAmount.toString().includes(searchAmount.toString())) return true
+        }
+
+        // Search in formatted total price (format: "1.000.000đ")
+        if (order.total.replace(/[^\d]/g, '').includes(query.replace(/[^\d]/g, ''))) return true
+
+        return false
+      })
+    }
+
+    return filtered
+  }, [orders, selectedFilter, searchQuery])
 
   const handleFilterChange = (filterKey: string) => {
     setSelectedFilter(filterKey)
     setCurrentPage(1)
+    // Reset search query when switching tabs
+    setSearchQuery('')
     if (onFilterByStatus) {
       onFilterByStatus('')
     }
+  }
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+    setCurrentPage(1) // Reset to first page when searching
   }
 
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage)
@@ -826,6 +890,17 @@ export default function OrdersContent({
         ))}
       </div>
 
+      {selectedFilter === 'all' && (
+        <div className='flex justify-between items-center mb-6'>
+          <Input
+            placeholder='Tìm kiếm: Mã đơn hàng, mã GHN, tên cửa hàng, tổng tiền...'
+            value={searchQuery}
+            onChange={handleSearchChange}
+            className='w-full'
+          />
+        </div>
+      )}
+
       <div className='space-y-4'>
         {currentOrders.length > 0 ? (
           currentOrders.map((order) => (
@@ -1062,39 +1137,7 @@ export default function OrdersContent({
       </div>
 
       {totalPages > 1 && (
-        <div className='flex justify-center items-center space-x-2 py-6'>
-          <button
-            onClick={() => goToPage(Math.max(currentPage - 1, 1))}
-            disabled={currentPage === 1}
-            className='w-8 h-8 rounded flex items-center justify-center text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
-          >
-            &lt;
-          </button>
-
-          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-            const page = i + 1
-            return (
-              <button
-                key={page}
-                onClick={() => goToPage(page)}
-                className={`w-8 h-8 rounded flex items-center justify-center text-sm font-medium ${currentPage === page
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                {page}
-              </button>
-            )
-          })}
-
-          <button
-            onClick={() => goToPage(Math.min(currentPage + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className='w-8 h-8 rounded flex items-center justify-center text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50'
-          >
-            &gt;
-          </button>
-        </div>
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} maxVisiblePages={2} />
       )}
 
       <CancelOrderModal

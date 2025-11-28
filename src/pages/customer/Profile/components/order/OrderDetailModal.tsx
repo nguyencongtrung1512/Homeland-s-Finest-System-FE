@@ -532,17 +532,14 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                 <div className='bg-white rounded-lg p-3 shadow-sm border border-gray-100'>
                   <div className='flex items-center gap-2 mb-2'>
                     <CreditCard className='h-4 w-4 text-green-600' />
-                    <h3 className='font-semibold text-gray-900 text-sm'>Thông tin giao dịch</h3>
+                    <h3 className='font-semibold text-gray-900 text-sm'>Phương thức thanh toán</h3>
                   </div>
                   <div className='space-y-1'>
-                    <p className='text-xs text-gray-600'>Số thẻ</p>
-                    <p className='font-medium text-gray-900 text-sm'>{order.fromPhone || '040324231'}</p>
-                    <p className='text-xs text-gray-600 mt-2'>Ngân hàng</p>
                     <p className='font-medium text-gray-900 text-sm'>
                       {order.paymentType === 'COD' ? 'Thanh toán khi nhận' : order.paymentType}
                     </p>
                     <p className='text-xs text-gray-600 mt-2'>Thời gian thanh toán</p>
-                    <p className='font-medium text-gray-900 text-sm'>10:00 Am</p>
+                    <p className='font-medium text-gray-900 text-sm'>{formatDate(order.createdAt)}</p>
                   </div>
                 </div>
               </div>
