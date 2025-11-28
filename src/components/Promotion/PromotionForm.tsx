@@ -35,6 +35,26 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
   loading = false,
   isEdit = false
 }) => {
+  /**
+   * Convert local date and time to ISO string without timezone conversion
+   * This ensures the date/time selected by user is sent exactly as selected
+   * Example: User selects 29/11/2025 03:10 AM → sends 2025-11-29T03:10:00.000Z
+   * Backend will interpret this as UTC+7 time (03:10 UTC+7)
+   */
+  const formatDateToUTC7ISO = (date: Date, hours: number, minutes: number): string => {
+    // Get the date components directly without timezone conversion
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const h = String(hours).padStart(2, '0')
+    const m = String(minutes).padStart(2, '0')
+    const s = '00'
+
+    // Create ISO string directly without Date object conversion
+    // This preserves the exact date/time values selected by user
+    return `${year}-${month}-${day}T${h}:${m}:${s}.000Z`
+  }
+
   // Map API discountType format to frontend format
   const mapDiscountTypeFromAPI = (apiDiscountType: string): DiscountType => {
     if (!apiDiscountType) return 'percentage'
@@ -146,29 +166,27 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       if (initialData.startDate) {
         try {
           if (initialData.startDate.includes(' ') && initialData.startDate.includes('/')) {
+            // Backend format: "HH:mm:ss dd/MM/yyyy" (UTC+7 time)
             const [timePart, datePart] = initialData.startDate.split(' ')
-            const [hours, minutes, seconds] = timePart.split(':')
+            const [hours, minutes] = timePart.split(':')
             const [day, month, year] = datePart.split('/')
-            const date = new Date(
-              Number.parseInt(year),
-              Number.parseInt(month) - 1,
-              Number.parseInt(day),
-              Number.parseInt(hours),
-              Number.parseInt(minutes),
-              Number.parseInt(seconds)
-            )
-            // Subtract 7 hours to convert from UTC+7 to local time for display
-            const adjustedDate = new Date(date.getTime() - 7 * 60 * 60 * 1000)
-            processedStartDate = adjustedDate.toISOString()
+            // Create a date object to extract date components
+            const date = new Date(Number.parseInt(year), Number.parseInt(month) - 1, Number.parseInt(day))
+            // Use formatDateToUTC7ISO to maintain consistency with submit logic
+            processedStartDate = formatDateToUTC7ISO(date, Number.parseInt(hours), Number.parseInt(minutes))
             setStartTime(`${hours}:${minutes}`)
           } else {
-            // Subtract 7 hours to convert from UTC+7 to local time for display
+            // ISO format from backend - parse and extract UTC components
             const backendDate = new Date(initialData.startDate)
-            const adjustedDate = new Date(backendDate.getTime() - 7 * 60 * 60 * 1000)
-            processedStartDate = adjustedDate.toISOString()
-            setStartTime(
-              `${adjustedDate.getHours().toString().padStart(2, '0')}:${adjustedDate.getMinutes().toString().padStart(2, '0')}`
-            )
+            const year = backendDate.getUTCFullYear()
+            const month = backendDate.getUTCMonth()
+            const day = backendDate.getUTCDate()
+            const hours = backendDate.getUTCHours()
+            const minutes = backendDate.getUTCMinutes()
+            const dateOnly = new Date(Date.UTC(year, month, day))
+            // Reformat using our function to ensure consistency
+            processedStartDate = formatDateToUTC7ISO(dateOnly, hours, minutes)
+            setStartTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`)
           }
         } catch (error) {
           console.error('Error parsing startDate:', error)
@@ -179,29 +197,27 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       if (initialData.endDate) {
         try {
           if (initialData.endDate.includes(' ') && initialData.endDate.includes('/')) {
+            // Backend format: "HH:mm:ss dd/MM/yyyy" (UTC+7 time)
             const [timePart, datePart] = initialData.endDate.split(' ')
-            const [hours, minutes, seconds] = timePart.split(':')
+            const [hours, minutes] = timePart.split(':')
             const [day, month, year] = datePart.split('/')
-            const date = new Date(
-              Number.parseInt(year),
-              Number.parseInt(month) - 1,
-              Number.parseInt(day),
-              Number.parseInt(hours),
-              Number.parseInt(minutes),
-              Number.parseInt(seconds)
-            )
-            // Subtract 7 hours to convert from UTC+7 to local time for display
-            const adjustedDate = new Date(date.getTime() - 7 * 60 * 60 * 1000)
-            processedEndDate = adjustedDate.toISOString()
+            // Create a date object to extract date components
+            const date = new Date(Number.parseInt(year), Number.parseInt(month) - 1, Number.parseInt(day))
+            // Use formatDateToUTC7ISO to maintain consistency with submit logic
+            processedEndDate = formatDateToUTC7ISO(date, Number.parseInt(hours), Number.parseInt(minutes))
             setEndTime(`${hours}:${minutes}`)
           } else {
-            // Subtract 7 hours to convert from UTC+7 to local time for display
+            // ISO format from backend - parse and extract UTC components
             const backendDate = new Date(initialData.endDate)
-            const adjustedDate = new Date(backendDate.getTime() - 7 * 60 * 60 * 1000)
-            processedEndDate = adjustedDate.toISOString()
-            setEndTime(
-              `${adjustedDate.getHours().toString().padStart(2, '0')}:${adjustedDate.getMinutes().toString().padStart(2, '0')}`
-            )
+            const year = backendDate.getUTCFullYear()
+            const month = backendDate.getUTCMonth()
+            const day = backendDate.getUTCDate()
+            const hours = backendDate.getUTCHours()
+            const minutes = backendDate.getUTCMinutes()
+            const dateOnly = new Date(Date.UTC(year, month, day))
+            // Reformat using our function to ensure consistency
+            processedEndDate = formatDateToUTC7ISO(dateOnly, hours, minutes)
+            setEndTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`)
           }
         } catch (error) {
           console.error('Error parsing endDate:', error)
@@ -351,8 +367,8 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       // Mapping to API format will be done in the API layer
       console.log('📝 Submitting form data:', submitData)
       console.log('📝 DiscountType (frontend format):', submitData.discountType)
-      console.log('📝 Start Date (ISO with +7h):', submitData.startDate)
-      console.log('📝 End Date (ISO with +7h):', submitData.endDate)
+      console.log('📝 Start Date (ISO):', submitData.startDate)
+      console.log('📝 End Date (ISO):', submitData.endDate)
       onSubmit(submitData)
     }
   }
@@ -415,12 +431,10 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     if (date) {
       const selectedTime = field === 'startDate' ? startTime : endTime
       const [hours, minutes] = selectedTime.split(':')
-      const combinedDate = new Date(date)
-      combinedDate.setHours(Number.parseInt(hours), Number.parseInt(minutes), 0, 0)
 
-      // Add 7 hours to match Vietnam timezone (UTC+7)
-      const adjustedDate = new Date(combinedDate.getTime() + 7 * 60 * 60 * 1000)
-      handleInputChange(field, adjustedDate.toISOString())
+      // Format date to UTC+7 ISO string to preserve the exact date/time selected
+      const isoString = formatDateToUTC7ISO(date, Number.parseInt(hours), Number.parseInt(minutes))
+      handleInputChange(field, isoString)
     }
   }
 
@@ -433,13 +447,19 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
 
     const currentDate = field === 'startDate' ? formData.startDate : formData.endDate
     if (currentDate) {
-      const date = new Date(currentDate)
+      // Parse the current ISO date string
+      // Since we stored it as UTC with UTC+7 time values, we need to extract the date correctly
+      const dateObj = new Date(currentDate)
+      // Extract UTC components (since we stored it as UTC)
+      const year = dateObj.getUTCFullYear()
+      const month = dateObj.getUTCMonth()
+      const day = dateObj.getUTCDate()
+      const dateOnly = new Date(Date.UTC(year, month, day))
       const [hours, minutes] = time.split(':')
-      date.setHours(Number.parseInt(hours), Number.parseInt(minutes), 0, 0)
 
-      // Add 7 hours to match Vietnam timezone (UTC+7)
-      const adjustedDate = new Date(date.getTime() + 7 * 60 * 60 * 1000)
-      handleInputChange(field, adjustedDate.toISOString())
+      // Format date to UTC+7 ISO string to preserve the exact date/time selected
+      const isoString = formatDateToUTC7ISO(dateOnly, Number.parseInt(hours), Number.parseInt(minutes))
+      handleInputChange(field, isoString)
     }
   }
 
