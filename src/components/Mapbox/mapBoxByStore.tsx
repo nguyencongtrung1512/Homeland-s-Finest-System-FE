@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import Loading from '../Loading/loading'
+import path from '../../constants/path'
 
 // Định nghĩa kiểu dữ liệu cho cửa hàng
 interface Store {
@@ -45,6 +47,7 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
   const [storesWithCoordinates, setStoresWithCoordinates] = useState<Store[]>([])
   const [isPanelOpen, setIsPanelOpen] = useState(!hidePanel)
   const [searchQuery, setSearchQuery] = useState('')
+  const navigate = useNavigate()
 
   // Sync với external state nếu có
   useEffect(() => {
@@ -227,8 +230,8 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
                  alt="${store.StoreName}" 
                  class="w-10 h-10 object-cover rounded-full border-2 border-gray-200 flex-shrink-0"
                  onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
-            <div class="flex-1 min-w-0">
-              <h3 class="font-bold text-gray-900 text-base mb-1 leading-tight">${store.StoreName}</h3>
+            <div class="flex-1 min-w-0"></div>
+              <h3 class="store-name-link font-bold text-gray-900 text-base mb-1 leading-tight cursor-pointer hover:text-blue-600 transition-colors" data-store-id="${store.ID}">${store.StoreName}</h3>
               <p class="text-xs text-gray-600 mb-0.5 flex items-start gap-1">
                 <svg class="w-3 h-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -256,6 +259,21 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       // Lưu marker vào ref
       markersRef.current[store.ID] = marker
 
+      // Thêm event listener cho store name trong popup sau khi popup được mở
+      popup.on('open', () => {
+        const popupContent = popup.getElement()
+        if (popupContent) {
+          const storeNameElement = popupContent.querySelector('.store-name-link')
+          if (storeNameElement) {
+            storeNameElement.addEventListener('click', (e) => {
+              e.stopPropagation()
+              const storePath = path.store.replace(':storeId', store.ID)
+              navigate(storePath)
+            })
+          }
+        }
+      })
+
       // Thêm sự kiện click cho marker
       el.addEventListener('click', () => {
         setSelectedStoreId(store.ID)
@@ -278,7 +296,7 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
         maxZoom: 15
       })
     }
-  }, [storesWithCoordinates, selectedStoreId, onStoreSelect, onStoreIdChange, isPanelOpen])
+  }, [storesWithCoordinates, selectedStoreId, onStoreSelect, onStoreIdChange, isPanelOpen, navigate])
 
   // Cập nhật marker khi chọn cửa hàng
   useEffect(() => {
@@ -322,6 +340,13 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
     if (onStoreSelect) {
       onStoreSelect(store)
     }
+  }
+
+  // Navigate to store page when clicking on store name
+  const handleStoreNameClick = (storeId: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent triggering parent click event
+    const storePath = path.store.replace(':storeId', storeId)
+    navigate(storePath)
   }
 
   return (
@@ -436,7 +461,12 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
                         }}
                       />
                       <div className='flex-1 min-w-0'>
-                        <h3 className='font-semibold text-gray-900 text-sm truncate'>{store.StoreName}</h3>
+                        <h3
+                          className='font-semibold text-gray-900 text-sm truncate cursor-pointer hover:text-blue-600 transition-colors'
+                          onClick={(e) => handleStoreNameClick(store.ID, e)}
+                        >
+                          {store.StoreName}
+                        </h3>
                         <p className='text-gray-600 text-xs mt-0.5 line-clamp-1'>{store.Province}</p>
                         <p className='text-gray-600 text-xs mt-0.5 line-clamp-1'>{store.Address}</p>
                         <p className='text-gray-500 text-xs mt-0.5'>
