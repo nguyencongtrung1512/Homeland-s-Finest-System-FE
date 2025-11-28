@@ -7,11 +7,9 @@ import { Switch } from '../../../components/ui/switch'
 import {
   Shield,
   Plus,
-  Calendar,
   User,
   FileText,
   Clock,
-  Package,
   CheckCircle2,
   AlertCircle,
   Image as ImageIcon,
@@ -288,25 +286,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
   }
 
   // Format date helper
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'Chưa có'
-    try {
-      // Handle format "10:53:56 31/10/2025"
-      if (dateString.includes(' ')) {
-        return dateString
-      }
-      const date = new Date(dateString)
-      return date.toLocaleDateString('vi-VN', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    } catch {
-      return dateString
-    }
-  }
+
 
   // Get status badge - chỉ có Active và Inactive
   const getStatusBadge = (status: string) => {
@@ -525,7 +505,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
 
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4'>
                       <div className='space-y-3'>
-                        <div className='flex gap-3'>
+                        {/* <div className='flex gap-3'>
                           <FileText size={16} className='text-slate-400 mt-0.5 flex-shrink-0' />
                           <div className='min-w-0'>
                             <span className='text-xs font-medium text-slate-500 uppercase tracking-wide'>ID</span>
@@ -540,7 +520,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                             </span>
                             <p className='text-sm font-medium text-slate-900 truncate'>{cert.productId}</p>
                           </div>
-                        </div>
+                        </div> */}
                         {cert.reviewedByStaffId && (
                           <div className='flex gap-3'>
                             <User size={16} className='text-slate-400 mt-0.5 flex-shrink-0' />
@@ -554,7 +534,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                         )}
                       </div>
 
-                      <div className='space-y-3'>
+                      {/* <div className='space-y-3'>
                         <div className='flex gap-3'>
                           <Calendar size={16} className='text-slate-400 mt-0.5 flex-shrink-0' />
                           <div className='min-w-0'>
@@ -578,7 +558,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                             <p className='text-sm font-medium text-slate-900'>{formatDate(cert.updatedAt)}</p>
                           </div>
                         </div>
-                      </div>
+                      </div> */}
                     </div>
 
                     {cert.staffNotes && (
