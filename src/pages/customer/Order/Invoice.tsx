@@ -116,6 +116,27 @@ function Invoice() {
   const orderId = params.get('orderId')
   const multiple = params.get('multiple') === 'true'
 
+  // Prevent going back to create-order page - redirect to profile instead
+  useEffect(() => {
+    // Push a dummy state to intercept back navigation
+    window.history.pushState({ preventBack: true }, '', window.location.href)
+
+    const handlePopState = () => {
+      // Immediately redirect to profile orders
+      // Use window.location for instant redirect (full page reload)
+      // Or use navigate for SPA navigation (uncomment the line below)
+      window.location.href = '/profile?tab=orders'
+      // navigate('/profile?tab=orders', { replace: true })
+    }
+
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     const fetchOrderData = async () => {
       if (!orderId) {

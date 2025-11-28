@@ -105,8 +105,15 @@ export interface ShippingFeeData {
   message: string
 }
 
+// Store shipping fee from API response
+export interface StoreShippingFee {
+  storeId: string
+  shipPrice: number
+  insuranceFee: number
+}
+
 export interface ShippingFeeResponse {
   status: number
   message: string
-  data: ShippingFeeData
+  data: StoreShippingFee[]
 }

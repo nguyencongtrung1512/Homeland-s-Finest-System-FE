@@ -19,6 +19,7 @@ export const path = {
   cartBuyNow: '/cart/buy-now',
   // ============ Customer ===========
   cart: '/cart',
+  cartCheckout: '/cart/checkout',
   cartOrderConfirm: '/cart/confirm',
   cartInvoice: '/cart/invoice',
   profileCustomer: '/profile',

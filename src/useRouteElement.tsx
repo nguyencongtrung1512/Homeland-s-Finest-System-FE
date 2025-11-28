@@ -5,6 +5,7 @@ import Products from './pages/customer/Products/products'
 import path from './constants/path'
 import ProductsDetail from './pages/customer/Products/ProductDetail/productsDetail'
 import Cart from './pages/customer/Cart/Cart'
+import Checkout from './pages/customer/Cart/checkout'
 import Invoice from './pages/customer/Order/Invoice'
 import Login from './pages/authentication/Login'
 import Register from './pages/authentication/Register'
@@ -111,6 +112,10 @@ export default function useRouteElements() {
         {
           path: path.cart,
           element: <Cart />
+        },
+        {
+          path: path.cartCheckout,
+          element: <Checkout />
         },
         {
           path: path.cartOrderCreate,

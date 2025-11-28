@@ -10,7 +10,7 @@ interface AppliedPromotionModalProps {
   appliedPromotions: AppliedPromotion[]
   storeName: string
   cartId: string
-  onRemovePromotion: (cartId: string, promotionId: string) => Promise<void>
+  onRemovePromotion: (cartId: string, promotionId: string, silent?: boolean) => Promise<void>
 }
 
 const AppliedPromotionModal: React.FC<AppliedPromotionModalProps> = ({
@@ -21,9 +21,9 @@ const AppliedPromotionModal: React.FC<AppliedPromotionModalProps> = ({
   cartId,
   onRemovePromotion
 }) => {
-  const handleRemovePromotion = async (promotionId: string) => {
+  const handleRemovePromotion = async (promotionId: string, silent?: boolean) => {
     try {
-      await onRemovePromotion(cartId, promotionId)
+      await onRemovePromotion(cartId, promotionId, silent)
     } catch (error) {
       console.error('Error removing promotion:', error)
     }

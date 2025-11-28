@@ -283,7 +283,7 @@ export interface PromotionCardProps {
 
 export interface AppliedPromotionsProps {
   cartPromotions: CartPromotionDto[]
-  onRemove: (promotionId: string) => void
+  onRemove: (promotionId: string, silent?: boolean) => void | Promise<void>
 }
 
 export interface PromotionListProps {

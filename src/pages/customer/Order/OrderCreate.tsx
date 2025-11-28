@@ -371,7 +371,7 @@ function OrderCreate() {
         const orderIdsParam = orderIds.join(',')
         console.log('🔍 DEBUG OrderCreate: COD redirect with orderIds:', orderIdsParam)
 
-        navigate(`/cart/invoice?orderId=${orderIdsParam}&status=success&type=cod&multiple=true`)
+        navigate(`/cart/invoice?orderId=${orderIdsParam}&status=success&type=cod&multiple=true`, { replace: true })
       } else if (paymentMethod === 'Banking') {
         // Banking: Cần xử lý thanh toán
         const transactions = await purchaseOrder({ orderIds })
@@ -386,7 +386,7 @@ function OrderCreate() {
           const orderIdsParam = orderIds.join(',')
           console.log('🔍 DEBUG OrderCreate: Banking redirect with orderIds:', orderIdsParam)
 
-          navigate(`/cart/invoice?orderId=${orderIdsParam}&status=pending&type=banking&multiple=true`)
+          navigate(`/cart/invoice?orderId=${orderIdsParam}&status=pending&type=banking&multiple=true`, { replace: true })
         }
       } else if (paymentMethod === 'MyWallet') {
         // MyWallet: Thanh toán bằng ví
@@ -413,7 +413,7 @@ function OrderCreate() {
         const orderIdsParam = orderIds.join(',')
         console.log('🔍 DEBUG OrderCreate: MyWallet redirect with orderIds:', orderIdsParam)
 
-        navigate(`/cart/invoice?orderId=${orderIdsParam}&status=success&type=wallet&multiple=true`)
+        navigate(`/cart/invoice?orderId=${orderIdsParam}&status=success&type=wallet&multiple=true`, { replace: true })
       }
     } catch (error: unknown) {
       console.error('Error processing payment:', error)
@@ -442,7 +442,7 @@ function OrderCreate() {
 
     if (hasPendingPayment && !hasNotYetStatus) {
       toast.info('Đơn hàng đang chờ thanh toán. Vui lòng tiếp tục trong mục Đơn hàng của tôi.')
-      navigate('/profile', {
+      navigate('/profile?tab=orders', {
         replace: true,
         state: { focusStatus: 'PendingPayment', from: 'order-create' }
       })

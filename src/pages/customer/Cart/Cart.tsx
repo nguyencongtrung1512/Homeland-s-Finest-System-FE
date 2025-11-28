@@ -1,6 +1,6 @@
 // Cart component
 import { Button } from '../../../components/ui/button'
-import { Plus, Minus, ShoppingCart, Trash2, Store, MapPin, Edit, Trash, Gift, Tag, Wallet, Loader2 } from 'lucide-react'
+import { Plus, Minus, ShoppingCart, Trash2, Store, Gift, Tag } from 'lucide-react'
 import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
@@ -15,30 +15,13 @@ import {
 } from '../../../apis/cart.api'
 import { getComboById } from '../../../apis/combo.api'
 import { toast } from '../../../utils/toast'
-import { createOrder } from '../../../apis/order.api'
-import { addressApi } from '../../../apis/address.api'
-import { getWalletBalance } from '../../../apis/wallet.api'
 import type { CartData, CartItem as APICartItem } from '../../../types/cartType'
-import type { Address, AddressCreateInput } from '../../../types/addressType'
-import type { WalletData } from '../../../types/walletType'
 import type { ComboItem as ComboDetailItem } from '../../../types/combo.type'
 
 // Import Promotion Components
 import { PromotionModal } from '../../../components/Promotion'
 import AppliedPromotionModal from '../../../components/Cart/AppliedPromotionModal'
-import AddressModal from '../../customer/Profile/components/address/AddressModal'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from '../../../components/ui/alert-dialog'
 
-type PaymentMethod = 'COD' | 'Banking' | 'MyWallet'
 
 interface ComboGroup {
   comboId: string
@@ -83,25 +66,20 @@ type StoreSummaryEntry =
 
 export default function Cart() {
   const navigate = useNavigate()
-  const { refreshCart, loading, clearCartAfterOrder, removeComboFromCart } = useCart()
+  const { refreshCart, loading, removeComboFromCart } = useCart()
   const { user } = useAuth()
   const [cartData, setCartData] = useState<CartData | null>(null)
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({})
   const [selectAll, setSelectAll] = useState(false)
-  const [addresses, setAddresses] = useState<Address[]>([])
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null)
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>()
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false)
   const [selectedStoreForPromotion, setSelectedStoreForPromotion] = useState<string | null>(null)
   const [storePromotions] = useState<Record<string, StorePromotion[]>>({})
   const [isAppliedPromotionsModalOpen, setIsAppliedPromotionsModalOpen] = useState(false)
   const [selectedStoreForAppliedPromotions, setSelectedStoreForAppliedPromotions] = useState<string | null>(null)
-  const [walletBalance, setWalletBalance] = useState<WalletData | null>(null)
-  const [isLoadingWallet, setIsLoadingWallet] = useState(false)
   const isInitialLoad = useRef(true) // Track if this is the first load
   const quantityUpdateTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingQuantityUpdates = useRef<Record<string, number>>({})
+  const isRemovingExpiredPromotions = useRef(false) // Track if we're removing expired promotions
   const [comboNames, setComboNames] = useState<Record<string, string>>({})
   const [comboChildItems, setComboChildItems] = useState<Record<string, Record<string, ComboChildRequirement>>>({})
 
@@ -110,11 +88,6 @@ export default function Cart() {
     'w-5 h-5 rounded border-gray-300 focus:ring-2 focus:ring-gray-400 transition-transform duration-150 ease-out hover:scale-105 active:scale-95'
   const checkboxStyle: CSSProperties = { accentColor: '#6b7280' }
 
-  // Address management states
-  const [showAddressModal, setShowAddressModal] = useState(false)
-  const [editingAddress, setEditingAddress] = useState<Address | null>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [addressToDelete, setAddressToDelete] = useState<string | null>(null)
   const reloadCartData = useCallback(async () => {
     if (!user?.userId) return
     try {
@@ -128,33 +101,6 @@ export default function Cart() {
     }
   }, [user?.userId])
 
-  // Helper function to filter active addresses
-  const toArray = <T,>(x: T | T[] | null | undefined): T[] => (Array.isArray(x) ? x : x ? [x] : [])
-  const isActiveAddress = (a: Address | null | undefined): a is Address => !!a && a.isActive === true
-
-  // Helper function to load user addresses
-  const loadUserAddresses = useCallback(async () => {
-    if (!user?.userId) return
-
-    try {
-      const response = await addressApi.getUserAddresses(user.userId)
-      if (response?.status === 200) {
-        // Filter only active addresses
-        const activeAddresses = toArray<Address>(response.data).filter(isActiveAddress)
-        setAddresses(activeAddresses)
-
-        const defaultAddress = activeAddresses.find((addr) => addr.isDefault)
-        if (defaultAddress) {
-          setSelectedAddress(defaultAddress)
-        } else if (activeAddresses.length > 0) {
-          setSelectedAddress(activeAddresses[0])
-        }
-      }
-    } catch (error) {
-      console.error('Error loading addresses:', error)
-    }
-  }, [user?.userId])
-
   // Reset initial load flag when user changes
   useEffect(() => {
     isInitialLoad.current = true
@@ -162,8 +108,71 @@ export default function Cart() {
 
   useEffect(() => {
     reloadCartData()
-    loadUserAddresses()
-  }, [reloadCartData, loadUserAddresses])
+  }, [reloadCartData])
+
+  // Auto remove expired promotions
+  useEffect(() => {
+    const removeExpiredPromotions = async () => {
+      if (!cartData || !user?.userId || isRemovingExpiredPromotions.current) return
+
+      const expiredPromotions: Array<{ cartId: string; promotionId: string; storeIndex: number }> = []
+
+      cartData.carts.forEach((store, storeIndex) => {
+        if (store.appliedPromotions) {
+          store.appliedPromotions.forEach((promo) => {
+            if (promo.isExpired) {
+              expiredPromotions.push({
+                cartId: store.cartId,
+                promotionId: promo.promotionId,
+                storeIndex
+              })
+            }
+          })
+        }
+      })
+
+      if (expiredPromotions.length > 0) {
+        isRemovingExpiredPromotions.current = true
+
+        // Update local state immediately to hide expired promotions
+        setCartData((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            carts: prev.carts.map((store, storeIndex) => {
+              const hasExpiredPromotions = expiredPromotions.some(
+                (exp) => exp.storeIndex === storeIndex
+              )
+              if (hasExpiredPromotions && store.appliedPromotions) {
+                return {
+                  ...store,
+                  appliedPromotions: store.appliedPromotions.filter(
+                    (promo) => !promo.isExpired
+                  )
+                }
+              }
+              return store
+            })
+          }
+        })
+
+        // Silently remove from backend
+        try {
+          await Promise.all(
+            expiredPromotions.map(({ cartId, promotionId }) =>
+              removePromotionFromCart(cartId, promotionId)
+            )
+          )
+        } catch (error) {
+          console.error('Error removing expired promotions:', error)
+        } finally {
+          isRemovingExpiredPromotions.current = false
+        }
+      }
+    }
+
+    removeExpiredPromotions()
+  }, [cartData, user?.userId])
 
   useEffect(() => {
     if (!cartData) return
@@ -239,167 +248,6 @@ export default function Cart() {
     }
   }, [])
 
-  // Load wallet balance when payment method is MyWallet
-  useEffect(() => {
-    const loadWalletBalance = async () => {
-      if (selectedPaymentMethod === 'MyWallet') {
-        setIsLoadingWallet(true)
-        setWalletBalance(null) // Reset before loading
-        try {
-          const walletData = await getWalletBalance()
-          console.log('[LoadWalletBalance] walletData:', walletData)
-          console.log('[LoadWalletBalance] walletData type:', typeof walletData)
-          console.log('[LoadWalletBalance] walletData availableBalance:', walletData?.availableBalance)
-
-          // Validate walletData
-          if (walletData && typeof walletData === 'object' && 'availableBalance' in walletData) {
-            console.log('[LoadWalletBalance] Setting wallet balance:', walletData)
-            setWalletBalance(walletData)
-          } else {
-            console.error('[LoadWalletBalance] Invalid wallet data structure:', walletData)
-            toast.error('Dữ liệu ví không hợp lệ')
-            setWalletBalance(null)
-          }
-        } catch (error: unknown) {
-          console.error('[LoadWalletBalance] Error loading wallet balance:', error)
-          const errorMessage =
-            (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-            (error as { message?: string })?.message ||
-            'Không thể tải số dư ví'
-          console.error('[LoadWalletBalance] Error message:', errorMessage)
-          toast.error(errorMessage)
-          setWalletBalance(null)
-        } finally {
-          setIsLoadingWallet(false)
-        }
-      } else {
-        // Clear wallet balance when switching to other payment methods
-        setWalletBalance(null)
-      }
-    }
-
-    loadWalletBalance()
-  }, [selectedPaymentMethod])
-
-  // Address management handlers
-  const handleAddAddress = () => {
-    setEditingAddress(null)
-    setShowAddressModal(true)
-  }
-
-  const handleEditAddress = (address: Address) => {
-    setEditingAddress(address)
-    setShowAddressModal(true)
-  }
-
-  const handleDeleteClick = (addressId: string, e?: React.MouseEvent) => {
-    e?.stopPropagation()
-    setAddressToDelete(addressId)
-    setDeleteDialogOpen(true)
-  }
-
-  const handleConfirmDelete = async () => {
-    if (!addressToDelete || !user?.userId) return
-
-    const deletedAddressId = addressToDelete
-    const wasSelectedAddress = selectedAddress?.id === deletedAddressId
-
-    try {
-      await addressApi.delete(deletedAddressId)
-      toast.success('Đã xóa địa chỉ thành công!', {
-        position: 'top-right',
-        autoClose: 2000
-      })
-
-      // Remove from local state immediately
-      const remainingAddresses = addresses.filter((addr) => addr.id !== deletedAddressId)
-      setAddresses(remainingAddresses)
-
-      // If deleted address was selected, select another one
-      if (wasSelectedAddress) {
-        if (remainingAddresses.length > 0) {
-          setSelectedAddress(remainingAddresses[0])
-        } else {
-          setSelectedAddress(null)
-        }
-      }
-
-      // Reload addresses from API to ensure sync
-      await loadUserAddresses()
-    } catch (error) {
-      console.error('Error deleting address:', error)
-      const errorMessage =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        (error as Error).message ||
-        'Không thể xóa địa chỉ'
-      toast.error(errorMessage, {
-        position: 'top-right',
-        autoClose: 4000
-      })
-    } finally {
-      setDeleteDialogOpen(false)
-      setAddressToDelete(null)
-    }
-  }
-
-  const handleSetDefault = async (addressId: string, e?: React.MouseEvent) => {
-    e?.stopPropagation()
-    if (!user?.userId) {
-      toast.error('Không tìm thấy thông tin người dùng')
-      return
-    }
-
-    try {
-      await addressApi.setAsDefault(addressId, user.userId)
-      await loadUserAddresses()
-      toast.success('Đã đặt địa chỉ mặc định thành công!')
-    } catch (error) {
-      console.error('Error setting default address:', error)
-      const errorMessage =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        (error as Error).message ||
-        'Không thể đặt địa chỉ mặc định'
-      toast.error(errorMessage)
-    }
-  }
-
-  const handleSaveAddress = async (formData: AddressCreateInput) => {
-    if (!user?.userId) return
-
-    try {
-      if (editingAddress) {
-        // Update existing address
-        const updateData = {
-          userId: user.userId,
-          province: formData.province,
-          district: formData.district,
-          ward: formData.ward,
-          provinceId: formData.provinceId,
-          districtId: formData.districtId,
-          wardId: formData.wardId,
-          streetAddress: formData.streetAddress,
-          isDefault: formData.isDefault
-        }
-        await addressApi.update(editingAddress.id, updateData)
-        toast.success('Cập nhật địa chỉ thành công!')
-      } else {
-        // Create new address
-        await addressApi.create(formData)
-        toast.success('Thêm địa chỉ thành công!')
-      }
-
-      setShowAddressModal(false)
-      setEditingAddress(null)
-      await loadUserAddresses()
-    } catch (error) {
-      console.error('Error saving address:', error)
-      const errorMessage =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        (error as Error).message ||
-        'Có lỗi xảy ra khi lưu địa chỉ'
-      toast.error(errorMessage)
-    }
-  }
 
   // Initialize selectedItems only on first load, preserve selection state on reload
   useEffect(() => {
@@ -526,6 +374,31 @@ export default function Cart() {
     if (!user?.userId || newQuantity < 1) return
 
     let targetComboId: string | null = null
+    let targetItem: APICartItem | null = null
+
+    // Find the item to check availableQuantity
+    if (cartData) {
+      for (const store of cartData.carts) {
+        for (const item of store.items) {
+          if (item.id === itemId) {
+            targetItem = item
+            if (item.isCombo && item.comboId) {
+              targetComboId = item.comboId
+            }
+            break
+          }
+        }
+        if (targetItem) break
+      }
+    }
+
+    // Check availableQuantity limit
+    if (targetItem && typeof targetItem.availableQuantity === 'number') {
+      if (newQuantity > targetItem.availableQuantity) {
+        toast.error(`Số lượng tối đa có thể mua là ${targetItem.availableQuantity}`)
+        return
+      }
+    }
 
     setCartData((prev) => {
       if (!prev) return prev
@@ -905,124 +778,6 @@ export default function Cart() {
     return grouped
   }
 
-  const handleCreateOrder = async () => {
-    try {
-      if (!user?.userId) {
-        toast.error('Vui lòng đăng nhập trước khi đặt hàng')
-        return
-      }
-
-      const selectedItemsList = cartData
-        ? cartData.carts.flatMap((store) => store.items.filter((item) => selectedItems[item.id] && item.isStock !== false))
-        : []
-
-      if (selectedItemsList.length === 0) {
-        toast.error('Vui lòng chọn ít nhất một sản phẩm còn hàng')
-        return
-      }
-
-      // Check if there are any out of stock items selected
-      const outOfStockSelected = cartData
-        ? cartData.carts.some((store) => store.items.some((item) => selectedItems[item.id] && item.isStock === false))
-        : false
-
-      if (outOfStockSelected) {
-        toast.error('Vui lòng bỏ chọn các sản phẩm đã hết hàng')
-        return
-      }
-      if (!selectedPaymentMethod) {
-        toast.error('Vui lòng chọn phương thức thanh toán')
-        return
-      }
-
-      setIsSubmitting(true)
-
-      if (!selectedAddress) {
-        toast.error('Vui lòng chọn địa chỉ giao hàng')
-        return
-      }
-
-      // Create storePromotions from appliedPromotions in cart data
-      const storePromotionsMap = new Map<string, string[]>()
-
-      if (cartData) {
-        cartData.carts.forEach((store) => {
-          // Only include stores that have selected items
-          const hasSelectedItems = store.items.some((item) => selectedItems[item.id])
-
-          if (hasSelectedItems && store.appliedPromotions && store.appliedPromotions.length > 0) {
-            const validPromotionIds = store.appliedPromotions
-              .filter((promo) => !promo.isExpired && promo.status === 'Reserved')
-              .map((promo) => promo.promotionId)
-
-            if (validPromotionIds.length > 0) {
-              storePromotionsMap.set(store.storeId, validPromotionIds)
-            }
-          }
-        })
-      }
-
-      // Convert Map to array format expected by backend
-      const storePromotionsArray = Array.from(storePromotionsMap.entries()).map(([storeId, promotionIds]) => ({
-        storeId,
-        promotionIds
-      }))
-
-      const orderData = {
-        userId: user.userId,
-        userAddressId: selectedAddress.id,
-        paymentMethod: selectedPaymentMethod,
-        orderItemCreates: selectedItemsList.map((item) => ({
-          productVariantId: item.productVariantId,
-          quantity: item.quantity,
-          ...(item.isCombo && item.comboId ? { comboId: item.comboId } : {})
-        })),
-        storePromotions: storePromotionsArray
-      }
-
-      console.log('[Cart] orderData being sent:', orderData)
-      console.log('[Cart] storePromotions:', orderData.storePromotions)
-
-      const createdOrder = await createOrder(orderData)
-      console.log('[Cart] createdOrder response:', createdOrder)
-      console.log('[Cart] createdOrder length:', createdOrder.length)
-      console.log(
-        '[Cart] createdOrder items:',
-        createdOrder.map((order) => ({
-          orderId: order.id.slice(-8),
-          storeName: order.fromName,
-          itemsCount: order.orderItems?.length || 0
-        }))
-      )
-      toast.success('Đơn hàng đã được tạo! Đang chuyển đến trang thanh toán...')
-
-      // Store selected item IDs for later clearing after successful payment
-      const selectedItemIds = selectedItemsList.map((item) => item.id)
-
-      // Clear cart items immediately after successful order creation
-      await clearCartAfterOrder(selectedItemIds)
-
-      console.log('[Cart] Navigating with orders:', createdOrder)
-      navigate('/cart/create-order', {
-        state: {
-          orders: createdOrder, // Truyền tất cả orders từ array
-          paymentMethod: selectedPaymentMethod,
-          selectedItemIds: selectedItemIds, // Pass item IDs to clear later
-          selectedAddress: selectedAddress, // Pass selected address
-          appliedPromotions: storePromotions // Pass promotions for order confirmation
-        }
-      })
-    } catch (error: unknown) {
-      const errorMessage =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        (error as Error).message ||
-        'Có lỗi xảy ra khi đặt hàng'
-      toast.error(errorMessage)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   // Promotion handlers for specific store
   const handleOpenPromotionModal = (storeId: string) => {
     setSelectedStoreForPromotion(storeId)
@@ -1046,22 +801,45 @@ export default function Cart() {
 
       setIsPromotionModalOpen(false)
       setSelectedStoreForPromotion(null)
-      toast.success('Áp dụng Mã khuyến mãi  thành công')
+      // Note: Toast message is already shown in PromotionModal from backend response
       return true
     } catch {
-      toast.error('Có lỗi xảy ra khi áp dụng Mã khuyến mãi ')
+      // Note: Error toast is already shown in PromotionModal from backend response
       return false
     }
   }
 
-  const handleRemoveAppliedPromotion = async (cartId: string, promotionId: string) => {
+  const handleRemoveAppliedPromotion = async (cartId: string, promotionId: string, silent?: boolean) => {
     try {
-      await removePromotionFromCart(cartId, promotionId)
+      const response = await removePromotionFromCart(cartId, promotionId)
       await reloadCartData() // Reload cart data to get updated appliedPromotions
-      toast.success('Hủy Mã khuyến mãi  thành công')
-    } catch (error) {
+      if (!silent) {
+        // Show success message from backend
+        const successMessage = response?.message || 'Hủy Mã khuyến mãi thành công'
+        toast.success(successMessage)
+      }
+    } catch (error: unknown) {
       console.error('Error removing applied promotion:', error)
-      toast.error('Có lỗi xảy ra khi hủy Mã khuyến mãi ')
+      if (!silent) {
+        // Extract error message from backend response
+        let errorMessage = 'Có lỗi xảy ra khi hủy Mã khuyến mãi'
+        const apiError = error as { error?: string; message?: string; errors?: string[] | Record<string, string[]> }
+
+        if (apiError?.error) {
+          errorMessage = apiError.error
+        } else if (apiError?.message) {
+          errorMessage = apiError.message
+        } else if (apiError?.errors) {
+          if (Array.isArray(apiError.errors)) {
+            errorMessage = apiError.errors.join(', ')
+          } else if (typeof apiError.errors === 'object') {
+            const errorMessages = Object.values(apiError.errors).flat()
+            errorMessage = errorMessages.join(', ')
+          }
+        }
+
+        toast.error(errorMessage)
+      }
     }
   }
 
@@ -1106,11 +884,6 @@ export default function Cart() {
         }))
     )
     : []
-
-  // Check if wallet balance is sufficient
-  // Only check when MyWallet is selected and balance is loaded
-  const isWalletBalanceSufficient =
-    selectedPaymentMethod === 'MyWallet' && walletBalance ? walletBalance.availableBalance >= finalTotal : false
 
   return (
     <div className='min-h-screen bg-gray-50 py-8'>
@@ -1245,7 +1018,7 @@ export default function Cart() {
                                   <button
                                     onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity - 1)}
                                     className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                                    disabled={isComboOutOfStock}
+                                    disabled={isComboOutOfStock || comboItem.quantity <= 1}
                                   >
                                     <Minus className='w-4 h-4' />
                                   </button>
@@ -1255,7 +1028,17 @@ export default function Cart() {
                                   <button
                                     onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity + 1)}
                                     className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                                    disabled={isComboOutOfStock}
+                                    disabled={
+                                      isComboOutOfStock ||
+                                      comboItem.items.some((item: APICartItem) => {
+                                        if (item.availableQuantity === undefined) return false
+                                        const comboId = item.comboId || comboItem.comboId
+                                        const requirement =
+                                          comboId && comboChildItems[comboId]?.[item.productVariantId]?.requiredQuantity || 1
+                                        const currentItemQuantity = requirement * comboItem.quantity
+                                        return currentItemQuantity >= item.availableQuantity
+                                      })
+                                    }
                                   >
                                     <Plus className='w-4 h-4' />
                                   </button>
@@ -1345,29 +1128,34 @@ export default function Cart() {
                             </div>
 
                             <div className='flex items-center justify-between mt-3'>
-                              <div className='flex items-center gap-3'>
-                                <button
-                                  onClick={() => updateQuantity(regularItem.id, regularItem.quantity - 1)}
-                                  className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                                  disabled={regularItem.quantity <= 1 || isOutOfStock}
-                                >
-                                  <Minus className='w-4 h-4' />
-                                </button>
-                                <span className='w-12 text-center font-medium'>{regularItem.quantity}</span>
-                                <button
-                                  onClick={() => updateQuantity(regularItem.id, regularItem.quantity + 1)}
-                                  className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                                  disabled={isOutOfStock}
-                                >
-                                  <Plus className='w-4 h-4' />
-                                </button>
+                              <div className='flex items-center'>
+                                <div className='flex items-center border border-gray-300 rounded-lg'>
+                                  <button
+                                    onClick={() => updateQuantity(regularItem.id, regularItem.quantity - 1)}
+                                    className='w-8 h-8  flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                    disabled={regularItem.quantity <= 1 || isOutOfStock}
+                                  >
+                                    <Minus className='w-4 h-4' />
+                                  </button>
+                                  <span className='w-12 text-center font-medium'>{regularItem.quantity}</span>
+                                  <button
+                                    onClick={() => updateQuantity(regularItem.id, regularItem.quantity + 1)}
+                                    className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                    disabled={
+                                      isOutOfStock ||
+                                      (regularItem.availableQuantity !== undefined &&
+                                        regularItem.quantity >= regularItem.availableQuantity)
+                                    }
+                                  >
+                                    <Plus className='w-4 h-4' />
+                                  </button>
+                                </div>
+                                <div className='flex items-center'>
+                                  <span className='text-xs text-gray-500 mt-2 pl-3'>x</span>
+                                  <span className='text-xs text-gray-500 mt-2 px-2'>{formatPrice(regularItem.unitPrice)}₫</span>
+                                </div>
                               </div>
-
-                              <div className='text-right'>
-                                <p className='text-orange-600 font-bold text-lg'>
-                                  ₫{formatPrice(regularItem.totalPrice)}
-                                </p>
-                              </div>
+                              <span className='text-orange-600 font-bold text-lg'>₫{formatPrice(regularItem.totalPrice)}</span>
                             </div>
                           </div>
 
@@ -1493,27 +1281,26 @@ export default function Cart() {
               )}
               <div className='flex flex-col gap-4'>
                 <button
-                  onClick={handleCreateOrder}
+                  onClick={() => {
+                    if (getSelectedCount() === 0) {
+                      toast.error('Vui lòng chọn ít nhất một sản phẩm')
+                      return
+                    }
+                    if (hasOutOfStockSelectedItems()) {
+                      toast.error('Vui lòng bỏ chọn các sản phẩm đã hết hàng')
+                      return
+                    }
+                    navigate('/cart/checkout', {
+                      state: {
+                        selectedItems: selectedItems,
+                        cartData: cartData
+                      }
+                    })
+                  }}
                   className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                  disabled={
-                    getSelectedCount() === 0 ||
-                    !selectedPaymentMethod ||
-                    !selectedAddress ||
-                    isSubmitting ||
-                    isLoadingWallet ||
-                    (selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient) ||
-                    hasOutOfStockSelectedItems()
-                  }
+                  disabled={getSelectedCount() === 0 || hasOutOfStockSelectedItems()}
                 >
-                  {isSubmitting
-                    ? 'Đang tạo đơn hàng...'
-                    : isLoadingWallet
-                      ? 'Đang kiểm tra số dư...'
-                      : hasOutOfStockSelectedItems()
-                        ? 'Có sản phẩm hết hàng'
-                        : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
-                          ? 'Số dư không đủ'
-                          : 'Mua hàng'}
+                  {hasOutOfStockSelectedItems() ? 'Có sản phẩm hết hàng' : 'Mua hàng'}
                 </button>
 
                 <button
@@ -1533,200 +1320,6 @@ export default function Cart() {
                   <span>Giao hàng nhanh toàn quốc</span>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Delivery Address Section */}
-        <div className='mt-6'>
-          <div className='bg-white rounded-lg shadow-sm p-6'>
-            <div className='flex items-center gap-3 mb-4'>
-              <MapPin className='w-6 h-6 text-green-600' />
-              <h2 className='text-xl font-bold text-gray-800'>Địa chỉ giao hàng</h2>
-              <button
-                onClick={handleAddAddress}
-                className='ml-auto text-green-600 hover:text-green-700 font-medium text-sm'
-              >
-                + Thêm địa chỉ mới
-              </button>
-            </div>
-
-            <div className='space-y-3'>
-              {addresses.map((address) => (
-                <div
-                  key={address.id}
-                  className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedAddress?.id === address.id
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  onClick={() => {
-                    setSelectedAddress(address)
-                  }}
-                >
-                  <div className='flex items-start justify-between'>
-                    <div className='flex items-start gap-3'>
-                      <input
-                        type='radio'
-                        checked={selectedAddress?.id === address.id}
-                        onChange={() => {
-                          setSelectedAddress(address)
-                        }}
-                        className='w-4 h-4 text-orange-600 mt-1'
-                      />
-                      <div className='flex-1'>
-                        <div className='flex items-center gap-2 mb-1'>
-                          <span className='font-medium text-gray-900'>
-                            {address?.receiverName} | {address?.receiverPhoneNumber}
-                          </span>
-                          {address.isDefault && (
-                            <span className='bg-orange-100 text-orange-600 text-xs px-2 py-1 rounded-full'>
-                              Mặc định
-                            </span>
-                          )}
-                        </div>
-                        <p className='text-gray-600 text-sm'>
-                          {address.streetAddress}, {address.ward}, {address.district}, {address.province}
-                        </p>
-                      </div>
-                    </div>
-                    <div className='flex items-center gap-2'>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEditAddress(address)
-                        }}
-                        className='text-gray-400 hover:text-blue-500'
-                        title='Sửa địa chỉ'
-                      >
-                        <Edit className='w-4 h-4' />
-                      </button>
-                      {!address.isDefault && (
-                        <button
-                          onClick={(e) => handleDeleteClick(address.id, e)}
-                          className='text-gray-400 hover:text-red-500'
-                          title='Xóa địa chỉ'
-                        >
-                          <Trash className='w-4 h-4' />
-                        </button>
-                      )}
-                      {!address.isDefault && (
-                        <button
-                          onClick={(e) => handleSetDefault(address.id, e)}
-                          className='text-xs text-green-600 hover:text-green-700 px-2 py-1 rounded border border-green-300 hover:bg-green-50'
-                          title='Đặt làm mặc định'
-                        >
-                          Đặt mặc định
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Payment Method Section */}
-        <div className='mt-6'>
-          <div className='bg-white rounded-lg shadow-sm p-6'>
-            <h2 className='text-xl font-bold text-gray-800 mb-4'>Phương thức thanh toán</h2>
-            <div className='space-y-3'>
-              <label
-                className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'COD'
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-gray-200 hover:border-gray-300'
-                  }`}
-              >
-                <input
-                  type='radio'
-                  name='paymentMethod'
-                  value='COD'
-                  checked={selectedPaymentMethod === 'COD'}
-                  onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
-                  className='w-4 h-4 text-green-600'
-                />
-                <div className='flex-1'>
-                  <p className='font-medium text-gray-900'>💵 Thanh toán khi nhận hàng (COD)</p>
-                  <p className='text-sm text-gray-500'>Thanh toán bằng tiền mặt khi nhận hàng</p>
-                </div>
-              </label>
-
-              <label
-                className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'Banking'
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-gray-200 hover:border-gray-300'
-                  }`}
-              >
-                <input
-                  type='radio'
-                  name='paymentMethod'
-                  value='Banking'
-                  checked={selectedPaymentMethod === 'Banking'}
-                  onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
-                  className='w-4 h-4 text-green-600'
-                />
-                <div className='flex-1'>
-                  <p className='font-medium text-gray-900'>💳 Chuyển khoản ngân hàng</p>
-                  <p className='text-sm text-gray-500'>Thanh toán qua chuyển khoản ngân hàng</p>
-                </div>
-              </label>
-
-              <label
-                className={`flex items-center gap-3 p-4 border rounded-lg transition-all ${selectedPaymentMethod === 'MyWallet' && walletBalance && !isWalletBalanceSufficient
-                  ? 'border-red-300 bg-red-50'
-                  : selectedPaymentMethod === 'MyWallet'
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                  } cursor-pointer`}
-              >
-                <input
-                  type='radio'
-                  name='paymentMethod'
-                  value='MyWallet'
-                  checked={selectedPaymentMethod === 'MyWallet'}
-                  onChange={(e) => {
-                    setSelectedPaymentMethod(e.target.value as PaymentMethod)
-                  }}
-                  className='w-4 h-4 text-green-600'
-                />
-                <div className='flex-1'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <p className='font-medium text-gray-900 flex items-center gap-2'>
-                        <Wallet className='w-4 h-4' />
-                        Thanh toán bằng ví của tôi
-                      </p>
-                      {isLoadingWallet ? (
-                        <div className='flex items-center gap-2 text-xs text-gray-500 mt-1'>
-                          <Loader2 className='w-3 h-3 animate-spin' />
-                          <span>Đang tải số dư...</span>
-                        </div>
-                      ) : walletBalance && walletBalance.availableBalance !== undefined ? (
-                        <div className='mt-1'>
-                          <p className='text-sm text-gray-500'>
-                            Số dư khả dụng:{' '}
-                            <span
-                              className={`font-semibold ${isWalletBalanceSufficient ? 'text-green-600' : 'text-red-600'
-                                }`}
-                            >
-                              {walletBalance.availableBalance.toLocaleString('vi-VN')}₫
-                            </span>
-                          </p>
-                          {!isWalletBalanceSufficient && (
-                            <p className='text-xs text-red-600 mt-1'>
-                              ⚠️ Số dư không đủ. Tổng đơn hàng: {finalTotal.toLocaleString('vi-VN')}₫
-                            </p>
-                          )}
-                        </div>
-                      ) : selectedPaymentMethod === 'MyWallet' && !isLoadingWallet ? (
-                        <p className='text-sm text-red-500 mt-1'>Không thể tải số dư ví</p>
-                      ) : (
-                        <p className='text-sm text-gray-500 mt-1'>Thanh toán từ số dư ví của bạn</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </label>
             </div>
           </div>
         </div>
@@ -1762,37 +1355,6 @@ export default function Cart() {
           onRemovePromotion={handleRemoveAppliedPromotion}
         />
       )}
-
-      {/* Address Modal */}
-      <AddressModal
-        isOpen={showAddressModal}
-        onClose={() => {
-          setShowAddressModal(false)
-          setEditingAddress(null)
-        }}
-        address={editingAddress}
-        onSave={handleSaveAddress}
-        existingAddresses={addresses}
-        userId={user?.userId}
-      />
-
-      {/* Delete Address Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận xóa địa chỉ</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa địa chỉ này? Hành động này không thể hoàn tác.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setAddressToDelete(null)}>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className='bg-red-600 hover:bg-red-700 text-white'>
-              Xóa
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

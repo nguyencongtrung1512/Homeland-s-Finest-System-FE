@@ -61,9 +61,16 @@ export const removePromotionFromCart = async (cartId: string, promotionId: strin
   return response
 }
 
-export const calculateShippingFee = async (cartItemIds: string[], userAddressId: string): Promise<any> => {
-  const response = await axiosInstance.post<ShippingFeeResponse>(`${API_URL}/calculate-shipping-fee`, {
-    cartItemIds,
+export const calculateShippingFee = async (
+  orderItemCreates: Array<{
+    productVariantId?: string
+    comboId?: string
+    quantity: number
+  }>,
+  userAddressId: string
+): Promise<any> => {
+  const response = await axiosInstance.put<ShippingFeeResponse>(`${API_URL}/caculate-shipfee`, {
+    orderItemCreates,
     userAddressId
   })
   return response

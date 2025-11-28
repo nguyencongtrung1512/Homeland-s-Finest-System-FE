@@ -218,10 +218,17 @@ const AppliedPromotionItem: React.FC<AppliedPromotionItemProps> = ({ promotion, 
 
 const AppliedPromotions: React.FC<AppliedPromotionsProps> = ({ cartPromotions, onRemove }) => {
   const [loadingPromotionId, setLoadingPromotionId] = React.useState<string | null>(null)
+  const [, setCurrentTime] = React.useState(new Date())
+  const removedPromotionIds = React.useRef<Set<string>>(new Set())
 
   // Helper function to check if promotion is actually expired based on current time
-  const isPromotionExpired = (promotion: CartPromotionDto) => {
+  const isPromotionExpired = React.useCallback((promotion: CartPromotionDto) => {
     try {
+      // Use both isExpired flag and actual time check
+      if (promotion.isExpired) {
+        return true
+      }
+
       const now = new Date()
       let expiredAt: Date
 
@@ -245,27 +252,67 @@ const AppliedPromotions: React.FC<AppliedPromotionsProps> = ({ cartPromotions, o
       return now > expiredAt
     } catch (error) {
       console.error('Error checking expiration:', error)
-      return promotion.isExpired
+      return promotion.isExpired || false
     }
-  }
+  }, [])
+
+  // Auto-update to check expiration in real-time and auto-remove
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+
+      // Auto-remove expired promotions every second
+      const expiredPromos = cartPromotions.filter((p) => {
+        if (removedPromotionIds.current.has(p.promotionId)) {
+          return false // Already removed
+        }
+        // Check expiration using both flag and real-time check
+        if (p.isExpired) {
+          return true
+        }
+        return isPromotionExpired(p)
+      })
+
+      if (expiredPromos.length > 0) {
+        // Silently remove expired promotions (no toast notification)
+        expiredPromos.forEach(async (promo) => {
+          try {
+            await onRemove(promo.promotionId, true) // silent = true
+            removedPromotionIds.current.add(promo.promotionId)
+          } catch (error) {
+            console.error('Error auto-removing expired promotion:', error)
+          }
+        })
+      }
+    }, 1000) // Check every second
+
+    return () => clearInterval(interval)
+  }, [cartPromotions, onRemove, isPromotionExpired])
 
   const handleRemove = async (promotionId: string) => {
     setLoadingPromotionId(promotionId)
     try {
-      await onRemove(promotionId)
+      await onRemove(promotionId, false) // silent = false (show toast)
+      removedPromotionIds.current.add(promotionId)
     } finally {
       setLoadingPromotionId(null)
     }
   }
 
-  // Group promotions by status
-  const activePromotions = cartPromotions.filter((p) => !isPromotionExpired(p) && p.status === 'Reserved')
-  const expiredPromotions = cartPromotions.filter((p) => isPromotionExpired(p))
-  const usedPromotions = cartPromotions.filter((p) => p.status === 'Used')
 
-  const totalDiscount = cartPromotions.reduce((sum, promo) => sum + promo.discountAmount, 0)
+  // Group promotions by status - filter out expired promotions completely
+  // Check expiration using both isExpired flag and real-time check
+  const activePromotions = cartPromotions.filter(
+    (p) => !isPromotionExpired(p) && p.status === 'Reserved' && !p.isExpired
+  )
+  const expiredPromotions = cartPromotions.filter((p) => isPromotionExpired(p) || p.isExpired)
+  const usedPromotions = cartPromotions.filter((p) => p.status === 'Used' && !isPromotionExpired(p) && !p.isExpired)
 
-  if (cartPromotions.length === 0) {
+  // Only show non-expired promotions - this is what gets displayed
+  const visiblePromotions = cartPromotions.filter((p) => !isPromotionExpired(p) && !p.isExpired)
+  const totalDiscount = visiblePromotions.reduce((sum, promo) => sum + promo.discountAmount, 0)
+
+  if (visiblePromotions.length === 0) {
     return (
       <div className='text-center py-6 text-gray-500'>
         <CheckCircle className='h-12 w-12 mx-auto mb-4 text-gray-300' />
@@ -280,7 +327,7 @@ const AppliedPromotions: React.FC<AppliedPromotionsProps> = ({ cartPromotions, o
       <div className='bg-gray-50 rounded-lg p-4'>
         <div className='flex items-center justify-between'>
           <div>
-            <h3 className='text-sm font-medium text-gray-700'>Mã khuyến mãi  đã áp dụng ({cartPromotions.length})</h3>
+            <h3 className='text-sm font-medium text-gray-700'>Mã khuyến mãi  đã áp dụng ({visiblePromotions.length})</h3>
             <p className='text-xs text-gray-500 mt-1'>
               Tổng giảm giá:{' '}
               <span className='font-semibold text-red-600'>-{totalDiscount.toLocaleString('vi-VN')}₫</span>
@@ -309,25 +356,6 @@ const AppliedPromotions: React.FC<AppliedPromotionsProps> = ({ cartPromotions, o
         </div>
       )}
 
-      {/* Expired Promotions */}
-      {expiredPromotions.length > 0 && (
-        <div>
-          <h4 className='text-sm font-medium text-red-600 mb-3 flex items-center gap-2'>
-            <AlertTriangle className='h-4 w-4' />
-            Đã hết hạn ({expiredPromotions.length})
-          </h4>
-          <div className='space-y-3'>
-            {expiredPromotions.map((promotion) => (
-              <AppliedPromotionItem
-                key={promotion.cartPromotionId}
-                promotion={promotion}
-                onRemove={handleRemove}
-                loading={loadingPromotionId === promotion.promotionId}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Used Promotions */}
       {usedPromotions.length > 0 && (

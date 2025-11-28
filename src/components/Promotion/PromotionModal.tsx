@@ -11,26 +11,29 @@ import {
 import {
   type PromotionModalProps,
   type PromotionDTO,
-  type UserPromotionDetailDTO,
-  PROMOTION_TYPE_LABELS
+  type UserPromotionDetailDTO
 } from '../../types/promotionType'
 import { promotionApi } from '../../apis/promotion.api'
 import { removePromotionFromCart } from '../../apis/cart.api'
 import { useAuth } from '../../contexts/auth.context'
 import { usePromotions } from '../../hooks/usePromotions'
-import { toast } from 'react-toastify'
+import { toast } from '../../utils/toast'
 
 // ========================================
 // Types
 // ========================================
 
 interface ApiError {
+  message?: string
+  error?: string
+  errors?: string[] | Record<string, string[]>
   response?: {
     data?: {
       message?: string
+      errors?: string[] | Record<string, string[]>
+      error?: string
     }
   }
-  message?: string
 }
 
 // ========================================
@@ -133,44 +136,6 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
   }
 
 
-  const getDiscountText = () => {
-    switch (promo.discountType) {
-      case 'percentage':
-        return `Giảm ${promo.discountValue}%`
-      case 'fixed_amount':
-        return `Giảm ${promo.discountValue.toLocaleString('vi-VN')}₫`
-      case 'freeship':
-        return 'Miễn phí vận chuyển'
-      default:
-        return 'Giảm giá'
-    }
-  }
-
-  const getTypeColor = () => {
-    switch (promo.type) {
-      case 'Global':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'User':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'Product':
-        return 'bg-purple-100 text-purple-800 border-purple-200'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  const getTypeIcon = () => {
-    switch (promo.type) {
-      case 'Global':
-        return <Gift className='h-4 w-4' />
-      case 'User':
-        return <User className='h-4 w-4' />
-      case 'Product':
-        return <Store className='h-4 w-4' />
-      default:
-        return <Gift className='h-4 w-4' />
-    }
-  }
 
   // ✅ GET CARD STYLING BASED ON STATUS
   const getCardClassName = () => {
@@ -235,7 +200,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
           className="w-full"
         >
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          🗑️ Bỏ áp dụng
+          Bỏ áp dụng
         </Button>
       );
     }
@@ -268,7 +233,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
           </>
         ) : (
           <>
-            ✅ Áp dụng
+            Áp dụng
           </>
         )}
       </Button>
@@ -280,16 +245,6 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
       <CardHeader className='pb-3'>
         <div className='flex items-start justify-between'>
           <div className='flex items-center gap-2 flex-wrap'>
-            <Badge variant='outline' className={`${getTypeColor()} flex items-center gap-1`}>
-              {getTypeIcon()}
-              {PROMOTION_TYPE_LABELS[promo.type]}
-            </Badge>
-            <Badge variant='destructive' className='bg-red-500 hover:bg-red-600'>
-              {getDiscountText()}
-            </Badge>
-            {/* ✅ STATUS INDICATOR */}
-            {isApplied && <CheckCircle className='h-5 w-5 text-green-500' />}
-            {isUnavailable && <XCircle className='h-5 w-5 text-red-500' />}
             {isUpcoming() && <Clock className='h-5 w-5 text-yellow-500' />}
           </div>
         </div>
@@ -584,12 +539,14 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
 
     try {
       // Call applyPromotionToCart API
-      await promotionApi.applyPromotionToCart({
+      const response = await promotionApi.applyPromotionToCart({
         cartId: cartId,
         promotionId: promotionId
       })
 
-      toast.success('Áp dụng Mã khuyến mãi  thành công!', {
+      // Show success message from backend
+      const successMessage = response?.message || 'Áp dụng khuyến mãi thành công nha!'
+      toast.success(successMessage, {
         position: 'top-right',
         autoClose: 2000
       })
@@ -600,20 +557,50 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
       console.error('Error applying promotion:', error)
 
       // Extract error message from backend response
+      // Note: axios interceptor returns error.response.data, so error is already the data object
       let errorMessage = 'Không thể áp dụng Mã khuyến mãi '
 
       const apiError = error as ApiError
-      if (apiError?.response?.data?.message) {
-        // Use backend error message
-        errorMessage = apiError.response.data.message
+
+      // Check direct error properties first (since axios interceptor returns error.response.data)
+      if (apiError?.error) {
+        errorMessage = apiError.error
       } else if (apiError?.message) {
-        // Use generic error message
         errorMessage = apiError.message
+      } else if (apiError?.errors) {
+        if (Array.isArray(apiError.errors)) {
+          errorMessage = apiError.errors.join(', ')
+        } else if (typeof apiError.errors === 'object') {
+          const errorMessages = Object.values(apiError.errors).flat()
+          errorMessage = errorMessages.join(', ')
+        }
+      }
+      // Fallback: check response.data (in case error structure is different)
+      else if (apiError?.response?.data) {
+        const errorData = apiError.response.data
+        if (errorData.error) {
+          errorMessage = errorData.error
+        } else if (errorData.message) {
+          errorMessage = errorData.message
+        } else if (errorData.errors) {
+          if (Array.isArray(errorData.errors)) {
+            errorMessage = errorData.errors.join(', ')
+          } else if (typeof errorData.errors === 'object') {
+            const errorMessages = Object.values(errorData.errors).flat()
+            errorMessage = errorMessages.join(', ')
+          }
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData
+        }
+      }
+      // Check if error itself is a string
+      else if (typeof error === 'string') {
+        errorMessage = error
       }
 
       toast.error(errorMessage, {
         position: 'top-right',
-        autoClose: 3000
+        autoClose: 4000
       })
     }
   }
@@ -621,9 +608,11 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
   const handleRemove = async (promotionId: string) => {
     try {
       // Call removePromotionFromCart API
-      await removePromotionFromCart(cartId, promotionId)
+      const response = await removePromotionFromCart(cartId, promotionId)
 
-      toast.success('Hủy Mã khuyến mãi  thành công!', {
+      // Show success message from backend
+      const successMessage = response?.message || 'Hủy Mã khuyến mãi thành công!'
+      toast.success(successMessage, {
         position: 'top-right',
         autoClose: 2000
       })
@@ -634,20 +623,50 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
       console.error('Error removing promotion:', error)
 
       // Extract error message from backend response
+      // Note: axios interceptor returns error.response.data, so error is already the data object
       let errorMessage = 'Không thể hủy Mã khuyến mãi '
 
       const apiError = error as ApiError
-      if (apiError?.response?.data?.message) {
-        // Use backend error message
-        errorMessage = apiError.response.data.message
+
+      // Check direct error properties first (since axios interceptor returns error.response.data)
+      if (apiError?.error) {
+        errorMessage = apiError.error
       } else if (apiError?.message) {
-        // Use generic error message
         errorMessage = apiError.message
+      } else if (apiError?.errors) {
+        if (Array.isArray(apiError.errors)) {
+          errorMessage = apiError.errors.join(', ')
+        } else if (typeof apiError.errors === 'object') {
+          const errorMessages = Object.values(apiError.errors).flat()
+          errorMessage = errorMessages.join(', ')
+        }
+      }
+      // Fallback: check response.data (in case error structure is different)
+      else if (apiError?.response?.data) {
+        const errorData = apiError.response.data
+        if (errorData.error) {
+          errorMessage = errorData.error
+        } else if (errorData.message) {
+          errorMessage = errorData.message
+        } else if (errorData.errors) {
+          if (Array.isArray(errorData.errors)) {
+            errorMessage = errorData.errors.join(', ')
+          } else if (typeof errorData.errors === 'object') {
+            const errorMessages = Object.values(errorData.errors).flat()
+            errorMessage = errorMessages.join(', ')
+          }
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData
+        }
+      }
+      // Check if error itself is a string
+      else if (typeof error === 'string') {
+        errorMessage = error
       }
 
       toast.error(errorMessage, {
         position: 'top-right',
-        autoClose: 3000
+        autoClose: 4000
       })
     }
   }
@@ -658,7 +677,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
         <DialogHeader>
           <DialogTitle className='text-xl font-bold text-gray-900 flex items-center gap-2'>
             <Gift className="h-5 w-5" />
-            Chọn Mã khuyến mãi
+            Chọn mã khuyến mãi
           </DialogTitle>
         </DialogHeader>
 
