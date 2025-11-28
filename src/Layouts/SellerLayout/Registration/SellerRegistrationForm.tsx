@@ -20,7 +20,7 @@ import { registerSeller } from '../../../apis/auth.api'
 import { getProvinces, getDistricts, getWards, type Province, type District, type Ward } from '../../../apis/province'
 import Loading from '../../../components/Loading/loading'
 import { extractCCCDInfo, type ExtractedCCCDInfo } from '../../../apis/fptai.api'
-import { getBanks, type Bank } from '../../../apis/user.api'
+import { getBanks, verifyBankAccount, type Bank } from '../../../apis/user.api'
 import ComboBox from '../../../components/ui/combo-box'
 
 const checkboxStyles = `
@@ -407,11 +407,15 @@ function SellerRegistrationForm() {
   const [isLoadingUserProvinces, setIsLoadingUserProvinces] = useState(false)
   const [isLoadingUserDistricts, setIsLoadingUserDistricts] = useState(false)
   const [isLoadingUserWards, setIsLoadingUserWards] = useState(false)
+  const [hasOpenedTermsPage, setHasOpenedTermsPage] = useState(false)
 
   // States cho ngân hàng
   const [banks, setBanks] = useState<Bank[]>([])
   const [isLoadingBanks, setIsLoadingBanks] = useState(false)
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null)
+  const [isVerifyingAccount, setIsVerifyingAccount] = useState(false)
+  const [accountOwnerName, setAccountOwnerName] = useState<string | null>(null)
+  const [accountVerificationError, setAccountVerificationError] = useState<string | null>(null)
 
   // ===== Xử lý dữ liệu từ OCR =====
   const handleOCRData = async (ocrData: ExtractedCCCDInfo) => {
@@ -752,6 +756,41 @@ function SellerRegistrationForm() {
     }
   }
 
+  const handleVerifyBankAccount = async () => {
+    if (!selectedBank) {
+      toast.error('Vui lòng chọn ngân hàng trước')
+      return
+    }
+
+    if (!formData.bankAccount || formData.bankAccount.trim() === '') {
+      toast.error('Vui lòng nhập số tài khoản ngân hàng')
+      return
+    }
+
+    try {
+      setIsVerifyingAccount(true)
+      setAccountVerificationError(null)
+      setAccountOwnerName(null)
+
+      const result = await verifyBankAccount(selectedBank.code, formData.bankAccount.trim())
+
+      if (result.success && result.data) {
+        setAccountOwnerName(result.data.ownerName)
+        toast.success(`Tài khoản hợp lệ! Chủ tài khoản: ${result.data.ownerName}`)
+      } else {
+        throw new Error(result.msg || 'Không thể xác thực tài khoản')
+      }
+    } catch (error) {
+      console.error('Error verifying bank account:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Không thể kiểm tra tài khoản ngân hàng'
+      setAccountVerificationError(errorMessage)
+      setAccountOwnerName(null)
+      toast.error(errorMessage)
+    } finally {
+      setIsVerifyingAccount(false)
+    }
+  }
+
   React.useEffect(() => {
     loadProvinces()
     loadUserProvinces()
@@ -1012,12 +1051,12 @@ function SellerRegistrationForm() {
                 </div>
                 <div>
                   <h3 className='text-lg font-semibold text-gray-900'>Giấy tờ cá nhân</h3>
-                  <p className='text-sm text-gray-600'>CCCD/CMND mặt trước và mặt sau</p>
+                  <p className='text-sm text-gray-600'>CCCD mặt trước và mặt sau</p>
                 </div>
               </div>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                 <FileUploadFieldWithOCR
-                  label='Mặt trước CCCD/CMND'
+                  label='Mặt trước CCCD'
                   onChange={(files) => handleFileChange('identifyFrontImage', files)}
                   onOCRData={handleOCRData}
                   enableOCR={true}
@@ -1027,7 +1066,7 @@ function SellerRegistrationForm() {
                 />
 
                 <FileUploadField
-                  label='Mặt sau CCCD/CMND'
+                  label='Mặt sau CCCD'
                   onChange={(files) => handleFileChange('identifyBackImage', files)}
                   required
                   description='File ảnh rõ nét, đầy đủ 4 góc, định dạng JPG/PNG'
@@ -1036,6 +1075,114 @@ function SellerRegistrationForm() {
               </div>
               {errors.identifyFrontImage && <p className='text-sm text-red-500 mt-2'>{errors.identifyFrontImage}</p>}
               {errors.identifyBackImage && <p className='text-sm text-red-500 mt-2'>{errors.identifyBackImage}</p>}
+            </div>
+            {/* Địa chỉ từ CCCD */}
+            <div className='rounded-xl p-6 border border-blue-200'>
+              <div className='flex items-center gap-3 mb-6'>
+                <MapPinIcon className='w-4 h-4 text-blue-600 mb-4' />
+                <div>
+                  <p>Địa chỉ thường trú</p>
+                </div>
+              </div>
+              <div className='space-y-4'>
+                <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                  <div className='space-y-2'>
+                    <Label htmlFor='userProvince' className='text-sm text-gray-600'>
+                      Tỉnh/Thành phố <span className='text-red-500'>*</span>
+                    </Label>
+                    <ComboBox
+                      options={userProvinces}
+                      placeholder={isLoadingUserProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'}
+                      disabled={isLoadingUserProvinces}
+                      value={selectedUserProvince?.id?.toString() || ''}
+                      onSelect={(province) => {
+                        if (province) {
+                          handleUserProvinceChange(province.id.toString())
+                        } else {
+                          setSelectedUserProvince(null)
+                        }
+                      }}
+                      getOptionLabel={(province) => province.name}
+                      getOptionValue={(province) => province.id.toString()}
+                      filterFunction={(province, searchValue) =>
+                        province.name.toLowerCase().includes(searchValue.toLowerCase())
+                      }
+                    />
+                  </div>
+
+                  <div className='space-y-2'>
+                    <Label htmlFor='userDistrict' className='text-sm text-gray-600'>
+                      Quận/Huyện <span className='text-red-500'>*</span>
+                    </Label>
+                    <ComboBox
+                      options={userDistricts}
+                      placeholder={
+                        !selectedUserProvince
+                          ? 'Chọn tỉnh/thành phố trước'
+                          : isLoadingUserDistricts
+                            ? 'Đang tải...'
+                            : 'Chọn quận/huyện'
+                      }
+                      disabled={!selectedUserProvince || isLoadingUserDistricts}
+                      value={selectedUserDistrict?.id?.toString() || ''}
+                      onSelect={(district) => {
+                        if (district) {
+                          handleUserDistrictChange(district.id.toString())
+                        } else {
+                          setSelectedUserDistrict(null)
+                        }
+                      }}
+                      getOptionLabel={(district) => district.name}
+                      getOptionValue={(district) => district.id.toString()}
+                      filterFunction={(district, searchValue) =>
+                        district.name.toLowerCase().includes(searchValue.toLowerCase())
+                      }
+                    />
+                  </div>
+
+                  <div className='space-y-2'>
+                    <Label htmlFor='userWard' className='text-sm text-gray-600'>
+                      Phường/Xã <span className='text-red-500'>*</span>
+                    </Label>
+                    <ComboBox
+                      options={userWards}
+                      placeholder={
+                        !selectedUserDistrict
+                          ? 'Chọn quận/huyện trước'
+                          : isLoadingUserWards
+                            ? 'Đang tải...'
+                            : 'Chọn phường/xã'
+                      }
+                      disabled={!selectedUserDistrict || isLoadingUserWards}
+                      value={selectedUserWard?.id?.toString() || ''}
+                      onSelect={(ward) => {
+                        if (ward) {
+                          handleUserWardChange(ward.id.toString())
+                        } else {
+                          setSelectedUserWard(null)
+                        }
+                      }}
+                      getOptionLabel={(ward) => ward.name}
+                      getOptionValue={(ward) => ward.id.toString()}
+                      filterFunction={(ward, searchValue) => ward.name.toLowerCase().includes(searchValue.toLowerCase())}
+                    />
+                  </div>
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='userStreetAddress' className='text-sm text-gray-600'>
+                    Địa chỉ cụ thể (số nhà, tên đường) <span className='text-red-500'>*</span>
+                  </Label>
+                  <Input
+                    id='userStreetAddress'
+                    value={userStreetAddress}
+                    onChange={(e) => setUserStreetAddress(e.target.value)}
+                    placeholder='Số nhà, tên đường, tòa nhà...'
+                    className='w-full'
+                  />
+                </div>
+                {errors.userAddress && <p className='text-sm text-red-500'>{errors.userAddress}</p>}
+              </div>
             </div>
 
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
@@ -1197,114 +1344,7 @@ function SellerRegistrationForm() {
               </div>
             </div>
 
-            {/* Địa chỉ từ CCCD */}
-            <div className='rounded-xl p-6 border border-blue-200'>
-              <div className='flex items-center gap-3 mb-6'>
-                <MapPinIcon className='w-4 h-4 text-blue-600 mb-4' />
-                <div>
-                  <p>Địa chỉ thường trú</p>
-                </div>
-              </div>
-              <div className='space-y-4'>
-                <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                  <div className='space-y-2'>
-                    <Label htmlFor='userProvince' className='text-sm text-gray-600'>
-                      Tỉnh/Thành phố <span className='text-red-500'>*</span>
-                    </Label>
-                    <Select
-                      value={selectedUserProvince?.id?.toString() || ''}
-                      onValueChange={handleUserProvinceChange}
-                      disabled={isLoadingUserProvinces}
-                    >
-                      <SelectTrigger id='userProvince'>
-                        <SelectValue placeholder={isLoadingUserProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {userProvinces.map((province) => (
-                          <SelectItem key={province.id} value={province.id.toString()}>
-                            {province.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
 
-                  <div className='space-y-2'>
-                    <Label htmlFor='userDistrict' className='text-sm text-gray-600'>
-                      Quận/Huyện <span className='text-red-500'>*</span>
-                    </Label>
-                    <Select
-                      value={selectedUserDistrict?.id?.toString() || ''}
-                      onValueChange={handleUserDistrictChange}
-                      disabled={!selectedUserProvince || isLoadingUserDistricts}
-                    >
-                      <SelectTrigger id='userDistrict'>
-                        <SelectValue
-                          placeholder={
-                            !selectedUserProvince
-                              ? 'Chọn tỉnh/thành phố trước'
-                              : isLoadingUserDistricts
-                                ? 'Đang tải...'
-                                : 'Chọn quận/huyện'
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {userDistricts.map((district) => (
-                          <SelectItem key={district.id} value={district.id.toString()}>
-                            {district.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className='space-y-2'>
-                    <Label htmlFor='userWard' className='text-sm text-gray-600'>
-                      Phường/Xã <span className='text-red-500'>*</span>
-                    </Label>
-                    <Select
-                      value={selectedUserWard?.id?.toString() || ''}
-                      onValueChange={handleUserWardChange}
-                      disabled={!selectedUserDistrict || isLoadingUserWards}
-                    >
-                      <SelectTrigger id='userWard'>
-                        <SelectValue
-                          placeholder={
-                            !selectedUserDistrict
-                              ? 'Chọn quận/huyện trước'
-                              : isLoadingUserWards
-                                ? 'Đang tải...'
-                                : 'Chọn phường/xã'
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {userWards.map((ward) => (
-                          <SelectItem key={ward.id} value={ward.id.toString()}>
-                            {ward.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className='space-y-2'>
-                  <Label htmlFor='userStreetAddress' className='text-sm text-gray-600'>
-                    Địa chỉ cụ thể (số nhà, tên đường) <span className='text-red-500'>*</span>
-                  </Label>
-                  <Input
-                    id='userStreetAddress'
-                    value={userStreetAddress}
-                    onChange={(e) => setUserStreetAddress(e.target.value)}
-                    placeholder='Số nhà, tên đường, tòa nhà...'
-                    className='w-full'
-                  />
-                </div>
-                {errors.userAddress && <p className='text-sm text-red-500'>{errors.userAddress}</p>}
-              </div>
-            </div>
           </div>
 
           {/* Thông tin cửa hàng */}
@@ -1343,82 +1383,82 @@ function SellerRegistrationForm() {
                   <Label htmlFor='province' className='text-sm text-gray-600'>
                     Tỉnh/Thành phố <span className='text-red-500'>*</span>
                   </Label>
-                  <Select
-                    value={selectedProvince?.id?.toString() || ''}
-                    onValueChange={handleProvinceChange}
+                  <ComboBox
+                    options={provinces}
+                    placeholder={isLoadingProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'}
                     disabled={isLoadingProvinces}
-                  >
-                    <SelectTrigger id='province'>
-                      <SelectValue placeholder={isLoadingProvinces ? 'Đang tải...' : 'Chọn tỉnh/thành phố'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {provinces.map((province) => (
-                        <SelectItem key={province.id} value={province.id.toString()}>
-                          {province.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    value={selectedProvince?.id?.toString() || ''}
+                    onSelect={(province) => {
+                      if (province) {
+                        handleProvinceChange(province.id.toString())
+                      } else {
+                        setSelectedProvince(null)
+                      }
+                    }}
+                    getOptionLabel={(province) => province.name}
+                    getOptionValue={(province) => province.id.toString()}
+                    filterFunction={(province, searchValue) =>
+                      province.name.toLowerCase().includes(searchValue.toLowerCase())
+                    }
+                  />
                 </div>
 
                 <div className='space-y-2'>
                   <Label htmlFor='district' className='text-sm text-gray-600'>
                     Quận/Huyện <span className='text-red-500'>*</span>
                   </Label>
-                  <Select
-                    value={selectedDistrict?.id?.toString() || ''}
-                    onValueChange={handleDistrictChange}
+                  <ComboBox
+                    options={districts}
+                    placeholder={
+                      !selectedProvince
+                        ? 'Chọn tỉnh/thành phố trước'
+                        : isLoadingDistricts
+                          ? 'Đang tải...'
+                          : 'Chọn quận/huyện'
+                    }
                     disabled={!selectedProvince || isLoadingDistricts}
-                  >
-                    <SelectTrigger id='district'>
-                      <SelectValue
-                        placeholder={
-                          !selectedProvince
-                            ? 'Chọn tỉnh/thành phố trước'
-                            : isLoadingDistricts
-                              ? 'Đang tải...'
-                              : 'Chọn quận/huyện'
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {districts.map((district) => (
-                        <SelectItem key={district.id} value={district.id.toString()}>
-                          {district.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    value={selectedDistrict?.id?.toString() || ''}
+                    onSelect={(district) => {
+                      if (district) {
+                        handleDistrictChange(district.id.toString())
+                      } else {
+                        setSelectedDistrict(null)
+                      }
+                    }}
+                    getOptionLabel={(district) => district.name}
+                    getOptionValue={(district) => district.id.toString()}
+                    filterFunction={(district, searchValue) =>
+                      district.name.toLowerCase().includes(searchValue.toLowerCase())
+                    }
+                  />
                 </div>
 
                 <div className='space-y-2'>
                   <Label htmlFor='ward' className='text-sm text-gray-600'>
                     Phường/Xã <span className='text-red-500'>*</span>
                   </Label>
-                  <Select
-                    value={selectedWard?.id?.toString() || ''}
-                    onValueChange={handleWardChange}
+                  <ComboBox
+                    options={wards}
+                    placeholder={
+                      !selectedDistrict
+                        ? 'Chọn quận/huyện trước'
+                        : isLoadingWards
+                          ? 'Đang tải...'
+                          : 'Chọn phường/xã'
+                    }
                     disabled={!selectedDistrict || isLoadingWards}
-                  >
-                    <SelectTrigger id='ward'>
-                      <SelectValue
-                        placeholder={
-                          !selectedDistrict
-                            ? 'Chọn quận/huyện trước'
-                            : isLoadingWards
-                              ? 'Đang tải...'
-                              : 'Chọn phường/xã'
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {wards.map((ward) => (
-                        <SelectItem key={ward.id} value={ward.id.toString()}>
-                          {ward.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    value={selectedWard?.id?.toString() || ''}
+                    onSelect={(ward) => {
+                      if (ward) {
+                        handleWardChange(ward.id.toString())
+                      } else {
+                        setSelectedWard(null)
+                      }
+                    }}
+                    getOptionLabel={(ward) => ward.name}
+                    getOptionValue={(ward) => ward.id.toString()}
+                    filterFunction={(ward, searchValue) => ward.name.toLowerCase().includes(searchValue.toLowerCase())}
+                  />
                 </div>
               </div>
 
@@ -1523,9 +1563,14 @@ function SellerRegistrationForm() {
                     if (bank) {
                       setSelectedBank(bank)
                       handleInputChange('bankName', bank.name)
+                      // Reset verification when bank changes
+                      setAccountOwnerName(null)
+                      setAccountVerificationError(null)
                     } else {
                       setSelectedBank(null)
                       handleInputChange('bankName', '')
+                      setAccountOwnerName(null)
+                      setAccountVerificationError(null)
                     }
                   }}
                   getOptionLabel={(bank) => bank.name}
@@ -1558,18 +1603,50 @@ function SellerRegistrationForm() {
                 <Label htmlFor='bankAccount'>
                   Số tài khoản ngân hàng <span className='text-red-500'>*</span>
                 </Label>
-                <Input
-                  id='bankAccount'
-                  value={formData.bankAccount}
-                  onChange={(e) => handleInputChange('bankAccount', e.target.value)}
-                  placeholder='Số tài khoản ngân hàng'
-                />
+                <div className='flex gap-2'>
+                  <Input
+                    id='bankAccount'
+                    value={formData.bankAccount}
+                    onChange={(e) => {
+                      handleInputChange('bankAccount', e.target.value)
+                      // Reset verification when account number changes
+                      setAccountOwnerName(null)
+                      setAccountVerificationError(null)
+                    }}
+                    placeholder='Số tài khoản ngân hàng'
+                    className='flex-1'
+                  />
+                  <Button
+                    type='button'
+                    variant='yellow'
+                    onClick={handleVerifyBankAccount}
+                    disabled={!selectedBank || !formData.bankAccount || isVerifyingAccount}
+                  >
+                    {isVerifyingAccount ? 'Đang kiểm tra...' : 'Kiểm tra'}
+                  </Button>
+                </div>
+                {accountOwnerName && (
+                  <div className='p-3 bg-green-50 border border-green-200 rounded-lg'>
+                    <p className='text-sm text-green-800'>
+                      <span className='font-semibold'>✓ Tài khoản hợp lệ</span>
+                      <br />
+                      <span className='text-xs'>Chủ tài khoản: {accountOwnerName}</span>
+                    </p>
+                  </div>
+                )}
+                {accountVerificationError && (
+                  <div className='p-3 bg-red-50 border border-red-200 rounded-lg'>
+                    <p className='text-sm text-red-800'>
+                      <span className='font-semibold'>✗ {accountVerificationError}</span>
+                    </p>
+                  </div>
+                )}
                 {errors.bankAccount && <p className='text-sm text-red-500'>{errors.bankAccount}</p>}
               </div>
 
               <div className='space-y-2'>
                 <Label htmlFor='identifyCard'>
-                  Số CCCD/CMND <span className='text-red-500'>*</span>
+                  Số CCCD <span className='text-red-500'>*</span>
                 </Label>
                 <Input
                   id='identifyCard'
@@ -1667,19 +1744,62 @@ function SellerRegistrationForm() {
               </div>
               <div>
                 <h2 className='text-lg md:text-xl font-semibold text-gray-900'>Cam kết của người bán</h2>
-                <p className='text-sm text-gray-500'>Đọc và đồng ý với các điều khoản</p>
+                <p className='text-sm text-gray-500'>
+                  <span>Đọc và đồng ý với các điều khoản: </span>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      window.open('/portal', '_blank')
+                      setHasOpenedTermsPage(true)
+                    }}
+                    className='text-green-600 hover:text-green-700 underline font-medium'
+                  >
+                    Điều khoản dịch vụ
+                  </button>
+                  {!hasOpenedTermsPage && (
+                    <span className='ml-2 text-orange-600 text-xs'>* Vui lòng mở và đọc điều khoản trước khi đồng ý</span>
+                  )}
+                </p>
               </div>
             </div>
 
+            {!hasOpenedTermsPage && (
+              <div className='bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4'>
+                <p className='text-sm text-orange-800'>
+                  <span className='font-semibold'>Lưu ý:</span> Vui lòng mở và đọc{' '}
+                  <button
+                    type='button'
+                    onClick={() => {
+                      window.open('/policy', '_blank')
+                      setHasOpenedTermsPage(true)
+                    }}
+                    className='text-green-600 hover:text-green-700 underline font-medium'
+                  >
+                    Điều khoản dịch vụ
+                  </button>{' '}
+                  trước khi có thể đồng ý với các điều khoản.
+                </p>
+              </div>
+            )}
             <div className='space-y-5'>
               <div className='flex items-start gap-3'>
                 <Checkbox
-                  className='mt-1 h-5 w-5 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white border-2 border-gray-300 hover:border-green-500 transition-colors'
+                  className='mt-1 h-5 w-5 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white border-2 border-gray-300 hover:border-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                   id='terms'
                   checked={formData.agreements.terms}
                   onCheckedChange={(checked) => handleAgreementChange('terms', checked as boolean)}
+                  disabled={!hasOpenedTermsPage}
                 />
-                <Label htmlFor='terms' className='text-sm font-medium leading-5 cursor-pointer'>
+                <Label
+                  htmlFor='terms'
+                  onClick={(e) => {
+                    if (!hasOpenedTermsPage) {
+                      e.preventDefault()
+                      toast.warning('Vui lòng mở và đọc Điều khoản dịch vụ trước khi đồng ý')
+                    }
+                  }}
+                  className={`text-sm font-medium leading-5 ${!hasOpenedTermsPage ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                >
                   Tôi đồng ý với Điều khoản dịch vụ và Quy chế hoạt động
                   <span className='ml-1 text-red-500'>*</span>
                 </Label>
@@ -1687,12 +1807,22 @@ function SellerRegistrationForm() {
 
               <div className='flex items-start gap-3'>
                 <Checkbox
-                  className='mt-1 h-5 w-5 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white border-2 border-gray-300 hover:border-green-500 transition-colors'
+                  className='mt-1 h-5 w-5 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white border-2 border-gray-300 hover:border-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                   id='policy'
                   checked={formData.agreements.policy}
                   onCheckedChange={(checked) => handleAgreementChange('policy', checked as boolean)}
+                  disabled={!hasOpenedTermsPage}
                 />
-                <Label htmlFor='policy' className='text-sm font-medium leading-5 cursor-pointer'>
+                <Label
+                  htmlFor='policy'
+                  onClick={(e) => {
+                    if (!hasOpenedTermsPage) {
+                      e.preventDefault()
+                      toast.warning('Vui lòng mở và đọc Điều khoản dịch vụ trước khi đồng ý')
+                    }
+                  }}
+                  className={`text-sm font-medium leading-5 ${!hasOpenedTermsPage ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                >
                   Tôi đồng ý với Chính sách bảo mật và xử lý dữ liệu cá nhân
                   <span className='ml-1 text-red-500'>*</span>
                 </Label>
@@ -1700,12 +1830,22 @@ function SellerRegistrationForm() {
 
               <div className='flex items-start gap-3'>
                 <Checkbox
-                  className='mt-1 h-5 w-5 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white border-2 border-gray-300 hover:border-green-500 transition-colors'
+                  className='mt-1 h-5 w-5 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white border-2 border-gray-300 hover:border-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                   id='commission'
                   checked={formData.agreements.commission}
                   onCheckedChange={(checked) => handleAgreementChange('commission', checked as boolean)}
+                  disabled={!hasOpenedTermsPage}
                 />
-                <Label htmlFor='commission' className='text-sm font-medium leading-5 cursor-pointer'>
+                <Label
+                  htmlFor='commission'
+                  onClick={(e) => {
+                    if (!hasOpenedTermsPage) {
+                      e.preventDefault()
+                      toast.warning('Vui lòng mở và đọc Điều khoản dịch vụ trước khi đồng ý')
+                    }
+                  }}
+                  className={`text-sm font-medium leading-5 ${!hasOpenedTermsPage ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                >
                   Tôi đồng ý với chính sách hoa hồng và phí dịch vụ của nền tảng
                   <span className='ml-1 text-red-500'>*</span>
                 </Label>
@@ -1713,13 +1853,23 @@ function SellerRegistrationForm() {
 
               <div className='flex items-start gap-3'>
                 <Checkbox
-                  className='mt-1 h-5 w-5 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white border-2 border-gray-300 hover:border-green-500 transition-colors'
+                  className='mt-1 h-5 w-5 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white border-2 border-gray-300 hover:border-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                   id='productQuality'
                   checked={formData.agreements.productQuality}
                   onCheckedChange={(checked) => handleAgreementChange('productQuality', checked as boolean)}
+                  disabled={!hasOpenedTermsPage}
                 />
                 <div>
-                  <Label htmlFor='productQuality' className='text-sm font-medium leading-5 cursor-pointer'>
+                  <Label
+                    htmlFor='productQuality'
+                    onClick={(e) => {
+                      if (!hasOpenedTermsPage) {
+                        e.preventDefault()
+                        toast.warning('Vui lòng mở và đọc Điều khoản dịch vụ trước khi đồng ý')
+                      }
+                    }}
+                    className={`text-sm font-medium leading-5 ${!hasOpenedTermsPage ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                  >
                     Tôi cam kết về chất lượng, nguồn gốc và tính xác thực của sản phẩm
                     <span className='ml-1 text-red-500'>*</span>
                   </Label>

@@ -162,6 +162,66 @@ export const getBanks = async (): Promise<Bank[]> => {
   }
 }
 
+// Bank Account Lookup interfaces and API
+export interface BankAccountLookupRequest {
+  bank: string // bank code
+  account: string // account number
+}
+
+export interface BankAccountLookupResponse {
+  code: number
+  success: boolean
+  data: {
+    account: string
+    bank: string
+    ownerName: string
+  }
+  msg: string
+}
+
+export const verifyBankAccount = async (
+  bankCode: string,
+  accountNumber: string
+): Promise<BankAccountLookupResponse> => {
+  const apiKey = '7d65308a-69ae-45c6-9e39-f4598f517353key'
+  const apiSecret = 'd0a8164c-9aaf-428d-9174-492aa5dee326secret'
+
+  if (!bankCode || !accountNumber) {
+    throw new Error('Mã ngân hàng và số tài khoản là bắt buộc')
+  }
+
+  try {
+    const response = await axios.post<BankAccountLookupResponse>(
+      'https://api.banklookup.net',
+      {
+        bank: bankCode,
+        account: accountNumber
+      },
+      {
+        headers: {
+          'x-api-key': apiKey,
+          'x-api-secret': apiSecret,
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+
+    return response.data
+  } catch (error) {
+    console.error('Error verifying bank account:', error)
+    if (axios.isAxiosError(error)) {
+      const errorMessage =
+        (error.response?.data as { msg?: string })?.msg ||
+        error.response?.statusText ||
+        'Không thể kiểm tra tài khoản ngân hàng'
+      throw new Error(errorMessage)
+    }
+    throw error
+  }
+}
+
+
+
 // Helper function to format date from DD-MM-YYYY to YYYY-MM-DD
 const formatDateOfBirthForAPI = (dateString: string): string => {
   if (!dateString) return ''

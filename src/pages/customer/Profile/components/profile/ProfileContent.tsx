@@ -10,7 +10,14 @@ import { ShimmerBorder } from '../../../../../components/ui/shimmer'
 import ProfileCard3D from '../../../../../components/ui/ProfileCard3D'
 import ComboBox from '../../../../../components/ui/combo-box'
 import { useAuth } from '../../../../../contexts/auth.context'
-import { getUserById, updateUser, getBanks, type User as UserType, type Bank } from '../../../../../apis/user.api'
+import {
+  getUserById,
+  updateUser,
+  getBanks,
+  verifyBankAccount,
+  type User as UserType,
+  type Bank
+} from '../../../../../apis/user.api'
 import { getProvinces, type Province } from '../../../../../apis/province'
 import { changePassword } from '../../../../../apis/auth.api'
 import { toast } from '../../../../../utils/toast'
@@ -67,6 +74,10 @@ export default function ProfileContent() {
   const [updatingPersonalInfo, setUpdatingPersonalInfo] = useState(false)
   const [updatingBankingInfo, setUpdatingBankingInfo] = useState(false)
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined)
+  const [selectedBank, setSelectedBank] = useState<Bank | null>(null)
+  const [isVerifyingAccount, setIsVerifyingAccount] = useState(false)
+  const [accountOwnerName, setAccountOwnerName] = useState<string | null>(null)
+  const [accountVerificationError, setAccountVerificationError] = useState<string | null>(null)
 
   // Load provinces
   useEffect(() => {
@@ -101,6 +112,16 @@ export default function ProfileContent() {
     }
     fetchBanks()
   }, [])
+
+  // Find selected bank when bankName changes
+  useEffect(() => {
+    if (formData.bankName && banks.length > 0) {
+      const foundBank = banks.find((bank) => bank.name === formData.bankName)
+      setSelectedBank(foundBank || null)
+    } else {
+      setSelectedBank(null)
+    }
+  }, [formData.bankName, banks])
 
   // Load user data
   useEffect(() => {
@@ -227,6 +248,41 @@ export default function ProfileContent() {
       toast.error('Cập nhật thông tin ngân hàng thất bại')
     } finally {
       setUpdatingBankingInfo(false)
+    }
+  }
+
+  const handleVerifyBankAccount = async () => {
+    if (!selectedBank) {
+      toast.error('Vui lòng chọn ngân hàng trước')
+      return
+    }
+
+    if (!formData.bankAccount || formData.bankAccount.trim() === '') {
+      toast.error('Vui lòng nhập số tài khoản ngân hàng')
+      return
+    }
+
+    try {
+      setIsVerifyingAccount(true)
+      setAccountVerificationError(null)
+      setAccountOwnerName(null)
+
+      const result = await verifyBankAccount(selectedBank.code, formData.bankAccount.trim())
+
+      if (result.success && result.data) {
+        setAccountOwnerName(result.data.ownerName)
+        toast.success(`Tài khoản hợp lệ! Chủ tài khoản: ${result.data.ownerName}`)
+      } else {
+        throw new Error(result.msg || 'Không thể xác thực tài khoản')
+      }
+    } catch (error) {
+      console.error('Error verifying bank account:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Không thể kiểm tra tài khoản ngân hàng'
+      setAccountVerificationError(errorMessage)
+      setAccountOwnerName(null)
+      toast.error(errorMessage)
+    } finally {
+      setIsVerifyingAccount(false)
     }
   }
 
@@ -539,7 +595,13 @@ export default function ProfileContent() {
                                     disabled={loadingBanks}
                                     getOptionLabel={(bank) => `${bank.name} (${bank.shortName})`}
                                     getOptionValue={(bank) => bank.name}
-                                    onSelect={(bank) => handleInputChange('bankName', bank?.name || '')}
+                                    onSelect={(bank) => {
+                                      handleInputChange('bankName', bank?.name || '')
+                                      setSelectedBank(bank || null)
+                                      // Reset verification when bank changes
+                                      setAccountOwnerName(null)
+                                      setAccountVerificationError(null)
+                                    }}
                                     filterFunction={(bank, searchValue) => {
                                       const search = searchValue.toLowerCase()
                                       return (
@@ -574,16 +636,47 @@ export default function ProfileContent() {
                       </div>
                       <div>
                         <Label htmlFor='bankAccount' className='py-2'>Số tài khoản ngân hàng</Label>
-                        <div className='relative'>
-                          <CreditCard className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                          <Input
-                            id='bankAccount'
-                            value={formData.bankAccount}
-                            onChange={(e) => handleInputChange('bankAccount', e.target.value)}
-                            placeholder='Nhập số tài khoản ngân hàng'
-                            className='mt-1 pl-10'
-                          />
+                        <div className='flex gap-2'>
+                          <div className='relative flex-1'>
+                            <CreditCard className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
+                            <Input
+                              id='bankAccount'
+                              value={formData.bankAccount}
+                              onChange={(e) => {
+                                handleInputChange('bankAccount', e.target.value)
+                                // Reset verification when account number changes
+                                setAccountOwnerName(null)
+                                setAccountVerificationError(null)
+                              }}
+                              placeholder='Nhập số tài khoản ngân hàng'
+                              className='mt-1 pl-10'
+                            />
+                          </div>
+                          <Button
+                            type='button'
+                            onClick={handleVerifyBankAccount}
+                            disabled={!selectedBank || !formData.bankAccount || isVerifyingAccount}
+                            className='bg-blue-600 hover:bg-blue-700 text-white mt-1'
+                          >
+                            {isVerifyingAccount ? 'Đang kiểm tra...' : 'Kiểm tra'}
+                          </Button>
                         </div>
+                        {accountOwnerName && (
+                          <div className='mt-2 p-3 bg-green-50 border border-green-200 rounded-lg'>
+                            <p className='text-sm text-green-800'>
+                              <span className='font-semibold'>✓ Tài khoản hợp lệ</span>
+                              <br />
+                              <span className='text-xs'>Chủ tài khoản: {accountOwnerName}</span>
+                            </p>
+                          </div>
+                        )}
+                        {accountVerificationError && (
+                          <div className='mt-2 p-3 bg-red-50 border border-red-200 rounded-lg'>
+                            <p className='text-sm text-red-800'>
+                              <span className='font-semibold'>✗ {accountVerificationError}</span>
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                     </div>
