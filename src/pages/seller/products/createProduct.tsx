@@ -12,6 +12,7 @@ import { useAuth } from '../../../contexts/auth.context'
 import { Upload, ChevronRight, Trash2, Video, Image as ImageIcon, Package, FileImage, Loader2, X } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import ProductComboBox from '../../../components/ui/product-combo-box'
+import ComboBox from '../../../components/ui/combo-box'
 import type { Product } from '../../../types/productType'
 import Loading from '../../../components/Loading/loading'
 
@@ -148,10 +149,10 @@ function CreateProduct() {
     }
   }
 
-  const handleCategorySelect = (categoryId: string) => {
+  const handleCategorySelect = (categoryId: string | null) => {
     setProductData((prev) => ({
       ...prev,
-      categoryId: prev.categoryId === categoryId ? null : categoryId
+      categoryId: categoryId
     }))
   }
 
@@ -908,7 +909,7 @@ function CreateProduct() {
         {/* Right Column - Sidebar */}
         <div className='space-y-6'>
           {/* Category */}
-          <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
+          <Card className='border-green-100 shadow-sm min-h-[400px] hover:shadow-md transition-shadow duration-200'>
             <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
               <CardTitle className='text-green-700 flex items-center gap-2'>
                 <Package className='w-5 h-5' />
@@ -930,55 +931,38 @@ function CreateProduct() {
                     <span className='text-sm text-gray-500'>Không có danh mục nào</span>
                   </div>
                 ) : (
-                  <div className='mt-1 space-y-2 max-h-60 overflow-y-auto border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-br from-white to-gray-50'>
-                    {categories.map((category) => (
-                      <div
-                        key={category.id}
-                        className={`flex items-start space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${productData.categoryId === category.id
-                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 shadow-sm'
-                          : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-300 hover:shadow-sm'
-                          }`}
-                        onClick={() => handleCategorySelect(category.id)}
-                      >
-                        <div className='flex items-center'>
-                          <input
-                            type='radio'
-                            name='category'
-                            checked={productData.categoryId === category.id}
-                            onChange={() => handleCategorySelect(category.id)}
-                            className='w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500'
-                          />
+                  <div className='mt-1'>
+                    <ComboBox<ProductCategoryItem>
+                      options={categories}
+                      placeholder='Chọn danh mục sản phẩm...'
+                      value={productData.categoryId || ''}
+                      disabled={categoriesLoading}
+                      getOptionLabel={(category) => category.name}
+                      getOptionValue={(category) => category.id}
+                      onSelect={(category) => {
+                        if (category) {
+                          handleCategorySelect(category.id)
+                        } else {
+                          handleCategorySelect(null)
+                        }
+                      }}
+                      filterFunction={(category, searchValue) => {
+                        const search = searchValue.toLowerCase()
+                        return (
+                          category.name.toLowerCase().includes(search) ||
+                          category.description?.toLowerCase().includes(search) ||
+                          false
+                        )
+                      }}
+                      renderOption={(category) => (
+                        <div className='flex flex-col'>
+                          <span className='text-sm font-medium text-gray-900'>{category.name}</span>
+                          {category.description && (
+                            <span className='text-xs text-gray-500 mt-0.5'>{category.description}</span>
+                          )}
                         </div>
-                        <div className='flex-1 min-w-0'>
-                          <p className='text-sm font-medium text-gray-900'>{category.name}</p>
-                          {category.description && <p className='text-xs text-gray-500 mt-1'>{category.description}</p>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Show selected category */}
-                {productData.categoryId && (
-                  <div className='mt-3'>
-                    <p className='text-sm font-medium text-gray-700 mb-2'>Danh mục đã chọn:</p>
-                    <div className='flex items-center gap-2'>
-                      {(() => {
-                        const category = categories.find((cat) => cat.id === productData.categoryId)
-                        return category ? (
-                          <div className='inline-flex items-center px-3 py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 text-sm font-medium rounded-full border border-green-200 shadow-sm'>
-                            <span className='font-semibold'>{category.name}</span>
-                            <button
-                              type='button'
-                              onClick={() => handleCategorySelect(productData.categoryId!)}
-                              className='ml-2 text-green-600 hover:text-green-800 hover:bg-green-200 rounded-full p-1 transition-all duration-150'
-                            >
-                              <X className='w-3 h-3' />
-                            </button>
-                          </div>
-                        ) : null
-                      })()}
-                    </div>
+                      )}
+                    />
                   </div>
                 )}
               </div>

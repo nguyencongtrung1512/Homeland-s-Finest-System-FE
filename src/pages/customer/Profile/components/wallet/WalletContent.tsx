@@ -10,7 +10,6 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowRight,
-  User,
   RefreshCw,
   History,
   ArrowDown
