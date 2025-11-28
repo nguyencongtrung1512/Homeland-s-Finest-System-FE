@@ -95,27 +95,27 @@ function ThreeDCard({
 
   const backgroundStyle = backgroundImage
     ? {
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        opacity: transform.isHovered ? 1 : 0,
-        transition: `opacity 0.5s ease-in-out`
-      }
+      backgroundImage: `url(${backgroundImage})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      opacity: transform.isHovered ? 1 : 0,
+      transition: `opacity 0.5s ease-in-out`
+    }
     : {}
 
   const glowStyle = enableGlow
     ? {
-        background: `radial-gradient(circle at ${transform.glowX}% ${transform.glowY}%, rgba(255, 255, 255, ${glowOpacity * 0.5}), transparent)`,
-        opacity: transform.isHovered ? 0.6 : 0,
-        transition: 'opacity 0.5s ease-in-out'
-      }
+      background: `radial-gradient(circle at ${transform.glowX}% ${transform.glowY}%, rgba(255, 255, 255, ${glowOpacity * 0.5}), transparent)`,
+      opacity: transform.isHovered ? 0.6 : 0,
+      transition: 'opacity 0.5s ease-in-out'
+    }
     : {}
 
   const contentStyle: React.CSSProperties = enableParallax
     ? {
-        transform: `translateZ(${parallaxOffset}px)`,
-        transformStyle: 'preserve-3d'
-      }
+      transform: `translateZ(${parallaxOffset}px)`,
+      transformStyle: 'preserve-3d'
+    }
     : {}
 
   return (

@@ -305,7 +305,7 @@ const AppliedPromotions: React.FC<AppliedPromotionsProps> = ({ cartPromotions, o
   const activePromotions = cartPromotions.filter(
     (p) => !isPromotionExpired(p) && p.status === 'Reserved' && !p.isExpired
   )
-  const expiredPromotions = cartPromotions.filter((p) => isPromotionExpired(p) || p.isExpired)
+  // const expiredPromotions = cartPromotions.filter((p) => isPromotionExpired(p) || p.isExpired)
   const usedPromotions = cartPromotions.filter((p) => p.status === 'Used' && !isPromotionExpired(p) && !p.isExpired)
 
   // Only show non-expired promotions - this is what gets displayed

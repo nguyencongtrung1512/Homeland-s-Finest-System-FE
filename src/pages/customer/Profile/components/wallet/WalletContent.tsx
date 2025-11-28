@@ -22,6 +22,7 @@ import { getWalletBalance, getWalletTransactions, withdrawal, depositMoney } fro
 import type { WalletData, WalletTransactionDTO } from '../../../../../types/walletType'
 import { getTransactionTypeLabel, getTransactionStatusLabel } from '../../../../../types/walletType'
 import { toast } from '../../../../../utils/toast'
+import walletImage from '../../../../../assets/wallet.png'
 
 interface WalletContentProps {
   walletBalance?: number
@@ -352,22 +353,31 @@ export default function WalletContent({
 
       {/* Wallet Data Card với ThreeDCard */}
       <ThreeDCard maxRotation={5} glowOpacity={0.1} shadowBlur={20} className='w-full'>
-        <div className='p-8 text-white'>
+        {/* Background Image Layer */}
+        <div
+          className='absolute inset-0 rounded-2xl opacity-100 z-0'
+          style={{
+            backgroundImage: `url(${walletImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+          aria-hidden='true'
+        />
+
+        <div className='p-8 text-white relative z-10'>
           <div className='flex flex-col items-center justify-center space-y-6'>
+            {/* Available Balance */}
+            <div className='flex items-center gap-3'>
+              <div className='text-center'>
+                <div className='text-sm text-green-100/80 mb-1'>Số dư khả dụng: </div>
+                <div className='text-3xl font-bold text-white'>{walletBalance.toLocaleString('vi-VN')} VND</div>
+              </div>
+            </div>
             <div className='flex items-center gap-3 mb-2'>
-              <User className='w-6 h-6 text-green-100' />
               <h3 className='text-2xl font-semibold text-white'>
                 {customerName || walletData?.userEmail || 'Khách hàng'}
               </h3>
-            </div>
-
-            {/* Available Balance */}
-            <div className='flex items-center gap-3'>
-              <Wallet className='w-6 h-6 text-green-100' />
-              <div className='text-center'>
-                <div className='text-sm text-green-100/80 mb-1'>Số dư khả dụng</div>
-                <div className='text-3xl font-bold text-white'>{walletBalance.toLocaleString('vi-VN')} ₫</div>
-              </div>
             </div>
 
             {/* Total Withdrawn */}
@@ -409,7 +419,7 @@ export default function WalletContent({
         <Alert className='border-yellow-200 bg-yellow-50'>
           <AlertCircle className='h-4 w-4 text-yellow-600' />
           <AlertDescription className='text-yellow-800'>
-            <div className='flex items-center justify-between'>
+            <div className='flex items-center justify-between flex-col md:flex-row gap-4'>
               <div>
                 <p className='font-semibold mb-1'>Chưa có tài khoản ngân hàng</p>
                 <p className='text-sm'>
@@ -417,8 +427,9 @@ export default function WalletContent({
                   <span className='font-semibold'>Thông tin cá nhân</span> để có thể rút tiền.
                 </p>
               </div>
+
               {onUpdateProfile && (
-                <Button onClick={onUpdateProfile} className='ml-4 bg-yellow-600 hover:bg-yellow-700 text-white'>
+                <Button onClick={onUpdateProfile} variant='yellow'>
                   Cập nhật ngay
                 </Button>
               )}

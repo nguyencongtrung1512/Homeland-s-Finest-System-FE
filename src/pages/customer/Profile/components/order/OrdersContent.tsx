@@ -893,7 +893,7 @@ export default function OrdersContent({
       {selectedFilter === 'all' && (
         <div className='flex justify-between items-center mb-6'>
           <Input
-            placeholder='Tìm kiếm: Mã đơn hàng, mã GHN, tên cửa hàng, tổng tiền...'
+            placeholder='Tìm kiếm: Mã đơn hàng, mã GHN, tổng tiền...'
             value={searchQuery}
             onChange={handleSearchChange}
             className='w-full'
