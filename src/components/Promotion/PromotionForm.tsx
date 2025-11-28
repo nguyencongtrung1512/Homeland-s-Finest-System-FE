@@ -65,21 +65,6 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     }
   }
 
-  // Map frontend discountType format to API format
-  const mapDiscountTypeToAPI = (frontendDiscountType: DiscountType): string => {
-    switch (frontendDiscountType) {
-      case 'freeship':
-        return 'FreeShip'
-      case 'fixed_amount':
-        return 'FixedAmount'
-      case 'percentage':
-        return 'Percentage'
-      default:
-        console.warn('Unknown frontend discountType:', frontendDiscountType)
-        return 'Percentage'
-    }
-  }
-
   const [formData, setFormData] = useState<PromotionFormData>({
     type: 'Global',
     title: '',
@@ -263,7 +248,6 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     }
   }, [formData.type, userSearchTerm, loadUsers])
 
-
   const validateForm = (): boolean => {
     const newErrors: PromotionFormErrors = {}
 
@@ -363,19 +347,13 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       // Ensure maxPerUser is a number (validation ensures it's not undefined)
       submitData.maxPerUser = submitData.maxPerUser ?? 1
 
-      // Map discountType to API format
-      const apiData = {
-        ...submitData,
-        discountType: mapDiscountTypeToAPI(submitData.discountType) as DiscountType // Type assertion for API compatibility
-      }
-
-      // Note: Dates are sent with +7 hours added to match Vietnam timezone (UTC+7)
-      console.log('📝 Submitting form data:', apiData)
-      console.log('📝 Original frontend discountType:', submitData.discountType)
-      console.log('📝 Mapped API discountType:', apiData.discountType)
-      console.log('📝 Start Date (ISO with +7h):', apiData.startDate)
-      console.log('📝 End Date (ISO with +7h):', apiData.endDate)
-      onSubmit(apiData)
+      // Keep discountType in frontend format (snake_case)
+      // Mapping to API format will be done in the API layer
+      console.log('📝 Submitting form data:', submitData)
+      console.log('📝 DiscountType (frontend format):', submitData.discountType)
+      console.log('📝 Start Date (ISO with +7h):', submitData.startDate)
+      console.log('📝 End Date (ISO with +7h):', submitData.endDate)
+      onSubmit(submitData)
     }
   }
 

@@ -23,6 +23,33 @@ import {
 // ========================================
 
 /**
+ * Map frontend DiscountType format to backend API format for requests
+ * Backend expects snake_case format in requests (e.g., 'fixed_amount', 'freeship', 'percentage')
+ * This function handles both frontend format (snake_case) and response format (PascalCase)
+ */
+const mapDiscountTypeToBackend = (discountType: string): string => {
+  switch (discountType) {
+    // Frontend format (snake_case) - already correct
+    case 'freeship':
+      return 'freeship'
+    case 'fixed_amount':
+      return 'fixed_amount'
+    case 'percentage':
+      return 'percentage'
+    // Response format (PascalCase) - convert to request format (snake_case)
+    case 'FreeShip':
+      return 'freeship'
+    case 'FixedAmount':
+      return 'fixed_amount'
+    case 'Percentage':
+      return 'percentage'
+    default:
+      console.warn('Unknown discountType:', discountType, '- defaulting to percentage')
+      return 'percentage'
+  }
+}
+
+/**
  * Tạo promotion mới (Admin)
  */
 export const createPromotionAdmin = async (data: PromotionAdminRequest): Promise<ApiResponse<PromotionAdminDTO>> => {
@@ -32,7 +59,7 @@ export const createPromotionAdmin = async (data: PromotionAdminRequest): Promise
   formData.append('Type', data.type)
   formData.append('Title', data.title)
   formData.append('Description', data.description)
-  formData.append('DiscountType', data.discountType)
+  formData.append('DiscountType', mapDiscountTypeToBackend(data.discountType))
   formData.append('DiscountValue', data.discountValue.toString())
 
   if (data.minValueDiscount) {
@@ -81,7 +108,7 @@ export const updatePromotionAdmin = async (
   formData.append('Type', data.type)
   formData.append('Title', data.title)
   formData.append('Description', data.description)
-  formData.append('DiscountType', data.discountType)
+  formData.append('DiscountType', mapDiscountTypeToBackend(data.discountType))
   formData.append('DiscountValue', data.discountValue.toString())
 
   if (data.minValueDiscount) {
@@ -214,7 +241,7 @@ export const createPromotionSeller = async (data: PromotionSellerRequest): Promi
   formData.append('Type', 'Product') // Seller promotions are always Product type
   formData.append('Title', data.title)
   formData.append('Description', data.description)
-  formData.append('DiscountType', data.discountType)
+  formData.append('DiscountType', mapDiscountTypeToBackend(data.discountType))
   formData.append('DiscountValue', data.discountValue.toString())
   if (data.minValueDiscount) {
     formData.append('MinValueDiscount', data.minValueDiscount.toString())
@@ -258,7 +285,7 @@ export const updatePromotionSeller = async (
   formData.append('Type', 'Product') // Seller promotions are always Product type
   formData.append('Title', data.title)
   formData.append('Description', data.description)
-  formData.append('DiscountType', data.discountType)
+  formData.append('DiscountType', mapDiscountTypeToBackend(data.discountType))
   formData.append('DiscountValue', data.discountValue.toString())
   if (data.minValueDiscount) {
     formData.append('MinValueDiscount', data.minValueDiscount.toString())

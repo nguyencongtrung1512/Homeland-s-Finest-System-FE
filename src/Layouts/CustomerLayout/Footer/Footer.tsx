@@ -1,5 +1,7 @@
 import { Facebook, Instagram, Twitter } from 'lucide-react'
 import React from 'react'
+import { Link } from 'react-router-dom'
+import path from '../../../constants/path'
 
 // Interfaces
 interface FooterNavItem {
@@ -45,6 +47,11 @@ const FooterBrand: React.FC<FooterBrandProps> = ({ logo, brandName, tagline }) =
 
 // FooterNavColumn Component
 const FooterNavColumn: React.FC<FooterNavColumnProps> = ({ title, items }) => {
+  // Check if href is an internal route (starts with /)
+  const isInternalRoute = (href?: string) => {
+    return href && href.startsWith('/') && !href.startsWith('http')
+  }
+
   return (
     <nav className='flex flex-col grow w-full bg-lime-900 bg-opacity-0 max-md:mt-8'>
       <h3 className='self-start text-base text-white'>{title}</h3>
@@ -55,9 +62,15 @@ const FooterNavColumn: React.FC<FooterNavColumnProps> = ({ title, items }) => {
             className='flex flex-col justify-center items-start py-1 mt-2 first:mt-0 bg-lime-900 bg-opacity-0 max-md:pr-5'
           >
             {item.href ? (
-              <a href={item.href} className='hover:text-white transition-colors'>
-                {item.label}
-              </a>
+              isInternalRoute(item.href) ? (
+                <Link to={item.href} className='hover:text-white transition-colors'>
+                  {item.label}
+                </Link>
+              ) : (
+                <a href={item.href} className='hover:text-white transition-colors'>
+                  {item.label}
+                </a>
+              )
             ) : (
               <span>{item.label}</span>
             )}
@@ -76,12 +89,12 @@ const FooterSocial: React.FC<FooterSocialProps> = ({ title, socialIcons }) => {
       <div className='flex gap-4 pr-10 mt-5 bg-lime-900 bg-opacity-0 max-md:pr-3'>
         {socialIcons.map((icon, index) =>
           icon.href ? (
-            <a 
-              key={index} 
-              href={icon.href} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className='hover:opacity-80 transition-opacity cursor-pointer' 
+            <a
+              key={index}
+              href={icon.href}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='hover:opacity-80 transition-opacity cursor-pointer'
               aria-label={icon.alt}
             >
               {icon.src}
@@ -101,23 +114,23 @@ const FooterSocial: React.FC<FooterSocialProps> = ({ title, socialIcons }) => {
 const Footer: React.FC = () => {
   const productItems = [{ label: 'Nông sản' }, { label: 'Đặc sản' }, { label: 'Thủ công mỹ nghệ' }]
 
-  const supportItems = [{ label: 'Liên hệ' }, { label: 'Chính sách' }, { label: 'Hướng dẫn' }]
+  const supportItems = [{ label: 'Liên hệ' }, { label: 'Chính sách', href: path.portal }, { label: 'Hướng dẫn' }]
 
   const socialIcons = [
     {
-      src: <Facebook className="text-orange-300" />,
+      src: <Facebook className='text-orange-300' />,
       alt: 'Facebook',
       href: 'https://facebook.com/tinhhoaquenha',
       className: 'w-4 h-4'
     },
     {
-      src: <Instagram className="text-orange-300" />,
+      src: <Instagram className='text-orange-300' />,
       alt: 'Instagram',
       href: 'https://instagram.com/tinhhoaquenha',
       className: 'w-4 h-4'
     },
     {
-      src: <Twitter className="text-orange-300" />,
+      src: <Twitter className='text-orange-300' />,
       alt: 'Twitter',
       href: 'https://twitter.com/tinhhoaquenha',
       className: 'w-4 h-4'
