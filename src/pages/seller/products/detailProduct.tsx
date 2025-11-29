@@ -252,7 +252,7 @@ function DetailProductSeller() {
     }
   }
 
-  // Lấy tất cả variant cha (cấp 1) từ variantGroups
+  // Lấy tất cả nhóm tùy chọn để hiển thị
   const getParentVariants = (variantGroups: VariantGroup[]): VariantOption[] => {
     const result: VariantOption[] = []
     variantGroups.forEach((group) => {
@@ -261,12 +261,12 @@ function DetailProductSeller() {
     return result
   }
 
-  // Kiểm tra variant có phải là variant cha có con không
+  // Kiểm tra variant có phải là nhóm tùy chọn có con không
   const hasChildVariants = (variant: VariantOption): boolean => {
     return Array.isArray(variant.childVariantGroups) && variant.childVariantGroups.length > 0
   }
 
-  // Lấy tất cả variant con từ một variant cha
+  // Lấy tất cả phiên bản bán được từ một nhóm tùy chọn
   const getChildVariants = (variant: VariantOption): VariantOption[] => {
     if (!hasChildVariants(variant)) return []
     const result: VariantOption[] = []
@@ -730,7 +730,7 @@ function DetailProductSeller() {
     )
   }
 
-  // Lấy tất cả variant cha để hiển thị
+  // Lấy tất cả nhóm tùy chọn để hiển thị
   const parentVariants = product?.variantGroups ? getParentVariants(product.variantGroups) : []
 
   // Helper để lấy attributeType từ variantGroup dựa vào variant option
@@ -948,7 +948,7 @@ function DetailProductSeller() {
                         },
                         {
                           key: 'productVariant',
-                          label: 'Product variant (ít nhất 1 variant)',
+                          label: 'Tùy chọn sản phẩm (ít nhất 1 tùy chọn)',
                           completed: checklist.productVariant
                         },
                         {
@@ -1468,14 +1468,14 @@ function DetailProductSeller() {
                         className='bg-green-600 hover:bg-green-700 text-white'
                       >
                         <Plus className='w-4 h-4 mr-2' />
-                        Tạo Product Variant
+                        Thêm Tùy chọn sản phẩm
                       </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className='text-center py-8 text-gray-500'>
                       <Archive size={48} className='mx-auto mb-4 text-gray-400' />
-                      <p>Chưa có product variant. Hãy tạo product variant mới.</p>
+                      <p>Chưa có tùy chọn sản phẩm. Hãy thêm tùy chọn mới.</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -1506,7 +1506,7 @@ function DetailProductSeller() {
                         size='sm'
                       >
                         <Plus className='w-4 h-4 mr-2' />
-                        Thêm biến thể sản phẩm
+                        Thêm tùy chọn sản phẩm
                       </Button>
                     </div>
                   </CardHeader>
@@ -1525,10 +1525,10 @@ function DetailProductSeller() {
                             transition={{ duration: 0.4, delay: 0.9 + index * 0.1 }}
                             className='border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white'
                           >
-                            {/* Variant Cha Header */}
+                            {/* Nhóm Tùy chọn Header */}
                             <div className='mb-4 pb-4 border-b border-gray-200'>
                               <div className='flex items-center justify-between mb-4'>
-                                <h3 className='text-lg font-semibold text-gray-900'>Biến thể sản phẩm</h3>
+                                <h3 className='text-lg font-semibold text-gray-900'>Nhóm tùy chọn</h3>
                                 <Button
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -1567,7 +1567,7 @@ function DetailProductSeller() {
 
                                 {/* Variant Name */}
                                 <div className='space-y-2'>
-                                  <label className='text-sm font-medium text-gray-700'>Tên loại sản phẩm</label>
+                                  <label className='text-sm font-medium text-gray-700'>Tên nhóm tùy chọn</label>
                                   <div className='p-3 bg-gray-50 rounded-lg border'>
                                     <span className='text-gray-900 font-medium'>{parentVariant.name}</span>
                                   </div>
@@ -1609,7 +1609,7 @@ function DetailProductSeller() {
                                 </div>
                               )}
 
-                              {/* SKU Details - Chỉ hiển thị nếu KHÔNG có variant con */}
+                              {/* Thông tin Phiên bản bán được - Chỉ hiển thị nếu KHÔNG có phiên bản con */}
                               {!hasChildren && (
                                 <div className='mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
                                   {/* Price */}
@@ -1700,7 +1700,7 @@ function DetailProductSeller() {
                                 </div>
                               )}
 
-                              {/* Stock Status Indicator - Chỉ hiển thị nếu KHÔNG có variant con */}
+                              {/* Trạng thái Kho - Chỉ hiển thị nếu KHÔNG có phiên bản con */}
                               {!hasChildren && parentVariant.quantity !== null && (
                                 <div className='mt-4 pt-4 border-t border-gray-200'>
                                   <div className='flex items-center justify-between'>
@@ -1725,7 +1725,7 @@ function DetailProductSeller() {
                               )}
                             </div>
 
-                            {/* ChevronDown để expand/collapse variant con */}
+                            {/* Nút để mở/đóng phiên bản bán được */}
                             {hasChildren && childVariants.length > 0 && (
                               <div className='mt-4 pt-4 border-t border-gray-200'>
                                 <button
@@ -1733,7 +1733,7 @@ function DetailProductSeller() {
                                   className='w-full flex items-center justify-center gap-2 py-2 text-gray-600 hover:text-green-600 transition-colors cursor-pointer'
                                 >
                                   <span className='text-sm font-medium'>
-                                    {expandedVariants.has(parentVariant.id) ? 'Variant con' : 'Variant con'} (
+                                    {expandedVariants.has(parentVariant.id) ? 'Phiên bản bán được' : 'Phiên bản bán được'} (
                                     {childVariants.length})
                                   </span>
                                   <motion.div
@@ -1746,7 +1746,7 @@ function DetailProductSeller() {
                               </div>
                             )}
 
-                            {/* Variant Con - Hiển thị nếu có và đã expand */}
+                            {/* Phiên bản Bán được - Hiển thị nếu có và đã mở */}
                             <AnimatePresence>
                               {hasChildren && childVariants.length > 0 && expandedVariants.has(parentVariant.id) && (
                                 <motion.div
@@ -1766,7 +1766,7 @@ function DetailProductSeller() {
                                         className='border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors'
                                       >
                                         <div className='flex items-center justify-between mb-3'>
-                                          <h4 className='text-sm font-semibold text-gray-700'>Variant con</h4>
+                                          <h4 className='text-sm font-semibold text-gray-700'>Phiên bản bán được</h4>
                                           <Button
                                             onClick={() => {
                                               setEditingVariant(childVariant)
@@ -1784,7 +1784,7 @@ function DetailProductSeller() {
                                         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
                                           {/* Child Variant Name */}
                                           <div className='space-y-2'>
-                                            <label className='text-sm font-medium text-gray-700'>Tên variant con</label>
+                                            <label className='text-sm font-medium text-gray-700'>Tên phiên bản</label>
                                             <div className='p-2 bg-white rounded border'>
                                               <span className='text-gray-900 text-sm'>{childVariant.name}</span>
                                             </div>
@@ -1965,7 +1965,7 @@ function DetailProductSeller() {
                                 className='w-full'
                               >
                                 <Plus className='w-4 h-4 mr-2' />
-                                {hasChildren ? 'Thêm biến thể con' : 'Tạo biến thể con'}
+                                {hasChildren ? 'Thêm phiên bản bán được' : 'Tạo phiên bản bán được'}
                               </Button>
                             </div>
                           </motion.div>
@@ -2070,7 +2070,7 @@ function DetailProductSeller() {
         </Tabs>
       </motion.div>
 
-      {/* Modal Create Product Detail - Chỉ mở khi có thể chỉnh sửa */}
+      {/* Modal Tạo Sản phẩm chính - Chỉ mở khi có thể chỉnh sửa */}
       {canEditProductInfo() && (
         <ModalProductDetail
           open={showCreateDetailDialog}
@@ -2081,7 +2081,7 @@ function DetailProductSeller() {
         />
       )}
 
-      {/* Modal Create Product Variant */}
+      {/* Modal Tạo Tùy chọn Sản phẩm */}
       <ModalVariantProduct
         open={showCreateVariantDialog}
         onOpenChange={(open) => {

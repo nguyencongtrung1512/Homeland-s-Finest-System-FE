@@ -183,7 +183,7 @@ export default function ModalProductDetail({
       setIsSubmitting(true)
 
       if (!product) {
-        toast.error('Không tìm thấy thông tin sản phẩm gốc')
+        toast.error('Không tìm thấy thông tin sản phẩm liên quan')
         return
       }
 
@@ -253,7 +253,7 @@ export default function ModalProductDetail({
 
       // Accept both 200 (OK) and 201 (Created) status codes
       if ((response.status === 200 || response.status === 201) && response.data) {
-        toast.success(response.message || 'Tạo sản phẩm chi tiết thành công!')
+        toast.success(response.message || 'Tạo sản phẩm chính thành công!')
         onOpenChange(false)
         // Reset form
         setProductDetailData({
@@ -272,13 +272,13 @@ export default function ModalProductDetail({
         // Call success callback
         onSuccess()
       } else {
-        toast.error(response.message || 'Không thể tạo sản phẩm chi tiết')
+        toast.error(response.message || 'Không thể tạo sản phẩm chính')
       }
     } catch (error: unknown) {
       console.error('Error creating product detail:', error)
 
       // Extract error message from backend response
-      let errorMessage = 'Có lỗi xảy ra khi tạo sản phẩm chi tiết'
+      let errorMessage = 'Có lỗi xảy ra khi tạo sản phẩm chính'
 
       if (error && typeof error === 'object') {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -363,7 +363,7 @@ export default function ModalProductDetail({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
-          <DialogTitle>Tạo Product Detail</DialogTitle>
+          <DialogTitle>Tạo Sản phẩm chính</DialogTitle>
         </DialogHeader>
 
         <div className='space-y-6 mt-4'>
@@ -674,7 +674,7 @@ export default function ModalProductDetail({
                 Đang tạo...
               </>
             ) : (
-              'Tạo Product Detail'
+              'Tạo Sản phẩm chính'
             )}
           </Button>
         </DialogFooter>

@@ -110,7 +110,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
     }
   }, [open])
 
-  // Fetch product detail when dialog opens
+  // Lấy thông tin sản phẩm khi dialog mở
   useEffect(() => {
     const fetchProductDetail = async () => {
       if (open && product?.id) {
@@ -133,7 +133,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             toast.error('Không thể tải thông tin sản phẩm')
           }
         } catch (error) {
-          console.error('Error fetching product detail:', error)
+          console.error('Error fetching product:', error)
           toast.error('Có lỗi xảy ra khi tải thông tin sản phẩm')
         } finally {
           setLoadingProductDetail(false)
@@ -556,9 +556,8 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                   Mô tả sản phẩm <span className='text-red-500'>*</span>
                 </Label>
                 <span
-                  className={`text-xs ${
-                    countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'
-                  }`}
+                  className={`text-xs ${countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'
+                    }`}
                 >
                   {countWords(productData.description)} / {MAX_DESCRIPTION_WORDS} từ
                 </span>

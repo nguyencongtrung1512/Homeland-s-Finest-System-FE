@@ -15,7 +15,7 @@ interface ModalEditVariantProps {
   onOpenChange: (open: boolean) => void
   product: Product | null
   variant: VariantOption | null
-  parentVariant: VariantOption | null // Variant cha nếu đây là variant con
+  parentVariant: VariantOption | null // Nhóm tùy chọn nếu đây là phiên bản bán được
   onSuccess: () => void
 }
 
@@ -29,7 +29,7 @@ export default function ModalEditVariant({
 }: ModalEditVariantProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Xác định xem có phải variant cha không
+  // Xác định xem có phải nhóm tùy chọn không
   const isParentVariant = !parentVariant
 
   // Validation errors
@@ -198,7 +198,7 @@ export default function ModalEditVariant({
       const found = group.options.find((opt) => opt.id === variant.id)
       if (found) return group.attributeType
     }
-    // Nếu là variant con, lấy từ childVariantGroups của parent
+    // Nếu là phiên bản bán được, lấy từ childVariantGroups của nhóm tùy chọn
     if (parentVariant?.childVariantGroups) {
       for (const childGroup of parentVariant.childVariantGroups) {
         const found = childGroup.options.find((opt) => opt.id === variant.id)
@@ -357,7 +357,7 @@ export default function ModalEditVariant({
 
       // Validate
       if (!canEditFullFields) {
-        // Variant cha có variant con: chỉ validate tên & mô tả
+        // Nhóm tùy chọn có phiên bản con: chỉ kiểm tra tên & mô tả
         if (!variantData.attributeName.trim()) {
           toast.error('Vui lòng nhập tên thuộc tính')
           setAttributeNameError('Vui lòng nhập tên thuộc tính')
@@ -384,7 +384,7 @@ export default function ModalEditVariant({
           return
         }
       } else {
-        // Variant con hoặc variant cha chưa có con: validate đầy đủ
+        // Phiên bản bán được hoặc nhóm tùy chọn chưa có con: kiểm tra đầy đủ
         if (!variantData.attributeName.trim()) {
           toast.error('Vui lòng nhập tên thuộc tính')
           setAttributeNameError('Vui lòng nhập tên thuộc tính')
@@ -460,13 +460,13 @@ export default function ModalEditVariant({
       const updateData: UpdateVariantRequest = {}
 
       if (!canEditFullFields) {
-        // Variant cha có con: chỉ gửi attributeName và description
+        // Nhóm tùy chọn có con: chỉ gửi attributeName và description
         updateData.attributeName = variantData.attributeName
         if (variantData.description) {
           updateData.description = variantData.description
         }
       } else {
-        // Variant con hoặc variant cha chưa có con: gửi đầy đủ
+        // Phiên bản bán được hoặc nhóm tùy chọn chưa có con: gửi đầy đủ
         const attributeType = getAttributeTypeForVariant()
         if (attributeType) {
           updateData.attributeType = attributeType

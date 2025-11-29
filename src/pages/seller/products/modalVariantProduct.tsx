@@ -74,16 +74,16 @@ export default function ModalVariantProduct({
       .filter((word) => word.length > 0).length
   }
 
-  // Auto-set attributeType when dialog opens (chỉ khi variant cha đã có con)
+  // Tự động đặt attributeType khi dialog mở (chỉ khi nhóm tùy chọn đã có con)
   useEffect(() => {
     if (open) {
       // Find attributeType from existing variants
       let autoAttributeType = ''
 
       if (product?.variantGroups) {
-        // Case 1: Tạo variant con từ variant cha
+        // Trường hợp 1: Tạo phiên bản bán được từ nhóm tùy chọn
         if (selectedParentVariant) {
-          // Kiểm tra xem variant cha đã có con chưa
+          // Kiểm tra xem nhóm tùy chọn đã có con chưa
           const hasExistingChildren =
             selectedParentVariant.childVariantGroups &&
             Array.isArray(selectedParentVariant.childVariantGroups) &&
@@ -92,11 +92,11 @@ export default function ModalVariantProduct({
             selectedParentVariant.childVariantGroups[0].options.length > 0
 
           if (hasExistingChildren && selectedParentVariant.childVariantGroups) {
-            // Variant cha đã có con → auto-set attributeType theo con đầu tiên
+            // Nhóm tùy chọn đã có con → tự động đặt attributeType theo con đầu tiên
             const childGroups = selectedParentVariant.childVariantGroups
             autoAttributeType = childGroups[0].attributeType
           }
-          // Nếu variant cha chưa có con → không auto-set, cho phép nhập tự do
+          // Nếu nhóm tùy chọn chưa có con → không tự động đặt, cho phép nhập tự do
         }
         // Case 2: Tạo variant cấp 1 (không có parent variant)
         else if (product.variantGroups.length > 0 && product.variantGroups[0].options.length > 0) {
@@ -221,11 +221,11 @@ export default function ModalVariantProduct({
       return null
     }
 
-    // Tìm variant cha trong product.variantGroups
+    // Tìm nhóm tùy chọn trong product.variantGroups
     for (const group of product.variantGroups) {
       const foundVariant = group.options.find((option) => option.id === selectedParentVariant.id)
       if (foundVariant) {
-        // Trả về attributeType của VariantGroup chứa variant cha
+        // Trả về attributeType của VariantGroup chứa nhóm tùy chọn
         return group.attributeType
       }
     }
@@ -352,9 +352,9 @@ export default function ModalVariantProduct({
     }))
   }
 
-  // Validate attributeType không trùng với variant cha
+  // Kiểm tra attributeType không trùng với nhóm tùy chọn
   const validateAttributeType = (attributeType: string): boolean => {
-    // Chỉ validate khi tạo variant con (có selectedParentVariant)
+    // Chỉ kiểm tra khi tạo phiên bản bán được (có selectedParentVariant)
     if (!selectedParentVariant) {
       return true
     }
@@ -367,7 +367,7 @@ export default function ModalVariantProduct({
     // So sánh không phân biệt hoa thường
     if (attributeType.trim().toLowerCase() === parentAttributeType.trim().toLowerCase()) {
       setAttributeTypeError(
-        `Loại thuộc tính không được trùng với loại thuộc tính của biến thể cha (${parentAttributeType})`
+        `Loại thuộc tính không được trùng với loại thuộc tính của nhóm tùy chọn (${parentAttributeType})`
       )
       return false
     }
@@ -423,13 +423,13 @@ export default function ModalVariantProduct({
         return
       }
 
-      // Validate attributeType không trùng với variant cha
+      // Kiểm tra attributeType không trùng với nhóm tùy chọn
       if (selectedParentVariant && !validateAttributeType(variantData.attributeType)) {
-        toast.error(attributeTypeError || 'Loại thuộc tính không được trùng với loại thuộc tính của biến thể cha')
+        toast.error(attributeTypeError || 'Loại thuộc tính không được trùng với loại thuộc tính của nhóm tùy chọn')
         return
       }
 
-      // Validate price và quantity cho cả variant cha và variant con
+      // Kiểm tra giá và số lượng cho cả nhóm tùy chọn và phiên bản bán được
       if (variantData.price < 0) {
         toast.error('Giá gốc không được là số âm')
         return
@@ -492,7 +492,7 @@ export default function ModalVariantProduct({
         AttributeType: variantData.attributeType,
         Description: variantData.description || undefined,
         ProductImages: variantImages.length > 0 ? variantImages : undefined,
-        // Gửi đầy đủ SkuDetails cho cả variant cha và variant con
+        // Gửi đầy đủ thông tin SKU cho cả nhóm tùy chọn và phiên bản bán được
         SkuDetails: {
           Weight: variantData.weight > 0 ? variantData.weight : undefined,
           BasePrice: variantData.price,
@@ -629,7 +629,7 @@ export default function ModalVariantProduct({
                 {attributeTypeError && <p className='mt-1 text-sm text-red-500'>{attributeTypeError}</p>}
                 {selectedParentVariant && (
                   <p className='mt-1 text-xs text-gray-500'>
-                    Loại thuộc tính của biến thể cha:{' '}
+                    Loại thuộc tính của nhóm tùy chọn:{' '}
                     <span className='font-medium'>{getParentVariantAttributeType()}</span>
                   </p>
                 )}
@@ -669,7 +669,7 @@ export default function ModalVariantProduct({
                 {attributeTypeError && <p className='mt-1 text-sm text-red-500'>{attributeTypeError}</p>}
                 {selectedParentVariant && (
                   <p className='mt-1 text-xs text-gray-500'>
-                    Loại thuộc tính của biến thể cha:{' '}
+                    Loại thuộc tính của nhóm tùy chọn:{' '}
                     <span className='font-medium'>{getParentVariantAttributeType()}</span>
                   </p>
                 )}
@@ -699,7 +699,7 @@ export default function ModalVariantProduct({
               {attributeNameError && <p className='mt-1 text-sm text-red-500'>{attributeNameError}</p>}
             </div>
 
-            {/* Price - Hiển thị cho cả variant cha và variant con */}
+            {/* Giá - Hiển thị cho cả nhóm tùy chọn và phiên bản bán được */}
             <div>
               <Label htmlFor='variant-price' className='text-sm font-medium'>
                 Giá gốc (VNĐ) <span className='text-red-500'>*</span>
@@ -746,7 +746,7 @@ export default function ModalVariantProduct({
               {commissionError && <p className='mt-1 text-sm text-amber-600'>{commissionError}</p>}
             </div>
 
-            {/* Quantity - Hiển thị cho cả variant cha và variant con */}
+            {/* Số lượng - Hiển thị cho cả nhóm tùy chọn và phiên bản bán được */}
             <div>
               <Label htmlFor='variant-quantity' className='text-sm font-medium'>
                 Số lượng tồn kho <span className='text-red-500'>*</span>
@@ -794,7 +794,7 @@ export default function ModalVariantProduct({
             </div>
           </div>
 
-          {/* Dimensions - Hiển thị cho cả variant cha và variant con */}
+          {/* Kích thước - Hiển thị cho cả nhóm tùy chọn và phiên bản bán được */}
           <div className='space-y-4'>
             <div className='flex items-center justify-between mb-2'>
               <Label className='text-sm font-medium'>Kích thước (cm)</Label>

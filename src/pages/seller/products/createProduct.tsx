@@ -1017,7 +1017,7 @@ function CreateProduct() {
                       <div className='flex-1 min-w-0'>
                         <div className='flex items-center gap-2 mb-2'>
                           <Package className='w-4 h-4 text-green-600 flex-shrink-0' />
-                          <p className='text-sm font-semibold text-green-800'>Sản phẩm cha đã chọn:</p>
+                          <p className='text-sm font-semibold text-green-800'>Sản phẩm liên quan đã chọn:</p>
                         </div>
                         <p className='font-medium text-gray-900 mb-1'>
                           Sản phẩm liên quan: {selectedParentProduct.name}
