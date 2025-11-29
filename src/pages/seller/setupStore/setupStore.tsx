@@ -23,13 +23,21 @@ import {
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 import { useAuth } from '../../../contexts/auth.context'
-import { toast } from 'react-toastify'
+import { useStore } from '../../../contexts/store.context'
+import Loading from '../../../components/Loading/loading'
+import { toast } from '../../../utils/toast'
 
 function SetupStore() {
   const { user } = useAuth()
+  const { refreshStore } = useStore()
   const [isEditMode, setIsEditMode] = useState(false)
+  const [isEditingCover, setIsEditingCover] = useState(false)
+  const [isEditingLogo, setIsEditingLogo] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingCover, setSavingCover] = useState(false)
+  const [savingLogo, setSavingLogo] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [storeData, setStoreData] = useState<StoreResponse | null>(null)
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImages, setPreviewImages] = useState<string[]>([])
@@ -150,6 +158,157 @@ function SetupStore() {
     setOriginalData(storeData)
   }
 
+  const handleEditCover = () => {
+    setIsEditingCover(true)
+    setCoverFile(null)
+    if (coverFileRef.current) coverFileRef.current.value = ''
+  }
+
+  const handleEditLogo = () => {
+    setIsEditingLogo(true)
+    setLogoFile(null)
+    if (logoFileRef.current) logoFileRef.current.value = ''
+  }
+
+  const handleCancelEditCover = () => {
+    setIsEditingCover(false)
+    setCoverFile(null)
+    if (coverFileRef.current) coverFileRef.current.value = ''
+  }
+
+  const handleCancelEditLogo = () => {
+    setIsEditingLogo(false)
+    setLogoFile(null)
+    if (logoFileRef.current) logoFileRef.current.value = ''
+  }
+
+  // Helper function to create base FormData
+  const createBaseFormData = () => {
+    if (!storeData) return null
+
+    const formData = new FormData()
+
+    // Add basic store information
+    formData.append('StoreName', storeData.storeName || '')
+    formData.append('Address', storeData.address || '')
+    formData.append('Province', storeData.province || '')
+    formData.append('District', storeData.district || '')
+    formData.append('Ward', storeData.ward || '')
+    if (storeData.provinceId !== null && storeData.provinceId !== undefined) {
+      formData.append('ProvinceId', storeData.provinceId.toString())
+    }
+    if (storeData.districtId !== null && storeData.districtId !== undefined) {
+      formData.append('DistrictId', storeData.districtId.toString())
+    }
+    if (storeData.wardId !== null && storeData.wardId !== undefined) {
+      formData.append('WardId', storeData.wardId.toString())
+    }
+    formData.append('Description', storeData.description || '')
+
+    // Add existing URLs
+    if (storeData.logoUrl) {
+      formData.append('ExistingLogoUrl', storeData.logoUrl)
+    }
+    if (storeData.coverImageUrl) {
+      formData.append('ExistingCoverImageUrl', storeData.coverImageUrl)
+    }
+
+    // Add existing vendor application image URLs
+    existingVendorAppUrls.forEach((url) => {
+      formData.append('ExistingVendorApplicationImageUrls', url)
+    })
+
+    return formData
+  }
+
+  const handleSaveCover = async () => {
+    if (!user?.userId || !storeData || !coverFile) return
+
+    try {
+      setSavingCover(true)
+
+      const formData = createBaseFormData()
+      if (!formData) return
+
+      // Add new cover file
+      formData.append('NewCoverImageFile', coverFile)
+
+      // Call API
+      const response = await storeApi.updateStoreBySeller(user.userId, formData)
+
+      if (response.status === 202) {
+        toast.success('Cập nhật ảnh bìa thành công')
+
+        // Reset file state
+        setCoverFile(null)
+        if (coverFileRef.current) coverFileRef.current.value = ''
+        setIsEditingCover(false)
+
+        // Show loading and refresh data
+        setRefreshing(true)
+        try {
+          await refreshStore()
+          await fetchStoreData()
+        } catch (error) {
+          console.error('Error refreshing store data:', error)
+        } finally {
+          setRefreshing(false)
+        }
+      } else {
+        toast.error('Có lỗi xảy ra khi cập nhật ảnh bìa')
+      }
+    } catch (error) {
+      console.error('Error updating cover image:', error)
+      toast.error('Có lỗi xảy ra khi cập nhật ảnh bìa')
+    } finally {
+      setSavingCover(false)
+    }
+  }
+
+  const handleSaveLogo = async () => {
+    if (!user?.userId || !storeData || !logoFile) return
+
+    try {
+      setSavingLogo(true)
+
+      const formData = createBaseFormData()
+      if (!formData) return
+
+      // Add new logo file
+      formData.append('NewLogoFile', logoFile)
+
+      // Call API
+      const response = await storeApi.updateStoreBySeller(user.userId, formData)
+
+      if (response.status === 202) {
+        toast.success('Cập nhật logo thành công')
+
+        // Reset file state
+        setLogoFile(null)
+        if (logoFileRef.current) logoFileRef.current.value = ''
+        setIsEditingLogo(false)
+
+        // Show loading and refresh data
+        setRefreshing(true)
+        try {
+          await refreshStore()
+          await fetchStoreData()
+        } catch (error) {
+          console.error('Error refreshing store data:', error)
+        } finally {
+          setRefreshing(false)
+        }
+      } else {
+        toast.error('Có lỗi xảy ra khi cập nhật logo')
+      }
+    } catch (error) {
+      console.error('Error updating logo:', error)
+      toast.error('Có lỗi xảy ra khi cập nhật logo')
+    } finally {
+      setSavingLogo(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!user?.userId || !storeData) return
 
@@ -206,12 +365,6 @@ function SetupStore() {
       if (response.status === 202) {
         toast.success('Cập nhật thông tin cửa hàng thành công')
 
-        // Update local state with new data
-        if (response.data) {
-          setStoreData(response.data)
-          setOriginalData(response.data)
-        }
-
         // Reset file states
         setLogoFile(null)
         setCoverFile(null)
@@ -223,6 +376,19 @@ function SetupStore() {
         if (vendorAppFileRef.current) vendorAppFileRef.current.value = ''
 
         setIsEditMode(false)
+
+        // Show loading and refresh data
+        setRefreshing(true)
+        try {
+          // Refresh store context
+          await refreshStore()
+          // Refresh local store data
+          await fetchStoreData()
+        } catch (error) {
+          console.error('Error refreshing store data:', error)
+        } finally {
+          setRefreshing(false)
+        }
       } else {
         toast.error('Có lỗi xảy ra khi cập nhật thông tin cửa hàng')
       }
@@ -324,6 +490,9 @@ function SetupStore() {
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-100 py-10 px-4'>
+      {refreshing && (
+        <Loading size='lg' text='Đang làm mới dữ liệu...' fullScreen={true} />
+      )}
       {loading ? (
         <div className='flex items-center justify-center min-h-[60vh]'>
           <div className='text-center'>
@@ -346,12 +515,25 @@ function SetupStore() {
           {/* Hero Section with Cover Image and Logo */}
           <div className='relative'>
             {/* Cover Image */}
-            <div className='rounded-3xl border border-gray-100 overflow-hidden shadow-xl bg-gradient-to-r from-emerald-50 to-white'>
+            <div className='relative rounded-3xl border border-gray-100 overflow-hidden shadow-xl bg-gradient-to-r from-emerald-50 to-white'>
               {storeData.coverImageUrl ? (
                 <img src={storeData.coverImageUrl} alt='Store Cover' className='w-full h-64 md:h-80 object-cover' />
               ) : (
                 <div className='w-full h-64 md:h-80 flex items-center justify-center text-gray-400 gap-3 bg-gradient-to-br from-emerald-50 to-white'>
                   <ImageIcon className='w-16 h-16' />
+                </div>
+              )}
+              {/* Edit Cover Button */}
+              {!isEditingCover && (
+                <div className='absolute top-4 right-4'>
+                  <Button
+                    onClick={handleEditCover}
+                    size='sm'
+                    className='bg-white/90 hover:bg-white text-gray-700 shadow-lg'
+                  >
+                    <Edit3 className='w-4 h-4 mr-2' />
+                    Chỉnh sửa ảnh bìa
+                  </Button>
                 </div>
               )}
             </div>
@@ -367,14 +549,26 @@ function SetupStore() {
                     <ImageIcon className='w-16 h-16 text-emerald-400' />
                   )}
                 </div>
+                {/* Edit Logo Button */}
+                {!isEditingLogo && (
+                  <div className='absolute -bottom-2 right-0 transform -translate-x-1/2'>
+                    <Button
+                      onClick={handleEditLogo}
+                      size='sm'
+                      className='bg-white/90 hover:bg-white text-gray-700 shadow-lg whitespace-nowrap'
+                    >
+                      <Edit3 className='w-4 h-4 mr-2' />
+                    </Button>
+                  </div>
+                )}
                 {/* Status Badge */}
-                {!isEditMode && (
+                {/* {!isEditMode && !isEditingLogo && (
                   <div
                     className={`${statusDisplay.classes} absolute -bottom-3 -right-3 text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap shadow-lg`}
                   >
                     {statusDisplay.label}
                   </div>
-                )}
+                )} */}
               </div>
 
               {/* Store Name and Edit Button */}
@@ -417,6 +611,129 @@ function SetupStore() {
               )
             })}
           </div>
+
+          {/* Cover Image Edit Section */}
+          {isEditingCover && (
+            <Card className='border-none shadow-2xl backdrop-blur-sm bg-white/95 rounded-3xl'>
+              <CardContent className='p-8'>
+                <div className='space-y-4'>
+                  <div className='flex items-center justify-between'>
+                    <h3 className='text-lg font-semibold text-gray-900'>Chỉnh sửa ảnh bìa cửa hàng</h3>
+                    <span className='text-sm text-gray-500'>Khuyến nghị: 1200x400px, PNG/JPG, tối đa 5MB.</span>
+                  </div>
+                  <div className='border-2 border-dashed border-gray-300 rounded-3xl p-10 text-center hover:border-emerald-300 transition-all bg-gray-50'>
+                    <div className='flex flex-col items-center gap-4'>
+                      <ImageIcon className='w-16 h-16 text-gray-300' />
+                      <Button
+                        onClick={handleCoverUpload}
+                        className='bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-5'
+                      >
+                        <Upload className='w-4 h-4 mr-2' />
+                        {coverFile ? 'Thay đổi ảnh bìa' : 'Tải lên ảnh bìa'}
+                      </Button>
+                      {coverFile && (
+                        <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700'>
+                          File đã chọn: {coverFile.name}
+                        </div>
+                      )}
+                      <input
+                        ref={coverFileRef}
+                        type='file'
+                        accept='image/*'
+                        onChange={handleCoverFileChange}
+                        className='hidden'
+                      />
+                    </div>
+                  </div>
+                  <div className='flex gap-3 justify-end'>
+                    <Button onClick={handleCancelEditCover} variant='outline' disabled={savingCover}>
+                      <X className='w-4 h-4 mr-2' />
+                      Hủy
+                    </Button>
+                    <Button
+                      onClick={handleSaveCover}
+                      className='bg-green-600 hover:bg-green-700 text-white'
+                      disabled={!coverFile || savingCover}
+                    >
+                      {savingCover ? (
+                        <>
+                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                          Đang lưu...
+                        </>
+                      ) : (
+                        <>
+                          <Check className='w-4 h-4 mr-2' />
+                          Lưu thay đổi
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Logo Edit Section */}
+          {isEditingLogo && (
+            <Card className='border-none shadow-2xl backdrop-blur-sm bg-white/95 rounded-3xl'>
+              <CardContent className='p-8'>
+                <div className='space-y-4'>
+                  <div className='flex items-center justify-between'>
+                    <h3 className='text-lg font-semibold text-gray-900'>Chỉnh sửa logo cửa hàng</h3>
+                    <span className='text-sm text-gray-500'>Khuyến nghị: 200x200px, PNG/JPG, tối đa 5MB.</span>
+                  </div>
+                  <div className='border-2 border-dashed border-gray-300 rounded-3xl p-10 text-center hover:border-emerald-300 transition-all bg-gray-50'>
+                    <div className='flex flex-col items-center gap-4'>
+                      <ImageIcon className='w-16 h-16 text-gray-300' />
+                      <Button
+                        onClick={handleLogoUpload}
+                        className='bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-5'
+                      >
+                        <Upload className='w-4 h-4 mr-2' />
+                        {logoFile ? 'Thay đổi Logo' : 'Tải lên Logo'}
+                      </Button>
+                      {logoFile && (
+                        <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700'>
+                          File đã chọn: {logoFile.name}
+                        </div>
+                      )}
+                      <input
+                        ref={logoFileRef}
+                        type='file'
+                        accept='image/*'
+                        onChange={handleLogoFileChange}
+                        className='hidden'
+                      />
+                    </div>
+                  </div>
+                  <div className='flex gap-3 justify-end'>
+                    <Button onClick={handleCancelEditLogo} variant='outline' disabled={savingLogo}>
+                      <X className='w-4 h-4 mr-2' />
+                      Hủy
+                    </Button>
+                    <Button
+                      onClick={handleSaveLogo}
+                      className='bg-green-600 hover:bg-green-700 text-white'
+                      disabled={!logoFile || savingLogo}
+                    >
+                      {savingLogo ? (
+                        <>
+                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                          Đang lưu...
+                        </>
+                      ) : (
+                        <>
+                          <Check className='w-4 h-4 mr-2' />
+                          Lưu thay đổi
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className='border-none shadow-2xl backdrop-blur-sm bg-white/95 rounded-3xl'>
             <CardContent className='p-8 space-y-10'>
               {/* Admin Note Alert - Show when admin made final decision */}
@@ -447,72 +764,6 @@ function SetupStore() {
                 </div>
               )}
 
-              {/* Edit Mode: Cover and Logo Upload Section */}
-              {isEditMode && (
-                <section className='space-y-6'>
-                  <div className='space-y-4'>
-                    <div className='flex items-center justify-between'>
-                      <h3 className='text-lg font-semibold text-gray-900'>Ảnh bìa cửa hàng</h3>
-                      <span className='text-sm text-gray-500'>Khuyến nghị: 1200x400px, PNG/JPG, tối đa 5MB.</span>
-                    </div>
-                    <div className='border-2 border-dashed border-gray-300 rounded-3xl p-10 text-center hover:border-emerald-300 transition-all bg-gray-50'>
-                      <div className='flex flex-col items-center gap-4'>
-                        <ImageIcon className='w-16 h-16 text-gray-300' />
-                        <Button
-                          onClick={handleCoverUpload}
-                          className='bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-5'
-                        >
-                          <Upload className='w-4 h-4 mr-2' />
-                          {coverFile ? 'Thay đổi ảnh bìa' : 'Tải lên ảnh bìa'}
-                        </Button>
-                        {coverFile && (
-                          <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700'>
-                            File đã chọn: {coverFile.name}
-                          </div>
-                        )}
-                        <input
-                          ref={coverFileRef}
-                          type='file'
-                          accept='image/*'
-                          onChange={handleCoverFileChange}
-                          className='hidden'
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className='space-y-4'>
-                    <div className='flex items-center justify-between'>
-                      <h3 className='text-lg font-semibold text-gray-900'>Logo cửa hàng</h3>
-                      <span className='text-sm text-gray-500'>Khuyến nghị: 200x200px, PNG/JPG, tối đa 5MB.</span>
-                    </div>
-                    <div className='border-2 border-dashed border-gray-300 rounded-3xl p-10 text-center hover:border-emerald-300 transition-all bg-gray-50'>
-                      <div className='flex flex-col items-center gap-4'>
-                        <ImageIcon className='w-16 h-16 text-gray-300' />
-                        <Button
-                          onClick={handleLogoUpload}
-                          className='bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-5'
-                        >
-                          <Upload className='w-4 h-4 mr-2' />
-                          {logoFile ? 'Thay đổi Logo' : 'Tải lên Logo'}
-                        </Button>
-                        {logoFile && (
-                          <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700'>
-                            File đã chọn: {logoFile.name}
-                          </div>
-                        )}
-                        <input
-                          ref={logoFileRef}
-                          type='file'
-                          accept='image/*'
-                          onChange={handleLogoFileChange}
-                          className='hidden'
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              )}
 
               <section className='grid gap-10 lg:grid-cols-2'>
                 <div className='space-y-6'>
@@ -693,7 +944,7 @@ function SetupStore() {
                         </p>
                       </div>
                       <div className='p-4 bg-pink-50 rounded-2xl border border-pink-100'>
-                        <p className='text-xs text-gray-500 uppercase tracking-wider font-semibold'>Số CMND/CCCD</p>
+                        <p className='text-xs text-gray-500 uppercase tracking-wider font-semibold'>Số CCCD</p>
                         <p className='text-sm font-medium text-gray-900 mt-2'>
                           {storeData.sellerInfo.identifyCard || '---'}
                         </p>
@@ -708,21 +959,23 @@ function SetupStore() {
                         <FileText className='w-5 h-5 text-emerald-600' />
                         Giấy phép kinh doanh
                       </h4>
-                      <div
-                        className='relative group cursor-pointer overflow-hidden rounded-2xl shadow-md border-2 border-gray-100 hover:border-emerald-300 transition-all w-full'
-                        onClick={() => {
-                          setPreviewImages([storeData.sellerInfo.businessLicense || ''])
-                          setPreviewInitialIndex(0)
-                          setImagePreviewOpen(true)
-                        }}
-                      >
-                        <img
-                          src={storeData.sellerInfo.businessLicense}
-                          alt='Giấy phép kinh doanh'
-                          className='w-full h-80 object-cover group-hover:scale-105 transition-transform'
-                        />
-                        <div className='absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all'>
-                          <Eye className='w-6 h-6 text-white' />
+                      <div className='flex justify-center'>
+                        <div
+                          className='relative group cursor-pointer overflow-hidden rounded-2xl shadow-md border-2 border-gray-100 hover:border-emerald-300 transition-all max-w-full'
+                          onClick={() => {
+                            setPreviewImages([storeData.sellerInfo.businessLicense || ''])
+                            setPreviewInitialIndex(0)
+                            setImagePreviewOpen(true)
+                          }}
+                        >
+                          <img
+                            src={storeData.sellerInfo.businessLicense}
+                            alt='Giấy phép kinh doanh'
+                            className='max-w-full h-auto max-h-[600px] object-contain group-hover:scale-105 transition-transform'
+                          />
+                          <div className='absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all'>
+                            <Eye className='w-6 h-6 text-white' />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -733,60 +986,64 @@ function SetupStore() {
                     <div className='space-y-4 pt-6 border-t border-gray-100'>
                       <h4 className='font-semibold text-gray-900 flex items-center gap-2'>
                         <FileText className='w-5 h-5 text-blue-600' />
-                        Chứng chỉ nhân dân
+                        Ảnh Căn cước
                       </h4>
                       <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                         {storeData.sellerInfo.identifyFrontImage && (
-                          <div
-                            className='relative group cursor-pointer overflow-hidden rounded-2xl shadow-md border-2 border-gray-100 hover:border-emerald-300 transition-all'
-                            onClick={() => {
-                              const docs = [storeData.sellerInfo.identifyFrontImage || '']
-                              if (storeData.sellerInfo.identifyBackImage) {
-                                docs.push(storeData.sellerInfo.identifyBackImage)
-                              }
-                              setPreviewImages(docs)
-                              setPreviewInitialIndex(0)
-                              setImagePreviewOpen(true)
-                            }}
-                          >
-                            <img
-                              src={storeData.sellerInfo.identifyFrontImage}
-                              alt='CMND Mặt trước'
-                              className='w-full h-48 object-cover group-hover:scale-105 transition-transform'
-                            />
-                            <div className='absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all'>
-                              <Eye className='w-6 h-6 text-white' />
+                          <div className='flex justify-center'>
+                            <div
+                              className='relative group cursor-pointer overflow-hidden rounded-2xl shadow-md border-2 border-gray-100 hover:border-emerald-300 transition-all max-w-full'
+                              onClick={() => {
+                                const docs = [storeData.sellerInfo.identifyFrontImage || '']
+                                if (storeData.sellerInfo.identifyBackImage) {
+                                  docs.push(storeData.sellerInfo.identifyBackImage)
+                                }
+                                setPreviewImages(docs)
+                                setPreviewInitialIndex(0)
+                                setImagePreviewOpen(true)
+                              }}
+                            >
+                              <img
+                                src={storeData.sellerInfo.identifyFrontImage}
+                                alt='CCCD Mặt trước'
+                                className='max-w-full h-auto max-h-[400px] object-contain group-hover:scale-105 transition-transform'
+                              />
+                              <div className='absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all'>
+                                <Eye className='w-6 h-6 text-white' />
+                              </div>
+                              <p className='absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 text-center font-medium'>
+                                Mặt trước
+                              </p>
                             </div>
-                            <p className='absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 text-center font-medium'>
-                              Mặt trước
-                            </p>
                           </div>
                         )}
                         {storeData.sellerInfo.identifyBackImage && (
-                          <div
-                            className='relative group cursor-pointer overflow-hidden rounded-2xl shadow-md border-2 border-gray-100 hover:border-emerald-300 transition-all'
-                            onClick={() => {
-                              const docs = []
-                              if (storeData.sellerInfo.identifyFrontImage) {
-                                docs.push(storeData.sellerInfo.identifyFrontImage)
-                              }
-                              docs.push(storeData.sellerInfo.identifyBackImage || '')
-                              setPreviewImages(docs)
-                              setPreviewInitialIndex(docs.length - 1)
-                              setImagePreviewOpen(true)
-                            }}
-                          >
-                            <img
-                              src={storeData.sellerInfo.identifyBackImage}
-                              alt='CMND Mặt sau'
-                              className='w-full h-48 object-cover group-hover:scale-105 transition-transform'
-                            />
-                            <div className='absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all'>
-                              <Eye className='w-6 h-6 text-white' />
+                          <div className='flex justify-center'>
+                            <div
+                              className='relative group cursor-pointer overflow-hidden rounded-2xl shadow-md border-2 border-gray-100 hover:border-emerald-300 transition-all max-w-full'
+                              onClick={() => {
+                                const docs = []
+                                if (storeData.sellerInfo.identifyFrontImage) {
+                                  docs.push(storeData.sellerInfo.identifyFrontImage)
+                                }
+                                docs.push(storeData.sellerInfo.identifyBackImage || '')
+                                setPreviewImages(docs)
+                                setPreviewInitialIndex(docs.length - 1)
+                                setImagePreviewOpen(true)
+                              }}
+                            >
+                              <img
+                                src={storeData.sellerInfo.identifyBackImage}
+                                alt='CCCD Mặt sau'
+                                className='max-w-full h-auto max-h-[400px] object-contain group-hover:scale-105 transition-transform'
+                              />
+                              <div className='absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all'>
+                                <Eye className='w-6 h-6 text-white' />
+                              </div>
+                              <p className='absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 text-center font-medium'>
+                                Mặt sau
+                              </p>
                             </div>
-                            <p className='absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 text-center font-medium'>
-                              Mặt sau
-                            </p>
                           </div>
                         )}
                       </div>

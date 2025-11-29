@@ -756,7 +756,7 @@ function SellerManagement() {
                     </div>
                     <div className='space-y-3'>
                       <div>
-                        <label className='text-sm font-medium text-gray-500'>CMND/CCCD</label>
+                        <label className='text-sm font-medium text-gray-500'>CCCD</label>
                         <p className='font-mono text-sm'>{selectedSeller.identifyCard}</p>
                       </div>
                       <div>

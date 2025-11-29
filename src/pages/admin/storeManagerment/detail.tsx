@@ -658,7 +658,7 @@ function StoreDetailAdmin() {
                         </div>
 
                         <div>
-                          <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh CMND/CCCD:</p>
+                          <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh CCCD:</p>
                           <div className='flex gap-4'>
                             <div className='text-center'>
                               <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
@@ -671,7 +671,7 @@ function StoreDetailAdmin() {
                                       ? store.sellerInfo.identifyFrontImage
                                       : DEFAULT_STORE_LOGO
                                   }
-                                  alt='Mặt trước CMND'
+                                  alt='Mặt trước CCCD'
                                   className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
                                   style={{ display: 'block', minHeight: '100%' }}
                                   onError={(e) => {
@@ -705,7 +705,7 @@ function StoreDetailAdmin() {
                                       ? store.sellerInfo.identifyBackImage
                                       : DEFAULT_STORE_LOGO
                                   }
-                                  alt='Mặt sau CMND'
+                                  alt='Mặt sau CCCD'
                                   className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
                                   style={{ display: 'block', minHeight: '100%' }}
                                   onError={(e) => {
@@ -755,18 +755,18 @@ function StoreDetailAdmin() {
                           </div>
                           <div className='flex items-center gap-2 text-sm text-gray-600'>
                             <IdCard className='w-4 h-4' />
-                            <span>Chưa có thông tin CMND/CCCD</span>
+                            <span>Chưa có thông tin CCCD</span>
                           </div>
                         </div>
 
                         <div>
-                          <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh CMND/CCCD:</p>
+                          <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh CCCD:</p>
                           <div className='flex gap-4'>
                             <div className='text-center'>
                               <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
                                 <img
                                   src={DEFAULT_STORE_LOGO}
-                                  alt='Mặt trước CMND'
+                                  alt='Mặt trước CCCD'
                                   className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
                                   style={{ display: 'block', minHeight: '100%' }}
                                   onError={(e) => {
@@ -784,7 +784,7 @@ function StoreDetailAdmin() {
                               <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
                                 <img
                                   src={DEFAULT_STORE_LOGO}
-                                  alt='Mặt sau CMND'
+                                  alt='Mặt sau CCCD'
                                   className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
                                   style={{ display: 'block', minHeight: '100%' }}
                                   onError={(e) => {

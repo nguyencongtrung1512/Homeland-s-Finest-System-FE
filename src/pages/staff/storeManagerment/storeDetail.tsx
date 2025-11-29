@@ -375,7 +375,7 @@ function StaffStoreDetail() {
               </div>
 
               <div className='mt-6'>
-                <p className='text-sm font-medium text-gray-700 mb-4'>Ảnh CMND/CCCD</p>
+                <p className='text-sm font-medium text-gray-700 mb-4'>Ảnh CCCD</p>
                 <div className='grid grid-cols-2 gap-4'>
                   <div>
                     <p className='text-sm font-medium text-gray-600 mb-2'>Mặt trước</p>
@@ -386,7 +386,7 @@ function StaffStoreDetail() {
                       >
                         <img
                           src={store.sellerInfo.identifyFrontImage}
-                          alt='CMND mặt trước'
+                          alt='CCCD mặt trước'
                           className='w-full h-48 object-cover rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow'
                         />
                       </div>
@@ -408,7 +408,7 @@ function StaffStoreDetail() {
                       >
                         <img
                           src={store.sellerInfo.identifyBackImage}
-                          alt='CMND mặt sau'
+                          alt='CCCD mặt sau'
                           className='w-full h-48 object-cover rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow'
                         />
                       </div>

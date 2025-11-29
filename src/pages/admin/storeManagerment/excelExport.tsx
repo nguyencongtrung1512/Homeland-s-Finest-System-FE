@@ -72,14 +72,14 @@ export const exportStoreToExcel = (store: StoreResponse) => {
         ['Họ và tên:', `${store.sellerInfo.userInfo.firstName} ${store.sellerInfo.userInfo.lastName}`],
         ['Email:', store.sellerInfo.userInfo.email || 'Chưa có thông tin'],
         ['Số điện thoại:', store.sellerInfo.userInfo.phoneNumber || 'Chưa có thông tin'],
-        ['CMND/CCCD:', store.sellerInfo.identifyCard || 'Chưa có thông tin']
+        ['CCCD:', store.sellerInfo.identifyCard || 'Chưa có thông tin']
       )
     } else {
       storeInfo.push(
         ['Họ và tên:', 'Chưa có thông tin'],
         ['Email:', 'Chưa có thông tin'],
         ['Số điện thoại:', 'Chưa có thông tin'],
-        ['CMND/CCCD:', 'Chưa có thông tin']
+        ['CCCD:', 'Chưa có thông tin']
       )
     }
 
