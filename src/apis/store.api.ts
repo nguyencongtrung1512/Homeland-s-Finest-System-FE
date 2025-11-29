@@ -16,11 +16,9 @@ export interface StoreResponse {
   logoUrl: string | null
   coverImageUrl: string | null
   status:
-  | 'ReviewedByStaff'
   | 'Approved'
   | 'Pending'
   | 'Rejected'
-  | 'Active'
   | 'Inactive'
   | 'Processing'
   | 'ApprovedByStaff'

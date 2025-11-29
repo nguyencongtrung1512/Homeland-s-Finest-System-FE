@@ -15,7 +15,7 @@ const StoreContext = createContext<StoreContextType>({
   loading: false,
   error: null,
   isStoreApproved: false,
-  refreshStore: async () => {}
+  refreshStore: async () => { }
 })
 
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
@@ -25,7 +25,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null)
 
   // Kiểm tra xem store đã được duyệt chưa
-  const isStoreApproved = store?.status === 'Approved' || store?.status === 'Active'
+  // Chỉ khi status là 'Approved' hoặc 'Active' thì store mới được coi là đã duyệt
+  // Các status trung gian như 'ApprovedByStaff', 'ReviewedByStaff', 'Processing', 'Pending' đều chưa được duyệt hoàn toàn
+  const isStoreApproved = store?.status === 'Approved'
 
   const fetchStore = async () => {
     if (!user?.userId) return
@@ -33,9 +35,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true)
       setError(null)
-      
+
       const response = await storeApi.getStoreBySellerId(user.userId)
-      
+
       if (response.status === 200 && response.data) {
         setStore(response.data)
       } else {

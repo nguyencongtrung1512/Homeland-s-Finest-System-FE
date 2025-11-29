@@ -140,7 +140,9 @@ function Dashboard() {
       <div className='space-y-6'>
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Trang tổng quan</h1>
-          <p className='text-gray-600 mt-2'>Chào mừng đến với Tinh Hoa Quê Nhà!</p>
+          {store.status !== 'ApprovedByStaff' && (
+            <p className='text-gray-600 mt-2'>Chào mừng đến với Tinh Hoa Quê Nhà!</p>
+          )}
         </div>
         <StoreStatusNotice />
       </div>

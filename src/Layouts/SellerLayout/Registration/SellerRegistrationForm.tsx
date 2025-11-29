@@ -1770,7 +1770,7 @@ function SellerRegistrationForm() {
                   <button
                     type='button'
                     onClick={() => {
-                      window.open('/policy', '_blank')
+                      window.open('/portal', '_blank')
                       setHasOpenedTermsPage(true)
                     }}
                     className='text-green-600 hover:text-green-700 underline font-medium'

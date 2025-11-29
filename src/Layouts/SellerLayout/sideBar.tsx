@@ -70,15 +70,6 @@ function SideBar() {
       icon: <Store size={18} />
     },
     {
-      key: path.myStorySeller,
-      label: 'Câu chuyện',
-      icon: (
-        <AnimatedIcon animationType='bounce'>
-          <BookOpen size={18} />
-        </AnimatedIcon>
-      )
-    },
-    {
       key: path.helpSeller,
       label: 'Trung tâm trợ giúp',
       icon: (
@@ -196,7 +187,24 @@ function SideBar() {
     }
   ]
 
-  const menuItems = isStoreApproved ? approvedMenuItems : pendingMenuItems
+  // Menu item for Story - only shown when status is Inactive
+  const storyMenuItem = {
+    key: path.myStorySeller,
+    label: 'Câu chuyện',
+    icon: (
+      <AnimatedIcon animationType='bounce'>
+        <BookOpen size={18} />
+      </AnimatedIcon>
+    )
+  }
+
+  // Build menu items based on approval status and store status
+  let menuItems = isStoreApproved ? approvedMenuItems : pendingMenuItems
+
+  // Only show Story menu when store status is Inactive
+  if (store?.status === 'Inactive') {
+    menuItems = [...menuItems, storyMenuItem]
+  }
 
   const handleMenuClick = ({ key }: { key: string }) => {
     const fullPath = key.startsWith('/') ? key : `${path.BASE_SELLER}/${key}`

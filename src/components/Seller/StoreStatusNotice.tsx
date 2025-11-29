@@ -37,7 +37,11 @@ function Steps({ current, status = 'process', items }: StepsProps) {
                 <div
                   className={cn(
                     'absolute top-5 left-[50%] w-full h-0.5 -z-10',
-                    isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                    isCompleted && status === 'error' && index + 1 === current
+                      ? 'bg-red-500'
+                      : isCompleted
+                        ? 'bg-green-500'
+                        : 'bg-gray-300'
                   )}
                   style={{ width: 'calc(100% - 2rem)' }}
                 />
@@ -47,13 +51,15 @@ function Steps({ current, status = 'process', items }: StepsProps) {
               <div
                 className={cn(
                   'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all mb-2 bg-white z-10',
-                  isCompleted && 'bg-green-500 border-green-500 text-white',
+                  isCompleted && !isError && 'bg-green-500 border-green-500 text-white',
                   isCurrent && !isError && 'border-blue-500 bg-blue-50 text-blue-500',
                   isError && 'border-red-500 bg-red-50 text-red-500',
                   isWait && 'border-gray-300 bg-white text-gray-400'
                 )}
               >
-                {isCompleted ? (
+                {isError ? (
+                  <XCircle size={20} className='text-red-500' />
+                ) : isCompleted ? (
                   <CheckCircle size={20} />
                 ) : (
                   <div className='flex items-center justify-center'>{item.icon}</div>
@@ -117,12 +123,12 @@ function StoreStatusNotice() {
           color: 'processing',
           step: 1
         }
-      case 'ReviewedByStaff':
+      case 'ApprovedByStaff':
         return {
-          icon: <CheckCircle className='text-green-500' size={24} />,
-          title: 'Đã được nhân viên xem xét',
-          description: 'Hồ sơ đã được nhân viên phê duyệt và chuyển lên admin để duyệt cuối cùng.',
-          color: 'success',
+          icon: <CheckCircle className='text-blue-500' size={24} />,
+          title: 'Đang được xử lý',
+          description: 'Nhân viên đã phê duyệt hồ sơ cửa hàng của bạn. Hồ sơ đang chờ admin phê duyệt cuối cùng.',
+          color: 'processing',
           step: 2
         }
       case 'Rejected':
@@ -131,7 +137,15 @@ function StoreStatusNotice() {
           title: 'Hồ sơ bị từ chối',
           description: 'Hồ sơ cửa hàng không đáp ứng yêu cầu. Vui lòng cập nhật và gửi lại.',
           color: 'error',
-          step: -1
+          step: 3
+        }
+      case 'RejectedByStaff':
+        return {
+          icon: <XCircle className='text-red-500' size={24} />,
+          title: 'Hồ sơ bị từ chối',
+          description: 'Nhân viên đã từ chối hồ sơ cửa hàng của bạn. Vui lòng kiểm tra lý do và cập nhật lại thông tin.',
+          color: 'error',
+          step: 2
         }
       case 'Inactive':
         return {
@@ -139,7 +153,7 @@ function StoreStatusNotice() {
           title: 'Cửa hàng bị tạm khóa',
           description: 'Cửa hàng của bạn đã bị tạm khóa. Liên hệ admin để biết thêm chi tiết.',
           color: 'error',
-          step: -1
+          step: 0
         }
       default:
         return null
@@ -149,6 +163,7 @@ function StoreStatusNotice() {
   const statusInfo = getStatusInfo()
   if (!statusInfo) return null
 
+  // Create steps array with dynamic content based on status
   const steps: StepItem[] = [
     {
       title: 'Gửi hồ sơ',
@@ -161,14 +176,14 @@ function StoreStatusNotice() {
       icon: <AlertCircle size={16} />
     },
     {
-      title: 'Duyệt bởi nhân viên',
-      description: 'Nhân viên phê duyệt hồ sơ',
-      icon: <CheckCircle size={16} />
+      title: store.status === 'RejectedByStaff' ? 'Từ chối bởi nhân viên' : 'Duyệt bởi nhân viên',
+      description: store.status === 'RejectedByStaff' ? 'Nhân viên từ chối hồ sơ' : 'Nhân viên phê duyệt hồ sơ',
+      icon: store.status === 'RejectedByStaff' ? <XCircle size={16} /> : <CheckCircle size={16} />
     },
     {
-      title: 'Phê duyệt cuối cùng',
-      description: 'Admin phê duyệt và kích hoạt',
-      icon: <CheckCircle size={16} />
+      title: store.status === 'Rejected' ? 'Từ chối hồ sơ' : 'Phê duyệt cuối cùng',
+      description: store.status === 'Rejected' ? 'Admin từ chối hồ sơ' : 'Admin phê duyệt và kích hoạt',
+      icon: store.status === 'Rejected' ? <XCircle size={16} /> : <CheckCircle size={16} />
     }
   ]
 
@@ -216,7 +231,7 @@ function StoreStatusNotice() {
                 <Button variant='green' onClick={() => navigate(`${path.BASE_SELLER}/${path.setupStoreSeller}`)}>
                   Xem thông tin cửa hàng
                 </Button>
-                {store.status === 'Rejected' && (
+                {(store.status === 'Rejected' || store.status === 'RejectedByStaff') && (
                   <Button variant='outline' onClick={() => navigate(`${path.BASE_SELLER}/${path.setupStoreSeller}`)}>
                     Cập nhật hồ sơ
                   </Button>
@@ -228,13 +243,17 @@ function StoreStatusNotice() {
       </Card>
 
       {/* Progress Steps */}
-      {statusInfo.step >= 0 && (
+      {statusInfo.step !== -1 && statusInfo.step >= 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Tiến trình phê duyệt</CardTitle>
           </CardHeader>
           <CardContent>
-            <Steps current={statusInfo.step} status={store.status === 'Rejected' ? 'error' : 'process'} items={steps} />
+            <Steps
+              current={statusInfo.step}
+              status={store.status === 'Rejected' || store.status === 'RejectedByStaff' ? 'error' : 'process'}
+              items={steps}
+            />
 
             {/* Additional Info */}
             <div className='mt-6 p-4 bg-blue-50 rounded-lg'>
@@ -251,14 +270,28 @@ function StoreStatusNotice() {
       )}
 
       {/* Rejection Details */}
-      {store.status === 'Rejected' && store.adminNote && (
+      {store.status === 'RejectedByStaff' && (
         <Card className='border-l-4 border-l-red-400'>
           <CardHeader>
             <CardTitle>Lý do từ chối</CardTitle>
           </CardHeader>
           <CardContent>
             <div className='bg-red-50 p-4 rounded-lg'>
-              <p className='text-red-800'>{store.adminNote}</p>
+              <p className='text-red-800'>{store.staffNotes || 'Không có lý do được cung cấp.'}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Rejection Details */}
+      {store.status === 'Rejected' && (
+        <Card className='border-l-4 border-l-red-400'>
+          <CardHeader>
+            <CardTitle>Lý do từ chối</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='bg-red-50 p-4 rounded-lg'>
+              <p className='text-red-800'>{store.adminNote || 'Không có lý do được cung cấp.'}</p>
             </div>
           </CardContent>
         </Card>

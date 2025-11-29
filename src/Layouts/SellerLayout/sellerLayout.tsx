@@ -200,11 +200,11 @@ function SellerLayout() {
           message: 'Cửa hàng đang được xử lý',
           description: 'Nhân viên đang xem xét hồ sơ cửa hàng của bạn. Vui lòng chờ thông báo kết quả.'
         }
-      case 'ReviewedByStaff':
+      case 'ApprovedByStaff':
         return {
           type: 'info' as const,
-          message: 'Cửa hàng đã được nhân viên xem xét',
-          description: 'Hồ sơ cửa hàng đã được nhân viên xem xét và chuyển lên admin để phê duyệt cuối cùng.'
+          message: 'Cửa hàng đang được xử lý',
+          description: 'Nhân viên đã phê duyệt hồ sơ cửa hàng của bạn. Hồ sơ đang chờ phê duyệt cuối cùng.'
         }
       case 'Rejected':
         return {
@@ -212,11 +212,17 @@ function SellerLayout() {
           message: 'Cửa hàng bị từ chối',
           description: 'Hồ sơ cửa hàng của bạn không được phê duyệt. Vui lòng kiểm tra lý do và cập nhật lại thông tin.'
         }
+      case 'RejectedByStaff':
+        return {
+          type: 'error' as const,
+          message: 'Cửa hàng bị từ chối',
+          description: 'Nhân viên đã từ chối hồ sơ cửa hàng của bạn. Vui lòng kiểm tra lý do và cập nhật lại thông tin.'
+        }
       case 'Inactive':
         return {
           type: 'error' as const,
           message: 'Cửa hàng bị tạm khóa',
-          description: 'Cửa hàng của bạn đã bị tạm khóa. Vui lòng liên hệ admin để biết thêm chi tiết.'
+          description: 'Cửa hàng của bạn đã bị tạm khóa. Vui lòng liên hệ hệ thống để biết thêm chi tiết.'
         }
       default:
         return null
