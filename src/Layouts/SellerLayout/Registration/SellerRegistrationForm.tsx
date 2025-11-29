@@ -8,7 +8,7 @@ import { Checkbox } from '../../../components/ui/checkbox'
 import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-import { ChevronDownIcon, Eye, EyeOff, Loader2, MapPinIcon } from 'lucide-react'
+import { ChevronDownIcon, Eye, EyeOff, Loader2, MapPinIcon, CheckCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { Upload as AntUpload, message } from 'antd'
@@ -19,7 +19,7 @@ import { path } from '../../../constants/path'
 import { registerSeller } from '../../../apis/auth.api'
 import { getProvinces, getDistricts, getWards, type Province, type District, type Ward } from '../../../apis/province'
 import Loading from '../../../components/Loading/loading'
-import { extractCCCDInfo, type ExtractedCCCDInfo } from '../../../apis/fptai.api'
+import { extractCCCDInfo, extractCCCDBackInfo, type ExtractedCCCDInfo, type ExtractedCCCDBackInfo } from '../../../apis/fptai.api'
 import { getBanks, verifyBankAccount, type Bank } from '../../../apis/user.api'
 import ComboBox from '../../../components/ui/combo-box'
 
@@ -143,6 +143,148 @@ const FileUploadFieldWithOCR = ({
       } catch (error) {
         console.error('OCR Error:', error)
         toast.error('Lỗi khi đọc thông tin từ CCCD. Vui lòng thử lại hoặc nhập thủ công.')
+      } finally {
+        setIsProcessingOCR(false)
+      }
+    }
+  }
+
+  const beforeUpload = (file: File) => {
+    const isImage = file.type.startsWith('image/')
+    if (!isImage) {
+      message.error('Chỉ được upload file ảnh!')
+      return false
+    }
+
+    const isLt10M = file.size / 1024 / 1024 < 10
+    if (!isLt10M) {
+      message.error('Kích thước file phải nhỏ hơn 10MB!')
+      return false
+    }
+
+    return false
+  }
+
+  const handlePreview = async (file: UploadFile) => {
+    if (!file.url && !file.preview) {
+      file.preview = await getBase64(file.originFileObj as File)
+    }
+    setPreviewImage(file.url || file.preview || '')
+    setShowPreview(true)
+  }
+
+  const getBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = (error) => reject(error)
+    })
+  }
+
+  const uploadButton = (
+    <div className='flex w-full h-full flex-col items-center justify-center space-y-2 p-4 cursor-pointer hover:bg-gray-100 rounded-lg'>
+      {isProcessingOCR ? (
+        <>
+          <Loader2 className='h-6 w-6 animate-spin text-blue-500' />
+          <div className='text-sm text-blue-600'>Đang xử lý OCR...</div>
+        </>
+      ) : (
+        <>
+          <div className='text-sm text-gray-600'>Nhấp để chọn file</div>
+          <div className='text-xs text-gray-500'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ chọn 1 file'}</div>
+        </>
+      )}
+    </div>
+  )
+
+  return (
+    <div className='space-y-2'>
+      <Label className='text-sm font-medium'>
+        {label} {required && <span className='text-red-500'>*</span>}
+      </Label>
+      {description && <p className='text-xs text-gray-500'>{description}</p>}
+
+      <AntUpload
+        listType='picture-card'
+        fileList={fileList}
+        onChange={handleChange}
+        beforeUpload={beforeUpload}
+        onPreview={handlePreview}
+        multiple={multiple}
+        maxCount={maxCount}
+        accept={accept}
+        disabled={isProcessingOCR}
+        showUploadList={{
+          showPreviewIcon: true,
+          showRemoveIcon: !isProcessingOCR,
+          showDownloadIcon: false
+        }}
+        className='w-full'
+      >
+        {fileList.length >= maxCount ? null : uploadButton}
+      </AntUpload>
+
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className='max-w-4xl max-h-4xl'>
+          <DialogHeader>
+            <DialogTitle>Preview ảnh</DialogTitle>
+          </DialogHeader>
+          <div className='flex justify-center'>
+            <img src={previewImage} alt='Preview' className='max-w-full max-h-96 object-contain rounded-lg' />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+const FileUploadFieldWithBackOCR = ({
+  label,
+  onChange,
+  onOCRData,
+  accept = 'image/*',
+  required = false,
+  multiple = false,
+  description,
+  maxCount = 1,
+  enableOCR = false
+}: {
+  label: string
+  onChange: (files: File[]) => void
+  onOCRData?: (data: ExtractedCCCDBackInfo) => void
+  accept?: string
+  required?: boolean
+  multiple?: boolean
+  description?: string
+  maxCount?: number
+  enableOCR?: boolean
+}) => {
+  const [fileList, setFileList] = useState<UploadFile[]>([])
+  const [previewImage, setPreviewImage] = useState<string>('')
+  const [showPreview, setShowPreview] = useState(false)
+  const [isProcessingOCR, setIsProcessingOCR] = useState(false)
+
+  const handleChange: UploadProps['onChange'] = async ({ fileList: newFileList }) => {
+    setFileList(newFileList)
+    const newFiles = newFileList.filter((file) => file.originFileObj).map((file) => file.originFileObj as File)
+    onChange(newFiles)
+
+    if (enableOCR && newFiles.length > 0 && onOCRData) {
+      const file = newFiles[0]
+      setIsProcessingOCR(true)
+
+      try {
+        const ocrResult = await extractCCCDBackInfo(file)
+
+        if (ocrResult) {
+          onOCRData(ocrResult)
+        } else {
+          toast.warning('Không thể đọc thông tin từ ảnh. Vui lòng nhập thủ công.')
+        }
+      } catch (error) {
+        console.error('OCR Error:', error)
+        toast.error('Lỗi khi đọc thông tin từ mặt sau CCCD. Vui lòng thử lại hoặc nhập thủ công.')
       } finally {
         setIsProcessingOCR(false)
       }
@@ -416,6 +558,23 @@ function SellerRegistrationForm() {
   const [isVerifyingAccount, setIsVerifyingAccount] = useState(false)
   const [accountOwnerName, setAccountOwnerName] = useState<string | null>(null)
   const [accountVerificationError, setAccountVerificationError] = useState<string | null>(null)
+
+  // State cho ngày cấp từ mặt sau CCCD
+  const [issueDate, setIssueDate] = useState<string>('')
+  const [issueLocation, setIssueLocation] = useState<string>('')
+
+  // ===== Xử lý dữ liệu từ OCR mặt sau =====
+  const handleOCRBackData = async (backData: ExtractedCCCDBackInfo) => {
+    console.log('OCR Back Data received:', {
+      issueDate: backData.issueDate,
+      issueLocation: backData.issueLocation
+    })
+
+    setIssueDate(backData.issueDate)
+    setIssueLocation(backData.issueLocation)
+
+    toast.success('Đã đọc thông tin ngày cấp từ mặt sau CCCD thành công!')
+  }
 
   // ===== Xử lý dữ liệu từ OCR =====
   const handleOCRData = async (ocrData: ExtractedCCCDInfo) => {
@@ -1065,11 +1224,13 @@ function SellerRegistrationForm() {
                   maxCount={1}
                 />
 
-                <FileUploadField
+                <FileUploadFieldWithBackOCR
                   label='Mặt sau CCCD'
                   onChange={(files) => handleFileChange('identifyBackImage', files)}
+                  onOCRData={handleOCRBackData}
+                  enableOCR={true}
                   required
-                  description='File ảnh rõ nét, đầy đủ 4 góc, định dạng JPG/PNG'
+                  description='File ảnh rõ nét, đầy đủ 4 góc, định dạng JPG/PNG. Hệ thống sẽ tự động đọc ngày cấp.'
                   maxCount={1}
                 />
               </div>
@@ -1343,15 +1504,180 @@ function SellerRegistrationForm() {
                 {errors.dateOfBirth && <p className='text-sm text-red-500'>{errors.dateOfBirth}</p>}
               </div>
             </div>
-
-
           </div>
 
-          {/* Thông tin cửa hàng */}
+          {/* Thông tin seller */}
           <div className='space-y-6'>
             <div className='flex items-center space-x-3 border-b border-gray-200 pb-3'>
               <div className='w-8 h-8 bg-green-100 rounded-full flex items-center justify-center'>
                 <span className='text-green-600 font-semibold'>2</span>
+              </div>
+              <div>
+                <h2 className='text-xl font-semibold text-gray-900'>Thông tin người bán</h2>
+                <p className='text-sm text-gray-500'>Thông tin kinh doanh và ngân hàng</p>
+              </div>
+            </div>
+
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+              <div className='space-y-2'>
+                <Label htmlFor='businessName'>
+                  Tên doanh nghiệp <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  id='businessName'
+                  value={formData.businessName}
+                  onChange={(e) => handleInputChange('businessName', e.target.value)}
+                  placeholder='Tên doanh nghiệp/công ty'
+                />
+                {errors.businessName && <p className='text-sm text-red-500'>{errors.businessName}</p>}
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='taxCode'>
+                  Mã số thuế <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  id='taxCode'
+                  value={formData.taxCode}
+                  onChange={(e) => handleInputChange('taxCode', e.target.value)}
+                  placeholder='Mã số thuế doanh nghiệp'
+                />
+                {errors.taxCode && <p className='text-sm text-red-500'>{errors.taxCode}</p>}
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='bankName'>
+                  Tên ngân hàng <span className='text-red-500'>*</span>
+                </Label>
+                <ComboBox
+                  options={banks}
+                  placeholder={isLoadingBanks ? 'Đang tải danh sách ngân hàng...' : 'Chọn ngân hàng'}
+                  disabled={isLoadingBanks}
+                  value={selectedBank ? selectedBank.id.toString() : ''}
+                  onSelect={(bank) => {
+                    if (bank) {
+                      setSelectedBank(bank)
+                      handleInputChange('bankName', bank.name)
+                      // Reset verification when bank changes
+                      setAccountOwnerName(null)
+                      setAccountVerificationError(null)
+                    } else {
+                      setSelectedBank(null)
+                      handleInputChange('bankName', '')
+                      setAccountOwnerName(null)
+                      setAccountVerificationError(null)
+                    }
+                  }}
+                  getOptionLabel={(bank) => bank.name}
+                  getOptionValue={(bank) => bank.id.toString()}
+                  renderOption={(bank) => (
+                    <div className='flex items-center gap-3'>
+                      {bank.logo && (
+                        <img
+                          src={bank.logo}
+                          alt={bank.name}
+                          className='w-15 h-15 object-contain rounded'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                      )}
+                      <span className='flex-1'>{bank.name}</span>
+                    </div>
+                  )}
+                  filterFunction={(bank, searchValue) =>
+                    bank.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+                    bank.shortName.toLowerCase().includes(searchValue.toLowerCase())
+                  }
+                />
+                {errors.bankName && <p className='text-sm text-red-500'>{errors.bankName}</p>}
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='bankAccount'>
+                  Số tài khoản ngân hàng <span className='text-red-500'>*</span>
+                </Label>
+                <div className='flex gap-2'>
+                  <Input
+                    id='bankAccount'
+                    value={formData.bankAccount}
+                    onChange={(e) => {
+                      handleInputChange('bankAccount', e.target.value)
+                      // Reset verification when account number changes
+                      setAccountOwnerName(null)
+                      setAccountVerificationError(null)
+                    }}
+                    placeholder='Số tài khoản ngân hàng'
+                    className='flex-1'
+                  />
+                  <Button
+                    type='button'
+                    variant='yellow'
+                    onClick={handleVerifyBankAccount}
+                    disabled={!selectedBank || !formData.bankAccount || isVerifyingAccount}
+                  >
+                    {isVerifyingAccount ? 'Đang kiểm tra...' : 'Kiểm tra'}
+                  </Button>
+                </div>
+                {accountOwnerName && (
+                  <div className='p-3 bg-green-50 border border-green-200 rounded-lg'>
+                    <p className='text-sm text-green-800'>
+                      <span className='font-semibold'>✓ Tài khoản hợp lệ</span>
+                      <br />
+                      <span className='text-xs'>Chủ tài khoản: {accountOwnerName}</span>
+                    </p>
+                  </div>
+                )}
+                {accountVerificationError && (
+                  <div className='p-3 bg-red-50 border border-red-200 rounded-lg'>
+                    <p className='text-sm text-red-800'>
+                      <span className='font-semibold'>✗ {accountVerificationError}</span>
+                    </p>
+                  </div>
+                )}
+                {errors.bankAccount && <p className='text-sm text-red-500'>{errors.bankAccount}</p>}
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='identifyCard'>
+                  Số CCCD <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  id='identifyCard'
+                  value={formData.identifyCard}
+                  onChange={(e) => handleInputChange('identifyCard', e.target.value)}
+                  placeholder='Số căn cước công dân'
+                />
+                {errors.identifyCard && <p className='text-sm text-red-500'>{errors.identifyCard}</p>}
+              </div>
+            </div>
+
+            {/* Ngày cấp CCCD - tự động điền từ mặt sau */}
+            {issueDate && (
+              <div className='space-y-2'>
+                <Label>Ngày cấp CCCD</Label>
+                <div className='p-3 bg-green-50 border border-green-200 rounded-lg'>
+                  <div className='flex items-center gap-2 mb-2'>
+                    <p className='text-sm font-medium text-green-900'>Đã đọc từ mặt sau CCCD</p>
+                  </div>
+                  <p className='text-sm text-gray-700'>
+                    Ngày cấp: <span className='font-semibold'>{format(new Date(issueDate), 'dd/MM/yyyy', { locale: vi })}</span>
+                  </p>
+                  {issueLocation && (
+                    <p className='text-sm text-gray-700 mt-1'>
+                      Nơi cấp: <span className='font-semibold'>{issueLocation}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Thông tin cửa hàng */}
+          <div className='space-y-6'>
+            <div className='flex items-center space-x-3 border-b border-gray-200 pb-3'>
+              <div className='w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center'>
+                <span className='text-orange-600 font-semibold'>3</span>
               </div>
               <div>
                 <h2 className='text-xl font-semibold text-gray-900'>Thông tin cửa hàng</h2>
@@ -1511,153 +1837,7 @@ function SellerRegistrationForm() {
             </div>
           </div>
 
-          {/* Thông tin seller */}
-          <div className='space-y-6'>
-            <div className='flex items-center space-x-3 border-b border-gray-200 pb-3'>
-              <div className='w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center'>
-                <span className='text-yellow-600 font-semibold'>3</span>
-              </div>
-              <div>
-                <h2 className='text-xl font-semibold text-gray-900'>Thông tin seller</h2>
-                <p className='text-sm text-gray-500'>Thông tin kinh doanh và ngân hàng</p>
-              </div>
-            </div>
 
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-              <div className='space-y-2'>
-                <Label htmlFor='businessName'>
-                  Tên doanh nghiệp <span className='text-red-500'>*</span>
-                </Label>
-                <Input
-                  id='businessName'
-                  value={formData.businessName}
-                  onChange={(e) => handleInputChange('businessName', e.target.value)}
-                  placeholder='Tên doanh nghiệp/công ty'
-                />
-                {errors.businessName && <p className='text-sm text-red-500'>{errors.businessName}</p>}
-              </div>
-
-              <div className='space-y-2'>
-                <Label htmlFor='taxCode'>
-                  Mã số thuế <span className='text-red-500'>*</span>
-                </Label>
-                <Input
-                  id='taxCode'
-                  value={formData.taxCode}
-                  onChange={(e) => handleInputChange('taxCode', e.target.value)}
-                  placeholder='Mã số thuế doanh nghiệp'
-                />
-                {errors.taxCode && <p className='text-sm text-red-500'>{errors.taxCode}</p>}
-              </div>
-
-              <div className='space-y-2'>
-                <Label htmlFor='bankName'>
-                  Tên ngân hàng <span className='text-red-500'>*</span>
-                </Label>
-                <ComboBox
-                  options={banks}
-                  placeholder={isLoadingBanks ? 'Đang tải danh sách ngân hàng...' : 'Chọn ngân hàng'}
-                  disabled={isLoadingBanks}
-                  value={selectedBank ? selectedBank.id.toString() : ''}
-                  onSelect={(bank) => {
-                    if (bank) {
-                      setSelectedBank(bank)
-                      handleInputChange('bankName', bank.name)
-                      // Reset verification when bank changes
-                      setAccountOwnerName(null)
-                      setAccountVerificationError(null)
-                    } else {
-                      setSelectedBank(null)
-                      handleInputChange('bankName', '')
-                      setAccountOwnerName(null)
-                      setAccountVerificationError(null)
-                    }
-                  }}
-                  getOptionLabel={(bank) => bank.name}
-                  getOptionValue={(bank) => bank.id.toString()}
-                  renderOption={(bank) => (
-                    <div className='flex items-center gap-3'>
-                      {bank.logo && (
-                        <img
-                          src={bank.logo}
-                          alt={bank.name}
-                          className='w-15 h-15 object-contain rounded'
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.style.display = 'none'
-                          }}
-                        />
-                      )}
-                      <span className='flex-1'>{bank.name}</span>
-                    </div>
-                  )}
-                  filterFunction={(bank, searchValue) =>
-                    bank.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-                    bank.shortName.toLowerCase().includes(searchValue.toLowerCase())
-                  }
-                />
-                {errors.bankName && <p className='text-sm text-red-500'>{errors.bankName}</p>}
-              </div>
-
-              <div className='space-y-2'>
-                <Label htmlFor='bankAccount'>
-                  Số tài khoản ngân hàng <span className='text-red-500'>*</span>
-                </Label>
-                <div className='flex gap-2'>
-                  <Input
-                    id='bankAccount'
-                    value={formData.bankAccount}
-                    onChange={(e) => {
-                      handleInputChange('bankAccount', e.target.value)
-                      // Reset verification when account number changes
-                      setAccountOwnerName(null)
-                      setAccountVerificationError(null)
-                    }}
-                    placeholder='Số tài khoản ngân hàng'
-                    className='flex-1'
-                  />
-                  <Button
-                    type='button'
-                    variant='yellow'
-                    onClick={handleVerifyBankAccount}
-                    disabled={!selectedBank || !formData.bankAccount || isVerifyingAccount}
-                  >
-                    {isVerifyingAccount ? 'Đang kiểm tra...' : 'Kiểm tra'}
-                  </Button>
-                </div>
-                {accountOwnerName && (
-                  <div className='p-3 bg-green-50 border border-green-200 rounded-lg'>
-                    <p className='text-sm text-green-800'>
-                      <span className='font-semibold'>✓ Tài khoản hợp lệ</span>
-                      <br />
-                      <span className='text-xs'>Chủ tài khoản: {accountOwnerName}</span>
-                    </p>
-                  </div>
-                )}
-                {accountVerificationError && (
-                  <div className='p-3 bg-red-50 border border-red-200 rounded-lg'>
-                    <p className='text-sm text-red-800'>
-                      <span className='font-semibold'>✗ {accountVerificationError}</span>
-                    </p>
-                  </div>
-                )}
-                {errors.bankAccount && <p className='text-sm text-red-500'>{errors.bankAccount}</p>}
-              </div>
-
-              <div className='space-y-2'>
-                <Label htmlFor='identifyCard'>
-                  Số CCCD <span className='text-red-500'>*</span>
-                </Label>
-                <Input
-                  id='identifyCard'
-                  value={formData.identifyCard}
-                  onChange={(e) => handleInputChange('identifyCard', e.target.value)}
-                  placeholder='Số căn cước công dân'
-                />
-                {errors.identifyCard && <p className='text-sm text-red-500'>{errors.identifyCard}</p>}
-              </div>
-            </div>
-          </div>
 
           {/* Giấy tờ và chứng nhận */}
           <div className='space-y-6'>

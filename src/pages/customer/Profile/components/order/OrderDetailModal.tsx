@@ -229,7 +229,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       Paid: 'Đã giao hàng thành công',
       Exception: 'Gặp sự cố',
       Damaged: 'Hàng hư hỏng',
-      Lost: 'Thất lạc'
+      Lost: 'Thất lạc',
+      Cancel: 'Đã hủy đơn hàng',
     }
     return statusTextMap[status] || status
   }
@@ -410,7 +411,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
 
                               <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
                             </div>
-
                           </div>
                         ))}
                       </div>
@@ -465,10 +465,11 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                             <h4 className='font-semibold text-gray-900 text-sm'>{promotion.title}</h4>
                             <Badge
                               variant='outline'
-                              className={`text-xs ${promotion.promotionType === 'Product'
-                                ? 'border-blue-200 text-blue-700 bg-blue-50'
-                                : 'border-purple-200 text-purple-700 bg-purple-50'
-                                }`}
+                              className={`text-xs ${
+                                promotion.promotionType === 'Product'
+                                  ? 'border-blue-200 text-blue-700 bg-blue-50'
+                                  : 'border-purple-200 text-purple-700 bg-purple-50'
+                              }`}
                             >
                               {promotion.promotionType === 'Product' ? 'Sản phẩm' : 'Toàn cửa hàng'}
                             </Badge>
@@ -536,7 +537,13 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                   </div>
                   <div className='space-y-1'>
                     <p className='font-medium text-gray-900 text-sm'>
-                      {order.paymentType === 'COD' ? 'Thanh toán khi nhận' : order.paymentType}
+                      {order.paymentType === 'COD'
+                        ? 'Thanh toán khi nhận'
+                        : order.paymentType === 'Banking'
+                          ? 'Chuyển khoản ngân hàng'
+                          : order.paymentType === 'MyWallet'
+                            ? 'Thanh toán bằng ví của tôi'
+                            : 'Chưa thanh toán'}
                     </p>
                     <p className='text-xs text-gray-600 mt-2'>Thời gian thanh toán</p>
                     <p className='font-medium text-gray-900 text-sm'>{formatDate(order.createdAt)}</p>
@@ -564,12 +571,13 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                         return (
                           <div key={history.id} className='flex items-start gap-4 relative'>
                             <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${isCurrent
-                                ? 'bg-green-600'
-                                : isCompleted
-                                  ? 'bg-gray-400'
-                                  : 'bg-white border-2 border-gray-300'
-                                }`}
+                              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
+                                isCurrent
+                                  ? 'bg-green-600'
+                                  : isCompleted
+                                    ? 'bg-gray-400'
+                                    : 'bg-white border-2 border-gray-300'
+                              }`}
                             >
                               {isCurrent ? (
                                 <Package className='h-5 w-5 text-white' />

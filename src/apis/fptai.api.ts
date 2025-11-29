@@ -29,6 +29,17 @@ export interface FPTAIResponse {
     }
     type_new: string
     type: string
+    // Fields for back side (mặt sau)
+    issue_date?: string
+    issue_date_prob?: string
+    issue_loc?: string
+    issue_loc_prob?: string
+    religion?: string
+    religion_prob?: string
+    ethnicity?: string
+    ethnicity_prob?: string
+    features?: string
+    features_prob?: string
   }>
 }
 
@@ -42,6 +53,14 @@ export interface ExtractedCCCDInfo {
   district: string
   ward: string
   street: string
+  // Fields from back side
+  issueDate?: string
+  issueLocation?: string
+}
+
+export interface ExtractedCCCDBackInfo {
+  issueDate: string
+  issueLocation: string
 }
 
 const FPT_AI_API_KEY = import.meta.env.VITE_FPT_AI_API_KEY
@@ -103,10 +122,67 @@ export const extractCCCDInfo = async (imageFile: File): Promise<ExtractedCCCDInf
       province: cccdData.address_entities.province,
       district: cccdData.address_entities.district,
       ward: cccdData.address_entities.ward,
-      street: cccdData.address_entities.street
+      street: cccdData.address_entities.street,
+      issueDate: cccdData.issue_date ? formatDate(cccdData.issue_date) : undefined,
+      issueLocation: cccdData.issue_loc || undefined
     }
   } catch (error) {
     console.error('Error extracting CCCD info:', error)
+    throw error
+  }
+}
+
+// Extract information from CCCD back side (mặt sau)
+export const extractCCCDBackInfo = async (imageFile: File): Promise<ExtractedCCCDBackInfo | null> => {
+  try {
+    const formData = new FormData()
+    formData.append('image', imageFile)
+
+    const response = await fetch(FPT_AI_OCR_URL, {
+      method: 'POST',
+      headers: {
+        'api-key': FPT_AI_API_KEY
+      },
+      body: formData
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result: FPTAIResponse = await response.json()
+
+    if (result.errorCode !== 0) {
+      throw new Error(result.errorMessage || 'Lỗi khi xử lý ảnh')
+    }
+
+    if (!result.data || result.data.length === 0) {
+      throw new Error('Không thể đọc thông tin từ ảnh CCCD')
+    }
+
+    const cccdData = result.data[0]
+
+    // Format date from DD/MM/YYYY to YYYY-MM-DD for HTML date input
+    const formatDate = (dateStr: string): string => {
+      if (!dateStr || dateStr === 'N/A' || dateStr === 'xxxx') return ''
+      const parts = dateStr.split('/')
+      if (parts.length === 3) {
+        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+      }
+      return dateStr
+    }
+
+    // Check if issue_date exists and is valid
+    if (!cccdData.issue_date || cccdData.issue_date === 'N/A' || cccdData.issue_date === 'xxxx') {
+      throw new Error('Không tìm thấy thông tin ngày cấp trên ảnh mặt sau')
+    }
+
+    return {
+      issueDate: formatDate(cccdData.issue_date),
+      issueLocation: cccdData.issue_loc && cccdData.issue_loc !== 'N/A' ? cccdData.issue_loc : ''
+    }
+  } catch (error) {
+    console.error('Error extracting CCCD back info:', error)
     throw error
   }
 }
