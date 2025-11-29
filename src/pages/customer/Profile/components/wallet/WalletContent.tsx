@@ -12,7 +12,8 @@ import {
   ArrowRight,
   RefreshCw,
   History,
-  ArrowDown
+  ArrowDown,
+  FileText
 } from 'lucide-react'
 import { Alert, AlertDescription } from '../../../../../components/ui/alert'
 import ThreeDCard from '../../../../../components/ui/threed-card'
@@ -22,6 +23,10 @@ import type { WalletData, WalletTransactionDTO } from '../../../../../types/wall
 import { getTransactionTypeLabel, getTransactionStatusLabel } from '../../../../../types/walletType'
 import { toast } from '../../../../../utils/toast'
 import walletImage from '../../../../../assets/wallet.png'
+import { getRequestWalletMoney } from '../../../../../apis/requestWalletMoney.api'
+import type { RequestWalletMoney } from '../../../../../types/requestWalletMoneyType'
+import { useAuth } from '../../../../../contexts/auth.context'
+import { formatDate } from '../../../../../utils/formatDate'
 
 interface WalletContentProps {
   walletBalance?: number
@@ -50,6 +55,9 @@ export default function WalletContent({
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit')
   const [transactionPage] = useState(1)
   const [transactionPageSize] = useState(10)
+  const [requests, setRequests] = useState<RequestWalletMoney[]>([])
+  const [loadingRequests, setLoadingRequests] = useState(false)
+  const { user } = useAuth()
 
   // Fetch wallet data
   const fetchWalletData = async () => {
@@ -93,9 +101,30 @@ export default function WalletContent({
     }
   }
 
+  // Fetch request wallet money
+  const fetchRequests = async () => {
+    if (!user?.userId) return
+
+    try {
+      setLoadingRequests(true)
+      const response = await getRequestWalletMoney({
+        userId: user.userId,
+        pageSize: 0,
+        pageNumber: 1
+      })
+      setRequests(response.data || [])
+    } catch (err: unknown) {
+      console.error('Error fetching requests:', err)
+      setRequests([])
+    } finally {
+      setLoadingRequests(false)
+    }
+  }
+
   useEffect(() => {
     fetchWalletData()
     fetchTransactions(transactionPage, transactionPageSize)
+    fetchRequests()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -160,6 +189,7 @@ export default function WalletContent({
       // Refresh wallet data and transactions after withdrawal
       await fetchWalletData()
       await fetchTransactions(transactionPage, transactionPageSize)
+      await fetchRequests()
     } catch (error: unknown) {
       console.error('Error withdrawing money:', error)
       const errorMessage =
@@ -231,6 +261,7 @@ export default function WalletContent({
       // Refresh wallet data and transactions after deposit
       await fetchWalletData()
       await fetchTransactions(transactionPage, transactionPageSize)
+      await fetchRequests()
     } catch (error: unknown) {
       let errorMessage = 'Có lỗi xảy ra khi nạp tiền'
 
@@ -297,6 +328,24 @@ export default function WalletContent({
   // Get quick select options for current input
   const depositQuickOptions = getQuickSelectOptions(depositAmount)
   const withdrawQuickOptions = getQuickSelectOptions(withdrawAmount)
+
+  // Helper functions to translate request types and statuses to Vietnamese
+  const getRequestTypeLabel = (type: string): string => {
+    const typeMap: Record<string, string> = {
+      Withdrawal: 'Rút tiền',
+      Refund: 'Hoàn tiền'
+    }
+    return typeMap[type] || type
+  }
+
+  const getRequestStatusLabel = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      Pending: 'Đang chờ',
+      Completed: 'Hoàn thành',
+      Cancel: 'Đã hủy'
+    }
+    return statusMap[status] || status
+  }
 
   if (loading) {
     return (
@@ -862,6 +911,105 @@ export default function WalletContent({
             <div className='text-center py-8 text-gray-500'>
               <History className='w-12 h-12 mx-auto mb-2 text-gray-300' />
               <p>Chưa có giao dịch nào</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Request Wallet Money History */}
+      <Card>
+        <CardHeader>
+          <div className='flex items-center justify-between'>
+            <CardTitle className='flex items-center gap-2'>
+              <FileText className='w-5 h-5 text-purple-600' />
+              Lịch sử yêu cầu rút tiền/hoàn tiền
+            </CardTitle>
+            <Button
+              onClick={fetchRequests}
+              variant='outline'
+              size='sm'
+              disabled={loadingRequests}
+              className='flex items-center gap-2'
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingRequests ? 'animate-spin' : ''}`} />
+              Làm mới
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingRequests ? (
+            <div className='flex justify-center items-center py-8'>
+              <RefreshCw className='w-6 h-6 animate-spin text-gray-400' />
+              <span className='ml-2 text-gray-500'>Đang tải danh sách yêu cầu...</span>
+            </div>
+          ) : requests.length > 0 ? (
+            <div className='space-y-4'>
+              {requests.map((request) => {
+                const statusColors: Record<string, string> = {
+                  Completed: 'bg-green-100 text-green-800',
+                  Pending: 'bg-yellow-100 text-yellow-800',
+                  Cancel: 'bg-gray-100 text-gray-800'
+                }
+                const statusColor = statusColors[request.status] || 'bg-gray-100 text-gray-800'
+                return (
+                  <div
+                    key={request.id}
+                    className='p-4 border rounded-lg hover:bg-gray-50 transition-colors space-y-3'
+                  >
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center gap-2'>
+                        <span className='font-semibold text-gray-900'>{getRequestTypeLabel(request.type)}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${statusColor}`}>
+                          {getRequestStatusLabel(request.status)}
+                        </span>
+                      </div>
+                      <div className='text-right'>
+                        <div className='text-lg font-bold text-blue-600'>
+                          {request.amount.toLocaleString('vi-VN')} ₫
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-3 text-sm'>
+                      <div>
+                        <span className='text-gray-600'>Ngân hàng:</span>
+                        <span className='ml-2 font-semibold text-gray-900'>{request.bankName || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className='text-gray-600'>Số tài khoản:</span>
+                        <span className='ml-2 font-mono font-semibold text-gray-900'>{request.bankAccount}</span>
+                      </div>
+                      <div>
+                        <span className='text-gray-600'>Chủ tài khoản:</span>
+                        <span className='ml-2 font-semibold text-gray-900'>{request.accountHolderName}</span>
+                      </div>
+                      <div>
+                        <span className='text-gray-600'>Ngày tạo:</span>
+                        <span className='ml-2 text-gray-900'>
+                          {request.createdAt ? formatDate(request.createdAt) : 'N/A'}
+                        </span>
+                      </div>
+                      {request.processedAt && (
+                        <div>
+                          <span className='text-gray-600'>Ngày xử lý:</span>
+                          <span className='ml-2 text-gray-900'>{formatDate(request.processedAt)}</span>
+                        </div>
+                      )}
+                      {request.processNote && (
+                        <div className='md:col-span-2'>
+                          <span className='text-gray-600'>Ghi chú:</span>
+                          <span className='ml-2 text-gray-900'>{request.processNote}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className='text-center py-8 text-gray-500'>
+              <FileText className='w-12 h-12 mx-auto mb-2 text-gray-300' />
+              <p>Chưa có yêu cầu nào</p>
             </div>
           )}
         </CardContent>

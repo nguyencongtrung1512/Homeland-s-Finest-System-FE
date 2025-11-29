@@ -24,7 +24,7 @@ export const getRequestWalletMoney = async (
     const response: RequestWalletMoneyListResponse = await axiosInstance.get(API_URL, {
       params: {
         pageSize: params?.pageSize ?? 10,
-        pageNumber: params?.pageNumber !== undefined ? params.pageNumber : 0,
+        pageNumber: params?.pageNumber !== undefined ? params.pageNumber : 1,
         ...(params?.userId && { userId: params.userId }),
         ...(params?.orderId && { orderId: params.orderId }),
         ...(params?.type && { type: params.type }),

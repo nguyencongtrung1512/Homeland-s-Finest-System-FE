@@ -23,7 +23,9 @@ export interface User {
   note: string | null
   dateOfBirth: string
   editBy: string | null
-  isPermission: boolean
+  violationCount: number
+  isBan: boolean
+  banUntil: string | null
   createdAt: string
   updatedAt: string
 }
@@ -116,7 +118,7 @@ export interface UpdateUserData {
   provinceId?: number
   bankAccount?: string
   bankName?: string
-  banAt?: string | null
+  isBan?: boolean
   banUntil?: string | null
 }
 
