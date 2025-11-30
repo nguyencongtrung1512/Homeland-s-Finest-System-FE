@@ -150,6 +150,13 @@ export const productApi = {
       formData.append('ProductVideo', data.productVideo)
     }
 
+    // Add hashtag IDs if provided
+    if (data.hashtagIds && data.hashtagIds.length > 0) {
+      data.hashtagIds.forEach((tagId, index) => {
+        formData.append(`HashtagIds[${index}]`, tagId)
+      })
+    }
+
     const response = await axiosInstance.post(`${API_URL}/CreateProduct`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'

@@ -34,7 +34,7 @@ function Products() {
   const [filters, setFilters] = useState<{
     minPrice?: number
     maxPrice?: number
-    categoryFilters?: string[]
+    categoryFilterIds?: string[]
     provinceFilters?: string[]
     regionFilters?: string[]
     subRegionFilters?: string[]
@@ -44,13 +44,13 @@ function Products() {
   const handleFilterChange = (filterState: {
     minPrice?: number
     maxPrice?: number
-    categoryFilters?: string[]
+    categoryFilterIds?: string[]
     subRegionFilters?: string[]
   }) => {
     setFilters({
       minPrice: filterState.minPrice,
       maxPrice: filterState.maxPrice,
-      categoryFilters: filterState.categoryFilters,
+      categoryFilterIds: filterState.categoryFilterIds,
       subRegionFilters: filterState.subRegionFilters
     })
     setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
@@ -75,7 +75,7 @@ function Products() {
           sortBy: sortBy || null,
           minPrice: filters.minPrice || null,
           maxPrice: filters.maxPrice || null,
-          categoryFilters: filters.categoryFilters || null,
+          categoryFilterIds: filters.categoryFilterIds || null,
           provinceFilters: filters.provinceFilters || null,
           regionFilters: filters.regionFilters || null,
           subRegionFilters: filters.subRegionFilters || null

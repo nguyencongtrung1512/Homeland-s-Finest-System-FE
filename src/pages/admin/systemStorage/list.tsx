@@ -28,7 +28,7 @@ import {
   deleteSystemStorage,
   type SystemStorageItem
 } from '../../../apis/systemStorage.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import Loading from '../../../components/Loading/loading'
 
 function SystemStorage() {

@@ -11,7 +11,8 @@ export interface SearchRequest {
   sortBy?: 'newest' | 'best-selling' | 'rating' | 'price-asc' | 'price-desc' | string | null // Optional
   minPrice?: number | null // Optional
   maxPrice?: number | null // Optional
-  categoryFilters?: string[] | null // Optional
+  categoryFilterIds?: string[] | null // Optional - List of category UUIDs (recommended, filter at SQL level)
+  categoryFilters?: string[] | null // Optional - deprecated, for backward compatibility only
   provinceFilters?: string[] | null // Optional
   regionFilters?: string[] | null // Optional
   subRegionFilters?: string[] | null // Optional
@@ -93,47 +94,50 @@ export const searchApi = {
    * @returns Array of products matching the search criteria
    */
   search: async (request: SearchRequest): Promise<Product[]> => {
-    // Build request body, only include fields that are not null/undefined
+    // Build request body with PascalCase field names to match backend DTO
     const requestBody: Record<string, string | number | string[] | undefined> = {
-      queryText: request.queryText || '' // Empty string for trending
+      QueryText: request.queryText || '' // Empty string for trending
     }
 
-    // Only add userId if it's provided (not null/undefined)
+    // Only add UserId if it's provided (not null/undefined)
     if (request.userId) {
-      requestBody.userId = request.userId
+      requestBody.UserId = request.userId
     }
 
     // Add optional fields only if they are provided
     if (request.limit !== null && request.limit !== undefined) {
-      requestBody.limit = request.limit
+      requestBody.Limit = request.limit
     }
 
     if (request.sortBy !== null && request.sortBy !== undefined && request.sortBy !== '') {
-      requestBody.sortBy = request.sortBy
+      requestBody.SortBy = request.sortBy
     }
 
     if (request.minPrice !== null && request.minPrice !== undefined) {
-      requestBody.minPrice = request.minPrice
+      requestBody.MinPrice = request.minPrice
     }
 
     if (request.maxPrice !== null && request.maxPrice !== undefined) {
-      requestBody.maxPrice = request.maxPrice
+      requestBody.MaxPrice = request.maxPrice
     }
 
-    if (request.categoryFilters && request.categoryFilters.length > 0) {
-      requestBody.categoryFilters = request.categoryFilters
+    // Priority: CategoryFilterIds (recommended) > CategoryFilters (deprecated)
+    if (request.categoryFilterIds && request.categoryFilterIds.length > 0) {
+      requestBody.CategoryFilterIds = request.categoryFilterIds
+    } else if (request.categoryFilters && request.categoryFilters.length > 0) {
+      requestBody.CategoryFilters = request.categoryFilters
     }
 
     if (request.provinceFilters && request.provinceFilters.length > 0) {
-      requestBody.provinceFilters = request.provinceFilters
+      requestBody.ProvinceFilters = request.provinceFilters
     }
 
     if (request.regionFilters && request.regionFilters.length > 0) {
-      requestBody.regionFilters = request.regionFilters
+      requestBody.RegionFilters = request.regionFilters
     }
 
     if (request.subRegionFilters && request.subRegionFilters.length > 0) {
-      requestBody.subRegionFilters = request.subRegionFilters
+      requestBody.SubRegionFilters = request.subRegionFilters
     }
 
     const response = await axiosInstance.post(API_URL, requestBody)

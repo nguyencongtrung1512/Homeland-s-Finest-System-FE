@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -9,12 +9,25 @@ import { productApi, type ProductCreateFormData } from '../../../apis/product.ap
 import { storeApi } from '../../../apis/store.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { useAuth } from '../../../contexts/auth.context'
-import { Upload, ChevronRight, Trash2, Video, Image as ImageIcon, Package, FileImage, Loader2, X } from 'lucide-react'
+import {
+  Upload,
+  ChevronRight,
+  Trash2,
+  Video,
+  Image as ImageIcon,
+  Package,
+  FileImage,
+  Loader2,
+  X,
+  Hash,
+  AtSign
+} from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import ProductComboBox from '../../../components/ui/product-combo-box'
 import ComboBox from '../../../components/ui/combo-box'
 import type { Product } from '../../../types/productType'
 import Loading from '../../../components/Loading/loading'
+import { searchHashtags, createHashtag, getAllHashtags, type HashtagItem } from '../../../apis/hashtag.api'
 
 function CreateProduct() {
   const navigate = useNavigate()
@@ -28,6 +41,18 @@ function CreateProduct() {
   const [products, setProducts] = useState<Product[]>([])
   const [productsLoading, setProductsLoading] = useState(false)
   const [selectedParentProduct, setSelectedParentProduct] = useState<{ id: string; name: string } | null>(null)
+
+  // Hashtag states - Seller tự tạo hashtag mới
+  const [newHashtagName, setNewHashtagName] = useState('')
+  const [creatingHashtag, setCreatingHashtag] = useState(false)
+
+  // Mention states - Tìm và chọn hashtag có sẵn
+  const [selectedHashtags, setSelectedHashtags] = useState<HashtagItem[]>([])
+  const [suggestedHashtags, setSuggestedHashtags] = useState<HashtagItem[]>([])
+  const [mentionSearchKeyword, setMentionSearchKeyword] = useState('')
+  const [mentionSearchLoading, setMentionSearchLoading] = useState(false)
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false)
+  const mentionRef = useRef<HTMLDivElement>(null)
 
   // Validation constants
   const MAX_NAME_WORDS = 20
@@ -114,6 +139,144 @@ function CreateProduct() {
       ...prev,
       productImages: prev.productImages.filter((_, index) => index !== indexToRemove)
     }))
+  }
+
+  // Hashtag handler - Thêm hashtag (tạo mới nếu chưa có, thêm vào nếu đã có)
+  const handleAddHashtag = async () => {
+    if (!storeId || !newHashtagName.trim()) {
+      toast.error('Vui lòng nhập tên hashtag')
+      return
+    }
+
+    const hashtagName = newHashtagName.trim().toLowerCase()
+
+    // Check if hashtag already exists in selected list
+    const existingInSelected = selectedHashtags.find(
+      (tag) => tag.name.toLowerCase() === hashtagName
+    )
+    if (existingInSelected) {
+      toast.error('Hashtag này đã được thêm')
+      setNewHashtagName('')
+      return
+    }
+
+    setCreatingHashtag(true)
+    try {
+      // First, try to search if hashtag already exists in system
+      const searchResponse = await searchHashtags(hashtagName)
+      let hashtagToAdd: HashtagItem | null = null
+
+      if (searchResponse.status === 200 && searchResponse.data) {
+        // Find exact match (case insensitive)
+        const existingHashtag = searchResponse.data.find(
+          (tag) => tag.name.toLowerCase() === hashtagName && tag.isActive
+        )
+
+        if (existingHashtag) {
+          // Hashtag already exists, use it
+          hashtagToAdd = existingHashtag
+        }
+      }
+
+      // If hashtag doesn't exist, create new one
+      if (!hashtagToAdd) {
+        const createResponse = await createHashtag({
+          name: newHashtagName.trim(),
+          storeId: storeId,
+          isActive: true
+        })
+
+        if (createResponse.status === 200 || createResponse.status === 201) {
+          hashtagToAdd = createResponse.data
+        } else {
+          toast.error('Không thể tạo hashtag mới')
+          return
+        }
+      }
+
+      // Add to selected list
+      if (hashtagToAdd) {
+        setSelectedHashtags((prev) => [...prev, hashtagToAdd!])
+        setNewHashtagName('')
+      }
+    } catch (error: unknown) {
+      console.error('Error adding hashtag:', error)
+      let errorMessage = 'Có lỗi xảy ra khi thêm hashtag'
+      if (error && typeof error === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = error as any
+        if (err.response?.data?.message) {
+          errorMessage = err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
+        }
+      }
+      toast.error(errorMessage)
+    } finally {
+      setCreatingHashtag(false)
+    }
+  }
+
+  // Mention handlers - Tìm và chọn hashtag có sẵn
+  const handleMentionSearch = useCallback(
+    async (keyword: string) => {
+      setMentionSearchLoading(true)
+      try {
+        let response
+        if (!keyword || keyword.trim() === '') {
+          // If no keyword, get all hashtags
+          response = await getAllHashtags()
+        } else {
+          // Search with keyword
+          response = await searchHashtags(keyword.trim())
+        }
+
+        if (response.status === 200 && response.data) {
+          // Filter only active hashtags and exclude already selected ones
+          const activeHashtags = response.data.filter(
+            (tag) => tag.isActive && !selectedHashtags.some((selected) => selected.id === tag.id)
+          )
+          setSuggestedHashtags(activeHashtags)
+          setShowMentionSuggestions(activeHashtags.length > 0)
+        } else {
+          setSuggestedHashtags([])
+          setShowMentionSuggestions(false)
+        }
+      } catch (error) {
+        console.error('Error searching hashtags:', error)
+        setSuggestedHashtags([])
+        setShowMentionSuggestions(false)
+      } finally {
+        setMentionSearchLoading(false)
+      }
+    },
+    [selectedHashtags]
+  )
+
+  const handleSelectMention = (hashtag: HashtagItem) => {
+    // Check if already selected
+    if (selectedHashtags.some((tag) => tag.id === hashtag.id)) {
+      return
+    }
+
+    setSelectedHashtags((prev) => [...prev, hashtag])
+    setShowMentionSuggestions(false)
+    setMentionSearchKeyword('')
+  }
+
+  const handleRemoveHashtag = (hashtagId: string) => {
+    setSelectedHashtags((prev) => prev.filter((tag) => tag.id !== hashtagId))
+  }
+
+  // Handle mention search input change
+  const handleMentionInputChange = (value: string) => {
+    setMentionSearchKeyword(value)
+    if (value.trim()) {
+      handleMentionSearch(value)
+    } else {
+      // If empty, show all hashtags
+      handleMentionSearch('')
+    }
   }
 
   const handleInputChange = (field: string, value: string | boolean | string[]) => {
@@ -337,6 +500,23 @@ function CreateProduct() {
     initializeData()
   }, [user?.userId, fetchStoreId])
 
+  // Handle click outside to close mention suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mentionRef.current && !mentionRef.current.contains(event.target as Node)) {
+        setShowMentionSuggestions(false)
+      }
+    }
+
+    if (showMentionSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMentionSuggestions])
+
   const handleCreateProduct = async () => {
     setIsSubmitting(true)
 
@@ -451,7 +631,8 @@ function CreateProduct() {
         description: productData.description || undefined, // Không bắt buộc
         material: productData.material.trim(), // Luôn gửi material (đã validate không rỗng ở trên)
         productImages: mediaData.productImages.length > 0 ? mediaData.productImages : undefined, // Không bắt buộc
-        productVideo: mediaData.productVideo || undefined // Không bắt buộc
+        productVideo: mediaData.productVideo || undefined, // Không bắt buộc
+        hashtagIds: selectedHashtags.length > 0 ? selectedHashtags.map((tag) => tag.id) : undefined
       }
       // Call API với FormData
       const response = await productApi.createMaster(formData)
@@ -631,8 +812,152 @@ function CreateProduct() {
                   <p
                     className={`text-xs ${countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'}`}
                   >
-                    {countWords(productData.description)}/{MAX_DESCRIPTION_WORDS} từ
+                    {productData.description.length}/4000 ký tự
                   </p>
+                </div>
+              </div>
+
+              {/* Hashtag Section - Tách riêng không liên quan đến description */}
+              <div>
+                <Label className='text-sm font-medium'>Hashtags</Label>
+                <div className='mt-2 space-y-3'>
+                  {/* Thêm Hashtag - Tạo mới hoặc thêm hashtag có sẵn */}
+                  <div className='p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg'>
+                    <p className='text-xs font-medium text-gray-700 mb-2 flex items-center gap-1'>
+                      <Hash className='w-3 h-3 text-green-600' />
+                      Thêm hashtag
+                    </p>
+                    <div className='flex gap-2'>
+                      <Input
+                        placeholder='Nhập tên hashtag...'
+                        value={newHashtagName}
+                        onChange={(e) => setNewHashtagName(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleAddHashtag()
+                          }
+                        }}
+                        className='flex-1 text-sm'
+                      />
+                      <Button
+                        type='button'
+                        onClick={handleAddHashtag}
+                        disabled={!newHashtagName.trim() || creatingHashtag}
+                        size='sm'
+                        className='bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white'
+                      >
+                        {creatingHashtag ? (
+                          <>
+                            <Loader2 className='w-3 h-3 mr-1 animate-spin' />
+                            Đang thêm...
+                          </>
+                        ) : (
+                          'Thêm'
+                        )}
+                      </Button>
+                    </div>
+                    <p className='text-xs text-gray-500 mt-1'>
+                      Nhập tên hashtag để tạo mới hoặc thêm hashtag đã có sẵn
+                    </p>
+                  </div>
+
+                  {/* Mention - Tìm và chọn hashtag có sẵn */}
+                  <div ref={mentionRef} className='relative p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg'>
+                    <p className='text-xs font-medium text-gray-700 mb-2 flex items-center gap-1'>
+                      <AtSign className='w-3 h-3 text-blue-600' />
+                      Mention - Tìm hashtag có sẵn để thêm vào sản phẩm
+                    </p>
+                    <Input
+                      placeholder='Tìm kiếm hashtag...'
+                      value={mentionSearchKeyword}
+                      onChange={(e) => handleMentionInputChange(e.target.value)}
+                      onFocus={() => {
+                        if (!mentionSearchKeyword) {
+                          handleMentionSearch('')
+                        }
+                      }}
+                      className='text-sm'
+                    />
+                    <p className='text-xs text-gray-500 mt-1'>
+                      Tìm và chọn hashtag đã có sẵn trong hệ thống
+                    </p>
+
+                    {/* Mention Suggestions Dropdown */}
+                    {showMentionSuggestions && (
+                      <div className='absolute z-50 mt-2 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto'>
+                        {mentionSearchLoading ? (
+                          <div className='p-4 text-center'>
+                            <Loader2 className='w-4 h-4 animate-spin mx-auto text-gray-400' />
+                            <p className='text-xs text-gray-500 mt-2'>Đang tìm kiếm...</p>
+                          </div>
+                        ) : suggestedHashtags.length > 0 ? (
+                          <div className='p-2'>
+                            {suggestedHashtags.map((hashtag) => (
+                              <button
+                                key={hashtag.id}
+                                type='button'
+                                onClick={() => handleSelectMention(hashtag)}
+                                className='w-full text-left px-3 py-2 hover:bg-blue-50 rounded-md transition-colors flex items-center justify-between group'
+                              >
+                                <div className='flex items-center gap-2'>
+                                  <Hash className='w-4 h-4 text-blue-600' />
+                                  <span className='text-sm font-medium text-gray-900'>#{hashtag.name}</span>
+                                </div>
+                                <span className='text-xs text-gray-500'>
+                                  {hashtag.usageCount >= 1000
+                                    ? `${(hashtag.usageCount / 1000).toFixed(1)}K`
+                                    : hashtag.usageCount}{' '}
+                                  bài viết
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className='p-4 text-center text-sm text-gray-500'>
+                            {mentionSearchKeyword ? (
+                              <p>Không tìm thấy hashtag "{mentionSearchKeyword}"</p>
+                            ) : (
+                              <p>Gõ để tìm kiếm hashtag...</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Selected Hashtags Display */}
+                  {selectedHashtags.length > 0 && (
+                    <div>
+                      <p className='text-xs text-gray-600 mb-2 font-medium'>Hashtags đã chọn:</p>
+                      <div className='flex flex-wrap gap-2'>
+                        {selectedHashtags.map((hashtag) => (
+                          <div
+                            key={hashtag.id}
+                            className='flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-full px-3 py-1 group'
+                          >
+                            <Hash className='w-3 h-3 text-green-600' />
+                            <span className='text-sm font-medium text-green-800'>#{hashtag.name}</span>
+                            <span className='text-xs text-gray-500'>
+                              (
+                              {hashtag.usageCount >= 1000
+                                ? `${(hashtag.usageCount / 1000).toFixed(1)}K`
+                                : hashtag.usageCount}
+                              )
+                            </span>
+                            <button
+                              type='button'
+                              onClick={() => handleRemoveHashtag(hashtag.id)}
+                              className='ml-1 text-green-600 hover:text-red-600 transition-colors'
+                              title='Xóa hashtag'
+                            >
+                              <X className='w-3 h-3' />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -790,10 +1115,10 @@ function CreateProduct() {
                           <div className='mt-2 p-2 bg-gray-50 rounded-lg'>
                             {/* File name */}
                             <p className='text-xs text-gray-600 font-medium truncate' title={file.name}>
-                              📷 {file.name}
+                              {file.name}
                             </p>
                             {/* File size */}
-                            <p className='text-xs text-gray-500 mt-1'>💾 {(file.size / (1024 * 1024)).toFixed(1)} MB</p>
+                            <p className='text-xs text-gray-500 mt-1'> {(file.size / (1024 * 1024)).toFixed(1)} MB</p>
                           </div>
                         </div>
                       ))}
@@ -889,13 +1214,13 @@ function CreateProduct() {
                           className='text-sm font-semibold text-gray-800 truncate mb-2'
                           title={mediaData.productVideo.name}
                         >
-                          🎬 {mediaData.productVideo.name}
+                          {mediaData.productVideo.name}
                         </p>
                         <div className='flex items-center gap-4 text-xs text-gray-600'>
                           <span className='flex items-center gap-1'>
-                            💾 Kích thước: {(mediaData.productVideo.size / (1024 * 1024)).toFixed(1)} MB
+                            Kích thước: {(mediaData.productVideo.size / (1024 * 1024)).toFixed(1)} MB
                           </span>
-                          <span className='flex items-center gap-1'>⏱️ Thời lượng: Video</span>
+                          <span className='flex items-center gap-1'> Thời lượng: Video</span>
                         </div>
                       </div>
                     </div>
@@ -1022,7 +1347,6 @@ function CreateProduct() {
                         <p className='font-medium text-gray-900 mb-1'>
                           Sản phẩm liên quan: {selectedParentProduct.name}
                         </p>
-                        <p className='text-sm text-gray-600 mb-1'>({selectedParentProduct.id})</p>
                       </div>
                       <button
                         type='button'

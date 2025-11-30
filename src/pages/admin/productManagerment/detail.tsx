@@ -18,7 +18,8 @@ import {
   User,
   ChevronDown,
   ZoomIn,
-  Maximize2
+  Maximize2,
+  Hash
 } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -32,6 +33,7 @@ import { productApi } from '../../../apis/product.api'
 import { adminApi, type Staff } from '../../../apis/admin.api'
 import { staffApi, type StaffInfo } from '../../../apis/staff.api'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
+import { getHashtagById, type HashtagItem } from '../../../apis/hashtag.api'
 import StaffComboBox from '../../../components/ui/staff-combo-box'
 import { Button as UIButton } from '../../../components/ui/button'
 import { toast } from '../../../utils/toast'
@@ -78,6 +80,10 @@ function DetailProductAdmin() {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImages, setPreviewImages] = useState<string[]>([])
   const [previewInitialIndex, setPreviewInitialIndex] = useState(0)
+
+  // State for hashtags
+  const [hashtags, setHashtags] = useState<HashtagItem[]>([])
+  const [loadingHashtags, setLoadingHashtags] = useState(false)
 
   useEffect(() => {
     const fetchProductDetail = async () => {
@@ -166,6 +172,44 @@ function DetailProductAdmin() {
       setLoadingStore(false)
     }
   }
+
+  // Fetch hashtags if product has hashtagIds
+  useEffect(() => {
+    const fetchHashtags = async () => {
+      // Check if product has hashtagIds (it might be in the response but not in the type)
+      const productWithHashtags = product as Product & { hashtagIds?: string[] }
+      if (!productWithHashtags?.hashtagIds || productWithHashtags.hashtagIds.length === 0) {
+        setHashtags([])
+        return
+      }
+
+      try {
+        setLoadingHashtags(true)
+        // Fetch all hashtags in parallel
+        const hashtagPromises = productWithHashtags.hashtagIds.map((hashtagId) => getHashtagById(hashtagId))
+        const responses = await Promise.all(hashtagPromises)
+
+        // Extract hashtag data from responses
+        const fetchedHashtags: HashtagItem[] = []
+        responses.forEach((response) => {
+          if (response.status === 200 && response.data) {
+            fetchedHashtags.push(response.data)
+          }
+        })
+
+        setHashtags(fetchedHashtags)
+      } catch (error) {
+        console.error('Error fetching hashtags:', error)
+        setHashtags([])
+      } finally {
+        setLoadingHashtags(false)
+      }
+    }
+
+    if (product) {
+      fetchHashtags()
+    }
+  }, [product])
 
   // Load staff list for assign modal
   const loadStaffList = async () => {
@@ -880,6 +924,42 @@ function DetailProductAdmin() {
                             </div>
                           )}
                         </div>
+
+                        {/* Hashtags */}
+                        {hashtags.length > 0 && (
+                          <div className='pt-4 border-t'>
+                            <div className='flex items-center gap-2 mb-2'>
+                              <Hash size={16} className='text-green-600 flex-shrink-0' />
+                              <span className='text-sm text-gray-600 font-medium'>Hashtags</span>
+                            </div>
+                            <div className='flex flex-wrap gap-2'>
+                              {loadingHashtags ? (
+                                <div className='flex items-center gap-2 text-sm text-gray-500'>
+                                  <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-green-600'></div>
+                                  <span>Đang tải hashtags...</span>
+                                </div>
+                              ) : (
+                                hashtags.map((hashtag) => (
+                                  <Badge
+                                    key={hashtag.id}
+                                    variant='outline'
+                                    className='bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-200 hover:bg-green-100 text-xs'
+                                  >
+                                    <Hash size={12} className='mr-1' />
+                                    {hashtag.name}
+                                    {hashtag.usageCount !== undefined && (
+                                      <span className='ml-1 text-gray-500'>
+                                        ({hashtag.usageCount >= 1000
+                                          ? `${(hashtag.usageCount / 1000).toFixed(1)}K`
+                                          : hashtag.usageCount})
+                                      </span>
+                                    )}
+                                  </Badge>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Summary Price */}
                         {product?.summaryPrice && (
