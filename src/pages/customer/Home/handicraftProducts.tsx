@@ -3,11 +3,14 @@ import ProductCard, { type ProductCardData } from '../Products/Product/productCa
 import { productApi } from '../../../apis/product.api'
 import Loading from '../../../components/Loading/loading'
 import type { Product } from '../../../types/productType'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const HandicraftProducts: React.FC = () => {
   const [products, setProducts] = useState<ProductCardData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const PRODUCTS_PER_PAGE = 4
 
   useEffect(() => {
     async function fetchProducts() {
@@ -82,11 +85,38 @@ const HandicraftProducts: React.FC = () => {
         </a>
       </div>
 
-      {/* Grid sản phẩm */}
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
-        {products.map((p) => (
-          <ProductCard key={p.id} product={p} />
-        ))}
+      {/* Grid sản phẩm với navigation */}
+      <div className='relative'>
+        {/* Button Previous */}
+        {currentIndex > 0 && (
+          <button
+            onClick={() => setCurrentIndex((prev) => Math.max(0, prev - PRODUCTS_PER_PAGE))}
+            className='absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 transition-colors border border-gray-200'
+            aria-label='Xem sản phẩm trước'
+          >
+            <ChevronLeft className='w-6 h-6 text-green-700' />
+          </button>
+        )}
+
+        {/* Grid sản phẩm */}
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
+          {products.slice(currentIndex, currentIndex + PRODUCTS_PER_PAGE).map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
+        </div>
+
+        {/* Button Next */}
+        {currentIndex + PRODUCTS_PER_PAGE < products.length && (
+          <button
+            onClick={() =>
+              setCurrentIndex((prev) => Math.min(products.length - PRODUCTS_PER_PAGE, prev + PRODUCTS_PER_PAGE))
+            }
+            className='absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 transition-colors border border-gray-200'
+            aria-label='Xem thêm sản phẩm'
+          >
+            <ChevronRight className='w-6 h-6 text-green-700' />
+          </button>
+        )}
       </div>
     </div>
   )
