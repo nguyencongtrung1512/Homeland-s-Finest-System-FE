@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
-import { Textarea } from '../../../components/ui/textarea'
 import { Upload, Image as ImageIcon, X, Loader2 } from 'lucide-react'
 import { productVariantApi, type CreateVariantRequest } from '../../../apis/productVariant.api'
 import { getSystemStorageByName } from '../../../apis/systemStorage.api'
@@ -49,7 +48,6 @@ export default function ModalVariantProduct({
   const [hasAutoAttributeType, setHasAutoAttributeType] = useState(false)
   const [attributeTypeError, setAttributeTypeError] = useState<string>('')
   const [attributeNameError, setAttributeNameError] = useState<string>('')
-  const [descriptionError, setDescriptionError] = useState<string>('')
   const [lengthError, setLengthError] = useState<string>('')
   const [widthError, setWidthError] = useState<string>('')
   const [heightError, setHeightError] = useState<string>('')
@@ -57,7 +55,6 @@ export default function ModalVariantProduct({
 
   // Constants for validation
   const MAX_IMAGES = 1
-  const MAX_DESCRIPTION_WORDS = 20
   const MAX_ATTRIBUTE_TYPE_LENGTH = 10
   const MAX_ATTRIBUTE_NAME_LENGTH = 10
   const MIN_ATTRIBUTE_TYPE_LENGTH = 1
@@ -66,13 +63,13 @@ export default function ModalVariantProduct({
   const MAX_WEIGHT = 50000 // gram (50kg)
 
   // Helper function to count words
-  const countWords = (text: string): number => {
-    if (!text || text.trim().length === 0) return 0
-    return text
-      .trim()
-      .split(/\s+/)
-      .filter((word) => word.length > 0).length
-  }
+  // const countWords = (text: string): number => {
+  //   if (!text || text.trim().length === 0) return 0
+  //   return text
+  //     .trim()
+  //     .split(/\s+/)
+  //     .filter((word) => word.length > 0).length
+  // }
 
   // Tự động đặt attributeType khi dialog mở (chỉ khi nhóm tùy chọn đã có con)
   useEffect(() => {
@@ -299,14 +296,14 @@ export default function ModalVariantProduct({
       setAttributeNameError('')
     }
 
-    if (field === 'description') {
-      setDescriptionError('')
-      // Validate description word count (allow input but show warning)
-      const wordCount = countWords(value as string)
-      if (wordCount > MAX_DESCRIPTION_WORDS) {
-        setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
-      }
-    }
+    // if (field === 'description') {
+    //   setDescriptionError('')
+    //   // Validate description word count (allow input but show warning)
+    //   const wordCount = countWords(value as string)
+    //   if (wordCount > MAX_DESCRIPTION_WORDS) {
+    //     setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+    //   }
+    // }
 
     if (field === 'length') {
       setLengthError('')
@@ -446,11 +443,11 @@ export default function ModalVariantProduct({
       }
 
       // Validate description word count
-      const descriptionWordCount = countWords(variantData.description)
-      if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
-        toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
-        return
-      }
+      // const descriptionWordCount = countWords(variantData.description)
+      // if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
+      //   toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+      //   return
+      // }
 
       // Validate dimensions
       if (variantData.length > MAX_DIMENSION) {
@@ -580,7 +577,6 @@ export default function ModalVariantProduct({
       setHasAutoAttributeType(false)
       setAttributeTypeError('')
       setAttributeNameError('')
-      setDescriptionError('')
       setLengthError('')
       setWidthError('')
       setHeightError('')
@@ -771,7 +767,7 @@ export default function ModalVariantProduct({
             </div>
 
             {/* Description */}
-            <div>
+            {/* <div>
               <div className='flex items-center justify-between mb-1'>
                 <Label htmlFor='variant-description' className='text-sm font-medium'>
                   Mô tả
@@ -791,7 +787,7 @@ export default function ModalVariantProduct({
                 className={`mt-1 min-h-[100px] ${descriptionError ? 'border-red-500' : ''}`}
               />
               {descriptionError && <p className='mt-1 text-sm text-red-500'>{descriptionError}</p>}
-            </div>
+            </div> */}
           </div>
 
           {/* Kích thước - Hiển thị cho cả nhóm tùy chọn và phiên bản bán được */}

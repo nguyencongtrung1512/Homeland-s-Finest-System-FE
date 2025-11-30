@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
-import { Textarea } from '../../../components/ui/textarea'
 import { Loader2, Upload, Image as ImageIcon, X } from 'lucide-react'
 import { productVariantApi, type UpdateVariantRequest } from '../../../apis/productVariant.api'
 import { getSystemStorageByName } from '../../../apis/systemStorage.api'
@@ -34,7 +33,6 @@ export default function ModalEditVariant({
 
   // Validation errors
   const [attributeNameError, setAttributeNameError] = useState<string>('')
-  const [descriptionError, setDescriptionError] = useState<string>('')
   const [priceError, setPriceError] = useState<string>('')
   const [quantityError, setQuantityError] = useState<string>('')
   const [lengthError, setLengthError] = useState<string>('')
@@ -44,24 +42,13 @@ export default function ModalEditVariant({
 
   // Constants for validation
   const MAX_ATTRIBUTE_NAME_LENGTH = 10
-  const MAX_DESCRIPTION_WORDS = 20
   const MIN_ATTRIBUTE_NAME_LENGTH = 1
   const MAX_DIMENSION = 200 // cm
   const MAX_WEIGHT = 50000 // gram (50kg)
 
-  // Helper function to count words
-  const countWords = (text: string): number => {
-    if (!text || text.trim().length === 0) return 0
-    return text
-      .trim()
-      .split(/\s+/)
-      .filter((word) => word.length > 0).length
-  }
-
   const [variantData, setVariantData] = useState({
     attributeName: '',
     attributeType: '',
-    description: '',
     basePrice: 0,
     quantity: 0,
     length: 0,
@@ -168,7 +155,6 @@ export default function ModalEditVariant({
       setVariantData({
         attributeName: variant.attributeName || '',
         attributeType: '', // Sẽ lấy từ getAttributeTypeForVariant()
-        description: variant.description || '',
         basePrice: variant.basePrice || 0,
         quantity: variant.quantity || 0,
         length: variant.length || 0,
@@ -216,15 +202,6 @@ export default function ModalEditVariant({
       if (stringValue.length > MAX_ATTRIBUTE_NAME_LENGTH) {
         setAttributeNameError(`Tên thuộc tính chỉ được tối đa ${MAX_ATTRIBUTE_NAME_LENGTH} ký tự.`)
         return
-      }
-    }
-
-    if (field === 'description') {
-      setDescriptionError('')
-      const stringValue = value as string
-      const wordCount = countWords(stringValue)
-      if (wordCount > MAX_DESCRIPTION_WORDS) {
-        setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
       }
     }
 
@@ -420,15 +397,6 @@ export default function ModalEditVariant({
           setQuantityError('Số lượng tồn kho không được là số âm')
           return
         }
-
-        // Validate description word count
-        const descriptionWordCount = countWords(variantData.description)
-        if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
-          toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
-          setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
-          return
-        }
-
         // Validate dimensions
         if (variantData.length > MAX_DIMENSION) {
           toast.error(`Chiều dài không được vượt quá ${MAX_DIMENSION} cm`)
@@ -695,7 +663,7 @@ export default function ModalEditVariant({
             )}
 
             {/* Description */}
-            <div>
+            {/* <div>
               <div className='flex items-center justify-between mb-1'>
                 <Label htmlFor='edit-description' className='text-sm font-medium'>
                   Mô tả
@@ -715,7 +683,7 @@ export default function ModalEditVariant({
                 className={`mt-1 min-h-[100px] ${descriptionError ? 'border-red-500' : ''}`}
               />
               {descriptionError && <p className='mt-1 text-sm text-red-500'>{descriptionError}</p>}
-            </div>
+            </div> */}
 
             {/* Image Upload */}
             {canEditFullFields && (

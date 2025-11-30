@@ -23,11 +23,10 @@ export type OrderStatus =
   | 'Paid' // Đã thanh toán cho người bán - Đã thanh toán tiền cho người bán
 
   // === TRẠNG THÁI TRẢ HÀNG VÀ HOÀN TIỀN ===
-  | 'Refunding' // Đang hoàn tiền - Đơn hàng đang được hoàn tiền
   | 'Returning' // Đang trả hàng - Đơn hàng đang được trả lại
   | 'Returned' // Đã trả hàng - Đơn hàng đã được trả lại thành công
-  | 'Refunded' // Đã hoàn tiền - Đã hoàn tiền cho khách hàng
   | 'DeliveryFail' // Giao hàng thất bại - Không thể giao hàng cho khách
+
 
   // === TRẠNG THÁI SỰ CỐ VÀ KHIẾU NẠI ===
   | 'Exception' // Gặp sự cố - Đơn hàng gặp sự cố trong quá trình vận chuyển
@@ -35,7 +34,6 @@ export type OrderStatus =
   | 'Lost' // Hàng thất lạc - Hàng bị thất lạc trong quá trình vận chuyển
   | 'Complaining' // Đang phản hồi - Khách hàng đang khiếu nại về đơn hàng
   | 'Complained' // Đã phản hồi - Đã xử lý khiếu nại của khách hàng
-
   // === TRẠNG THÁI HỦY ===
   | 'Cancel' // Đã hủy - Đơn hàng đã bị hủy
 
