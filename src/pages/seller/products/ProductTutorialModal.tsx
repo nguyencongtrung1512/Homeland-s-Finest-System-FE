@@ -1,8 +1,20 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Gamepad2, TreePine, Tag, Lightbulb, CheckCircle2, Home, Box, Layers } from 'lucide-react'
+import { Gamepad2, TreePine, Tag, Lightbulb, CheckCircle2, Box, Layers } from 'lucide-react'
+import ReactFlow, {
+  Background,
+  Controls,
+  type ReactFlowInstance,
+  type NodeChange,
+  type EdgeChange,
+  applyNodeChanges,
+  applyEdgeChanges
+} from 'reactflow'
+import 'reactflow/dist/style.css'
+import ProductNode from '../../../components/ProductNode'
+import { useProductTree, type TreePattern } from '../../../hooks/useProductTree'
 
 interface ProductTutorialModalProps {
   open: boolean
@@ -10,6 +22,11 @@ interface ProductTutorialModalProps {
 }
 
 type TreeModel = 'simple' | 'medium' | 'complex'
+
+// Register custom node type
+const nodeTypes = {
+  productNode: ProductNode
+}
 
 function ProductTutorialModal({ open, onOpenChange }: ProductTutorialModalProps) {
   const [currentStep, setCurrentStep] = useState(1)
@@ -62,7 +79,7 @@ function ProductTutorialModal({ open, onOpenChange }: ProductTutorialModalProps)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-3xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='max-w-6xl max-h-[90vh] overflow-y-auto'>
         <div className='bg-gradient-to-r from-green-600 to-green-700 h-2 w-full absolute top-0 left-0' />
         <DialogHeader className='relative'>
           <div className='flex items-center gap-3 mb-4'>
@@ -93,10 +110,10 @@ function ProductTutorialModal({ open, onOpenChange }: ProductTutorialModalProps)
             )}
             <DialogTitle className='text-2xl font-bold text-gray-900 flex-1'>
               {currentStep === 1 && 'Chào mừng Seller mới!'}
-              {currentStep === 2 && 'Chọn Mô hình Cây của bạn'}
-              {currentStep === 3 && "Đặt tên cho 'Gốc Cây'"}
-              {currentStep === 4 && 'Phân loại dòng giống'}
-              {currentStep === 5 && 'Sẵn sàng gieo hạt!'}
+              {currentStep === 2 && 'Tạo mô hình cây của bạn'}
+              {currentStep === 3 && 'Đặt tên cho Sản phẩm chính'}
+              {currentStep === 4 && 'Chọn danh mục sản phẩm'}
+              {currentStep === 5 && 'Sẵn sàng tạo tùy chọn!'}
             </DialogTitle>
             <div className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>
               {currentStep}/{totalSteps}
@@ -188,6 +205,28 @@ interface Step2Props {
 }
 
 function Step2ChooseModel({ selectedModel, onSelectModel }: Step2Props) {
+  const { nodes: initialNodes, edges: initialEdges } = useProductTree(selectedModel as TreePattern | null)
+  const [nodes, setNodes] = useState(initialNodes)
+  const [edges, setEdges] = useState(initialEdges)
+
+  // Reset nodes and edges when pattern changes
+  useEffect(() => {
+    setNodes(initialNodes)
+    setEdges(initialEdges)
+  }, [initialNodes, initialEdges])
+
+  const onInit = useCallback((reactFlowInstance: ReactFlowInstance) => {
+    reactFlowInstance.fitView()
+  }, [])
+
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    setNodes((nds) => applyNodeChanges(changes, nds))
+  }, [])
+
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+    setEdges((eds) => applyEdgeChanges(changes, eds))
+  }, [])
+
   return (
     <div className='space-y-6'>
       <p className='text-gray-700 leading-relaxed'>
@@ -226,196 +265,76 @@ function Step2ChooseModel({ selectedModel, onSelectModel }: Step2Props) {
 
       {selectedModel && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          {selectedModel === 'simple' && <SimpleModelDiagram />}
-          {selectedModel === 'medium' && <MediumModelDiagram />}
-          {selectedModel === 'complex' && <ComplexModelDiagram />}
+          <div className='bg-white border border-gray-200 rounded-lg p-6 shadow-sm'>
+            <div className='h-[500px] w-full'>
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                nodeTypes={nodeTypes}
+                onInit={onInit}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                fitView
+                nodesDraggable={true}
+                nodesConnectable={false}
+                elementsSelectable={true}
+                panOnDrag={true}
+                zoomOnScroll={true}
+                className='bg-gray-50'
+              >
+                <Background color='#e5e7eb' gap={16} />
+                <Controls showInteractive={false} />
+              </ReactFlow>
+            </div>
+
+            <div className='mt-6 bg-gray-50 rounded-lg p-4'>
+              <p className='text-sm text-gray-600'>
+                {selectedModel === 'simple' && 'Thích hợp khi sản phẩm chỉ có 1 cấp tùy chọn (Size hoặc Dung tích...)'}
+                {selectedModel === 'medium' && 'Phổ biến nhất: 2 cấp tùy chọn (VD: Chất liệu → Dung tích)'}
+                {selectedModel === 'complex' && 'Dùng khi có nhiều sản phẩm con khác tên/ảnh (VD: Rừng vs Nhà)'}
+              </p>
+            </div>
+          </div>
         </motion.div>
       )}
     </div>
   )
 }
 
-function SimpleModelDiagram() {
-  return (
-    <div className='bg-white border border-gray-200 rounded-lg p-6 shadow-sm'>
-      <div className='flex flex-col items-center space-y-4'>
-        <div className='flex flex-col items-center'>
-          <div className='w-16 h-16 rounded-lg bg-blue-100 flex items-center justify-center mb-2'>
-            <Box className='w-8 h-8 text-blue-600' />
-          </div>
-          <div className='text-center'>
-            <p className='font-semibold text-gray-900'>Sản phẩm chính</p>
-            <p className='text-sm text-gray-500'>Ví dụ: Mật ong</p>
-          </div>
-        </div>
-
-        <div className='flex flex-col items-center space-y-2'>
-          <div className='w-0.5 h-8 bg-gray-300' />
-          <div className='w-0.5 h-8 bg-gray-300' />
-        </div>
-
-        <div className='flex gap-8'>
-          <div className='flex flex-col items-center'>
-            <div className='w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center mb-2'>
-              <Tag className='w-8 h-8 text-green-600' />
-            </div>
-            <div className='text-center'>
-              <p className='font-semibold text-gray-900'>SKU 1</p>
-              <p className='text-sm text-gray-500'>1 Lít</p>
-            </div>
-          </div>
-
-          <div className='flex flex-col items-center'>
-            <div className='w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center mb-2'>
-              <Tag className='w-8 h-8 text-green-600' />
-            </div>
-            <div className='text-center'>
-              <p className='font-semibold text-gray-900'>SKU 2</p>
-              <p className='text-sm text-gray-500'>5 Lít</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className='mt-6 bg-gray-50 rounded-lg p-4'>
-        <p className='text-sm text-gray-600'>Thích hợp khi sản phẩm chỉ có 1 cấp tùy chọn (Size hoặc Dung tích...)</p>
-      </div>
-    </div>
-  )
-}
-
-function MediumModelDiagram() {
-  return (
-    <div className='bg-white border border-gray-200 rounded-lg p-6 shadow-sm'>
-      <div className='flex flex-col items-center space-y-4'>
-        <div className='flex flex-col items-center'>
-          <div className='w-16 h-16 rounded-lg bg-blue-100 flex items-center justify-center mb-2'>
-            <Box className='w-8 h-8 text-blue-600' />
-          </div>
-          <div className='text-center'>
-            <p className='font-semibold text-gray-900'>Sản phẩm chính</p>
-            <p className='text-sm text-gray-500'>Mật ong</p>
-          </div>
-        </div>
-
-        <div className='flex flex-col items-center space-y-2'>
-          <div className='w-0.5 h-8 bg-gray-300' />
-          <div className='w-0.5 h-8 bg-gray-300' />
-        </div>
-
-        <div className='flex gap-8'>
-          <div className='flex flex-col items-center'>
-            <div className='w-16 h-16 rounded-lg bg-yellow-100 flex items-center justify-center mb-2'>
-              <Layers className='w-8 h-8 text-yellow-600' />
-            </div>
-            <div className='text-center mb-2'>
-              <p className='font-semibold text-gray-900'>Hũ Nhựa</p>
-            </div>
-            <div className='w-0.5 h-8 bg-gray-300 mb-2' />
-            <div className='w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center'>
-              <Tag className='w-8 h-8 text-green-600' />
-            </div>
-            <p className='text-sm text-gray-500 mt-2'>100ml</p>
-          </div>
-
-          <div className='flex flex-col items-center'>
-            <div className='w-16 h-16 rounded-lg bg-yellow-100 flex items-center justify-center mb-2'>
-              <Layers className='w-8 h-8 text-yellow-600' />
-            </div>
-            <div className='text-center mb-2'>
-              <p className='font-semibold text-gray-900'>Hũ Thủy Tinh</p>
-            </div>
-            <div className='w-0.5 h-8 bg-gray-300 mb-2' />
-            <div className='w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center'>
-              <Tag className='w-8 h-8 text-green-600' />
-            </div>
-            <p className='text-sm text-gray-500 mt-2'>100ml</p>
-          </div>
-        </div>
-      </div>
-
-      <div className='mt-6 bg-gray-50 rounded-lg p-4'>
-        <p className='text-sm text-gray-600'>Phổ biến nhất: 2 cấp tùy chọn (VD: Chất liệu → Dung tích)</p>
-      </div>
-    </div>
-  )
-}
-
-function ComplexModelDiagram() {
-  return (
-    <div className='bg-white border border-gray-200 rounded-lg p-6 shadow-sm'>
-      <div className='flex flex-col items-center space-y-4'>
-        <div className='flex flex-col items-center'>
-          <div className='w-16 h-16 rounded-lg bg-purple-100 flex items-center justify-center mb-2'>
-            <Home className='w-8 h-8 text-purple-600' />
-          </div>
-          <div className='text-center'>
-            <p className='font-semibold text-gray-900'>Dòng SP</p>
-            <p className='text-sm text-gray-500'>Dòng Mật Ong</p>
-          </div>
-        </div>
-
-        <div className='flex flex-col items-center space-y-2'>
-          <div className='w-0.5 h-8 bg-gray-300' />
-          <div className='w-0.5 h-8 bg-gray-300' />
-        </div>
-
-        <div className='flex gap-8'>
-          <div className='flex flex-col items-center'>
-            <div className='w-16 h-16 rounded-lg bg-blue-100 flex items-center justify-center mb-2'>
-              <Box className='w-8 h-8 text-blue-600' />
-            </div>
-            <div className='text-center mb-2'>
-              <p className='font-semibold text-gray-900'>Mật ong rừng</p>
-            </div>
-            <div className='w-0.5 h-8 bg-gray-300 mb-2' />
-            <div className='w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center'>
-              <Tag className='w-8 h-8 text-green-600' />
-            </div>
-            <p className='text-sm text-gray-500 mt-2'>SKU...</p>
-          </div>
-
-          <div className='flex flex-col items-center'>
-            <div className='w-16 h-16 rounded-lg bg-blue-100 flex items-center justify-center mb-2'>
-              <Box className='w-8 h-8 text-blue-600' />
-            </div>
-            <div className='text-center mb-2'>
-              <p className='font-semibold text-gray-900'>Mật ong nhà</p>
-            </div>
-            <div className='w-0.5 h-8 bg-gray-300 mb-2' />
-            <div className='w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center'>
-              <Tag className='w-8 h-8 text-green-600' />
-            </div>
-            <p className='text-sm text-gray-500 mt-2'>SKU...</p>
-          </div>
-        </div>
-      </div>
-
-      <div className='mt-6 bg-gray-50 rounded-lg p-4'>
-        <p className='text-sm text-gray-600'>Dùng khi có nhiều sản phẩm con khác tên/ảnh (VD: Rừng vs Nhà)</p>
-      </div>
-    </div>
-  )
-}
-
-// Step 3: Name Root
+// Step 3: Name Root (Sản phẩm chính)
 function Step3NameRoot() {
   return (
     <div className='space-y-4'>
-      <p className='text-gray-700 leading-relaxed mb-4'>Bắt đầu tạo Sản phẩm chính.</p>
+      <p className='text-gray-700 leading-relaxed mb-4'>
+        Bắt đầu tạo <strong className='text-blue-600'>Sản phẩm chính</strong> - đây là sản phẩm độc lập mà khách hàng
+        sẽ thấy trên trang danh mục.
+      </p>
 
       <div className='space-y-3'>
         <div className='flex items-start gap-2'>
           <span className='text-green-600 font-bold'>•</span>
-          <p className='text-gray-700 text-sm'>Tên này sẽ hiển thị trên danh mục tìm kiếm.</p>
+          <p className='text-gray-700 text-sm'>
+            <strong>Tên sản phẩm:</strong> Đặt tên rõ ràng, cụ thể - đây là tên khách hàng sẽ thấy trên danh mục tìm
+            kiếm.
+          </p>
         </div>
         <div className='flex items-start gap-2'>
           <span className='text-green-600 font-bold'>•</span>
-          <p className='text-gray-700 text-sm'>Ví dụ: "Mật ong rừng", "Áo thun trơn".</p>
+          <p className='text-gray-700 text-sm'>
+            <strong>Ví dụ tên tốt:</strong> "Mật ong rừng", "Mật ong nhà", "Áo thun trơn", "Gốm sứ Bát Tràng"
+          </p>
         </div>
         <div className='flex items-start gap-2'>
           <span className='text-green-600 font-bold'>•</span>
-          <p className='text-gray-700 text-sm'>Chưa cần nhập giá ở đây (Giá nằm ở bước tạo 'Quả').</p>
+          <p className='text-gray-700 text-sm'>
+            <strong>Mô tả & Hình ảnh:</strong> Thêm mô tả chi tiết và hình ảnh đại diện cho sản phẩm.
+          </p>
+        </div>
+        <div className='flex items-start gap-2'>
+          <span className='text-green-600 font-bold'>•</span>
+          <p className='text-gray-700 text-sm'>
+            <strong>Lưu ý:</strong> Chưa cần nhập giá ở đây. Giá sẽ được đặt ở bước tạo <strong className='text-green-600'>Phiên bản bán được (SKU)</strong>.
+          </p>
         </div>
       </div>
     </div>
@@ -426,9 +345,32 @@ function Step3NameRoot() {
 function Step4Category() {
   return (
     <div className='space-y-4'>
-      <p className='text-gray-700 leading-relaxed'>
-        Chọn đúng danh mục để khách hàng dễ tìm thấy 'Cây' của bạn trong khu rừng sản phẩm.
+      <p className='text-gray-700 leading-relaxed mb-4'>
+        Chọn <strong className='text-blue-600'>danh mục sản phẩm</strong> phù hợp để khách hàng dễ dàng tìm thấy sản
+        phẩm của bạn.
       </p>
+
+      <div className='space-y-3'>
+        <div className='flex items-start gap-2'>
+          <span className='text-green-600 font-bold'>•</span>
+          <p className='text-gray-700 text-sm'>
+            <strong>Chọn danh mục chính xác:</strong> Đặt sản phẩm vào đúng danh mục giúp khách hàng tìm thấy dễ dàng
+            hơn.
+          </p>
+        </div>
+        <div className='flex items-start gap-2'>
+          <span className='text-green-600 font-bold'>•</span>
+          <p className='text-gray-700 text-sm'>
+            <strong>Ví dụ:</strong> "Mật ong" → Danh mục "Thực phẩm" → "Đồ uống & Thực phẩm tự nhiên"
+          </p>
+        </div>
+        <div className='flex items-start gap-2'>
+          <span className='text-green-600 font-bold'>•</span>
+          <p className='text-gray-700 text-sm'>
+            <strong>Lưu ý:</strong> Nếu không tìm thấy danh mục phù hợp, hãy chọn danh mục gần nhất.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
@@ -444,10 +386,21 @@ function Step5Complete() {
       </div>
 
       <div className='text-center space-y-3'>
-        <p className='text-gray-700 leading-relaxed'>
-          Bạn đã nắm vững lý thuyết! Hãy bấm <strong className='text-green-600'>Lưu sản phẩm</strong> để sang bước tiếp
-          theo: Tạo các biến thể (Cành & Quả).
+        <p className='text-gray-700 leading-relaxed mb-4'>
+          Bạn đã hoàn thành bước tạo <strong className='text-blue-600'>Sản phẩm chính</strong>!
         </p>
+        <p className='text-gray-700 leading-relaxed'>
+          Hãy bấm <strong className='text-green-600'>Lưu sản phẩm</strong> để sang bước tiếp theo: Tạo các{' '}
+          <strong className='text-yellow-600'>Nhóm tùy chọn</strong> và{' '}
+          <strong className='text-green-600'>Phiên bản bán được (SKU)</strong>
+          .
+        </p>
+        <div className='mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 text-left'>
+          <p className='text-sm text-gray-700'>
+            <strong>Bước tiếp theo:</strong> Sau khi lưu, bạn sẽ tạo các tùy chọn sản phẩm (ví dụ: Loại hũ, Dung tích)
+            và đặt giá cho từng phiên bản bán được.
+          </p>
+        </div>
       </div>
     </div>
   )
