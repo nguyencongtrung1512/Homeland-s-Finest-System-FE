@@ -4,8 +4,6 @@ import {
   Search,
   Filter,
   Eye,
-  ChevronLeft,
-  ChevronRight,
   RefreshCw,
   Wallet,
   Clock,
@@ -25,12 +23,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '../../../components/ui/textarea'
 import { Badge } from '../../../components/ui/badge'
 import { getRequestWalletMoney, updateRequestWalletMoney } from '../../../apis/requestWalletMoney.api'
-import { getWalletBalance, withdrawal } from '../../../apis/wallet.api'
+import { getWalletBalance, withdrawal, getWalletTransactions } from '../../../apis/wallet.api'
 import { getOrderDetail } from '../../../apis/order.api'
 import type { RequestWalletMoney, UpdateRequestWalletMoneyInput } from '../../../types/requestWalletMoneyType'
-import type { WalletData } from '../../../types/walletType'
+import type { WalletData, WalletTransactionDTO } from '../../../types/walletType'
+import { getTransactionTypeLabel } from '../../../types/walletType'
 import { formatDate } from '../../../utils/formatDate'
 import { toast } from '../../../utils/toast'
+import Loading from '../../../components/Loading/loading'
+import Pagination from '../../../components/Pagination/Pagination'
 
 function RequestWalletMoneyManagement() {
   const [searchText, setSearchText] = useState('')
@@ -54,6 +55,10 @@ function RequestWalletMoneyManagement() {
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false)
+  const [walletTransactions, setWalletTransactions] = useState<WalletTransactionDTO[]>([])
+  const [loadingTransactions, setLoadingTransactions] = useState(false)
+  const [transactionPage, setTransactionPage] = useState(1)
+  const [transactionPageSize] = useState(10)
 
   // Thống kê
   const [stats, setStats] = useState({
@@ -128,6 +133,32 @@ function RequestWalletMoneyManagement() {
     }
   }
 
+  const fetchWalletTransactions = async () => {
+    try {
+      setLoadingTransactions(true)
+      const response = await getWalletTransactions({
+        pageSize: transactionPageSize,
+        pageNumber: transactionPage
+      })
+      // Handle different response structures
+      if (response?.data?.items) {
+        setWalletTransactions(response.data.items)
+      } else if (Array.isArray(response?.data)) {
+        setWalletTransactions(response.data)
+      } else if (Array.isArray(response)) {
+        setWalletTransactions(response)
+      } else {
+        setWalletTransactions([])
+      }
+    } catch (err) {
+      console.error('Error fetching wallet transactions:', err)
+      setWalletTransactions([])
+      toast.error('Lỗi', 'Không thể tải lịch sử giao dịch')
+    } finally {
+      setLoadingTransactions(false)
+    }
+  }
+
   const handleCreateWithdrawal = async () => {
     if (!withdrawAmount) return
 
@@ -196,7 +227,14 @@ function RequestWalletMoneyManagement() {
 
   useEffect(() => {
     fetchWalletInfo()
+    fetchWalletTransactions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    fetchWalletTransactions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transactionPage])
 
   // Handle filter button click
   const handleFilter = () => {
@@ -208,14 +246,14 @@ function RequestWalletMoneyManagement() {
   const handleViewDetail = async (request: RequestWalletMoney) => {
     setSelectedRequest(request)
     setOrderDetail(null)
-    
+
     // Nếu request có orderId, fetch order detail
     if (request.orderId) {
       try {
         setLoadingOrderDetail(true)
         const orderData = await getOrderDetail(request.orderId)
         console.log('Order Detail Response:', orderData)
-        
+
         // API trả về Order object trực tiếp có thuộc tính status
         // Wrap lại để match với type {data: {status: string}}
         if (orderData?.status) {
@@ -230,7 +268,7 @@ function RequestWalletMoneyManagement() {
         setLoadingOrderDetail(false)
       }
     }
-    
+
     setIsDetailModalOpen(true)
   }
 
@@ -367,6 +405,31 @@ function RequestWalletMoneyManagement() {
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
     }
+  }
+
+  // Get transaction status config
+  const getTransactionStatusConfig = (status: string) => {
+    const statusMap: Record<string, { text: string; bgColor: string; textColor: string }> = {
+      Pending: { text: 'Đang chờ', bgColor: 'bg-yellow-100', textColor: 'text-yellow-800' },
+      Completed: { text: 'Hoàn thành', bgColor: 'bg-green-100', textColor: 'text-green-800' },
+      Cancel: { text: 'Đã hủy', bgColor: 'bg-gray-100', textColor: 'text-gray-800' },
+      Approved: { text: 'Đã duyệt', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
+      Rejected: { text: 'Đã từ chối', bgColor: 'bg-red-100', textColor: 'text-red-800' },
+      Disputed: { text: 'Tranh chấp', bgColor: 'bg-orange-100', textColor: 'text-orange-800' }
+    }
+    return (
+      statusMap[status] || {
+        text: status || 'Không xác định',
+        bgColor: 'bg-gray-100',
+        textColor: 'text-gray-800'
+      }
+    )
+  }
+
+  // Get transaction type icon color
+  const getTransactionTypeColor = (type: string) => {
+    const isPositive = ['Deposit', 'CommissionReceived', 'Refund', 'RefundToCustomer'].includes(type)
+    return isPositive ? 'text-green-600' : 'text-red-600'
   }
 
   // Get order status config - convert sang tiếng Việt
@@ -741,9 +804,8 @@ function RequestWalletMoneyManagement() {
             )}
 
             {loading && !error ? (
-              <div className='p-12 text-center'>
-                <Loader2 className='w-8 h-8 animate-spin text-blue-600 mx-auto mb-4' />
-                <p className='text-gray-600 text-sm'>Đang tải dữ liệu...</p>
+              <div className='p-12'>
+                <Loading size='md' text='Đang tải dữ liệu...' />
               </div>
             ) : !error ? (
               <>
@@ -789,54 +851,19 @@ function RequestWalletMoneyManagement() {
                 </div>
 
                 {/* Pagination */}
-                <div className='flex flex-col md:flex-row items-center justify-between px-4 md:px-6 py-4 border-t border-gray-200 gap-3'>
-                  <span className='text-gray-600 text-xs md:text-sm'>
-                    Hiển thị {displayedRequests.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} đến{' '}
-                    {Math.min(currentPage * pageSize, filteredRequests.length)} của {filteredRequests.length} kết quả
-                  </span>
-                  <div className='flex items-center gap-1'>
-                    <Button
-                      variant='ghost'
-                      size='sm'
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1 || loading}
-                      className='h-8 w-8 p-0 text-gray-500 hover:text-gray-700'
-                    >
-                      <ChevronLeft size={16} />
-                    </Button>
-
-                    {Array.from(
-                      { length: Math.min(Math.ceil(filteredRequests.length / pageSize), 10) },
-                      (_, i) => i + 1
-                    ).map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? 'default' : 'ghost'}
-                        size='sm'
-                        onClick={() => setCurrentPage(page)}
-                        disabled={loading}
-                        className={`h-8 w-8 p-0 ${
-                          currentPage === page
-                            ? 'bg-blue-600 text-white hover:bg-blue-700'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        {page}
-                      </Button>
-                    ))}
-
-                    <Button
-                      variant='ghost'
-                      size='sm'
-                      onClick={() =>
-                        setCurrentPage(Math.min(Math.ceil(filteredRequests.length / pageSize), currentPage + 1))
-                      }
-                      disabled={currentPage >= Math.ceil(filteredRequests.length / pageSize) || loading}
-                      className='h-8 w-8 p-0 text-gray-500 hover:text-gray-700'
-                    >
-                      <ChevronRight size={16} />
-                    </Button>
+                <div className='px-4 md:px-6 py-4 border-t border-gray-200'>
+                  <div className='flex flex-col md:flex-row items-center justify-between gap-3 mb-4'>
+                    <span className='text-gray-600 text-xs md:text-sm'>
+                      Hiển thị {displayedRequests.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} đến{' '}
+                      {Math.min(currentPage * pageSize, filteredRequests.length)} của {filteredRequests.length} kết quả
+                    </span>
                   </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(filteredRequests.length / pageSize)}
+                    onPageChange={setCurrentPage}
+                    maxVisiblePages={2}
+                  />
                 </div>
               </>
             ) : (
@@ -871,9 +898,8 @@ function RequestWalletMoneyManagement() {
                       <span className='text-sm text-gray-600'>Trạng thái:</span>
                       {orderDetail?.data?.status ? (
                         <Badge
-                          className={`${
-                            getOrderStatusConfig(orderDetail.data.status.trim()).bgColor
-                          } ${getOrderStatusConfig(orderDetail.data.status.trim()).textColor} border-0`}
+                          className={`${getOrderStatusConfig(orderDetail.data.status.trim()).bgColor
+                            } ${getOrderStatusConfig(orderDetail.data.status.trim()).textColor} border-0`}
                         >
                           {getOrderStatusConfig(orderDetail.data.status.trim()).text}
                         </Badge>
@@ -885,9 +911,8 @@ function RequestWalletMoneyManagement() {
                 )}
 
                 {loadingOrderDetail && (
-                  <div className='flex items-center justify-center py-4'>
-                    <Loader2 className='w-4 h-4 animate-spin text-blue-600 mr-2' />
-                    <span className='text-sm text-gray-600'>Đang tải thông tin đơn hàng...</span>
+                  <div className='py-4'>
+                    <Loading size='sm' text='Đang tải thông tin đơn hàng...' />
                   </div>
                 )}
                 {/* Thông tin người dùng */}
@@ -924,9 +949,8 @@ function RequestWalletMoneyManagement() {
                     <div className='flex justify-between items-start'>
                       <span className='text-sm text-gray-600'>Trạng thái:</span>
                       <Badge
-                        className={`${getStatusConfig(selectedRequest.status).bgColor} ${
-                          getStatusConfig(selectedRequest.status).textColor
-                        } border-0`}
+                        className={`${getStatusConfig(selectedRequest.status).bgColor} ${getStatusConfig(selectedRequest.status).textColor
+                          } border-0`}
                       >
                         {getStatusConfig(selectedRequest.status).text}
                       </Badge>
@@ -1187,6 +1211,126 @@ function RequestWalletMoneyManagement() {
           </Dialog>
         )}
       </AnimatePresence>
+
+      {/* Wallet Transactions History */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.4 }}
+      >
+        <Card className='bg-white shadow-sm'>
+          <CardContent className='p-4 md:p-6'>
+            <div className='flex items-center justify-between mb-4 md:mb-6'>
+              <div>
+                <h2 className='text-lg md:text-xl font-bold text-gray-900'>Lịch sử giao dịch ví</h2>
+                <p className='text-gray-600 text-sm mt-1'>Xem tất cả các giao dịch ví của hệ thống</p>
+              </div>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={fetchWalletTransactions}
+                disabled={loadingTransactions}
+                className='h-9'
+              >
+                <RefreshCw size={14} className={`mr-2 ${loadingTransactions ? 'animate-spin' : ''}`} />
+                <span className='hidden md:inline'>Làm mới</span>
+              </Button>
+            </div>
+
+            {loadingTransactions ? (
+              <div className='py-12'>
+                <Loading size='md' text='Đang tải lịch sử giao dịch...' />
+              </div>
+            ) : walletTransactions.length === 0 ? (
+              <div className='py-12 text-center'>
+                <Wallet className='w-12 h-12 text-gray-400 mx-auto mb-4' />
+                <p className='text-gray-500 text-sm'>Chưa có giao dịch nào</p>
+              </div>
+            ) : (
+              <>
+                <div className='space-y-3'>
+                  {walletTransactions.map((transaction, index) => {
+                    const statusConfig = getTransactionStatusConfig(transaction.status)
+                    const typeColor = getTransactionTypeColor(transaction.type)
+                    const isPositive = ['Deposit', 'CommissionReceived', 'Refund', 'RefundToCustomer'].includes(
+                      transaction.type
+                    )
+
+                    return (
+                      <motion.div
+                        key={transaction.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                      >
+                        <Card className='hover:shadow-md transition-shadow'>
+                          <CardContent className='p-4'>
+                            <div className='flex items-center justify-between gap-4'>
+                              {/* Left Section - Transaction Type and Status */}
+                              <div className='flex items-center gap-3 flex-shrink-0'>
+                                <div>
+                                  <div className='flex items-center gap-2 mb-1'>
+                                    <p className='text-sm font-bold text-gray-900'>
+                                      {getTransactionTypeLabel(transaction.type)}
+                                    </p>
+                                    <Badge
+                                      className={`${statusConfig.bgColor} ${statusConfig.textColor} border-0 text-xs`}
+                                    >
+                                      {statusConfig.text}
+                                    </Badge>
+                                  </div>
+                                  {transaction.description && (
+                                    <p className='text-xs text-gray-500'>{transaction.description}</p>
+                                  )}
+                                  <p className='text-xs text-gray-400 mt-1'>
+                                    {formatDate(transaction.createdAt) || 'Không xác định'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Right Section - Amount and Balance */}
+                              <div className='flex items-center gap-6 flex-shrink-0'>
+                                <div className='text-right'>
+                                  <p className={`text-xl font-bold ${typeColor} mb-1`}>
+                                    {isPositive ? '+' : '-'}
+                                    {transaction.amount.toLocaleString('vi-VN')}₫
+                                  </p>
+                                  <p className='text-xs text-gray-500'>
+                                    Số dư sau:{' '}
+                                    <span className='font-semibold text-gray-700'>
+                                      {transaction.balanceAfter.toLocaleString('vi-VN')}₫
+                                    </span>
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )
+                  })}
+                </div>
+
+                {/* Pagination for Transactions */}
+                {walletTransactions.length > 0 && (
+                  <div className='mt-6 pt-4 border-t border-gray-200'>
+                    <Pagination
+                      currentPage={transactionPage}
+                      totalPages={
+                        walletTransactions.length >= transactionPageSize
+                          ? transactionPage + 1
+                          : transactionPage
+                      }
+                      onPageChange={setTransactionPage}
+                      maxVisiblePages={2}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </motion.div>
   )
 }

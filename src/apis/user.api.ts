@@ -294,10 +294,7 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
     'IsActive',
     (data.isActive !== undefined ? data.isActive : (currentUser?.isActive ?? true)).toString()
   )
-  formData.append(
-    'IsPermission',
-    (data.isPermission !== undefined ? data.isPermission : (currentUser?.isPermission ?? true)).toString()
-  )
+ 
   formData.append('note', (data.note ?? currentUser?.note ?? 'Cập nhật từ trang Profile').trim())
   formData.append(
     'ProvinceId',

@@ -674,7 +674,7 @@ function DetailProductAdmin() {
                     <div className='space-y-2'>
                       <div className='text-sm font-medium text-gray-700'>Trạng thái:</div>
                       <div>
-                        {storeInfo.status === 'Approved' || storeInfo.status === 'Active' ? (
+                        {storeInfo.status === 'Approved'  ? (
                           <Badge className='bg-green-100 text-green-800'>Đã duyệt</Badge>
                         ) : storeInfo.status === 'Pending' || storeInfo.status === 'Processing' ? (
                           <Badge className='bg-yellow-100 text-yellow-800'>Đang xử lý</Badge>
