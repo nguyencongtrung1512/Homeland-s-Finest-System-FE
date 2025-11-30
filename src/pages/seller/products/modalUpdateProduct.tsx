@@ -11,6 +11,7 @@ import { toast } from '../../../utils/toast'
 import type { Product } from '../../../types/productType'
 import { storeApi } from '../../../apis/store.api'
 import { useAuth } from '../../../contexts/auth.context'
+import ComboBox from '../../../components/ui/combo-box'
 
 interface ModalUpdateProductProps {
   open: boolean
@@ -239,11 +240,11 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
     }))
   }
 
-  const handleCategorySelect = (categoryId: string) => {
+  const handleCategorySelect = (category: ProductCategoryItem | null) => {
     setCategoryError('')
     setProductData((prev) => ({
       ...prev,
-      categoryId: prev.categoryId === categoryId ? null : categoryId
+      categoryId: category?.id || null
     }))
   }
 
@@ -522,29 +523,26 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                 Loại sản phẩm <span className='text-red-500'>*</span>
               </Label>
               {categoryError && <p className='mt-1 text-sm text-red-500'>{categoryError}</p>}
-              <div
-                className={`mt-2 space-y-2 max-h-40 overflow-y-auto border rounded-lg p-2 ${categoryError ? 'border-red-500' : ''}`}
-              >
+              <div className={`mt-2 ${categoryError ? 'border border-red-500 rounded-lg p-1' : ''}`}>
                 {categoriesLoading ? (
-                  <div className='text-center py-4 text-gray-500'>Đang tải danh mục...</div>
-                ) : categories.length === 0 ? (
-                  <div className='text-center py-4 text-gray-500'>Không có danh mục nào</div>
+                  <div className='p-4 text-center text-gray-500'>Đang tải danh mục...</div>
                 ) : (
-                  categories.map((category) => (
-                    <label
-                      key={category.id}
-                      className='flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer'
-                    >
-                      <input
-                        type='radio'
-                        name='category'
-                        checked={productData.categoryId === category.id}
-                        onChange={() => handleCategorySelect(category.id)}
-                        className='h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300'
-                      />
-                      <span className='text-sm text-gray-900'>{category.name}</span>
-                    </label>
-                  ))
+                  <ComboBox
+                    options={categories}
+                    placeholder='Chọn loại sản phẩm'
+                    value={productData.categoryId || undefined}
+                    disabled={categoriesLoading || categories.length === 0}
+                    getOptionLabel={(category) => category.name}
+                    getOptionValue={(category) => category.id}
+                    onSelect={handleCategorySelect}
+                    filterFunction={(category, searchValue) => {
+                      const search = searchValue.toLowerCase()
+                      return category.name.toLowerCase().includes(search)
+                    }}
+                  />
+                )}
+                {!categoriesLoading && categories.length === 0 && (
+                  <div className='p-4 text-center text-gray-500'>Không có danh mục nào</div>
                 )}
               </div>
             </div>
@@ -556,8 +554,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                   Mô tả sản phẩm <span className='text-red-500'>*</span>
                 </Label>
                 <span
-                  className={`text-xs ${countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'
-                    }`}
+                  className={`text-xs ${countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'}`}
                 >
                   {countWords(productData.description)} / {MAX_DESCRIPTION_WORDS} từ
                 </span>
@@ -605,7 +602,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
               <div>
                 <div className='flex items-center justify-between mb-1'>
                   <Label className='text-sm font-medium'>
-                    Ảnh hiện có (click để xóa) <span className='text-red-500'>*</span>
+                    Ảnh hiện có <span className='text-red-500'>*</span>
                   </Label>
                   <span className='text-xs text-gray-500'>
                     {existingImageUrls.length + mediaData.newProductImages.length} / {MAX_IMAGES} ảnh

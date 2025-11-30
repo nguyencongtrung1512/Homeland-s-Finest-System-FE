@@ -382,7 +382,7 @@ function ComboItemsManager({
         )}
 
         <div className='flex items-center justify-between'>
-          <CardTitle className='flex items-center gap-2'>
+          <CardTitle className='flex items-center gap-2 py-2'>
             <Package className='w-5 h-5' />
             Sản phẩm trong combo ({activeItemsCount}/{totalItemsCount} items)
           </CardTitle>

@@ -84,6 +84,7 @@ export interface Combo {
   provinceName: string
   thumbnailUrl?: string
   description?: string
+  totalSavings: number
   totalBasePrice: number
   totalFinalPrice: number
   availableQuantity?: number

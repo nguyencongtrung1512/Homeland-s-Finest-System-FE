@@ -290,7 +290,7 @@ export default function ProductReviews() {
       {/* Header */}
       <div>
         <h1 className='text-2xl font-bold text-gray-900 mb-2'>Đánh giá sản phẩm</h1>
-        <p className='text-gray-600'>Quản lý và phản hồi đánh giá từ khách hàng</p>
+        <p className='text-green-700'>Quản lý và phản hồi đánh giá từ khách hàng</p>
       </div>
 
       {/* Overall Statistics Card */}

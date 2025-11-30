@@ -358,7 +358,7 @@ const SellerPromotionList: React.FC = () => {
       {/* Header */}
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Quản lý Promotion</h1>
+          <h1 className='text-3xl font-bold text-green-700'>Quản lý khuyến mãi</h1>
           <p className='text-gray-600 mt-1'>Quản lý các Mã khuyến mãi của cửa hàng</p>
         </div>
         <Button variant='yellow' onClick={handleCreatePromotion}>

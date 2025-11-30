@@ -310,9 +310,9 @@ function ComboSeller() {
     <div className='p-6'>
       {/* Header */}
       <div className='flex justify-between items-center mb-6'>
-        <h1 className='text-2xl font-semibold text-gray-900'>Quản lý Combo</h1>
+        <h1 className='text-2xl font-semibold text-green-700'>Quản lý Combo</h1>
         <div className='flex space-x-2'>
-          <Button className='bg-green-600 hover:bg-green-700' onClick={handleCreateCombo}>
+          <Button variant='yellow' onClick={handleCreateCombo}>
             <Plus className='w-4 h-4 mr-2' />
             Thêm Combo mới
           </Button>
@@ -402,7 +402,7 @@ function ComboSeller() {
       {/* Combos Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách Combo</CardTitle>
+          <CardTitle className='py-2'>Danh sách Combo</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (

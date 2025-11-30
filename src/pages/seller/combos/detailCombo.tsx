@@ -763,7 +763,7 @@ function DetailComboSeller() {
           >
             <Card>
               <CardHeader>
-                <CardTitle>Thông tin combo</CardTitle>
+                <CardTitle className='py-2'>Thông tin combo</CardTitle>
               </CardHeader>
               <CardContent className='space-y-4'>
                 <div className='flex items-center justify-between'>
@@ -846,7 +846,10 @@ function DetailComboSeller() {
                     </div>
                   </div>
                 </div>
-
+                <div className='flex items-center justify-between'>
+                  <span className='text-sm font-medium text-gray-700'>Đã giảm:</span>
+                  <span className='text-lg font-semibold text-gray-900'>{combo.totalSavings.toLocaleString()}₫</span>
+                </div>
                 <div className='flex items-center justify-between'>
                   <span className='text-sm font-medium text-gray-700'>Tổng số lượng:</span>
                   <span className='text-lg font-semibold text-gray-900'>{totalItems}</span>

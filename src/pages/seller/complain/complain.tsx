@@ -320,7 +320,7 @@ function ComplainSeller() {
       {/* Header */}
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-2xl font-bold text-gray-900'>Khiếu nại về cửa hàng</h1>
+          <h1 className='text-2xl font-bold text-green-700'>Khiếu nại về cửa hàng</h1>
           <p className='text-gray-600 mt-1'>Quản lý và phản hồi các khiếu nại về cửa hàng của bạn</p>
         </div>
         <Button onClick={loadForms} variant='outline' className='text-green-600 border-green-600 hover:bg-green-50'>

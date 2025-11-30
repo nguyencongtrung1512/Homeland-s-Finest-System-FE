@@ -136,7 +136,7 @@ function MyStory() {
             <h1 className='text-3xl font-bold text-green-700'>Câu chuyện của bạn</h1>
             <p className='text-gray-600 mt-2'>Chưa có câu chuyện nào được tạo</p>
           </div>
-          <Button className='bg-green-600 hover:bg-green-700 text-white' onClick={handleCreateClick} type='button'>
+          <Button variant='yellow' onClick={handleCreateClick} type='button'>
             <Plus className='w-4 h-4 mr-2' />
             Tạo câu chuyện mới
           </Button>
@@ -160,7 +160,7 @@ function MyStory() {
             </div>
           </div>
         </div>
-        <Button className='bg-green-600 hover:bg-green-700 text-white' onClick={handleCreateClick} type='button'>
+        <Button variant='yellow' onClick={handleCreateClick} type='button'>
           <Plus className='w-4 h-4 mr-2' />
           Tạo câu chuyện mới
         </Button>
@@ -179,7 +179,7 @@ function MyStory() {
             </div>
             <h3 className='text-xl font-semibold text-gray-900 mb-2'>Chưa có câu chuyện nào</h3>
             <p className='text-gray-600 mb-6'>Hãy tạo câu chuyện đầu tiên để chia sẻ về cửa hàng của bạn</p>
-            <Button className='bg-green-600 hover:bg-green-700 text-white' onClick={handleCreateClick} type='button'>
+            <Button variant='yellow' onClick={handleCreateClick} type='button'>
               <Plus className='w-4 h-4 mr-2' />
               Tạo câu chuyện đầu tiên
             </Button>

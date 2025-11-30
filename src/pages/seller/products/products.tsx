@@ -430,7 +430,7 @@ function ProductsSeller() {
     <div className='p-6'>
       {/* Header */}
       <div className='flex justify-between items-center mb-6'>
-        <h1 className='text-2xl font-semibold text-gray-900'>Quản lý sản phẩm</h1>
+        <h1 className='text-2xl font-semibold text-green-700'>Quản lý sản phẩm</h1>
         <div className='flex gap-3'>
           <Button variant='outline' onClick={() => setShowTutorial(true)}>
             <BookOpen className='w-4 h-4 mr-2' />

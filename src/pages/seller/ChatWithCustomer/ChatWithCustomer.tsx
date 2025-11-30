@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Badge } from '../../../components/ui/badge'
-import { Search, Paperclip, Image as ImageIcon, Send, Share2 } from 'lucide-react'
+import { Search, Paperclip, Image as ImageIcon, Send } from 'lucide-react'
 import { useAuth } from '../../../contexts/auth.context'
 import { getAllChatRoomsByUserId, getChatRoomMessages, sendChatRoomMessage } from '../../../apis/chat.api'
 import { signalRService } from '../../../service/signalRService'
@@ -52,21 +52,6 @@ const parseVietnameseTimestamp = (timestamp: string): Date => {
   return new Date(timestamp)
 }
 
-const formatTime = (timestamp: string): string => {
-  const date = parseVietnameseTimestamp(timestamp)
-  if (isNaN(date.getTime())) {
-    // If parsing fails, try to extract time from original string
-    const timeMatch = timestamp.match(/(\d{2}):(\d{2}):(\d{2})/)
-    if (timeMatch) {
-      return `${timeMatch[1]}:${timeMatch[2]}`
-    }
-    return timestamp
-  }
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  return `${hours}:${minutes}`
-}
-
 const formatDate = (timestamp: string): string => {
   const date = parseVietnameseTimestamp(timestamp)
   if (isNaN(date.getTime())) {
@@ -113,7 +98,6 @@ const getDateKey = (timestamp: string): string => {
   return `${year}-${month}-${day}`
 }
 
-
 function ChatWithCustomer() {
   const { user } = useAuth()
   const [selectedChat, setSelectedChat] = useState<string | null>(null)
@@ -127,7 +111,6 @@ function ChatWithCustomer() {
   const [hasMoreMessages, setHasMoreMessages] = useState<{ [roomId: string]: boolean }>({})
   const [allMessages, setAllMessages] = useState<{ [roomId: string]: Message[] }>({}) // Store all loaded messages
   const [messagePage, setMessagePage] = useState<{ [roomId: string]: number }>({})
-  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set())
@@ -135,10 +118,76 @@ function ChatWithCustomer() {
   const [previewImages, setPreviewImages] = useState<string[]>([])
   const [previewIndex, setPreviewIndex] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentTime, setCurrentTime] = useState(new Date()) // For real-time updates
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const MESSAGES_PER_PAGE = 20
+
+  // Format relative time helper function inside component to use currentTime
+  const formatRelativeTime = (timestamp: string): string => {
+    const date = parseVietnameseTimestamp(timestamp)
+    if (isNaN(date.getTime())) {
+      return timestamp
+    }
+
+    const now = currentTime
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+    // Less than 1 minute
+    if (diffInSeconds < 60) {
+      return 'Vừa xong'
+    }
+
+    // Less than 1 hour
+    if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60)
+      return `${minutes} phút trước`
+    }
+
+    // Less than 24 hours
+    if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600)
+      return `${hours} giờ trước`
+    }
+
+    // Less than 7 days
+    if (diffInSeconds < 604800) {
+      const days = Math.floor(diffInSeconds / 86400)
+      return `${days} ngày trước`
+    }
+
+    // More than 7 days - show date
+    const today = new Date(now)
+    today.setHours(0, 0, 0, 0)
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    const dateOnly = new Date(date)
+    dateOnly.setHours(0, 0, 0, 0)
+
+    if (dateOnly.getTime() === today.getTime()) {
+      return 'Hôm nay'
+    } else if (dateOnly.getTime() === yesterday.getTime()) {
+      return 'Hôm qua'
+    } else {
+      // Show full date for older messages
+      return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric', year: 'numeric' })
+    }
+  }
+
+  // Update current time every minute for real-time relative time display
+  useEffect(() => {
+    // Update immediately on mount
+    setCurrentTime(new Date())
+
+    // Then update every minute
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // Update every minute
+
+    return () => clearInterval(interval)
+  }, [])
 
   // Load chat rooms từ API
   useEffect(() => {
@@ -674,7 +723,7 @@ function ChatWithCustomer() {
           ) : (
             filteredConversations.map((chat) => (
               <div
-                key={chat.id}
+                key={`${chat.id}-${currentTime.getMinutes()}`}
                 onClick={() => setSelectedChat(chat.id)}
                 className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${chat.id === selectedChat ? 'bg-green-50 border-l-4 border-l-green-500' : ''
                   }`}
@@ -692,7 +741,7 @@ function ChatWithCustomer() {
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-center justify-between mb-1'>
                       <h3 className='font-medium text-gray-900 truncate'>{chat.name}</h3>
-                      <span className='text-xs text-gray-500'>{chat.timestamp}</span>
+                      <span className='text-xs text-gray-500'>{formatRelativeTime(chat.timestamp)}</span>
                     </div>
                     <p className='text-sm text-gray-600 truncate'>{chat.lastMessage}</p>
                   </div>
@@ -732,23 +781,7 @@ function ChatWithCustomer() {
               </div>
             </div>
 
-            {/* Product Card */}
-            <div className='mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-3'>
-                  <div className='w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center'>
-                    <span className='text-xs text-gray-600'>IMG</span>
-                  </div>
-                  <div>
-                    <h4 className='font-medium text-gray-900'>Bánh tam giác mạch Hà Giang</h4>
-                    <p className='text-sm text-green-600 font-medium'>120.000₫ - 150.000₫</p>
-                  </div>
-                </div>
-                <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                  <Share2 className='w-4 h-4' />
-                </Button>
-              </div>
-            </div>
+
           </div>
         )}
 
@@ -802,7 +835,8 @@ function ChatWithCustomer() {
 
                     {/* Messages for this date */}
                     {dateMessages.map((msg) => {
-                      const isHovered = hoveredMessageId === msg.id
+                      // Calculate relative time for real-time updates
+                      const relativeTime = formatRelativeTime(msg.timestamp)
 
                       // Chuẩn bị danh sách ảnh để preview
                       const handleImageClick = (idx: number) => {
@@ -842,8 +876,6 @@ function ChatWithCustomer() {
                               }
                           }
                           className={`flex ${msg.sender === 'shop' ? 'justify-end' : 'justify-start'} mb-2 group items-end gap-2`}
-                          onMouseEnter={() => setHoveredMessageId(msg.id)}
-                          onMouseLeave={() => setHoveredMessageId(null)}
                         >
                           {msg.sender === 'customer' && (
                             <motion.div
@@ -953,17 +985,16 @@ function ChatWithCustomer() {
                               )}
                             </motion.div>
 
-                            {/* Time display - show on hover at bottom corner, outside bubble */}
-                            {isHovered && (
-                              <motion.div
-                                initial={{ opacity: 0, y: -5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={`absolute bottom-0 ${msg.sender === 'shop' ? 'right-0' : 'left-0'} text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-sm border border-gray-200 whitespace-nowrap`}
-                                style={{ fontSize: '10px', lineHeight: '1', transform: 'translateY(100%)' }}
-                              >
-                                {formatTime(msg.timestamp)}
-                              </motion.div>
-                            )}
+                            {/* Time display - always show below message */}
+                            <motion.div
+                              key={`time-${msg.id}-${currentTime.getMinutes()}`}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className={`text-xs text-gray-400 mt-1 ${msg.sender === 'shop' ? 'text-right' : 'text-left'}`}
+                              style={{ fontSize: '11px' }}
+                            >
+                              {relativeTime}
+                            </motion.div>
                           </div>
                         </motion.div>
                       )
