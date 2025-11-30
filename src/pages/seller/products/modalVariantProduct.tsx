@@ -52,6 +52,7 @@ export default function ModalVariantProduct({
   const [widthError, setWidthError] = useState<string>('')
   const [heightError, setHeightError] = useState<string>('')
   const [weightError, setWeightError] = useState<string>('')
+  const [showWarning, setShowWarning] = useState(true)
 
   // Constants for validation
   const MAX_IMAGES = 1
@@ -74,6 +75,8 @@ export default function ModalVariantProduct({
   // Tự động đặt attributeType khi dialog mở (chỉ khi nhóm tùy chọn đã có con)
   useEffect(() => {
     if (open) {
+      // Reset warning when dialog opens
+      setShowWarning(true)
       // Find attributeType from existing variants
       let autoAttributeType = ''
 
@@ -581,8 +584,32 @@ export default function ModalVariantProduct({
       setWidthError('')
       setHeightError('')
       setWeightError('')
+      setShowWarning(true) // Reset warning when dialog closes
     }
   }
+
+  // Check if this is the first child variant being created from a parent variant with SKU info
+  const isFirstChildVariant =
+    selectedParentVariant &&
+    !(
+      selectedParentVariant.childVariantGroups &&
+      Array.isArray(selectedParentVariant.childVariantGroups) &&
+      selectedParentVariant.childVariantGroups.length > 0 &&
+      selectedParentVariant.childVariantGroups[0].options &&
+      selectedParentVariant.childVariantGroups[0].options.length > 0
+    )
+
+  // Check if parent variant has SKU information
+  const parentHasSkuInfo =
+    selectedParentVariant &&
+    (selectedParentVariant.basePrice !== null ||
+      selectedParentVariant.quantity !== null ||
+      selectedParentVariant.length !== null ||
+      selectedParentVariant.width !== null ||
+      selectedParentVariant.height !== null ||
+      selectedParentVariant.weight !== null)
+
+  const shouldShowWarning = isFirstChildVariant && parentHasSkuInfo
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
@@ -590,6 +617,70 @@ export default function ModalVariantProduct({
         <DialogHeader>
           <DialogTitle>Tạo biến thể sản phẩm</DialogTitle>
         </DialogHeader>
+
+        {/* Warning when creating first child variant from parent with SKU info */}
+        {shouldShowWarning && showWarning && (
+          <div className='mt-4 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-lg relative'>
+            <button
+              type='button'
+              onClick={() => setShowWarning(false)}
+              className='absolute top-2 right-2 text-amber-600 hover:text-amber-800 transition-colors'
+              aria-label='Đóng cảnh báo'
+            >
+              <X className='w-5 h-5' />
+            </button>
+            <div className='flex items-start'>
+              <div className='flex-shrink-0'>
+                <svg
+                  className='h-5 w-5 text-amber-400'
+                  xmlns='http://www.w3.org/2000/svg'
+                  viewBox='0 0 20 20'
+                  fill='currentColor'
+                >
+                  <path
+                    fillRule='evenodd'
+                    d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z'
+                    clipRule='evenodd'
+                  />
+                </svg>
+              </div>
+              <div className='ml-3 flex-1 pr-6'>
+                <h3 className='text-sm font-semibold text-amber-800 mb-2'>
+                  Lưu ý quan trọng khi tạo phiên bản bán được đầu tiên
+                </h3>
+                <div className='text-sm text-amber-700 space-y-2'>
+                  <p>
+                    Bạn đang tạo <strong>phiên bản bán được đầu tiên</strong> từ nhóm tùy chọn{' '}
+                    <strong>"{selectedParentVariant.attributeName}"</strong>.
+                  </p>
+                  <p>
+                    <strong>Nhóm tùy chọn này hiện đang có thông tin SKU</strong> (giá bán, số lượng tồn kho, kích
+                    thước, trọng lượng).
+                  </p>
+                  <div className='bg-amber-100 p-3 rounded-md mt-3'>
+                    <p className='font-semibold text-amber-900 mb-1'>Khi bạn tạo phiên bản bán được đầu tiên:</p>
+                    <ul className='list-disc list-inside space-y-1 text-amber-800'>
+                      <li>
+                        <strong>Tất cả thông tin SKU của nhóm tùy chọn sẽ bị xóa</strong> (giá bán, số lượng, kích
+                        thước, trọng lượng)
+                      </li>
+                      <li>
+                        Thông tin SKU sẽ được chuyển sang các <strong>phiên bản bán được</strong> (con) thay vì lưu ở
+                        nhóm tùy chọn (cha)
+                      </li>
+                      <li>
+                        Bạn cần nhập lại thông tin SKU cho từng <strong>phiên bản bán được</strong> sau khi tạo
+                      </li>
+                    </ul>
+                  </div>
+                  <p className='mt-2 font-medium text-amber-900'>
+                    Vui lòng xác nhận bạn đã hiểu và muốn tiếp tục tạo phiên bản bán được.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className='space-y-6 mt-4'>
           {/* Basic Information */}
@@ -698,14 +789,14 @@ export default function ModalVariantProduct({
             {/* Giá - Hiển thị cho cả nhóm tùy chọn và phiên bản bán được */}
             <div>
               <Label htmlFor='variant-price' className='text-sm font-medium'>
-                Giá gốc (VNĐ) <span className='text-red-500'>*</span>
+                Giá cửa hàng thu về (VNĐ) <span className='text-red-500'>*</span>
               </Label>
               <Input
                 id='variant-price'
                 type='number'
                 min='0'
                 step='1000'
-                placeholder='Nhập giá gốc...'
+                placeholder='Nhập giá cửa hàng thu về...'
                 value={variantData.price || ''}
                 onChange={(e) => {
                   const value = e.target.value === '' ? 0 : Number(e.target.value)
@@ -715,12 +806,12 @@ export default function ModalVariantProduct({
                 }}
                 className='mt-1'
               />
-              {variantData.price < 0 && <p className='mt-1 text-sm text-red-500'>Giá gốc không được là số âm</p>}
+              {variantData.price < 0 && <p className='mt-1 text-sm text-red-500'>Giá không được là số âm</p>}
             </div>
 
             {/* Sale Price */}
             <div>
-              <Label className='text-sm font-medium'>Giá bán ra dự kiến (VNĐ)</Label>
+              <Label className='text-sm font-medium'>Giá bán trên sàn dự kiến (VNĐ)</Label>
               <div className='relative mt-1'>
                 <Input
                   value={

@@ -89,6 +89,8 @@ function DetailProductSeller() {
   const [showCancelConfirmDialog, setShowCancelConfirmDialog] = useState(false)
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false)
   const [showActivateDialog, setShowActivateDialog] = useState(false)
+  const [showInactiveVariantWarningDialog, setShowInactiveVariantWarningDialog] = useState(false)
+  const [inactiveVariantName, setInactiveVariantName] = useState<string>('')
 
   // States for expanded variants (collapse/expand)
   const [expandedVariants, setExpandedVariants] = useState<Set<string>>(new Set())
@@ -1612,23 +1614,32 @@ function DetailProductSeller() {
                               {/* Thông tin Phiên bản bán được - Chỉ hiển thị nếu KHÔNG có phiên bản con */}
                               {!hasChildren && (
                                 <div className='mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                                  {/* Price */}
+                                  {/* Base Price - Giá Shop thu về */}
+                                  {parentVariant.basePrice !== null && (
+                                    <div className='space-y-2'>
+                                      <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                        <DollarSign size={14} />
+                                        Giá Shop thu về (VNĐ)
+                                      </label>
+                                      <div className='p-3 bg-gray-50 rounded-lg border'>
+                                        <span className='text-blue-600 font-bold'>
+                                          {parentVariant.basePrice.toLocaleString('vi-VN')} VNĐ
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Final Price - Giá bán trên sàn */}
                                   {parentVariant.finalPrice !== null && (
                                     <div className='space-y-2'>
                                       <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
                                         <DollarSign size={14} />
-                                        Giá bán (VNĐ)
+                                        Giá bán trên sàn (VNĐ)
                                       </label>
                                       <div className='p-3 bg-gray-50 rounded-lg border'>
                                         <span className='text-green-600 font-bold'>
                                           {parentVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
                                         </span>
-                                        {parentVariant.basePrice !== null &&
-                                          parentVariant.basePrice !== parentVariant.finalPrice && (
-                                            <span className='ml-2 text-sm text-gray-500 line-through'>
-                                              {parentVariant.basePrice.toLocaleString('vi-VN')} VNĐ
-                                            </span>
-                                          )}
                                       </div>
                                     </div>
                                   )}
@@ -1804,23 +1815,32 @@ function DetailProductSeller() {
                                             </div>
                                           )}
 
-                                          {/* Child Price */}
+                                          {/* Child Base Price - Giá Shop thu về */}
+                                          {childVariant.basePrice !== null && (
+                                            <div className='space-y-2'>
+                                              <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
+                                                <DollarSign size={14} />
+                                                Giá Shop thu về (VNĐ)
+                                              </label>
+                                              <div className='p-2 bg-white rounded border'>
+                                                <span className='text-blue-600 font-bold text-sm'>
+                                                  {childVariant.basePrice.toLocaleString('vi-VN')} VNĐ
+                                                </span>
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Child Final Price - Giá bán trên sàn */}
                                           {childVariant.finalPrice !== null && (
                                             <div className='space-y-2'>
                                               <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
                                                 <DollarSign size={14} />
-                                                Giá bán (VNĐ)
+                                                Giá bán trên sàn (VNĐ)
                                               </label>
                                               <div className='p-2 bg-white rounded border'>
                                                 <span className='text-green-600 font-bold text-sm'>
                                                   {childVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
                                                 </span>
-                                                {childVariant.basePrice !== null &&
-                                                  childVariant.basePrice !== childVariant.finalPrice && (
-                                                    <span className='ml-2 text-xs text-gray-500 line-through'>
-                                                      {childVariant.basePrice.toLocaleString('vi-VN')} VNĐ
-                                                    </span>
-                                                  )}
                                               </div>
                                             </div>
                                           )}
@@ -1956,6 +1976,12 @@ function DetailProductSeller() {
                             <div className='mt-4 pt-4 border-t border-gray-200'>
                               <Button
                                 onClick={() => {
+                                  // Check if parent variant is active
+                                  if (parentVariant.isActive === false) {
+                                    setInactiveVariantName(parentVariant.attributeName || parentVariant.name || '')
+                                    setShowInactiveVariantWarningDialog(true)
+                                    return
+                                  }
                                   setVariantParentId(parentVariant.id)
                                   setSelectedParentVariant(parentVariant)
                                   setShowCreateVariantDialog(true)
@@ -2236,6 +2262,40 @@ function DetailProductSeller() {
               className='bg-green-600 hover:bg-green-700 text-white'
             >
               {checkingValidation ? 'Đang xử lý...' : 'Xác nhận kích hoạt'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal cảnh báo variant cha đã tạm dừng */}
+      <Dialog open={showInactiveVariantWarningDialog} onOpenChange={setShowInactiveVariantWarningDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className='text-amber-600 flex items-center gap-2'>
+              <AlertCircle className='w-5 h-5' />
+              Không thể tạo phiên bản bán được
+            </DialogTitle>
+            <DialogDescription>
+              <div className='space-y-3 mt-2'>
+                <p className='text-gray-700'>
+                  Hiện tại nhóm tùy chọn <strong>"{inactiveVariantName}"</strong> đã tạm dừng.
+                </p>
+                <div className='bg-amber-50 border border-amber-200 rounded-lg p-3'>
+                  <p className='text-sm text-amber-800 font-medium mb-1'>Lưu ý:</p>
+                  <p className='text-sm text-amber-700'>
+                    Bạn cần kích hoạt lại nhóm tùy chọn này trước khi có thể tạo phiên bản bán được (biến thể con).
+                  </p>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => setShowInactiveVariantWarningDialog(false)}
+              className='w-full sm:w-auto'
+            >
+              Đã hiểu
             </Button>
           </DialogFooter>
         </DialogContent>

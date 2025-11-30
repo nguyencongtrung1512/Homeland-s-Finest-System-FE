@@ -604,14 +604,14 @@ export default function ModalEditVariant({
             {canEditFullFields && (
               <div>
                 <Label htmlFor='edit-price' className='text-sm font-medium'>
-                  Giá bán (VNĐ) <span className='text-red-500'>*</span>
+                  Giá cửa hàng thu về (VNĐ) <span className='text-red-500'>*</span>
                 </Label>
                 <Input
                   id='edit-price'
                   type='number'
                   min='0'
                   step='1000'
-                  placeholder='Nhập giá bán...'
+                  placeholder='Nhập giá cửa hàng thu về...'
                   value={variantData.basePrice || ''}
                   onChange={(e) => {
                     const value = e.target.value === '' ? 0 : Number(e.target.value)
@@ -626,7 +626,7 @@ export default function ModalEditVariant({
                   {`Nhập giá gốc. Hệ thống sẽ áp dụng hoa hồng ${commissionLoading ? '...' : `${commissionRate}%`} để tính giá bán ra.`}
                 </p>
                 <div className='mt-4'>
-                  <Label className='text-sm font-medium'>Giá bán ra dự kiến (VNĐ)</Label>
+                  <Label className='text-sm font-medium'>Giá bán trên sàn dự kiến (VNĐ)</Label>
                   <Input
                     value={formatCurrency(computeSalePrice(variantData.basePrice, commissionRate))}
                     readOnly
@@ -766,32 +766,6 @@ export default function ModalEditVariant({
                       </Button>
                     </div>
                   )}
-
-                  {/* Remove Existing Image Checkbox (only show if there's existing image and no new image) */}
-                  {variant?.productImages &&
-                    variant.productImages.length > 0 &&
-                    !newProductImage &&
-                    imagePreview === variant.productImages[0] && (
-                      <div className='flex items-center gap-2'>
-                        <input
-                          type='checkbox'
-                          id='edit-remove-image'
-                          checked={removeExistingImage}
-                          onChange={(e) => {
-                            setRemoveExistingImage(e.target.checked)
-                            if (e.target.checked) {
-                              setImagePreview(null)
-                            } else {
-                              setImagePreview(variant.productImages?.[0] || null)
-                            }
-                          }}
-                          className='w-4 h-4 rounded border-gray-300'
-                        />
-                        <Label htmlFor='edit-remove-image' className='text-sm text-gray-700 cursor-pointer'>
-                          Xóa ảnh hiện tại
-                        </Label>
-                      </div>
-                    )}
                 </div>
               </div>
             )}

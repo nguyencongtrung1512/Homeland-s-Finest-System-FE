@@ -15,13 +15,14 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../components/ui/dialog'
-import { Plus, Edit, Eye, Play, PauseCircle } from 'lucide-react'
+import { Plus, Edit, Eye, Play, PauseCircle, BookOpen } from 'lucide-react'
 import path from '../../../constants/path'
 import { productApi, type ProductListResponse } from '../../../apis/product.api'
 import type { Product } from '../../../types/productType'
 import ModalUpdateProduct from './modalUpdateProduct'
 import { toast } from '../../../utils/toast'
 import Pagination from '../../../components/Pagination/Pagination'
+import ProductTutorialModal from './ProductTutorialModal'
 
 function ProductsSeller() {
   const navigate = useNavigate()
@@ -44,6 +45,7 @@ function ProductsSeller() {
   const [productToActivate, setProductToActivate] = useState<Product | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isActivating, setIsActivating] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
 
   // Fetch products from API - GET /api/Product tự động filter theo seller đã đăng nhập
   const fetchProducts = async () => {
@@ -429,10 +431,16 @@ function ProductsSeller() {
       {/* Header */}
       <div className='flex justify-between items-center mb-6'>
         <h1 className='text-2xl font-semibold text-gray-900'>Quản lý sản phẩm</h1>
-        <Button variant='yellow' onClick={handleCreateProduct}>
-          <Plus className='w-4 h-4 mr-2' />
-          Thêm sản phẩm mới
-        </Button>
+        <div className='flex gap-3'>
+          <Button variant='outline' onClick={() => setShowTutorial(true)}>
+            <BookOpen className='w-4 h-4 mr-2' />
+            Xem hướng dẫn
+          </Button>
+          <Button variant='yellow' onClick={handleCreateProduct}>
+            <Plus className='w-4 h-4 mr-2' />
+            Thêm sản phẩm mới
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -675,6 +683,9 @@ function ProductsSeller() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Tutorial Modal */}
+      <ProductTutorialModal open={showTutorial} onOpenChange={setShowTutorial} />
     </div>
   )
 }
