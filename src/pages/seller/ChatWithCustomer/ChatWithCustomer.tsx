@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Badge } from '../../../components/ui/badge'
@@ -100,6 +101,7 @@ const getDateKey = (timestamp: string): string => {
 
 function ChatWithCustomer() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [selectedChat, setSelectedChat] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -214,6 +216,43 @@ function ChatWithCustomer() {
         })
 
         setConversations(mappedConversations)
+
+        // Auto-select conversation from query param if exists
+        const roomIdFromQuery = searchParams.get('roomId')
+        if (roomIdFromQuery) {
+          // Check if room exists in loaded conversations
+          const roomExists = mappedConversations.some((conv) => conv.id === roomIdFromQuery)
+          if (roomExists) {
+            setSelectedChat(roomIdFromQuery)
+            // Remove query param after selecting
+            setSearchParams({})
+          } else {
+            // If room doesn't exist in list yet (newly created), add it to conversations
+            // and then select it. This ensures the room is in the list before selecting.
+            // We need to create a temporary conversation entry for the new room
+            const newRoom: Conversation = {
+              id: roomIdFromQuery,
+              name: 'Khách hàng', // Temporary name, will be updated when room details are loaded
+              lastMessage: '',
+              timestamp: new Date().toISOString(),
+              unreadCount: 0,
+              avatar: '',
+              isActive: false,
+              customerId: '', // Will be updated when room details are loaded
+              sellerId: user.userId || ''
+            }
+            setConversations((prev) => {
+              // Check if room already exists to avoid duplicates
+              if (prev.some((conv) => conv.id === roomIdFromQuery)) {
+                return prev
+              }
+              return [newRoom, ...prev]
+            })
+            // Select the room after adding it to conversations
+            setSelectedChat(roomIdFromQuery)
+            setSearchParams({})
+          }
+        }
       } catch (error) {
         console.error('Error loading chat rooms:', error)
       } finally {
@@ -222,7 +261,7 @@ function ChatWithCustomer() {
     }
 
     loadChatRooms()
-  }, [user?.userId])
+  }, [user?.userId, searchParams, setSearchParams])
 
   // Kết nối SignalR khi component mount
   useEffect(() => {
@@ -455,9 +494,17 @@ function ChatWithCustomer() {
 
         // Kiểm tra xem tin nhắn đã tồn tại chưa để tránh duplicate
         setMessages((prev) => {
+          // Ensure messages state is initialized for this roomId
           const existingMessages = prev[currentRoomId] || []
 
-          // Kiểm tra duplicate bằng nội dung và thời gian (vì SignalR có thể tạo ID khác nhau)
+          // Kiểm tra duplicate bằng ID trước (chính xác hơn)
+          const idDuplicate = existingMessages.some((msg) => msg.id === messageData.id)
+          if (idDuplicate) {
+            console.log('[ChatWithCustomer] Duplicate message ID detected, skipping:', messageData.id)
+            return prev
+          }
+
+          // Kiểm tra duplicate bằng nội dung và thời gian (fallback)
           const contentDuplicate = existingMessages.some(
             (msg) =>
               msg.content === messageData.messageText &&
@@ -466,14 +513,34 @@ function ChatWithCustomer() {
           )
 
           if (contentDuplicate) {
-            console.log('[ChatWithCustomer] Duplicate message detected, skipping:', messageData.messageText)
+            console.log('[ChatWithCustomer] Duplicate message content detected, skipping:', messageData.messageText)
             return prev // Không thêm nếu đã có message với cùng nội dung và thời gian
           }
 
-          console.log('[ChatWithCustomer] Adding new message to UI:', messageData.messageText)
+          console.log('[ChatWithCustomer] Adding new message to UI:', {
+            messageId: messageData.id,
+            messageText: messageData.messageText,
+            roomId: currentRoomId,
+            existingMessagesCount: existingMessages.length
+          })
+
+          // Ensure messages array exists for this roomId
           return {
             ...prev,
             [currentRoomId]: [...existingMessages, newMessage]
+          }
+        })
+
+        // Also update allMessages to keep it in sync
+        setAllMessages((prev) => {
+          const existingAllMessages = prev[currentRoomId] || []
+          const idDuplicate = existingAllMessages.some((msg) => msg.id === messageData.id)
+          if (idDuplicate) {
+            return prev
+          }
+          return {
+            ...prev,
+            [currentRoomId]: [...existingAllMessages, newMessage]
           }
         })
 
@@ -661,7 +728,7 @@ function ChatWithCustomer() {
     try {
       // Gửi qua API để lưu vào database
       // Backend sẽ tự động gửi SignalR sau khi lưu DB, SignalR handler sẽ thêm message vào UI
-      await sendChatRoomMessage({
+      const response = await sendChatRoomMessage({
         roomId: currentRoomId,
         senderId: user.userId,
         messageText: messageText,
@@ -672,6 +739,95 @@ function ChatWithCustomer() {
       setMessage('')
       setSelectedImages([])
       setImagePreviews([])
+
+      // If SignalR doesn't receive the message immediately, reload messages after a short delay
+      // This ensures the message appears even if SignalR has timing issues
+      setTimeout(async () => {
+        try {
+          const messagesResponse = await getChatRoomMessages(currentRoomId)
+          if (messagesResponse && messagesResponse.data && Array.isArray(messagesResponse.data)) {
+            // Check if the sent message is already in the messages state
+            const sentMessageId = response.data.id
+            setMessages((prev) => {
+              const existingMessages = prev[currentRoomId] || []
+              const messageExists = existingMessages.some((msg) => msg.id === sentMessageId)
+
+              // Only reload if message is not already in state (SignalR might have missed it)
+              if (!messageExists && messagesResponse.data.length > 0) {
+                // Map messages similar to loadMessages function
+                const messageMap = new Map<string, Message>()
+                messagesResponse.data.forEach((msg: ChatRoomMessageData) => {
+                  if (!messageMap.has(msg.id)) {
+                    const imageUrls: string[] = Array.isArray(msg.images)
+                      ? msg.images
+                        .map((img) => {
+                          if (typeof img === 'string') return img
+                          if (img && typeof img === 'object') {
+                            const imgObj = img as Record<string, unknown>
+                            return (
+                              (typeof imgObj.url === 'string' ? imgObj.url : '') ||
+                              (typeof imgObj.path === 'string' ? imgObj.path : '') ||
+                              (typeof imgObj.src === 'string' ? imgObj.src : '') ||
+                              (typeof imgObj.imageUrl === 'string' ? imgObj.imageUrl : '') ||
+                              String(img)
+                            )
+                          }
+                          return String(img || '')
+                        })
+                        .filter((url) => url && url !== '[object Object]' && url.trim() !== '')
+                      : []
+
+                    messageMap.set(msg.id, {
+                      id: msg.id,
+                      sender: msg.senderId === user.userId ? 'shop' : 'customer',
+                      content: msg.messageText,
+                      timestamp: msg.sentAt,
+                      avatar: msg.senderId === user.userId ? '' : '',
+                      images: imageUrls
+                    })
+                  }
+                })
+
+                const mappedMessages: Message[] = Array.from(messageMap.values()).sort((a, b) => {
+                  const timeA = new Date(a.timestamp).getTime()
+                  const timeB = new Date(b.timestamp).getTime()
+                  return timeA - timeB
+                })
+
+                // Update messages with latest from API
+                const initialCount = Math.min(MESSAGES_PER_PAGE, mappedMessages.length)
+                const initialMessages = mappedMessages.slice(-initialCount)
+
+                setMessages((prev) => ({
+                  ...prev,
+                  [currentRoomId]: initialMessages
+                }))
+
+                setAllMessages((prev) => ({
+                  ...prev,
+                  [currentRoomId]: mappedMessages
+                }))
+
+                // Update last message in conversations
+                if (mappedMessages.length > 0) {
+                  const lastMsg = mappedMessages[mappedMessages.length - 1]
+                  setConversations((prev) =>
+                    prev.map((conv) =>
+                      conv.id === currentRoomId
+                        ? { ...conv, lastMessage: lastMsg.content, timestamp: lastMsg.timestamp }
+                        : conv
+                    )
+                  )
+                }
+              }
+              return prev
+            })
+          }
+        } catch (reloadError) {
+          console.error('[ChatWithCustomer] Error reloading messages after send:', reloadError)
+          // Non-critical error, SignalR should handle it
+        }
+      }, 1000) // Wait 1 second for SignalR, then reload if needed
     } catch (error) {
       console.error('Error sending message:', error)
     }

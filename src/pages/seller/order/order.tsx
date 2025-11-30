@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { ArrowUpDown, ChevronDown, Eye, Loader2, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react'
+import { ArrowUpDown, ChevronDown, Eye, Loader2, ChevronLeft, ChevronRight, Menu, X, MessageCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../components/ui/button'
 import {
@@ -19,6 +20,8 @@ import type { Order, OrderStatus } from '../../../types/orderType'
 import { toast } from 'react-toastify'
 import OrderDetail from './orderDetail'
 import Pagination from '../../../components/Pagination/Pagination'
+import { createOrGetChatRoom } from '../../../apis/chat.api'
+import path from '../../../constants/path'
 
 const HIDDEN_STATUSES: OrderStatus[] = ['NotYet', 'PendingPayment']
 
@@ -51,6 +54,7 @@ const statusTextMap: Record<string, string> = {
 
 function OrderManagement() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('all')
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -170,6 +174,46 @@ function OrderManagement() {
   const handleCloseOrderDetailModal = () => {
     setIsOrderDetailModalOpen(false)
     setSelectedOrderId(null)
+  }
+
+  // Handle chat with customer
+  const handleChatWithCustomer = async (orderId: string) => {
+    try {
+      // Find order from current orders or all orders
+      const order = orders.find((o) => o.id === orderId) || allOrders.find((o) => o.id === orderId)
+      if (!order) {
+        toast.error('Không tìm thấy đơn hàng')
+        return
+      }
+
+      // Check if user is logged in
+      if (!user?.userId) {
+        toast.error('Vui lòng đăng nhập để nhắn tin')
+        return
+      }
+
+      // Get customerId from order
+      const customerId = order.userId
+      if (!customerId) {
+        toast.error('Không tìm thấy thông tin khách hàng')
+        return
+      }
+
+      // Show loading toast
+      toast.info('Đang mở chat với khách hàng...', { autoClose: 1000 })
+
+      // Create or get chat room
+      const chatRoomResponse = await createOrGetChatRoom({
+        sellerId: user.userId,
+        customerId: customerId
+      })
+
+      // Navigate to chat page with roomId as query param
+      navigate(`${path.BASE_SELLER}/${path.chatWithCustomerSeller}?roomId=${chatRoomResponse.data.id}`)
+    } catch (error) {
+      console.error('Error opening chat with customer:', error)
+      toast.error('Không thể mở chat với khách hàng. Vui lòng thử lại.')
+    }
   }
 
   // Sort button component
@@ -526,6 +570,15 @@ function OrderManagement() {
                                 onClick={() => handleViewOrderDetail(order.id)}
                               >
                                 <Eye className='w-4 h-4 mr-1' />
+                              </Button>
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                title='Nhắn tin với khách hàng'
+                                className='text-green-600 hover:text-green-700 hover:bg-green-50'
+                                onClick={() => handleChatWithCustomer(order.id)}
+                              >
+                                <MessageCircle className='w-4 h-4 mr-1' />
                               </Button>
                             </TableCell>
                           )}

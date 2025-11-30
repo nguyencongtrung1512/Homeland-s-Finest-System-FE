@@ -516,6 +516,7 @@ const ChatSystem: React.FC = () => {
 
         // Kiểm tra xem tin nhắn đã tồn tại chưa để tránh duplicate
         setSellerMessages((prev) => {
+          // Ensure messages state is initialized for this roomId
           const existingMessages = prev[currentRoomId] || []
           console.log('[chatSystem] Checking for duplicates. Existing messages count:', existingMessages.length, {
             messageText: message.messageText,
@@ -523,8 +524,15 @@ const ChatSystem: React.FC = () => {
             messageId: message.id
           })
 
+          // Kiểm tra duplicate bằng ID trước (chính xác hơn)
+          const idDuplicate = existingMessages.some((msg) => msg.id === message.id)
+          if (idDuplicate) {
+            console.log('[chatSystem] Duplicate message ID detected, skipping:', message.id)
+            return prev
+          }
+
           // Kiểm tra duplicate cho tất cả messages (cả từ user và từ seller)
-          // So sánh bằng nội dung + thời gian để tránh duplicate
+          // So sánh bằng nội dung + thời gian để tránh duplicate (fallback)
           const sentAtTime = parseVietnameseTimestamp(message.sentAt).getTime()
           const now = Date.now()
 
@@ -559,21 +567,24 @@ const ChatSystem: React.FC = () => {
           })
 
           if (contentDuplicate) {
-            console.log('[chatSystem] Duplicate message detected, skipping:', message.messageText)
+            console.log('[chatSystem] Duplicate message content detected, skipping:', message.messageText)
             return prev // Không thêm nếu đã có message với cùng nội dung và thời gian
           }
 
           // Thêm message vào UI (từ seller hoặc từ user nhưng chưa có trong UI)
           console.log('[chatSystem] Adding new message to UI:', {
+            messageId: message.id,
             messageText: message.messageText,
             isFromCurrentUser,
-            senderId: message.senderId
+            senderId: message.senderId,
+            roomId: currentRoomId,
+            existingMessagesCount: existingMessages.length
           })
 
           // Update allMessages as well
           setAllMessages((prevAll) => {
             const allMsgs = prevAll[currentRoomId] || []
-            // Check if message already exists in allMessages
+            // Check if message already exists in allMessages by ID
             const existsInAll = allMsgs.some((m) => m.id === message.id)
             if (!existsInAll) {
               // Insert in sorted order (by timestamp)
@@ -590,6 +601,7 @@ const ChatSystem: React.FC = () => {
             return prevAll
           })
 
+          // Ensure messages array exists for this roomId
           return {
             ...prev,
             [currentRoomId]: [...existingMessages, newMessage]
@@ -772,7 +784,7 @@ const ChatSystem: React.FC = () => {
 
       // Gửi qua API để lưu vào database
       // Backend sẽ tự động gửi SignalR sau khi lưu DB, SignalR handler sẽ thêm message vào UI
-      await sendChatRoomMessage({
+      const response = await sendChatRoomMessage({
         roomId: currentRoomId,
         senderId: user.userId,
         messageText: messageText,
@@ -783,6 +795,63 @@ const ChatSystem: React.FC = () => {
       setSellerMessage('')
       setSelectedImages([])
       setImagePreviews([])
+
+      // If SignalR doesn't receive the message immediately, reload messages after a short delay
+      // This ensures the message appears even if SignalR has timing issues
+      setTimeout(async () => {
+        try {
+          const messagesResponse = await getChatRoomMessages(currentRoomId)
+          if (messagesResponse && messagesResponse.data && Array.isArray(messagesResponse.data)) {
+            // Check if the sent message is already in the messages state
+            const sentMessageId = response.data.id
+            setSellerMessages((prev) => {
+              const existingMessages = prev[currentRoomId] || []
+              const messageExists = existingMessages.some((msg) => msg.id === sentMessageId)
+
+              // Only reload if message is not already in state (SignalR might have missed it)
+              if (!messageExists && messagesResponse.data.length > 0) {
+                // Map messages similar to loadMessages function
+                const messageMap = new Map<string, Message>()
+                messagesResponse.data.forEach((msg: ChatRoomMessageData) => {
+                  if (!messageMap.has(msg.id)) {
+                    messageMap.set(msg.id, {
+                      id: msg.id,
+                      text: msg.messageText,
+                      isUser: msg.senderId === user?.userId,
+                      timestamp: msg.sentAt,
+                      images: Array.isArray(msg.images) ? msg.images : []
+                    })
+                  }
+                })
+
+                const mappedMessages: Message[] = Array.from(messageMap.values()).sort((a, b) => {
+                  const timeA = typeof a.timestamp === 'string' ? parseVietnameseTimestamp(a.timestamp).getTime() : a.timestamp.getTime()
+                  const timeB = typeof b.timestamp === 'string' ? parseVietnameseTimestamp(b.timestamp).getTime() : b.timestamp.getTime()
+                  return timeA - timeB
+                })
+
+                // Update messages with latest from API
+                const initialCount = Math.min(MESSAGES_PER_PAGE, mappedMessages.length)
+                const initialMessages = mappedMessages.slice(-initialCount)
+
+                setSellerMessages((prev) => ({
+                  ...prev,
+                  [currentRoomId]: initialMessages
+                }))
+
+                setAllMessages((prev) => ({
+                  ...prev,
+                  [currentRoomId]: mappedMessages
+                }))
+              }
+              return prev
+            })
+          }
+        } catch (reloadError) {
+          console.error('[chatSystem] Error reloading messages after send:', reloadError)
+          // Non-critical error, SignalR should handle it
+        }
+      }, 1000) // Wait 1 second for SignalR, then reload if needed
     } catch (error) {
       console.error('Error sending seller message:', error)
       // Hiển thị thông báo lỗi nếu cần
