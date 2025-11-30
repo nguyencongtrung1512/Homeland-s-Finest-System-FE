@@ -213,41 +213,62 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       const isSelected = selectedStoreId === store.ID
       const el = createMarkerElement(store, isSelected)
 
-      // Tạo popup với thiết kế đẹp hơn
+      // Tạo popup với thiết kế đẹp hơn, giống card thông tin
       const popup = new mapboxgl.Popup({
         offset: 30,
         closeButton: true,
         closeOnClick: false,
-        className: 'custom-popup'
+        className: 'custom-popup',
+        maxWidth: '320px'
       }).setHTML(`
-        <div class="p-3 min-w-[220px] max-w-[280px]">
-          <img src="${store.CoverImageURL || ''}" 
-               alt="${store.StoreName}" 
-               class="w-full h-28 object-cover rounded-lg mb-2 shadow-sm" 
-               onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
-          <div class="flex items-start gap-2">
-            <img src="${store.LogoURL || ''}" 
+        <div class="store-popup-card">
+          <!-- Cover Image -->
+          <div class="store-popup-cover">
+            <img src="${store.CoverImageURL || ''}" 
                  alt="${store.StoreName}" 
-                 class="w-10 h-10 object-cover rounded-full border-2 border-gray-200 flex-shrink-0"
+                 class="store-popup-cover-img" 
                  onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
-            <div class="flex-1 min-w-0"></div>
-              <h3 class="store-name-link font-bold text-gray-900 text-base mb-1 leading-tight cursor-pointer hover:text-blue-600 transition-colors" data-store-id="${store.ID}">${store.StoreName}</h3>
-              <p class="text-xs text-gray-600 mb-0.5 flex items-start gap-1">
-                <svg class="w-3 h-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          </div>
+          
+          <!-- Content -->
+          <div class="store-popup-content">
+            <!-- Header with Avatar and Title -->
+            <div class="store-popup-header">
+              <div class="store-popup-avatar-wrapper">
+                <img src="${store.LogoURL || ''}" 
+                     alt="${store.StoreName}" 
+                     class="store-popup-avatar"
+                     onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
+              </div>
+              <div class="store-popup-title-wrapper">
+                <h3 class="store-name-link store-popup-title" data-store-id="${store.ID}">
+                  ${store.StoreName}
+                </h3>
+              </div>
+            </div>
+            
+            <!-- Description -->
+            ${store.Description
+          ? `
+              <p class="store-popup-description">
+                ${store.Description}
+              </p>
+            `
+          : ''
+        }
+            
+            <!-- Location Info -->
+            <div class="store-popup-location">
+              <div class="store-popup-location-item">
+                <svg class="store-popup-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                         d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                         d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
-                
-                <span class="line-clamp-2">${store.Address}</span>
-              </p>
-              <p class="text-1xl mb-0.5 flex items-start gap-1">
-                <span class="line-clamp-2">${store.Description}</span>
-              </p>
-              <p class="text-xs text-gray-500">
-                ${store.Ward}, ${store.District}
-              </p>
+                <span class="store-popup-location-text">${store.Address}</span>
+              </div>
+              
             </div>
           </div>
         </div>
@@ -442,7 +463,10 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
                       }`}
                   >
                     <img
-                      src={store.CoverImageURL || 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'}
+                      src={
+                        store.CoverImageURL ||
+                        'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+                      }
                       alt={store.StoreName}
                       className='w-full h-20 object-cover rounded-md mb-2 shadow-sm'
                       onError={(e) => {
@@ -505,11 +529,216 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       <style>{`
         .custom-popup .mapboxgl-popup-content {
           padding: 0;
-          border-radius: 12px;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+          border-radius: 16px;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+          overflow: hidden;
+          background: white;
+          max-width: 320px;
+          width: 100%;
         }
+        
         .custom-popup .mapboxgl-popup-tip {
           border-top-color: white;
+        }
+        
+        .custom-popup .mapboxgl-popup-close-button {
+          width: 28px;
+          height: 28px;
+          font-size: 18px;
+          color: rgba(0,0,0,0.6);
+          background: rgba(255,255,255,0.9);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          z-index: 10;
+        }
+        
+        .custom-popup .mapboxgl-popup-close-button:hover {
+          background: rgba(255,255,255,1);
+          color: rgba(0,0,0,0.8);
+          transform: scale(1.1);
+        }
+        
+        /* Store Popup Card Styles */
+        .store-popup-card {
+          width: 100%;
+          background: white;
+          overflow: hidden;
+        }
+        
+        /* Cover Image */
+        .store-popup-cover {
+          width: 100%;
+          height: 180px;
+          position: relative;
+          overflow: hidden;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .store-popup-cover-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.3s ease;
+        }
+        
+        .store-popup-cover:hover .store-popup-cover-img {
+          transform: scale(1.05);
+        }
+        
+        /* Content */
+        .store-popup-content {
+          padding: 16px;
+        }
+        
+        /* Header with Avatar */
+        .store-popup-header {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+        
+        .store-popup-avatar-wrapper {
+          position: relative;
+          flex-shrink: 0;
+        }
+        
+        .store-popup-avatar {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3px solid white;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          margin-top: -28px;
+          background: white;
+          position: relative;
+          z-index: 1;
+        }
+        
+        .store-popup-title-wrapper {
+          flex: 1;
+          min-width: 0;
+          padding-top: 4px;
+        }
+        
+        .store-popup-title {
+          font-size: 18px;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0;
+          line-height: 1.3;
+          cursor: pointer;
+          transition: color 0.2s ease;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+        
+        .store-popup-title:hover {
+          color: #3b82f6;
+        }
+        
+        /* Description */
+        .store-popup-description {
+          font-size: 14px;
+          color: #4b5563;
+          line-height: 1.5;
+          margin: 0 0 12px 0;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        
+        /* Location */
+        .store-popup-location {
+          border-top: 1px solid #e5e7eb;
+          padding-top: 12px;
+        }
+        
+        .store-popup-location-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          margin-bottom: 6px;
+        }
+        
+        .store-popup-icon {
+          width: 16px;
+          height: 16px;
+          color: #6b7280;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        
+        .store-popup-location-text {
+          font-size: 13px;
+          color: #374151;
+          line-height: 1.4;
+          flex: 1;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+        
+        .store-popup-location-detail {
+          font-size: 12px;
+          color: #9ca3af;
+          margin-left: 24px;
+          line-height: 1.4;
+        }
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+          .custom-popup .mapboxgl-popup-content {
+            max-width: 280px;
+          }
+          
+          .store-popup-cover {
+            height: 160px;
+          }
+          
+          .store-popup-avatar {
+            width: 48px;
+            height: 48px;
+            margin-top: -24px;
+          }
+          
+          .store-popup-title {
+            font-size: 16px;
+          }
+          
+          .store-popup-content {
+            padding: 14px;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .custom-popup .mapboxgl-popup-content {
+            max-width: 240px;
+          }
+          
+          .store-popup-cover {
+            height: 140px;
+          }
+          
+          .store-popup-avatar {
+            width: 44px;
+            height: 44px;
+            margin-top: -22px;
+          }
+          
+          .store-popup-title {
+            font-size: 15px;
+          }
+          
+          .store-popup-description {
+            font-size: 13px;
+            -webkit-line-clamp: 2;
+          }
         }
       `}</style>
     </div>

@@ -3,19 +3,35 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { MessageCircle, Send, X, Bot, User } from 'lucide-react'
+import { MessageCircle, Send, X, Bot, User, ExternalLink } from 'lucide-react'
 import { sendChatMessage } from '../../apis/chat.api'
 import { useAuth } from '../../contexts/auth.context'
+import { useNavigate } from 'react-router-dom'
+import path from '../../constants/path'
+import { resolveImageUrl } from '../../utils/image'
+
+// Default image URL khi không load được ảnh
+const DEFAULT_IMAGE_URL = 'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
+
+interface RecommendedProduct {
+  productId: string
+  productName: string
+  price: number
+  imageUrl: string
+  productLink: string
+}
 
 interface Message {
   id: string
   text: string
   isUser: boolean
   timestamp: Date
+  recommendedProducts?: RecommendedProduct[] // Recommended products from AI
 }
 
 const ChatBot: React.FC = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -30,6 +46,18 @@ const ChatBot: React.FC = () => {
   const [, setRoomId] = useState<string | null>(null) // Lưu roomId để có thể dùng cho các tính năng sau (lưu lịch sử chat, tiếp tục conversation)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // Tạo hoặc lấy guest ID từ localStorage cho user chưa đăng nhập
+  const getGuestId = (): string => {
+    const guestIdKey = 'chatbot_guest_id'
+    let guestId = localStorage.getItem(guestIdKey)
+    if (!guestId) {
+      // Tạo UUID đơn giản
+      guestId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      localStorage.setItem(guestIdKey, guestId)
+    }
+    return guestId
+  }
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -40,18 +68,6 @@ const ChatBot: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return
-
-    // Kiểm tra user đã đăng nhập chưa
-    if (!user?.userId) {
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        text: 'Vui lòng đăng nhập để sử dụng tính năng chat với AI.',
-        isUser: false,
-        timestamp: new Date()
-      }
-      setMessages((prev) => [...prev, errorMessage])
-      return
-    }
 
     const userMessageText = inputValue.trim()
     const userMessage: Message = {
@@ -66,9 +82,12 @@ const ChatBot: React.FC = () => {
     setIsTyping(true)
 
     try {
+      // Sử dụng userId nếu đã đăng nhập, nếu không thì dùng guestId
+      const senderId = user?.userId || getGuestId()
+
       // Gọi API chat với AI
       const response = await sendChatMessage({
-        senderId: user.userId,
+        senderId: senderId,
         messageText: userMessageText
       })
 
@@ -83,7 +102,11 @@ const ChatBot: React.FC = () => {
         id: (Date.now() + 1).toString(),
         text: response.data.homeLandFinestText,
         isUser: false,
-        timestamp: new Date()
+        timestamp: new Date(),
+        recommendedProducts:
+          response.data.recommendedProducts && Array.isArray(response.data.recommendedProducts)
+            ? response.data.recommendedProducts
+            : undefined
       }
       setMessages((prev) => [...prev, botMessage])
     } catch (error) {
@@ -186,20 +209,186 @@ const ChatBot: React.FC = () => {
               {/* Messages */}
               <CardContent className='flex-1 px-5 py-2 overflow-y-auto bg-white/95 !px-5'>
                 <div className='flex flex-col gap-3'>
-                  {messages.map((message) => (
-                    <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-                      <div
-                        className={`max-w-[85%] rounded-lg px-4 py-3 ${message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
-                          }`}
-                      >
-                        <div className='flex items-start gap-2'>
-                          {!message.isUser && <Bot className='h-4 w-4 mt-0.5 text-green-600 flex-shrink-0' />}
-                          {message.isUser && <User className='h-4 w-4 mt-0.5 text-white flex-shrink-0' />}
-                          <p className='text-base leading-relaxed'>{message.text}</p>
+                  {messages.map((message) => {
+                    // Parse markdown (bold với **text**)
+                    const parseMarkdown = (text: string, baseKey: number): (string | React.JSX.Element)[] => {
+                      const parts: (string | React.JSX.Element)[] = []
+                      const boldRegex = /\*\*(.+?)\*\*/g
+                      let lastIndex = 0
+                      let match
+                      let keyIndex = 0
+
+                      while ((match = boldRegex.exec(text)) !== null) {
+                        // Thêm text trước bold
+                        if (match.index > lastIndex) {
+                          parts.push(text.substring(lastIndex, match.index))
+                        }
+
+                        // Thêm bold text
+                        parts.push(
+                          <strong key={`bold-${baseKey}-${keyIndex++}`} className='font-semibold'>
+                            {match[1]}
+                          </strong>
+                        )
+
+                        lastIndex = match.index + match[0].length
+                      }
+
+                      // Thêm phần text còn lại
+                      if (lastIndex < text.length) {
+                        parts.push(text.substring(lastIndex))
+                      }
+
+                      return parts.length > 0 ? parts : [text]
+                    }
+
+                    // Parse text để format markdown, links và line breaks
+                    const parseTextWithFormatting = (text: string) => {
+                      // Tách text thành các dòng để xử lý line breaks
+                      const lines = text.split('\n')
+                      const result: (string | React.JSX.Element)[][] = []
+
+                      lines.forEach((line, lineIndex) => {
+                        const lineParts: (string | React.JSX.Element)[] = []
+
+                        // Tìm pattern: /products/{productId} hoặc /product/{productId}
+                        const productLinkRegex = /\/product[s]?\/([a-f0-9-]+)/gi
+                        let lastIndex = 0
+                        let match
+                        let linkIndex = 0
+
+                        while ((match = productLinkRegex.exec(line)) !== null) {
+                          // Thêm text trước link
+                          if (match.index > lastIndex) {
+                            const beforeLink = line.substring(lastIndex, match.index)
+                            // Parse markdown trong phần text trước link
+                            lineParts.push(...parseMarkdown(beforeLink, linkIndex++))
+                          }
+
+                          // Thêm link
+                          const productId = match[1]
+                          const fullMatch = match[0]
+                          lineParts.push(
+                            <a
+                              key={`link-${linkIndex++}`}
+                              href={`${window.location.origin}${path.productDetail.replace(':id', productId)}`}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                navigate(path.productDetail.replace(':id', productId))
+                              }}
+                              className='text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1'
+                            >
+                              {fullMatch}
+                              <ExternalLink className='h-3 w-3' />
+                            </a>
+                          )
+
+                          lastIndex = match.index + fullMatch.length
+                        }
+
+                        // Thêm phần text còn lại
+                        if (lastIndex < line.length) {
+                          const remainingText = line.substring(lastIndex)
+                          lineParts.push(...parseMarkdown(remainingText, linkIndex++))
+                        }
+
+                        // Nếu line rỗng, thêm space để tạo khoảng cách
+                        if (lineParts.length === 0 && line.trim() === '') {
+                          result.push([<br key={`br-${lineIndex}`} />])
+                        } else {
+                          result.push(lineParts)
+                        }
+                      })
+
+                      // Flatten và thêm line breaks giữa các dòng
+                      const flattened: (string | React.JSX.Element)[] = []
+                      result.forEach((lineParts, index) => {
+                        flattened.push(...lineParts)
+                        if (index < result.length - 1) {
+                          flattened.push(<br key={`line-break-${index}`} />)
+                        }
+                      })
+
+                      return flattened.length > 0 ? flattened : [text]
+                    }
+
+                    return (
+                      <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
+                        <div
+                          className={`max-w-[95%] sm:max-w-[90%] md:max-w-[80%] rounded-lg px-4 py-3 ${message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
+                            }`}
+                        >
+                          <div className='flex flex-col gap-3'>
+                            {/* Avatar và Text */}
+                            <div className='flex items-start gap-2'>
+                              {!message.isUser && <Bot className='h-4 w-4 mt-0.5 text-green-600 flex-shrink-0' />}
+                              {message.isUser && <User className='h-4 w-4 mt-0.5 text-white flex-shrink-0' />}
+                              <div className='flex-1'>
+                                <div className='text-sm leading-relaxed break-words whitespace-pre-wrap'>
+                                  {!message.isUser ? parseTextWithFormatting(message.text) : message.text}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Hiển thị recommended products dạng list */}
+                            {!message.isUser &&
+                              message.recommendedProducts &&
+                              message.recommendedProducts.length > 0 && (
+                                <div className='mt-2 bg-white rounded-lg border border-gray-200 overflow-hidden'>
+                                  <div className='max-h-[300px] overflow-y-auto'>
+                                    <div className='divide-y divide-gray-100'>
+                                      {message.recommendedProducts.map((product, index) => (
+                                        <motion.div
+                                          key={product.productId}
+                                          initial={{ opacity: 0, x: -10 }}
+                                          animate={{ opacity: 1, x: 0 }}
+                                          transition={{ duration: 0.3, delay: index * 0.1 }}
+                                          className='p-3 hover:bg-gray-50 transition-colors cursor-pointer'
+                                          onClick={() => {
+                                            const productId = product.productId
+                                            navigate(path.productDetail.replace(':id', productId))
+                                          }}
+                                        >
+                                          <div className='flex gap-3 items-center'>
+                                            <img
+                                              src={
+                                                product.imageUrl
+                                                  ? resolveImageUrl(product.imageUrl) ||
+                                                  product.imageUrl ||
+                                                  DEFAULT_IMAGE_URL
+                                                  : DEFAULT_IMAGE_URL
+                                              }
+                                              alt={product.productName}
+                                              className='w-12 h-12 rounded-lg object-cover flex-shrink-0'
+                                              onError={(e) => {
+                                                const target = e.target as HTMLImageElement
+                                                // Chỉ set lại nếu chưa phải là default image
+                                                if (target.src !== DEFAULT_IMAGE_URL) {
+                                                  target.src = DEFAULT_IMAGE_URL
+                                                }
+                                              }}
+                                            />
+                                            <div className='flex-1 min-w-0'>
+                                              <h4 className='font-semibold text-sm text-gray-900 truncate'>
+                                                {product.productName}
+                                              </h4>
+                                              <p className='text-green-600 font-bold text-xs mt-0.5'>
+                                                {product.price.toLocaleString('vi-VN')}₫
+                                              </p>
+                                            </div>
+                                            <ExternalLink className='h-4 w-4 text-gray-400 flex-shrink-0' />
+                                          </div>
+                                        </motion.div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
 
                   {isTyping && (
                     <div className='flex justify-start'>

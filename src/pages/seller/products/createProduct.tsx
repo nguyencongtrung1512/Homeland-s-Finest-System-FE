@@ -151,9 +151,7 @@ function CreateProduct() {
     const hashtagName = newHashtagName.trim().toLowerCase()
 
     // Check if hashtag already exists in selected list
-    const existingInSelected = selectedHashtags.find(
-      (tag) => tag.name.toLowerCase() === hashtagName
-    )
+    const existingInSelected = selectedHashtags.find((tag) => tag.name.toLowerCase() === hashtagName)
     if (existingInSelected) {
       toast.error('Hashtag này đã được thêm')
       setNewHashtagName('')
@@ -863,7 +861,10 @@ function CreateProduct() {
                   </div>
 
                   {/* Mention - Tìm và chọn hashtag có sẵn */}
-                  <div ref={mentionRef} className='relative p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg'>
+                  <div
+                    ref={mentionRef}
+                    className='relative p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg'
+                  >
                     <p className='text-xs font-medium text-gray-700 mb-2 flex items-center gap-1'>
                       <AtSign className='w-3 h-3 text-blue-600' />
                       Mention - Tìm hashtag có sẵn để thêm vào sản phẩm
@@ -879,9 +880,7 @@ function CreateProduct() {
                       }}
                       className='text-sm'
                     />
-                    <p className='text-xs text-gray-500 mt-1'>
-                      Tìm và chọn hashtag đã có sẵn trong hệ thống
-                    </p>
+                    <p className='text-xs text-gray-500 mt-1'>Tìm và chọn hashtag đã có sẵn trong hệ thống</p>
 
                     {/* Mention Suggestions Dropdown */}
                     {showMentionSuggestions && (
@@ -1246,6 +1245,9 @@ function CreateProduct() {
                 <Label htmlFor='category' className='text-sm font-medium'>
                   Danh mục sản phẩm <span className='text-red-500'>*</span>
                 </Label>
+                <p className='text-xs text-gray-500 mt-1 mb-2'>
+                  Chọn danh mục sản phẩm chi tiết sẽ tiếp cận khách hàng dễ hơn nhé.
+                </p>
 
                 {categoriesLoading ? (
                   <div className='py-4 mt-1 border rounded-md'>
