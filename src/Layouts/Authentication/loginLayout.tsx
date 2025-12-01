@@ -9,25 +9,30 @@ interface LoginLayoutProps {
 
 const LoginLayout: React.FC<LoginLayoutProps> = ({ children }) => {
   return (
-    <div>
-      <HeaderLayout />
-      <div className='min-h-screen bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center p-4 pt-20'>
-        <div className='w-full max-w-9xl mx-auto grid grid-cols-1 lg:grid-cols-2 items-stretch'>
-          {/* Left side - Image */}
-          <div className='flex justify-end items-center'>
-            <div className='relative h-full w-full max-w-lg'>
-              <div className='h-full bg-white shadow-lg overflow-hidden rounded-tl-xl rounded-bl-xl'>
-                <img src={logoImage1} alt='Traditional Vietnamese Food' className='w-full h-full object-cover' />
-              </div>
-            </div>
-          </div>
-          {/* Right side - Form */}
-          <div className='flex justify-start items-center'>
-            <div className='w-full max-w-md'>{children}</div>
-          </div>
-        </div>
+    <div className='relative min-h-screen w-full overflow-hidden'>
+      {/* Full-screen immersive background */}
+      <div className='fixed inset-0 z-0'>
+        <img
+          src={logoImage1}
+          alt='Cánh đồng lúa quê hương Việt Nam'
+          className='h-full w-full object-cover'
+        />
+        {/* Subtle overlay for better text readability */}
+        <div className='absolute inset-0 bg-black/10' />
       </div>
-      <Footer />
+
+      {/* Floating Header */}
+      <HeaderLayout />
+
+      {/* Main Content Area - Centered with glassmorphism card */}
+      <div className='relative z-10 min-h-screen flex items-center justify-center p-4 pt-20 md:pt-24'>
+        <div className='w-full max-w-md'>{children}</div>
+      </div>
+
+      {/* Footer */}
+      <div className='relative z-10'>
+        <Footer />
+      </div>
     </div>
   )
 }
