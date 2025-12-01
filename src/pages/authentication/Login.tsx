@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import LoginLayout from '../../Layouts/Authentication/loginLayout'
-import { Eye, EyeOff, Leaf, ThumbsUp } from 'lucide-react'
+import { Eye, EyeOff, Leaf, ThumbsUp, Heart, ArrowRight } from 'lucide-react'
 import logoImage from '../../assets/luachin2-7984.webp'
 import { path } from '../../constants/path'
 import { useState } from 'react'
@@ -10,7 +10,7 @@ import { useAuth } from '../../contexts/auth.context'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
+import { Avatar, AvatarImage } from '../../components/ui/avatar'
 
 function Login() {
   const navigate = useNavigate()
@@ -172,30 +172,42 @@ function Login() {
     navigate(`${path.forgotPassword}?returnTo=customer`)
   }
 
+  // Trust badges data
+  const trustBadges = [
+    { icon: Leaf, label: 'Tự nhiên' },
+    { icon: ThumbsUp, label: 'Uy tín' },
+    { icon: Heart, label: 'Chất lượng' }
+  ]
+
   return (
     <LoginLayout>
-      <Card className='w-full max-w-md shadow-xl'>
-        <CardHeader className='text-center pb-6 pt-6'>
-          <div className='mx-auto mb-4'>
-            <div className='w-16 h-16 rounded-full overflow-hidden mx-auto mb-3'>
-              <img src={logoImage} alt='Logo' className='w-full h-full object-cover object-center' />
-            </div>
-            <CardTitle className='text-xl font-bold text-gray-800'>Đặc Sản Quê Hương</CardTitle>
-            <CardDescription className='text-sm text-gray-600 mt-1'>
-              Khám phá hương vị truyền thống Việt Nam
-            </CardDescription>
+      {/* Glassmorphism Auth Card */}
+      <div className='w-full max-w-xl mx-auto bg-white/20 backdrop-blur-lg border border-white/20 rounded-3xl shadow-2xl p-6 md:p-8'>
+        {/* Header Section */}
+        <div className='text-center mb-4'>
+          <div className='mx-auto mb-3 flex justify-center'>
+            <Avatar className='w-16 h-16 border-2 border-white/30 shadow-lg'>
+              <AvatarImage src={logoImage} alt='Logo' className='object-cover' />
+            </Avatar>
           </div>
-        </CardHeader>
+          <h2 className='text-4xl font-bold text-gray-800 mb-1 drop-shadow-sm'>
+            Tinh Hoa Quê Nhà
+          </h2>
+          
+        </div>
 
-        <CardContent className='px-6 pb-6 space-y-4'>
+        {/* Form Section */}
+        <div className='space-y-4'>
           {/* Error Message */}
           {error && (
-            <div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm'>{error}</div>
+            <div className='bg-red-500/20 backdrop-blur-sm border border-red-300/50 text-red-800 px-4 py-3 rounded-xl text-sm shadow-sm'>
+              {error}
+            </div>
           )}
 
           <form className='space-y-4' onSubmit={handleSubmit}>
-            <div className='space-y-2'>
-              <Label htmlFor='email' className='text-sm font-medium'>
+            <div className='space-y-1.5'>
+              <Label htmlFor='email' className='text-sm font-medium text-gray-800'>
                 Địa chỉ Email<span className='text-red-500 ml-1'>*</span>
               </Label>
               <Input
@@ -205,13 +217,13 @@ function Login() {
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder='Nhập địa chỉ email của bạn'
-                className='w-full'
+                className='w-full bg-white/50 backdrop-blur-sm border-white/30 text-gray-800 placeholder:text-gray-500 focus-visible:ring-green-500/50 focus-visible:border-green-500'
                 required
               />
             </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='password' className='text-sm font-medium'>
+            <div className='space-y-1.5'>
+              <Label htmlFor='password' className='text-sm font-medium text-gray-800'>
                 Mật khẩu<span className='text-red-500 ml-1'>*</span>
               </Label>
               <div className='relative'>
@@ -222,14 +234,15 @@ function Login() {
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder='Nhập mật khẩu'
-                  className='w-full pr-10'
+                  className='w-full pr-10 bg-white/50 backdrop-blur-sm border-white/30 text-gray-800 placeholder:text-gray-500 focus-visible:ring-green-500/50 focus-visible:border-green-500'
                   required
                 />
                 <button
                   type='button'
-                  className='absolute right-2 top-1/2 -translate-y-1/2 text-gray-500'
+                  className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800 transition-colors'
                   onClick={() => setShowPassword((prev) => !prev)}
                   tabIndex={-1}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -239,12 +252,12 @@ function Login() {
             <Button
               type='submit'
               disabled={loading}
-              className='w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3'
+              className='w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2'
             >
               {loading ? (
                 <>
                   <svg
-                    className='animate-spin -ml-1 mr-3 h-5 w-5 text-white'
+                    className='animate-spin h-5 w-5 text-white'
                     xmlns='http://www.w3.org/2000/svg'
                     fill='none'
                     viewBox='0 0 24 24'
@@ -263,63 +276,54 @@ function Login() {
                       d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                     ></path>
                   </svg>
-                  Đang đăng nhập...
+                  <span>Đang đăng nhập...</span>
                 </>
               ) : (
-                'Tiếp tục →'
+                <>
+                  <span>Tiếp tục</span>
+                  <ArrowRight size={18} />
+                </>
               )}
             </Button>
           </form>
 
+          {/* Action Links */}
           <div className='text-center space-y-2'>
             <Button
               type='button'
               variant='link'
               onClick={handleForgotPassword}
-              className='text-sm text-gray-600 hover:text-green-600 p-0 h-auto'
+              className='text-sm text-gray-700 hover:text-green-600 p-0 h-auto font-medium transition-colors'
             >
               Quên mật khẩu?
             </Button>
           </div>
 
           <div className='text-center'>
-            <p className='text-sm text-gray-600'>
+            <p className='text-xs md:text-sm text-gray-700'>
               Bạn chưa có tài khoản?{' '}
-              <Button variant='link' className='text-green-600 hover:text-green-700 font-medium p-0 h-auto'>
+              <Button variant='link' className='text-green-600 hover:text-green-700 font-semibold p-0 h-auto'>
                 <a href='/register'>Đăng ký</a>
               </Button>
             </p>
           </div>
 
-          <div className='grid grid-cols-3 gap-4 pt-4'>
-            <div className='flex flex-col items-center space-y-2'>
-              <div className='w-12 h-12 bg-green-100 rounded-full flex items-center justify-center'>
-                <Leaf className='w-6 h-6 text-green-600' />
-              </div>
-              <span className='text-sm text-gray-600'>Tự nhiên</span>
-            </div>
-            <div className='flex flex-col items-center space-y-2'>
-              <div className='w-12 h-12 bg-green-100 rounded-full flex items-center justify-center'>
-                <ThumbsUp className='w-6 h-6 text-green-600' />
-              </div>
-              <span className='text-sm text-gray-600'>Uy tín</span>
-            </div>
-            <div className='flex flex-col items-center space-y-2'>
-              <div className='w-12 h-12 bg-green-100 rounded-full flex items-center justify-center'>
-                <svg className='w-6 h-6 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z'
-                  />
-                </svg>
-              </div>
-              <span className='text-sm text-gray-600'>Chất lượng</span>
-            </div>
+          {/* Trust Badges Footer */}
+          <div className='grid grid-cols-3 gap-3 pt-4 border-t border-white/20'>
+            {trustBadges.map((badge, index) => {
+              const Icon = badge.icon
+              return (
+                <div key={index} className='flex flex-col items-center space-y-1.5'>
+                  <div className='w-10 h-10 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30 shadow-sm'>
+                    <Icon className='w-5 h-5 text-green-600' />
+                  </div>
+                  <span className='text-xs text-gray-700 font-medium'>{badge.label}</span>
+                </div>
+              )
+            })}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </LoginLayout>
   )
 }

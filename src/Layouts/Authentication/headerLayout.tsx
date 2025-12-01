@@ -3,18 +3,18 @@ import path from '../../constants/path'
 
 function HeaderLayout() {
   return (
-    <div className='w-full fixed top-0 left-0 z-50 bg-white flex justify-center items-center border-b border-gray-200'>
+    <div className='w-full fixed top-0 left-0 z-50 flex justify-center items-center'>
       <div className='mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-4 py-3 flex-nowrap'>
         {/* Back Button + Logo + Tên */}
         <div className='flex items-center gap-4'>
           {/* Back Button */}
           <Link
             to='/'
-            className='flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 shadow-sm hover:shadow-md transition-all duration-200 group'
+            className='flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-md hover:bg-white/30 shadow-sm hover:shadow-md transition-all duration-200 group border border-white/20'
             title='Quay lại trang chủ'
           >
             <svg
-              className='w-4 h-4 text-[#2D5016] group-hover:text-[#F4A261] transition-colors'
+              className='w-4 h-4 text-white group-hover:text-[#F4A261] transition-colors'
               fill='none'
               stroke='currentColor'
               viewBox='0 0 24 24'
@@ -32,8 +32,8 @@ function HeaderLayout() {
               />
             </svg>
             <div>
-              <h3 className='text-xl font-bold text-[#2D5016] whitespace-nowrap'>Tinh Hoa Quê Nhà</h3>
-              <p className='text-sm text-[#2D5016] opacity-75'>Đặc Sản Quê Hương</p>
+              <h3 className='text-xl font-bold text-white whitespace-nowrap drop-shadow-md'>Tinh Hoa Quê Nhà</h3>
+              <p className='text-sm text-white/90 drop-shadow-sm'>Đặc Sản Quê Hương</p>
             </div>
           </Link>
         </div>
@@ -41,7 +41,7 @@ function HeaderLayout() {
         {/* Link cộng tác viên */}
         <Link
           to={path.sellerPage}
-          className='text-sm text-[#2D5016] hover:text-[#F4A261] transition-colors font-medium whitespace-nowrap'
+          className='text-sm text-white hover:text-[#F4A261] transition-colors font-medium whitespace-nowrap drop-shadow-md'
         >
           Bạn muốn làm cộng tác viên?
         </Link>

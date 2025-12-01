@@ -1,14 +1,11 @@
 import RegisterLayout from '../../Layouts/Authentication/registerLayout'
-import { Leaf, ThumbsUp, User, Mail, Phone, Lock, Loader2, ChevronDownIcon, Eye, EyeOff } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { registerCustomer } from '../../apis/auth.api'
+import { User, Phone, ChevronDownIcon, Loader2, ChevronsUpDown, Check, Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getProvinces, type Province } from '../../apis/province'
 import { toast } from '../../utils/toast'
-import { useNavigate } from 'react-router-dom'
+import { registerCustomer } from '../../apis/auth.api'
 import { path } from '../../constants/path'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'
-import { Alert, AlertDescription } from '../../components/ui/alert'
-import { Label } from '../../components/ui/label'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
@@ -21,46 +18,69 @@ import {
   CommandList
 } from '../../components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
-import { Check, ChevronsUpDown } from 'lucide-react'
 import { Calendar as CalendarComponent } from '../../components/ui/calendar'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import { Label } from '../../components/ui/label'
+import { Alert, AlertDescription } from '../../components/ui/alert'
+import { Checkbox } from '../../components/ui/checkbox'
+import CurveSeparator from '../../components/register/CurveSeparator'
+import RegistrationStepper from '../../components/register/RegistrationStepper'
+import unnamedImage from '../../assets/unnamed.jpg'
 
 interface RegisterFormData {
   firstName: string
   lastName: string
-  email: string
   phoneNumber: string
-  password: string
-  confirmPassword: string
+  provinceId: number | undefined
   gender: string
   dateOfBirth: Date | undefined
-  provinceId: number | undefined
+  email: string
+  password: string
+  confirmPassword: string
+  acceptedTerms: boolean
 }
+
+interface FormErrors {
+  firstName?: string
+  lastName?: string
+  phoneNumber?: string
+  provinceId?: string
+  gender?: string
+  dateOfBirth?: string
+  email?: string
+  password?: string
+  confirmPassword?: string
+  acceptedTerms?: string
+}
+
+// Vietnamese phone number regex (10-11 digits, can start with 0 or +84)
+const VN_PHONE_REGEX = /^(0|\+84)[1-9][0-9]{8,9}$/
 
 function Register() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState<RegisterFormData>({
     firstName: '',
     lastName: '',
-    email: '',
     phoneNumber: '',
-    password: '',
-    confirmPassword: '',
+    provinceId: undefined,
     gender: 'Male',
     dateOfBirth: undefined,
-    provinceId: undefined
+    email: '',
+    password: '',
+    confirmPassword: '',
+    acceptedTerms: false
   })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [errors, setErrors] = useState<FormErrors>({})
   const [calendarOpen, setCalendarOpen] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [provinces, setProvinces] = useState<Province[]>([])
   const [loadingProvinces, setLoadingProvinces] = useState(false)
   const [provinceOpen, setProvinceOpen] = useState(false)
   const [provinceSearchValue, setProvinceSearchValue] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // Load provinces on component mount
   useEffect(() => {
@@ -79,36 +99,6 @@ function Register() {
     fetchProvinces()
   }, [])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value
-    }))
-    // Clear error when user starts typing
-    if (error) setError('')
-    if (success) setSuccess('')
-  }
-
-  const handleSelectChange = (value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      gender: value
-    }))
-    if (error) setError('')
-    if (success) setSuccess('')
-  }
-
-  const handleProvinceChange = (provinceId: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      provinceId
-    }))
-    setProvinceOpen(false)
-    if (error) setError('')
-    if (success) setSuccess('')
-  }
-
   // Filter provinces based on search
   const filteredProvinces = provinces.filter(
     (province) =>
@@ -119,516 +109,666 @@ function Register() {
   // Get selected province name for display
   const selectedProvince = provinces.find((p) => p.id === formData.provinceId)
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value
+    }))
+    // Clear error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: undefined
+      }))
+    }
+  }
+
+  const handleSelectChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      gender: value
+    }))
+    if (errors.gender) {
+      setErrors((prev) => ({
+        ...prev,
+        gender: undefined
+      }))
+    }
+  }
+
+  const handleProvinceChange = (provinceId: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      provinceId
+    }))
+    setProvinceOpen(false)
+    if (errors.provinceId) {
+      setErrors((prev) => ({
+        ...prev,
+        provinceId: undefined
+      }))
+    }
+  }
+
   const validateForm = (): boolean => {
-    if (!formData.firstName.trim()) {
-      const errorMsg = 'Vui lòng nhập tên'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
-    if (!formData.lastName.trim()) {
-      const errorMsg = 'Vui lòng nhập họ'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
-    if (!formData.email.trim()) {
-      const errorMsg = 'Vui lòng nhập địa chỉ email'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      const errorMsg = 'Địa chỉ email không hợp lệ'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
-    if (!formData.phoneNumber.trim()) {
-      const errorMsg = 'Vui lòng nhập số điện thoại'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
-    if (!formData.password) {
-      const errorMsg = 'Vui lòng nhập mật khẩu'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
-    if (formData.password.length < 6) {
-      const errorMsg = 'Mật khẩu phải có ít nhất 6 ký tự'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
-    if (formData.password !== formData.confirmPassword) {
-      const errorMsg = 'Mật khẩu xác nhận không khớp'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
-    if (!formData.dateOfBirth) {
-      const errorMsg = 'Vui lòng chọn ngày sinh'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
-    if (!formData.provinceId) {
-      const errorMsg = 'Vui lòng chọn tỉnh/thành phố'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
+    const newErrors: FormErrors = {}
 
-    // Validate date of birth - cannot be in the future
-    const today = new Date()
-    today.setHours(23, 59, 59, 999) // Set to end of today
-    if (formData.dateOfBirth > today) {
-      const errorMsg = 'Ngày sinh không được là ngày trong tương lai'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
-    }
-
-    // Validate age - must be at least 13 years old
-    const age = today.getFullYear() - formData.dateOfBirth.getFullYear()
-    const monthDiff = today.getMonth() - formData.dateOfBirth.getMonth()
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < formData.dateOfBirth.getDate())) {
-      const actualAge = age - 1
-      if (actualAge < 13) {
-        const errorMsg = 'Bạn phải ít nhất 13 tuổi để đăng ký'
-        setError(errorMsg)
-        toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-        return false
+    if (currentStep === 1) {
+      // Validate step 1 fields
+      if (!formData.firstName.trim()) {
+        newErrors.firstName = 'Vui lòng nhập tên'
+      } else if (formData.firstName.trim().length > 50) {
+        newErrors.firstName = 'Tên không được vượt quá 50 ký tự'
       }
-    } else if (age < 13) {
-      const errorMsg = 'Bạn phải ít nhất 13 tuổi để đăng ký'
-      setError(errorMsg)
-      toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
-      return false
+
+      if (!formData.lastName.trim()) {
+        newErrors.lastName = 'Vui lòng nhập họ'
+      } else if (formData.lastName.trim().length > 50) {
+        newErrors.lastName = 'Họ không được vượt quá 50 ký tự'
+      }
+
+      if (!formData.phoneNumber.trim()) {
+        newErrors.phoneNumber = 'Vui lòng nhập số điện thoại'
+      } else if (!VN_PHONE_REGEX.test(formData.phoneNumber)) {
+        newErrors.phoneNumber = 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam (10-11 chữ số)'
+      }
+
+      if (!formData.provinceId) {
+        newErrors.provinceId = 'Vui lòng chọn tỉnh/thành phố'
+      }
+
+      if (!formData.gender) {
+        newErrors.gender = 'Vui lòng chọn giới tính'
+      }
+
+      if (!formData.dateOfBirth) {
+        newErrors.dateOfBirth = 'Vui lòng chọn ngày sinh'
+      } else {
+        const today = new Date()
+        today.setHours(23, 59, 59, 999)
+        
+        if (formData.dateOfBirth > today) {
+          newErrors.dateOfBirth = 'Ngày sinh không được là ngày trong tương lai'
+        } else {
+          const age = today.getFullYear() - formData.dateOfBirth.getFullYear()
+          const monthDiff = today.getMonth() - formData.dateOfBirth.getMonth()
+          const dayDiff = today.getDate() - formData.dateOfBirth.getDate()
+          const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age
+          
+          if (actualAge < 13) {
+            newErrors.dateOfBirth = 'Bạn phải ít nhất 13 tuổi để đăng ký'
+          }
+          
+          const minDate = new Date('1900-01-01')
+          if (formData.dateOfBirth < minDate) {
+            newErrors.dateOfBirth = 'Ngày sinh không hợp lệ'
+          }
+        }
+      }
+    } else if (currentStep === 2) {
+      // Validate step 2 fields
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!formData.email.trim()) {
+        newErrors.email = 'Vui lòng nhập email'
+      } else if (!emailRegex.test(formData.email)) {
+        newErrors.email = 'Email không hợp lệ'
+      }
+
+      if (!formData.password) {
+        newErrors.password = 'Vui lòng nhập mật khẩu'
+      } else if (formData.password.length < 8) {
+        newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự'
+      }
+
+      if (!formData.confirmPassword) {
+        newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu'
+      } else if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp'
+      }
+    } else if (currentStep === 3) {
+      // Validate step 3 fields
+      if (!formData.acceptedTerms) {
+        newErrors.acceptedTerms = 'Vui lòng đồng ý với điều khoản và quy định của cộng đồng'
+      }
     }
-    return true
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateForm()) return
-
-    setLoading(true)
-    setError('')
-    setSuccess('')
-
-    try {
-      const apiData = {
-        email: formData.email,
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        gender: formData.gender,
-        phoneNumber: formData.phoneNumber,
-        dateOfBirth: formData.dateOfBirth!.toISOString().split('T')[0], // Convert to YYYY-MM-DD format
-        provinceId: formData.provinceId!
+    if (!validateForm()) {
+      // Show first error toast
+      const firstError = Object.values(errors)[0]
+      if (firstError) {
+        toast.warning(firstError, { position: 'top-right', autoClose: 3000 })
       }
+      return
+    }
 
-      const response = await registerCustomer(apiData)
-
-      // Kiểm tra response có thành công không
-      if (response && (response.status === 201 || response.status === 200)) {
-        // Show success toast
-        toast.success(response?.data?.message || 'Tạo tài khoản thành công!', {
+    setIsSubmitting(true)
+    try {
+      if (currentStep === 1) {
+        // Chuyển sang bước 2
+        setCurrentStep(2)
+        toast.success('Bước 1 hoàn thành!', {
           position: 'top-right',
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true
+          autoClose: 2000
         })
-
-        // Reset form
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phoneNumber: '',
-          password: '',
-          confirmPassword: '',
-          gender: 'Male',
-          dateOfBirth: undefined,
-          provinceId: undefined
+      } else if (currentStep === 2) {
+        // Chuyển sang bước 3
+        setCurrentStep(3)
+        toast.success('Bước 2 hoàn thành!', {
+          position: 'top-right',
+          autoClose: 2000
         })
+      } else if (currentStep === 3) {
+        // Submit final registration
+        if (!formData.dateOfBirth || !formData.provinceId) {
+          toast.error('Vui lòng kiểm tra lại thông tin', {
+            position: 'top-right',
+            autoClose: 3000
+          })
+          return
+        }
 
+        // Format dateOfBirth to ISO string (YYYY-MM-DD)
+        const dateOfBirthString = formData.dateOfBirth.toISOString().split('T')[0]
+
+        const registrationData = {
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          gender: formData.gender,
+          phoneNumber: formData.phoneNumber,
+          dateOfBirth: dateOfBirthString,
+          provinceId: formData.provinceId
+        }
+
+        await registerCustomer(registrationData)
+        
+        toast.success('Đăng ký thành công!', {
+          position: 'top-right',
+          autoClose: 2000
+        })
+        
         // Navigate to login page after successful registration
         setTimeout(() => {
-          navigate(path.login)
+          navigate(path.loginCustomer)
         }, 2000)
-      } else {
-        const errorMsg = response?.data?.message || 'Đăng ký thất bại'
-        setError(errorMsg)
-        toast.error(errorMsg, {
-          position: 'top-right',
-          autoClose: 5000
-        })
       }
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string; error?: string } }; message?: string }
-      console.error('Registration error in component:', err)
-      console.error(
-        'Error response data:',
-        (err as { response?: { data?: { message?: string; error?: string } } }).response?.data
-      )
-
-      // Handle different error formats
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        'Có lỗi xảy ra khi tạo tài khoản'
-
-      // Show error toast
-      toast.error(errorMessage, {
+    } catch (error) {
+      console.error('Error submitting form:', error)
+      toast.error('Có lỗi xảy ra. Vui lòng thử lại.', {
         position: 'top-right',
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true
+        autoClose: 5000
       })
-
-      setError(errorMessage)
     } finally {
-      setLoading(false)
+      setIsSubmitting(false)
     }
+  }
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  const renderStepContent = () => {
+    if (currentStep === 1) {
+      return (
+        <>
+          {/* First Name and Last Name */}
+          <div className='grid grid-cols-2 gap-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='firstName'>
+                Tên<span className='text-destructive ml-1'>*</span>
+              </Label>
+              <div className='relative'>
+                <User className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+                <Input
+                  id='firstName'
+                  name='firstName'
+                  type='text'
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  placeholder='Nhập tên của bạn'
+                  className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
+                    errors.firstName
+                      ? 'border-b-red-500 focus-visible:border-b-red-500'
+                      : 'border-b-gray-300 focus-visible:border-b-green-600'
+                  }`}
+                />
+              </div>
+              {errors.firstName && <p className='text-sm text-destructive'>{errors.firstName}</p>}
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='lastName'>
+                Họ<span className='text-destructive ml-1'>*</span>
+              </Label>
+              <div className='relative'>
+                <User className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+                <Input
+                  id='lastName'
+                  name='lastName'
+                  type='text'
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  placeholder='Nhập họ của bạn'
+                  className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
+                    errors.lastName
+                      ? 'border-b-red-500 focus-visible:border-b-red-500'
+                      : 'border-b-gray-300 focus-visible:border-b-green-600'
+                  }`}
+                />
+              </div>
+              {errors.lastName && <p className='text-sm text-destructive'>{errors.lastName}</p>}
+            </div>
+          </div>
+
+          {/* Phone Number */}
+          <div className='space-y-2'>
+            <Label htmlFor='phoneNumber'>
+              Số điện thoại<span className='text-destructive ml-1'>*</span>
+            </Label>
+            <div className='relative'>
+              <Phone className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+              <Input
+                id='phoneNumber'
+                name='phoneNumber'
+                type='tel'
+                value={formData.phoneNumber}
+                onChange={handleInputChange}
+                placeholder='Nhập số điện thoại'
+                className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
+                  errors.phoneNumber
+                    ? 'border-b-red-500 focus-visible:border-b-red-500'
+                    : 'border-b-gray-300 focus-visible:border-b-green-600'
+                }`}
+              />
+            </div>
+            {errors.phoneNumber && <p className='text-sm text-destructive'>{errors.phoneNumber}</p>}
+          </div>
+
+          {/* Hometown (Province) */}
+          <div className='space-y-2'>
+            <Label>
+              Quê quán<span className='text-destructive ml-1'>*</span>
+            </Label>
+            <Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant='outline'
+                  role='combobox'
+                  aria-expanded={provinceOpen}
+                  className={`w-full justify-between bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 font-normal focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
+                    errors.provinceId
+                      ? 'border-b-red-500 focus-visible:border-b-red-500'
+                      : 'border-b-gray-300 focus-visible:border-b-green-600'
+                  }`}
+                  disabled={loadingProvinces}
+                  type='button'
+                >
+                  <span className='flex-1 truncate mr-2 text-left'>
+                    {loadingProvinces
+                      ? 'Đang tải...'
+                      : selectedProvince
+                        ? `${selectedProvince.name} - ${selectedProvince.region}`
+                        : 'Chọn tỉnh/thành phố'}
+                  </span>
+                  <ChevronsUpDown className='h-4 w-4 shrink-0 opacity-50' />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className='w-full p-0' align='start'>
+                <Command>
+                  <CommandInput
+                    placeholder='Tìm kiếm tỉnh/thành phố...'
+                    value={provinceSearchValue}
+                    onValueChange={setProvinceSearchValue}
+                  />
+                  <CommandList>
+                    <CommandEmpty>Không tìm thấy tỉnh/thành phố nào.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredProvinces.map((province) => (
+                        <CommandItem
+                          key={province.id}
+                          value={`${province.name} - ${province.region}`}
+                          onSelect={() => handleProvinceChange(province.id)}
+                        >
+                          <Check
+                            className={`mr-2 h-4 w-4 ${
+                              formData.provinceId === province.id ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          />
+                          {province.name} - {province.region}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {errors.provinceId && <p className='text-sm text-destructive'>{errors.provinceId}</p>}
+          </div>
+
+          {/* Gender and Date of Birth */}
+          <div className='grid grid-cols-2 gap-4'>
+            <div className='space-y-2'>
+              <Label>
+                Giới tính<span className='text-destructive ml-1'>*</span>
+              </Label>
+              <Select value={formData.gender} onValueChange={handleSelectChange}>
+                <SelectTrigger
+                  className={`bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none shadow-none ${
+                    errors.gender
+                      ? 'border-b-red-500 focus-visible:border-b-red-500'
+                      : 'border-b-gray-300 focus-visible:border-b-green-600'
+                  }`}
+                >
+                  <SelectValue placeholder='Chọn giới tính' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='Male'>Nam</SelectItem>
+                  <SelectItem value='Female'>Nữ</SelectItem>
+                  <SelectItem value='Other'>Khác</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.gender && <p className='text-sm text-destructive'>{errors.gender}</p>}
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='dateOfBirth'>
+                Ngày sinh<span className='text-destructive ml-1'>*</span>
+              </Label>
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    id='dateOfBirth'
+                    type='button'
+                    className={`w-full justify-between bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 font-normal focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
+                      errors.dateOfBirth
+                        ? 'border-b-red-500 focus-visible:border-b-red-500'
+                        : 'border-b-gray-300 focus-visible:border-b-green-600'
+                    }`}
+                  >
+                    {formData.dateOfBirth
+                      ? format(formData.dateOfBirth, 'dd/MM/yyyy', { locale: vi })
+                      : 'Chọn ngày sinh'}
+                    <ChevronDownIcon className='h-4 w-4' />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto overflow-hidden p-0' align='start'>
+                  <CalendarComponent
+                    mode='single'
+                    selected={formData.dateOfBirth}
+                    captionLayout='dropdown'
+                    onSelect={(date) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        dateOfBirth: date
+                      }))
+                      setCalendarOpen(false)
+                      if (errors.dateOfBirth) {
+                        setErrors((prev) => ({
+                          ...prev,
+                          dateOfBirth: undefined
+                        }))
+                      }
+                    }}
+                    disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                    locale={vi}
+                  />
+                </PopoverContent>
+              </Popover>
+              {errors.dateOfBirth && <p className='text-sm text-destructive'>{errors.dateOfBirth}</p>}
+            </div>
+          </div>
+        </>
+      )
+    } else if (currentStep === 2) {
+      return (
+        <>
+          {/* Email */}
+          <div className='space-y-2'>
+            <Label htmlFor='email'>
+              Email<span className='text-destructive ml-1'>*</span>
+            </Label>
+            <div className='relative'>
+              <Mail className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+              <Input
+                id='email'
+                name='email'
+                type='email'
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder='Nhập email của bạn'
+                className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
+                  errors.email
+                    ? 'border-b-red-500 focus-visible:border-b-red-500'
+                    : 'border-b-gray-300 focus-visible:border-b-green-600'
+                }`}
+              />
+            </div>
+            {errors.email && <p className='text-sm text-destructive'>{errors.email}</p>}
+          </div>
+
+          {/* Password */}
+          <div className='space-y-2'>
+            <Label htmlFor='password'>
+              Mật khẩu<span className='text-destructive ml-1'>*</span>
+            </Label>
+            <div className='relative'>
+              <Lock className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+              <Input
+                id='password'
+                name='password'
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder='Nhập mật khẩu (tối thiểu 8 ký tự)'
+                className={`pl-10 pr-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
+                  errors.password
+                    ? 'border-b-red-500 focus-visible:border-b-red-500'
+                    : 'border-b-gray-300 focus-visible:border-b-green-600'
+                }`}
+              />
+              <button
+                type='button'
+                onClick={() => setShowPassword(!showPassword)}
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+              >
+                {showPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+              </button>
+            </div>
+            {errors.password && <p className='text-sm text-destructive'>{errors.password}</p>}
+          </div>
+
+          {/* Confirm Password */}
+          <div className='space-y-2'>
+            <Label htmlFor='confirmPassword'>
+              Xác nhận mật khẩu<span className='text-destructive ml-1'>*</span>
+            </Label>
+            <div className='relative'>
+              <Lock className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+              <Input
+                id='confirmPassword'
+                name='confirmPassword'
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                placeholder='Nhập lại mật khẩu'
+                className={`pl-10 pr-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
+                  errors.confirmPassword
+                    ? 'border-b-red-500 focus-visible:border-b-red-500'
+                    : 'border-b-gray-300 focus-visible:border-b-green-600'
+                }`}
+              />
+              <button
+                type='button'
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+              >
+                {showConfirmPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+              </button>
+            </div>
+            {errors.confirmPassword && <p className='text-sm text-destructive'>{errors.confirmPassword}</p>}
+          </div>
+        </>
+      )
+    } else if (currentStep === 3) {
+      return (
+        <div className='space-y-4 py-8'>
+          <div className='text-center mb-6'>
+            <h3 className='text-2xl font-bold mb-2'>Hương ước cộng đồng</h3>
+            <p className='text-muted-foreground'>
+              Vui lòng đọc và đồng ý với các điều khoản và quy định của cộng đồng
+            </p>
+          </div>
+          
+          <div className='flex items-start space-x-3'>
+            <Checkbox
+              id='acceptedTerms'
+              checked={formData.acceptedTerms}
+              onCheckedChange={(checked) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  acceptedTerms: checked === true
+                }))
+                if (errors.acceptedTerms) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    acceptedTerms: undefined
+                  }))
+                }
+              }}
+              className={errors.acceptedTerms ? 'border-destructive' : ''}
+            />
+            <Label
+              htmlFor='acceptedTerms'
+              className='text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1'
+            >
+              Tôi đồng ý với các điều khoản và quy định của cộng đồng
+              <span className='text-destructive ml-1'>*</span>
+            </Label>
+          </div>
+          {errors.acceptedTerms && (
+            <p className='text-sm text-destructive mt-1'>{errors.acceptedTerms}</p>
+          )}
+        </div>
+      )
+    }
+    return null
   }
 
   return (
     <RegisterLayout>
-      <Card className='w-full max-w-md shadow-xl'>
-        <CardHeader className='text-center pb-4 pt-4'>
-          <div className='mx-auto mb-4'>
-            <div className='w-24 h-24 rounded-full overflow-hidden mx-auto mb-3'>
-              <svg xmlns='http://www.w3.org/2000/svg' width='70' height='100' viewBox='0 0 24 24' fill='none'>
-                <path
-                  d='M22 3.25C22 7.6875 18.6953 11.3555 14.4141 11.9219C14.1367 9.83594 13.2188 7.95312 11.8633 6.48047C13.3594 3.80859 16.2188 2 19.5 2H20.75C21.4414 2 22 2.55859 22 3.25ZM2 5.75C2 5.05859 2.55859 4.5 3.25 4.5H4.5C9.33203 4.5 13.25 8.41797 13.25 13.25V14.5V20.75C13.25 21.4414 12.6914 22 12 22C11.3086 22 10.75 21.4414 10.75 20.75V14.5C5.91797 14.5 2 10.582 2 5.75Z'
-                  fill='#F4A261'
+        <div className='w-full max-w-4xl mx-auto px-4 py-6'>
+          <div className='bg-white rounded-3xl shadow-2xl overflow-hidden'>
+            <div className='grid grid-cols-1 lg:grid-cols-[58%_42%] min-h-[350px] relative'>
+            {/* Left Panel - Image Background */}
+            <div className='relative hidden lg:block overflow-visible'>
+              {/* Background Image - Full size */}
+              <div className='absolute inset-0 z-0'>
+                <img
+                  src={unnamedImage}
+                  alt='Background'
+                  className='w-full h-full object-cover'
                 />
-              </svg>
-            </div>
-            <CardTitle className='text-2xl font-bold text-foreground'>Tinh Hoa Quê Nhà</CardTitle>
-            <CardDescription className='text-sm text-muted-foreground mt-1'>
-              Tạo tài khoản để khám phá tinh hoa Việt Nam
-            </CardDescription>
-          </div>
-        </CardHeader>
+              </div>
 
-        <CardContent className='px-6 pb-6 space-y-4'>
-          {/* Error Message */}
-          {error && (
-            <Alert variant='destructive'>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Success Message */}
-          {success && (
-            <Alert>
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-
-          <form className='space-y-4' onSubmit={handleSubmit}>
-            <div className='grid grid-cols-2 gap-4'>
-              <div className='space-y-2'>
-                <Label htmlFor='firstName'>
-                  Tên<span className='text-destructive'>*</span>
-                </Label>
-                <div className='relative'>
-                  <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                  <Input
-                    id='firstName'
-                    type='text'
-                    name='firstName'
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    placeholder='Nhập tên của bạn'
-                    className='pl-10'
-                  />
+              {/* Content */}
+              <div className='relative z-[2] h-full flex flex-col p-6 pr-12 text-white'>
+                {/* Logo and Branding */}
+                <div className='mb-6'>
+                  <div className='flex items-center space-x-3 mb-3'>
+                    <div className='w-10 h-10 rounded-full bg-yellow-400/90 flex items-center justify-center'>
+                      <svg
+                        xmlns='http://www.w3.org/2000/svg'
+                        width='20'
+                        height='20'
+                        viewBox='0 0 24 24'
+                        fill='none'
+                      >
+                        <path
+                          d='M22 3.25C22 7.6875 18.6953 11.3555 14.4141 11.9219C14.1367 9.83594 13.2188 7.95312 11.8633 6.48047C13.3594 3.80859 16.2188 2 19.5 2H20.75C21.4414 2 22 2.55859 22 3.25ZM2 5.75C2 5.05859 2.55859 4.5 3.25 4.5H4.5C9.33203 4.5 13.25 8.41797 13.25 13.25V14.5V20.75C13.25 21.4414 12.6914 22 12 22C11.3086 22 10.75 21.4414 10.75 20.75V14.5C5.91797 14.5 2 10.582 2 5.75Z'
+                          fill='currentColor'
+                        />
+                      </svg>
+                    </div>
+                    <span className='text-lg font-bold'>Tinh Hoa Quê Nhà</span>
+                  </div>
+                  <h1 className='text-4xl font-serif font-bold leading-tight'>Khởi đầu hành trình</h1>
                 </div>
-              </div>
 
-              <div className='space-y-2'>
-                <Label htmlFor='lastName'>
-                  Họ<span className='text-destructive'>*</span>
-                </Label>
-                <div className='relative'>
-                  <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                  <Input
-                    id='lastName'
-                    type='text'
-                    name='lastName'
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    placeholder='Nhập họ của bạn'
-                    className='pl-10'
-                  />
-                </div>
+                {/* Progress Stepper */}
+                <RegistrationStepper currentStep={currentStep} />
               </div>
             </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='email'>
-                Địa chỉ Email<span className='text-destructive'>*</span>
-              </Label>
-              <div className='relative'>
-                <Mail className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                <Input
-                  id='email'
-                  type='email'
-                  name='email'
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder='Nhập địa chỉ email của bạn'
-                  className='pl-10'
-                />
-              </div>
+            {/* Curve Separator - Positioned slightly to the left of the right edge */}
+            <div className='hidden lg:block absolute left-[calc(52%-40px)] top-0 bottom-0 pointer-events-none' style={{ zIndex: 5 }}>
+              <CurveSeparator />
             </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='phoneNumber'>
-                Số điện thoại<span className='text-destructive'>*</span>
-              </Label>
-              <div className='relative'>
-                <Phone className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                <Input
-                  id='phoneNumber'
-                  type='tel'
-                  name='phoneNumber'
-                  value={formData.phoneNumber}
-                  onChange={handleInputChange}
-                  placeholder='Nhập số điện thoại'
-                  className='pl-10'
-                />
-              </div>
-            </div>
+            {/* Right Panel - White Form */}
+            <div className='bg-white flex flex-col justify-center relative z-[10]'>
+              <form onSubmit={handleSubmit} className='space-y-5 max-w-md mx-auto w-full pl-4 lg:pl-6 pr-8 lg:pr-12 py-6 lg:py-8'>
+                {/* Error Message */}
+                {Object.keys(errors).length > 0 && (
+                  <Alert variant='destructive'>
+                    <AlertDescription>
+                      {Object.values(errors).find((error) => error) || 'Vui lòng kiểm tra lại thông tin'}
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-            <div className='space-y-2'>
-              <Label>
-                Quê hương của bạn<span className='text-destructive'>*</span>
-              </Label>
-              <div className='relative'>
-                <Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
-                  <PopoverTrigger asChild>
+                {/* Step Content */}
+                {renderStepContent()}
+
+                {/* Action Buttons */}
+                <div className={`flex gap-4 mt-8 ${currentStep > 1 ? 'justify-between' : 'justify-end'}`}>
+                  {currentStep > 1 && (
                     <Button
+                      type='button'
                       variant='outline'
-                      role='combobox'
-                      aria-expanded={provinceOpen}
-                      className='w-full justify-between pl-14 pr-8 h-10 text-left'
-                      disabled={loadingProvinces}
+                      onClick={handleBack}
+                      className='rounded-full h-12 text-base font-semibold px-6'
+                      size='lg'
                     >
-                      <span className='flex-1 truncate mr-2'>
-                        {loadingProvinces
-                          ? 'Đang tải...'
-                          : selectedProvince
-                            ? `${selectedProvince.name} - ${selectedProvince.region}`
-                            : 'Chọn tỉnh/thành phố'}
-                      </span>
-                      <ChevronsUpDown className='h-4 w-4 shrink-0 opacity-50' />
+                      <ArrowLeft className='mr-2 h-4 w-4' />
+                      Quay lại
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className='w-full p-0' align='start'>
-                    <Command>
-                      <CommandInput
-                        placeholder='Tìm kiếm tỉnh/thành phố...'
-                        value={provinceSearchValue}
-                        onValueChange={setProvinceSearchValue}
-                      />
-                      <CommandList>
-                        <CommandEmpty>Không tìm thấy tỉnh/thành phố nào.</CommandEmpty>
-                        <CommandGroup>
-                          {filteredProvinces.map((province) => (
-                            <CommandItem
-                              key={province.id}
-                              value={`${province.name} - ${province.region}`}
-                              onSelect={() => handleProvinceChange(province.id)}
-                            >
-                              <Check
-                                className={`mr-2 h-4 w-4 ${formData.provinceId === province.id ? 'opacity-100' : 'opacity-0'
-                                  }`}
-                              />
-                              {province.name} - {province.region}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            <div className='grid grid-cols-2 gap-4'>
-              <div className='space-y-2'>
-                <Label>
-                  Giới tính<span className='text-destructive'>*</span>
-                </Label>
-                <div className='relative '>
-                  <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10' />
-                  <Select value={formData.gender} onValueChange={handleSelectChange}>
-                    <SelectTrigger className='pl-10'>
-                      <SelectValue placeholder='Chọn giới tính' />
-
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='Male'>Nam</SelectItem>
-                      <SelectItem value='Female'>Nữ</SelectItem>
-                      <SelectItem value='Other'>Khác</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  )}
+                  <Button
+                    type='submit'
+                    disabled={isSubmitting}
+                    variant='green'
+                    className={`rounded-full h-12 text-base font-semibold ${currentStep > 1 ? 'flex-1' : 'w-full'}`}
+                    size='lg'
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Đang xử lý...
+                      </>
+                    ) : currentStep === 3 ? (
+                      'Hoàn thành'
+                    ) : (
+                      'Tiếp tục →'
+                    )}
+                  </Button>
                 </div>
-              </div>
-
-              <div className='space-y-2'>
-                <Label htmlFor='dateOfBirth' className='px-1'>
-                  Ngày sinh<span className='text-destructive'>*</span>
-                </Label>
-                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant='outline' id='dateOfBirth' className='w-full justify-between font-normal'>
-                      {formData.dateOfBirth
-                        ? format(formData.dateOfBirth, 'dd/MM/yyyy', { locale: vi })
-                        : 'Chọn ngày sinh'}
-                      <ChevronDownIcon className='h-4 w-4' />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className='w-auto overflow-hidden p-0' align='start'>
-                    <CalendarComponent
-                      mode='single'
-                      selected={formData.dateOfBirth}
-                      captionLayout='dropdown'
-                      onSelect={(date) => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          dateOfBirth: date
-                        }))
-                        setCalendarOpen(false)
-                        if (error) setError('')
-                        if (success) setSuccess('')
-                      }}
-                      disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                      locale={vi}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='password'>
-                Mật khẩu<span className='text-destructive'>*</span>
-              </Label>
-              <div className='relative'>
-                <Lock className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                <Input
-                  id='password'
-                  type={showPassword ? 'text' : 'password'}
-                  name='password'
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder='Nhập mật khẩu'
-                  className='pl-10 pr-10'
-                />
-                <button
-                  type='button'
-                  className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-            </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='confirmPassword'>
-                Xác nhận mật khẩu<span className='text-destructive'>*</span>
-              </Label>
-              <div className='relative'>
-                <Lock className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-                <Input
-                  id='confirmPassword'
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  name='confirmPassword'
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder='Nhập lại mật khẩu'
-                  className='pl-10 pr-10'
-                />
-                <button
-                  type='button'
-                  className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
-                  onClick={() => setShowConfirmPassword((prev) => !prev)}
-                  tabIndex={-1}
-                >
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-            </div>
-
-            <Button variant='green' type='submit' disabled={loading} className='w-full' size='lg'>
-              {loading ? (
-                <>
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  Đang tạo tài khoản...
-                </>
-              ) : (
-                'Tạo tài khoản →'
-              )}
-            </Button>
-          </form>
-
-          <div className='text-center'>
-            <p className='text-sm text-muted-foreground'>
-              Đã có tài khoản?{' '}
-              <Button
-                variant='link'
-                onClick={() => navigate(path.login)}
-                className='text-primary hover:underline font-medium p-0 h-auto'
-              >
-                Đăng nhập
-              </Button>
-            </p>
-          </div>
-
-          <div className='grid grid-cols-3 gap-4 pt-4'>
-            <div className='flex flex-col items-center space-y-2'>
-              <div className='w-12 h-12 bg-green-100 rounded-full flex items-center justify-center'>
-                <Leaf className='w-6 h-6 text-green-600' />
-              </div>
-              <span className='text-sm text-muted-foreground'>Tự nhiên</span>
-            </div>
-            <div className='flex flex-col items-center space-y-2'>
-              <div className='w-12 h-12 bg-green-100 rounded-full flex items-center justify-center'>
-                <ThumbsUp className='w-6 h-6 text-green-600' />
-              </div>
-              <span className='text-sm text-muted-foreground'>Uy tín</span>
-            </div>
-            <div className='flex flex-col items-center space-y-2'>
-              <div className='w-12 h-12 bg-green-100 rounded-full flex items-center justify-center'>
-                <svg className='w-6 h-6 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z'
-                  />
-                </svg>
-              </div>
-              <span className='text-sm text-muted-foreground'>Chất lượng</span>
+              </form>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </RegisterLayout>
   )
 }
