@@ -70,6 +70,7 @@ import CreateComboSeller from './pages/seller/combos/createCombo'
 import DetailComboSeller from './pages/seller/combos/detailCombo'
 import ProductReviews from './pages/seller/productReviews/productReviews'
 import ViewBlog from './pages/customer/Blog/viewBlog'
+import BlogList from './pages/customer/Blog/blogList'
 //import SellerManagement from './pages/admin/sellerManagerment/list'
 import StaffManagement from './pages/admin/staffManagerment/list'
 import AdminFormManagement from './pages/admin/formManagerment/form'
@@ -139,8 +140,12 @@ export default function useRouteElements() {
           element: <Discover />
         },
         {
-          path: path.blog,
+          path: path.blogDetail,
           element: <ViewBlog />
+        },
+        {
+          path: path.blog,
+          element: <BlogList />
         }
       ]
     },

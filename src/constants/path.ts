@@ -3,6 +3,7 @@ export const path = {
   portal: '/portal',
   home: '/',
   blog: '/view-blog',
+  blogDetail: '/view-blog/:id',
   login: '/login',
   product: '/products',
   detailCombo: '/combo/:id',
