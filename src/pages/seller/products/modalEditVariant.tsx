@@ -352,14 +352,6 @@ export default function ModalEditVariant({
           setAttributeNameError(`Tên thuộc tính chỉ được tối đa ${MAX_ATTRIBUTE_NAME_LENGTH} ký tự`)
           return
         }
-
-        // Validate description word count
-        const descriptionWordCount = countWords(variantData.description)
-        if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
-          toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
-          setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
-          return
-        }
       } else {
         // Phiên bản bán được hoặc nhóm tùy chọn chưa có con: kiểm tra đầy đủ
         if (!variantData.attributeName.trim()) {
@@ -428,11 +420,8 @@ export default function ModalEditVariant({
       const updateData: UpdateVariantRequest = {}
 
       if (!canEditFullFields) {
-        // Nhóm tùy chọn có con: chỉ gửi attributeName và description
+        // Nhóm tùy chọn có con: chỉ gửi attributeName
         updateData.attributeName = variantData.attributeName
-        if (variantData.description) {
-          updateData.description = variantData.description
-        }
       } else {
         // Phiên bản bán được hoặc nhóm tùy chọn chưa có con: gửi đầy đủ
         const attributeType = getAttributeTypeForVariant()
@@ -440,9 +429,6 @@ export default function ModalEditVariant({
           updateData.attributeType = attributeType
         }
         updateData.attributeName = variantData.attributeName
-        if (variantData.description) {
-          updateData.description = variantData.description
-        }
         updateData.basePrice = variantData.basePrice
         updateData.quantity = variantData.quantity
         updateData.isActive = variantData.isActive
@@ -530,7 +516,6 @@ export default function ModalEditVariant({
       setVariantData({
         attributeName: '',
         attributeType: '',
-        description: '',
         basePrice: 0,
         quantity: 0,
         length: 0,
@@ -540,7 +525,6 @@ export default function ModalEditVariant({
         isActive: true
       })
       setAttributeNameError('')
-      setDescriptionError('')
       setPriceError('')
       setQuantityError('')
       setLengthError('')

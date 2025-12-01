@@ -69,7 +69,7 @@ import CreateComboSeller from './pages/seller/combos/createCombo'
 import DetailComboSeller from './pages/seller/combos/detailCombo'
 import ProductReviews from './pages/seller/productReviews/productReviews'
 import ViewBlog from './pages/customer/Blog/viewBlog'
-import SellerManagement from './pages/admin/sellerManagerment/list'
+//import SellerManagement from './pages/admin/sellerManagerment/list'
 import StaffManagement from './pages/admin/staffManagerment/list'
 import AdminFormManagement from './pages/admin/formManagerment/form'
 import FormOrderManagement from './pages/admin/formManagerment/formOrder'
@@ -415,10 +415,10 @@ export default function useRouteElements() {
               path: path.SYSTEM_STORAGE_ADMIN,
               element: <SystemStorage />
             },
-            {
-              path: path.SELLER_MANAGEMENT_ADMIN,
-              element: <SellerManagement />
-            },
+            // {
+            //   path: path.SELLER_MANAGEMENT_ADMIN,
+            //   element: <SellerManagement />
+            // },
             {
               path: path.STAFF_MANAGEMENT_ADMIN,
               element: <StaffManagement />

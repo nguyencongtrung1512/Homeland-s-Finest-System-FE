@@ -26,7 +26,8 @@ export type OrderStatus =
   | 'Returning' // Đang trả hàng - Đơn hàng đang được trả lại
   | 'Returned' // Đã trả hàng - Đơn hàng đã được trả lại thành công
   | 'DeliveryFail' // Giao hàng thất bại - Không thể giao hàng cho khách
-
+  | 'Refunded' // Đã hoàn tiền - Đơn hàng đã được hoàn tiền
+  | 'Refunding' // Đang hoàn tiền - Đơn hàng đang được hoàn tiền
 
   // === TRẠNG THÁI SỰ CỐ VÀ KHIẾU NẠI ===
   | 'Exception' // Gặp sự cố - Đơn hàng gặp sự cố trong quá trình vận chuyển
@@ -42,7 +43,7 @@ export type OrderStatusPending = 'NotYet' | 'Processing' | 'PendingPayment'
 export type OrderStatusConfirmed = 'Confirmed' | 'ReadyToPick' | 'Picking' | 'Picked'
 export type OrderStatusShipping = 'Storing' | 'Transporting' | 'Sorting' | 'Delivering'
 export type OrderStatusCompleted = 'Delivered' | 'Paid'
-export type OrderStatusReturning = 'Returning' | 'Returned' | 'Refunded' | 'DeliveryFail'
+export type OrderStatusReturning = 'Returning' | 'Returned' | 'Refunded' | 'Refunding' | 'DeliveryFail'
 export type OrderStatusIssue = 'Exception' | 'Damaged' | 'Lost' | 'Complaining' | 'Complained'
 export type OrderStatusCancelled = 'Cancel'
 
@@ -50,7 +51,7 @@ export type OrderStatusCancelled = 'Cancel'
 export type CancellableOrderStatus = 'NotYet' | 'Processing' | 'PendingPayment'
 
 // Helper type để kiểm tra trạng thái đã hoàn thành
-export type CompletedOrderStatus = 'Delivered' | 'Paid' | 'Returned' | 'Refunded' | 'Cancel'
+export type CompletedOrderStatus = 'Delivered' | 'Paid' | 'Returned' | 'Refunded' | 'Refunding' | 'Cancel'
 
 // Helper type để kiểm tra trạng thái đang vận chuyển
 export type ShippingOrderStatus = 'Storing' | 'Transporting' | 'Sorting' | 'Delivering' | 'Picked'

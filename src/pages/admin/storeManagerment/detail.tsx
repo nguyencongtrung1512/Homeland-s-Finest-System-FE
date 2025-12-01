@@ -270,7 +270,6 @@ function StoreDetailAdmin() {
       Pending: { text: 'Chờ duyệt', color: 'bg-yellow-500', textColor: 'text-yellow-700' },
       Rejected: { text: 'Từ chối', color: 'bg-red-500', textColor: 'text-red-700' },
       Processing: { text: 'Nhân viên xử lí', color: 'bg-indigo-500', textColor: 'text-indigo-700' },
-      ReviewedByStaff: { text: 'Đã duyệt bởi nhân viên', color: 'bg-purple-500', textColor: 'text-purple-700' },
       ApprovedByStaff: { text: 'Đã chấp nhận bởi nhân viên', color: 'bg-green-500', textColor: 'text-green-700' },
       RejectedByStaff: { text: 'Đã từ chối bởi nhân viên', color: 'bg-red-500', textColor: 'text-red-700' },
       Inactive: { text: 'Bị khóa', color: 'bg-red-500', textColor: 'text-red-700' }
@@ -909,22 +908,6 @@ function StoreDetailAdmin() {
                       <Ban className='w-4 h-4 mr-2' />
                       Khóa cửa hàng
                     </Button>
-                  )}
-
-                  {store.status === 'ReviewedByStaff' && (
-                    <div className='grid grid-row-2 gap-4'>
-                      <Button
-                        onClick={() => handleStatusAction('Approve')}
-                        className='w-full bg-green-500 hover:bg-green-600 text-white'
-                      >
-                        <Check className='w-4 h-4 mr-2' />
-                        Duyệt cửa hàng
-                      </Button>
-                      <Button onClick={() => handleStatusAction('Reject')} variant='destructive' className='w-full'>
-                        <X className='w-4 h-4 mr-2' />
-                        Từ chối cửa hàng
-                      </Button>
-                    </div>
                   )}
 
                   {store.status === 'ApprovedByStaff' && (

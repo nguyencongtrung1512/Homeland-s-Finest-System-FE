@@ -187,7 +187,7 @@ function Register() {
       } else {
         const today = new Date()
         today.setHours(23, 59, 59, 999)
-        
+
         if (formData.dateOfBirth > today) {
           newErrors.dateOfBirth = 'Ngày sinh không được là ngày trong tương lai'
         } else {
@@ -195,11 +195,11 @@ function Register() {
           const monthDiff = today.getMonth() - formData.dateOfBirth.getMonth()
           const dayDiff = today.getDate() - formData.dateOfBirth.getDate()
           const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age
-          
+
           if (actualAge < 13) {
             newErrors.dateOfBirth = 'Bạn phải ít nhất 13 tuổi để đăng ký'
           }
-          
+
           const minDate = new Date('1900-01-01')
           if (formData.dateOfBirth < minDate) {
             newErrors.dateOfBirth = 'Ngày sinh không hợp lệ'
@@ -290,12 +290,12 @@ function Register() {
         }
 
         await registerCustomer(registrationData)
-        
+
         toast.success('Đăng ký thành công!', {
           position: 'top-right',
           autoClose: 2000
         })
-        
+
         // Navigate to login page after successful registration
         setTimeout(() => {
           navigate(path.loginCustomer)
@@ -337,11 +337,10 @@ function Register() {
                   value={formData.firstName}
                   onChange={handleInputChange}
                   placeholder='Nhập tên của bạn'
-                  className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
-                    errors.firstName
+                  className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.firstName
                       ? 'border-b-red-500 focus-visible:border-b-red-500'
                       : 'border-b-gray-300 focus-visible:border-b-green-600'
-                  }`}
+                    }`}
                 />
               </div>
               {errors.firstName && <p className='text-sm text-destructive'>{errors.firstName}</p>}
@@ -360,11 +359,10 @@ function Register() {
                   value={formData.lastName}
                   onChange={handleInputChange}
                   placeholder='Nhập họ của bạn'
-                  className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
-                    errors.lastName
+                  className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.lastName
                       ? 'border-b-red-500 focus-visible:border-b-red-500'
                       : 'border-b-gray-300 focus-visible:border-b-green-600'
-                  }`}
+                    }`}
                 />
               </div>
               {errors.lastName && <p className='text-sm text-destructive'>{errors.lastName}</p>}
@@ -385,11 +383,10 @@ function Register() {
                 value={formData.phoneNumber}
                 onChange={handleInputChange}
                 placeholder='Nhập số điện thoại'
-                className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
-                  errors.phoneNumber
+                className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.phoneNumber
                     ? 'border-b-red-500 focus-visible:border-b-red-500'
                     : 'border-b-gray-300 focus-visible:border-b-green-600'
-                }`}
+                  }`}
               />
             </div>
             {errors.phoneNumber && <p className='text-sm text-destructive'>{errors.phoneNumber}</p>}
@@ -406,11 +403,10 @@ function Register() {
                   variant='outline'
                   role='combobox'
                   aria-expanded={provinceOpen}
-                  className={`w-full justify-between bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 font-normal focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
-                    errors.provinceId
+                  className={`w-full justify-between bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 font-normal focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.provinceId
                       ? 'border-b-red-500 focus-visible:border-b-red-500'
                       : 'border-b-gray-300 focus-visible:border-b-green-600'
-                  }`}
+                    }`}
                   disabled={loadingProvinces}
                   type='button'
                 >
@@ -441,9 +437,8 @@ function Register() {
                           onSelect={() => handleProvinceChange(province.id)}
                         >
                           <Check
-                            className={`mr-2 h-4 w-4 ${
-                              formData.provinceId === province.id ? 'opacity-100' : 'opacity-0'
-                            }`}
+                            className={`mr-2 h-4 w-4 ${formData.provinceId === province.id ? 'opacity-100' : 'opacity-0'
+                              }`}
                           />
                           {province.name} - {province.region}
                         </CommandItem>
@@ -464,11 +459,10 @@ function Register() {
               </Label>
               <Select value={formData.gender} onValueChange={handleSelectChange}>
                 <SelectTrigger
-                  className={`bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none shadow-none ${
-                    errors.gender
+                  className={`bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none shadow-none ${errors.gender
                       ? 'border-b-red-500 focus-visible:border-b-red-500'
                       : 'border-b-gray-300 focus-visible:border-b-green-600'
-                  }`}
+                    }`}
                 >
                   <SelectValue placeholder='Chọn giới tính' />
                 </SelectTrigger>
@@ -491,11 +485,10 @@ function Register() {
                     variant='outline'
                     id='dateOfBirth'
                     type='button'
-                    className={`w-full justify-between bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 font-normal focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
-                      errors.dateOfBirth
+                    className={`w-full justify-between bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 font-normal focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.dateOfBirth
                         ? 'border-b-red-500 focus-visible:border-b-red-500'
                         : 'border-b-gray-300 focus-visible:border-b-green-600'
-                    }`}
+                      }`}
                   >
                     {formData.dateOfBirth
                       ? format(formData.dateOfBirth, 'dd/MM/yyyy', { locale: vi })
@@ -548,11 +541,10 @@ function Register() {
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder='Nhập email của bạn'
-                className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
-                  errors.email
+                className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.email
                     ? 'border-b-red-500 focus-visible:border-b-red-500'
                     : 'border-b-gray-300 focus-visible:border-b-green-600'
-                }`}
+                  }`}
               />
             </div>
             {errors.email && <p className='text-sm text-destructive'>{errors.email}</p>}
@@ -572,11 +564,10 @@ function Register() {
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder='Nhập mật khẩu (tối thiểu 8 ký tự)'
-                className={`pl-10 pr-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
-                  errors.password
+                className={`pl-10 pr-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.password
                     ? 'border-b-red-500 focus-visible:border-b-red-500'
                     : 'border-b-gray-300 focus-visible:border-b-green-600'
-                }`}
+                  }`}
               />
               <button
                 type='button'
@@ -603,11 +594,10 @@ function Register() {
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 placeholder='Nhập lại mật khẩu'
-                className={`pl-10 pr-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${
-                  errors.confirmPassword
+                className={`pl-10 pr-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.confirmPassword
                     ? 'border-b-red-500 focus-visible:border-b-red-500'
                     : 'border-b-gray-300 focus-visible:border-b-green-600'
-                }`}
+                  }`}
               />
               <button
                 type='button'
@@ -630,7 +620,7 @@ function Register() {
               Vui lòng đọc và đồng ý với các điều khoản và quy định của cộng đồng
             </p>
           </div>
-          
+
           <div className='flex items-start space-x-3'>
             <Checkbox
               id='acceptedTerms'
@@ -668,9 +658,9 @@ function Register() {
 
   return (
     <RegisterLayout>
-        <div className='w-full max-w-4xl mx-auto px-4 py-6'>
-          <div className='bg-white rounded-3xl shadow-2xl overflow-hidden'>
-            <div className='grid grid-cols-1 lg:grid-cols-[58%_42%] min-h-[350px] relative'>
+      <div className='w-full max-w-4xl mx-auto px-4 py-6'>
+        <div className='bg-white rounded-3xl shadow-2xl overflow-hidden'>
+          <div className='grid grid-cols-1 lg:grid-cols-[58%_42%] min-h-[350px] relative'>
             {/* Left Panel - Image Background */}
             <div className='relative hidden lg:block overflow-visible'>
               {/* Background Image - Full size */}
@@ -703,7 +693,7 @@ function Register() {
                     </div>
                     <span className='text-lg font-bold'>Tinh Hoa Quê Nhà</span>
                   </div>
-                  <h1 className='text-4xl font-serif font-bold leading-tight'>Khởi đầu hành trình</h1>
+                  <h1 className='text-4xl font-bold leading-tight'>Khởi đầu hành trình</h1>
                 </div>
 
                 {/* Progress Stepper */}

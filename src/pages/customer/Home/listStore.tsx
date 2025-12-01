@@ -89,7 +89,7 @@ function ListStore() {
         // Filter only approved stores
         const approvedStores =
           response.data?.filter(
-            (store) => store.status === 'Approved' || store.status === 'Active' || store.status === 'ApprovedByStaff'
+            (store) => store.status === 'Approved' || store.status === 'ApprovedByStaff'
           ) || []
 
         setStores(approvedStores)
