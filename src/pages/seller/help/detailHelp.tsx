@@ -51,18 +51,9 @@ function DetailHelp() {
   // Map FormType to Vietnamese
   const getFormTypeLabel = (type: FormType): string => {
     const typeMap: Record<FormType, string> = {
-      SupportAccount: 'Hỗ trợ tài khoản',
-      SupportPayment: 'Hỗ trợ thanh toán',
-      SupportTechnical: 'Hỗ trợ kỹ thuật',
-      ComplaintContent: 'Khiếu nại nội dung',
       ComplaintOrder: 'Khiếu nại đơn hàng',
-      RequestInformation: 'Yêu cầu thông tin',
       ReportSeller: 'Báo cáo người bán',
-      FeedbackSuggestion: 'Góp ý đề xuất',
-      PrivacyDataRequest: 'Yêu cầu dữ liệu cá nhân',
-      SupportMarketing: 'Hỗ trợ marketing',
-      SupportOther: 'Hỗ trợ khác',
-      SupportRefundMoney: 'Hỗ trợ hoàn tiền'
+      Orther: 'Hỗ trợ khác'
     }
     return typeMap[type] || type
   }

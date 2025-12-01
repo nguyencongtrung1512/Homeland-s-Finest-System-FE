@@ -336,7 +336,7 @@ export const sellerApi = {
 
     const url = `${API_URL}/dashboard/orders-needing-processing${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
     const response = await axiosInstance.get<ApiResponseWithPagination<any[]>>(url)
-    return response
+    return response as any
   },
 
   // Lấy báo cáo doanh thu

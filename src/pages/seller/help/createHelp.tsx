@@ -19,17 +19,8 @@ interface CreateHelpModalProps {
 
 // Danh sách các loại form
 const FORM_TYPES: { value: FormType; label: string }[] = [
-  { value: 'SupportAccount', label: 'Hỗ trợ tài khoản' },
-  { value: 'SupportPayment', label: 'Hỗ trợ thanh toán' },
-  { value: 'SupportTechnical', label: 'Hỗ trợ kỹ thuật' },
-  { value: 'ComplaintContent', label: 'Khiếu nại nội dung' },
-  { value: 'RequestInformation', label: 'Yêu cầu thông tin' },
-  { value: 'ReportSeller', label: 'Báo cáo người bán' },
-  { value: 'FeedbackSuggestion', label: 'Góp ý đề xuất' },
-  { value: 'PrivacyDataRequest', label: 'Yêu cầu dữ liệu cá nhân' },
-  { value: 'SupportMarketing', label: 'Hỗ trợ marketing' },
-  { value: 'SupportRefundMoney', label: 'Hỗ trợ hoàn tiền' },
-  { value: 'SupportOther', label: 'Hỗ trợ khác' }
+
+  { value: 'Orther', label: 'Hỗ trợ khác' }
 ]
 
 function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {

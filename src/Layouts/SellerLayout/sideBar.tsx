@@ -12,7 +12,8 @@ import {
   Component,
   Gift,
   Star,
-  Flag
+  Flag,
+  Receipt
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../../contexts/store.context'
@@ -168,6 +169,15 @@ function SideBar() {
       icon: (
         <AnimatedIcon animationType='bounce'>
           <DollarSign size={18} />
+        </AnimatedIcon>
+      )
+    },
+    {
+      key: path.transactionSeller,
+      label: 'Giao dịch',
+      icon: (
+        <AnimatedIcon animationType='bounce'>
+          <Receipt size={18} />
         </AnimatedIcon>
       )
     },

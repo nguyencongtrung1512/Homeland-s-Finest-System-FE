@@ -148,18 +148,9 @@ function HelpCenter() {
   // Map FormType to Vietnamese
   const getFormTypeLabel = (type: FormType): string => {
     const typeMap: Record<FormType, string> = {
-      SupportAccount: 'Hỗ trợ tài khoản',
-      SupportPayment: 'Hỗ trợ thanh toán',
-      SupportTechnical: 'Hỗ trợ kỹ thuật',
-      ComplaintContent: 'Khiếu nại nội dung',
       ComplaintOrder: 'Khiếu nại đơn hàng',
-      RequestInformation: 'Yêu cầu thông tin',
       ReportSeller: 'Báo cáo người bán',
-      FeedbackSuggestion: 'Góp ý đề xuất',
-      PrivacyDataRequest: 'Yêu cầu dữ liệu cá nhân',
-      SupportMarketing: 'Hỗ trợ marketing',
-      SupportOther: 'Hỗ trợ khác',
-      SupportRefundMoney: 'Hỗ trợ hoàn tiền'
+      Orther: 'Hỗ trợ khác'
     }
     return typeMap[type] || type
   }
@@ -366,7 +357,7 @@ function HelpCenter() {
             ) : filteredRequests.length === 0 ? (
               <div className='flex flex-col items-center justify-center py-12'>
                 <p className='text-gray-600 mb-4'>Chưa có yêu cầu hỗ trợ nào</p>
-                <Button onClick={handleCreateRequest} className='bg-green-600 hover:bg-green-700 text-white'>
+                <Button onClick={handleCreateRequest} variant='yellow'>
                   <Plus className='w-4 h-4 mr-2' />
                   Tạo yêu cầu đầu tiên
                 </Button>

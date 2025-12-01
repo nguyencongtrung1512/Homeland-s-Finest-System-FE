@@ -583,12 +583,12 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
 
               {/* Order Note */}
               {order.note && order.status !== 'Cancel' && order.status !== 'Returned' && (
-                <div className='bg-blue-50 rounded-lg p-3 border border-blue-200'>
-                  <div className='flex items-center gap-2 text-blue-700 mb-2'>
+                <div className='bg-gray-50 rounded-lg p-3 border border-gray-200'>
+                  <div className='flex items-center gap-2 text-gray-700 mb-2'>
                     <AlertCircle className='h-4 w-4' />
                     <span className='font-semibold text-sm'>Ghi chú đơn hàng</span>
                   </div>
-                  <p className='text-blue-700 text-sm whitespace-pre-wrap'>{order.note}</p>
+                  <p className='text-gray-700 text-sm whitespace-pre-wrap'>{order.note}</p>
                 </div>
               )}
 
