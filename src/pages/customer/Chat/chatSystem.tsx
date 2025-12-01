@@ -636,7 +636,17 @@ const ChatSystem: React.FC = () => {
   }, [currentRoomId, user?.userId])
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesContainerRef.current && selectedConversation) {
+      // Scroll to bottom (newest messages)
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+        }
+      }, 100)
+    } else if (messagesEndRef.current) {
+      // For AI chat tab, use scrollIntoView
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
   }
 
   useEffect(() => {
@@ -910,18 +920,19 @@ const ChatSystem: React.FC = () => {
       // Save current scroll position
       const container = messagesContainerRef.current
       const previousScrollHeight = container?.scrollHeight || 0
+      const previousScrollTop = container?.scrollTop || 0
 
-      // Load more messages (older ones)
-      const startIndex = Math.max(0, allMsgs.length - (nextPage * MESSAGES_PER_PAGE))
-      const endIndex = allMsgs.length - (currentPage * MESSAGES_PER_PAGE)
+      // Load more messages (older ones from the beginning of array)
+      // Since messages are sorted oldest first, we load from start
+      const startIndex = 0
+      const endIndex = Math.min(nextPage * MESSAGES_PER_PAGE, allMsgs.length)
       const newMessages = allMsgs.slice(startIndex, endIndex)
 
-      // Append older messages to the beginning (visually top)
+      // Set all messages including older ones (from start)
       setSellerMessages((prev) => {
-        const current = prev[selectedConversation] || []
         return {
           ...prev,
-          [selectedConversation]: [...newMessages, ...current]
+          [selectedConversation]: newMessages
         }
       })
 
@@ -935,7 +946,7 @@ const ChatSystem: React.FC = () => {
         if (container) {
           const newScrollHeight = container.scrollHeight
           const scrollDiff = newScrollHeight - previousScrollHeight
-          container.scrollTop = scrollDiff
+          container.scrollTop = previousScrollTop + scrollDiff
         }
       }, 0)
     } catch (error) {
@@ -945,13 +956,13 @@ const ChatSystem: React.FC = () => {
     }
   }
 
-  // Handle scroll to detect when user scrolls to top (bottom of reversed container)
+  // Handle scroll to detect when user scrolls to top (to load older messages)
   const handleScroll = () => {
     const container = messagesContainerRef.current
     if (!container || !selectedConversation || loadingMore) return
 
-    // In column-reverse, scrollTop = 0 means at the "top" (which is actually the oldest messages)
-    const scrollThreshold = 100 // Load when within 100px of top
+    // Load more when scrolling to top (within 100px from top)
+    const scrollThreshold = 100
     if (container.scrollTop <= scrollThreshold && hasMoreMessages[selectedConversation]) {
       loadMoreMessages()
     }
@@ -1398,7 +1409,7 @@ const ChatSystem: React.FC = () => {
                         ref={messagesContainerRef}
                         onScroll={handleScroll}
                         className='flex-1 min-h-0 bg-gray-50 overflow-y-auto overflow-x-hidden p-4'
-                        style={{ display: 'flex', flexDirection: 'column-reverse', overflowAnchor: 'auto' }}
+                        style={{ display: 'flex', flexDirection: 'column', overflowAnchor: 'auto' }}
                       >
                         {loadingMessages ? (
                           <div className='flex items-center justify-center py-8'>
@@ -1429,7 +1440,7 @@ const ChatSystem: React.FC = () => {
                               </div>
                             )}
 
-                            {/* Messages - rendered in reverse order for bottom-up */}
+                            {/* Messages - rendered in normal order (oldest first, newest last) */}
                             {Object.keys(messagesByDate).length === 0 && currentSellerMessages.length > 0 ? (
                               // Fallback: if grouping fails, show all messages without date headers
                               <div className='text-center my-4'>
@@ -1444,7 +1455,7 @@ const ChatSystem: React.FC = () => {
                             ) : null}
                             {Object.entries(messagesByDate)
                               .sort(([dateKeyA], [dateKeyB]) => {
-                                // Sort by date key (YYYY-MM-DD format) - oldest first for column-reverse
+                                // Sort by date key (YYYY-MM-DD format) - oldest first
                                 return dateKeyA.localeCompare(dateKeyB)
                               })
                               .map(([dateKey, dateMessages]) => (
@@ -1627,6 +1638,8 @@ const ChatSystem: React.FC = () => {
                                   })}
                                 </div>
                               ))}
+                            {/* Scroll marker - always at bottom for newest messages */}
+                            <div ref={messagesEndRef} />
                           </>
                         )}
                       </div>

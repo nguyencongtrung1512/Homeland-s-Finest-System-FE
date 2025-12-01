@@ -392,9 +392,9 @@ function ChatWithCustomer() {
           [selectedChat]: mappedMessages
         }))
 
-        // For bottom-up: show latest N messages initially
+        // Show latest N messages initially (from the end of array since oldest is first)
         const initialCount = Math.min(MESSAGES_PER_PAGE, mappedMessages.length)
-        const initialMessages = mappedMessages.slice(-initialCount)
+        const initialMessages = mappedMessages.slice(-initialCount) // Get latest messages
         setHasMoreMessages((prev) => ({
           ...prev,
           [selectedChat]: mappedMessages.length > MESSAGES_PER_PAGE
@@ -561,8 +561,13 @@ function ChatWithCustomer() {
 
   // Scroll to bottom khi có tin nhắn mới
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    if (messagesContainerRef.current && selectedChat) {
+      // Scroll to bottom (newest messages)
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+        }
+      }, 100)
     }
   }, [messages, selectedChat])
 
@@ -596,18 +601,19 @@ function ChatWithCustomer() {
       // Save current scroll position
       const container = messagesContainerRef.current
       const previousScrollHeight = container?.scrollHeight || 0
+      const previousScrollTop = container?.scrollTop || 0
 
-      // Load more messages (older ones)
-      const startIndex = Math.max(0, allMsgs.length - (nextPage * MESSAGES_PER_PAGE))
-      const endIndex = allMsgs.length - (currentPage * MESSAGES_PER_PAGE)
+      // Load more messages (older ones from the beginning of array)
+      // Since messages are sorted oldest first, we load from start
+      const startIndex = 0
+      const endIndex = Math.min(nextPage * MESSAGES_PER_PAGE, allMsgs.length)
       const newMessages = allMsgs.slice(startIndex, endIndex)
 
-      // Append older messages to the beginning (visually top)
+      // Set all messages including older ones (from start)
       setMessages((prev) => {
-        const current = prev[selectedChat] || []
         return {
           ...prev,
-          [selectedChat]: [...newMessages, ...current]
+          [selectedChat]: newMessages
         }
       })
 
@@ -621,7 +627,7 @@ function ChatWithCustomer() {
         if (container) {
           const newScrollHeight = container.scrollHeight
           const scrollDiff = newScrollHeight - previousScrollHeight
-          container.scrollTop = scrollDiff
+          container.scrollTop = previousScrollTop + scrollDiff
         }
       }, 0)
     } catch (error) {
@@ -631,13 +637,13 @@ function ChatWithCustomer() {
     }
   }
 
-  // Handle scroll to detect when user scrolls to top (bottom of reversed container)
+  // Handle scroll to detect when user scrolls to top (to load older messages)
   const handleScroll = () => {
     const container = messagesContainerRef.current
     if (!container || !selectedChat || loadingMore) return
 
-    // In column-reverse, scrollTop = 0 means at the "top" (which is actually the oldest messages)
-    const scrollThreshold = 100 // Load when within 100px of top
+    // Load more when scrolling to top (within 100px from top)
+    const scrollThreshold = 100
     if (container.scrollTop <= scrollThreshold && hasMoreMessages[selectedChat]) {
       loadMoreMessages()
     }
@@ -946,7 +952,7 @@ function ChatWithCustomer() {
           ref={messagesContainerRef}
           onScroll={handleScroll}
           className='flex-1 overflow-y-auto overflow-x-hidden p-4'
-          style={{ display: 'flex', flexDirection: 'column-reverse', overflowAnchor: 'auto' }}
+          style={{ display: 'flex', flexDirection: 'column', overflowAnchor: 'auto' }}
         >
           {!selectedChat ? (
             <div className='h-full flex items-center justify-center text-gray-500'>
@@ -956,7 +962,7 @@ function ChatWithCustomer() {
             <div className='h-full flex items-center justify-center text-gray-500'>Đang tải tin nhắn...</div>
           ) : (
             <>
-              {/* Loading more indicator */}
+              {/* Loading more indicator - show at top when loading older messages */}
               {loadingMore && (
                 <div className='text-center py-2'>
                   <div className='inline-flex items-center gap-2 text-sm text-gray-500'>
@@ -966,7 +972,7 @@ function ChatWithCustomer() {
                 </div>
               )}
 
-              {/* Messages - rendered in reverse order for bottom-up */}
+              {/* Messages - rendered in normal order (oldest first, newest last) */}
               {Object.keys(messagesByDate).length === 0 && currentMessages.length > 0 ? (
                 // Fallback: if grouping fails, show all messages without date headers
                 <div className='text-center my-4'>
@@ -977,7 +983,7 @@ function ChatWithCustomer() {
               ) : null}
               {Object.entries(messagesByDate)
                 .sort(([dateKeyA], [dateKeyB]) => {
-                  // Sort by date key (YYYY-MM-DD format) - oldest first for column-reverse
+                  // Sort by date key (YYYY-MM-DD format) - oldest first
                   return dateKeyA.localeCompare(dateKeyB)
                 })
                 .map(([dateKey, dateMessages]) => (
@@ -1157,6 +1163,8 @@ function ChatWithCustomer() {
                     })}
                   </div>
                 ))}
+              {/* Scroll marker - always at bottom for newest messages */}
+              <div ref={messagesEndRef} />
             </>
           )}
         </div>

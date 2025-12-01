@@ -25,7 +25,7 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.post('/Form', formData, {
+    const response = await axiosInstance.post('/Issue', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -56,7 +56,7 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.put(`/Form/customer-update/${id}`, formData, {
+    const response = await axiosInstance.put(`/Issue/customer-update/${id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -69,7 +69,7 @@ export const formApi = {
   },
 
   getFormById: async (id: string): Promise<FormDTO> => {
-    const response = await axiosInstance.get(`/Form/${id}`)
+    const response = await axiosInstance.get(`/Issue/${id}`)
     return response.data
   },
 
@@ -132,7 +132,7 @@ export const formApi = {
     formData.append('Reply', data.reply)
     formData.append('Status', data.status)
 
-    await axiosInstance.put(`/Form/${formId}/staff-update`, formData, {
+    await axiosInstance.put(`/Issue/${formId}/staff-update`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
