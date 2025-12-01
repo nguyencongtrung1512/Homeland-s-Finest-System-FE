@@ -1,5 +1,6 @@
 // Checkout component
 import { Button } from '../../../components/ui/button'
+import { Textarea } from '../../../components/ui/textarea'
 import { ShoppingCart, MapPin, Edit, Trash, Wallet, Loader2, ArrowLeft, Gift, Tag, Store } from 'lucide-react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -39,6 +40,7 @@ export default function Checkout() {
   const [addresses, setAddresses] = useState<Address[]>([])
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>()
+  const [orderNote, setOrderNote] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [walletBalance, setWalletBalance] = useState<WalletData | null>(null)
   const [isLoadingWallet, setIsLoadingWallet] = useState(false)
@@ -577,6 +579,7 @@ export default function Checkout() {
         userId: user.userId,
         userAddressId: selectedAddress.id,
         paymentMethod: selectedPaymentMethod,
+        note: orderNote.trim() || '',
         orderItemCreates: selectedItemsList.map((item) => ({
           productVariantId: item.productVariantId,
           quantity: item.quantity,
@@ -943,6 +946,19 @@ export default function Checkout() {
                   </div>
                 </label>
               </div>
+            </div>
+
+            {/* Order Note Section */}
+            <div className='bg-white rounded-lg shadow-sm p-6'>
+              <h2 className='text-xl font-bold text-gray-800 mb-4'>Ghi chú đơn hàng</h2>
+              <Textarea
+                value={orderNote}
+                onChange={(e) => setOrderNote(e.target.value)}
+                placeholder='Nhập ghi chú cho đơn hàng (tùy chọn)...'
+                className='min-h-[100px] resize-none'
+                maxLength={500}
+              />
+              <p className='text-xs text-gray-500 mt-2'>{orderNote.length}/500 ký tự</p>
             </div>
           </div>
 

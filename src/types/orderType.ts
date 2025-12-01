@@ -242,6 +242,7 @@ export interface CreateOrderInput {
   userId: string
   userAddressId: string
   paymentMethod: PaymentMethod
+  note: string
   storePromotions?: {
     storeId: string
     promotionIds: string[]
