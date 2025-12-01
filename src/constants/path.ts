@@ -92,11 +92,11 @@ export const path = {
   BLOG_MANAGEMENT_ADMIN: 'blogManagement',
   BLOG_CATEGORY_DETAIL: '/admin/blogManagement/detail/:id',
   SYSTEM_STORAGE_ADMIN: 'systemStorage',
-  FORM_MANAGEMENT_ADMIN: 'formManagement',
+  FORM_MANAGEMENT_ADMIN: 'issueManagement',
   // Admin complaint subpages
-  FORM_ORDER_MANAGEMENT_ADMIN: 'formManagement/order',
-  FORM_STORE_MANAGEMENT_ADMIN: 'formManagement/store',
-  FORM_OTHER_MANAGEMENT_ADMIN: 'formManagement/otherSupport',
+  FORM_ORDER_MANAGEMENT_ADMIN: 'issueManagement/order',
+  FORM_STORE_MANAGEMENT_ADMIN: 'issueManagement/store',
+  FORM_OTHER_MANAGEMENT_ADMIN: 'issueManagement/otherSupport',
   // ============ BLOG =============
   CREATE_BLOG: '/admin/blogManagement/detail/:id/create-blog',
   BLOG_CATEGORY_EDIT: '/admin/blogManagement/edit/:id'

@@ -238,10 +238,10 @@ export default function FormOrderManagement() {
     switch (type) {
       case 'ComplaintOrder':
         return 'Khiếu nại đơn hàng'
-      case 'SupportRefundMoney':
-        return 'Hỗ trợ hoàn tiền'
       case 'ReportSeller':
-        return 'Báo cáo người bán'
+        return 'Khiếu nại cửa hàng'
+      case 'Orther':
+        return 'Các đơn khác'
       default:
         return type
     }

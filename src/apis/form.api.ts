@@ -65,7 +65,7 @@ export const formApi = {
   },
 
   cancelForm: async (id: string): Promise<void> => {
-    await axiosInstance.put(`/Form/cancel-form/${id}`)
+    await axiosInstance.put(`/Issue/cancel-form/${id}`)
   },
 
   getFormById: async (id: string): Promise<FormDTO> => {
@@ -74,7 +74,7 @@ export const formApi = {
   },
 
   getFormByOrderId: async (orderId: string): Promise<FormDTO> => {
-    const response = await axiosInstance.get(`/Form/detail-by-orderId/${orderId}`)
+    const response = await axiosInstance.get(`/Issue/detail-by-orderId/${orderId}`)
     return response.data
   },
 
@@ -90,13 +90,13 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/Form?${queryParams.toString()}`)
+    const response = await axiosInstance.get(`/Issue?${queryParams.toString()}`)
     return response.data
   },
 
   // Admin APIs
   assignStaff: async (staffId: string, formId: string): Promise<void> => {
-    await axiosInstance.put(`/Form/Admin/assign-staff/${staffId}/form/${formId}`)
+    await axiosInstance.put(`/Issue/Admin/assign-staff/${staffId}/Issue/${formId}`)
   },
 
   adminUpdateForm: async (formId: string, data: AdminUpdateRequest): Promise<void> => {
@@ -104,7 +104,7 @@ export const formApi = {
     formData.append('AdminText', data.adminText)
     formData.append('Status', data.status)
 
-    await axiosInstance.put(`/Form/${formId}/admin-update`, formData, {
+    await axiosInstance.put(`/Issue/${formId}/admin-update`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -122,7 +122,7 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/Form?${queryParams.toString()}`)
+    const response = await axiosInstance.get(`/Issue?${queryParams.toString()}`)
     return response.data
   },
 
@@ -151,7 +151,7 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/Form?${queryParams.toString()}`)
+    const response = await axiosInstance.get(`/Issue?${queryParams.toString()}`)
     return response.data
   },
 
@@ -168,7 +168,7 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/Form?${queryParams.toString()}`)
+    const response = await axiosInstance.get(`/Issue?${queryParams.toString()}`)
     return response.data
   },
 
@@ -182,7 +182,7 @@ export const formApi = {
       })
     }
 
-    await axiosInstance.put(`/Form/seller-update/${formId}`, formData, {
+    await axiosInstance.put(`/Issue/seller-update/${formId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

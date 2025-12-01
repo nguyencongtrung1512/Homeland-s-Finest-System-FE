@@ -37,16 +37,7 @@ interface FormsContentProps {
   userId?: string
 }
 
-const SUPPORT_FORM_TYPES: FormType[] = [
-  'SupportAccount',
-  'SupportPayment',
-  'SupportTechnical',
-  'RequestInformation',
-  'FeedbackSuggestion',
-  'PrivacyDataRequest',
-  'SupportMarketing',
-  'SupportOther'
-]
+const SUPPORT_FORM_TYPES: FormType[] = ['ComplaintOrder', 'ReportSeller', 'Orther']
 
 const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) => {
   const [selectedStatus, setSelectedStatus] = useState<FormStatus | 'all'>('all')
@@ -218,30 +209,12 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
 
   const getTypeText = (type: string) => {
     switch (type) {
-      case 'SupportAccount':
-        return 'Hỗ trợ tài khoản'
-      case 'SupportPayment':
-        return 'Hỗ trợ thanh toán'
-      case 'SupportTechnical':
-        return 'Hỗ trợ kỹ thuật'
-      case 'ComplaintContent':
-        return 'Khiếu nại nội dung'
       case 'ComplaintOrder':
         return 'Khiếu nại đơn hàng'
-      case 'RequestInformation':
-        return 'Yêu cầu thông tin'
       case 'ReportSeller':
-        return 'Báo cáo người bán'
-      case 'FeedbackSuggestion':
-        return 'Phản hồi góp ý'
-      case 'PrivacyDataRequest':
-        return 'Yêu cầu dữ liệu cá nhân'
-      case 'SupportMarketing':
-        return 'Hỗ trợ marketing'
-      case 'SupportOther':
-        return 'Hỗ trợ khác'
-      case 'SupportRefundMoney':
-        return 'Hỗ trợ hoàn tiền'
+        return 'Khiếu nại cửa hàng'
+      case 'Orther':
+        return 'Các đơn khác'
       default:
         return type
     }
@@ -381,8 +354,8 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
           transition={{ duration: 0.4, delay: 0.2 }}
         >
           <EmptyState
-            title='Chưa có khiếu nại nào'
-            description='Bạn chưa gửi khiếu nại nào. Hãy liên hệ với chúng tôi nếu cần hỗ trợ.'
+            title='Chưa có đơn hỗ trợ nào'
+            description='Bạn chưa gửi đơn nào. Hãy liên hệ với chúng tôi nếu cần hỗ trợ.'
             type='search'
           />
         </motion.div>

@@ -22,7 +22,6 @@ export default function FormStoreManagement() {
   const [forms, setForms] = useState<FormDTO[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState<FormStatus | 'all'>('all')
-  const [selectedType, setSelectedType] = useState<FormType | 'all'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
@@ -44,7 +43,7 @@ export default function FormStoreManagement() {
   //   [searchTerm, selectedStatus, selectedType]
   // )
 
-  // Load store-related forms (exclude ComplaintOrder)
+  // Load store-related forms (ReportSeller only)
   const loadForms = async () => {
     try {
       setLoading(true)
@@ -52,10 +51,10 @@ export default function FormStoreManagement() {
         pageSize: 0,
         pageNumber: 1,
         sortBy: 'createdat',
-        sortOrder: 'desc'
+        sortOrder: 'desc',
+        type: 'ReportSeller' as FormType
       })
-      const storeForms = (response || []).filter((f) => f.type !== 'ComplaintOrder')
-      setForms(storeForms)
+      setForms(response || [])
     } catch (error) {
       console.error('Error loading store complaints:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách khiếu nại cửa hàng')
@@ -103,18 +102,13 @@ export default function FormStoreManagement() {
     fetchStoreNames()
   }, [forms, hasStoreId, storeNames])
 
-  // Filter forms based on status, type and search
+  // Filter forms based on status and search
   const filteredForms = useMemo(() => {
     let filtered = forms
 
     // Filter by status
     if (selectedStatus !== 'all') {
       filtered = filtered.filter((form) => form.status === selectedStatus)
-    }
-
-    // Filter by type
-    if (selectedType !== 'all') {
-      filtered = filtered.filter((form) => form.type === selectedType)
     }
 
     // Filter by search term
@@ -129,11 +123,11 @@ export default function FormStoreManagement() {
     }
 
     return filtered
-  }, [forms, selectedStatus, selectedType, searchTerm])
+  }, [forms, selectedStatus, searchTerm])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [selectedStatus, selectedType, searchTerm])
+  }, [selectedStatus, searchTerm])
 
   const totalPages = Math.max(1, Math.ceil(filteredForms.length / pageSize))
   const startIndex = (currentPage - 1) * pageSize
@@ -242,28 +236,12 @@ export default function FormStoreManagement() {
 
   const getTypeText = (type: FormType) => {
     switch (type) {
-      case 'ComplaintContent':
-        return 'Khiếu nại nội dung'
-      case 'SupportRefundMoney':
-        return 'Hỗ trợ hoàn tiền'
+      case 'ComplaintOrder':
+        return 'Khiếu nại đơn hàng'
       case 'ReportSeller':
-        return 'Báo cáo người bán'
-      case 'SupportAccount':
-        return 'Hỗ trợ tài khoản'
-      case 'SupportPayment':
-        return 'Hỗ trợ thanh toán'
-      case 'SupportTechnical':
-        return 'Hỗ trợ kỹ thuật'
-      case 'RequestInformation':
-        return 'Yêu cầu thông tin'
-      case 'FeedbackSuggestion':
-        return 'Phản hồi góp ý'
-      case 'PrivacyDataRequest':
-        return 'Yêu cầu dữ liệu cá nhân'
-      case 'SupportMarketing':
-        return 'Hỗ trợ marketing'
-      case 'SupportOther':
-        return 'Hỗ trợ khác'
+        return 'Khiếu nại cửa hàng'
+      case 'Orther':
+        return 'Các đơn khác'
       default:
         return type
     }
@@ -382,32 +360,6 @@ export default function FormStoreManagement() {
                   <SelectItem value='Rejected'>Bị từ chối</SelectItem>
                   <SelectItem value='Confirmed'>Nhân viên đã xác nhận kiểm duyệt</SelectItem>
                   <SelectItem value='Cancel'>Đã hủy</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Type Filter */}
-            <div className='min-w-[220px]'>
-              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Loại khiếu nại</Label>
-              <Select value={selectedType} onValueChange={(value: FormType | 'all') => setSelectedType(value)}>
-                <SelectTrigger className='capitalize w-[250px]'>
-                  <SelectValue placeholder='Chọn loại'>
-                    {selectedType === 'all' ? 'Tất cả' : getTypeText(selectedType as FormType)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>Tất cả</SelectItem>
-                  <SelectItem value='ComplaintContent'>Khiếu nại nội dung</SelectItem>
-                  <SelectItem value='SupportRefundMoney'>Hỗ trợ hoàn tiền</SelectItem>
-                  <SelectItem value='ReportSeller'>Báo cáo người bán</SelectItem>
-                  <SelectItem value='SupportAccount'>Hỗ trợ tài khoản</SelectItem>
-                  <SelectItem value='SupportPayment'>Hỗ trợ thanh toán</SelectItem>
-                  <SelectItem value='SupportTechnical'>Hỗ trợ kỹ thuật</SelectItem>
-                  <SelectItem value='RequestInformation'>Yêu cầu thông tin</SelectItem>
-                  <SelectItem value='FeedbackSuggestion'>Phản hồi góp ý</SelectItem>
-                  <SelectItem value='PrivacyDataRequest'>Yêu cầu dữ liệu cá nhân</SelectItem>
-                  <SelectItem value='SupportMarketing'>Hỗ trợ marketing</SelectItem>
-                  <SelectItem value='SupportOther'>Hỗ trợ khác</SelectItem>
                 </SelectContent>
               </Select>
             </div>

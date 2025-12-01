@@ -221,30 +221,12 @@ function ReportDetail() {
   // Get type text in Vietnamese
   const getTypeText = (type: string) => {
     switch (type) {
-      case 'SupportAccount':
-        return 'Hỗ trợ tài khoản'
       case 'ComplaintOrder':
         return 'Khiếu nại đơn hàng'
-      case 'SupportPayment':
-        return 'Hỗ trợ thanh toán'
-      case 'SupportTechnical':
-        return 'Hỗ trợ kỹ thuật'
-      case 'ComplaintContent':
-        return 'Khiếu nại nội dung'
-      case 'RequestInformation':
-        return 'Yêu cầu thông tin'
       case 'ReportSeller':
-        return 'Báo cáo người bán'
-      case 'FeedbackSuggestion':
-        return 'Phản hồi góp ý'
-      case 'PrivacyDataRequest':
-        return 'Yêu cầu dữ liệu cá nhân'
-      case 'SupportMarketing':
-        return 'Hỗ trợ marketing'
-      case 'SupportOther':
-        return 'Hỗ trợ khác'
-      case 'SupportRefundMoney':
-        return 'Hỗ trợ hoàn tiền'
+        return 'Khiếu nại cửa hàng'
+      case 'Orther':
+        return 'Các đơn khác'
       default:
         return type
     }

@@ -165,28 +165,12 @@ export default function AdminFormManagement() {
   // Get type text in Vietnamese
   const getTypeText = (type: FormType) => {
     switch (type) {
-      case 'SupportAccount':
-        return 'Hỗ trợ tài khoản'
-      case 'SupportPayment':
-        return 'Hỗ trợ thanh toán'
-      case 'SupportTechnical':
-        return 'Hỗ trợ kỹ thuật'
-      case 'ComplaintContent':
-        return 'Khiếu nại nội dung'
-      case 'RequestInformation':
-        return 'Yêu cầu thông tin'
+      case 'ComplaintOrder':
+        return 'Khiếu nại đơn hàng'
       case 'ReportSeller':
-        return 'Báo cáo người bán'
-      case 'FeedbackSuggestion':
-        return 'Phản hồi góp ý'
-      case 'PrivacyDataRequest':
-        return 'Yêu cầu dữ liệu cá nhân'
-      case 'SupportMarketing':
-        return 'Hỗ trợ marketing'
-      case 'SupportOther':
-        return 'Hỗ trợ khác'
-      case 'SupportRefundMoney':
-        return 'Hỗ trợ hoàn tiền'
+        return 'Khiếu nại cửa hàng'
+      case 'Orther':
+        return 'Các đơn khác'
       default:
         return type
     }
@@ -293,17 +277,9 @@ export default function AdminFormManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value='all'>Tất cả</SelectItem>
-                  <SelectItem value='ComplaintContent'>Khiếu nại nội dung</SelectItem>
-                  <SelectItem value='SupportRefundMoney'>Hỗ trợ hoàn tiền</SelectItem>
-                  <SelectItem value='ReportSeller'>Báo cáo người bán</SelectItem>
-                  <SelectItem value='SupportAccount'>Hỗ trợ tài khoản</SelectItem>
-                  <SelectItem value='SupportPayment'>Hỗ trợ thanh toán</SelectItem>
-                  <SelectItem value='SupportTechnical'>Hỗ trợ kỹ thuật</SelectItem>
-                  <SelectItem value='RequestInformation'>Yêu cầu thông tin</SelectItem>
-                  <SelectItem value='FeedbackSuggestion'>Phản hồi góp ý</SelectItem>
-                  <SelectItem value='PrivacyDataRequest'>Yêu cầu dữ liệu cá nhân</SelectItem>
-                  <SelectItem value='SupportMarketing'>Hỗ trợ marketing</SelectItem>
-                  <SelectItem value='SupportOther'>Hỗ trợ khác</SelectItem>
+                  <SelectItem value='ComplaintOrder'>Khiếu nại đơn hàng</SelectItem>
+                  <SelectItem value='ReportSeller'>Khiếu nại cửa hàng</SelectItem>
+                  <SelectItem value='Orther'>Các đơn khác</SelectItem>
                 </SelectContent>
               </Select>
             </div>

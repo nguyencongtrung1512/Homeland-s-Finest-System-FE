@@ -7,7 +7,6 @@ import {
   User,
   ShoppingCart,
   Store,
-  CreditCard,
   Calendar,
   CheckCircle,
   XCircle,
@@ -114,80 +113,26 @@ function ReportManagement() {
 
   const getTypeConfig = (type: string) => {
     const configs: Record<string, { text: string; bgColor: string; textColor: string; icon: React.ReactElement }> = {
-      SupportAccount: {
-        text: 'Hỗ trợ tài khoản',
-        bgColor: 'bg-emerald-100',
-        textColor: 'text-emerald-600',
-        icon: <User className='w-3 h-3' />
-      },
-      SupportPayment: {
-        text: 'Hỗ trợ thanh toán',
-        bgColor: 'bg-emerald-100',
-        textColor: 'text-emerald-600',
-        icon: <CreditCard className='w-3 h-3' />
-      },
-      SupportTechnical: {
-        text: 'Hỗ trợ kỹ thuật',
-        bgColor: 'bg-emerald-100',
-        textColor: 'text-emerald-600',
-        icon: <User className='w-3 h-3' />
-      },
       ComplaintOrder: {
         text: 'Khiếu nại đơn hàng',
         bgColor: 'bg-emerald-100',
         textColor: 'text-emerald-600',
         icon: <ShoppingCart className='w-3 h-3' />
       },
-      ComplaintContent: {
-        text: 'Khiếu nại nội dung',
-        bgColor: 'bg-emerald-100',
-        textColor: 'text-emerald-600',
-        icon: <ShoppingCart className='w-3 h-3' />
-      },
-      RequestInformation: {
-        text: 'Yêu cầu thông tin',
-        bgColor: 'bg-emerald-100',
-        textColor: 'text-emerald-600',
-        icon: <User className='w-3 h-3' />
-      },
       ReportSeller: {
-        text: 'Báo cáo người bán',
+        text: 'Khiếu nại cửa hàng',
         bgColor: 'bg-emerald-100',
         textColor: 'text-emerald-600',
         icon: <Store className='w-3 h-3' />
       },
-      FeedbackSuggestion: {
-        text: 'Phản hồi góp ý',
+      Orther: {
+        text: 'Các đơn khác',
         bgColor: 'bg-emerald-100',
         textColor: 'text-emerald-600',
         icon: <User className='w-3 h-3' />
-      },
-      PrivacyDataRequest: {
-        text: 'Yêu cầu dữ liệu cá nhân',
-        bgColor: 'bg-emerald-100',
-        textColor: 'text-emerald-600',
-        icon: <User className='w-3 h-3' />
-      },
-      SupportMarketing: {
-        text: 'Hỗ trợ marketing',
-        bgColor: 'bg-emerald-100',
-        textColor: 'text-emerald-600',
-        icon: <User className='w-3 h-3' />
-      },
-      SupportOther: {
-        text: 'Hỗ trợ khác',
-        bgColor: 'bg-emerald-100',
-        textColor: 'text-emerald-600',
-        icon: <User className='w-3 h-3' />
-      },
-      SupportRefundMoney: {
-        text: 'Hỗ trợ hoàn tiền',
-        bgColor: 'bg-emerald-100',
-        textColor: 'text-emerald-600',
-        icon: <CreditCard className='w-3 h-3' />
       }
     }
-    return configs[type] || configs.SupportOther
+    return configs[type] || configs.Orther
   }
 
   const getStatusConfig = (status: string) => {
@@ -376,18 +321,9 @@ function ReportManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='all'>Tất cả</SelectItem>
-                    <SelectItem value='ComplaintContent'>Khiếu nại nội dung</SelectItem>
-                    <SelectItem value='ReportSeller'>Báo cáo người bán</SelectItem>
-                    <SelectItem value='SupportRefundMoney'>Hỗ trợ hoàn tiền</SelectItem>
                     <SelectItem value='ComplaintOrder'>Khiếu nại đơn hàng</SelectItem>
-                    <SelectItem value='SupportAccount'>Hỗ trợ tài khoản</SelectItem>
-                    <SelectItem value='SupportPayment'>Hỗ trợ thanh toán</SelectItem>
-                    <SelectItem value='SupportTechnical'>Hỗ trợ kỹ thuật</SelectItem>
-                    <SelectItem value='RequestInformation'>Yêu cầu thông tin</SelectItem>
-                    <SelectItem value='FeedbackSuggestion'>Phản hồi góp ý</SelectItem>
-                    <SelectItem value='PrivacyDataRequest'>Yêu cầu dữ liệu cá nhân</SelectItem>
-                    <SelectItem value='SupportMarketing'>Hỗ trợ marketing</SelectItem>
-                    <SelectItem value='SupportOther'>Hỗ trợ khác</SelectItem>
+                    <SelectItem value='ReportSeller'>Khiếu nại cửa hàng</SelectItem>
+                    <SelectItem value='Orther'>Các đơn khác</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

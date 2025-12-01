@@ -26,53 +26,17 @@ export const GENERAL_FORM_TYPE_INFO: Record<
   FormType,
   { label: string; description: string }
 > = {
-  SupportAccount: {
-    label: 'Hỗ trợ tài khoản',
-    description: 'Các vấn đề liên quan đến đăng nhập, bảo mật, thông tin cá nhân'
-  },
-  SupportPayment: {
-    label: 'Hỗ trợ thanh toán',
-    description: 'Gặp sự cố khi thanh toán, hoàn tiền, phương thức thanh toán'
-  },
-  SupportTechnical: {
-    label: 'Hỗ trợ kỹ thuật',
-    description: 'Lỗi hệ thống, tính năng bị lỗi, không sử dụng được ứng dụng'
-  },
-  RequestInformation: {
-    label: 'Yêu cầu thông tin',
-    description: 'Muốn tìm hiểu thêm về sản phẩm, dịch vụ hoặc chính sách'
-  },
-  FeedbackSuggestion: {
-    label: 'Phản hồi góp ý',
-    description: 'Góp ý để cải thiện trải nghiệm hoặc dịch vụ'
-  },
-  PrivacyDataRequest: {
-    label: 'Yêu cầu dữ liệu cá nhân',
-    description: 'Yêu cầu truy xuất, chỉnh sửa hoặc xóa dữ liệu cá nhân'
-  },
-  SupportMarketing: {
-    label: 'Hỗ trợ marketing',
-    description: 'Các chương trình khuyến mãi, quảng cáo, hợp tác truyền thông'
-  },
-  SupportOther: {
-    label: 'Hỗ trợ khác',
-    description: 'Những vấn đề khác không nằm trong các danh mục trên'
-  },
-  ComplaintContent: {
-    label: 'Khiếu nại nội dung',
-    description: ''
-  },
   ComplaintOrder: {
     label: 'Khiếu nại đơn hàng',
-    description: ''
+    description: 'Khiếu nại liên quan trực tiếp đến đơn hàng (giao nhận, thiếu/hư hỏng sản phẩm)'
   },
   ReportSeller: {
-    label: 'Báo cáo người bán',
-    description: ''
+    label: 'Khiếu nại cửa hàng',
+    description: 'Khiếu nại về cửa hàng, người bán hoặc dịch vụ của cửa hàng'
   },
-  SupportRefundMoney: {
-    label: 'Hỗ trợ hoàn tiền',
-    description: ''
+  Orther: {
+    label: 'Các đơn khác',
+    description: 'Các vấn đề khác không thuộc khiếu nại đơn hàng hoặc cửa hàng'
   }
 }
 

@@ -21,7 +21,7 @@ interface UpdateFormModalProps {
 }
 
 const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }: UpdateFormModalProps) => {
-  const [formType, setFormType] = useState<FormType>('SupportAccount')
+  const [formType, setFormType] = useState<FormType>('ComplaintOrder')
   const [subject, setSubject] = useState('')
   const [description, setDescription] = useState('')
   const [images, setImages] = useState<File[]>([])
@@ -54,18 +54,9 @@ const UpdateFormModal = ({ isOpen, onClose, form, onSubmit, isLoading = false }:
   }, [images])
 
   const formTypeOptions = [
-    { value: 'SupportAccount' as FormType, label: 'Hỗ trợ tài khoản' },
-    { value: 'SupportPayment' as FormType, label: 'Hỗ trợ thanh toán' },
-    { value: 'SupportTechnical' as FormType, label: 'Hỗ trợ kỹ thuật' },
-    { value: 'ComplaintContent' as FormType, label: 'Khiếu nại nội dung' },
     { value: 'ComplaintOrder' as FormType, label: 'Khiếu nại đơn hàng' },
-    { value: 'RequestInformation' as FormType, label: 'Yêu cầu thông tin' },
-    { value: 'ReportSeller' as FormType, label: 'Báo cáo người bán' },
-    { value: 'FeedbackSuggestion' as FormType, label: 'Phản hồi góp ý' },
-    { value: 'PrivacyDataRequest' as FormType, label: 'Yêu cầu dữ liệu cá nhân' },
-    { value: 'SupportMarketing' as FormType, label: 'Hỗ trợ marketing' },
-    { value: 'SupportOther' as FormType, label: 'Hỗ trợ khác' },
-    { value: 'SupportRefundMoney' as FormType, label: 'Hỗ trợ hoàn tiền' }
+    { value: 'ReportSeller' as FormType, label: 'Khiếu nại cửa hàng' },
+    { value: 'Orther' as FormType, label: 'Các đơn khác' }
   ]
 
   const validateForm = (): boolean => {

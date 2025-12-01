@@ -1,17 +1,5 @@
 // Form Types
-export type FormType =
-  | 'SupportAccount'
-  | 'SupportPayment'
-  | 'SupportTechnical'
-  | 'ComplaintContent'
-  | 'ComplaintOrder'
-  | 'RequestInformation'
-  | 'ReportSeller'
-  | 'FeedbackSuggestion'
-  | 'PrivacyDataRequest'
-  | 'SupportMarketing'
-  | 'SupportOther'
-  | 'SupportRefundMoney'
+export type FormType = 'ComplaintOrder' | 'ReportSeller' | 'Orther'
 
 export type FormStatus =
   | 'Pending'

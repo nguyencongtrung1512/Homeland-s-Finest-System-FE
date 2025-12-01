@@ -34,7 +34,7 @@ function ComplainSeller() {
   const [isListPreviewOpen, setIsListPreviewOpen] = useState(false)
   const [listPreviewIndex, setListPreviewIndex] = useState(0)
 
-  // Load forms by storeId
+  // Load forms by storeId (only ComplaintOrder and ReportSeller)
   const loadForms = useCallback(async () => {
     if (!store?.id) return
 
@@ -46,7 +46,11 @@ function ComplainSeller() {
         sortBy: 'createdat',
         sortOrder: 'desc'
       })
-      setForms(response || [])
+      // Filter to only show ComplaintOrder and ReportSeller
+      const filteredForms = (response || []).filter(
+        (form) => form.type === 'ComplaintOrder' || form.type === 'ReportSeller'
+      )
+      setForms(filteredForms)
     } catch (error) {
       console.error('Error loading forms:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách khiếu nại')
@@ -150,28 +154,8 @@ function ComplainSeller() {
     switch (type) {
       case 'ComplaintOrder':
         return 'Khiếu nại đơn hàng'
-      case 'ComplaintContent':
-        return 'Khiếu nại nội dung'
       case 'ReportSeller':
-        return 'Báo cáo người bán'
-      case 'SupportAccount':
-        return 'Hỗ trợ tài khoản'
-      case 'SupportPayment':
-        return 'Hỗ trợ thanh toán'
-      case 'SupportTechnical':
-        return 'Hỗ trợ kỹ thuật'
-      case 'RequestInformation':
-        return 'Yêu cầu thông tin'
-      case 'FeedbackSuggestion':
-        return 'Phản hồi góp ý'
-      case 'PrivacyDataRequest':
-        return 'Yêu cầu dữ liệu cá nhân'
-      case 'SupportMarketing':
-        return 'Hỗ trợ marketing'
-      case 'SupportOther':
-        return 'Hỗ trợ khác'
-      case 'SupportRefundMoney':
-        return 'Hỗ trợ hoàn tiền'
+        return 'Khiếu nại cửa hàng'
       default:
         return type
     }

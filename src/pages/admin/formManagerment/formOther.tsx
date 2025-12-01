@@ -22,7 +22,6 @@ export default function FormOtherManagement() {
   const [forms, setForms] = useState<FormDTO[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState<FormStatus | 'all'>('all')
-  const [selectedType, setSelectedType] = useState<FormType | 'all'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
@@ -35,20 +34,7 @@ export default function FormOtherManagement() {
   const navigate = useNavigate()
   const hasStoreId = useCallback((id: FormDTO['storeId']): id is string => Boolean(id), [])
 
-  // Support form types (exclude ComplaintOrder, ComplaintContent, ReportSeller)
-  const supportTypes: FormType[] = [
-    'SupportAccount',
-    'SupportPayment',
-    'SupportTechnical',
-    'RequestInformation',
-    'FeedbackSuggestion',
-    'PrivacyDataRequest',
-    'SupportMarketing',
-    'SupportOther',
-    'SupportRefundMoney'
-  ]
-
-  // Load support/other forms
+  // Load other forms (Orther type only)
   const loadForms = async () => {
     try {
       setLoading(true)
@@ -56,10 +42,10 @@ export default function FormOtherManagement() {
         pageSize: 0,
         pageNumber: 1,
         sortBy: 'createdat',
-        sortOrder: 'desc'
+        sortOrder: 'desc',
+        type: 'Orther' as FormType
       })
-      const supportForms = (response || []).filter((f) => supportTypes.includes(f.type))
-      setForms(supportForms)
+      setForms(response || [])
     } catch (error) {
       console.error('Error loading support forms:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách hỗ trợ/khác')
@@ -107,18 +93,13 @@ export default function FormOtherManagement() {
     fetchStoreNames()
   }, [forms, hasStoreId, storeNames])
 
-  // Filter forms based on status, type and search
+  // Filter forms based on status and search
   const filteredForms = useMemo(() => {
     let filtered = forms
 
     // Filter by status
     if (selectedStatus !== 'all') {
       filtered = filtered.filter((form) => form.status === selectedStatus)
-    }
-
-    // Filter by type
-    if (selectedType !== 'all') {
-      filtered = filtered.filter((form) => form.type === selectedType)
     }
 
     // Filter by search term
@@ -133,11 +114,11 @@ export default function FormOtherManagement() {
     }
 
     return filtered
-  }, [forms, selectedStatus, selectedType, searchTerm])
+  }, [forms, selectedStatus, searchTerm])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [selectedStatus, selectedType, searchTerm])
+  }, [selectedStatus, searchTerm])
 
   const totalPages = Math.max(1, Math.ceil(filteredForms.length / pageSize))
   const startIndex = (currentPage - 1) * pageSize
@@ -246,24 +227,12 @@ export default function FormOtherManagement() {
 
   const getTypeText = (type: FormType) => {
     switch (type) {
-      case 'SupportAccount':
-        return 'Hỗ trợ tài khoản'
-      case 'SupportPayment':
-        return 'Hỗ trợ thanh toán'
-      case 'SupportTechnical':
-        return 'Hỗ trợ kỹ thuật'
-      case 'RequestInformation':
-        return 'Yêu cầu thông tin'
-      case 'FeedbackSuggestion':
-        return 'Phản hồi góp ý'
-      case 'PrivacyDataRequest':
-        return 'Yêu cầu dữ liệu cá nhân'
-      case 'SupportMarketing':
-        return 'Hỗ trợ marketing'
-      case 'SupportOther':
-        return 'Hỗ trợ khác'
-      case 'SupportRefundMoney':
-        return 'Hỗ trợ hoàn tiền'
+      case 'ComplaintOrder':
+        return 'Khiếu nại đơn hàng'
+      case 'ReportSeller':
+        return 'Khiếu nại cửa hàng'
+      case 'Orther':
+        return 'Các đơn khác'
       default:
         return type
     }
@@ -298,7 +267,7 @@ export default function FormOtherManagement() {
   }
 
   if (loading) {
-    return <Loading size='lg' text='Đang tải hỗ trợ/khác...' />
+    return <Loading size='lg' text='Đang tải các đơn khác...' />
   }
 
   return (
@@ -307,7 +276,7 @@ export default function FormOtherManagement() {
       <div className='flex items-center justify-between mb-6'>
         <div className='flex items-center gap-2'>
           <div>
-            <h1 className='text-2xl font-bold text-gray-900'>Hỗ trợ/Khác</h1>
+            <h1 className='text-2xl font-bold text-gray-900'>Các đơn khác</h1>
           </div>
         </div>
         <Button onClick={loadForms} variant='outline' className='text-green-600 border-green-600 hover:bg-green-50'>
@@ -328,7 +297,7 @@ export default function FormOtherManagement() {
             <div className='rounded-xl border border-blue-100 bg-blue-50/60 p-4'>
               <p className='uppercase text-blue-600'>Tổng form</p>
               <p className='text-2xl font-semibold text-blue-900 mt-1'>{stats.total}</p>
-              <p className='text-xs text-blue-700 mt-1'>Tất cả hỗ trợ/khác</p>
+              <p className='text-xs text-blue-700 mt-1'>Tất cả các đơn khác</p>
             </div>
             <div className='rounded-xl border border-green-100 bg-green-50/70 p-4'>
               <p className='uppercase text-green-600'>Đang hiển thị</p>
@@ -382,30 +351,6 @@ export default function FormOtherManagement() {
                   <SelectItem value='Rejected'>Bị từ chối</SelectItem>
                   <SelectItem value='Confirmed'>Nhân viên đã xác nhận kiểm duyệt</SelectItem>
                   <SelectItem value='Cancel'>Đã hủy</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Type Filter */}
-            <div className='min-w-[220px]'>
-              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Loại hỗ trợ</Label>
-              <Select value={selectedType} onValueChange={(value: FormType | 'all') => setSelectedType(value)}>
-                <SelectTrigger className='capitalize w-[250px]'>
-                  <SelectValue placeholder='Chọn loại'>
-                    {selectedType === 'all' ? 'Tất cả' : getTypeText(selectedType as FormType)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>Tất cả</SelectItem>
-                  <SelectItem value='SupportAccount'>Hỗ trợ tài khoản</SelectItem>
-                  <SelectItem value='SupportPayment'>Hỗ trợ thanh toán</SelectItem>
-                  <SelectItem value='SupportTechnical'>Hỗ trợ kỹ thuật</SelectItem>
-                  <SelectItem value='RequestInformation'>Yêu cầu thông tin</SelectItem>
-                  <SelectItem value='FeedbackSuggestion'>Phản hồi góp ý</SelectItem>
-                  <SelectItem value='PrivacyDataRequest'>Yêu cầu dữ liệu cá nhân</SelectItem>
-                  <SelectItem value='SupportMarketing'>Hỗ trợ marketing</SelectItem>
-                  <SelectItem value='SupportOther'>Hỗ trợ khác</SelectItem>
-                  <SelectItem value='SupportRefundMoney'>Hỗ trợ hoàn tiền</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -548,8 +493,8 @@ export default function FormOtherManagement() {
         </div>
       ) : (
         <EmptyState
-          title='Không có hỗ trợ/khác nào'
-          description='Không tìm thấy hỗ trợ/khác nào phù hợp với bộ lọc hiện tại.'
+          title='Không có đơn nào'
+          description='Không tìm thấy đơn nào phù hợp với bộ lọc hiện tại.'
           type='search'
         />
       )}

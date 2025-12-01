@@ -21,18 +21,9 @@ interface ViewComplaintModalProps {
 
 const getFormTypeLabel = (type: string): string => {
   const typeMap: Record<string, string> = {
-    SupportAccount: 'Hỗ trợ tài khoản',
-    SupportPayment: 'Hỗ trợ thanh toán',
-    SupportTechnical: 'Hỗ trợ kỹ thuật',
-    ComplaintContent: 'Khiếu nại nội dung',
     ComplaintOrder: 'Khiếu nại đơn hàng',
-    RequestInformation: 'Yêu cầu thông tin',
-    ReportSeller: 'Báo cáo người bán',
-    FeedbackSuggestion: 'Phản hồi góp ý',
-    PrivacyDataRequest: 'Yêu cầu dữ liệu cá nhân',
-    SupportMarketing: 'Hỗ trợ marketing',
-    SupportOther: 'Hỗ trợ khác',
-    SupportRefundMoney: 'Hỗ trợ hoàn tiền'
+    ReportSeller: 'Khiếu nại cửa hàng',
+    Orther: 'Các đơn khác'
   }
   return typeMap[type] || type
 }
