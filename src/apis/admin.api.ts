@@ -153,6 +153,8 @@ export interface ProductAdminResponse {
 // Interface cho ban staff request
 export interface BanStaffRequest {
   reason: string
+  isTemporary?: boolean
+  banUntil?: string
 }
 
 // Interface cho ban staff response data

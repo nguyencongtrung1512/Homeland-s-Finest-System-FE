@@ -25,6 +25,7 @@ export interface User {
   editBy: string | null
   violationCount: number
   isBan: boolean
+  banAt: string | null
   banUntil: string | null
   createdAt: string
   updatedAt: string
@@ -118,7 +119,6 @@ export interface UpdateUserData {
   provinceId?: number
   bankAccount?: string
   bankName?: string
-  isBan?: boolean
   banUntil?: string | null
 }
 
@@ -294,7 +294,7 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
     'IsActive',
     (data.isActive !== undefined ? data.isActive : (currentUser?.isActive ?? true)).toString()
   )
- 
+
   formData.append('note', (data.note ?? currentUser?.note ?? 'Cập nhật từ trang Profile').trim())
   formData.append(
     'ProvinceId',
@@ -304,28 +304,18 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
   formData.append('bankName', data.bankName !== undefined ? data.bankName : currentUser?.bankName || '')
 
   // Handle ban/unban logic
-  // FE tự xử lý: khi ban thì isActive = false, khi unban thì isActive = true và banAt/banUntil = ''
-  if (data.banAt !== undefined || data.banUntil !== undefined) {
-    const banAtValue = data.banAt !== undefined ? data.banAt || '' : ''
-    const banUntilValue = data.banUntil !== undefined ? data.banUntil || '' : ''
-
-    // Unban: cả 2 đều rỗng (FE đã set isActive = true)
-    if (banAtValue === '' && banUntilValue === '') {
-      formData.append('BanAt', '')
-      formData.append('BanUntil', '')
-    }
-    // Ban vĩnh viễn: có banAt nhưng không có banUntil (FE đã set isActive = false)
-    else if (banAtValue !== '' && banUntilValue === '') {
-      formData.append('BanAt', banAtValue)
-      formData.append('BanUntil', '')
-    }
-    // Ban có thời hạn: có cả banAt và banUntil (FE đã set isActive = false)
-    else if (banAtValue !== '' && banUntilValue !== '') {
-      formData.append('BanAt', banAtValue)
-      formData.append('BanUntil', banUntilValue)
-    }
+  // Ban tạm thời: isActive = false và có banUntil (có giá trị thời gian)
+  // Ban vĩnh viễn: isActive = false và không truyền banUntil (undefined)
+  // Unban: isActive = true và banUntil = null hoặc '' (xóa ban)
+  if (data.banUntil !== undefined) {
+    // Nếu banUntil là null, gửi rỗng string để xóa ban
+    // Nếu banUntil có giá trị, gửi giá trị đó (ban tạm thời)
+    const banUntilValue = data.banUntil || ''
+    formData.append('BanUntil', banUntilValue)
+  } else {
+    // Nếu không có banUntil trong data (undefined), giữ nguyên giá trị hiện tại
+    formData.append('BanUntil', currentUser?.banUntil || '')
   }
-  // Nếu không có thông tin ban trong data, không gửi field ban (giữ nguyên giá trị hiện tại)
 
   // Thêm UpdatedAt timestamp
   const now = new Date().toISOString()

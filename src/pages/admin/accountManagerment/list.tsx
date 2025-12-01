@@ -6,13 +6,14 @@ import {
   CheckCircle,
   AlertCircle,
   Calendar as CalendarIcon,
-  XCircle
+  XCircle,
+  User as UserIcon
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
+import { Avatar, AvatarImage, AvatarFallback } from '../../../components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
 import {
@@ -27,7 +28,7 @@ import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { Label } from '../../../components/ui/label'
 import { getUsers, updateUser, type User } from '../../../apis/user.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import { formatDate } from '../../../utils/formatDate'
 import { Badge } from '../../../components/ui/badge'
 import Pagination from '../../../components/Pagination/Pagination'
@@ -59,6 +60,7 @@ function CustomerManagement() {
   const [showBanModal, setShowBanModal] = useState(false)
   const [customerToBan, setCustomerToBan] = useState<Customer | null>(null)
   const [banType, setBanType] = useState<'permanent' | 'temporary'>('permanent')
+  const [banDateOption, setBanDateOption] = useState<'7days' | '30days' | 'custom'>('7days')
   const [banUntilDate, setBanUntilDate] = useState<Date | undefined>(undefined)
   const [banUntilOpen, setBanUntilOpen] = useState(false)
 
@@ -244,33 +246,72 @@ function CustomerManagement() {
   const handleBan = (customer: Customer) => {
     setCustomerToBan(customer)
     setBanType('permanent')
+    setBanDateOption('7days')
     setBanUntilDate(undefined)
     setShowBanModal(true)
   }
+
+  // Calculate ban until date based on option
+  const calculateBanUntilDate = (option: '7days' | '30days' | 'custom', customDate?: Date): Date | undefined => {
+    if (option === 'custom' && customDate) {
+      return customDate
+    }
+    if (option === '7days') {
+      const date = new Date()
+      date.setDate(date.getDate() + 7)
+      return date
+    }
+    if (option === '30days') {
+      const date = new Date()
+      date.setDate(date.getDate() + 30)
+      return date
+    }
+    return undefined
+  }
+
+  // Update banUntilDate when banDateOption changes
+  useEffect(() => {
+    if (banType === 'temporary' && banDateOption !== 'custom') {
+      const calculatedDate = calculateBanUntilDate(banDateOption)
+      setBanUntilDate(calculatedDate)
+    } else if (banDateOption === 'custom') {
+      // Keep custom date if user has selected one
+      // Don't override if user already selected a custom date
+    }
+  }, [banDateOption, banType])
 
   const confirmBan = async () => {
     if (customerToBan) {
       setActionLoading(true)
       try {
-        const now = new Date().toISOString()
-        const banAt = now
-        let banUntil = ''
-
-        if (banType === 'temporary' && banUntilDate) {
-          // Ban có thời hạn
-          banUntil = banUntilDate.toISOString()
-        } else {
-          // Ban vĩnh viễn - banUntil để rỗng
-          banUntil = ''
-        }
-
         // Khi ban: tự động set isActive = false
-        await updateUser(customerToBan.id, {
-          banAt,
-          banUntil,
+        const updateData: {
+          isActive: boolean
+          role: string
+          banUntil?: string | null
+        } = {
           isActive: false, // Tự động set isActive = false khi ban
           role: 'Customer'
-        })
+        }
+
+        if (banType === 'temporary') {
+          // Ban tạm thời: tính toán ngày dựa trên option
+          let finalDate: Date | undefined
+          if (banDateOption === 'custom' && banUntilDate) {
+            finalDate = banUntilDate
+          } else if (banDateOption !== 'custom') {
+            finalDate = calculateBanUntilDate(banDateOption)
+          }
+
+          if (finalDate) {
+            // Set time to end of day (23:59:59)
+            finalDate.setHours(23, 59, 59, 999)
+            updateData.banUntil = finalDate.toISOString()
+          }
+        }
+        // Ban vĩnh viễn: không truyền banUntil vào data (undefined)
+
+        await updateUser(customerToBan.id, updateData)
 
         toast.success(`Đã ${banType === 'permanent' ? 'cấm vĩnh viễn' : 'cấm có thời hạn'} ${customerToBan.name}`, {
           position: 'top-right',
@@ -285,7 +326,7 @@ function CustomerManagement() {
         setBanUntilDate(undefined)
       } catch (err: unknown) {
         const error = err as { message?: string }
-        const errorMessage = error.message || 'Có lỗi xảy ra khi cấm khách hàng'
+        const errorMessage = error.message || 'Có lỗi xảy ra khi khóa khách hàng'
         toast.error(errorMessage, {
           position: 'top-right',
           autoClose: 5000
@@ -300,10 +341,9 @@ function CustomerManagement() {
   const handleUnban = async (customer: Customer) => {
     setActionLoading(true)
     try {
-      // Khi unban: tự động set isActive = true và gửi banAt = '', banUntil = ''
+      // Khi unban: tự động set isActive = true và không truyền data vào banUntil
       await updateUser(customer.id, {
-        banAt: '',
-        banUntil: '',
+        banUntil: null,
         isActive: true, // Tự động set isActive = true khi unban
         role: 'Customer'
       })
@@ -331,6 +371,7 @@ function CustomerManagement() {
     setShowBanModal(false)
     setCustomerToBan(null)
     setBanType('permanent')
+    setBanDateOption('7days')
     setBanUntilDate(undefined)
   }
 
@@ -480,7 +521,7 @@ function CustomerManagement() {
                   <TableRow>
                     <TableHead>Khách hàng</TableHead>
                     <TableHead>Email / Số điện thoại</TableHead>
-                    <TableHead>Ngày tham gia</TableHead>
+                    <TableHead>Vi phạm</TableHead>
                     <TableHead>Trạng thái</TableHead>
                     <TableHead>Hành động</TableHead>
                   </TableRow>
@@ -498,13 +539,18 @@ function CustomerManagement() {
                         <TableCell>
                           <div className='flex items-center space-x-3'>
                             <Avatar className='w-10 h-10'>
-                              <AvatarFallback className='bg-blue-100 text-blue-600 text-sm font-semibold'>
-                                {customer.avatar ||
+                              <AvatarImage src={customer.avatar || undefined} alt={customer.name} />
+                              <AvatarFallback className='bg-blue-100 text-blue-600 text-sm font-semibold flex items-center justify-center'>
+                                {customer.name && customer.name.trim() ? (
                                   customer.name
                                     .split(' ')
                                     .map((n) => n[0])
                                     .join('')
-                                    .toUpperCase()}
+                                    .toUpperCase()
+                                    .slice(0, 2)
+                                ) : (
+                                  <UserIcon className='w-5 h-5' />
+                                )}
                               </AvatarFallback>
                             </Avatar>
                             <div>
@@ -519,7 +565,7 @@ function CustomerManagement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className='text-sm'>{formatDate(customer.createdAt)}</div>
+                          <div className='text-sm text-center'>{customer.violationCount}</div>
                         </TableCell>
                         <TableCell>{getStatusBadge(customer.isActive)}</TableCell>
                         <TableCell>
@@ -576,39 +622,82 @@ function CustomerManagement() {
 
       {/* Detail Modal */}
       <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-        <DialogContent className='sm:max-w-md'>
+        <DialogContent className='sm:max-w-3xl max-h-[90vh] overflow-y-auto'>
           <DialogHeader>
             <DialogTitle>Thông tin cơ bản</DialogTitle>
             <DialogDescription>Thông tin chi tiết về khách hàng {selectedCustomer?.name}</DialogDescription>
           </DialogHeader>
           {selectedCustomer && (
-            <div className='space-y-4'>
+            <div className='space-y-6'>
+              {/* Thông tin cơ bản */}
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Họ tên</label>
-                <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedCustomer.name}</div>
-              </div>
+                <h3 className='text-lg font-semibold text-gray-900 mb-4'>Thông tin cá nhân</h3>
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Họ tên</label>
+                    <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedCustomer.name}</div>
+                  </div>
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Email</label>
-                <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedCustomer.email}</div>
-              </div>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Email</label>
+                    <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedCustomer.email}</div>
+                  </div>
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Số điện thoại</label>
-                <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedCustomer.phone}</div>
-              </div>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Số điện thoại</label>
+                    <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedCustomer.phone}</div>
+                  </div>
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Ngày tham gia</label>
-                <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedCustomer.joinDate}</div>
-              </div>
-
-              {/* <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Số đơn đã mua</label>
-                <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>
-                  {selectedCustomer.orderCount} đơn hàng
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Ngày tham gia</label>
+                    <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{formatDate(selectedCustomer.createdAt)}</div>
+                  </div>
                 </div>
-              </div> */}
+              </div>
+
+              {/* Thông tin khóa */}
+              {!selectedCustomer.isActive && (selectedCustomer.banAt || selectedCustomer.banUntil) && (
+                <div>
+                  <h3 className='text-lg font-semibold text-gray-900 mb-4'>Thông tin khóa</h3>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                    {selectedCustomer.banAt && (
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-1'>Ngày bị khóa</label>
+                        <div className='bg-red-50 px-3 py-2 rounded-md text-sm text-red-900'>{formatDate(selectedCustomer.banAt)}</div>
+                      </div>
+                    )}
+
+                    {selectedCustomer.banUntil && (
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-1'>Ngày hết hạn khóa</label>
+                        <div className='bg-orange-50 px-3 py-2 rounded-md text-sm text-orange-900'>
+                          {formatDate(selectedCustomer.banUntil)}
+                        </div>
+                      </div>
+                    )}
+
+                    {!selectedCustomer.banUntil && selectedCustomer.banAt && (
+                      <div className='sm:col-span-2'>
+                        <label className='block text-sm font-medium text-gray-700 mb-1'>Trạng thái khóa</label>
+                        <div className='bg-red-50 px-3 py-2 rounded-md text-sm text-red-900 font-semibold'>Khóa vĩnh viễn</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Thông tin khác */}
+              {selectedCustomer.violationCount !== undefined && (
+                <div>
+                  <h3 className='text-lg font-semibold text-gray-900 mb-4'>Thông tin khác</h3>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 mb-1'>Số lần phạm</label>
+                      <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedCustomer.violationCount}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -667,12 +756,12 @@ function CustomerManagement() {
           <DialogHeader>
             <DialogTitle className='flex items-center'>
               <Ban className='w-5 h-5 mr-2 text-orange-600' />
-              Cấm khách hàng
+              Khóa khách hàng
             </DialogTitle>
             <DialogDescription>
               {customerToBan && (
                 <>
-                  Bạn đang cấm khách hàng <span className='font-semibold'>{customerToBan.name}</span>
+                  Bạn đang khóa khách hàng <span className='font-semibold'>{customerToBan.name}</span>
                 </>
               )}
             </DialogDescription>
@@ -681,7 +770,7 @@ function CustomerManagement() {
           {customerToBan && (
             <div className='space-y-4 py-4'>
               <div className='space-y-3'>
-                <Label>Loại cấm</Label>
+                <Label>Loại khóa</Label>
                 <div className='space-y-2'>
                   <label className='flex items-center space-x-2 cursor-pointer'>
                     <input
@@ -692,7 +781,7 @@ function CustomerManagement() {
                       onChange={(e) => setBanType(e.target.value as 'permanent' | 'temporary')}
                       className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
                     />
-                    <span className='text-sm text-gray-900'>Cấm vĩnh viễn</span>
+                    <span className='text-sm text-gray-900'>Khóa vĩnh viễn</span>
                   </label>
                   <label className='flex items-center space-x-2 cursor-pointer'>
                     <input
@@ -703,48 +792,95 @@ function CustomerManagement() {
                       onChange={(e) => setBanType(e.target.value as 'permanent' | 'temporary')}
                       className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
                     />
-                    <span className='text-sm text-gray-900'>Cấm có thời hạn</span>
+                    <span className='text-sm text-gray-900'>Khóa có thời hạn</span>
                   </label>
                 </div>
               </div>
 
               {banType === 'temporary' && (
-                <div className='space-y-2'>
-                  <Label>Ngày hết hạn cấm</Label>
-                  <Popover open={banUntilOpen} onOpenChange={setBanUntilOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant='outline' className='w-full justify-start text-left font-normal'>
-                        <CalendarIcon className='mr-2 h-4 w-4' />
-                        {banUntilDate ? format(banUntilDate, 'dd/MM/yyyy') : 'Chọn ngày hết hạn'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className='w-auto p-0' align='start'>
-                      <Calendar
-                        mode='single'
-                        selected={banUntilDate}
-                        onSelect={(date) => {
-                          setBanUntilDate(date)
-                          setBanUntilOpen(false)
-                        }}
-                        disabled={(date) => date <= new Date()}
-                        initialFocus
+                <div className='space-y-3'>
+                  <Label>Chọn thời hạn khóa</Label>
+                  <div className='space-y-2'>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='radio'
+                        name='banDateOption'
+                        value='7days'
+                        checked={banDateOption === '7days'}
+                        onChange={(e) => setBanDateOption(e.target.value as '7days' | '30days' | 'custom')}
+                        className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
                       />
-                    </PopoverContent>
-                  </Popover>
+                      <span className='text-sm text-gray-900'>7 ngày</span>
+                    </label>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='radio'
+                        name='banDateOption'
+                        value='30days'
+                        checked={banDateOption === '30days'}
+                        onChange={(e) => setBanDateOption(e.target.value as '7days' | '30days' | 'custom')}
+                        className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                      />
+                      <span className='text-sm text-gray-900'>30 ngày</span>
+                    </label>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='radio'
+                        name='banDateOption'
+                        value='custom'
+                        checked={banDateOption === 'custom'}
+                        onChange={(e) => setBanDateOption(e.target.value as '7days' | '30days' | 'custom')}
+                        className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                      />
+                      <span className='text-sm text-gray-900'>Chọn ngày tùy ý</span>
+                    </label>
+                  </div>
+
+                  {banDateOption === 'custom' && (
+                    <div className='space-y-2'>
+                      <Label>Ngày hết hạn khóa</Label>
+                      <Popover open={banUntilOpen} onOpenChange={setBanUntilOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                            <CalendarIcon className='mr-2 h-4 w-4' />
+                            {banUntilDate ? format(banUntilDate, 'dd/MM/yyyy') : 'Chọn ngày hết hạn'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className='w-auto p-0' align='start'>
+                          <Calendar
+                            mode='single'
+                            selected={banUntilDate}
+                            onSelect={(date) => {
+                              setBanUntilDate(date)
+                              setBanUntilOpen(false)
+                            }}
+                            disabled={(date) => date <= new Date()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+
+                  {banDateOption !== 'custom' && banUntilDate && (
+                    <div className='text-sm text-gray-600'>
+                      Khách hàng sẽ bị khóa đến ngày: <span className='font-semibold'>{format(banUntilDate, 'dd/MM/yyyy')}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
               {banType === 'permanent' && (
                 <div className='rounded-md bg-orange-50 p-3 text-sm text-orange-800'>
                   <AlertCircle className='w-4 h-4 inline mr-2' />
-                  Khách hàng sẽ bị cấm vĩnh viễn và không thể đăng nhập vào hệ thống.
+                  Khách hàng sẽ bị khóa vĩnh viễn và không thể đăng nhập vào hệ thống.
                 </div>
               )}
 
               {banType === 'temporary' && banUntilDate && (
                 <div className='rounded-md bg-blue-50 p-3 text-sm text-blue-800'>
                   <AlertCircle className='w-4 h-4 inline mr-2' />
-                  Khách hàng sẽ bị cấm đến ngày {format(banUntilDate, 'dd/MM/yyyy')}.
+                  Khách hàng sẽ bị khóa đến ngày {format(banUntilDate, 'dd/MM/yyyy')}.
                 </div>
               )}
             </div>
@@ -756,10 +892,10 @@ function CustomerManagement() {
             </Button>
             <Button
               onClick={confirmBan}
-              className='bg-orange-600 hover:bg-orange-700 text-white'
-              disabled={actionLoading || (banType === 'temporary' && !banUntilDate)}
+              variant='red'
+              disabled={actionLoading || (banType === 'temporary' && banDateOption === 'custom' && !banUntilDate)}
             >
-              {actionLoading ? 'Đang xử lý...' : 'Xác nhận cấm'}
+              {actionLoading ? 'Đang xử lý...' : 'Xác nhận khóa'}
             </Button>
           </DialogFooter>
         </DialogContent>

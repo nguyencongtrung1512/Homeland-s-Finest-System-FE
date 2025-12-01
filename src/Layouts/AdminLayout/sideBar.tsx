@@ -21,7 +21,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import path from '../../constants/path'
-import { ShopOutlined } from '@ant-design/icons'
+// import { ShopOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 
 interface SideBarProps {
@@ -83,11 +83,11 @@ function SideBar({ isCollapsed }: SideBarProps) {
       label: 'Quản lý người dùng',
       icon: <User size={18} />
     },
-    {
-      key: path.SELLER_MANAGEMENT_ADMIN,
-      label: 'Quản lý Người bán',
-      icon: <ShopOutlined size={18} />
-    },
+    // {
+    //   key: path.SELLER_MANAGEMENT_ADMIN,
+    //   label: 'Quản lý Người bán',
+    //   icon: <ShopOutlined size={18} />
+    // },
     {
       key: path.TERMS_MANAGEMENT_ADMIN,
       label: 'Điều khoản dịch vụ',

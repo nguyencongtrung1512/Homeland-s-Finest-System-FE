@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { format } from 'date-fns'
 import {
   Users,
   Eye,
@@ -97,6 +98,10 @@ function StaffManagement() {
   const [showBanModal, setShowBanModal] = useState(false)
   const [staffToBan, setStaffToBan] = useState<StaffInfo | null>(null)
   const [banReason, setBanReason] = useState('')
+  const [banType, setBanType] = useState<'permanent' | 'temporary'>('permanent')
+  const [banDateOption, setBanDateOption] = useState<'7days' | '30days' | 'custom'>('7days')
+  const [banUntilDate, setBanUntilDate] = useState<Date | undefined>(undefined)
+  const [banUntilOpen, setBanUntilOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
 
   // Unban states
@@ -131,7 +136,7 @@ function StaffManagement() {
     } catch (error) {
       console.error('Error fetching staff:', error)
       setAllStaff([])
-        toast.error('Không thể tải danh sách nhân viên')
+      toast.error('Không thể tải danh sách nhân viên')
     } finally {
       setLoading(false)
     }
@@ -594,16 +599,53 @@ function StaffManagement() {
     })
   }
 
+  // Calculate ban until date based on option
+  const calculateBanUntilDate = (option: '7days' | '30days' | 'custom', customDate?: Date): Date | undefined => {
+    if (option === 'custom' && customDate) {
+      return customDate
+    }
+    if (option === '7days') {
+      const date = new Date()
+      date.setDate(date.getDate() + 7)
+      return date
+    }
+    if (option === '30days') {
+      const date = new Date()
+      date.setDate(date.getDate() + 30)
+      return date
+    }
+    return undefined
+  }
+
+  // Update banUntilDate when banDateOption changes
+  useEffect(() => {
+    if (banType === 'temporary' && banDateOption !== 'custom') {
+      const calculatedDate = calculateBanUntilDate(banDateOption)
+      setBanUntilDate(calculatedDate)
+    }
+  }, [banDateOption, banType])
+
   // Handle ban
   const handleBan = (staff: StaffInfo) => {
     setStaffToBan(staff)
     setBanReason('')
+    setBanType('permanent')
+    setBanDateOption('7days')
+    setBanUntilDate(undefined)
     setShowBanModal(true)
   }
 
   const confirmBan = async () => {
     if (!staffToBan || !banReason.trim()) {
-      toast.error('Vui lòng nhập lý do cấm', {
+      toast.error('Vui lòng nhập lý do khóa', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    if (banType === 'temporary' && banDateOption === 'custom' && !banUntilDate) {
+      toast.error('Vui lòng chọn ngày hết hạn khóa', {
         position: 'top-right',
         autoClose: 3000
       })
@@ -612,10 +654,37 @@ function StaffManagement() {
 
     setActionLoading(true)
     try {
-      const response = await adminApi.banStaff(staffToBan.userId, { reason: banReason.trim() })
+      const banData: {
+        reason: string
+        isTemporary: boolean
+        banUntil?: string
+      } = {
+        reason: banReason.trim(),
+        isTemporary: banType === 'temporary'
+      }
+
+      if (banType === 'temporary') {
+        // Ban tạm thời: tính toán ngày dựa trên option
+        let finalDate: Date | undefined
+        if (banDateOption === 'custom' && banUntilDate) {
+          finalDate = banUntilDate
+        } else if (banDateOption !== 'custom') {
+          finalDate = calculateBanUntilDate(banDateOption)
+        }
+
+        if (finalDate) {
+          // Set time to end of day (23:59:59)
+          finalDate.setHours(23, 59, 59, 999)
+          banData.banUntil = finalDate.toISOString()
+        }
+      }
+      // Ban vĩnh viễn: isTemporary = false, không có banUntil
+
+      const response = await adminApi.banStaff(staffToBan.userId, banData)
 
       // Hiển thị thông báo từ backend
-      const successMessage = response.data?.message || response.message || `Đã cấm nhân viên ${staffToBan.firstName} ${staffToBan.lastName}`
+      const successMessage =
+        response.data?.message || response.message || `Đã ${banType === 'permanent' ? 'khóa vĩnh viễn' : 'khóa có thời hạn'} nhân viên ${staffToBan.firstName} ${staffToBan.lastName}`
 
       toast.success(successMessage, {
         position: 'top-right',
@@ -627,9 +696,12 @@ function StaffManagement() {
       setShowBanModal(false)
       setStaffToBan(null)
       setBanReason('')
+      setBanType('permanent')
+      setBanDateOption('7days')
+      setBanUntilDate(undefined)
     } catch (err: unknown) {
       const error = err as { message?: string }
-      const errorMessage = error.message || 'Có lỗi xảy ra khi cấm nhân viên'
+      const errorMessage = error.message || 'Có lỗi xảy ra khi khóa nhân viên'
       toast.error(errorMessage, {
         position: 'top-right',
         autoClose: 5000
@@ -685,6 +757,9 @@ function StaffManagement() {
     setShowBanModal(false)
     setStaffToBan(null)
     setBanReason('')
+    setBanType('permanent')
+    setBanDateOption('7days')
+    setBanUntilDate(undefined)
   }
 
   return (
@@ -1250,15 +1325,15 @@ function StaffManagement() {
 
       {/* Create Staff Modal */}
       <Dialog open={showCreateStaffModal} onOpenChange={setShowCreateStaffModal}>
-        <DialogContent className='sm:max-w-lg'>
+        <DialogContent className='sm:max-w-3xl max-h-[90vh] overflow-y-auto'>
           <DialogHeader>
             <DialogTitle>Tạo tài khoản nhân viên</DialogTitle>
             <DialogDescription>Điền thông tin để tạo tài khoản nhân viên mới</DialogDescription>
           </DialogHeader>
 
           <div className='space-y-4'>
-            {/* First Name and Last Name */}
-            <div className='grid grid-cols-2 gap-4'>
+            {/* Thông tin cơ bản */}
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
               <div>
                 <label className='block text-sm font-medium text-gray-700 mb-2'>Họ *</label>
                 <Input
@@ -1279,125 +1354,113 @@ function StaffManagement() {
                   className='h-10'
                 />
               </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Email *</label>
-              <Input
-                type='email'
-                placeholder='Nhập email nhân viên'
-                value={staffFormData.email}
-                onChange={(e) => handleStaffFormChange('email', e.target.value)}
-                className='h-10'
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Mật khẩu *</label>
-              <Input
-                type='password'
-                placeholder='Nhập mật khẩu'
-                value={staffFormData.password}
-                onChange={(e) => handleStaffFormChange('password', e.target.value)}
-                className='h-10'
-              />
-            </div>
-
-            {/* Phone Number */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Số điện thoại *</label>
-              <Input
-                type='tel'
-                placeholder='Nhập số điện thoại'
-                value={staffFormData.phoneNumber}
-                onChange={(e) => handleStaffFormChange('phoneNumber', e.target.value)}
-                className='h-10'
-              />
-            </div>
-
-            {/* Gender */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Giới tính *</label>
-              <Select value={staffFormData.gender} onValueChange={(value) => handleStaffFormChange('gender', value)}>
-                <SelectTrigger className='h-10'>
-                  <SelectValue placeholder='Chọn giới tính' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='Male'>Nam</SelectItem>
-                  <SelectItem value='Female'>Nữ</SelectItem>
-                  <SelectItem value='Other'>Khác</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date of Birth */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày sinh *</label>
-              <Popover open={dateOfBirthOpen} onOpenChange={setDateOfBirthOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant='outline'
-                    className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
-                      }`}
-                  >
-                    <CalendarIcon className='mr-2 h-4 w-4' />
-                    {staffFormData.dateOfBirth ? formatDisplayDate(staffFormData.dateOfBirth) : 'Chọn ngày sinh'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className='w-auto p-0' align='start'>
-                  <Calendar
-                    mode='single'
-                    selected={staffFormData.dateOfBirth ? new Date(staffFormData.dateOfBirth) : undefined}
-                    onSelect={(date) => {
-                      if (date) {
-                        handleStaffFormChange('dateOfBirth', formatDateForForm(date))
-                        setDateOfBirthOpen(false)
-                      }
-                    }}
-                    disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                    captionLayout='dropdown'
-                    fromYear={1900}
-                    toYear={new Date().getFullYear()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Hire Date */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày tuyển dụng *</label>
-              <Popover open={hireDateOpen} onOpenChange={setHireDateOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant='outline'
-                    className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.hireDate ? 'text-muted-foreground' : ''
-                      }`}
-                  >
-                    <CalendarIcon className='mr-2 h-4 w-4' />
-                    {staffFormData.hireDate ? formatDisplayDate(staffFormData.hireDate) : 'Chọn ngày tuyển dụng'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className='w-auto p-0' align='start'>
-                  <Calendar
-                    mode='single'
-                    selected={staffFormData.hireDate ? new Date(staffFormData.hireDate) : undefined}
-                    onSelect={(date) => {
-                      if (date) {
-                        handleStaffFormChange('hireDate', formatDateForForm(date))
-                        setHireDateOpen(false)
-                      }
-                    }}
-                    disabled={(date) => date < new Date('2020-01-01')}
-                    captionLayout='dropdown'
-                    fromYear={2020}
-                    toYear={new Date().getFullYear() + 1}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Email *</label>
+                <Input
+                  type='email'
+                  placeholder='Nhập email nhân viên'
+                  value={staffFormData.email}
+                  onChange={(e) => handleStaffFormChange('email', e.target.value)}
+                  className='h-10'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Mật khẩu *</label>
+                <Input
+                  type='password'
+                  placeholder='Nhập mật khẩu'
+                  value={staffFormData.password}
+                  onChange={(e) => handleStaffFormChange('password', e.target.value)}
+                  className='h-10'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Số điện thoại *</label>
+                <Input
+                  type='tel'
+                  placeholder='Nhập số điện thoại'
+                  value={staffFormData.phoneNumber}
+                  onChange={(e) => handleStaffFormChange('phoneNumber', e.target.value)}
+                  className='h-10'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Giới tính *</label>
+                <Select value={staffFormData.gender} onValueChange={(value) => handleStaffFormChange('gender', value)}>
+                  <SelectTrigger className='h-10'>
+                    <SelectValue placeholder='Chọn giới tính' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='Male'>Nam</SelectItem>
+                    <SelectItem value='Female'>Nữ</SelectItem>
+                    <SelectItem value='Other'>Khác</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày sinh *</label>
+                <Popover open={dateOfBirthOpen} onOpenChange={setDateOfBirthOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant='outline'
+                      className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
+                        }`}
+                    >
+                      <CalendarIcon className='mr-2 h-4 w-4' />
+                      {staffFormData.dateOfBirth ? formatDisplayDate(staffFormData.dateOfBirth) : 'Chọn ngày sinh'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className='w-auto p-0' align='start'>
+                    <Calendar
+                      mode='single'
+                      selected={staffFormData.dateOfBirth ? new Date(staffFormData.dateOfBirth) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          handleStaffFormChange('dateOfBirth', formatDateForForm(date))
+                          setDateOfBirthOpen(false)
+                        }
+                      }}
+                      disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                      captionLayout='dropdown'
+                      fromYear={1900}
+                      toYear={new Date().getFullYear()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày tuyển dụng *</label>
+                <Popover open={hireDateOpen} onOpenChange={setHireDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant='outline'
+                      className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.hireDate ? 'text-muted-foreground' : ''
+                        }`}
+                    >
+                      <CalendarIcon className='mr-2 h-4 w-4' />
+                      {staffFormData.hireDate ? formatDisplayDate(staffFormData.hireDate) : 'Chọn ngày tuyển dụng'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className='w-auto p-0' align='start'>
+                    <Calendar
+                      mode='single'
+                      selected={staffFormData.hireDate ? new Date(staffFormData.hireDate) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          handleStaffFormChange('hireDate', formatDateForForm(date))
+                          setHireDateOpen(false)
+                        }
+                      }}
+                      disabled={(date) => date < new Date('2020-01-01')}
+                      captionLayout='dropdown'
+                      fromYear={2020}
+                      toYear={new Date().getFullYear() + 1}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           </div>
 
@@ -1436,7 +1499,7 @@ function StaffManagement() {
           {staffToBan && (
             <div className='space-y-4 py-4'>
               <div className='space-y-2'>
-                <Label>Lý do cấm *</Label>
+                <Label>Lý do khóa *</Label>
                 <Textarea
                   value={banReason}
                   onChange={(e) => setBanReason(e.target.value)}
@@ -1446,10 +1509,120 @@ function StaffManagement() {
                 />
               </div>
 
-              <div className='rounded-md bg-orange-50 p-3 text-sm text-orange-800'>
-                <AlertCircle className='w-4 h-4 inline mr-2' />
-                Nhân viên sẽ bị cấm và không thể đăng nhập vào hệ thống.
+              <div className='space-y-3'>
+                <Label>Loại khóa</Label>
+                <div className='space-y-2'>
+                  <label className='flex items-center space-x-2 cursor-pointer'>
+                    <input
+                      type='radio'
+                      name='banType'
+                      value='permanent'
+                      checked={banType === 'permanent'}
+                      onChange={(e) => setBanType(e.target.value as 'permanent' | 'temporary')}
+                      className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                    />
+                    <span className='text-sm text-gray-900'>Khóa vĩnh viễn</span>
+                  </label>
+                  <label className='flex items-center space-x-2 cursor-pointer'>
+                    <input
+                      type='radio'
+                      name='banType'
+                      value='temporary'
+                      checked={banType === 'temporary'}
+                      onChange={(e) => setBanType(e.target.value as 'permanent' | 'temporary')}
+                      className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                    />
+                    <span className='text-sm text-gray-900'>Khóa có thời hạn</span>
+                  </label>
+                </div>
               </div>
+
+              {banType === 'temporary' && (
+                <div className='space-y-3'>
+                  <Label>Chọn thời hạn khóa</Label>
+                  <div className='space-y-2'>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='radio'
+                        name='banDateOption'
+                        value='7days'
+                        checked={banDateOption === '7days'}
+                        onChange={(e) => setBanDateOption(e.target.value as '7days' | '30days' | 'custom')}
+                        className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                      />
+                      <span className='text-sm text-gray-900'>7 ngày</span>
+                    </label>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='radio'
+                        name='banDateOption'
+                        value='30days'
+                        checked={banDateOption === '30days'}
+                        onChange={(e) => setBanDateOption(e.target.value as '7days' | '30days' | 'custom')}
+                        className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                      />
+                      <span className='text-sm text-gray-900'>30 ngày</span>
+                    </label>
+                    <label className='flex items-center space-x-2 cursor-pointer'>
+                      <input
+                        type='radio'
+                        name='banDateOption'
+                        value='custom'
+                        checked={banDateOption === 'custom'}
+                        onChange={(e) => setBanDateOption(e.target.value as '7days' | '30days' | 'custom')}
+                        className='h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300'
+                      />
+                      <span className='text-sm text-gray-900'>Chọn ngày tùy ý</span>
+                    </label>
+                  </div>
+
+                  {banDateOption === 'custom' && (
+                    <div className='space-y-2'>
+                      <Label>Ngày hết hạn khóa</Label>
+                      <Popover open={banUntilOpen} onOpenChange={setBanUntilOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                            <CalendarIcon className='mr-2 h-4 w-4' />
+                            {banUntilDate ? format(banUntilDate, 'dd/MM/yyyy') : 'Chọn ngày hết hạn'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className='w-auto p-0' align='start'>
+                          <Calendar
+                            mode='single'
+                            selected={banUntilDate}
+                            onSelect={(date) => {
+                              setBanUntilDate(date)
+                              setBanUntilOpen(false)
+                            }}
+                            disabled={(date) => date <= new Date()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+
+                  {banDateOption !== 'custom' && banUntilDate && (
+                    <div className='text-sm text-gray-600'>
+                      Nhân viên sẽ bị khóa đến ngày: <span className='font-semibold'>{format(banUntilDate, 'dd/MM/yyyy')}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {banType === 'permanent' && (
+                <div className='rounded-md bg-orange-50 p-3 text-sm text-orange-800'>
+                  <AlertCircle className='w-4 h-4 inline mr-2' />
+                  Nhân viên sẽ bị khóa vĩnh viễn và không thể đăng nhập vào hệ thống.
+                </div>
+              )}
+
+              {banType === 'temporary' && banUntilDate && (
+                <div className='rounded-md bg-blue-50 p-3 text-sm text-blue-800'>
+                  <AlertCircle className='w-4 h-4 inline mr-2' />
+                  Nhân viên sẽ bị khóa đến ngày {format(banUntilDate, 'dd/MM/yyyy')}.
+                </div>
+              )}
             </div>
           )}
 
@@ -1460,9 +1633,9 @@ function StaffManagement() {
             <Button
               variant='red'
               onClick={confirmBan}
-              disabled={actionLoading || !banReason.trim()}
+              disabled={actionLoading || !banReason.trim() || (banType === 'temporary' && banDateOption === 'custom' && !banUntilDate)}
             >
-              {actionLoading ? 'Đang xử lý...' : 'Xác nhận cấm'}
+              {actionLoading ? 'Đang xử lý...' : 'Xác nhận khóa'}
             </Button>
           </DialogFooter>
         </DialogContent>

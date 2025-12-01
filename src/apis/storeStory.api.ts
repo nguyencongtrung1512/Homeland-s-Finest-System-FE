@@ -69,10 +69,7 @@ export const storeStoryApi = {
     return response
   },
 
-  update: async (
-    storyId: string,
-    data: StoreStoryUpdateData
-  ): Promise<any> => {
+  update: async (storyId: string, data: StoreStoryUpdateData): Promise<any> => {
     const formData = new FormData()
 
     // Required text fields

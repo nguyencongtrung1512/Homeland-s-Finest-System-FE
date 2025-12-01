@@ -20,6 +20,7 @@ function SellerLogin() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -27,6 +28,10 @@ function SellerLogin() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
+    // Clear error message when user starts typing
+    if (errorMessage) {
+      setErrorMessage(null)
+    }
   }
   const getRedirectPath = (role: string): string => {
     switch (role) {
@@ -45,9 +50,14 @@ function SellerLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Clear previous error
+    setErrorMessage(null)
+
     // Validation
     if (!formData.email || !formData.password) {
-      toast.error('Vui lòng nhập đầy đủ thông tin')
+      const validationError = 'Vui lòng nhập đầy đủ thông tin'
+      setErrorMessage(validationError)
+      toast.error(validationError)
       return
     }
 
@@ -94,20 +104,87 @@ function SellerLogin() {
     } catch (error: unknown) {
       console.error('Login error:', error)
 
-      // Handle different types of errors
-      if (error && typeof error === 'object' && 'response' in error) {
-        const apiError = error as { response?: { data?: { message?: string } } }
-        if (apiError.response?.data?.message) {
-          toast.error(apiError.response.data.message)
-        } else {
-          toast.error('Đăng nhập thất bại. Vui lòng thử lại.')
+      // Extract error message from backend response
+      // Note: axios interceptor returns error.response.data directly
+      let errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại.'
+
+      if (error && typeof error === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = error as any
+
+        // Priority 1: Check for direct message field (most common - axios interceptor returns error.response.data directly)
+        if (err.message) {
+          errorMessage = err.message
         }
-      } else if (error && typeof error === 'object' && 'message' in error) {
-        const err = error as { message?: string }
-        toast.error(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.')
-      } else {
-        toast.error('Đăng nhập thất bại. Vui lòng thử lại.')
+        // Priority 2: Check for axios error response structure (error.response.data) - fallback case
+        else if (err.response?.data) {
+          const responseData = err.response.data
+
+          if (responseData.message) {
+            errorMessage = responseData.message
+          }
+          // Check for errors object (validation errors)
+          else if (responseData.errors && typeof responseData.errors === 'object') {
+            const errorMessages: string[] = []
+            Object.keys(responseData.errors).forEach((field) => {
+              const fieldErrors = responseData.errors[field]
+              if (Array.isArray(fieldErrors)) {
+                errorMessages.push(...fieldErrors)
+              } else if (typeof fieldErrors === 'string') {
+                errorMessages.push(fieldErrors)
+              }
+            })
+            if (errorMessages.length > 0) {
+              errorMessage = errorMessages.join(', ')
+            }
+          }
+          // Check for title field
+          else if (responseData.title) {
+            errorMessage = responseData.title
+          }
+          // Check for errors array
+          else if (responseData.errors && Array.isArray(responseData.errors)) {
+            errorMessage = responseData.errors.join(', ')
+          }
+          // Check for error string
+          else if (responseData.error && typeof responseData.error === 'string') {
+            errorMessage = responseData.error
+          }
+        }
+        // Priority 3: Check for direct errors object (validation errors)
+        else if (err.errors && typeof err.errors === 'object') {
+          const errorMessages: string[] = []
+          Object.keys(err.errors).forEach((field) => {
+            const fieldErrors = err.errors[field]
+            if (Array.isArray(fieldErrors)) {
+              errorMessages.push(...fieldErrors)
+            } else if (typeof fieldErrors === 'string') {
+              errorMessages.push(fieldErrors)
+            }
+          })
+          if (errorMessages.length > 0) {
+            errorMessage = errorMessages.join(', ')
+          }
+        }
+        // Priority 4: Check for direct title field
+        else if (err.title) {
+          errorMessage = err.title
+        }
+        // Priority 5: Check for direct errors array
+        else if (err.errors && Array.isArray(err.errors)) {
+          errorMessage = err.errors.join(', ')
+        }
+        // Priority 6: Check for direct error string
+        else if (err.error && typeof err.error === 'string') {
+          errorMessage = err.error
+        }
+      } else if (error && typeof error === 'string') {
+        errorMessage = error
       }
+
+      // Set error message to display on UI
+      setErrorMessage(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -139,6 +216,44 @@ function SellerLogin() {
         <h2 className='text-xl font-semibold text-gray-800 mb-2'>Chào mừng đối tác</h2>
         <p className='text-sm text-gray-600'>Đăng nhập để quản lý cửa hàng của bạn</p>
       </div>
+
+      {/* Error Alert */}
+      {errorMessage && (
+        <div className='mb-4 p-4 bg-red-50 border border-red-200 rounded-lg'>
+          <div className='flex items-start gap-3'>
+            <div className='flex-shrink-0 mt-0.5'>
+              <svg
+                className='w-5 h-5 text-red-600'
+                fill='currentColor'
+                viewBox='0 0 20 20'
+                xmlns='http://www.w3.org/2000/svg'
+              >
+                <path
+                  fillRule='evenodd'
+                  d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z'
+                  clipRule='evenodd'
+                />
+              </svg>
+            </div>
+            <div className='flex-1'>
+              <p className='text-sm font-medium text-red-800'>{errorMessage}</p>
+            </div>
+            <button
+              type='button'
+              onClick={() => setErrorMessage(null)}
+              className='flex-shrink-0 text-red-400 hover:text-red-600 transition-colors'
+            >
+              <svg className='w-5 h-5' fill='currentColor' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'>
+                <path
+                  fillRule='evenodd'
+                  d='M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z'
+                  clipRule='evenodd'
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Login Form */}
       <form onSubmit={handleSubmit} className='space-y-5'>
