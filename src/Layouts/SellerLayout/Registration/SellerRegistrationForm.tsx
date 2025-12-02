@@ -915,6 +915,30 @@ function SellerRegistrationForm() {
     }
   }
 
+  // Hàm chuyển đổi mã lỗi từ tiếng Anh sang tiếng Việt
+  const translateBankError = (errorMessage: string): string => {
+    const errorMap: { [key: string]: string } = {
+      INVALID_BANK_BIN: 'Mã ngân hàng không hợp lệ',
+      INVALID_ACCOUNT_NUMBER: 'Số tài khoản không hợp lệ',
+      ACCOUNT_NOT_FOUND: 'Không tìm thấy tài khoản',
+      BANK_NOT_SUPPORTED: 'Ngân hàng không được hỗ trợ',
+      NETWORK_ERROR: 'Lỗi kết nối mạng. Vui lòng thử lại sau',
+      TIMEOUT: 'Yêu cầu quá thời gian chờ. Vui lòng thử lại',
+      UNAUTHORIZED: 'Không có quyền truy cập',
+      SERVER_ERROR: 'Lỗi máy chủ. Vui lòng thử lại sau'
+    }
+
+    // Kiểm tra nếu errorMessage chứa một trong các mã lỗi
+    for (const [key, value] of Object.entries(errorMap)) {
+      if (errorMessage.toUpperCase().includes(key)) {
+        return value
+      }
+    }
+
+    // Nếu không tìm thấy, trả về thông báo mặc định
+    return errorMessage || 'Không thể kiểm tra tài khoản ngân hàng'
+  }
+
   const handleVerifyBankAccount = async () => {
     if (!selectedBank) {
       toast.error('Vui lòng chọn ngân hàng trước')
@@ -941,10 +965,11 @@ function SellerRegistrationForm() {
       }
     } catch (error) {
       console.error('Error verifying bank account:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Không thể kiểm tra tài khoản ngân hàng'
-      setAccountVerificationError(errorMessage)
+      const rawErrorMessage = error instanceof Error ? error.message : 'Không thể kiểm tra tài khoản ngân hàng'
+      const translatedErrorMessage = translateBankError(rawErrorMessage)
+      setAccountVerificationError(translatedErrorMessage)
       setAccountOwnerName(null)
-      toast.error(errorMessage)
+      toast.error(translatedErrorMessage)
     } finally {
       setIsVerifyingAccount(false)
     }
@@ -1006,6 +1031,18 @@ function SellerRegistrationForm() {
 
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp'
+    }
+
+    // Validate tài khoản ngân hàng - phải được verify thành công
+    if (formData.bankAccount && formData.bankAccount.trim()) {
+      // Nếu có lỗi verification thì không cho submit
+      if (accountVerificationError) {
+        newErrors.bankAccount = accountVerificationError
+      }
+      // Nếu chưa verify thành công (chưa có accountOwnerName) thì không cho submit
+      else if (!accountOwnerName) {
+        newErrors.bankAccount = 'Vui lòng kiểm tra tài khoản ngân hàng trước khi tiếp tục'
+      }
     }
 
     if (formData.dateOfBirth) {

@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { EllipsisVertical, MessageCircle } from 'lucide-react'
+import { EllipsisVertical, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '../../../../../components/ui/button'
 import { Badge } from '../../../../../components/ui/badge'
 import {
@@ -417,6 +417,11 @@ export default function OrdersContent({
   const [showRefundInfoModal, setShowRefundInfoModal] = useState(false)
   const [refundInfo, setRefundInfo] = useState<RequestWalletMoney | null>(null)
   const [loadingRefundInfo, setLoadingRefundInfo] = useState(false)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const savedScrollPositionRef = useRef<number | null>(null)
+  const shouldPreserveScrollRef = useRef<boolean>(false)
   const ordersPerPage = 3
 
   const extractReviewProducts = (orderDetail?: APIOrder | null): ReviewProduct[] => {
@@ -557,6 +562,13 @@ export default function OrdersContent({
   }, [orders, selectedFilter, searchQuery])
 
   const handleFilterChange = (filterKey: string) => {
+    // Lưu scroll position hiện tại trước khi state thay đổi
+    const container = scrollContainerRef.current
+    if (container) {
+      savedScrollPositionRef.current = container.scrollLeft
+      shouldPreserveScrollRef.current = true
+    }
+
     setSelectedFilter(filterKey)
     setCurrentPage(1)
     // Reset search query when switching tabs
@@ -579,6 +591,126 @@ export default function OrdersContent({
   const goToPage = (page: number) => {
     setCurrentPage(page)
   }
+
+  const checkScrollButtons = () => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    // Cập nhật saved position khi user scroll
+    savedScrollPositionRef.current = container.scrollLeft
+
+    setCanScrollLeft(container.scrollLeft > 0)
+    setCanScrollRight(
+      container.scrollLeft < container.scrollWidth - container.clientWidth - 1
+    )
+  }
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const scrollAmount = 200
+    const newScrollLeft =
+      direction === 'left'
+        ? container.scrollLeft - scrollAmount
+        : container.scrollLeft + scrollAmount
+
+    container.scrollTo({
+      left: newScrollLeft,
+      behavior: 'smooth'
+    })
+
+    // Cập nhật saved position sau khi scroll
+    setTimeout(() => {
+      if (container) {
+        savedScrollPositionRef.current = container.scrollLeft
+      }
+    }, 300)
+  }
+
+  useEffect(() => {
+    // Kiểm tra scroll buttons sau khi render
+    const timer = setTimeout(() => {
+      checkScrollButtons()
+    }, 100)
+
+    const container = scrollContainerRef.current
+    if (container) {
+      window.addEventListener('resize', checkScrollButtons)
+      return () => {
+        clearTimeout(timer)
+        window.removeEventListener('resize', checkScrollButtons)
+      }
+    }
+    return () => clearTimeout(timer)
+  }, [orders])
+
+  // Giữ nguyên scroll position khi selectedFilter thay đổi (nếu tab đã nằm trong viewport)
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const timer = setTimeout(() => {
+      // Nếu cần preserve scroll position, restore lại trước
+      if (shouldPreserveScrollRef.current && savedScrollPositionRef.current !== null) {
+        container.scrollLeft = savedScrollPositionRef.current
+        shouldPreserveScrollRef.current = false
+      }
+
+      const filterButtons = container.querySelectorAll('button')
+      const filterArray = [
+        'all',
+        'Chưa xác nhận',
+        'Chờ thanh toán',
+        'Đã xác nhận',
+        'Vận chuyển',
+        'Hoàn thành',
+        'Trả hàng/Hoàn tiền',
+        'Đã hủy'
+      ]
+      const selectedIndex = filterArray.indexOf(selectedFilter)
+
+      if (selectedIndex >= 0 && filterButtons[selectedIndex]) {
+        const selectedButton = filterButtons[selectedIndex] as HTMLElement
+        const containerRect = container.getBoundingClientRect()
+        const buttonRect = selectedButton.getBoundingClientRect()
+
+        // Kiểm tra xem button có nằm ngoài viewport không (với margin nhỏ)
+        const margin = 5
+        const isVisible =
+          buttonRect.left >= containerRect.left - margin &&
+          buttonRect.right <= containerRect.right + margin
+
+        if (!isVisible) {
+          // Button nằm ngoài viewport, scroll để đưa nó vào view
+          if (buttonRect.left < containerRect.left) {
+            // Tab nằm bên trái, scroll để đưa nó vào view
+            const scrollLeft = selectedButton.offsetLeft - container.offsetLeft - 10
+            container.scrollTo({
+              left: scrollLeft,
+              behavior: 'smooth'
+            })
+          } else if (buttonRect.right > containerRect.right) {
+            // Tab nằm bên phải, scroll để đưa nó vào view
+            const scrollLeft =
+              selectedButton.offsetLeft -
+              container.offsetLeft -
+              (container.clientWidth - selectedButton.offsetWidth) +
+              10
+            container.scrollTo({
+              left: scrollLeft,
+              behavior: 'smooth'
+            })
+          }
+        }
+        // Nếu button đã nằm trong viewport, giữ nguyên scroll position (đã restore ở trên)
+      }
+      checkScrollButtons()
+    }, 50)
+
+    return () => clearTimeout(timer)
+  }, [selectedFilter])
+
   const handleConfirmReceived = async (orderId: string) => {
     try {
       setConfirmingOrderId(orderId)
@@ -764,10 +896,23 @@ export default function OrdersContent({
 
     try {
       setRefundingOrderId(selectedOrderId)
-      await refundOrder(selectedOrderId)
+      const refundedOrder = await refundOrder(selectedOrderId)
       toast.success('Yêu cầu hoàn tiền đã được gửi thành công!')
       setShowRefundConfirmDialog(false)
-      onRefreshOrders()
+      
+      // Đợi một chút để đảm bảo backend đã cập nhật xong trước khi refresh
+      // Nếu response có isRefunded = true thì có thể refresh ngay, nếu không thì đợi thêm
+      if (refundedOrder?.isRefunded) {
+        // Backend đã cập nhật ngay, refresh sau 300ms
+        setTimeout(() => {
+          onRefreshOrders()
+        }, 300)
+      } else {
+        // Backend có thể chưa cập nhật ngay, đợi lâu hơn
+        setTimeout(() => {
+          onRefreshOrders()
+        }, 1000)
+      }
     } catch (error) {
       console.error('Lỗi khi yêu cầu hoàn tiền:', error)
       const errorMessage =
@@ -869,25 +1014,56 @@ export default function OrdersContent({
         </Button>
       </div>
 
-      <div className='flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg overflow-x-auto'>
-        {[
-          { key: 'all', label: 'Tất cả' },
-          { key: 'Chưa xác nhận', label: 'Chưa xác nhận' },
-          { key: 'Chờ thanh toán', label: 'Chờ thanh toán' },
-          { key: 'Đã xác nhận', label: 'Đã xác nhận' },
-          { key: 'Vận chuyển', label: 'Vận chuyển' },
-          { key: 'Hoàn thành', label: 'Hoàn thành' },
-          { key: 'Trả hàng/Hoàn tiền', label: 'Trả hàng/Hoàn tiền' }
-        ].map((filter) => (
-          <button
-            key={filter.key}
-            onClick={() => handleFilterChange(filter.key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-              }`}
+      <div className='relative mb-6'>
+        <div className='flex items-center gap-2 bg-gray-100 p-1 rounded-lg'>
+          {canScrollLeft && (
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => scrollTabs('left')}
+              className='h-8 w-8 p-0 flex-shrink-0 hover:bg-gray-200'
+              aria-label='Cuộn trái'
+            >
+              <ChevronLeft className='h-4 w-4' />
+            </Button>
+          )}
+          <div
+            ref={scrollContainerRef}
+            className='flex gap-1 overflow-x-auto scrollbar-hide flex-1'
+            onScroll={checkScrollButtons}
           >
-            {filter.label}
-          </button>
-        ))}
+            {[
+              { key: 'all', label: 'Tất cả' },
+              { key: 'Chưa xác nhận', label: 'Chưa xác nhận' },
+              { key: 'Chờ thanh toán', label: 'Chờ thanh toán' },
+              { key: 'Đã xác nhận', label: 'Đã xác nhận' },
+              { key: 'Vận chuyển', label: 'Vận chuyển' },
+              { key: 'Hoàn thành', label: 'Hoàn thành' },
+              { key: 'Trả hàng/Hoàn tiền', label: 'Trả hàng/Hoàn tiền' },
+              { key: 'Đã hủy', label: 'Đã hủy' }
+            ].map((filter) => (
+              <button
+                key={filter.key}
+                onClick={() => handleFilterChange(filter.key)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+          {canScrollRight && (
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => scrollTabs('right')}
+              className='h-8 w-8 p-0 flex-shrink-0 hover:bg-gray-200'
+              aria-label='Cuộn phải'
+            >
+              <ChevronRight className='h-4 w-4' />
+            </Button>
+          )}
+        </div>
       </div>
 
       {selectedFilter === 'all' && (
@@ -918,8 +1094,9 @@ export default function OrdersContent({
                   </div>
                   <p className='text-sm text-gray-600'>{order.date}</p>
                   <p className={`text-sm ${order.statusColor} mt-1`}>
-                    {order.statusText}
-
+                    {order.originalStatus === 'Returned' && order.isRefunded
+                      ? 'Đã yêu cầu hoàn tiền'
+                      : order.statusText}
                   </p>
                 </div>
                 <div>
@@ -1059,7 +1236,7 @@ export default function OrdersContent({
                 {(order.originalStatus === 'Lost' ||
                   order.originalStatus === 'Exception' ||
                   order.originalStatus === 'Damaged' ||
-                  order.originalStatus === 'Returned') && (
+                  (order.originalStatus === 'Returned' && !order.isRefunded)) && (
                     <Button
                       variant='outline'
                       size='sm'
