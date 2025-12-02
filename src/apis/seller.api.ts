@@ -133,6 +133,111 @@ export interface FinanceDashboardParams {
   pageSize?: number
 }
 
+// Dashboard Types
+export interface OverviewStats {
+  totalRevenue: number
+  totalOrders: number
+  successfulOrders: number
+  availableBalance: number
+}
+
+export interface OrderStatusDistribution {
+  statusCounts: Record<string, number>
+}
+
+export interface SalesReport {
+  labels: string[]
+  data: number[]
+}
+
+export interface TopSellingProduct {
+  productId: string
+  productName: string
+  totalSold: number
+  thumbnailUrl: string
+}
+
+export interface LowStockProduct {
+  productId: string
+  productName: string
+  variantName: string
+  remainingQuantity: number
+  thumbnailUrl: string
+}
+
+export interface PromotionStatistics {
+  activePromotions: number
+  expiringSoonPromotions: number
+  totalUsage: number
+}
+
+export interface ProductRevenueItem {
+  productId: string
+  productVariantId: string
+  productName: string
+  variantName: string
+  totalSold: number
+  retailRevenue: number
+  comboRevenue: number
+  totalRevenue: number
+}
+
+export interface ProductRevenueReport {
+  items: ProductRevenueItem[]
+  totalItems: number
+  pageNumber: number
+  pageSize: number
+}
+
+// Request/Response Types
+export interface ApiResponse<T> {
+  status: number
+  message: string
+  data: T
+}
+
+export interface ApiResponseWithPagination<T> {
+  status: number
+  message: string
+  data: T
+  pagination: {
+    pageNumber: number
+    pageSize: number
+    totalItems: number
+  }
+}
+
+// Request Params Types
+export interface SalesReportParams {
+  period: 'month' | 'year' // Required: 'month' or 'year'
+  year?: number // Required if period is 'year'
+  month?: number // Required if period is 'month' (1-12)
+}
+
+export interface TopSellingProductsParams {
+  limit?: number // Default: 5
+  period?: string // Default: 'month'
+}
+
+export interface LowStockProductsParams {
+  threshold?: number // Default: 10
+  limit?: number // Default: 10
+}
+
+export interface ProductRevenueReportParams {
+  fromDate?: string // DateTime format
+  toDate?: string // DateTime format
+  salesType?: 'All' | 'Retail' | 'Combo' // Default: 'All'
+  sortBy?: 'Revenue' | 'Quantity' // Default: 'Revenue'
+  pageNumber?: number // Default: 1
+  pageSize?: number // Default: 20
+}
+
+export interface OrdersNeedingProcessingParams {
+  pageSize?: number // Default: 10
+  pageNumber?: number // Default: 1
+}
+
 export const sellerApi = {
   // Lấy danh sách tất cả seller (backend trả về tất cả, frontend tự phân trang)
   getAllSellers: async (params?: SellersListParams): Promise<SellersListResponse> => {
@@ -166,7 +271,7 @@ export const sellerApi = {
   // Lấy dữ liệu dashboard finance
   getFinanceDashboard: async (params?: FinanceDashboardParams): Promise<DashboardFinanceData> => {
     const queryParams = new URLSearchParams()
-    
+
     if (params?.days) {
       queryParams.append('days', params.days.toString())
     }
@@ -179,6 +284,144 @@ export const sellerApi = {
 
     const url = `${API_URL}/finance-dashboard${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
     const response = await axiosInstance.get<DashboardFinanceResponse>(url)
+    return response.data.data
+  },
+
+  // Cập nhật thông tin seller
+  updateSeller: async (sellerId: string, formData: FormData): Promise<SellerDetailResponse> => {
+    const response = await axiosInstance.put<SellerDetailResponse>(`${API_URL}/${sellerId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response.data
+  },
+
+  // Gửi lại đơn đăng ký seller
+  resubmitSellerApplication: async (userId: string, formData: FormData): Promise<any> => {
+    const response = await axiosInstance.put(`${API_URL}/${userId}/ResubmitApplication`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response
+  },
+
+  // Lấy thống kê tổng quan dashboard
+  getOverviewStats: async (): Promise<OverviewStats> => {
+    const response = await axiosInstance.get<ApiResponse<OverviewStats>>(`${API_URL}/dashboard/overview`)
+    return response.data.data
+  },
+
+  // Lấy phân bổ trạng thái đơn hàng
+  getOrderStatusDistribution: async (): Promise<OrderStatusDistribution> => {
+    const response = await axiosInstance.get<ApiResponse<OrderStatusDistribution>>(
+      `${API_URL}/dashboard/order-status-distribution`
+    )
+    return response.data.data
+  },
+
+  // Lấy danh sách đơn hàng cần xử lý
+  getOrdersNeedingProcessing: async (
+    params?: OrdersNeedingProcessingParams
+  ): Promise<ApiResponseWithPagination<any[]>> => {
+    const queryParams = new URLSearchParams()
+
+    if (params?.pageSize) {
+      queryParams.append('pageSize', params.pageSize.toString())
+    }
+    if (params?.pageNumber) {
+      queryParams.append('pageNumber', params.pageNumber.toString())
+    }
+
+    const url = `${API_URL}/dashboard/orders-needing-processing${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    const response = await axiosInstance.get<ApiResponseWithPagination<any[]>>(url)
+    return response
+  },
+
+  // Lấy báo cáo doanh thu
+  getSalesReport: async (params: SalesReportParams): Promise<SalesReport> => {
+    const queryParams = new URLSearchParams()
+
+    queryParams.append('period', params.period)
+
+    if (params.year) {
+      queryParams.append('year', params.year.toString())
+    }
+    if (params.month) {
+      queryParams.append('month', params.month.toString())
+    }
+
+    const url = `${API_URL}/dashboard/sales-report?${queryParams.toString()}`
+    const response = await axiosInstance.get<ApiResponse<SalesReport>>(url)
+    return response.data.data
+  },
+
+  // Lấy danh sách sản phẩm bán chạy
+  getTopSellingProducts: async (params?: TopSellingProductsParams): Promise<TopSellingProduct[]> => {
+    const queryParams = new URLSearchParams()
+
+    if (params?.limit) {
+      queryParams.append('limit', params.limit.toString())
+    }
+    if (params?.period) {
+      queryParams.append('period', params.period)
+    }
+
+    const url = `${API_URL}/dashboard/top-selling-products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    const response = await axiosInstance.get<ApiResponse<TopSellingProduct[]>>(url)
+    return response.data.data
+  },
+
+  // Lấy danh sách sản phẩm sắp hết hàng
+  getLowStockProducts: async (params?: LowStockProductsParams): Promise<LowStockProduct[]> => {
+    const queryParams = new URLSearchParams()
+
+    if (params?.threshold) {
+      queryParams.append('threshold', params.threshold.toString())
+    }
+    if (params?.limit) {
+      queryParams.append('limit', params.limit.toString())
+    }
+
+    const url = `${API_URL}/dashboard/low-stock-products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    const response = await axiosInstance.get<ApiResponse<LowStockProduct[]>>(url)
+    return response.data.data
+  },
+
+  // Lấy thống kê khuyến mãi
+  getPromotionStatistics: async (): Promise<PromotionStatistics> => {
+    const response = await axiosInstance.get<ApiResponse<PromotionStatistics>>(
+      `${API_URL}/dashboard/promotion-statistics`
+    )
+    return response.data.data
+  },
+
+  // Lấy báo cáo doanh thu theo sản phẩm
+  getProductRevenueReport: async (params?: ProductRevenueReportParams): Promise<ProductRevenueReport> => {
+    const queryParams = new URLSearchParams()
+
+    if (params?.fromDate) {
+      queryParams.append('fromDate', params.fromDate)
+    }
+    if (params?.toDate) {
+      queryParams.append('toDate', params.toDate)
+    }
+    if (params?.salesType) {
+      queryParams.append('salesType', params.salesType)
+    }
+    if (params?.sortBy) {
+      queryParams.append('sortBy', params.sortBy)
+    }
+    if (params?.pageNumber) {
+      queryParams.append('pageNumber', params.pageNumber.toString())
+    }
+    if (params?.pageSize) {
+      queryParams.append('pageSize', params.pageSize.toString())
+    }
+
+    const url = `${API_URL}/finance-dashboard/product-revenue-report${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    const response = await axiosInstance.get<ApiResponse<ProductRevenueReport>>(url)
     return response.data.data
   }
 }

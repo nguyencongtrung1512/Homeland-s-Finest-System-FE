@@ -659,6 +659,33 @@ function OrderCreate() {
                 </div>
               </div>
             </div>
+
+            {/* Order Note Section */}
+            {(ordersFromState.length > 0 && ordersFromState.some((o) => o.note)) ||
+            (order && order.note) ? (
+              <div className='bg-white rounded-lg shadow-sm border p-6'>
+                <h2 className='text-xl font-semibold mb-4 flex items-center gap-2'>
+                  <AlertCircle className='w-5 h-5 text-green-600' />
+                  Ghi chú đơn hàng
+                </h2>
+                <div className='p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                  {ordersFromState.length > 0 ? (
+                    <div className='space-y-2'>
+                      {ordersFromState.map((o, index) =>
+                        o.note ? (
+                          <div key={o.id} className='text-sm text-gray-700'>
+                            <p className='font-medium mb-1'>Đơn hàng {index + 1}:</p>
+                            <p className='text-gray-600 whitespace-pre-wrap'>{o.note}</p>
+                          </div>
+                        ) : null
+                      )}
+                    </div>
+                  ) : order?.note ? (
+                    <p className='text-sm text-gray-700 whitespace-pre-wrap'>{order.note}</p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className='lg:col-span-1'>
