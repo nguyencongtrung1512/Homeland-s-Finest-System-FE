@@ -1,5 +1,5 @@
 // Transaction Status Enum
-export type TransactionStatus = 
+export type TransactionStatus =
   | 'Pending'     // Chờ thanh toán (Banking)
   | 'Completed'   // Đã hoàn thành (COD)
   | 'Failed'      // Thất bại
@@ -23,11 +23,18 @@ export interface Transaction {
   orderStatus: string
 }
 
-// Transaction Response interface
+// Transaction Response interface (for list)
 export interface TransactionResponse {
   status: number
   message: string
   data: Transaction[]
+}
+
+// Single Transaction Response interface (for detail)
+export interface SingleTransactionResponse {
+  status: number
+  message: string
+  data: Transaction
 }
 
 // Purchase Input interface

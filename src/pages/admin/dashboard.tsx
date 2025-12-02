@@ -8,8 +8,7 @@ import {
   Loader2,
   Tag,
   AlertCircle,
-  TrendingUp,
-  AlertTriangle
+  TrendingUp
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
@@ -17,6 +16,12 @@ import { ChartContainer, ChartTooltip } from '../../components/ui/chart'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import type { TransactionDashboardData } from '../../types/transactionDashboardType'
 import type { StoreResponse } from '../../apis/store.api'
+import {
+  getAdminDashboard,
+  getMonthlyRevenue,
+  getTopStores,
+  getProcessingStores
+} from '../../apis/walletDashboard.api'
 
 // Fake data for UI preview
 const generateFakeDashboardData = (year: number): TransactionDashboardData => {
@@ -258,7 +263,7 @@ function AdminDashboard() {
   // Fetch available years
   const fetchAvailableYears = async () => {
     try {
-      // Using fake data for UI preview
+      // Generate available years (có thể mở rộng để lấy từ API nếu cần)
       const currentYear = new Date().getFullYear()
       const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
       setAvailableYears(years)
@@ -267,13 +272,6 @@ function AdminDashboard() {
       if (years.length > 0 && !years.includes(selectedYear)) {
         setSelectedYear(years[years.length - 1])
       }
-
-      // Uncomment below to use real API
-      // const years = await getAvailableYears()
-      // setAvailableYears(years)
-      // if (years.length > 0 && !years.includes(selectedYear)) {
-      //   setSelectedYear(years[0])
-      // }
     } catch (err) {
       console.error('Error fetching available years:', err)
       // Fallback về năm hiện tại nếu không lấy được danh sách năm
@@ -281,26 +279,29 @@ function AdminDashboard() {
     }
   }
 
-  // Generate fake stores needing action (with report count > 0)
-  const fetchStoresNeedingAction = () => {
-    // Using fake data for UI preview
-    const fakeStores = generateFakeStoresNeedingAction()
-    setStoresNeedingAction(fakeStores)
-
-    // Uncomment below to use real API
-    // try {
-    //   const response = await storeApi.getAllStores({ pageSize: 100, pageNumber: 1 })
-    //   if (response.status === 200 && response.data) {
-    //     // Filter stores with reportCount > 0 and sort by reportCount descending
-    //     const storesWithReports = response.data
-    //       .filter((store) => store.sellerInfo?.reportCount && store.sellerInfo.reportCount > 0)
-    //       .sort((a, b) => (b.sellerInfo?.reportCount || 0) - (a.sellerInfo?.reportCount || 0))
-    //       .slice(0, 5) // Show top 5 stores
-    //     setStoresNeedingAction(storesWithReports)
-    //   }
-    // } catch (err) {
-    //   console.error('Error fetching stores needing action:', err)
-    // }
+  // Fetch stores needing action (processing stores)
+  const fetchStoresNeedingAction = async () => {
+    try {
+      const response = await getProcessingStores()
+      if (response.status === 200 && response.data) {
+        // Map response data to StoreResponse format
+        const stores = response.data.map((store: Partial<StoreResponse> & { storeId?: string; sellerEmail?: string }) => ({
+          ...store,
+          id: store.id || store.storeId || '',
+          sellerInfo: store.sellerInfo || {
+            reportCount: 0,
+            userInfo: {
+              email: store.sellerEmail || 'N/A'
+            }
+          }
+        })) as StoreResponse[]
+        setStoresNeedingAction(stores.slice(0, 5)) // Show top 5 stores
+      }
+    } catch (err) {
+      console.error('Error fetching stores needing action:', err)
+      // Fallback to empty array on error
+      setStoresNeedingAction([])
+    }
   }
 
   // Fetch dashboard data
@@ -309,28 +310,92 @@ function AdminDashboard() {
       setLoading(true)
       setError(null)
 
-      // Using fake data for UI preview
-      await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate API delay
-      const fakeData = generateFakeDashboardData(year)
-      setDashboardData(fakeData)
+      // Fetch admin dashboard overview
+      const adminDashboardResponse = await getAdminDashboard()
+      const adminData = adminDashboardResponse.data
 
-      // Fetch promotion stats
-      const fakePromotionStats = generateFakePromotionStats()
-      setPromotionStats(fakePromotionStats)
+      // Fetch monthly revenue
+      const revenueResponse = await getMonthlyRevenue(year)
+      const revenueData = revenueResponse.data
+
+      // Fetch top stores
+      const topStoresResponse = await getTopStores(5)
+      const topStoresData = topStoresResponse.data
+
+      // Set promotion stats from admin dashboard data
+      // Dữ liệu promotion đã có trong adminData từ API /api/wallet-dashboard/Admin
+      setPromotionStats({
+        totalPromotions: adminData.totalPromotionActive || 0, // Sử dụng active promotions làm tổng (có thể mở rộng để lấy tổng từ API khác)
+        activePromotions: adminData.totalPromotionActive || 0,
+        expiredPromotions: 0, // Không có trong API response hiện tại
+        expiringSoonPromotions: 0, // Không có trong API response hiện tại
+        totalDiscountGiven: adminData.totalSystemDiscount || 0,
+        totalOrdersWithPromotion: adminData.totalUserPromotionOrder || 0,
+        totalUsage: adminData.totalUsedPromotion || 0
+      })
 
       // Fetch stores needing action
-      fetchStoresNeedingAction()
+      await fetchStoresNeedingAction()
 
-      // Uncomment below to use real API
-      // const data = await getTransactionDashboard({
-      //   StartDate: `${year}-01-01`,
-      //   EndDate: `${year}-12-31`,
-      //   Year: year
-      // })
-      // console.log('data trung', data)
-      // setDashboardData(data)
-      // const promotionData = await getPromotionStats(30)
-      // setPromotionStats(promotionData)
+      // Map API response to TransactionDashboardData format
+      const mappedDashboardData: TransactionDashboardData = {
+        summary: {
+          totalRevenue: adminData.totalGrossRevenue,
+          totalTransactions: adminData.totalOrder,
+          successfulTransactions: adminData.totalOrder - adminData.totalProcessingOrder,
+          pendingTransactions: adminData.totalProcessingOrder,
+          failedTransactions: 0, // Không có trong API response
+          revenueByPaymentMethod: {
+            Banking: 0, // Không có trong API response
+            COD: 0
+          },
+          revenueByMonth: (() => {
+            // Convert from "T1", "T2" format to "01", "02" format
+            const monthMap: Record<string, string> = {
+              T1: '01',
+              T2: '02',
+              T3: '03',
+              T4: '04',
+              T5: '05',
+              T6: '06',
+              T7: '07',
+              T8: '08',
+              T9: '09',
+              T10: '10',
+              T11: '11',
+              T12: '12'
+            }
+            const revenueByMonth: Record<string, number> = {}
+            Object.keys(revenueData.revenueByMonth || {}).forEach((key) => {
+              const monthKey = monthMap[key] || key
+              revenueByMonth[monthKey] = revenueData.revenueByMonth[key] || 0
+            })
+            return revenueByMonth
+          })(),
+          transactionsByMonth: {}, // Không có trong API response
+          revenueByYear: {
+            [year.toString()]: adminData.totalGrossRevenue
+          },
+          transactionsByYear: {
+            [year.toString()]: adminData.totalOrder
+          },
+          revenueByCategoryPercentage: {}, // Không có trong API response
+          revenueByCategory: {}, // Không có trong API response
+          topStoresByRevenue: topStoresData.map((store) => ({
+            storeId: store.storeId,
+            storeName: store.storeName,
+            revenue: store.totalRevenues,
+            orderCount: 0, // Không có trong API response
+            logoUrl: null // StoreAdminRevenueResponse không có logoUrl, sẽ dùng ảnh default
+          }))
+        },
+        transactions: [],
+        totalCount: 0,
+        totalPages: 1,
+        currentPage: 1
+      }
+
+      setDashboardData(mappedDashboardData)
     } catch (err) {
       setError('Không thể tải dữ liệu dashboard')
       console.error('Error fetching dashboard data:', err)
@@ -347,14 +412,15 @@ function AdminDashboard() {
     if (selectedYear) {
       fetchDashboardData(selectedYear)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear])
 
   // Transform data for charts
   const revenueData = dashboardData?.summary?.revenueByMonth
     ? monthNames.map((month, index) => ({
-        month: monthLabels[index],
-        revenue: dashboardData.summary.revenueByMonth[month] || 0
-      }))
+      month: monthLabels[index],
+      revenue: dashboardData.summary.revenueByMonth[month] || 0
+    }))
     : []
 
   const handleYearChange = (year: number) => {
@@ -582,34 +648,36 @@ function AdminDashboard() {
           </CardHeader>
           <CardContent className='space-y-4'>
             {dashboardData?.summary?.topStoresByRevenue && dashboardData.summary.topStoresByRevenue.length > 0 ? (
-              dashboardData.summary.topStoresByRevenue.map((store, index) => (
-                <div key={store.storeId} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
-                  <div className='flex items-center gap-3'>
-                    <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        index === 0
-                          ? 'bg-yellow-500'
-                          : index === 1
-                            ? 'bg-gray-400'
-                            : index === 2
-                              ? 'bg-orange-500'
-                              : 'bg-blue-500'
-                      }`}
-                    >
-                      <Store className='w-5 h-5 text-white' />
+              dashboardData.summary.topStoresByRevenue.map((store, index) => {
+                const defaultLogoUrl = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+                const logoUrl = store.logoUrl || defaultLogoUrl
+                return (
+                  <div key={store.storeId} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
+                    <div className='flex items-center gap-3'>
+                      <div className='w-10 h-10 rounded-lg overflow-hidden flex-shrink-0'>
+                        <img
+                          src={logoUrl}
+                          alt={store.storeName}
+                          className='w-full h-full object-cover'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.src = defaultLogoUrl
+                          }}
+                        />
+                      </div>
+                      <div className='flex-1'>
+                        <p className='font-medium text-gray-900'>{store.storeName}</p>
+                        <p className='text-sm text-gray-600'>
+                          {formatCurrency(store.revenue)} • {store.orderCount} đơn hàng
+                        </p>
+                      </div>
                     </div>
-                    <div className='flex-1'>
-                      <p className='font-medium text-gray-900'>{store.storeName}</p>
-                      <p className='text-sm text-gray-600'>
-                        {formatCurrency(store.revenue)} • {store.orderCount} đơn hàng
-                      </p>
+                    <div className='text-right'>
+                      <p className='text-sm font-medium text-gray-900'>#{index + 1}</p>
                     </div>
                   </div>
-                  <div className='text-right'>
-                    <p className='text-sm font-medium text-gray-900'>#{index + 1}</p>
-                  </div>
-                </div>
-              ))
+                )
+              })
             ) : (
               <div className='text-center py-8 text-gray-500'>
                 <Store className='w-12 h-12 mx-auto mb-2 text-gray-300' />
@@ -628,15 +696,21 @@ function AdminDashboard() {
             {storesNeedingAction && storesNeedingAction.length > 0 ? (
               storesNeedingAction.map((store) => {
                 const reportCount = store.sellerInfo?.reportCount || 0
+                const defaultLogoUrl = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+                const logoUrl = store.logoUrl || defaultLogoUrl
                 return (
                   <div key={store.id} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
                     <div className='flex items-center gap-3 flex-1'>
-                      <div
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          reportCount >= 5 ? 'bg-red-500' : reportCount >= 3 ? 'bg-orange-500' : 'bg-yellow-500'
-                        }`}
-                      >
-                        <AlertTriangle className='w-5 h-5 text-white' />
+                      <div className='w-10 h-10 rounded-lg overflow-hidden flex-shrink-0'>
+                        <img
+                          src={logoUrl}
+                          alt={store.storeName}
+                          className='w-full h-full object-cover'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.src = defaultLogoUrl
+                          }}
+                        />
                       </div>
                       <div className='flex-1 min-w-0'>
                         <p className='font-medium text-gray-900 truncate'>{store.storeName}</p>

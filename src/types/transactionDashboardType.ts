@@ -32,6 +32,7 @@ export interface TopStoreByRevenue {
   storeName: string
   revenue: number
   orderCount: number
+  logoUrl?: string | null
 }
 
 export interface TransactionSummary {

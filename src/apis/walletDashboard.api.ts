@@ -294,12 +294,220 @@ export const getSellerDashboard = async (
 }
 
 // ========================================
+// ADMIN DASHBOARD INTERFACES
+// ========================================
+
+/**
+ * Admin Dashboard Overview Response
+ */
+export interface AdminDashboardResponse {
+  totalOrder: number
+  totalGrossRevenue: number
+  totalProcessingOrder: number
+  totalPromotionActive: number
+  totalSystemDiscount: number
+  totalUsedPromotion: number
+  totalUserPromotionOrder: number
+}
+
+/**
+ * Revenue Chart Response (Monthly Revenue)
+ */
+export interface RevenueChartResponse {
+  revenueByMonth: Record<string, number> // Format: { "T1": 5000000, "T2": 8000000, ..., "T12": 6000000 }
+}
+
+/**
+ * Store Admin Revenue Response (Top Stores)
+ */
+export interface StoreAdminRevenueResponse {
+  storeId: string
+  storeName: string
+  storeStatus: string
+  sellerUserId: string
+  sellerFullName: string
+  sellerStatus: string
+  totalRevenues: number
+}
+
+/**
+ * API Response Wrapper
+ */
+export interface ApiResponse<T> {
+  status: number
+  message: string
+  data: T
+}
+
+// ========================================
+// ADMIN DASHBOARD API FUNCTIONS
+// ========================================
+
+/**
+ * Lấy thông tin tổng quan dashboard cho Admin
+ * GET /api/wallet-dashboard/Admin
+ */
+export const getAdminDashboard = async (): Promise<ApiResponse<AdminDashboardResponse>> => {
+  const response = await axiosInstance.get<ApiResponse<AdminDashboardResponse>>(
+    `${API_URL}/Admin`
+  )
+  // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+  return response as ApiResponse<AdminDashboardResponse>
+}
+
+/**
+ * Lấy doanh thu theo tháng trong năm
+ * GET /api/wallet-dashboard/Admin/revenue-monthly?year=2025
+ */
+export const getMonthlyRevenue = async (
+  year?: number
+): Promise<ApiResponse<RevenueChartResponse>> => {
+  const response = await axiosInstance.get<ApiResponse<RevenueChartResponse>>(
+    `${API_URL}/Admin/revenue-monthly`,
+    {
+      params: {
+        year: year || new Date().getFullYear()
+      }
+    }
+  )
+  // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+  return response as ApiResponse<RevenueChartResponse>
+}
+
+/**
+ * Lấy danh sách cửa hàng có doanh thu cao nhất
+ * GET /api/wallet-dashboard/top-stores?topCount=10
+ */
+export const getTopStores = async (
+  topCount: number = 10
+): Promise<ApiResponse<StoreAdminRevenueResponse[]>> => {
+  const response = await axiosInstance.get<ApiResponse<StoreAdminRevenueResponse[]>>(
+    `${API_URL}/top-stores`,
+    {
+      params: {
+        topCount
+      }
+    }
+  )
+  // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+  return response as ApiResponse<StoreAdminRevenueResponse[]>
+}
+
+/**
+ * Lấy danh sách cửa hàng đang chờ duyệt (status Pending)
+ * GET /api/wallet-dashboard/Admin/processing-stores
+ */
+export const getProcessingStores = async (): Promise<ApiResponse<any[]>> => {
+  const response = await axiosInstance.get<ApiResponse<any[]>>(
+    `${API_URL}/Admin/processing-stores`
+  )
+  // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+  return response as ApiResponse<any[]>
+}
+
+// ========================================
+// STAFF DASHBOARD INTERFACES
+// ========================================
+
+/**
+ * Staff Dashboard Overview Response
+ */
+export interface StaffDashboardResponse {
+  TotalGrossRevenue: number
+  TotalTransaction: number
+  TotalSuccessTransaction: number
+  TotalCancelTransaction: number
+  TotalPendingTransaction: number
+}
+
+/**
+ * Store Registration Chart Response
+ */
+export interface StoreRegistrationChartResponse {
+  Year: number
+  StoreCountByMonth: Record<string, number> // Format: { "T1": 15, "T2": 23, ..., "T12": 29 }
+}
+
+/**
+ * Region Stats
+ */
+export interface RegionStats {
+  StoreCount: number
+  Percentage: number
+}
+
+/**
+ * Store Region Distribution Response
+ */
+export interface StoreRegionDistributionResponse {
+  North: RegionStats // Miền Bắc
+  Central: RegionStats // Miền Trung
+  South: RegionStats // Miền Nam
+  TotalStores: number
+}
+
+// ========================================
+// STAFF DASHBOARD API FUNCTIONS
+// ========================================
+
+/**
+ * Lấy thông tin tổng quan dashboard cho Staff
+ * GET /api/wallet-dashboard/Staff
+ */
+export const getStaffDashboard = async (): Promise<ApiResponse<StaffDashboardResponse>> => {
+  const response = await axiosInstance.get<ApiResponse<StaffDashboardResponse>>(
+    `${API_URL}/Staff`
+  )
+  // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+  return response as ApiResponse<StaffDashboardResponse>
+}
+
+/**
+ * Lấy biểu đồ số lượng cửa hàng đăng ký (đã approved) theo tháng
+ * GET /api/wallet-dashboard/Staff/store-registration-chart?year=2025
+ */
+export const getStoreRegistrationChart = async (
+  year?: number
+): Promise<ApiResponse<StoreRegistrationChartResponse>> => {
+  const response = await axiosInstance.get<ApiResponse<StoreRegistrationChartResponse>>(
+    `${API_URL}/Staff/store-registration-chart`,
+    {
+      params: {
+        year: year || new Date().getFullYear()
+      }
+    }
+  )
+  // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+  return response as ApiResponse<StoreRegistrationChartResponse>
+}
+
+/**
+ * Lấy phân bổ cửa hàng theo 3 miền (Bắc, Trung, Nam)
+ * GET /api/wallet-dashboard/Admin/store-region-distribution
+ * (Có thể dùng cho cả Admin và Staff)
+ */
+export const getStoreRegionDistribution = async (): Promise<ApiResponse<StoreRegionDistributionResponse>> => {
+  const response = await axiosInstance.get<ApiResponse<StoreRegionDistributionResponse>>(
+    `${API_URL}/Admin/store-region-distribution`
+  )
+  // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+  return response as ApiResponse<StoreRegionDistributionResponse>
+}
+
+// ========================================
 // DEFAULT EXPORT
 // ========================================
 
 export default {
   getWalletDashboard,
   getWalletMonthlyStats,
-  getSellerDashboard
+  getSellerDashboard,
+  getAdminDashboard,
+  getMonthlyRevenue,
+  getTopStores,
+  getProcessingStores,
+  getStaffDashboard,
+  getStoreRegistrationChart,
+  getStoreRegionDistribution
 }
 

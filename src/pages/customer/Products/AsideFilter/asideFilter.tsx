@@ -37,7 +37,7 @@ export interface FilterState {
   minPrice?: number
   maxPrice?: number
   categoryFilterIds?: string[] // Category UUIDs for filtering
-  subRegionFilters?: string[]
+  regionFilters?: string[]
 }
 
 interface AsideFilterProps {
@@ -50,7 +50,7 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
     initialFilters?.minPrice || 0,
     initialFilters?.maxPrice || 1000000
   ])
-  const [selectedRegions, setSelectedRegions] = useState<string[]>(initialFilters?.subRegionFilters || [])
+  const [selectedRegions, setSelectedRegions] = useState<string[]>(initialFilters?.regionFilters || [])
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialFilters?.categoryFilterIds || [])
   const [group1Categories, setGroup1Categories] = useState<ProductCategoryItem[]>([])
   const [group2Categories, setGroup2Categories] = useState<ProductCategoryItem[]>([])
@@ -104,7 +104,7 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
   useEffect(() => {
     if (initialFilters) {
       setPriceRange([initialFilters.minPrice || 0, initialFilters.maxPrice || 1000000])
-      setSelectedRegions(initialFilters.subRegionFilters || [])
+      setSelectedRegions(initialFilters.regionFilters || [])
 
       // Determine selected group based on category filters
       const categoryIds = initialFilters.categoryFilterIds || []
@@ -154,7 +154,7 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
         minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
         maxPrice: priceRange[1] < 1000000 ? priceRange[1] : undefined,
         categoryFilterIds: undefined,
-        subRegionFilters: selectedRegions.length > 0 ? selectedRegions : undefined
+        regionFilters: selectedRegions.length > 0 ? selectedRegions : undefined
       })
     } else {
       // Select new group
@@ -165,7 +165,7 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
         minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
         maxPrice: priceRange[1] < 1000000 ? priceRange[1] : undefined,
         categoryFilterIds: categoriesToSelect,
-        subRegionFilters: selectedRegions.length > 0 ? selectedRegions : undefined
+        regionFilters: selectedRegions.length > 0 ? selectedRegions : undefined
       })
     }
   }
@@ -175,7 +175,7 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
       minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
       maxPrice: priceRange[1] < 1000000 ? priceRange[1] : undefined,
       categoryFilterIds: selectedCategories.length > 0 ? selectedCategories : undefined,
-      subRegionFilters: selectedRegions.length > 0 ? selectedRegions : undefined
+      regionFilters: selectedRegions.length > 0 ? selectedRegions : undefined
     }
 
     // Gọi callback để truyền filters lên component cha
@@ -193,7 +193,7 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
       minPrice: undefined,
       maxPrice: undefined,
       categoryFilterIds: undefined,
-      subRegionFilters: undefined
+      regionFilters: undefined
     })
   }
 

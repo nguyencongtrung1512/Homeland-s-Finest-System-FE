@@ -1,6 +1,7 @@
 import axiosInstance from '../service/axiosInstance'
 import type {
   TransactionResponse,
+  SingleTransactionResponse,
   TransactionListResponse,
   TransactionQueryParams,
   PurchaseInput,
@@ -40,11 +41,16 @@ export const getTransactionPurchase = async (orderIds: string[]): Promise<Transa
 }
 
 // GET /api/Transaction/get-all - Lấy danh sách tất cả transactions với pagination
-export const getAllTransactions = async (params?: TransactionQueryParams): Promise<Transaction[]> => {
+export const getAllTransactions = async (
+  params?: TransactionQueryParams
+): Promise<{ data: Transaction[]; pagination?: TransactionListResponse['pagination'] }> => {
   const response: TransactionListResponse = await axiosInstance.get(`${API_URL}`, {
     params
   })
-  return response.data
+  return {
+    data: response.data || [],
+    pagination: response.pagination
+  }
 }
 
 // GET /api/Transaction/user/{userId} - Lấy transactions của user cụ thể
@@ -65,25 +71,25 @@ export const getOrderTransaction = async (orderId: string): Promise<Transaction>
   return response.data[0] // API trả về array, lấy phần tử đầu tiên
 }
 
-// GET /api/Transaction/detail/{transactionId} - Lấy chi tiết transaction
+// GET /api/Transaction/{transactionId} - Lấy chi tiết transaction
 export const getTransactionDetail = async (transactionId: string): Promise<Transaction> => {
-  const response: TransactionResponse = await axiosInstance.get(`${API_URL}/detail/${transactionId}`)
-  return response.data[0] // API trả về array, lấy phần tử đầu tiên
+  const response: SingleTransactionResponse = await axiosInstance.get(`${API_URL}/${transactionId}`)
+  return response.data
 }
 
 // Utility function để lấy transactions theo status
 export const getTransactionsByStatus = async (
   status: string,
   params?: Omit<TransactionQueryParams, 'status'>
-): Promise<Transaction[]> => {
-  return getAllTransactions({ ...params, status: status as any })
+): Promise<{ data: Transaction[]; pagination?: TransactionListResponse['pagination'] }> => {
+  return getAllTransactions({ ...params, status: status as 'Pending' | 'Completed' | 'Failed' | 'Cancelled' })
 }
 
 // Utility function để lấy transactions theo payment method
 export const getTransactionsByPaymentMethod = async (
   paymentMethod: string,
   params?: Omit<TransactionQueryParams, 'paymentMethod'>
-): Promise<Transaction[]> => {
+): Promise<{ data: Transaction[]; pagination?: TransactionListResponse['pagination'] }> => {
   return getAllTransactions({ ...params, paymentMethod })
 }
 

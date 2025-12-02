@@ -39,7 +39,9 @@ import {
   RefreshCw,
   Plus,
   ArrowDownCircle,
-  ArrowUpRight
+  ArrowUpRight,
+  Tag,
+  Gift
 } from 'lucide-react'
 
 function Transaction() {
@@ -963,6 +965,92 @@ function Transaction() {
         </div>
       </motion.div>
 
+      {/* 2.1. Chiết khấu (Discount Fields) */}
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
+        <h2 className='text-lg sm:text-xl font-semibold text-gray-900 mb-4'>Chiết khấu</h2>
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6'>
+          {/* Total Seller Discount */}
+          <motion.div variants={itemVariants}>
+            <motion.div variants={cardHoverVariants} whileHover='hover'>
+              <Card className='relative overflow-hidden h-full'>
+                <CardContent className='p-4 sm:p-6'>
+                  <div className='flex justify-between items-start'>
+                    <div className='flex-1'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Chiết khấu của bạn</h3>
+                        <button
+                          onClick={() => {
+                            setSelectedFormula('totalSellerDiscount')
+                            setShowFormulaModal(true)
+                          }}
+                          className='p-0.5 hover:bg-gray-100 rounded-full transition-colors'
+                          aria-label='Xem công thức'
+                        >
+                          <Info className='w-3 h-3 sm:w-4 sm:h-4 text-gray-400 hover:text-blue-600' />
+                        </button>
+                      </div>
+                      <motion.p
+                        className='text-2xl sm:text-3xl font-bold text-orange-600'
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.2, duration: 0.3 }}
+                        key={walletDataDisplay.totalSellerDiscount}
+                      >
+                        {(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} ₫
+                      </motion.p>
+                      <p className='text-xs text-gray-500 mt-2'>Tổng giảm giá bạn đã chi trả cho khách hàng</p>
+                    </div>
+                    <div className='w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                      <Tag className='w-5 h-5 sm:w-6 sm:h-6 text-orange-600' />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+
+          {/* Total System Discount */}
+          <motion.div variants={itemVariants}>
+            <motion.div variants={cardHoverVariants} whileHover='hover'>
+              <Card className='relative overflow-hidden h-full'>
+                <CardContent className='p-4 sm:p-6'>
+                  <div className='flex justify-between items-start'>
+                    <div className='flex-1'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Chiết khấu hệ thống</h3>
+                        <button
+                          onClick={() => {
+                            setSelectedFormula('totalSystemDiscount')
+                            setShowFormulaModal(true)
+                          }}
+                          className='p-0.5 hover:bg-gray-100 rounded-full transition-colors'
+                          aria-label='Xem công thức'
+                        >
+                          <Info className='w-3 h-3 sm:w-4 sm:h-4 text-gray-400 hover:text-blue-600' />
+                        </button>
+                      </div>
+                      <motion.p
+                        className='text-2xl sm:text-3xl font-bold text-cyan-600'
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.3, duration: 0.3 }}
+                        key={walletDataDisplay.totalSystemDiscount}
+                      >
+                        {(walletDataDisplay.totalSystemDiscount || 0).toLocaleString()} ₫
+                      </motion.p>
+                      <p className='text-xs text-gray-500 mt-2'>Tổng giảm giá hệ thống đã hỗ trợ cho khách hàng</p>
+                    </div>
+                    <div className='w-10 h-10 sm:w-12 sm:h-12 bg-cyan-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                      <Gift className='w-5 h-5 sm:w-6 sm:h-6 text-cyan-600' />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+        </div>
+      </motion.div>
+
       {/* 3. Derived (Tính toán) */}
       <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
         <div className='flex items-center gap-2 mb-4'>
@@ -1399,31 +1487,80 @@ function Transaction() {
               </div>
             )}
 
-            {/* Total Discount Formula */}
-            {selectedFormula === 'totalDiscount' && (
-              <div className='bg-yellow-50 p-4 rounded-lg border border-yellow-200'>
-                <h3 className='font-semibold text-yellow-900 mb-3 flex items-center gap-2'>
-                  <Receipt className='w-5 h-5' />
-                  Tổng giảm giá
+            {/* Total Seller Discount Formula */}
+            {selectedFormula === 'totalSellerDiscount' && (
+              <div className='bg-orange-50 p-4 rounded-lg border border-orange-200'>
+                <h3 className='font-semibold text-orange-900 mb-3 flex items-center gap-2'>
+                  <Tag className='w-5 h-5' />
+                  Chiết khấu của bạn
                 </h3>
                 <div className='space-y-2 text-sm'>
                   <div className='flex items-center gap-2'>
                     <span className='font-medium text-gray-700'>Công thức:</span>
-                    <code className='bg-white px-2 py-1 rounded border border-yellow-300 text-yellow-700'>
-                      Tổng giảm giá = Σ(Giảm giá sản phẩm)
+                    <code className='bg-white px-2 py-1 rounded border border-orange-300 text-orange-700'>
+                      Chiết khấu của bạn = Σ(productPromotion)
                     </code>
                   </div>
                   <div className='text-gray-600 mt-2'>
                     <p className='mb-1'>Trong đó:</p>
                     <ul className='list-disc list-inside space-y-1 ml-2'>
-                      <li>Giảm giá sản phẩm = Giảm giá mà người bán chịu</li>
-                      <li>Σ là ký hiệu tổng (tổng tất cả các giảm giá)</li>
+                      <li>productPromotion = Tổng discount từ các promotion có PromotionType = "Product"</li>
+                      <li>Bao gồm: Giảm giá sản phẩm, giảm giá đơn hàng từ Store của bạn</li>
+                      <li>Σ là ký hiệu tổng (tổng tất cả các chiết khấu từ đơn hàng đã PayoutSeller)</li>
                     </ul>
                   </div>
-                  <div className='mt-3 pt-3 border-t border-yellow-200'>
+                  <div className='text-gray-600 mt-3 pt-3 border-t border-orange-200'>
+                    <p className='mb-1'><strong>Logic:</strong></p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>✅ Tăng khi có đơn hàng sử dụng Product promotions (Bạn chịu chi phí)</li>
+                      <li>✅ Đây là số tiền bạn đã giảm giá cho khách hàng từ các khuyến mãi của bạn</li>
+                    </ul>
+                  </div>
+                  <div className='mt-3 pt-3 border-t border-orange-200'>
                     <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
-                    <span className='font-bold text-yellow-600'>
+                    <span className='font-bold text-orange-600'>
                       {(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} ₫
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Total System Discount Formula */}
+            {selectedFormula === 'totalSystemDiscount' && (
+              <div className='bg-cyan-50 p-4 rounded-lg border border-cyan-200'>
+                <h3 className='font-semibold text-cyan-900 mb-3 flex items-center gap-2'>
+                  <Gift className='w-5 h-5' />
+                  Chiết khấu hệ thống
+                </h3>
+                <div className='space-y-2 text-sm'>
+                  <div className='flex items-center gap-2'>
+                    <span className='font-medium text-gray-700'>Công thức:</span>
+                    <code className='bg-white px-2 py-1 rounded border border-cyan-300 text-cyan-700'>
+                      Chiết khấu hệ thống = Σ(platformPromotion)
+                    </code>
+                  </div>
+                  <div className='text-gray-600 mt-2'>
+                    <p className='mb-1'>Trong đó:</p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>platformPromotion = Tổng discount từ các promotion có PromotionType = "Global" hoặc "User"</li>
+                      <li>+ ShipPrice (nếu FreeShip từ Global/User promotions - Platform trả phí ship)</li>
+                      <li>Σ là ký hiệu tổng (tổng tất cả các chiết khấu từ đơn hàng đã PayoutSeller)</li>
+                    </ul>
+                  </div>
+                  <div className='text-gray-600 mt-3 pt-3 border-t border-cyan-200'>
+                    <p className='mb-1'><strong>Logic:</strong></p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>✅ Tăng khi có đơn hàng sử dụng Global/User promotions (Platform chịu chi phí)</li>
+                      <li>✅ Tăng khi có đơn hàng FreeShip từ Global/User promotions (Platform trả phí ship)</li>
+                      <li>❌ KHÔNG bao gồm Product FreeShip (Bạn tự trả)</li>
+                      <li>✅ Đây là số tiền Platform đã hỗ trợ giảm giá cho khách hàng</li>
+                    </ul>
+                  </div>
+                  <div className='mt-3 pt-3 border-t border-cyan-200'>
+                    <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
+                    <span className='font-bold text-cyan-600'>
+                      {(walletDataDisplay.totalSystemDiscount || 0).toLocaleString()} ₫
                     </span>
                   </div>
                 </div>
@@ -1459,8 +1596,13 @@ function Transaction() {
                         <span className='text-gray-600'>{walletDataDisplay.grossRevenue.toLocaleString()} ₫</span>
                       </div>
                       <div className='flex items-center gap-2'>
-                        <span className='font-medium text-gray-700'>Trừ giảm giá bạn chịu:</span>
+                        <span className='font-medium text-gray-700'>Trừ chiết khấu của bạn:</span>
                         <span className='text-red-600'>-{(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} ₫</span>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <span className='font-medium text-gray-700'>Trừ chiết khấu hệ thống:</span>
+                        <span className='text-gray-500'>-{(walletDataDisplay.totalSystemDiscount || 0).toLocaleString()} ₫</span>
+                        <span className='text-xs text-gray-400'>(Platform hỗ trợ)</span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Trừ hoa hồng:</span>
@@ -1626,6 +1768,44 @@ function Transaction() {
                         <li>Giảm giá bạn chịu = Tổng discount từ Product promotion</li>
                         <li>Hoa hồng = Tổng hoa hồng platform thu từ đơn hàng</li>
                       </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Seller Discount Formula */}
+                <div className='bg-orange-50 p-4 rounded-lg border border-orange-200'>
+                  <h3 className='font-semibold text-orange-900 mb-3 flex items-center gap-2'>
+                    <Tag className='w-5 h-5' />
+                    Chiết khấu của bạn
+                  </h3>
+                  <div className='space-y-2 text-sm'>
+                    <div className='flex items-center gap-2'>
+                      <span className='font-medium text-gray-700'>Công thức:</span>
+                      <code className='bg-white px-2 py-1 rounded border border-orange-300 text-orange-700'>
+                        Chiết khấu của bạn = Σ(productPromotion)
+                      </code>
+                    </div>
+                    <div className='text-gray-600 mt-2'>
+                      <p>Tổng số tiền bạn đã giảm giá cho khách hàng từ các khuyến mãi Product của bạn</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total System Discount Formula */}
+                <div className='bg-cyan-50 p-4 rounded-lg border border-cyan-200'>
+                  <h3 className='font-semibold text-cyan-900 mb-3 flex items-center gap-2'>
+                    <Gift className='w-5 h-5' />
+                    Chiết khấu hệ thống
+                  </h3>
+                  <div className='space-y-2 text-sm'>
+                    <div className='flex items-center gap-2'>
+                      <span className='font-medium text-gray-700'>Công thức:</span>
+                      <code className='bg-white px-2 py-1 rounded border border-cyan-300 text-cyan-700'>
+                        Chiết khấu hệ thống = Σ(platformPromotion)
+                      </code>
+                    </div>
+                    <div className='text-gray-600 mt-2'>
+                      <p>Tổng số tiền Platform đã hỗ trợ giảm giá cho khách hàng từ Global/User promotions</p>
                     </div>
                   </div>
                 </div>

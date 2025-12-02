@@ -4,12 +4,13 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
-import {
-  getWalletDashboard,
-  getWalletMonthlyStats,
-  type SellerWalletSummary,
-  type WalletMonthlyStatsResponse
-} from '../../../apis/walletDashboard.api'
+// Temporarily disabled walletDashboard API calls
+// import {
+//   getWalletDashboard,
+//   getWalletMonthlyStats,
+//   type SellerWalletSummary,
+//   type WalletMonthlyStatsResponse
+// } from '../../../apis/walletDashboard.api'
 import { getWalletBalance } from '../../../apis/wallet.api'
 import type { WalletData } from '../../../types/walletType'
 import { toast } from '../../../utils/toast'
@@ -35,12 +36,16 @@ function FinanceManagement() {
   const [walletData, setWalletData] = useState<WalletData | null>(null)
   const [loadingWallet, setLoadingWallet] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [transactionPage] = useState(1)
-  const transactionsPerPage = 10
+  // Temporarily disabled - not used when walletDashboard API is disabled
+  // const [transactionPage] = useState(1)
+  // const transactionsPerPage = 10
 
-  const [walletDashboardData, setWalletDashboardData] = useState<SellerWalletSummary | null>(null)
-  const [dashboardYear] = useState<number>(new Date().getFullYear())
-  const [monthlyStats, setMonthlyStats] = useState<WalletMonthlyStatsResponse | null>(null)
+  // Temporarily disabled walletDashboard API
+  // const [walletDashboardData, setWalletDashboardData] = useState<SellerWalletSummary | null>(null)
+  // const [dashboardYear] = useState<number>(new Date().getFullYear())
+  // const [monthlyStats, setMonthlyStats] = useState<WalletMonthlyStatsResponse | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const walletDashboardData = null as any
 
   const [dashboardDays, setDashboardDays] = useState(30)
   const [productRevenueSalesType, setProductRevenueSalesType] = useState<'All' | 'Retail' | 'Combo'>('All')
@@ -67,37 +72,38 @@ function FinanceManagement() {
     }
   }
 
-  const fetchWalletDashboard = async (year?: number) => {
-    try {
-      const response = await getWalletDashboard({
-        year: year || dashboardYear,
-        page: transactionPage,
-        pageSize: transactionsPerPage
-      })
-      if (response?.data) {
-        if (response.data.sellerSummary) {
-          setWalletDashboardData(response.data.sellerSummary)
-        }
-      }
-    } catch (error: unknown) {
-      console.error('Error fetching wallet dashboard:', error)
-      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(errorMessage || 'Không thể tải dữ liệu dashboard')
-    }
-  }
+  // Temporarily disabled walletDashboard API calls
+  // const fetchWalletDashboard = async (year?: number) => {
+  //   try {
+  //     const response = await getWalletDashboard({
+  //       year: year || dashboardYear,
+  //       page: transactionPage,
+  //       pageSize: transactionsPerPage
+  //     })
+  //     if (response?.data) {
+  //       if (response.data.sellerSummary) {
+  //         setWalletDashboardData(response.data.sellerSummary)
+  //       }
+  //     }
+  //   } catch (error: unknown) {
+  //     console.error('Error fetching wallet dashboard:', error)
+  //     const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+  //     toast.error(errorMessage || 'Không thể tải dữ liệu dashboard')
+  //   }
+  // }
 
-  const fetchMonthlyStats = async (year?: number) => {
-    try {
-      const response = await getWalletMonthlyStats({
-        year: year || dashboardYear
-      })
-      if (response) {
-        setMonthlyStats(response)
-      }
-    } catch (error: unknown) {
-      console.error('Error fetching monthly stats:', error)
-    }
-  }
+  // const fetchMonthlyStats = async (year?: number) => {
+  //   try {
+  //     const response = await getWalletMonthlyStats({
+  //       year: year || dashboardYear
+  //     })
+  //     if (response) {
+  //       setMonthlyStats(response)
+  //     }
+  //   } catch (error: unknown) {
+  //     console.error('Error fetching monthly stats:', error)
+  //   }
+  // }
 
   const fetchProductRevenueReport = async () => {
     try {
@@ -139,8 +145,8 @@ function FinanceManagement() {
     setRefreshing(true)
     await Promise.all([
       fetchWalletBalance(),
-      fetchWalletDashboard(),
-      fetchMonthlyStats(),
+      // fetchWalletDashboard(), // Temporarily disabled
+      // fetchMonthlyStats(), // Temporarily disabled
       fetchProductRevenueReport(),
       fetchFinanceDashboard()
     ])
@@ -150,18 +156,19 @@ function FinanceManagement() {
 
   useEffect(() => {
     fetchWalletBalance()
-    fetchWalletDashboard()
-    fetchMonthlyStats()
+    // fetchWalletDashboard() // Temporarily disabled
+    // fetchMonthlyStats() // Temporarily disabled
     fetchProductRevenueReport()
     fetchFinanceDashboard()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    fetchWalletDashboard()
-    fetchMonthlyStats()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dashboardYear, transactionPage])
+  // Temporarily disabled
+  // useEffect(() => {
+  //   fetchWalletDashboard()
+  //   fetchMonthlyStats()
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [dashboardYear, transactionPage])
 
   useEffect(() => {
     fetchProductRevenueReport()
@@ -242,24 +249,24 @@ function FinanceManagement() {
       return financeDashboardData.charts.revenue30Days
     }
 
-    // Fallback: Use monthlyStats if available
-    if (monthlyStats?.revenueByMonth && walletDashboardData?.revenueByMonth) {
-      const data = []
-      const today = new Date()
-      for (let i = dashboardDays - 1; i >= 0; i--) {
-        const date = new Date(today)
-        date.setDate(date.getDate() - i)
-        const monthKey = String(date.getMonth() + 1).padStart(2, '0')
-        const revenue = walletDashboardData.revenueByMonth[monthKey] || 0
-        const commission = Math.floor(revenue * 0.1)
-        data.push({
-          date: date.toISOString(),
-          netRevenue: revenue,
-          commission: commission
-        })
-      }
-      return data
-    }
+    // Fallback: Use monthlyStats if available (temporarily disabled)
+    // if (monthlyStats?.revenueByMonth && walletDashboardData?.revenueByMonth) {
+    //   const data = []
+    //   const today = new Date()
+    //   for (let i = dashboardDays - 1; i >= 0; i--) {
+    //     const date = new Date(today)
+    //     date.setDate(date.getDate() - i)
+    //     const monthKey = String(date.getMonth() + 1).padStart(2, '0')
+    //     const revenue = walletDashboardData.revenueByMonth[monthKey] || 0
+    //     const commission = Math.floor(revenue * 0.1)
+    //     data.push({
+    //       date: date.toISOString(),
+    //       netRevenue: revenue,
+    //       commission: commission
+    //     })
+    //   }
+    //   return data
+    // }
 
     // Final fallback: Mock data
     const data = []
@@ -274,7 +281,7 @@ function FinanceManagement() {
       })
     }
     return data
-  }, [dashboardDays, financeDashboardData, monthlyStats, walletDashboardData])
+  }, [dashboardDays, financeDashboardData])
 
   const productRevenueDisplay = productRevenueData || {
     items: [],
@@ -379,9 +386,10 @@ function FinanceManagement() {
                 day: 'numeric'
               })
             },
-            label: (context: { dataset: { label?: string }; parsed: { y: number } }) => {
+            label: (context: { dataset: { label?: string }; parsed: { y: number | null } }) => {
               const label = context.dataset.label || ''
               const value = context.parsed.y
+              if (value === null || value === undefined) return `${label}: 0 ₫`
               return `${label}: ${formatCurrency(value)}`
             }
           }
@@ -578,7 +586,7 @@ function FinanceManagement() {
             >
               <option value={7}>7 ngày</option>
               <option value={30}>30 ngày</option>
-              <option value={90}>90 ngày</option>
+              <option value={360}>360 ngày</option>
             </select>
           </div>
         </div>
