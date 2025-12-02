@@ -283,8 +283,9 @@ export const sellerApi = {
     }
 
     const url = `${API_URL}/finance-dashboard${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
-    const response = await axiosInstance.get<DashboardFinanceResponse>(url)
-    return response.data.data
+    // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+    const response = (await axiosInstance.get(url)) as unknown as DashboardFinanceResponse
+    return response.data
   },
 
   // Cập nhật thông tin seller
@@ -421,7 +422,8 @@ export const sellerApi = {
     }
 
     const url = `${API_URL}/finance-dashboard/product-revenue-report${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
-    const response = await axiosInstance.get<ApiResponse<ProductRevenueReport>>(url)
-    return response.data.data
+    // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+    const response = (await axiosInstance.get(url)) as unknown as ApiResponse<ProductRevenueReport>
+    return response.data
   }
 }

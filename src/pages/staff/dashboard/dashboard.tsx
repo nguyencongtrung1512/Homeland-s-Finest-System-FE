@@ -70,13 +70,31 @@ function StaffDashboard() {
     fetchDashboardData()
   }, [selectedYear])
 
-  // Transform API data for charts
-  const revenueData = monthlyStats
-    ? Object.entries(monthlyStats.storeRegistrationsByMonth).map(([month, count]) => ({
-      period: `T${month}`,
-      revenue: count
-    }))
-    : []
+  // Hard-coded data for store registrations chart (temporary, before API integration)
+  // This chart displays the number of stores registered each month (T1-T12)
+  // Each bar represents the count of new store registrations in that month
+  const revenueData = [
+    { period: 'T1', revenue: 15 },
+    { period: 'T2', revenue: 23 },
+    { period: 'T3', revenue: 18 },
+    { period: 'T4', revenue: 32 },
+    { period: 'T5', revenue: 28 },
+    { period: 'T6', revenue: 35 },
+    { period: 'T7', revenue: 42 },
+    { period: 'T8', revenue: 38 },
+    { period: 'T9', revenue: 45 },
+    { period: 'T10', revenue: 40 },
+    { period: 'T11', revenue: 33 },
+    { period: 'T12', revenue: 29 }
+  ]
+
+  // Original API-based data (commented out for now)
+  // const revenueData = monthlyStats
+  //   ? Object.entries(monthlyStats.storeRegistrationsByMonth).map(([month, count]) => ({
+  //     period: `T${month}`,
+  //     revenue: count
+  //   }))
+  //   : []
 
   const ordersTransactionsData = monthlyStats
     ? Object.entries(monthlyStats.successfulTransactionsByMonth).map(([month, successful]) => ({
