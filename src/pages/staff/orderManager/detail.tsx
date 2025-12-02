@@ -362,13 +362,13 @@ function OrderDetailStaff() {
 
           {/* Order Note */}
           {order.note && order.status !== 'Cancel' && order.status !== 'Returned' && (
-            <Card className='border-blue-200 bg-blue-50'>
+            <Card className='border-gray-200 bg-gray-50'>
               <CardContent className='pt-6'>
-                <div className='flex items-center gap-2 text-blue-700 mb-2'>
+                <div className='flex items-center gap-2 text-gray-700 mb-2'>
                   <AlertCircle className='h-4 w-4' />
                   <span className='font-semibold text-sm'>Ghi chú đơn hàng</span>
                 </div>
-                <p className='text-blue-700 text-sm whitespace-pre-wrap'>{order.note}</p>
+                <p className='text-gray-700 text-sm whitespace-pre-wrap'>{order.note}</p>
               </CardContent>
             </Card>
           )}

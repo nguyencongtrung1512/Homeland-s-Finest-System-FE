@@ -1,7 +1,19 @@
+import { useState, useEffect } from 'react'
 import StoreStatusNotice from '../../../components/Seller/StoreStatusNotice'
 import { useStore } from '../../../contexts/store.context'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
+import Loading from '../../../components/Loading/loading'
+import { toast } from '../../../utils/toast'
+import { sellerApi } from '../../../apis/seller.api'
+import type {
+  OverviewStats,
+  OrderStatusDistribution,
+  TopSellingProduct,
+  LowStockProduct,
+  PromotionStatistics,
+  SalesReport
+} from '../../../apis/seller.api'
 import {
   TrendingUp,
   Package,
@@ -12,127 +24,213 @@ import {
   Plus,
   ShoppingCart,
   Gift,
-  FileText
+  FileText,
+  RefreshCw
 } from 'lucide-react'
 
 function Dashboard() {
   const { store, isStoreApproved } = useStore()
 
-  // ========== MOCK DATA ==========
-  // Key Metrics Data
-  const metricsData = {
-    totalRevenue: 15200000, // 15.2M VNĐ
-    totalOrders: 342,
-    successfulOrders: 298,
-    availableBalance: 8500000, // 8.5M VNĐ
-    revenueChange: 12.5, // % tăng so với tháng trước
-    ordersChange: 8.3
+  // State for API data
+  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null)
+  const [orderStatusDistribution, setOrderStatusDistribution] = useState<OrderStatusDistribution | null>(null)
+  const [ordersNeedingProcessing, setOrdersNeedingProcessing] = useState<any[]>([])
+  const [salesReport, setSalesReport] = useState<SalesReport | null>(null)
+  const [topProducts, setTopProducts] = useState<TopSellingProduct[]>([])
+  const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([])
+  const [promotionStats, setPromotionStats] = useState<PromotionStatistics | null>(null)
+
+  // Loading states
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+
+  // Fetch all dashboard data
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      const [
+        overviewData,
+        orderStatusData,
+        ordersData,
+        salesData,
+        topProductsData,
+        lowStockData,
+        promotionData
+      ] = await Promise.all([
+        sellerApi.getOverviewStats().catch(() => null),
+        sellerApi.getOrderStatusDistribution().catch(() => null),
+        sellerApi.getOrdersNeedingProcessing({ pageSize: 5, pageNumber: 1 }).catch(() => ({ data: [], pagination: { totalItems: 0 } })),
+        sellerApi.getSalesReport({ period: 'year', year: selectedYear }).catch(() => null),
+        sellerApi.getTopSellingProducts({ limit: 5 }).catch(() => []),
+        sellerApi.getLowStockProducts({ limit: 5 }).catch(() => []),
+        sellerApi.getPromotionStatistics().catch(() => null)
+      ])
+
+      if (overviewData) setOverviewStats(overviewData)
+      if (orderStatusData) setOrderStatusDistribution(orderStatusData)
+      if (ordersData?.data) setOrdersNeedingProcessing(ordersData.data)
+      if (salesData) setSalesReport(salesData)
+      if (topProductsData) setTopProducts(topProductsData)
+      if (lowStockData) setLowStockProducts(lowStockData)
+      if (promotionData) setPromotionStats(promotionData)
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+      toast.error('Không thể tải dữ liệu dashboard')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Revenue by Month (12 tháng)
-  const revenueByMonth = [
-    { month: 'T1', revenue: 1200000 },
-    { month: 'T2', revenue: 1500000 },
-    { month: 'T3', revenue: 1800000 },
-    { month: 'T4', revenue: 1400000 },
-    { month: 'T5', revenue: 1600000 },
-    { month: 'T6', revenue: 1900000 },
-    { month: 'T7', revenue: 2100000 },
-    { month: 'T8', revenue: 1800000 },
-    { month: 'T9', revenue: 1700000 },
-    { month: 'T10', revenue: 2000000 },
-    { month: 'T11', revenue: 2200000 },
-    { month: 'T12', revenue: 1500000 }
-  ]
-
-  // Orders by Month
-  const ordersByMonth = [
-    { month: 'T1', orders: 28 },
-    { month: 'T2', orders: 32 },
-    { month: 'T3', orders: 35 },
-    { month: 'T4', orders: 29 },
-    { month: 'T5', orders: 31 },
-    { month: 'T6', orders: 38 },
-    { month: 'T7', orders: 42 },
-    { month: 'T8', orders: 36 },
-    { month: 'T9', orders: 34 },
-    { month: 'T10', orders: 40 },
-    { month: 'T11', orders: 45 },
-    { month: 'T12', orders: 32 }
-  ]
-
-  // Revenue by Payment Method
-  const revenueByPaymentMethod = {
-    banking: 9500000, // 9.5M
-    cod: 5700000 // 5.7M
+  // Refresh data
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchDashboardData()
+    setRefreshing(false)
+    toast.success('Đã làm mới dữ liệu')
   }
 
-  // Order Status Distribution
-  const orderStatusData = [
-    { status: 'Processing', label: 'Chờ xác nhận', count: 12, color: 'bg-yellow-100 text-yellow-800' },
-    { status: 'Confirmed', label: 'Đã xác nhận', count: 8, color: 'bg-blue-100 text-blue-800' },
-    { status: 'Delivered', label: 'Đã giao', count: 298, color: 'bg-green-100 text-green-800' },
-    { status: 'Cancelled', label: 'Đã hủy', count: 15, color: 'bg-red-100 text-red-800' },
-    { status: 'Picking', label: 'Đang lấy hàng', count: 5, color: 'bg-purple-100 text-purple-800' },
-    { status: 'Transporting', label: 'Đang vận chuyển', count: 4, color: 'bg-indigo-100 text-indigo-800' }
-  ]
+  // Initial fetch
+  useEffect(() => {
+    if (isStoreApproved) {
+      fetchDashboardData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStoreApproved, selectedYear])
 
-  // Orders Need Attention
-  const ordersNeedAttention = [
-    { id: 'ORD-001', customer: 'Nguyễn Văn A', amount: 450000, status: 'Processing', createdAt: '14/01/2025' },
-    { id: 'ORD-002', customer: 'Trần Thị B', amount: 320000, status: 'Processing', createdAt: '14/01/2025' },
-    { id: 'ORD-003', customer: 'Lê Văn C', amount: 680000, status: 'Confirmed', createdAt: '13/01/2025' },
-    { id: 'ORD-004', customer: 'Phạm Thị D', amount: 250000, status: 'Processing', createdAt: '14/01/2025' },
-    { id: 'ORD-005', customer: 'Hoàng Văn E', amount: 890000, status: 'Confirmed', createdAt: '13/01/2025' }
-  ]
-
-  // Top Selling Products
-  const topProducts = [
-    { name: 'Bánh tráng nướng', revenue: 3200000, percentage: 100 },
-    { name: 'Mắm ruốc', revenue: 2800000, percentage: 87.5 },
-    { name: 'Khô bò', revenue: 2500000, percentage: 78.1 },
-    { name: 'Chà bông', revenue: 2000000, percentage: 62.5 },
-    { name: 'Bánh phồng tôm', revenue: 1800000, percentage: 56.3 }
-  ]
-
-  // Low Stock Products
-  const lowStockProducts = [
-    { name: 'Mắm tôm', quantity: 2, level: 'critical' },
-    { name: 'Tương ớt', quantity: 5, level: 'warning' },
-    { name: 'Bánh đa nem', quantity: 8, level: 'warning' },
-    { name: 'Nước mắm', quantity: 12, level: 'warning' },
-    { name: 'Mì Quảng', quantity: 15, level: 'warning' }
-  ]
-
-  // Promotion Stats
-  const promotionStats = {
-    active: 5,
-    expiringSoon: 2,
-    totalUsage: 1248
+  // Map order status distribution to display format
+  const getOrderStatusLabel = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      Processing: 'Chờ xác nhận',
+      Confirmed: 'Đã xác nhận',
+      Delivered: 'Đã giao',
+      Cancelled: 'Đã hủy',
+      Picking: 'Đang lấy hàng',
+      Transporting: 'Đang vận chuyển',
+      NotYet: 'Chưa xử lý'
+    }
+    return statusMap[status] || status
   }
 
-  // Alerts
-  const alerts = [
-    { type: 'order', message: '12 đơn hàng đang chờ xử lý', count: 12, priority: 'high' },
-    { type: 'stock', message: '5 sản phẩm sắp hết hàng', count: 5, priority: 'medium' },
-    { type: 'promotion', message: '2 khuyến mãi sắp hết hạn', count: 2, priority: 'low' }
-  ]
+  const getOrderStatusColor = (status: string): string => {
+    const colorMap: Record<string, string> = {
+      Processing: 'bg-yellow-100 text-yellow-800',
+      Confirmed: 'bg-blue-100 text-blue-800',
+      Delivered: 'bg-green-100 text-green-800',
+      Cancelled: 'bg-red-100 text-red-800',
+      Picking: 'bg-purple-100 text-purple-800',
+      Transporting: 'bg-indigo-100 text-indigo-800',
+      NotYet: 'bg-gray-100 text-gray-800'
+    }
+    return colorMap[status] || 'bg-gray-100 text-gray-800'
+  }
+
+  // Transform order status distribution to array
+  const orderStatusData = orderStatusDistribution && orderStatusDistribution.statusCounts && typeof orderStatusDistribution.statusCounts === 'object'
+    ? Object.entries(orderStatusDistribution.statusCounts).map(([status, count]) => ({
+      status,
+      label: getOrderStatusLabel(status),
+      count: (count as number) || 0,
+      color: getOrderStatusColor(status)
+    }))
+    : []
+
+  // Transform sales report to chart data
+  const revenueByMonth = salesReport && salesReport.labels && Array.isArray(salesReport.labels) && salesReport.data && Array.isArray(salesReport.data)
+    ? salesReport.labels.map((label, index) => ({
+      month: label,
+      revenue: salesReport.data[index] || 0
+    }))
+    : []
+
+  // For orders by month, we'll use the same sales report data structure
+  // If API doesn't provide separate orders data, we can estimate or use revenue data
+  const ordersByMonth = revenueByMonth && Array.isArray(revenueByMonth)
+    ? revenueByMonth.map((item) => ({
+      month: item.month,
+      orders: Math.floor(item.revenue / 50000) // Estimate: ~50k per order
+    }))
+    : []
+
+  // Calculate alerts from real data
+  const alerts = []
+  if (Array.isArray(ordersNeedingProcessing) && ordersNeedingProcessing.length > 0) {
+    alerts.push({
+      type: 'order',
+      message: `${ordersNeedingProcessing.length} đơn hàng đang chờ xử lý`,
+      count: ordersNeedingProcessing.length,
+      priority: 'high' as const
+    })
+  }
+  if (Array.isArray(lowStockProducts) && lowStockProducts.length > 0) {
+    alerts.push({
+      type: 'stock',
+      message: `${lowStockProducts.length} sản phẩm sắp hết hàng`,
+      count: lowStockProducts.length,
+      priority: 'medium' as const
+    })
+  }
+  if (promotionStats && promotionStats.expiringSoonPromotions > 0) {
+    alerts.push({
+      type: 'promotion',
+      message: `${promotionStats.expiringSoonPromotions} khuyến mãi sắp hết hạn`,
+      count: promotionStats.expiringSoonPromotions,
+      priority: 'low' as const
+    })
+  }
+
+  // Calculate revenue change (mock for now, can be enhanced with previous period data)
+  const revenueChange = 0 // TODO: Calculate from previous period
+  const ordersChange = 0 // TODO: Calculate from previous period
 
   // Helper functions
   const formatCurrency = (amount: number) => {
+    if (!amount && amount !== 0) return '0 VNĐ'
     if (amount >= 1000000) {
       return `${(amount / 1000000).toFixed(1)}M VNĐ`
     }
     return `${(amount / 1000).toFixed(0)}k VNĐ`
   }
 
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    } catch {
+      return dateString
+    }
+  }
+
   const getMaxRevenue = () => {
-    return Math.max(...revenueByMonth.map((m) => m.revenue))
+    if (!Array.isArray(revenueByMonth) || revenueByMonth.length === 0) return 1
+    return Math.max(...revenueByMonth.map((m) => m.revenue || 0), 1)
   }
 
   const getMaxOrders = () => {
-    return Math.max(...ordersByMonth.map((m) => m.orders))
+    if (!Array.isArray(ordersByMonth) || ordersByMonth.length === 0) return 1
+    return Math.max(...ordersByMonth.map((m) => m.orders || 0), 1)
   }
+
+  // Calculate top products percentage
+  const topProductsWithPercentage = Array.isArray(topProducts) && topProducts.length > 0
+    ? topProducts.map((product, index) => {
+      const maxRevenue = topProducts[0]?.totalSold || 1
+      return {
+        name: product.productName || 'N/A',
+        revenue: product.totalSold || 0,
+        percentage: index === 0 ? 100 : ((product.totalSold || 0) / maxRevenue) * 100
+      }
+    })
+    : []
+
+  // Transform low stock products
+  const lowStockProductsDisplay = Array.isArray(lowStockProducts) && lowStockProducts.length > 0
+    ? lowStockProducts.map((product) => ({
+      name: product.productName || 'N/A',
+      quantity: product.remainingQuantity || 0,
+      level: (product.remainingQuantity || 0) <= 5 ? ('critical' as const) : ('warning' as const)
+    }))
+    : []
 
   // Nếu store chưa được duyệt, hiển thị thông báo thay vì dashboard thông thường
   if (store && !isStoreApproved) {
@@ -149,6 +247,15 @@ function Dashboard() {
     )
   }
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className='flex items-center justify-center min-h-screen'>
+        <Loading />
+      </div>
+    )
+  }
+
   return (
     <div className='space-y-6'>
       {/* Page Header */}
@@ -159,16 +266,22 @@ function Dashboard() {
             Chào mừng trở lại{store?.storeName ? `, ${store.storeName}` : ''}! Đây là tổng quan về cửa hàng của bạn.
           </p>
         </div>
-        {store && (
-          <Badge
-            className={`px-3 py-1 ${store.status === 'Approved' || store.status === 'Active'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-yellow-100 text-yellow-800'
-              }`}
-          >
-            {store.status === 'Approved' || store.status === 'Active' ? 'Đã duyệt' : 'Chờ duyệt'}
-          </Badge>
-        )}
+        <div className='flex items-center gap-3'>
+          <Button onClick={handleRefresh} disabled={refreshing} variant='outline' size='sm'>
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Đang tải...' : 'Làm mới'}
+          </Button>
+          {store && (
+            <Badge
+              className={`px-3 py-1 ${store.status === 'Approved'
+                ? 'bg-green-100 text-green-800'
+                : 'bg-yellow-100 text-yellow-800'
+                }`}
+            >
+              {store.status === 'Approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Alerts Section */}
@@ -215,13 +328,17 @@ function Dashboard() {
           <div className='flex items-center justify-between'>
             <div className='flex-1'>
               <p className='text-sm font-medium text-gray-600'>Tổng doanh thu</p>
-              <p className='text-2xl font-bold text-gray-900 mt-1'>{formatCurrency(metricsData.totalRevenue)}</p>
-              <div className='flex items-center gap-1 mt-2'>
-                <TrendingUp className='w-4 h-4 text-green-600' />
-                <span className='text-xs text-green-600 font-medium'>
-                  +{metricsData.revenueChange}% so với tháng trước
-                </span>
-              </div>
+              <p className='text-2xl font-bold text-gray-900 mt-1'>
+                {formatCurrency(overviewStats?.totalRevenue || 0)}
+              </p>
+              {revenueChange > 0 && (
+                <div className='flex items-center gap-1 mt-2'>
+                  <TrendingUp className='w-4 h-4 text-green-600' />
+                  <span className='text-xs text-green-600 font-medium'>
+                    +{revenueChange}% so với tháng trước
+                  </span>
+                </div>
+              )}
             </div>
             <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0'>
               <TrendingUp className='w-6 h-6 text-green-600' />
@@ -234,13 +351,15 @@ function Dashboard() {
           <div className='flex items-center justify-between'>
             <div className='flex-1'>
               <p className='text-sm font-medium text-gray-600'>Tổng đơn hàng</p>
-              <p className='text-2xl font-bold text-gray-900 mt-1'>{metricsData.totalOrders}</p>
-              <div className='flex items-center gap-1 mt-2'>
-                <Package className='w-4 h-4 text-blue-600' />
-                <span className='text-xs text-blue-600 font-medium'>
-                  +{metricsData.ordersChange}% so với tháng trước
-                </span>
-              </div>
+              <p className='text-2xl font-bold text-gray-900 mt-1'>{overviewStats?.totalOrders || 0}</p>
+              {ordersChange > 0 && (
+                <div className='flex items-center gap-1 mt-2'>
+                  <Package className='w-4 h-4 text-blue-600' />
+                  <span className='text-xs text-blue-600 font-medium'>
+                    +{ordersChange}% so với tháng trước
+                  </span>
+                </div>
+              )}
             </div>
             <div className='w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0'>
               <Package className='w-6 h-6 text-blue-600' />
@@ -253,10 +372,12 @@ function Dashboard() {
           <div className='flex items-center justify-between'>
             <div className='flex-1'>
               <p className='text-sm font-medium text-gray-600'>Đơn hàng giao thành công</p>
-              <p className='text-2xl font-bold text-gray-900 mt-1'>{metricsData.successfulOrders}</p>
-              <p className='text-xs text-gray-500 mt-2'>
-                Tỷ lệ: {((metricsData.successfulOrders / metricsData.totalOrders) * 100).toFixed(1)}%
-              </p>
+              <p className='text-2xl font-bold text-gray-900 mt-1'>{overviewStats?.successfulOrders || 0}</p>
+              {overviewStats && overviewStats.totalOrders > 0 && (
+                <p className='text-xs text-gray-500 mt-2'>
+                  Tỷ lệ: {((overviewStats.successfulOrders / overviewStats.totalOrders) * 100).toFixed(1)}%
+                </p>
+              )}
             </div>
             <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0'>
               <CheckCircle className='w-6 h-6 text-green-600' />
@@ -269,7 +390,9 @@ function Dashboard() {
           <div className='flex items-center justify-between'>
             <div className='flex-1'>
               <p className='text-sm font-medium text-gray-600'>Số dư khả dụng</p>
-              <p className='text-2xl font-bold text-gray-900 mt-1'>{formatCurrency(metricsData.availableBalance)}</p>
+              <p className='text-2xl font-bold text-gray-900 mt-1'>
+                {formatCurrency(overviewStats?.availableBalance || 0)}
+              </p>
               <p className='text-xs text-gray-500 mt-2'>Có thể rút ngay</p>
             </div>
             <div className='w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0'>
@@ -284,31 +407,38 @@ function Dashboard() {
         {/* Order Status Distribution */}
         <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
           <h3 className='text-lg font-semibold text-gray-900 mb-4'>Phân bổ đơn hàng theo trạng thái</h3>
-          <div className='space-y-3'>
-            {orderStatusData.map((status, index) => (
-              <div key={index} className='flex items-center justify-between'>
-                <div className='flex items-center gap-3 flex-1'>
-                  <Badge className={status.color}>{status.label}</Badge>
-                </div>
-                <div className='flex items-center gap-2'>
-                  <div className='w-32 h-3 bg-gray-200 rounded-full overflow-hidden'>
-                    <div
-                      className={`h-full rounded-full ${status.status === 'Delivered'
-                        ? 'bg-green-500'
-                        : status.status === 'Processing' || status.status === 'Confirmed'
-                          ? 'bg-yellow-500'
-                          : status.status === 'Cancelled'
-                            ? 'bg-red-500'
-                            : 'bg-blue-500'
-                        }`}
-                      style={{ width: `${(status.count / metricsData.totalOrders) * 100}%` }}
-                    ></div>
+          {orderStatusData.length === 0 ? (
+            <p className='text-sm text-gray-500 text-center py-4'>Chưa có dữ liệu</p>
+          ) : (
+            <div className='space-y-3'>
+              {orderStatusData.map((status, index) => {
+                const totalOrders = orderStatusData.reduce((sum, s) => sum + s.count, 0)
+                return (
+                  <div key={index} className='flex items-center justify-between'>
+                    <div className='flex items-center gap-3 flex-1'>
+                      <Badge className={status.color}>{status.label}</Badge>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      <div className='w-32 h-3 bg-gray-200 rounded-full overflow-hidden'>
+                        <div
+                          className={`h-full rounded-full ${status.status === 'Delivered'
+                            ? 'bg-green-500'
+                            : status.status === 'Processing' || status.status === 'Confirmed'
+                              ? 'bg-yellow-500'
+                              : status.status === 'Cancelled'
+                                ? 'bg-red-500'
+                                : 'bg-blue-500'
+                            }`}
+                          style={{ width: `${totalOrders > 0 ? (status.count / totalOrders) * 100 : 0}%` }}
+                        ></div>
+                      </div>
+                      <span className='text-sm font-medium text-gray-900 w-12 text-right'>{status.count}</span>
+                    </div>
                   </div>
-                  <span className='text-sm font-medium text-gray-900 w-12 text-right'>{status.count}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Orders Need Attention */}
@@ -319,27 +449,37 @@ function Dashboard() {
               Xem tất cả <ArrowRight className='w-3 h-3 ml-1' />
             </Button>
           </div>
-          <div className='space-y-3'>
-            {ordersNeedAttention.map((order, index) => (
-              <div key={index} className='p-3 bg-gray-50 rounded-lg border border-gray-200'>
-                <div className='flex items-center justify-between mb-2'>
-                  <span className='text-sm font-medium text-gray-900'>#{order.id}</span>
-                  <Badge
-                    className={
-                      order.status === 'Processing' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
-                    }
-                  >
-                    {order.status === 'Processing' ? 'Chờ xác nhận' : 'Đã xác nhận'}
-                  </Badge>
+          {ordersNeedingProcessing.length === 0 ? (
+            <p className='text-sm text-gray-500 text-center py-4'>Không có đơn hàng cần xử lý</p>
+          ) : (
+            <div className='space-y-3'>
+              {ordersNeedingProcessing.map((order: any) => (
+                <div key={order.id} className='p-3 bg-gray-50 rounded-lg border border-gray-200'>
+                  <div className='flex items-center justify-between mb-2'>
+                    <span className='text-sm font-medium text-gray-900'>#{order.ghnorderCode || order.id}</span>
+                    <Badge
+                      className={
+                        order.status === 'Processing' || order.status === 'NotYet'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }
+                    >
+                      {getOrderStatusLabel(order.status || 'Processing')}
+                    </Badge>
+                  </div>
+                  <div className='flex items-center justify-between text-xs text-gray-600'>
+                    <span>{order.toName || 'Khách hàng'}</span>
+                    <span className='font-medium text-gray-900'>
+                      {(order.finalPrice || order.totalOrder || 0).toLocaleString()} ₫
+                    </span>
+                  </div>
+                  {order.createdAt && (
+                    <p className='text-xs text-gray-500 mt-1'>{formatDate(order.createdAt)}</p>
+                  )}
                 </div>
-                <div className='flex items-center justify-between text-xs text-gray-600'>
-                  <span>{order.customer}</span>
-                  <span className='font-medium text-gray-900'>{order.amount.toLocaleString()} ₫</span>
-                </div>
-                <p className='text-xs text-gray-500 mt-1'>{order.createdAt}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -347,10 +487,14 @@ function Dashboard() {
       <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
         <div className='flex items-center justify-between mb-6'>
           <h3 className='text-lg font-semibold text-gray-900'>Thống kê & Báo cáo</h3>
-          <select className='px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500'>
-            <option value='2025'>2025</option>
-            <option value='2024'>2024</option>
-            <option value='2023'>2023</option>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className='px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+          >
+            <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+            <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
+            <option value={new Date().getFullYear() - 2}>{new Date().getFullYear() - 2}</option>
           </select>
         </div>
 
@@ -371,82 +515,45 @@ function Dashboard() {
 
               {/* Chart area */}
               <div className='ml-8 h-full flex items-end justify-between gap-1'>
-                {revenueByMonth.map((item, index) => {
-                  const height = (item.revenue / getMaxRevenue()) * 100
-                  return (
-                    <div key={index} className='flex-1 flex flex-col items-center'>
-                      <div
-                        className='w-full bg-green-500 rounded-t hover:bg-green-600 transition-colors cursor-pointer'
-                        style={{ height: `${height}%` }}
-                        title={`${item.month}: ${formatCurrency(item.revenue)}`}
-                      ></div>
-                    </div>
-                  )
-                })}
+                {Array.isArray(revenueByMonth) && revenueByMonth.length > 0 ? (
+                  revenueByMonth.map((item, index) => {
+                    const height = ((item.revenue || 0) / getMaxRevenue()) * 100
+                    return (
+                      <div key={index} className='flex-1 flex flex-col items-center'>
+                        <div
+                          className='w-full bg-green-500 rounded-t hover:bg-green-600 transition-colors cursor-pointer'
+                          style={{ height: `${height}%` }}
+                          title={`${item.month || 'N/A'}: ${formatCurrency(item.revenue || 0)}`}
+                        ></div>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className='w-full flex items-center justify-center text-sm text-gray-500'>
+                    Chưa có dữ liệu
+                  </div>
+                )}
               </div>
 
               {/* X-axis labels */}
               <div className='absolute bottom-0 left-8 right-0 flex justify-between text-xs text-gray-500'>
-                {revenueByMonth.map((item, index) => (
-                  <span key={index} className='flex-1 text-center'>
-                    {item.month}
-                  </span>
-                ))}
+                {Array.isArray(revenueByMonth) && revenueByMonth.length > 0 ? (
+                  revenueByMonth.map((item, index) => (
+                    <span key={index} className='flex-1 text-center'>
+                      {item.month || 'N/A'}
+                    </span>
+                  ))
+                ) : null}
               </div>
             </div>
             <p className='text-xs text-gray-500 mt-2 ml-8'>Doanh thu (VNĐ)</p>
           </div>
 
-          {/* Revenue by Payment Method */}
+          {/* Revenue by Payment Method - Placeholder for now */}
           <div>
             <h4 className='text-md font-medium text-gray-700 mb-4'>Doanh thu theo phương thức</h4>
             <div className='space-y-4'>
-              <div>
-                <div className='flex items-center justify-between mb-2'>
-                  <span className='text-sm text-gray-600'>Banking</span>
-                  <span className='text-sm font-medium text-gray-900'>
-                    {formatCurrency(revenueByPaymentMethod.banking)}
-                  </span>
-                </div>
-                <div className='w-full h-4 bg-gray-200 rounded-full overflow-hidden'>
-                  <div
-                    className='h-full bg-blue-500 rounded-full'
-                    style={{
-                      width: `${(revenueByPaymentMethod.banking /
-                        (revenueByPaymentMethod.banking + revenueByPaymentMethod.cod)) *
-                        100
-                        }%`
-                    }}
-                  ></div>
-                </div>
-              </div>
-              <div>
-                <div className='flex items-center justify-between mb-2'>
-                  <span className='text-sm text-gray-600'>COD</span>
-                  <span className='text-sm font-medium text-gray-900'>
-                    {formatCurrency(revenueByPaymentMethod.cod)}
-                  </span>
-                </div>
-                <div className='w-full h-4 bg-gray-200 rounded-full overflow-hidden'>
-                  <div
-                    className='h-full bg-orange-500 rounded-full'
-                    style={{
-                      width: `${(revenueByPaymentMethod.cod /
-                        (revenueByPaymentMethod.banking + revenueByPaymentMethod.cod)) *
-                        100
-                        }%`
-                    }}
-                  />
-                </div>
-              </div>
-              <div className='pt-4 border-t'>
-                <div className='flex items-center justify-between'>
-                  <span className='text-sm font-medium text-gray-900'>Tổng cộng</span>
-                  <span className='text-sm font-bold text-gray-900'>
-                    {formatCurrency(revenueByPaymentMethod.banking + revenueByPaymentMethod.cod)}
-                  </span>
-                </div>
-              </div>
+              <p className='text-sm text-gray-500 text-center py-4'>Dữ liệu đang được cập nhật</p>
             </div>
           </div>
         </div>
@@ -466,27 +573,35 @@ function Dashboard() {
 
             {/* Chart area */}
             <div className='ml-8 h-full flex items-end justify-between gap-1'>
-              {ordersByMonth.map((item, index) => {
-                const height = (item.orders / getMaxOrders()) * 100
-                return (
-                  <div key={index} className='flex-1 flex flex-col items-center'>
-                    <div
-                      className='w-full bg-blue-500 rounded-t hover:bg-blue-600 transition-colors cursor-pointer'
-                      style={{ height: `${height}%` }}
-                      title={`${item.month}: ${item.orders} đơn`}
-                    ></div>
-                  </div>
-                )
-              })}
+              {Array.isArray(ordersByMonth) && ordersByMonth.length > 0 ? (
+                ordersByMonth.map((item, index) => {
+                  const height = ((item.orders || 0) / getMaxOrders()) * 100
+                  return (
+                    <div key={index} className='flex-1 flex flex-col items-center'>
+                      <div
+                        className='w-full bg-blue-500 rounded-t hover:bg-blue-600 transition-colors cursor-pointer'
+                        style={{ height: `${height}%` }}
+                        title={`${item.month || 'N/A'}: ${item.orders || 0} đơn`}
+                      ></div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className='w-full flex items-center justify-center text-sm text-gray-500'>
+                  Chưa có dữ liệu
+                </div>
+              )}
             </div>
 
             {/* X-axis labels */}
             <div className='absolute bottom-0 left-8 right-0 flex justify-between text-xs text-gray-500'>
-              {ordersByMonth.map((item, index) => (
-                <span key={index} className='flex-1 text-center'>
-                  {item.month}
-                </span>
-              ))}
+              {Array.isArray(ordersByMonth) && ordersByMonth.length > 0 ? (
+                ordersByMonth.map((item, index) => (
+                  <span key={index} className='flex-1 text-center'>
+                    {item.month || 'N/A'}
+                  </span>
+                ))
+              ) : null}
             </div>
           </div>
           <p className='text-xs text-gray-500 mt-2 ml-8'>Số lượng đơn hàng</p>
@@ -503,25 +618,31 @@ function Dashboard() {
               Xem tất cả <ArrowRight className='w-3 h-3 ml-1' />
             </Button>
           </div>
-          <div className='space-y-4'>
-            {topProducts.map((product, index) => (
-              <div key={index} className='flex items-center justify-between'>
-                <span className='text-sm text-gray-700 flex-1'>{product.name}</span>
-                <div className='flex items-center gap-2'>
-                  <div className='w-32 h-3 bg-gray-200 rounded-full overflow-hidden'>
-                    <div
-                      className='h-full bg-orange-500 rounded-full'
-                      style={{ width: `${product.percentage}%` }}
-                    ></div>
+          {topProductsWithPercentage.length === 0 ? (
+            <p className='text-sm text-gray-500 text-center py-4'>Chưa có dữ liệu</p>
+          ) : (
+            <>
+              <div className='space-y-4'>
+                {topProductsWithPercentage.map((product, index) => (
+                  <div key={index} className='flex items-center justify-between'>
+                    <span className='text-sm text-gray-700 flex-1'>{product.name}</span>
+                    <div className='flex items-center gap-2'>
+                      <div className='w-32 h-3 bg-gray-200 rounded-full overflow-hidden'>
+                        <div
+                          className='h-full bg-orange-500 rounded-full'
+                          style={{ width: `${product.percentage}%` }}
+                        ></div>
+                      </div>
+                      <span className='text-sm font-medium text-gray-900 w-20 text-right'>
+                        {product.revenue} sản phẩm
+                      </span>
+                    </div>
                   </div>
-                  <span className='text-sm font-medium text-gray-900 w-20 text-right'>
-                    {formatCurrency(product.revenue)}
-                  </span>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <p className='text-xs text-gray-500 mt-4'>Doanh thu (VNĐ)</p>
+              <p className='text-xs text-gray-500 mt-4'>Số lượng bán (sản phẩm)</p>
+            </>
+          )}
         </div>
 
         {/* Low Stock Products */}
@@ -532,22 +653,26 @@ function Dashboard() {
               Xem tất cả <ArrowRight className='w-3 h-3 ml-1' />
             </Button>
           </div>
-          <div className='space-y-3'>
-            {lowStockProducts.map((product, index) => (
-              <div
-                key={index}
-                className={`flex items-center justify-between p-3 rounded-lg border ${product.level === 'critical' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'
-                  }`}
-              >
-                <span className='text-sm text-gray-700'>{product.name}</span>
-                <span
-                  className={`text-sm font-medium ${product.level === 'critical' ? 'text-red-600' : 'text-yellow-600'}`}
+          {lowStockProductsDisplay.length === 0 ? (
+            <p className='text-sm text-gray-500 text-center py-4'>Không có sản phẩm sắp hết hàng</p>
+          ) : (
+            <div className='space-y-3'>
+              {lowStockProductsDisplay.map((product, index) => (
+                <div
+                  key={index}
+                  className={`flex items-center justify-between p-3 rounded-lg border ${product.level === 'critical' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'
+                    }`}
                 >
-                  {product.quantity} sản phẩm
-                </span>
-              </div>
-            ))}
-          </div>
+                  <span className='text-sm text-gray-700'>{product.name}</span>
+                  <span
+                    className={`text-sm font-medium ${product.level === 'critical' ? 'text-red-600' : 'text-yellow-600'}`}
+                  >
+                    {product.quantity} sản phẩm
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -561,20 +686,24 @@ function Dashboard() {
               Quản lý <ArrowRight className='w-3 h-3 ml-1' />
             </Button>
           </div>
-          <div className='grid grid-cols-3 gap-4'>
-            <div className='text-center p-4 bg-purple-50 rounded-lg border border-purple-200'>
-              <p className='text-2xl font-bold text-purple-600'>{promotionStats.active}</p>
-              <p className='text-xs text-gray-600 mt-1'>Đang hoạt động</p>
+          {promotionStats ? (
+            <div className='grid grid-cols-3 gap-4'>
+              <div className='text-center p-4 bg-purple-50 rounded-lg border border-purple-200'>
+                <p className='text-2xl font-bold text-purple-600'>{promotionStats.activePromotions}</p>
+                <p className='text-xs text-gray-600 mt-1'>Đang hoạt động</p>
+              </div>
+              <div className='text-center p-4 bg-orange-50 rounded-lg border border-orange-200'>
+                <p className='text-2xl font-bold text-orange-600'>{promotionStats.expiringSoonPromotions}</p>
+                <p className='text-xs text-gray-600 mt-1'>Sắp hết hạn</p>
+              </div>
+              <div className='text-center p-4 bg-blue-50 rounded-lg border border-blue-200'>
+                <p className='text-2xl font-bold text-blue-600'>{promotionStats.totalUsage.toLocaleString()}</p>
+                <p className='text-xs text-gray-600 mt-1'>Tổng lượt dùng</p>
+              </div>
             </div>
-            <div className='text-center p-4 bg-orange-50 rounded-lg border border-orange-200'>
-              <p className='text-2xl font-bold text-orange-600'>{promotionStats.expiringSoon}</p>
-              <p className='text-xs text-gray-600 mt-1'>Sắp hết hạn</p>
-            </div>
-            <div className='text-center p-4 bg-blue-50 rounded-lg border border-blue-200'>
-              <p className='text-2xl font-bold text-blue-600'>{promotionStats.totalUsage.toLocaleString()}</p>
-              <p className='text-xs text-gray-600 mt-1'>Tổng lượt dùng</p>
-            </div>
-          </div>
+          ) : (
+            <p className='text-sm text-gray-500 text-center py-4'>Chưa có dữ liệu</p>
+          )}
         </div>
 
         {/* Quick Actions */}

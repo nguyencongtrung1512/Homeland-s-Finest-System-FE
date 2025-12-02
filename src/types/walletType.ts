@@ -112,6 +112,8 @@ export interface WalletData {
   grossRevenue: number
   totalDiscount: number
   netRevenue: number
+  totalSellerDiscount: number
+  totalSystemDiscount: number
   TotalWithdrawn: number
   totalCommissionPaid: number
   createdAt: string

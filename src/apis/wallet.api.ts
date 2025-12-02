@@ -111,16 +111,25 @@ export const depositMoney = async (amount: number): Promise<DepositResponse> => 
  */
 export const payDebt = async (amount: number): Promise<PayDebtResponse> => {
   try {
-    const response = await axiosInstance.post<{
-      status: number
-      message: string
-      data: PayDebtResponse
-    }>(`${API_URL}/pay-debt`, amount, {
+    // Axios interceptor đã trả về response.data, nên response ở đây đã là data rồi
+    const response = await axiosInstance.post<
+      | {
+        status?: number
+        message: string
+        data: PayDebtResponse
+      }
+      | PayDebtResponse
+    >(`${API_URL}/pay-debt`, amount, {
       headers: {
         'Content-Type': 'application/json'
       }
     })
-    return response.data.data
+
+    // Xử lý cả 2 trường hợp: response có wrapper hoặc response trực tiếp
+    if ('data' in response && response.data) {
+      return response.data as PayDebtResponse
+    }
+    return response as unknown as PayDebtResponse
   } catch (error) {
     console.error('Error paying debt:', error)
     throw error

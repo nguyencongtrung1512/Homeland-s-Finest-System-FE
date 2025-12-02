@@ -19,6 +19,7 @@ import CreateProduct from './pages/seller/products/createProduct'
 import OrderManagement from './pages/seller/order/order'
 import ChatWithCustomer from './pages/seller/ChatWithCustomer/ChatWithCustomer'
 import FinanceManagement from './pages/seller/finance/finance'
+import Transaction from './pages/seller/Transaction/transaction'
 import SetupStore from './pages/seller/setupStore/setupStore'
 import HelpCenter from './pages/seller/help/help'
 import DetailHelp from './pages/seller/help/detailHelp'
@@ -231,6 +232,10 @@ export default function useRouteElements() {
             {
               path: path.financeSeller,
               element: <FinanceManagement />
+            },
+            {
+              path: path.transactionSeller,
+              element: <Transaction />
             },
             {
               path: path.setupStoreSeller,

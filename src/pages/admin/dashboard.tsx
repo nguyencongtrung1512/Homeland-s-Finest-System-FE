@@ -1,11 +1,140 @@
 import { useState, useEffect } from 'react'
-import { ShoppingCart, DollarSign, Clock, Store, Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import {
+  ShoppingCart,
+  DollarSign,
+  Clock,
+  Store,
+  Loader2,
+  Tag,
+  AlertCircle,
+  TrendingUp,
+  AlertTriangle
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { ChartContainer, ChartTooltip } from '../../components/ui/chart'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { getTransactionDashboard, getAvailableYears } from '../../apis/dashboardTransaction.api'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import type { TransactionDashboardData } from '../../types/transactionDashboardType'
+import type { StoreResponse } from '../../apis/store.api'
+
+// Fake data for UI preview
+const generateFakeDashboardData = (year: number): TransactionDashboardData => {
+  const monthKeys = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+  const revenueByMonth: { [key: string]: number } = {}
+  monthKeys.forEach((month) => {
+    revenueByMonth[month] = Math.floor(Math.random() * 50000000) + 10000000 // 10M - 60M VND
+  })
+
+  const fakeTransactions = Array.from({ length: 10 }, (_, i) => ({
+    id: `trans-${i + 1}`,
+    userId: `user-${i + 1}`,
+    orderId: `order-${i + 1}`,
+    paymentMethod: i % 2 === 0 ? 'Banking' : 'COD',
+    payosOrderCode: `PAYOS-${i + 1}`,
+    checkoutUrl: `https://checkout.payos.vn/${i + 1}`,
+    description: `Thanh toán đơn hàng #${i + 1}`,
+    amount: Math.floor(Math.random() * 5000000) + 500000,
+    status: i < 3 ? 'Pending' : ((i < 8 ? 'Paid' : 'Failed') as 'Paid' | 'Pending' | 'Failed'),
+    createdAt: new Date(Date.now() - i * 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - i * 86400000).toISOString(),
+    userEmail: `user${i + 1}@example.com`,
+    userFullName: `Nguyễn Văn ${String.fromCharCode(65 + i)}`,
+    orderStatus: (i % 3 === 0 ? 'Processing' : i % 3 === 1 ? 'Delivered' : 'Cancelled') as
+      | 'Processing'
+      | 'Delivered'
+      | 'Cancelled'
+  }))
+
+  return {
+    summary: {
+      totalRevenue: 450000000,
+      totalTransactions: 1250,
+      successfulTransactions: 1100,
+      pendingTransactions: 120,
+      failedTransactions: 30,
+      revenueByPaymentMethod: {
+        Banking: 280000000,
+        COD: 170000000
+      },
+      revenueByMonth,
+      transactionsByMonth: monthKeys.reduce(
+        (acc, month) => {
+          acc[month] = Math.floor(Math.random() * 150) + 50
+          return acc
+        },
+        {} as { [key: string]: number }
+      ),
+      revenueByYear: {
+        [year.toString()]: 450000000
+      },
+      transactionsByYear: {
+        [year.toString()]: 1250
+      },
+      revenueByCategoryPercentage: {
+        'Điện tử': 35.5,
+        'Thời trang': 28.3,
+        'Thực phẩm': 18.7,
+        'Gia dụng': 12.2,
+        Khác: 5.3
+      },
+      revenueByCategory: {
+        'Điện tử': 159750000,
+        'Thời trang': 127350000,
+        'Thực phẩm': 84150000,
+        'Gia dụng': 54900000,
+        Khác: 23850000
+      },
+      topStoresByRevenue: [
+        {
+          storeId: 'store-1',
+          storeName: 'Cửa hàng Điện tử ABC',
+          revenue: 85000000,
+          orderCount: 320
+        },
+        {
+          storeId: 'store-2',
+          storeName: 'Thời trang XYZ',
+          revenue: 72000000,
+          orderCount: 280
+        },
+        {
+          storeId: 'store-3',
+          storeName: 'Thực phẩm sạch 123',
+          revenue: 65000000,
+          orderCount: 195
+        },
+        {
+          storeId: 'store-4',
+          storeName: 'Gia dụng Home',
+          revenue: 58000000,
+          orderCount: 165
+        },
+        {
+          storeId: 'store-5',
+          storeName: 'Đồ chơi trẻ em',
+          revenue: 45000000,
+          orderCount: 140
+        }
+      ]
+    },
+    transactions: fakeTransactions,
+    totalCount: 10,
+    totalPages: 1,
+    currentPage: 1
+  }
+}
+
+// Promotion Stats Interface
+interface PromotionStats {
+  totalPromotions: number
+  activePromotions: number
+  expiredPromotions: number
+  expiringSoonPromotions: number
+  totalDiscountGiven: number
+  totalOrdersWithPromotion: number
+  totalUsage: number
+}
 
 // Helper functions
 const formatCurrency = (amount: number) => {
@@ -21,6 +150,90 @@ const formatNumber = (num: number) => {
   return new Intl.NumberFormat('vi-VN').format(num)
 }
 
+// Generate fake promotion stats
+const generateFakePromotionStats = (): PromotionStats => {
+  return {
+    totalPromotions: 45,
+    activePromotions: 28,
+    expiredPromotions: 12,
+    expiringSoonPromotions: 5,
+    totalDiscountGiven: 125000000,
+    totalOrdersWithPromotion: 850,
+    totalUsage: 3200
+  }
+}
+
+// Generate fake stores needing action (with report count > 0)
+const generateFakeStoresNeedingAction = (): StoreResponse[] => {
+  const storeNames = ['Cửa hàng Điện tử ABC', 'Thời trang XYZ', 'Thực phẩm sạch 123', 'Gia dụng Home', 'Đồ chơi trẻ em']
+  const provinces = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ']
+  const districts = ['Cầu Giấy', 'Quận 1', 'Hải Châu', 'Ngô Quyền', 'Ninh Kiều']
+  const emails = [
+    'seller1@example.com',
+    'seller2@example.com',
+    'seller3@example.com',
+    'seller4@example.com',
+    'seller5@example.com'
+  ]
+  const reportCounts = [8, 6, 4, 3, 2] // Sorted descending
+
+  return storeNames.map((storeName, index) => ({
+    id: `store-${index + 1}`,
+    sellerId: `seller-${index + 1}`,
+    storeName,
+    province: provinces[index],
+    district: districts[index],
+    ward: `Phường ${index + 1}`,
+    provinceId: index + 1,
+    districtId: index + 1,
+    wardId: index + 1,
+    address: `${index + 1}23 Đường ${storeName}`,
+    logoUrl: null,
+    coverImageUrl: null,
+    status: 'Approved' as const,
+    adminNote: null,
+    reviewedBy: null,
+    approvedBy: null,
+    description: null,
+    vendorApplicationImageUrl: [],
+    staffNotes: null,
+    staffImage: null,
+    staffName: null,
+    submittedDate: new Date(Date.now() - index * 86400000).toISOString(),
+    decisionDate: null,
+    createdAt: new Date(Date.now() - index * 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - index * 86400000).toISOString(),
+    sellerInfo: {
+      userId: `user-${index + 1}`,
+      approvedBy: null,
+      businessName: null,
+      businessLicense: null,
+      identifyCard: null,
+      taxCode: null,
+      identifyFrontImage: null,
+      identifyBackImage: null,
+      sellerStatus: 'Active' as const,
+      approvedAt: null,
+      reportCount: reportCounts[index],
+      userInfo: {
+        id: `user-${index + 1}`,
+        email: emails[index],
+        gender: null,
+        phoneNumber: `090${index}${index}${index}${index}${index}${index}${index}`,
+        role: 'Seller' as const,
+        firstName: `Nguyễn`,
+        lastName: `Văn ${String.fromCharCode(65 + index)}`,
+        bankAccount: null,
+        avatar: null,
+        isActive: true,
+        dateOfBirth: null
+      }
+    },
+    storeStories: [],
+    products: []
+  }))
+}
+
 // Month mapping
 const monthNames = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 const monthLabels = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12']
@@ -33,22 +246,34 @@ const chartConfig = {
 }
 
 function AdminDashboard() {
+  const navigate = useNavigate()
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [availableYears, setAvailableYears] = useState<number[]>([])
   const [dashboardData, setDashboardData] = useState<TransactionDashboardData | null>(null)
+  const [promotionStats, setPromotionStats] = useState<PromotionStats | null>(null)
+  const [storesNeedingAction, setStoresNeedingAction] = useState<StoreResponse[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
   // Fetch available years
   const fetchAvailableYears = async () => {
     try {
-      const years = await getAvailableYears()
+      // Using fake data for UI preview
+      const currentYear = new Date().getFullYear()
+      const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
       setAvailableYears(years)
 
       // Nếu năm hiện tại không có trong danh sách, chọn năm mới nhất
       if (years.length > 0 && !years.includes(selectedYear)) {
-        setSelectedYear(years[0])
+        setSelectedYear(years[years.length - 1])
       }
+
+      // Uncomment below to use real API
+      // const years = await getAvailableYears()
+      // setAvailableYears(years)
+      // if (years.length > 0 && !years.includes(selectedYear)) {
+      //   setSelectedYear(years[0])
+      // }
     } catch (err) {
       console.error('Error fetching available years:', err)
       // Fallback về năm hiện tại nếu không lấy được danh sách năm
@@ -56,18 +281,56 @@ function AdminDashboard() {
     }
   }
 
+  // Generate fake stores needing action (with report count > 0)
+  const fetchStoresNeedingAction = () => {
+    // Using fake data for UI preview
+    const fakeStores = generateFakeStoresNeedingAction()
+    setStoresNeedingAction(fakeStores)
+
+    // Uncomment below to use real API
+    // try {
+    //   const response = await storeApi.getAllStores({ pageSize: 100, pageNumber: 1 })
+    //   if (response.status === 200 && response.data) {
+    //     // Filter stores with reportCount > 0 and sort by reportCount descending
+    //     const storesWithReports = response.data
+    //       .filter((store) => store.sellerInfo?.reportCount && store.sellerInfo.reportCount > 0)
+    //       .sort((a, b) => (b.sellerInfo?.reportCount || 0) - (a.sellerInfo?.reportCount || 0))
+    //       .slice(0, 5) // Show top 5 stores
+    //     setStoresNeedingAction(storesWithReports)
+    //   }
+    // } catch (err) {
+    //   console.error('Error fetching stores needing action:', err)
+    // }
+  }
+
   // Fetch dashboard data
   const fetchDashboardData = async (year: number) => {
     try {
       setLoading(true)
       setError(null)
-      const data = await getTransactionDashboard({
-        StartDate: `${year}-01-01`,
-        EndDate: `${year}-12-31`,
-        Year: year
-      })
-      console.log('data trung', data)
-      setDashboardData(data)
+
+      // Using fake data for UI preview
+      await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate API delay
+      const fakeData = generateFakeDashboardData(year)
+      setDashboardData(fakeData)
+
+      // Fetch promotion stats
+      const fakePromotionStats = generateFakePromotionStats()
+      setPromotionStats(fakePromotionStats)
+
+      // Fetch stores needing action
+      fetchStoresNeedingAction()
+
+      // Uncomment below to use real API
+      // const data = await getTransactionDashboard({
+      //   StartDate: `${year}-01-01`,
+      //   EndDate: `${year}-12-31`,
+      //   Year: year
+      // })
+      // console.log('data trung', data)
+      // setDashboardData(data)
+      // const promotionData = await getPromotionStats(30)
+      // setPromotionStats(promotionData)
     } catch (err) {
       setError('Không thể tải dữ liệu dashboard')
       console.error('Error fetching dashboard data:', err)
@@ -89,17 +352,9 @@ function AdminDashboard() {
   // Transform data for charts
   const revenueData = dashboardData?.summary?.revenueByMonth
     ? monthNames.map((month, index) => ({
-      month: monthLabels[index],
-      revenue: dashboardData.summary.revenueByMonth[month] || 0
-    }))
-    : []
-
-  const productCategoryData = dashboardData?.summary?.revenueByCategoryPercentage
-    ? Object.entries(dashboardData.summary.revenueByCategoryPercentage).map(([name, value], index) => ({
-      name,
-      value,
-      color: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3'][index % 6]
-    }))
+        month: monthLabels[index],
+        revenue: dashboardData.summary.revenueByMonth[month] || 0
+      }))
     : []
 
   const handleYearChange = (year: number) => {
@@ -250,62 +505,68 @@ function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Product Categories Pie Chart */}
+        {/* Promotion Overview */}
         <Card className='bg-white shadow-sm'>
           <CardHeader>
-            <CardTitle className='text-lg font-semibold text-gray-900'>Phân bố doanh thu theo danh mục</CardTitle>
+            <CardTitle className='text-lg font-semibold text-gray-900'>Tổng quan khuyến mãi</CardTitle>
           </CardHeader>
           <CardContent>
-            {productCategoryData.length > 0 ? (
-              <>
-                <div className='h-[300px] flex items-center justify-center'>
-                  <ResponsiveContainer width='100%' height='100%'>
-                    <PieChart>
-                      <Pie
-                        data={productCategoryData}
-                        cx='50%'
-                        cy='50%'
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={5}
-                        dataKey='value'
-                      >
-                        {productCategoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload
-                            return (
-                              <div className='bg-white p-3 border rounded-lg shadow-lg'>
-                                <p className='font-medium'>{data.name}</p>
-                                <p className='text-sm text-gray-600'>{data.value.toFixed(1)}%</p>
-                              </div>
-                            )
-                          }
-                          return null
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className='mt-4 grid grid-cols-1 gap-2'>
-                  {productCategoryData.map((item, index) => (
-                    <div key={index} className='flex items-center justify-between'>
-                      <div className='flex items-center gap-2'>
-                        <div className='w-3 h-3 rounded-full' style={{ backgroundColor: item.color }} />
-                        <span className='text-sm text-gray-600'>{item.name}</span>
-                      </div>
-                      <span className='text-sm font-medium'>{item.value.toFixed(1)}%</span>
+            {promotionStats ? (
+              <div className='space-y-4'>
+                {/* Stats Grid */}
+                <div className='grid grid-cols-2 gap-4'>
+                  <div className='p-4 bg-purple-50 rounded-lg border border-purple-100'>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <Tag className='w-5 h-5 text-purple-600' />
+                      <p className='text-sm font-medium text-gray-600'>Đang hoạt động</p>
                     </div>
-                  ))}
+                    <p className='text-2xl font-bold text-purple-600'>{promotionStats.activePromotions}</p>
+                    <p className='text-xs text-gray-500 mt-1'>trong tổng {promotionStats.totalPromotions} khuyến mãi</p>
+                  </div>
+
+                  <div className='p-4 bg-orange-50 rounded-lg border border-orange-100'>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <AlertCircle className='w-5 h-5 text-orange-600' />
+                      <p className='text-sm font-medium text-gray-600'>Sắp hết hạn</p>
+                    </div>
+                    <p className='text-2xl font-bold text-orange-600'>{promotionStats.expiringSoonPromotions}</p>
+                    <p className='text-xs text-gray-500 mt-1'>cần kiểm tra</p>
+                  </div>
+
+                  <div className='p-4 bg-green-50 rounded-lg border border-green-100'>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <DollarSign className='w-5 h-5 text-green-600' />
+                      <p className='text-sm font-medium text-gray-600'>Tổng giảm giá</p>
+                    </div>
+                    <p className='text-xl font-bold text-green-600'>
+                      {formatCurrency(promotionStats.totalDiscountGiven)}
+                    </p>
+                    <p className='text-xs text-gray-500 mt-1'>đã áp dụng</p>
+                  </div>
+
+                  <div className='p-4 bg-blue-50 rounded-lg border border-blue-100'>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <TrendingUp className='w-5 h-5 text-blue-600' />
+                      <p className='text-sm font-medium text-gray-600'>Lượt sử dụng</p>
+                    </div>
+                    <p className='text-2xl font-bold text-blue-600'>{formatNumber(promotionStats.totalUsage)}</p>
+                    <p className='text-xs text-gray-500 mt-1'>
+                      {formatNumber(promotionStats.totalOrdersWithPromotion)} đơn hàng
+                    </p>
+                  </div>
                 </div>
-              </>
+
+                {/* Summary Info */}
+                <div className='pt-4 border-t border-gray-200'>
+                  <div className='flex items-center justify-between text-sm'>
+                    <span className='text-gray-600'>Đã hết hạn:</span>
+                    <span className='font-medium text-gray-900'>{promotionStats.expiredPromotions}</span>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className='h-[300px] flex items-center justify-center text-gray-500'>
-                <p>Không có dữ liệu danh mục</p>
+                <p>Không có dữ liệu khuyến mãi</p>
               </div>
             )}
           </CardContent>
@@ -325,14 +586,15 @@ function AdminDashboard() {
                 <div key={store.storeId} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
                   <div className='flex items-center gap-3'>
                     <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${index === 0
-                        ? 'bg-yellow-500'
-                        : index === 1
-                          ? 'bg-gray-400'
-                          : index === 2
-                            ? 'bg-orange-500'
-                            : 'bg-blue-500'
-                        }`}
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        index === 0
+                          ? 'bg-yellow-500'
+                          : index === 1
+                            ? 'bg-gray-400'
+                            : index === 2
+                              ? 'bg-orange-500'
+                              : 'bg-blue-500'
+                      }`}
                     >
                       <Store className='w-5 h-5 text-white' />
                     </div>
@@ -357,40 +619,55 @@ function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Pending Transactions */}
+        {/* Stores Needing Action */}
         <Card className='bg-white shadow-sm'>
           <CardHeader>
-            <CardTitle className='text-lg font-semibold text-gray-900'>Giao dịch đang chờ xử lý</CardTitle>
+            <CardTitle className='text-lg font-semibold text-gray-900'>Cửa hàng cần xử lý</CardTitle>
           </CardHeader>
           <CardContent className='space-y-4'>
-            {dashboardData?.transactions &&
-              dashboardData.transactions.filter((t) => t.status === 'Pending').length > 0 ? (
-              dashboardData.transactions
-                .filter((t) => t.status === 'Pending')
-                .slice(0, 5)
-                .map((transaction) => (
-                  <div key={transaction.id} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
-                    <div className='flex items-center gap-3'>
-                      <div className='w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center'>
-                        <Clock className='w-5 h-5 text-white' />
+            {storesNeedingAction && storesNeedingAction.length > 0 ? (
+              storesNeedingAction.map((store) => {
+                const reportCount = store.sellerInfo?.reportCount || 0
+                return (
+                  <div key={store.id} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
+                    <div className='flex items-center gap-3 flex-1'>
+                      <div
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          reportCount >= 5 ? 'bg-red-500' : reportCount >= 3 ? 'bg-orange-500' : 'bg-yellow-500'
+                        }`}
+                      >
+                        <AlertTriangle className='w-5 h-5 text-white' />
                       </div>
-                      <div>
-                        <p className='font-medium text-gray-900'>{transaction.userFullName}</p>
+                      <div className='flex-1 min-w-0'>
+                        <p className='font-medium text-gray-900 truncate'>{store.storeName}</p>
                         <p className='text-sm text-gray-600'>
-                          {formatCurrency(transaction.amount)} • {transaction.paymentMethod}
+                          {store.province} • {store.district}
                         </p>
-                        <p className='text-xs text-gray-500'>{transaction.createdAt}</p>
+                        <p className='text-xs text-gray-500'>{store.sellerInfo?.userInfo?.email || 'N/A'}</p>
                       </div>
                     </div>
-                    <Button size='sm' className='bg-blue-600 hover:bg-blue-700 text-white'>
-                      Xem chi tiết
-                    </Button>
+                    <div className='flex items-center gap-3'>
+                      <div className='text-right'>
+                        <p className='text-sm font-bold text-red-600'>{reportCount}</p>
+                        <p className='text-xs text-gray-500'>báo cáo</p>
+                      </div>
+                      <Button
+                        size='sm'
+                        className='bg-blue-600 hover:bg-blue-700 text-white'
+                        onClick={() => {
+                          navigate(`/admin/storeManagement/store-detail/${store.id}`)
+                        }}
+                      >
+                        Xem chi tiết
+                      </Button>
+                    </div>
                   </div>
-                ))
+                )
+              })
             ) : (
               <div className='text-center py-8 text-gray-500'>
-                <Clock className='w-12 h-12 mx-auto mb-2 text-gray-300' />
-                <p>Không có giao dịch đang chờ xử lý</p>
+                <Store className='w-12 h-12 mx-auto mb-2 text-gray-300' />
+                <p>Không có cửa hàng cần xử lý</p>
               </div>
             )}
           </CardContent>
