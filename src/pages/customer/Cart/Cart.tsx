@@ -1015,33 +1015,39 @@ export default function Cart() {
 
                               <div className='flex flex-wrap items-center justify-between gap-4'>
                                 <div className='flex items-center gap-3'>
-                                  <button
-                                    onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity - 1)}
-                                    className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                                    disabled={isComboOutOfStock || comboItem.quantity <= 1}
-                                  >
-                                    <Minus className='w-4 h-4' />
-                                  </button>
-                                  <span className='w-12 text-center font-semibold text-gray-900'>
-                                    {comboItem.quantity}
-                                  </span>
-                                  <button
-                                    onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity + 1)}
-                                    className='w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                                    disabled={
-                                      isComboOutOfStock ||
-                                      comboItem.items.some((item: APICartItem) => {
-                                        if (item.availableQuantity === undefined) return false
-                                        const comboId = item.comboId || comboItem.comboId
-                                        const requirement =
-                                          comboId && comboChildItems[comboId]?.[item.productVariantId]?.requiredQuantity || 1
-                                        const currentItemQuantity = requirement * comboItem.quantity
-                                        return currentItemQuantity >= item.availableQuantity
-                                      })
-                                    }
-                                  >
-                                    <Plus className='w-4 h-4' />
-                                  </button>
+                                  <div className='flex items-center border border-gray-300 rounded-lg'>
+                                    <button
+                                      onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity - 1)}
+                                      className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                      disabled={isComboOutOfStock || comboItem.quantity <= 1}
+                                    >
+                                      <Minus className='w-4 h-4' />
+                                    </button>
+                                    <span className='w-12 text-center font-medium'>{comboItem.quantity}</span>
+                                    <button
+                                      onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity + 1)}
+                                      className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                      disabled={
+                                        isComboOutOfStock ||
+                                        comboItem.items.some((item: APICartItem) => {
+                                          if (item.availableQuantity === undefined) return false
+                                          const comboId = item.comboId || comboItem.comboId
+                                          const requirement =
+                                            comboId && comboChildItems[comboId]?.[item.productVariantId]?.requiredQuantity || 1
+                                          const currentItemQuantity = requirement * comboItem.quantity
+                                          return currentItemQuantity >= item.availableQuantity
+                                        })
+                                      }
+                                    >
+                                      <Plus className='w-4 h-4' />
+                                    </button>
+                                  </div>
+                                  <div className='flex items-center'>
+                                    <span className='text-xs text-gray-500 mt-2 pl-3'>x</span>
+                                    <span className='text-xs text-gray-500 mt-2 px-2'>
+                                      {formatPrice(comboItem.quantity > 0 ? comboItem.totalPrice / comboItem.quantity : 0)}₫
+                                    </span>
+                                  </div>
                                 </div>
                                 <p className='text-orange-600 font-bold text-lg whitespace-nowrap'>
                                   ₫{formatPrice(comboItem.totalPrice)}

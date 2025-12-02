@@ -375,7 +375,7 @@ function BlogList() {
                     Xóa bộ lọc
                   </button>
                 )}
-              </div>
+              </div>  
             ) : (
               <div className='space-y-6'>
                 {filteredBlogs.map((blog) => {
