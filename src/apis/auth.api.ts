@@ -133,6 +133,7 @@ export interface SellerRegistrationData {
     provinceId: number
     districtId: number
     wardId: number
+    DateOfIssue: string
   }
   sellerInfo: {
     bankName: string
@@ -175,6 +176,7 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   formData.append('UserInfo.PhoneNumber', data.userInfo.phoneNumber)
   formData.append('UserInfo.Gender', data.userInfo.gender)
   formData.append('UserInfo.DateOfBirth', data.userInfo.dateOfBirth)
+  formData.append('UserInfo.DateOfIssue', data.userInfo.DateOfIssue)
   formData.append('UserInfo.ProvinceId', data.userInfo.provinceId.toString())
   formData.append('UserInfo.DistrictId', data.userInfo.districtId.toString())
   formData.append('UserInfo.WardId', data.userInfo.wardId.toString())

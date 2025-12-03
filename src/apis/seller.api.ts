@@ -310,16 +310,18 @@ export const sellerApi = {
 
   // Lấy thống kê tổng quan dashboard
   getOverviewStats: async (): Promise<OverviewStats> => {
-    const response = await axiosInstance.get<ApiResponse<OverviewStats>>(`${API_URL}/dashboard/overview`)
-    return response.data.data
+    // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+    const response = (await axiosInstance.get(`${API_URL}/dashboard/overview`)) as ApiResponse<OverviewStats>
+    return response.data
   },
 
   // Lấy phân bổ trạng thái đơn hàng
   getOrderStatusDistribution: async (): Promise<OrderStatusDistribution> => {
-    const response = await axiosInstance.get<ApiResponse<OrderStatusDistribution>>(
+    // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+    const response = (await axiosInstance.get(
       `${API_URL}/dashboard/order-status-distribution`
-    )
-    return response.data.data
+    )) as ApiResponse<OrderStatusDistribution>
+    return response.data
   },
 
   // Lấy danh sách đơn hàng cần xử lý
@@ -354,8 +356,9 @@ export const sellerApi = {
     }
 
     const url = `${API_URL}/dashboard/sales-report?${queryParams.toString()}`
-    const response = await axiosInstance.get<ApiResponse<SalesReport>>(url)
-    return response.data.data
+    // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+    const response = (await axiosInstance.get(url)) as ApiResponse<SalesReport>
+    return response.data
   },
 
   // Lấy danh sách sản phẩm bán chạy
@@ -370,8 +373,9 @@ export const sellerApi = {
     }
 
     const url = `${API_URL}/dashboard/top-selling-products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
-    const response = await axiosInstance.get<ApiResponse<TopSellingProduct[]>>(url)
-    return response.data.data
+    // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+    const response = (await axiosInstance.get(url)) as ApiResponse<TopSellingProduct[]>
+    return response.data
   },
 
   // Lấy danh sách sản phẩm sắp hết hàng
@@ -386,16 +390,18 @@ export const sellerApi = {
     }
 
     const url = `${API_URL}/dashboard/low-stock-products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
-    const response = await axiosInstance.get<ApiResponse<LowStockProduct[]>>(url)
-    return response.data.data
+    // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+    const response = (await axiosInstance.get(url)) as ApiResponse<LowStockProduct[]>
+    return response.data
   },
 
   // Lấy thống kê khuyến mãi
   getPromotionStatistics: async (): Promise<PromotionStatistics> => {
-    const response = await axiosInstance.get<ApiResponse<PromotionStatistics>>(
+    // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+    const response = (await axiosInstance.get(
       `${API_URL}/dashboard/promotion-statistics`
-    )
-    return response.data.data
+    )) as ApiResponse<PromotionStatistics>
+    return response.data
   },
 
   // Lấy báo cáo doanh thu theo sản phẩm

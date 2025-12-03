@@ -1138,6 +1138,7 @@ function SellerRegistrationForm() {
           phoneNumber: formData.phoneNumber,
           gender: formData.gender,
           dateOfBirth: formData.dateOfBirth,
+          DateOfIssue: issueDate || '',
           province: selectedUserProvince?.name || '',
           district: selectedUserDistrict?.name || '',
           ward: selectedUserWard?.name || '',
