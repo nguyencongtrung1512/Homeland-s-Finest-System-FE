@@ -793,6 +793,12 @@ function RequestWalletMoneyManagement() {
       >
         <Card className='bg-white shadow-sm'>
           <CardContent className='p-0'>
+            {/* Table Header */}
+            <div className='px-4 md:px-6 py-4 border-b border-gray-200'>
+              <h2 className='text-lg md:text-xl font-bold text-gray-900'>Danh sách yêu cầu rút tiền & hoàn tiền</h2>
+              <p className='text-gray-600 text-sm mt-1'>Quản lý và xử lý các yêu cầu rút tiền, hoàn tiền từ người dùng</p>
+            </div>
+
             {error && (
               <div className='p-6 text-center'>
                 <p className='text-red-600 text-sm'>{error}</p>
@@ -1137,7 +1143,7 @@ function RequestWalletMoneyManagement() {
                   {/* Ghi chú */}
                   <div>
                     <label className='text-sm font-medium text-gray-700 mb-2 block'>
-                      Ghi chú <span className='text-gray-400 text-xs'>(tùy chọn)</span>
+                      Ghi chú <span className='text-gray-400 text-xs'>(bắt buộc)</span>
                     </label>
                     <Textarea
                       placeholder='Nhập ghi chú về việc xử lý yêu cầu này...'
@@ -1250,7 +1256,7 @@ function RequestWalletMoneyManagement() {
               <>
                 <div className='space-y-3'>
                   {walletTransactions.map((transaction, index) => {
-                    const statusConfig = getTransactionStatusConfig(transaction.status)
+                    const statusConfig = getTransactionStatusConfig(transaction.status || '')
                     const typeColor = getTransactionTypeColor(transaction.type)
                     const isPositive = ['Deposit', 'CommissionReceived', 'Refund', 'RefundToCustomer'].includes(
                       transaction.type
