@@ -63,6 +63,7 @@ export interface Product {
   typeProduct: string // varchar(100) - Product type
   status: string // varchar(50) - Product status
   staffNote: string // text
+  soldOut?: boolean // boolean - Product sold out status
   variantGroups: VariantGroup[] // Array of variant groups
   productCategories: ProductCategory // Single product category
   productCertificateDTOs: ProductCertificateType[] // Array of product certificates
