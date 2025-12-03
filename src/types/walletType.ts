@@ -31,6 +31,8 @@ export type TransactionWalletType =
   | 'CommissionReceived' // Nhận hoa hồng
   | 'DebtPayment' // Trả nợ từ deposit
   | 'Withdrawal' // Rút tiền
+  | 'SystemDiscountCompensation' // Seller nhận tiền bù SystemDiscount từ Platform
+  | 'SystemDiscountCompensationPayout' // Platform trả tiền bù SystemDiscount
   | 'PayDebt' // Trả nợ (user chủ động)
   | 'PayoutToSeller' // Thanh toán cho seller
   | 'RefundToCustomer' // Hệ thống trả tiền refund customer
@@ -51,6 +53,8 @@ export const getTransactionTypeLabel = (type: TransactionWalletType): string => 
     CommissionReceived: 'Nhận hoa hồng',
     DebtPayment: 'Trả nợ từ nạp tiền',
     Withdrawal: 'Rút tiền',
+    SystemDiscountCompensation: 'Nhận bù giảm giá hệ thống',
+    SystemDiscountCompensationPayout: 'Trả bù giảm giá hệ thống',
     PayDebt: 'Trả nợ',
     PayoutToSeller: 'Thanh toán cho người bán',
     RefundToCustomer: 'Hoàn tiền cho khách hàng',
@@ -77,23 +81,31 @@ export const getTransactionStatusLabel = (status: TransactionWalletStatus): stri
 export interface WalletTransactionDTO {
   id: string
   walletId: string
-  orderId: string
-  transactionId: string
+  orderId: string | null
+  transactionId: string | null
   type: TransactionWalletType
   amount: number
   balanceBefore: number
   balanceAfter: number
-  status: TransactionWalletStatus
-  description: string
+  status: TransactionWalletStatus | null
+  description: string | null
   paymentMethod: string
-  orderVerificationId: string
-  billImages: string[]
-  debtBefore: number
-  debtAfter: number
-  debtPaid: number
-  processedBy: string
-  processedByName: string
-  processNote: string
+  orderVerificationId?: string
+  billImages: string[] | null
+  debtBefore: number | null
+  debtAfter: number | null
+  debtPaid: number | null
+  processedBy?: string
+  processedByName?: string
+  processNote?: string
+  // Order breakdown fields (only visible for Seller/Admin/Staff)
+  orderGrossRevenue?: number | null
+  totalSellerDiscount?: number | null
+  totalSystemDiscount?: number | null
+  orderShipFee?: number | null
+  orderInsurance?: number | null
+  orderCommission?: number | null
+  orderNetRevenue?: number | null
   createdAt: string
   updatedAt: string
 }
@@ -127,6 +139,76 @@ export interface WalletResponse {
   data: WalletData
 }
 
+/**
+ * DTO cho kết quả nạp tiền
+ */
+export interface DepositResultDTO {
+  success: boolean
+  message: string
+  amountDeposited: number
+  currentAvailable: number
+  currentDebt: number
+}
+
+/**
+ * DTO cho kết quả trả nợ
+ */
+export interface PayDebtResultDTO {
+  success: boolean
+  message: string
+  amountPaid: number
+  remainingDebt: number
+  currentAvailable: number
+}
+
+/**
+ * DTO cho yêu cầu rút tiền
+ */
+export interface RequestWalletMoneyDTO {
+  id: string
+  walletId: string
+  orderId: string | null
+  userId: string
+  userEmail: string
+  userPhoneNumber: string
+  type: string
+  amount: number
+  bankAccount: string
+  bankName: string
+  accountHolderName: string
+  status: string | null
+  processedBy: string | null
+  deadlineAt: string | null
+  processNote: string | null
+  processedAt: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+/**
+ * DTO cho chi tiết ví (từ API GetMyWallet)
+ */
+export interface WalletDetailDTO {
+  id: string
+  userId: string
+  userEmail: string
+  userFullName: string
+  userRole: string
+  phoneNumber: string
+  walletType: TransactionWalletUserType
+  availableBalance: number
+  pendingBalance: number
+  debtBalance: number
+  grossRevenue: number
+  totalSellerDiscount: number
+  totalSystemDiscount: number
+  netRevenue: number
+  totalCommissionPaid: number
+  totalWithdrawn: number
+  createdAt: string | null
+  updatedAt: string | null
+}
+
 // ========================================
 // CONSTANTS
 // ========================================
@@ -153,6 +235,8 @@ export const TRANSACTION_WALLET_TYPES: TransactionWalletType[] = [
   'CommissionReceived',
   'DebtPayment',
   'Withdrawal',
+  'SystemDiscountCompensation',
+  'SystemDiscountCompensationPayout',
   'PayDebt',
   'PayoutToSeller',
   'RefundToCustomer',

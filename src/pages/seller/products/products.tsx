@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../components/ui/dialog'
-import { Plus, Edit, Eye, Play, PauseCircle, BookOpen } from 'lucide-react'
+import { Plus, Edit, Eye, Play, PauseCircle, BookOpen, AlertCircle } from 'lucide-react'
 import path from '../../../constants/path'
 import { productApi, type ProductListResponse } from '../../../apis/product.api'
 import type { Product } from '../../../types/productType'
@@ -23,9 +23,12 @@ import ModalUpdateProduct from './modalUpdateProduct'
 import { toast } from '../../../utils/toast'
 import Pagination from '../../../components/Pagination/Pagination'
 import ProductTutorialModal from './ProductTutorialModal'
+import { useStore } from '../../../contexts/store.context'
+import { storeStoryApi } from '../../../apis/storeStory.api'
 
 function ProductsSeller() {
   const navigate = useNavigate()
+  const { store } = useStore()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,6 +49,9 @@ function ProductsSeller() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isActivating, setIsActivating] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
+  const [showStoryRequiredDialog, setShowStoryRequiredDialog] = useState(false)
+  const [isCheckingStory, setIsCheckingStory] = useState(false)
+  const [hasStoreStory, setHasStoreStory] = useState<boolean | null>(null)
 
   // Fetch products from API - GET /api/Product tự động filter theo seller đã đăng nhập
   const fetchProducts = async () => {
@@ -78,8 +84,100 @@ function ProductsSeller() {
     fetchProducts()
   }, [])
 
-  const handleCreateProduct = () => {
+  // Kiểm tra store story khi component mount hoặc store thay đổi
+  const checkStoreStory = async () => {
+    if (!store?.id) {
+      setHasStoreStory(null)
+      return
+    }
+
+    try {
+      setIsCheckingStory(true)
+      const response = await storeStoryApi.getByStore(store.id)
+
+      // Kiểm tra xem có story hay không
+      const storiesData = response.data
+      const storiesArray = Array.isArray(storiesData) ? storiesData : storiesData ? [storiesData] : []
+      const hasStory = storiesArray.length > 0
+
+      setHasStoreStory(hasStory)
+    } catch (error: unknown) {
+      // Nếu API trả về lỗi (có thể là 404 hoặc không có story), coi như chưa có story
+      console.error('Error checking store story:', error)
+      setHasStoreStory(false)
+    } finally {
+      setIsCheckingStory(false)
+    }
+  }
+
+  // Kiểm tra store story khi store có sẵn
+  useEffect(() => {
+    if (store?.id) {
+      checkStoreStory()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store?.id])
+
+  // Kiểm tra lại store story khi quay lại trang (khi window được focus)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (store?.id) {
+        // Check lại khi quay lại trang để cập nhật trạng thái mới nhất
+        checkStoreStory()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store?.id])
+
+  const handleCreateProduct = async () => {
+    // Kiểm tra store story trước khi cho phép tạo sản phẩm
+    if (!store?.id) {
+      toast.error('Không tìm thấy thông tin cửa hàng')
+      return
+    }
+
+    // Nếu chưa kiểm tra hoặc đang kiểm tra, thực hiện kiểm tra
+    if (hasStoreStory === null || isCheckingStory) {
+      setIsCheckingStory(true)
+      try {
+        const response = await storeStoryApi.getByStore(store.id)
+        const storiesData = response.data
+        const storiesArray = Array.isArray(storiesData) ? storiesData : storiesData ? [storiesData] : []
+        const hasStory = storiesArray.length > 0
+        setHasStoreStory(hasStory)
+
+        if (!hasStory) {
+          // Chưa có story -> hiển thị dialog yêu cầu tạo story
+          setShowStoryRequiredDialog(true)
+          return
+        }
+      } catch (error: unknown) {
+        // Nếu API trả về lỗi, coi như chưa có story
+        console.error('Error checking store story:', error)
+        setHasStoreStory(false)
+        setShowStoryRequiredDialog(true)
+        return
+      } finally {
+        setIsCheckingStory(false)
+      }
+    } else if (!hasStoreStory) {
+      // Đã kiểm tra và chưa có story
+      setShowStoryRequiredDialog(true)
+      return
+    }
+
+    // Đã có story -> cho phép tạo sản phẩm
     navigate(`../${path.createProduct}`)
+  }
+
+  const handleGoToCreateStory = () => {
+    setShowStoryRequiredDialog(false)
+    navigate(`../${path.myStorySeller}`)
   }
 
   const handleEditProduct = (product: Product) => {
@@ -523,7 +621,7 @@ function ProductsSeller() {
       {/* Products Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách sản phẩm</CardTitle>
+          <CardTitle className='text-green-700 py-2'>Danh sách sản phẩm</CardTitle>
         </CardHeader>
         <CardContent>
           <div className='overflow-x-auto'>
@@ -537,62 +635,110 @@ function ProductsSeller() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedProducts.map((product) => {
-                  const statusInfo = getStatusBadge(product.status, product.isActive)
-                  return (
-                    <tr key={product.id} className='border-b hover:bg-gray-50'>
-                      <td className='py-3 px-4 text-gray-900'>{product.name}</td>
-                      <td className='py-3 px-4 text-gray-900 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap'>
-                        {product.description}
-                      </td>
-                      <td className='py-3 px-4'>
-                        <Badge variant={statusInfo.variant} className={statusInfo.className}>
-                          {statusInfo.text}
-                        </Badge>
-                      </td>
-                      <td className='py-3 px-4'>
-                        <div className='flex space-x-2'>
-                          <Button
-                            title='Xem chi tiết'
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => handleViewProduct(product.id)}
-                          >
-                            <Eye className='w-4 h-4' />
-                          </Button>
-                          <Button
-                            title='Chỉnh sửa'
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => handleEditProduct(product)}
-                          >
-                            <Edit className='w-4 h-4' />
-                          </Button>
-                          {product.isActive ? (
+                {paginatedProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className='py-12 px-4'>
+                      {hasStoreStory === false ? (
+                        <div className='flex flex-col items-center justify-center text-center py-8'>
+                          <div className='bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6 max-w-2xl w-full'>
+                            <div className='flex items-center justify-center mb-4'>
+                              <AlertCircle className='w-12 h-12 text-yellow-600' />
+                            </div>
+                            <h3 className='text-xl font-semibold text-yellow-800 mb-3'>
+                              Bạn cần tạo câu chuyện cửa hàng trước
+                            </h3>
+                            <p className='text-gray-700 mb-4'>
+                              Để bắt đầu tạo sản phẩm, bạn cần tạo <strong>câu chuyện cửa hàng</strong> trước. Câu
+                              chuyện cửa hàng giúp khách hàng hiểu rõ hơn về cửa hàng của bạn và tăng độ tin cậy.
+                            </p>
+                            <div className='bg-white rounded-lg p-4 mb-4 text-left'>
+                              <p className='text-sm font-medium text-gray-800 mb-2'>
+                                📝 Lợi ích của câu chuyện cửa hàng:
+                              </p>
+                              <ul className='text-sm text-gray-600 list-disc list-inside space-y-1'>
+                                <li>Giúp khách hàng hiểu rõ hơn về cửa hàng của bạn</li>
+                                <li>Tăng độ tin cậy và uy tín của cửa hàng</li>
+                                <li>Tạo sự kết nối với khách hàng</li>
+                                <li>Là bước quan trọng để bắt đầu bán hàng trên hệ thống</li>
+                              </ul>
+                            </div>
                             <Button
-                              title='Dừng bán sản phẩm'
-                              variant='ghost'
-                              size='sm'
-                              onClick={() => handleToggleActiveClick(product)}
+                              onClick={handleGoToCreateStory}
+                              className='bg-yellow-600 hover:bg-yellow-700 text-white'
                             >
-                              <PauseCircle className='w-4 h-4' />
+                              <Plus className='w-4 h-4 mr-2' />
+                              Đi đến tạo câu chuyện cửa hàng
                             </Button>
-                          ) : (
-                            <Button
-                              title='Kích hoạt lại sản phẩm'
-                              variant='ghost'
-                              size='sm'
-                              onClick={() => handleToggleActiveClick(product)}
-                              className='text-green-600 hover:text-green-700 hover:bg-green-50'
-                            >
-                              <Play className='w-4 h-4' />
-                            </Button>
-                          )}
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                      ) : (
+                        <div className='flex flex-col items-center justify-center text-center py-8'>
+                          <div className='text-gray-500'>
+                            <p className='text-lg mb-2'>Chưa có sản phẩm nào</p>
+                            <p className='text-sm'>Hãy bắt đầu bằng cách tạo sản phẩm đầu tiên của bạn</p>
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedProducts.map((product) => {
+                    const statusInfo = getStatusBadge(product.status, product.isActive)
+                    return (
+                      <tr key={product.id} className='border-b hover:bg-gray-50'>
+                        <td className='py-3 px-4 text-gray-900'>{product.name}</td>
+                        <td className='py-3 px-4 text-gray-900 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap'>
+                          {product.description}
+                        </td>
+                        <td className='py-3 px-4'>
+                          <Badge variant={statusInfo.variant} className={statusInfo.className}>
+                            {statusInfo.text}
+                          </Badge>
+                        </td>
+                        <td className='py-3 px-4'>
+                          <div className='flex space-x-2'>
+                            <Button
+                              title='Xem chi tiết'
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => handleViewProduct(product.id)}
+                            >
+                              <Eye className='w-4 h-4' />
+                            </Button>
+                            <Button
+                              title='Chỉnh sửa'
+                              variant='ghost'
+                              size='sm'
+                              onClick={() => handleEditProduct(product)}
+                            >
+                              <Edit className='w-4 h-4' />
+                            </Button>
+                            {product.isActive ? (
+                              <Button
+                                title='Dừng bán sản phẩm'
+                                variant='ghost'
+                                size='sm'
+                                onClick={() => handleToggleActiveClick(product)}
+                              >
+                                <PauseCircle className='w-4 h-4' />
+                              </Button>
+                            ) : (
+                              <Button
+                                title='Kích hoạt lại sản phẩm'
+                                variant='ghost'
+                                size='sm'
+                                onClick={() => handleToggleActiveClick(product)}
+                                className='text-green-600 hover:text-green-700 hover:bg-green-50'
+                              >
+                                <Play className='w-4 h-4' />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -686,6 +832,43 @@ function ProductsSeller() {
 
       {/* Tutorial Modal */}
       <ProductTutorialModal open={showTutorial} onOpenChange={setShowTutorial} />
+
+      {/* Dialog yêu cầu tạo câu chuyện cửa hàng */}
+      <Dialog open={showStoryRequiredDialog} onOpenChange={setShowStoryRequiredDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-yellow-600'>
+              <AlertCircle className='w-5 h-5' />
+              Yêu cầu tạo câu chuyện cửa hàng
+            </DialogTitle>
+            <DialogDescription>
+              <div className='space-y-3 mt-4'>
+                <p className='text-base text-gray-700'>
+                  Bạn cần tạo <strong>câu chuyện cửa hàng</strong> trước khi có thể tạo sản phẩm mới.
+                </p>
+                <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
+                  <p className='text-sm text-yellow-800 font-medium mb-2'>📝 Tại sao cần tạo câu chuyện cửa hàng?</p>
+                  <ul className='text-sm text-yellow-700 list-disc list-inside space-y-1'>
+                    <li>Giúp khách hàng hiểu rõ hơn về cửa hàng của bạn</li>
+                    <li>Tăng độ tin cậy và uy tín của cửa hàng</li>
+                    <li>Tạo sự kết nối với khách hàng</li>
+                    <li>Là bước quan trọng để bắt đầu bán hàng trên hệ thống</li>
+                  </ul>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setShowStoryRequiredDialog(false)}>
+              Hủy
+            </Button>
+            <Button onClick={handleGoToCreateStory} className='bg-yellow-600 hover:bg-yellow-700 text-white'>
+              <Plus className='w-4 h-4 mr-2' />
+              Đi đến tạo câu chuyện
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
