@@ -5,6 +5,14 @@ import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '../../../components/ui/dialog'
+import {
   Upload,
   Image as ImageIcon,
   X,
@@ -53,6 +61,8 @@ function SetupStore() {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [vendorAppFiles, setVendorAppFiles] = useState<File[]>([])
   const [existingVendorAppUrls, setExistingVendorAppUrls] = useState<string[]>([])
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null)
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null)
 
   // Fetch store data from API
   const fetchStoreData = useCallback(async () => {
@@ -88,6 +98,31 @@ function SetupStore() {
       setExistingVendorAppUrls([])
     }
   }, [storeData])
+
+  // Create preview URLs for cover and logo files
+  useEffect(() => {
+    if (coverFile) {
+      const url = URL.createObjectURL(coverFile)
+      setCoverPreviewUrl(url)
+      return () => {
+        URL.revokeObjectURL(url)
+      }
+    } else {
+      setCoverPreviewUrl(null)
+    }
+  }, [coverFile])
+
+  useEffect(() => {
+    if (logoFile) {
+      const url = URL.createObjectURL(logoFile)
+      setLogoPreviewUrl(url)
+      return () => {
+        URL.revokeObjectURL(url)
+      }
+    } else {
+      setLogoPreviewUrl(null)
+    }
+  }, [logoFile])
 
   const [originalData, setOriginalData] = useState<StoreResponse | null>(null)
 
@@ -571,24 +606,13 @@ function SetupStore() {
                 )} */}
               </div>
 
-              {/* Store Name and Edit Button */}
+              {/* Store Name */}
               <div className='flex-1 pb-4 md:pb-0 mt-6 md:mt-10'>
                 <p className='text-sm uppercase tracking-[0.2em] text-green-600 font-semibold'>Store Studio</p>
                 <h1 className='text-2xl md:text-4xl font-bold text-gray-900 mt-2'>
                   {storeData.storeName || 'Tên cửa hàng'}
                 </h1>
               </div>
-
-              {/* Edit Button */}
-              {!isEditMode && (
-                <Button
-                  onClick={handleEdit}
-                  className='bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-200 px-6 py-5 rounded-2xl text-base mb-4 md:mb-0 w-full md:w-auto'
-                >
-                  <Edit3 className='w-4 h-4 mr-2' />
-                  Chỉnh sửa thông tin
-                </Button>
-              )}
             </div>
           </div>
 
@@ -610,18 +634,63 @@ function SetupStore() {
                 </div>
               )
             })}
+            {/* Edit Button - Styled like quickStats cards */}
+            {!isEditMode && (
+              <div
+                onClick={handleEdit}
+                className='rounded-2xl bg-white/80 border border-white/70 shadow-lg shadow-emerald-100/50 p-4 flex items-center gap-4 cursor-pointer hover:shadow-xl hover:shadow-emerald-100/70 transition-all'
+              >
+                <div className='p-3 rounded-xl bg-green-50 text-green-700'>
+                  <Edit3 className='w-5 h-5' />
+                </div>
+                <div>
+                  <p className='text-sm text-gray-500'>Thao tác</p>
+                  <p className='text-lg font-semibold text-gray-900'>Chỉnh sửa thông tin</p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Cover Image Edit Section */}
-          {isEditingCover && (
-            <Card className='border-none shadow-2xl backdrop-blur-sm bg-white/95 rounded-3xl'>
-              <CardContent className='p-8'>
-                <div className='space-y-4'>
-                  <div className='flex items-center justify-between'>
-                    <h3 className='text-lg font-semibold text-gray-900'>Chỉnh sửa ảnh bìa cửa hàng</h3>
-                    <span className='text-sm text-gray-500'>Khuyến nghị: 1200x400px, PNG/JPG, tối đa 5MB.</span>
+          {/* Cover Image Edit Dialog */}
+          <Dialog open={isEditingCover} onOpenChange={(open) => !open && handleCancelEditCover()}>
+            <DialogContent className='sm:max-w-[500px]'>
+              <DialogHeader>
+                <DialogTitle>Chỉnh sửa ảnh bìa cửa hàng</DialogTitle>
+                <DialogDescription>Khuyến nghị: 1200x400px, PNG/JPG, tối đa 5MB.</DialogDescription>
+              </DialogHeader>
+              <div className='space-y-4 py-4'>
+                {coverFile && coverPreviewUrl ? (
+                  <div className='space-y-4'>
+                    <div className='relative rounded-2xl overflow-hidden border-2 border-emerald-200 bg-gray-50'>
+                      <img
+                        src={coverPreviewUrl}
+                        alt='Preview ảnh bìa'
+                        className='w-full h-48 object-cover'
+                      />
+                      <div className='absolute top-2 right-2'>
+                        <Button
+                          onClick={handleCoverUpload}
+                          size='sm'
+                          className='bg-white/90 hover:bg-white text-gray-700 shadow-lg'
+                        >
+                          <Edit3 className='w-4 h-4 mr-2' />
+                          Thay đổi
+                        </Button>
+                      </div>
+                    </div>
+                    <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700 text-center'>
+                      File đã chọn: {coverFile.name}
+                    </div>
+                    <input
+                      ref={coverFileRef}
+                      type='file'
+                      accept='image/*'
+                      onChange={handleCoverFileChange}
+                      className='hidden'
+                    />
                   </div>
-                  <div className='border-2 border-dashed border-gray-300 rounded-3xl p-10 text-center hover:border-emerald-300 transition-all bg-gray-50'>
+                ) : (
+                  <div className='border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-emerald-300 transition-all bg-gray-50'>
                     <div className='flex flex-col items-center gap-4'>
                       <ImageIcon className='w-16 h-16 text-gray-300' />
                       <Button
@@ -629,13 +698,8 @@ function SetupStore() {
                         className='bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-5'
                       >
                         <Upload className='w-4 h-4 mr-2' />
-                        {coverFile ? 'Thay đổi ảnh bìa' : 'Tải lên ảnh bìa'}
+                        Tải lên ảnh bìa
                       </Button>
-                      {coverFile && (
-                        <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700'>
-                          File đã chọn: {coverFile.name}
-                        </div>
-                      )}
                       <input
                         ref={coverFileRef}
                         type='file'
@@ -645,44 +709,76 @@ function SetupStore() {
                       />
                     </div>
                   </div>
-                  <div className='flex gap-3 justify-end'>
-                    <Button onClick={handleCancelEditCover} variant='outline' disabled={savingCover}>
-                      <X className='w-4 h-4 mr-2' />
-                      Hủy
-                    </Button>
-                    <Button
-                      onClick={handleSaveCover}
-                      className='bg-green-600 hover:bg-green-700 text-white'
-                      disabled={!coverFile || savingCover}
-                    >
-                      {savingCover ? (
-                        <>
-                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
-                          Đang lưu...
-                        </>
-                      ) : (
-                        <>
-                          <Check className='w-4 h-4 mr-2' />
-                          Lưu thay đổi
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                )}
+              </div>
+              <DialogFooter>
+                <Button onClick={handleCancelEditCover} variant='outline' disabled={savingCover}>
+                  <X className='w-4 h-4 mr-2' />
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleSaveCover}
+                  className='bg-green-600 hover:bg-green-700 text-white'
+                  disabled={!coverFile || savingCover}
+                >
+                  {savingCover ? (
+                    <>
+                      <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                      Đang lưu...
+                    </>
+                  ) : (
+                    <>
+                      <Check className='w-4 h-4 mr-2' />
+                      Lưu thay đổi
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-          {/* Logo Edit Section */}
-          {isEditingLogo && (
-            <Card className='border-none shadow-2xl backdrop-blur-sm bg-white/95 rounded-3xl'>
-              <CardContent className='p-8'>
-                <div className='space-y-4'>
-                  <div className='flex items-center justify-between'>
-                    <h3 className='text-lg font-semibold text-gray-900'>Chỉnh sửa logo cửa hàng</h3>
-                    <span className='text-sm text-gray-500'>Khuyến nghị: 200x200px, PNG/JPG, tối đa 5MB.</span>
+          {/* Logo Edit Dialog */}
+          <Dialog open={isEditingLogo} onOpenChange={(open) => !open && handleCancelEditLogo()}>
+            <DialogContent className='sm:max-w-[500px]'>
+              <DialogHeader>
+                <DialogTitle>Chỉnh sửa logo cửa hàng</DialogTitle>
+                <DialogDescription>Khuyến nghị: 200x200px, PNG/JPG, tối đa 5MB.</DialogDescription>
+              </DialogHeader>
+              <div className='space-y-4 py-4'>
+                {logoFile && logoPreviewUrl ? (
+                  <div className='space-y-4'>
+                    <div className='relative rounded-2xl overflow-hidden border-2 border-emerald-200 bg-gray-50 flex justify-center items-center p-8'>
+                      <div className='relative'>
+                        <img
+                          src={logoPreviewUrl}
+                          alt='Preview logo'
+                          className='w-48 h-48 object-cover rounded-full border-4 border-white shadow-lg'
+                        />
+                        <div className='absolute -bottom-2 left-1/2 transform -translate-x-1/2'>
+                          <Button
+                            onClick={handleLogoUpload}
+                            size='sm'
+                            className='bg-white/90 hover:bg-white text-gray-700 shadow-lg'
+                          >
+                            <Edit3 className='w-4 h-4 mr-2' />
+                            Thay đổi
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700 text-center'>
+                      File đã chọn: {logoFile.name}
+                    </div>
+                    <input
+                      ref={logoFileRef}
+                      type='file'
+                      accept='image/*'
+                      onChange={handleLogoFileChange}
+                      className='hidden'
+                    />
                   </div>
-                  <div className='border-2 border-dashed border-gray-300 rounded-3xl p-10 text-center hover:border-emerald-300 transition-all bg-gray-50'>
+                ) : (
+                  <div className='border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-emerald-300 transition-all bg-gray-50'>
                     <div className='flex flex-col items-center gap-4'>
                       <ImageIcon className='w-16 h-16 text-gray-300' />
                       <Button
@@ -690,13 +786,8 @@ function SetupStore() {
                         className='bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-5'
                       >
                         <Upload className='w-4 h-4 mr-2' />
-                        {logoFile ? 'Thay đổi Logo' : 'Tải lên Logo'}
+                        Tải lên Logo
                       </Button>
-                      {logoFile && (
-                        <div className='p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700'>
-                          File đã chọn: {logoFile.name}
-                        </div>
-                      )}
                       <input
                         ref={logoFileRef}
                         type='file'
@@ -706,33 +797,33 @@ function SetupStore() {
                       />
                     </div>
                   </div>
-                  <div className='flex gap-3 justify-end'>
-                    <Button onClick={handleCancelEditLogo} variant='outline' disabled={savingLogo}>
-                      <X className='w-4 h-4 mr-2' />
-                      Hủy
-                    </Button>
-                    <Button
-                      onClick={handleSaveLogo}
-                      className='bg-green-600 hover:bg-green-700 text-white'
-                      disabled={!logoFile || savingLogo}
-                    >
-                      {savingLogo ? (
-                        <>
-                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
-                          Đang lưu...
-                        </>
-                      ) : (
-                        <>
-                          <Check className='w-4 h-4 mr-2' />
-                          Lưu thay đổi
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                )}
+              </div>
+              <DialogFooter>
+                <Button onClick={handleCancelEditLogo} variant='outline' disabled={savingLogo}>
+                  <X className='w-4 h-4 mr-2' />
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleSaveLogo}
+                  className='bg-green-600 hover:bg-green-700 text-white'
+                  disabled={!logoFile || savingLogo}
+                >
+                  {savingLogo ? (
+                    <>
+                      <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                      Đang lưu...
+                    </>
+                  ) : (
+                    <>
+                      <Check className='w-4 h-4 mr-2' />
+                      Lưu thay đổi
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <Card className='border-none shadow-2xl backdrop-blur-sm bg-white/95 rounded-3xl'>
             <CardContent className='p-8 space-y-10'>
