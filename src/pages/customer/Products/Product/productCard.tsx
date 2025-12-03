@@ -22,7 +22,9 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
 
   return (
     <div
-      className='bg-white rounded-xl shadow-md hover:shadow-xl transition p-2 flex flex-col cursor-pointer'
+      className={`bg-white rounded-xl shadow-md hover:shadow-xl transition p-2 flex flex-col cursor-pointer ${
+        product.soldOut ? 'opacity-75' : ''
+      }`}
       onClick={handleProductClick}
     >
       {/* Ảnh */}
@@ -30,16 +32,25 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
         <img
           src={product.productImages?.[0] || defaultImage}
           alt={product.name}
-          className='w-full h-full object-cover'
+          className={`w-full h-full object-cover ${product.soldOut ? 'grayscale' : ''}`}
           onError={(e) => {
             const target = e.target as HTMLImageElement
             target.src = defaultImage
           }}
         />
+        {product.soldOut && (
+          <div className='absolute inset-0 bg-black/30 flex items-center justify-center'>
+            <span className='bg-red-600 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg'>
+              Hết hàng
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Nội dung */}
-      <h3 className='font-semibold text-gray-800 text-lg mb-1'>{product.name}</h3>
+      <h3 className={`font-semibold text-lg mb-1 ${product.soldOut ? 'text-gray-500' : 'text-gray-800'}`}>
+        {product.name}
+      </h3>
       <p className='text-sm text-gray-500 mb-2'>{product.material}</p>
 
       {/* Giá + Rating */}
@@ -49,7 +60,7 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
           {'☆'.repeat(5 - Math.floor(product.rating))}
           <span className='ml-2 text-gray-400'>({product.reviewCount})</span>
         </div>
-        <span className='text-green-700 font-bold text-lg'>
+        <span className={`font-bold text-lg ${product.soldOut ? 'text-gray-400 line-through' : 'text-green-700'}`}>
           {product.price ? `${product.price.toLocaleString('vi-VN')}₫` : 'lỗi nhận giá'}
         </span>
       </div>

@@ -62,6 +62,7 @@ interface Order {
   | 'Vận chuyển'
   | 'Hoàn thành'
   | 'Trả hàng/Hoàn tiền'
+  | 'Trả hàng'
   | 'Đã hủy'
   statusColor: string
   statusBgColor: string
@@ -97,6 +98,7 @@ interface Order {
   canConfirmReceived?: boolean // Có thể click "Đã nhận được hàng"
   canComplain?: boolean // Có thể khiếu nại (ẩn nếu đã Complaining/Complained)
   isRefunded?: boolean // Đã yêu cầu hoàn tiền
+  paymentType?: string // Loại thanh toán: 'COD', 'Banking', 'Wallet'
   // Detail modal data
   shippingInfo?: {
     recipientName: string
@@ -306,6 +308,15 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   }
 
   const statusInfo = getUIStatus(apiOrder?.status || 'NotYet')
+  
+  // Điều chỉnh status cho COD khi Returned: chỉ hiển thị "Trả hàng" thay vì "Trả hàng/Hoàn tiền"
+  const adjustedStatusInfo = 
+    apiOrder?.status === 'Returned' && apiOrder?.paymentType === 'COD'
+      ? {
+          ...statusInfo,
+          status: 'Trả hàng' as const
+        }
+      : statusInfo
 
   const products = [
     ...(apiOrder?.orderItems || []).map((item) => ({
@@ -359,7 +370,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     originalStatus: statusVal,
     isComplained: isComplainedValue,
     isRefunded: apiOrder?.isRefunded || false,
-    ...statusInfo,
+    ...adjustedStatusInfo,
     isFreeship: apiOrder?.isFreeship || false,
     products,
     total: formatPrice(apiOrder?.finalPrice),
@@ -368,6 +379,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     canConfirmReceived: statusVal === 'Delivered' && !apiOrder?.isPayOut,
     canComplain: canComplainOrder,
     canReturn: apiOrder?.status === 'Delivered',
+    paymentType: apiOrder?.paymentType || '',
     shippingInfo: {
       recipientName: apiOrder?.toName || '',
       phone: '',
@@ -942,9 +954,7 @@ export default function OrdersContent({
       setSelectedOrderId(orderId)
       const response = await getRequestWalletMoney({
         orderId,
-        type: 'Refund',
-        pageSize: 1,
-        pageNumber: 0
+        type: 'Refund'
       })
 
       if (response.data && response.data.length > 0) {
@@ -1236,7 +1246,8 @@ export default function OrdersContent({
                 {(order.originalStatus === 'Lost' ||
                   order.originalStatus === 'Exception' ||
                   order.originalStatus === 'Damaged' ||
-                  (order.originalStatus === 'Returned' && !order.isRefunded)) && (
+                  (order.originalStatus === 'Returned' && !order.isRefunded)) &&
+                  order.paymentType !== 'COD' && (
                     <Button
                       variant='outline'
                       size='sm'

@@ -25,7 +25,9 @@ export default function ExpandableProductCard({ product, onClick }: ExpandablePr
 
   return (
     <div
-      className='group relative h-[280px] md:h-[320px] w-full rounded-2xl overflow-hidden cursor-pointer'
+      className={`group relative h-[280px] md:h-[320px] w-full rounded-2xl overflow-hidden cursor-pointer ${
+        product.soldOut ? 'opacity-75' : ''
+      }`}
       onClick={handleClick}
     >
       {/* Background Image */}
@@ -33,7 +35,9 @@ export default function ExpandableProductCard({ product, onClick }: ExpandablePr
         <img
           src={product.productImages?.[0] || defaultImage}
           alt={product.name}
-          className='w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110'
+          className={`w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110 ${
+            product.soldOut ? 'grayscale' : ''
+          }`}
           onError={(e) => {
             const target = e.target as HTMLImageElement
             target.src = defaultImage
@@ -41,6 +45,13 @@ export default function ExpandableProductCard({ product, onClick }: ExpandablePr
         />
         {/* Overlay gradient for better text readability */}
         <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent' />
+        {product.soldOut && (
+          <div className='absolute inset-0 bg-black/40 flex items-center justify-center'>
+            <span className='bg-red-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg'>
+              Hết hàng
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Glass-morphism Overlay */}
@@ -51,7 +62,9 @@ export default function ExpandableProductCard({ product, onClick }: ExpandablePr
         {/* Price and View Button - Visible on hover/expanded (desktop) or always (mobile) */}
         <div className='opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 delay-100'>
           <div className='flex items-center justify-between mt-2'>
-            <span className='text-green-700 font-bold text-lg md:text-xl'>{formattedPrice}</span>
+            <span className='text-green-700 font-bold text-lg md:text-xl'>
+              {formattedPrice}
+            </span>
             <Button
               variant='outline'
               size='sm'

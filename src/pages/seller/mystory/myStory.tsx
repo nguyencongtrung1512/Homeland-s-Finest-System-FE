@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/button'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
@@ -8,23 +9,18 @@ import { storeStoryApi } from '../../../apis/storeStory.api'
 import type { StoreStory } from '../../../types/storeStoryType'
 import { Plus, FileText } from 'lucide-react'
 import StoryDetailModal from './detail'
-import CreateMyStory from './createMyStory'
 import ImageCarousel, { type CarouselItem } from '../../../components/ui/imagecarousel'
+import path from '../../../constants/path'
 
 function MyStory() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [storeId, setStoreId] = useState<string | null>(null)
   const [storeStories, setStoreStories] = useState<StoreStory[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null)
-
-  // Debug: Log when showCreateDialog changes
-  useEffect(() => {
-    console.log('showCreateDialog changed:', showCreateDialog)
-  }, [showCreateDialog])
 
   // Fetch store ID and store stories
   useEffect(() => {
@@ -121,10 +117,7 @@ function MyStory() {
 
   // Handle create button click
   const handleCreateClick = () => {
-    console.log('handleCreateClick called')
-    console.log('Current showCreateDialog:', showCreateDialog)
-    setShowCreateDialog(true)
-    console.log('After setShowCreateDialog(true)')
+    navigate(`../${path.createMyStorySeller}`)
   }
 
   // Show empty state if no stories
@@ -142,8 +135,6 @@ function MyStory() {
           </Button>
         </div>
         <EmptyState />
-        {/* Create Story Dialog - Must be rendered even in empty state */}
-        <CreateMyStory open={showCreateDialog} onOpenChange={setShowCreateDialog} onSuccess={handleRefreshStories} />
       </div>
     )
   }
@@ -186,9 +177,6 @@ function MyStory() {
           </div>
         )}
       </div>
-
-      {/* Create Story Dialog */}
-      <CreateMyStory open={showCreateDialog} onOpenChange={setShowCreateDialog} onSuccess={handleRefreshStories} />
 
       {/* Story Detail Modal */}
       <StoryDetailModal

@@ -24,6 +24,7 @@ import SetupStore from './pages/seller/setupStore/setupStore'
 import HelpCenter from './pages/seller/help/help'
 import DetailHelp from './pages/seller/help/detailHelp'
 import MyStory from './pages/seller/mystory/myStory'
+import CreateMyStoryPage from './pages/seller/mystory/createMyStoryPage'
 import VerifyEmail from './pages/authentication/ForgotPassword/VerifyEmail'
 import StaffDashboard from './pages/staff/dashboard/dashboard'
 import StaffLayout from './Layouts/StaffLayout/staffLayout'
@@ -227,6 +228,10 @@ export default function useRouteElements() {
             {
               path: path.myStorySeller,
               element: <MyStory />
+            },
+            {
+              path: path.createMyStorySeller,
+              element: <CreateMyStoryPage />
             },
             {
               path: path.chatWithCustomerSeller,

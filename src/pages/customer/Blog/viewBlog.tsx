@@ -565,7 +565,7 @@ function ViewBlog() {
           </div>
 
           {/* Sidebar */}
-          <div className='lg:col-span-1'>
+          <div className='lg:col-span-1' style={{ height: 'fit-content' }}>
             <div className='sticky top-20 space-y-6'>
               {/* Related articles - Enhanced */}
               <div className='bg-white rounded-3xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl border border-gray-100'>
@@ -615,32 +615,6 @@ function ViewBlog() {
                 </div>
               </div>
 
-              {/* Newsletter - Enhanced with pattern */}
-              <div className='relative bg-gradient-to-br from-[#ecf2ea] via-green-50 to-[#ecf2ea] rounded-3xl p-6 shadow-lg border-2 border-green-200 overflow-hidden'>
-                {/* Decorative pattern */}
-                <div className='absolute top-0 right-0 w-32 h-32 bg-green-200/20 rounded-full -mr-16 -mt-16' />
-                <div className='absolute bottom-0 left-0 w-24 h-24 bg-green-300/15 rounded-full -ml-12 -mb-12' />
-                
-                <div className='relative z-10 text-center mb-5'>
-                  <div className='inline-flex items-center justify-center w-14 h-14 bg-[#2D5016] rounded-2xl mb-4 shadow-lg'>
-                    <BookOpen className='w-7 h-7 text-white' />
-                  </div>
-                  <h3 className='text-xl font-bold text-[#2D5016] mb-2'>Đăng ký nhận tin</h3>
-                  <p className='text-gray-700 text-sm leading-relaxed font-medium'>
-                    Nhận những bài viết mới nhất về nông nghiệp hữu cơ và kỹ thuật canh tác
-                  </p>
-                </div>
-                <div className='relative z-10 space-y-3'>
-                  <input
-                    type='email'
-                    placeholder='Nhập email của bạn'
-                    className='w-full px-4 py-3.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm transition-all bg-white shadow-sm'
-                  />
-                  <button className='w-full bg-[#2D5016] hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition-all duration-200 text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-1'>
-                    Đăng ký ngay
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
