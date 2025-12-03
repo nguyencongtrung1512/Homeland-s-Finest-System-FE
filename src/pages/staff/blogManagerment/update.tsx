@@ -151,7 +151,7 @@ function UpdateBlogByCategoryStaff() {
         toast.success('Cập nhật blog thành công!')
         // Quay lại trang chi tiết danh mục
         setTimeout(() => {
-          navigate(path.BLOG_CATEGORY_DETAIL.replace(':id', categoryId))
+          navigate(path.blogDetailStaff.replace(':id', categoryId))
         }, 1500)
       } else {
         toast.error('Có lỗi xảy ra khi cập nhật blog')

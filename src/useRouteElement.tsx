@@ -52,6 +52,9 @@ import NotFound from './components/Error/NotFound'
 import SystemStorage from './pages/admin/systemStorage/list'
 import ListCategory from './pages/staff/productCategory/listCategory'
 import BlogManagement from './pages/staff/blogManagerment/list'
+import BlogByCategoryStaff from './pages/staff/blogManagerment/detail'
+import CreateBlogByCategoryStaff from './pages/staff/blogManagerment/create'
+import UpdateBlogByCategoryStaff from './pages/staff/blogManagerment/update'
 import BlogCategoryList from './pages/admin/blogManagerment/list'
 import ComboSeller from './pages/seller/combos/listCombo'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -357,8 +360,40 @@ export default function useRouteElements() {
             {
               path: path.blogStaff,
               element: <BlogManagement />
+            },
+            {
+              path: path.blogDetailStaff,
+              element: <BlogByCategoryStaff />
             }
 
+          ]
+        }
+      ]
+    },
+
+    // Blog routes for Staff (absolute paths - need separate ProtectedRoute)
+    {
+      path: path.BASE_STAFF,
+      element: <ProtectedRoute requiredRole='Staff' />,
+      children: [
+        {
+          path: 'blogManagerment/detail/:id/create-blog',
+          element: <StaffLayout />,
+          children: [
+            {
+              path: '',
+              element: <CreateBlogByCategoryStaff />
+            }
+          ]
+        },
+        {
+          path: 'blogManagerment/edit/:id',
+          element: <StaffLayout />,
+          children: [
+            {
+              path: '',
+              element: <UpdateBlogByCategoryStaff />
+            }
           ]
         }
       ]

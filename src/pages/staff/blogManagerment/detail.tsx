@@ -91,7 +91,7 @@ function BlogByCategoryStaff() {
   }
 
   const handleEditBlog = (blogId: string) => {
-    navigate(`/admin/blogManagement/edit/${blogId}`)
+    navigate(path.updateBlogStaff.replace(':id', blogId))
   }
 
   const handleDeleteBlog = async () => {
@@ -167,7 +167,7 @@ function BlogByCategoryStaff() {
           </div>
           <div className='flex space-x-3'>
             <Button
-              onClick={() => navigate(path.CREATE_BLOG.replace(':id', categoryDetail?.categoryId || ''))}
+              onClick={() => navigate(path.createBlogStaff.replace(':id', categoryDetail?.categoryId || ''))}
               variant='blue'
             >
               <Database className='h-4 w-4 mr-2' />

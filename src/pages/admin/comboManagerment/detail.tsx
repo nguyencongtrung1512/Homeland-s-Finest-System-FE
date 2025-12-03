@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Package, Calendar, Store, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { Package, Calendar, Store, CheckCircle, XCircle, Clock, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { adminApi } from '../../../apis/admin.api'
+import { staffApi } from '../../../apis/staff.api'
 import { type Combo } from '../../../types/combo.type'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Badge } from '../../../components/ui/badge'
@@ -19,6 +20,48 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
   const [combo, setCombo] = useState<Combo | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [staffName, setStaffName] = useState<string | null>(null)
+  const [loadingStaff, setLoadingStaff] = useState(false)
+
+  const fetchStaffInfo = useCallback(async (staffId: string) => {
+    try {
+      setLoadingStaff(true)
+      const response = await staffApi.getStaffInfo(staffId)
+
+      // Handle different response formats
+      let staffData: { firstName?: string; lastName?: string; email?: string } | null = null
+
+      if (response && typeof response === 'object') {
+        if (response.data) {
+          staffData = response.data
+        } else if (response.firstName || response.lastName) {
+          staffData = response
+        }
+      }
+
+      if (staffData) {
+        // Generate staff name from firstName and lastName
+        if (staffData.firstName && staffData.lastName) {
+          setStaffName(`${staffData.firstName} ${staffData.lastName}`.trim())
+        } else if (staffData.firstName) {
+          setStaffName(staffData.firstName)
+        } else if (staffData.lastName) {
+          setStaffName(staffData.lastName)
+        } else if (staffData.email) {
+          setStaffName(staffData.email.split('@')[0])
+        } else {
+          setStaffName('Nhân viên')
+        }
+      } else {
+        setStaffName(null)
+      }
+    } catch (error) {
+      console.error('Error fetching staff info:', error)
+      setStaffName(null)
+    } finally {
+      setLoadingStaff(false)
+    }
+  }, [])
 
   const fetchComboDetail = useCallback(async () => {
     if (!comboId) return
@@ -31,6 +74,12 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
 
       if (foundCombo) {
         setCombo(foundCombo)
+        // Fetch staff info if assignedToId exists
+        if (foundCombo.assignedToId) {
+          fetchStaffInfo(foundCombo.assignedToId)
+        } else {
+          setStaffName(null)
+        }
       } else {
         setError('Không tìm thấy combo')
       }
@@ -40,11 +89,16 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
     } finally {
       setLoading(false)
     }
-  }, [comboId])
+  }, [comboId, fetchStaffInfo])
 
   useEffect(() => {
     if (isOpen && comboId) {
       fetchComboDetail()
+    } else {
+      // Reset states when dialog closes
+      setCombo(null)
+      setStaffName(null)
+      setError(null)
     }
   }, [isOpen, comboId, fetchComboDetail])
 
@@ -195,19 +249,7 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
               <div className='flex items-start gap-4'>
                 <Avatar className='h-16 w-16'>
                   {combo.thumbnailUrl ? (
-                    <img
-                      src={combo.thumbnailUrl}
-                      alt={combo.name}
-                      className='w-full h-full object-cover'
-                      onError={(e) => {
-                        const target = e.currentTarget
-                        const fallback = target.nextElementSibling as HTMLElement
-                        if (fallback) {
-                          target.style.display = 'none'
-                          fallback.style.display = 'flex'
-                        }
-                      }}
-                    />
+                    <img src={combo.thumbnailUrl} alt={combo.name} className='w-full h-full object-cover' />
                   ) : null}
                   <AvatarFallback className='text-white font-semibold text-lg bg-gradient-to-br from-blue-500 to-blue-600'>
                     {combo.name
@@ -340,10 +382,27 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
                     {statusConfig.text}
                   </Badge>
                 </div>
-                <div className='flex justify-between'>
-                  <span className='text-gray-600'>Staff Note:</span>
-                  <span className='font-medium'>{combo.staffNote}</span>
-                </div>
+                {combo.assignedToId && (
+                  <div className='flex justify-between'>
+                    <span className='text-gray-600'>Nhân viên được gán:</span>
+                    {loadingStaff ? (
+                      <span className='text-gray-400'>Đang tải...</span>
+                    ) : staffName ? (
+                      <span className='font-medium flex items-center gap-1'>
+                        <User size={14} className='text-gray-400' />
+                        {staffName}
+                      </span>
+                    ) : (
+                      <span className='text-gray-400'>Không tìm thấy</span>
+                    )}
+                  </div>
+                )}
+                {combo.staffNote && (
+                  <div className='flex justify-between'>
+                    <span className='text-gray-600'>Staff Note:</span>
+                    <span className='font-medium'>{combo.staffNote}</span>
+                  </div>
+                )}
                 <div className='flex justify-between'>
                   <span className='text-gray-600'>Giá gốc:</span>
                   <span className='font-medium text-green-600'>{formatCurrency(combo.totalBasePrice)}</span>

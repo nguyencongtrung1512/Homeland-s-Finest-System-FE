@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Eye, ChevronLeft, ChevronRight, Loader2, UserPlus, Users, RefreshCw, ArrowUpDown } from 'lucide-react'
+import { Search, Eye, ChevronLeft, ChevronRight, Loader2, RefreshCw, ArrowUpDown } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '../../../components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-import StaffComboBox from '../../../components/ui/staff-combo-box'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
-import { adminApi, type Staff } from '../../../apis/admin.api'
-import { toast } from '../../../utils/toast'
 
 interface Store {
   id: string
@@ -45,12 +41,6 @@ function StoreManagement() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const pageSize = 10
-
-  const [staffList, setStaffList] = useState<Staff[]>([])
-  const [selectedStore, setSelectedStore] = useState<Store | null>(null)
-  const [selectedStaffId, setSelectedStaffId] = useState('')
-  const [assignLoading, setAssignLoading] = useState(false)
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false)
 
   const convertStoreResponse = (apiStore: StoreResponse): Store => {
     const formatDate = (dateString: string) => {
@@ -93,20 +83,8 @@ function StoreManagement() {
     }
   }
 
-  const fetchStaffList = async () => {
-    try {
-      const response = await adminApi.getAllStaff()
-      if (Array.isArray(response)) setStaffList(response)
-      else if (response && response.data && Array.isArray(response.data)) setStaffList(response.data)
-      else toast.error('Định dạng dữ liệu nhân viên không đúng')
-    } catch {
-      toast.error('Có lỗi xảy ra khi tải danh sách nhân viên')
-    }
-  }
-
   useEffect(() => {
     fetchStores()
-    fetchStaffList()
   }, [])
 
   useEffect(() => {
@@ -180,32 +158,6 @@ function StoreManagement() {
 
   const handleRefresh = () => {
     fetchStores()
-    fetchStaffList()
-  }
-
-  const handleAssignStaff = (store: Store) => {
-    setSelectedStore(store)
-    setSelectedStaffId('')
-    setAssignDialogOpen(true)
-  }
-
-  const handleConfirmAssign = async () => {
-    if (!selectedStore || !selectedStaffId) return
-    try {
-      setAssignLoading(true)
-      const response = await adminApi.assignStaffToStore(selectedStore.id, selectedStaffId)
-      console.log('response', response)
-      if (response) {
-        toast.success('Gán nhân viên thành công!')
-        setAssignDialogOpen(false)
-        fetchStores()
-        fetchStaffList()
-      } else toast.error('Có lỗi xảy ra khi gán nhân viên')
-    } catch {
-      toast.error('Có lỗi xảy ra khi gán nhân viên')
-    } finally {
-      setAssignLoading(false)
-    }
   }
 
   return (
@@ -353,20 +305,6 @@ function StoreManagement() {
                             >
                               <Eye className='w-4 h-4' />
                             </Button>
-                            {store.status === 'Pending' && (
-                              <Button
-                                variant='ghost'
-                                size='sm'
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleAssignStaff(store)
-                                }}
-                                className='h-8 w-8 p-0 flex items-center justify-center text-black hover:text-purple-600'
-                                title='Gán nhân viên'
-                              >
-                                <UserPlus className='w-4 h-4' />
-                              </Button>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -427,68 +365,6 @@ function StoreManagement() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Assign Dialog */}
-      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle className='flex items-center gap-2 text-gray-900'>
-              <Users className='w-5 h-5 text-blue-500' />
-              Gán nhân viên cho cửa hàng
-            </DialogTitle>
-          </DialogHeader>
-          {selectedStore && (
-            <div className='space-y-4 mt-4'>
-              <div className='p-4 bg-gray-50 border rounded-lg'>
-                <h4 className='text-xs font-medium text-gray-500 mb-2'>Cửa hàng được chọn:</h4>
-                <div className='flex items-center gap-3'>
-                  <div>
-                    <p className='font-medium text-sm'>{selectedStore.name}</p>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className='block text-xs font-medium text-gray-600 mb-2'>Chọn nhân viên:</label>
-                {!staffList || staffList.length === 0 ? (
-                  <div className='p-6 bg-gray-50 border rounded-lg text-center text-sm text-gray-500'>
-                    Chưa có nhân viên nào
-                  </div>
-                ) : (
-                  <StaffComboBox
-                    options={staffList}
-                    placeholder='Chọn nhân viên...'
-                    value={selectedStaffId}
-                    onSelect={(staffId) => setSelectedStaffId(staffId || '')}
-                    disabled={assignLoading}
-                  />
-                )}
-              </div>
-              <div className='flex justify-end gap-3 pt-2'>
-                <Button variant='outline' onClick={() => setAssignDialogOpen(false)} disabled={assignLoading}>
-                  Hủy
-                </Button>
-                <Button
-                  onClick={handleConfirmAssign}
-                  disabled={!selectedStaffId || assignLoading}
-                  className='bg-blue-500 hover:bg-blue-600 text-white'
-                >
-                  {assignLoading ? (
-                    <>
-                      <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                      Đang gán...
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className='w-4 h-4 mr-2' />
-                      Gán nhân viên
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

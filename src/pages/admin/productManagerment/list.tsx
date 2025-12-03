@@ -1,8 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Eye, UserPlus, CheckCircle, Loader2, Calendar, Filter } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { adminApi, type AdminProduct, type Staff } from '../../../apis/admin.api'
+import { adminApi, type Staff } from '../../../apis/admin.api'
 import { staffApi, type StaffInfo } from '../../../apis/staff.api'
+import { productApi } from '../../../apis/product.api'
+import type { Product } from '../../../types/productType'
+
+// Extended Product type for admin page with additional fields from backend
+type AdminProductFromAPI = Product & {
+  assignedToId?: string | null
+  createdAt?: string
+  updatedAt?: string
+}
 import { Button } from '../../../components/ui/button'
 import {
   Dialog,
@@ -69,14 +78,14 @@ function ManagerProductAdmin() {
   const [pageSize] = useState(10) // Fixed page size, can be made dynamic in future if needed
   const [totalItems, setTotalItems] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [products, setProducts] = useState<AdminProduct[]>([])
+  const [products, setProducts] = useState<AdminProductFromAPI[]>([])
   const [staffNames, setStaffNames] = useState<Map<string, string>>(new Map())
   const [loadingStaff, setLoadingStaff] = useState<Set<string>>(new Set())
 
   // States for assign staff modal
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
-  const [selectedProduct, setSelectedProduct] = useState<AdminProduct | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<AdminProductFromAPI | null>(null)
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null)
   const [staffList, setStaffList] = useState<Staff[]>([])
   const [loadingStaffList, setLoadingStaffList] = useState(false)
@@ -88,22 +97,38 @@ function ManagerProductAdmin() {
       const params: {
         pageSize: number
         pageNumber: number
-        status?: 'Pending' | 'Processing' | 'Confirmed' | 'Rejected' | 'Denied' | 'Approved'
-        search?: string
+        productStatus?: string
+        name?: string
+        fromDate?: string
+        toDate?: string
       } = {
         pageSize,
         pageNumber: currentPage
       }
 
       if (statusFilter && statusFilter !== 'all') {
-        params.status = statusFilter as 'Pending' | 'Processing' | 'Confirmed' | 'Rejected' | 'Denied' | 'Approved'
+        params.productStatus = statusFilter
       }
 
       if (searchText) {
-        params.search = searchText
+        params.name = searchText
       }
 
-      const response = await adminApi.getProducts(params)
+      if (dateFrom) {
+        // Convert to ISO 8601 format with UTC timezone: YYYY-MM-DDT00:00:00Z
+        const date = new Date(dateFrom)
+        date.setUTCHours(0, 0, 0, 0)
+        params.fromDate = date.toISOString()
+      }
+
+      if (dateTo) {
+        // Convert to ISO 8601 format with UTC timezone: YYYY-MM-DDT23:59:59Z
+        const date = new Date(dateTo)
+        date.setUTCHours(23, 59, 59, 999)
+        params.toDate = date.toISOString()
+      }
+
+      const response = await productApi.getAll(params)
 
       if (response.data) {
         setProducts(response.data)
@@ -124,7 +149,7 @@ function ManagerProductAdmin() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, pageSize, statusFilter, searchText])
+  }, [currentPage, pageSize, statusFilter, searchText, dateFrom, dateTo])
 
   // Fetch staff info by ID
   const fetchStaffInfo = useCallback(
@@ -199,7 +224,7 @@ function ManagerProductAdmin() {
   }, [])
 
   // Handle open assign modal
-  const handleOpenAssignModal = (product: AdminProduct) => {
+  const handleOpenAssignModal = (product: AdminProductFromAPI) => {
     setSelectedProductId(product.id)
     setSelectedProduct(product)
     setSelectedStaffId(null)
@@ -250,7 +275,7 @@ function ManagerProductAdmin() {
     }
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined) => {
     if (!dateString || dateString === 'null' || dateString === 'undefined') {
       return '-'
     }
@@ -457,7 +482,7 @@ function ManagerProductAdmin() {
                         </div>
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
-                        {formatDate(product.createdAt)}
+                        {formatDate(product.createdAt || undefined)}
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
                         {!product.assignedToId ? (

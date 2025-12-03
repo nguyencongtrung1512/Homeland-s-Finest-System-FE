@@ -102,16 +102,54 @@ export const updateComboItem = async (
   return response
 }
 
-export const getAllCombos = async (params?: ComboParams): Promise<Combo[]> => {
+export const getAllCombos = async (params?: ComboParams): Promise<{
+  data: Combo[]
+  pagination?: {
+    pageSize: number
+    pageNumber: number
+    totalItems: number
+    totalPages?: number
+  }
+}> => {
   try {
     console.log('getAllCombos params:', params)
     const response = await axiosInstance.get(API_URL, { params })
-    console.log('getAllCombos response:', response.data)
+    console.log('getAllCombos response:', response)
 
-    // Backend trả về array trực tiếp hoặc object có data property
-    const data = Array.isArray(response.data) ? response.data : response.data?.data || []
-    console.log('getAllCombos processed data:', data)
-    return data
+    // Backend trả về ApiResponseWithPagination với structure:
+    // { status, message, data: Combo[], pagination: {...} }
+    const responseData = response.data || response
+
+    // Handle different response structures
+    let combos: Combo[] = []
+    let pagination: {
+      pageSize: number
+      pageNumber: number
+      totalItems: number
+      totalPages?: number
+    } | undefined
+
+    if (Array.isArray(responseData)) {
+      combos = responseData
+    } else if (responseData && typeof responseData === 'object') {
+      if (Array.isArray(responseData.data)) {
+        combos = responseData.data
+      } else if (Array.isArray(responseData)) {
+        combos = responseData
+      }
+
+      if (responseData.pagination) {
+        pagination = {
+          pageSize: responseData.pagination.pageSize || params?.pageSize || 10,
+          pageNumber: responseData.pagination.pageNumber || params?.pageNumber || 1,
+          totalItems: responseData.pagination.totalItems || 0,
+          totalPages: responseData.pagination.totalPages || Math.ceil((responseData.pagination.totalItems || 0) / (params?.pageSize || 10))
+        }
+      }
+    }
+
+    console.log('getAllCombos processed data:', { combos, pagination })
+    return { data: combos, pagination }
   } catch (error) {
     console.error('getAllCombos API error:', error)
     throw error
@@ -230,3 +268,21 @@ export const cancelCombo = async (comboId: string): Promise<any> => {
   const response = await axiosInstance.put<ComboResponse>(`/combos/${comboId}/cancel`)
   return response
 }
+
+// Export all functions as comboApi object
+export const comboApi = {
+  createComboShell,
+  addItemToCombo,
+  updateComboShell,
+  updateComboItem,
+  getAllCombos,
+  getComboById,
+  createCompleteCombo,
+  updateCompleteCombo,
+  removeItemFromCombo,
+  getVariantsBySellerId,
+  submitCombo,
+  cancelCombo
+}
+
+export default comboApi

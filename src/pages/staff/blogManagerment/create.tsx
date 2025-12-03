@@ -188,7 +188,7 @@ function CreateBlogByCategoryStaff() {
 
       if (response.status === 200 || response.status === 201) {
         toast.success('Tạo blog thành công!')
-        navigate(path.BLOG_CATEGORY_DETAIL.replace(':id', categoryId))
+        navigate(path.blogDetailStaff.replace(':id', categoryId))
       } else {
         toast.error('Có lỗi xảy ra khi tạo blog')
       }

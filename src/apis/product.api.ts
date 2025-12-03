@@ -96,7 +96,19 @@ export interface ProductCreateFormData {
 // Product API Functions
 export const productApi = {
   // Get all products with pagination and filters
-  getAll: async (params?: any): Promise<ProductListResponse> => {
+  getAll: async (params?: {
+    pageSize?: number
+    pageNumber?: number
+    storeId?: string
+    productStatus?: string
+    productType?: string
+    isActive?: boolean
+    sortOrder?: string
+    fromDate?: string
+    toDate?: string
+    name?: string
+    [key: string]: any
+  }): Promise<ProductListResponse> => {
     console.log('API Request params:', params)
     const response = await axiosInstance.get(API_URL, { params })
     console.log('API Response:', response)

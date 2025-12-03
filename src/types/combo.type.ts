@@ -117,4 +117,7 @@ export interface ComboParams {
   pageNumber?: number
   sellerID?: string
   storeId?: string
+  sortByDate?: string
+  fromDate?: string
+  toDate?: string
 }

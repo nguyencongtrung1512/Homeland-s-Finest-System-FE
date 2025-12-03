@@ -176,7 +176,7 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   formData.append('UserInfo.PhoneNumber', data.userInfo.phoneNumber)
   formData.append('UserInfo.Gender', data.userInfo.gender)
   formData.append('UserInfo.DateOfBirth', data.userInfo.dateOfBirth)
-  formData.append('UserInfo.DateOfIssue', data.userInfo.DateOfIssue)
+  // formData.append('UserInfo.DateOfIssue', data.userInfo.DateOfIssue)
   formData.append('UserInfo.ProvinceId', data.userInfo.provinceId.toString())
   formData.append('UserInfo.DistrictId', data.userInfo.districtId.toString())
   formData.append('UserInfo.WardId', data.userInfo.wardId.toString())
@@ -190,7 +190,19 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   formData.append('SellerInfo.IdentifyBackImage', data.sellerInfo.identifyBackImage)
   formData.append('SellerInfo.BusinessLicense', data.sellerInfo.businessLicense)
   formData.append('SellerInfo.BankName', data.sellerInfo.bankName)
-
+  if (data.userInfo.DateOfIssue) {
+    const dateOfIssue = new Date(data.userInfo.DateOfIssue)
+    // Set to UTC midnight to avoid timezone issues
+    const utcDate = new Date(Date.UTC(
+      dateOfIssue.getFullYear(),
+      dateOfIssue.getMonth(),
+      dateOfIssue.getDate(),
+      0, 0, 0, 0
+    ))
+    // Format as ISO 8601 with Z (UTC)
+    const utcDateString = utcDate.toISOString()
+    formData.append('SellerInfo.DateOfIssue', utcDateString)
+  }
   // Add storeInfo
   formData.append('StoreInfo.StoreName', data.storeInfo.storeName)
   formData.append('StoreInfo.StoreAddress', data.storeInfo.address)

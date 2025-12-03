@@ -29,6 +29,7 @@ import {
 } from '../../../apis/categoryBlog.api'
 import { Switch } from '../../../components/ui/switch'
 import { formatDate } from '../../../utils/formatDate'
+import { path } from '../../../constants/path'
 
 function BlogCategoryListStaff() {
   const navigate = useNavigate()
@@ -260,7 +261,7 @@ function BlogCategoryListStaff() {
 
   // Navigate to detail page
   const openDetailPage = (category: BlogCategoryItem) => {
-    navigate(`/admin/blogManagement/detail/${category.categoryId}`)
+    navigate(path.blogDetailStaff.replace(':id', category.categoryId))
   }
 
   // Filter categories by search term

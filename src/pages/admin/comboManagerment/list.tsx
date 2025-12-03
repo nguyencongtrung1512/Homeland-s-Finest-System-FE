@@ -1,9 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Calendar, CheckCircle, Eye, Store, Loader2, UserPlus } from 'lucide-react'
-import { adminApi, type ComboAdminParams, type Staff } from '../../../apis/admin.api'
+import { adminApi, type Staff } from '../../../apis/admin.api'
+import { staffApi } from '../../../apis/staff.api'
 import { type Combo } from '../../../types/combo.type'
+import { comboApi } from '../../../apis/combo.api'
+import type { ComboParams } from '../../../types/combo.type'
 import ComboDetailPopup from './detail'
 import { Button } from '../../../components/ui/button'
+import { toast } from '../../../utils/toast'
+
+const DEFAULT_STORE_LOGO = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 import {
   Dialog,
   DialogContent,
@@ -96,66 +102,44 @@ function ManagerComboAdmin() {
   const fetchCombos = useCallback(async () => {
     try {
       setLoading(true)
-      const params: ComboAdminParams = {
+      const params: ComboParams = {
         pageSize: itemsPerPage,
         pageNumber: currentPage
       }
 
-      if (statusFilter) {
-        params.status = statusFilter
-      }
-
       if (storeSearch) {
-        params.storeId = storeSearch // Assuming storeId can be used for search
+        // Try to parse as GUID, if not valid, skip storeId filter
+        const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (guidRegex.test(storeSearch)) {
+          params.storeId = storeSearch
+        }
       }
 
-      const response = await adminApi.getAllCombos(params)
+      if (dateFrom) {
+        params.fromDate = dateFrom
+      }
 
-      // Handle response - could be array or object with data and pagination
-      let combos: Combo[] = []
-      let pagination: { totalPages: number; totalItems: number } | null = null
+      if (dateTo) {
+        params.toDate = dateTo
+      }
 
-      if (Array.isArray(response)) {
-        combos = response
-      } else if (response && typeof response === 'object') {
-        // Check if response has data and pagination properties
-        interface ResponseWithData {
-          data?: Combo[]
-          pagination?: {
-            totalPages?: number
-            totalItems?: number
-            pageSize?: number
-            pageNumber?: number
-          }
-        }
+      const response = await comboApi.getAllCombos(params)
 
-        const responseObj = response as ResponseWithData | Combo[]
+      // Response structure: { data: Combo[], pagination?: {...} }
+      let combos: Combo[] = response.data || []
 
-        if (Array.isArray(responseObj)) {
-          combos = responseObj
-        } else if ('data' in responseObj && Array.isArray(responseObj.data)) {
-          combos = responseObj.data
-
-          // Extract pagination if available
-          if (responseObj.pagination) {
-            const pag = responseObj.pagination
-            pagination = {
-              totalPages: pag.totalPages || Math.ceil((pag.totalItems || 0) / itemsPerPage),
-              totalItems: pag.totalItems || 0
-            }
-          }
-        } else {
-          // Fallback: treat as array of combos
-          combos = response as Combo[]
-        }
+      // Filter by status on client-side since backend doesn't support status filter in GetAll
+      if (statusFilter) {
+        combos = combos.filter((combo) => combo.status === statusFilter)
       }
 
       setData(combos)
 
       // Set pagination info
-      if (pagination) {
-        setTotalPages(pagination.totalPages)
-        setTotalItems(pagination.totalItems)
+      if (response.pagination) {
+        const pag = response.pagination
+        setTotalPages(pag.totalPages || Math.ceil((pag.totalItems || 0) / itemsPerPage))
+        setTotalItems(pag.totalItems || 0)
       } else {
         // Fallback: calculate from data length if no pagination info
         setTotalPages(Math.ceil(combos.length / itemsPerPage))
@@ -163,13 +147,14 @@ function ManagerComboAdmin() {
       }
     } catch (error) {
       console.error('Error fetching combos:', error)
+      toast.error('Không thể tải danh sách combo')
       setData([])
       setTotalPages(1)
       setTotalItems(0)
     } finally {
       setLoading(false)
     }
-  }, [currentPage, statusFilter, storeSearch, itemsPerPage])
+  }, [currentPage, statusFilter, storeSearch, dateFrom, dateTo, itemsPerPage])
 
   useEffect(() => {
     fetchCombos()
@@ -179,10 +164,59 @@ function ManagerComboAdmin() {
   const fetchStaffList = useCallback(async () => {
     try {
       setLoadingStaff(true)
-      const response = await adminApi.getAllStaff()
-      // Response structure: { status, message, data: Staff[] }
-      const staffData = response?.data || response || []
-      setStaffList(Array.isArray(staffData) ? staffData : [])
+      const response = await staffApi.getAllStaff({ pageSize: 0, pageNumber: 1 })
+
+      // Handle different response formats
+      let staffData: unknown[] = []
+
+      if (Array.isArray(response)) {
+        // Response is directly an array
+        staffData = response
+      } else if (response && typeof response === 'object' && 'data' in response) {
+        const responseWithData = response as { data?: unknown[] }
+        if (Array.isArray(responseWithData.data)) {
+          // Response has structure {status, message, data: [...]}
+          staffData = responseWithData.data
+        }
+      }
+
+      if (staffData.length > 0) {
+        // Map StaffInfo to Staff format for compatibility
+        const mappedStaffList: Staff[] = staffData.map((staffInfo: unknown) => {
+          const info = staffInfo as {
+            userId?: string
+            id?: string
+            firstName?: string
+            lastName?: string
+            staffName?: string
+            name?: string
+            email?: string
+          }
+
+          // Generate staff name with fallbacks
+          let staffName = 'Nhân viên'
+          if (info.firstName && info.lastName) {
+            staffName = `${info.firstName} ${info.lastName}`.trim()
+          } else if (info.staffName) {
+            staffName = info.staffName
+          } else if (info.name) {
+            staffName = info.name
+          } else if (info.email) {
+            // Use email username as fallback
+            staffName = info.email.split('@')[0]
+          }
+
+          return {
+            staffId: info.userId || info.id || '',
+            staffName: staffName,
+            email: info.email || '',
+            processingStoreCount: 0 // Default value as this field is not available in StaffInfo
+          }
+        })
+        setStaffList(mappedStaffList)
+      } else {
+        setStaffList([])
+      }
     } catch (error) {
       console.error('Error fetching staff list:', error)
       setStaffList([])
@@ -214,16 +248,26 @@ function ManagerComboAdmin() {
       return
     }
 
+    // Check if combo has storeId
+    if (!selectedComboForAssign.storeId) {
+      toast.error('Combo không có thông tin cửa hàng (storeId)')
+      return
+    }
+
     try {
       setAssigning(true)
-      await adminApi.reassignCombo(selectedComboForAssign.id, selectedStaffId)
-      // Refresh combo list
-      await fetchCombos()
-      handleCloseAssignStaff()
-      // You can add a toast notification here if needed
+      const response = await adminApi.assignStaffToStore(selectedComboForAssign.storeId, selectedStaffId)
+      if (response) {
+        toast.success('Gán nhân viên cho cửa hàng thành công!')
+        // Refresh combo list
+        await fetchCombos()
+        handleCloseAssignStaff()
+      } else {
+        toast.error('Có lỗi xảy ra khi gán nhân viên')
+      }
     } catch (error) {
       console.error('Error assigning staff:', error)
-      // You can add error toast notification here
+      toast.error('Có lỗi xảy ra khi gán nhân viên cho cửa hàng')
     } finally {
       setAssigning(false)
     }
@@ -439,14 +483,23 @@ function ManagerComboAdmin() {
                         <div className='flex items-center gap-3'>
                           <div className='w-15 h-15 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0'>
                             {comboImage ? (
-                              <img src={comboImage} alt={combo.name} className='w-full h-full object-cover' />
+                              <img
+                                src={comboImage}
+                                alt={combo.name}
+                                className='w-full h-full object-cover'
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  if (target.src !== DEFAULT_STORE_LOGO) {
+                                    target.src = DEFAULT_STORE_LOGO
+                                  }
+                                }}
+                              />
                             ) : (
-                              <span className='text-xs text-gray-500'>IMG</span>
+                              <img src={DEFAULT_STORE_LOGO} alt={combo.name} className='w-full h-full object-cover' />
                             )}
                           </div>
                           <div className='min-w-0'>
                             <div className='text-sm font-medium text-gray-900 truncate max-w-[200px]'>{combo.name}</div>
-                            <div className='text-xs text-gray-500'>#{combo.id.slice(0, 8)}...</div>
                           </div>
                         </div>
                       </td>

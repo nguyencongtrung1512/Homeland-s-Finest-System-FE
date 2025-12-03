@@ -15,9 +15,11 @@ import {
   Ban,
   Unlock,
   Package,
-  Download
+  Download,
+  FileText,
+  Edit
 } from 'lucide-react'
-import { Card, CardContent } from '../../../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '../../../components/ui/avatar'
 import { Badge } from '../../../components/ui/badge'
@@ -510,398 +512,461 @@ function StoreDetailAdmin() {
   const isTrustworthyStore = reportCount === 0
 
   return (
-    <div className='min-h-screen bg-gray-50'>
-      <div className='max-w-7xl mx-auto px-6 py-8'>
-        {/* Header */}
-        <div className='mb-6'>
-          <Button
-            onClick={() => navigate(-1 as any)}
-            variant='ghost'
-            className='mb-4 text-gray-600 hover:text-gray-900'
-          >
-            <ArrowLeft className='w-4 h-4 mr-2' />
-            Trở về danh sách cửa hàng
-          </Button>
-          <div className='flex items-center justify-between'>
-            <h1 className='text-2xl font-semibold text-gray-900'>Chi tiết cửa hàng</h1>
-            <Button onClick={handleExportToExcel} className='bg-green-600 hover:bg-green-700 text-white'>
-              <Download className='w-4 h-4 mr-2' />
-              Xuất Excel
-            </Button>
+    <div className='space-y-6 p-6'>
+      {/* Header */}
+      <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent>
+          <div className='flex items-center justify-between py-4'>
+            <div className='flex items-center gap-3'>
+              <h2 className='text-3xl font-bold text-white m-0'>Chi tiết cửa hàng</h2>
+            </div>
+            <div className='flex items-center gap-3'>
+              <Button
+                onClick={handleExportToExcel}
+                className='bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white'
+              >
+                <Download size={16} />
+                Xuất Excel
+              </Button>
+              <Button
+                variant='outline'
+                onClick={() => navigate(-1 as any)}
+                className='flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white'
+              >
+                <ArrowLeft size={16} />
+                Trở về danh sách cửa hàng
+              </Button>
+            </div>
           </div>
-        </div>
+          {store && <p className='text-white/90 mt-2'>{store.storeName}</p>}
+        </CardContent>
+      </Card>
 
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-          {/* Main Content */}
-          <div className='lg:col-span-2 space-y-6'>
-            {/* Thông tin cửa hàng */}
-            <Card className='border-0 shadow-sm'>
-              <CardContent className='p-6'>
-                <div className='flex items-start gap-4'>
-                  <Avatar className='w-16 h-16 border-2 border-blue-200'>
+      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+        {/* Left Column - Main Content */}
+        <div className='lg:col-span-2 space-y-6'>
+          {/* Store Information */}
+          <Card className='border-l-4 border-l-blue-500 shadow-sm'>
+            <CardHeader>
+              <CardTitle className='py-2 flex items-center gap-2 text-blue-600'>
+                <Building2 size={18} />
+                <span>Thông tin cửa hàng</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className='flex items-start gap-4 mb-6'>
+                <Avatar className='w-16 h-16 border-2 border-blue-200'>
+                  {store.logoUrl ? (
                     <AvatarImage
-                      src={store.logoUrl || DEFAULT_STORE_LOGO}
-                      alt={store.storeName || 'Store logo'}
+                      src={store.logoUrl}
+                      alt={store.storeName}
                       className='object-cover'
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        if (target.src !== DEFAULT_STORE_LOGO) {
+                          target.src = DEFAULT_STORE_LOGO
+                        }
+                      }}
                     />
-                    <AvatarFallback className='bg-blue-100 text-blue-600 text-lg font-medium'>
-                      <Building2 className='w-8 h-8' />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className='flex-1'>
-                    <div className='flex flex-col gap-1 mb-4'>
-                      <div className='flex flex-wrap items-center gap-3'>
-                        <h2 className='text-xl font-semibold text-gray-900'>
-                          {store.storeName || 'tên cửa hanggf chua có '}
-                        </h2>
-                        {/* <div className='flex items-center gap-2'>
-                          <div className={`w-2 h-2 rounded-full ${statusConfig.color}`} />
-                          <span className={`text-sm font-medium ${statusConfig.textColor}`}>{statusConfig.text}</span>
-                        </div> */}
-                      </div>
-                      {isTrustworthyStore && (
-                        <div className='flex items-center gap-2 text-sm text-green-600'>
-                          <span>Cửa hàng đáng tin cậy</span>
-                        </div>
-                      )}
-                      {!isTrustworthyStore && reportCount > 0 && (
-                        <div className='flex items-center gap-2 text-sm text-red-600'>
-                          <AlertTriangle className='w-4 h-4 text-red-500' />
-                          <span>Bị báo cáo {reportCount} lần</span>
-                        </div>
-                      )}
+                  ) : null}
+                  <AvatarFallback className='bg-blue-600 text-white text-2xl font-bold'>
+                    {store.storeName
+                      ? store.storeName
+                        .split(' ')
+                        .map((word) => word.charAt(0))
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2)
+                      : 'ST'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className='flex-1'>
+                  <div className='flex items-center gap-3 mb-2 flex-wrap'>
+                    <h2 className='text-xl font-bold text-gray-900'>{store.storeName || 'Chưa có tên cửa hàng'}</h2>
+                    <Badge
+                      className={`${store.status === 'Approved'
+                        ? 'bg-green-100 text-green-800 hover:bg-green-100'
+                        : store.status === 'Pending'
+                          ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                          : store.status === 'Rejected' || store.status === 'RejectedByStaff'
+                            ? 'bg-red-100 text-red-800 hover:bg-red-100'
+                            : store.status === 'Processing' || store.status === 'ApprovedByStaff'
+                              ? 'bg-indigo-100 text-indigo-800 hover:bg-indigo-100'
+                              : store.status === 'Inactive'
+                                ? 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+                                : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+                        }`}
+                    >
+                      {getStatusConfig(store.status).text}
+                    </Badge>
+                  </div>
+                  {isTrustworthyStore && (
+                    <div className='flex items-center gap-2 text-sm text-green-600 p-2 rounded-lg bg-green-50 border border-green-200'>
+                      <span>Cửa hàng đáng tin cậy</span>
                     </div>
+                  )}
+                  {!isTrustworthyStore && reportCount > 0 && (
+                    <div className='flex items-center gap-2 text-sm text-red-600 p-2 rounded-lg bg-red-50 border border-red-200'>
+                      <AlertTriangle className='w-4 h-4 text-red-500' />
+                      <span>Bị báo cáo {reportCount} lần</span>
+                    </div>
+                  )}
 
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                      <div className='space-y-3'>
-                        <div>
-                          <span className='text-sm text-gray-500'>Địa chỉ:</span>
-                          <p className='text-sm font-medium text-gray-900'>
-                            {store.address || 'Chưa có thông tin địa chỉ'}
-                          </p>
-                        </div>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                    <div className='space-y-4'>
+                      <div>
+                        <span className='text-sm font-medium text-gray-500 block mb-1'>Địa chỉ kinh doanh</span>
+                        <p className='font-semibold text-gray-900'>
+                          {store.address
+                            ? `${store.address}, ${store.ward}, ${store.district}, ${store.province}`
+                            : 'Chưa cập nhật'}
+                        </p>
                       </div>
-                      <div className='space-y-3'>
-                        <div>
-                          <span className='text-sm text-gray-500'>Ngày nộp đơn:</span>
-                          <p className='text-sm font-medium text-gray-900'>
-                            {formatDateToVietnamese(store.submittedDate)}
-                          </p>
-                        </div>
-                        <div>
-                          <span className='text-sm text-gray-500'>Ngày quyết định:</span>
-                          <p className='text-sm font-medium text-gray-900'>
-                            {formatDateToVietnamese(store.decisionDate)}
-                          </p>
-                        </div>
+                      <div>
+                        <span className='text-sm font-medium text-gray-500 block mb-1'>Ngày đăng ký</span>
+                        <p className='font-semibold text-gray-900'>{formatDateToVietnamese(store.createdAt)}</p>
+                      </div>
+                    </div>
+                    <div className='space-y-4'>
+                      <div>
+                        <span className='text-sm font-medium text-gray-500 block mb-1'>Ngày nộp đơn</span>
+                        <p className='font-semibold text-gray-900'>{formatDateToVietnamese(store.submittedDate)}</p>
+                      </div>
+                      <div>
+                        <span className='text-sm font-medium text-gray-500 block mb-1'>Số lượng sản phẩm</span>
+                        <p className='font-semibold text-gray-900'>{store.products?.length || 0} sản phẩm</p>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className='mb-2'>
-                  <Button
-                    onClick={() => setProductModalOpen(true)}
-                    variant='outline'
-                    className='w-full border-green-200 text-green-600 hover:bg-green-50'
-                  >
-                    <Package className='w-4 h-4 mr-2' />
-                    Xem sản phẩm ({store?.products?.length || 0})
-                  </Button>
-                </div>
-                <div>
-                  <Button
-                    onClick={() => setComboModalOpen(true)}
-                    variant='outline'
-                    className='w-full border-purple-200 text-purple-600 hover:bg-purple-50'
-                  >
-                    <Package className='w-4 h-4 mr-2' />
-                    Xem combo ({combos.length || 0})
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Người đại diện pháp lý */}
-            <Card className='border-0 shadow-sm'>
-              <CardContent className='p-6'>
-                <div className='flex items-start gap-4'>
-                  <div className='w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center'>
-                    <User className='w-6 h-6 text-blue-600' />
+                  <div className='mt-6 grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <Button
+                      onClick={() => setProductModalOpen(true)}
+                      variant='outline'
+                      className='w-full border-green-200 text-green-600 hover:bg-green-50'
+                    >
+                      <Package className='w-4 h-4 mr-2' />
+                      Xem sản phẩm ({store?.products?.length || 0})
+                    </Button>
+                    <Button
+                      onClick={() => setComboModalOpen(true)}
+                      variant='outline'
+                      className='w-full border-purple-200 text-purple-600 hover:bg-purple-50'
+                    >
+                      <Package className='w-4 h-4 mr-2' />
+                      Xem combo ({combos.length || 0})
+                    </Button>
                   </div>
-                  <div className='flex-1'>
-                    <h3 className='text-lg font-semibold text-gray-900 mb-4'>Người đại diện pháp lý</h3>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                    {store.sellerInfo ? (
-                      <div className='space-y-4'>
-                        <div className='flex items-center gap-3'>
-                          <div>
-                            <p className='font-medium text-gray-900'>
-                              {store.sellerInfo.userInfo.firstName} {store.sellerInfo.userInfo.lastName}
-                            </p>
-                          </div>
-                        </div>
+          {/* Legal Representative */}
+          <Card className='border-l-4 border-l-blue-500 shadow-sm'>
+            <CardHeader>
+              <CardTitle className='py-2 flex items-center gap-2 text-blue-600'>
+                <User size={18} />
+                <span>Người đại diện pháp lý</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className='flex items-start gap-4 mb-6'>
+                <Avatar className='w-16 h-16 border-2 border-blue-200'>
+                  {store.sellerInfo?.userInfo?.avatar ? (
+                    <AvatarImage
+                      src={store.sellerInfo.userInfo.avatar}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        if (target.src !== DEFAULT_STORE_LOGO) {
+                          target.src = DEFAULT_STORE_LOGO
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <AvatarFallback className='bg-blue-600 text-white text-lg font-bold'>
+                    {store.sellerInfo?.userInfo?.firstName && store.sellerInfo?.userInfo?.lastName
+                      ? `${store.sellerInfo.userInfo.firstName.charAt(0)}${store.sellerInfo.userInfo.lastName.charAt(0)}`.toUpperCase()
+                      : 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className='flex-1'>
+                  <h3 className='text-lg font-bold text-gray-900 mb-4'>
+                    {store.sellerInfo?.userInfo?.firstName && store.sellerInfo?.userInfo?.lastName
+                      ? `${store.sellerInfo.userInfo.firstName} ${store.sellerInfo.userInfo.lastName}`
+                      : 'Chưa cập nhật'}
+                  </h3>
 
-                        <div className='space-y-2'>
-                          <div className='flex items-center gap-2 text-sm text-gray-600'>
-                            <Mail className='w-4 h-4' />
-                            <span>{store.sellerInfo.userInfo.email || 'Chưa có thông tin'}</span>
-                          </div>
-                          <div className='flex items-center gap-2 text-sm text-gray-600'>
-                            <Phone className='w-4 h-4' />
-                            <span>{store.sellerInfo.userInfo.phoneNumber || 'Chưa có thông tin'}</span>
-                          </div>
-                          <div className='flex items-center gap-2 text-sm text-gray-600'>
-                            <IdCard className='w-4 h-4' />
-                            <span>{store.sellerInfo.identifyCard || 'Chưa có thông tin'}</span>
-                          </div>
-                        </div>
+                  <div className='space-y-3'>
+                    <div className='flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors'>
+                      <Mail size={18} className='text-blue-500' />
+                      <span className='text-gray-700 font-medium'>
+                        {store.sellerInfo?.userInfo?.email || 'Chưa cập nhật'}
+                      </span>
+                    </div>
+                    <div className='flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors'>
+                      <Phone size={18} className='text-blue-500' />
+                      <span className='text-gray-700 font-medium'>
+                        {store.sellerInfo?.userInfo?.phoneNumber || 'Chưa cập nhật'}
+                      </span>
+                    </div>
+                    <div className='flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors'>
+                      <IdCard size={18} className='text-blue-500' />
+                      <span className='text-gray-700 font-medium'>
+                        {store.sellerInfo?.identifyCard || 'Chưa cập nhật'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                        <div>
-                          <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh CCCD:</p>
-                          <div className='flex gap-4'>
-                            <div className='text-center'>
-                              <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
-                                <img
-                                  src={
-                                    store.sellerInfo?.identifyFrontImage &&
-                                      store.sellerInfo.identifyFrontImage.trim() !== '' &&
-                                      store.sellerInfo.identifyFrontImage !== 'null' &&
-                                      store.sellerInfo.identifyFrontImage !== 'undefined'
-                                      ? store.sellerInfo.identifyFrontImage
-                                      : DEFAULT_STORE_LOGO
-                                  }
-                                  alt='Mặt trước CCCD'
-                                  className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
-                                  style={{ display: 'block', minHeight: '100%' }}
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    if (!target.src.includes(DEFAULT_STORE_LOGO)) {
-                                      target.src = DEFAULT_STORE_LOGO
-                                    }
-                                  }}
-                                  onClick={() =>
-                                    handleImagePreview(
-                                      store.sellerInfo?.identifyFrontImage &&
-                                        store.sellerInfo.identifyFrontImage.trim() !== '' &&
-                                        store.sellerInfo.identifyFrontImage !== 'null' &&
-                                        store.sellerInfo.identifyFrontImage !== 'undefined'
-                                        ? store.sellerInfo.identifyFrontImage
-                                        : DEFAULT_STORE_LOGO
-                                    )
-                                  }
-                                />
-                              </div>
-                              <p className='text-xs text-gray-500'>Mặt trước</p>
-                            </div>
-                            <div className='text-center'>
-                              <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
-                                <img
-                                  src={
-                                    store.sellerInfo?.identifyBackImage &&
-                                      store.sellerInfo.identifyBackImage.trim() !== '' &&
-                                      store.sellerInfo.identifyBackImage !== 'null' &&
-                                      store.sellerInfo.identifyBackImage !== 'undefined'
-                                      ? store.sellerInfo.identifyBackImage
-                                      : DEFAULT_STORE_LOGO
-                                  }
-                                  alt='Mặt sau CCCD'
-                                  className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
-                                  style={{ display: 'block', minHeight: '100%' }}
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    if (!target.src.includes(DEFAULT_STORE_LOGO)) {
-                                      target.src = DEFAULT_STORE_LOGO
-                                    }
-                                  }}
-                                  onClick={() =>
-                                    handleImagePreview(
-                                      store.sellerInfo?.identifyBackImage &&
-                                        store.sellerInfo.identifyBackImage.trim() !== '' &&
-                                        store.sellerInfo.identifyBackImage !== 'null' &&
-                                        store.sellerInfo.identifyBackImage !== 'undefined'
-                                        ? store.sellerInfo.identifyBackImage
-                                        : DEFAULT_STORE_LOGO
-                                    )
-                                  }
-                                />
-                              </div>
-                              <p className='text-xs text-gray-500'>Mặt sau</p>
-                            </div>
-                          </div>
-                        </div>
+              <div className='mt-6'>
+                <p className='text-sm font-medium text-gray-700 mb-4'>Ảnh CCCD</p>
+                <div className='grid grid-cols-2 gap-4'>
+                  <div>
+                    <p className='text-sm font-medium text-gray-600 mb-2'>Mặt trước</p>
+                    {store.sellerInfo?.identifyFrontImage ? (
+                      <div
+                        className='cursor-pointer hover:opacity-80 transition-opacity'
+                        onClick={() => handleImagePreview(store.sellerInfo!.identifyFrontImage!)}
+                      >
+                        <img
+                          src={store.sellerInfo.identifyFrontImage}
+                          alt='CCCD mặt trước'
+                          className='w-full h-48 object-cover rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            if (target.src !== DEFAULT_STORE_LOGO) {
+                              target.src = DEFAULT_STORE_LOGO
+                            }
+                          }}
+                        />
                       </div>
                     ) : (
-                      <div className='space-y-4'>
-                        <div className='flex items-center gap-3'>
-                          <Avatar className='w-10 h-10'>
-                            <AvatarFallback className='bg-gray-100 text-blue-600'>
-                              {store.storeName?.charAt(0) || 'S'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className='font-medium text-gray-900'>Chủ cửa hàng</p>
-                          </div>
+                      <div className='w-full h-48 bg-blue-50 rounded-lg flex items-center justify-center border-2 border-dashed border-blue-300'>
+                        <div className='text-center'>
+                          <IdCard size={32} className='text-blue-400 mx-auto mb-2' />
+                          <p className='text-xs text-blue-600 font-medium'>Chưa có ảnh</p>
                         </div>
-
-                        <div className='space-y-2'>
-                          <div className='flex items-center gap-2 text-sm text-gray-600'>
-                            <Mail className='w-4 h-4' />
-                            <span>Chưa có thông tin email</span>
-                          </div>
-                          <div className='flex items-center gap-2 text-sm text-gray-600'>
-                            <Phone className='w-4 h-4' />
-                            <span>Chưa có thông tin số điện thoại</span>
-                          </div>
-                          <div className='flex items-center gap-2 text-sm text-gray-600'>
-                            <IdCard className='w-4 h-4' />
-                            <span>Chưa có thông tin CCCD</span>
-                          </div>
-                        </div>
-
-                        <div>
-                          <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh CCCD:</p>
-                          <div className='flex gap-4'>
-                            <div className='text-center'>
-                              <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
-                                <img
-                                  src={DEFAULT_STORE_LOGO}
-                                  alt='Mặt trước CCCD'
-                                  className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
-                                  style={{ display: 'block', minHeight: '100%' }}
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    if (!target.src.includes(DEFAULT_STORE_LOGO)) {
-                                      target.src = DEFAULT_STORE_LOGO
-                                    }
-                                  }}
-                                  onClick={() => handleImagePreview(DEFAULT_STORE_LOGO)}
-                                />
-                              </div>
-                              <p className='text-xs text-gray-500'>Mặt trước</p>
-                            </div>
-                            <div className='text-center'>
-                              <div className='w-24 h-16 border rounded-lg overflow-hidden mb-1 relative bg-gray-50'>
-                                <img
-                                  src={DEFAULT_STORE_LOGO}
-                                  alt='Mặt sau CCCD'
-                                  className='w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity'
-                                  style={{ display: 'block', minHeight: '100%' }}
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    if (!target.src.includes(DEFAULT_STORE_LOGO)) {
-                                      target.src = DEFAULT_STORE_LOGO
-                                    }
-                                  }}
-                                  onClick={() => handleImagePreview(DEFAULT_STORE_LOGO)}
-                                />
-                              </div>
-                              <p className='text-xs text-gray-500'>Mặt sau</p>
-                            </div>
-                          </div>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className='text-sm font-medium text-gray-600 mb-2'>Mặt sau</p>
+                    {store.sellerInfo?.identifyBackImage ? (
+                      <div
+                        className='cursor-pointer hover:opacity-80 transition-opacity'
+                        onClick={() => handleImagePreview(store.sellerInfo!.identifyBackImage!)}
+                      >
+                        <img
+                          src={store.sellerInfo.identifyBackImage}
+                          alt='CCCD mặt sau'
+                          className='w-full h-48 object-cover rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            if (target.src !== DEFAULT_STORE_LOGO) {
+                              target.src = DEFAULT_STORE_LOGO
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className='w-full h-48 bg-red-50 rounded-lg flex items-center justify-center border-2 border-dashed border-red-300'>
+                        <div className='text-center'>
+                          <IdCard size={32} className='text-red-400 mx-auto mb-2' />
+                          <p className='text-xs text-red-600 font-medium'>Chưa có ảnh</p>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Ghi chú của Admin */}
-            <Card className='border-0 shadow-sm'>
-              <CardContent className='p-6'>
-                <div className='flex items-start gap-4'>
-                  <div className='w-12 h-12 bg-red-100 rounded-full flex items-center justify-center'>
-                    <User className='w-6 h-6 text-red-600' />
-                  </div>
-                  <div className='flex-1'>
-                    <h3 className='text-lg font-semibold text-gray-900 mb-4'>Ghi chú của Admin</h3>
-
-                    <div className='space-y-4'>
-                      {store.adminNote ? (
-                        <div>
-                          <span className='text-sm text-gray-500'>Ghi chú:</span>
-                          <p className='text-sm font-medium text-gray-900 bg-red-50 p-3 rounded-lg mt-1 border-l-4 border-red-200'>
-                            {store.adminNote}
+          {/* Legal Documents & Bank Account */}
+          <Card className='border-l-4 border-l-blue-500 shadow-sm'>
+            <CardHeader>
+              <CardTitle className='py-2 flex items-center gap-2 text-blue-600'>
+                <FileText size={18} />
+                <span>Giấy tờ & tài khoản pháp lý</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className='space-y-6'>
+                {/* Certification Documents */}
+                <div>
+                  <h4 className='font-semibold text-gray-900 mb-4'>Giấy tờ chứng nhận</h4>
+                  <div className='space-y-4'>
+                    <div className='p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                      <div className='flex items-center gap-3 mb-3'>
+                        <FileText size={18} className='text-blue-600' />
+                        <span className='font-medium text-gray-700'>Giấy phép kinh doanh</span>
+                      </div>
+                      {store.vendorApplicationImageUrl && store.vendorApplicationImageUrl.length > 0 ? (
+                        <div className='space-y-3'>
+                          <p className='text-sm font-medium text-gray-600'>
+                            Ảnh giấy phép ({store.vendorApplicationImageUrl.length} ảnh)
                           </p>
+                          <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
+                            {store.vendorApplicationImageUrl.map((imageUrl, index) => (
+                              <div
+                                key={index}
+                                className='cursor-pointer hover:opacity-80 transition-opacity'
+                                onClick={() => handleImagePreview(imageUrl)}
+                              >
+                                <img
+                                  src={imageUrl}
+                                  alt={`Giấy phép ${index + 1}`}
+                                  className='w-full h-32 object-cover rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow'
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    if (target.src !== DEFAULT_STORE_LOGO) {
+                                      target.src = DEFAULT_STORE_LOGO
+                                    }
+                                  }}
+                                />
+                                <p className='text-xs text-center text-gray-500 mt-1 font-medium'>Ảnh {index + 1}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ) : (
-                        <div className='text-center py-8 text-gray-500'>
-                          <User className='w-12 h-12 mx-auto mb-2 text-gray-300' />
-                          <p>Chưa có ghi chú từ Admin</p>
-                        </div>
+                        <span className='text-gray-400 text-sm'>Chưa có</span>
                       )}
                     </div>
+                    <div className='p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                      <div className='flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <FileText size={18} className='text-blue-600' />
+                          <span className='font-medium text-gray-700'>Mã số thuế</span>
+                        </div>
+                        <span className='font-semibold text-gray-900'>
+                          {store.sellerInfo?.taxCode || 'Chưa cập nhật'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bank Account Information */}
+                <div>
+                  <h4 className='font-semibold text-gray-900 mb-4'>Thông tin tài khoản ngân hàng</h4>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <div className='p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                      <span className='text-sm font-medium text-gray-500 block mb-2'>Số tài khoản</span>
+                      <p className='font-semibold text-gray-900'>
+                        {store.sellerInfo?.userInfo?.bankAccount || 'Chưa cập nhật'}
+                      </p>
+                    </div>
+                    <div className='p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                      <span className='text-sm font-medium text-gray-500 block mb-2'>Chủ tài khoản</span>
+                      <p className='font-semibold text-gray-900'>
+                        {store.sellerInfo?.userInfo?.firstName && store.sellerInfo?.userInfo?.lastName
+                          ? `${store.sellerInfo.userInfo.firstName} ${store.sellerInfo.userInfo.lastName}`
+                          : 'Chưa cập nhật'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Admin Notes - Only show if adminNote exists */}
+          {store.adminNote && (
+            <Card className='border-l-4 border-l-indigo-500 shadow-sm'>
+              <CardHeader>
+                <CardTitle className='flex items-center gap-2 text-indigo-600'>
+                  <User size={18} />
+                  <span>Ghi chú của Admin</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-4'>
+                  <div>
+                    <h4 className='font-semibold text-gray-900 mb-3'>Ghi chú của Admin</h4>
+                    <p className='text-gray-700 bg-indigo-50 p-4 rounded-lg border border-indigo-100'>
+                      {store.adminNote}
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
+          )}
 
-            {/* Ghi chú của nhân viên */}
-            <Card className='border-0 shadow-sm'>
-              <CardContent className='p-6'>
-                <div className='flex items-start gap-4'>
-                  <div className='w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center'>
-                    <User className='w-6 h-6 text-blue-600' />
-                  </div>
-                  <div className='flex-1'>
-                    <h3 className='text-lg font-semibold text-gray-900 mb-4'>Ghi chú của nhân viên</h3>
-
-                    <div className='space-y-4'>
-                      <div>
-                        <span className='text-sm text-gray-500'>Nhân viên đã đánh giá:</span>
-                        <p className='text-sm font-medium text-gray-900'>{store.staffName || 'Chưa có'}</p>
-                      </div>
-
-                      <div>
-                        <span className='text-sm text-gray-500'>Ngày duyệt:</span>
-                        <p className='text-sm font-medium text-gray-900'>
-                          {formatDateToVietnamese(store.decisionDate)}
-                        </p>
-                      </div>
-
-                      {store.staffNotes && (
-                        <div>
-                          <span className='text-sm text-gray-500'>Ghi chú:</span>
-                          <p className='text-sm font-medium text-gray-900 bg-gray-50 p-3 rounded-lg mt-1'>
-                            {store.staffNotes}
-                          </p>
-                        </div>
-                      )}
-
-                      <div>
-                        <span className='text-sm text-gray-500'>Ảnh chứng minh:</span>
-                        <div className='mt-2'>
-                          <img
-                            src={store.staffImage || DEFAULT_STORE_LOGO}
-                            alt='Ảnh chứng minh của nhân viên'
-                            className='w-32 h-32 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity'
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement
+          {/* Staff Notes & Feedback - Only show if staffNotes, staffImage, or staffName exists */}
+          {(store.staffNotes || store.staffImage || store.staffName) && (
+            <Card className='border-l-4 border-l-indigo-500 shadow-sm'>
+              <CardHeader>
+                <CardTitle className='flex items-center gap-2 text-indigo-600'>
+                  <FileText size={18} />
+                  <span>Ghi chú của nhân viên</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-4'>
+                  {store.staffName && (
+                    <div>
+                      <span className='text-sm font-medium text-gray-500 block mb-1'>Nhân viên đã đánh giá</span>
+                      <p className='font-semibold text-gray-900'>{store.staffName}</p>
+                    </div>
+                  )}
+                  {store.decisionDate && (
+                    <div>
+                      <span className='text-sm font-medium text-gray-500 block mb-1'>Ngày duyệt</span>
+                      <p className='font-semibold text-gray-900'>{formatDateToVietnamese(store.decisionDate)}</p>
+                    </div>
+                  )}
+                  {store.staffNotes && (
+                    <div>
+                      <h4 className='font-semibold text-gray-900 mb-3'>Ghi chú của nhân viên</h4>
+                      <p className='text-gray-700 bg-indigo-50 p-4 rounded-lg border border-indigo-100'>
+                        {store.staffNotes}
+                      </p>
+                    </div>
+                  )}
+                  {store.staffImage && (
+                    <div>
+                      <h4 className='font-semibold text-gray-900 mb-3'>Ảnh từ nhân viên</h4>
+                      <div
+                        className='cursor-pointer hover:opacity-80 transition-opacity inline-block'
+                        onClick={() => handleImagePreview(store.staffImage!)}
+                      >
+                        <img
+                          src={store.staffImage}
+                          alt='Ảnh từ nhân viên'
+                          className='w-full max-w-md h-48 object-cover rounded-lg border-2 border-indigo-200 shadow-sm hover:shadow-md transition-shadow'
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            if (target.src !== DEFAULT_STORE_LOGO) {
                               target.src = DEFAULT_STORE_LOGO
-                            }}
-                            onClick={() => handleImagePreview(store.staffImage || DEFAULT_STORE_LOGO)}
-                          />
-                        </div>
+                            }
+                          }}
+                        />
                       </div>
-
-                      {!store.reviewedBy && !store.staffNotes && !store.staffImage && (
-                        <div className='text-center py-8 text-gray-500'>
-                          <User className='w-12 h-12 mx-auto mb-2 text-gray-300' />
-                          <p>Chưa có ghi chú từ nhân viên</p>
-                        </div>
-                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
-          </div>
+          )}
+        </div>
 
-          {/* Action Panel */}
-          <div className='lg:col-span-1'>
-            <Card className='border-0 shadow-sm'>
-              <CardContent className='p-6'>
-                <h3 className='text-lg font-semibold text-gray-900 mb-4'>Hành động</h3>
+        {/* Right Column - Actions */}
+        <div className='space-y-6'>
+          <Card className='border-l-4 border-l-gray-400 shadow-sm'>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2 text-gray-600'>
+                <Edit size={18} />
+                <span>Hành động</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className='space-y-4'>
+                <div className='p-3 bg-gray-50 rounded-lg border border-gray-200'>
+                  <p className='text-gray-600 text-sm font-medium mb-1'>Trạng thái hiện tại</p>
+                  <span className='text-gray-700 font-medium'>{getStatusConfig(store.status).text}</span>
+                </div>
                 <div className='space-y-3'>
                   {store.status === 'Pending' && (
                     <Button onClick={() => handleStatusAction('Ban')} variant='destructive' className='w-full'>
@@ -958,9 +1023,9 @@ function StoreDetailAdmin() {
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -1401,6 +1466,12 @@ function StoreDetailAdmin() {
               alt='Preview'
               className='max-w-full max-h-full object-contain rounded-lg'
               onClick={(e) => e.stopPropagation()}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                if (target.src !== DEFAULT_STORE_LOGO) {
+                  target.src = DEFAULT_STORE_LOGO
+                }
+              }}
             />
           </div>
         </div>

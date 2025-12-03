@@ -293,8 +293,8 @@ function StaffDashboard() {
         {/* Key Metrics Grid */}
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4'>
           <StatCard icon={Store} title='Tổng số cửa hàng' value={staffStats.totalStores} color='#3b82f6' />
-          <StatCard icon={Layers} title='Tổng combo' value={staffStats.totalCombos} color='#22c55e' />
-          <StatCard icon={Package} title='Tổng số sản phẩm' value={staffStats.totalProducts} color='#f97316' />
+          <StatCard icon={Layers} title='Combo chưa xử lí' value={staffStats.totalCombos} color='#22c55e' />
+          <StatCard icon={Package} title='Sản phẩm chưa xử lí' value={staffStats.totalProducts} color='#f97316' />
           <StatCard icon={AlertCircle} title='Báo cáo chờ xử lý' value={staffStats.pendingReports} color='#ef4444' />
           <StatCard icon={Grid3x3} title='Tổng danh mục' value={staffStats.totalCategories} color='#a855f7' />
           <StatCard icon={ShoppingBag} title='Tổng số đơn hàng' value={staffStats.totalOrders} color='#06b6d4' />
