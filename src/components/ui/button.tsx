@@ -24,7 +24,7 @@ const buttonVariants = cva(
         blue: 'bg-[#3e84c5]/90 text-white hover:bg-[#4c72f1]',
         success: 'bg-success text-success-foreground hover:bg-success/90 shadow-sm transition-all active:scale-95',
         greenLight:
-          'border border-green-600 text-green-600 py-3 px-4 sm:px-6 rounded-lg font-semibold hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base'
+          'px-8 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold shadow-lg shadow-green-200 hover:shadow-green-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
       },
       size: {
         default: 'h-9 px-4 py-2 has-[>svg]:px-3',

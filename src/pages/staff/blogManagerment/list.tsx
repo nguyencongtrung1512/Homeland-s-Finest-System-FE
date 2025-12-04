@@ -292,7 +292,7 @@ function BlogCategoryListStaff() {
   const inactiveCategories = categories.length - activeCategories
 
   return (
-    <div className='min-h-screen bg-background p-6'>
+    <div className='min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 p-6'>
       <div className='max-w-7xl mx-auto space-y-8'>
         {/* Header Section */}
         <div className='space-y-2'>
@@ -365,7 +365,7 @@ function BlogCategoryListStaff() {
 
               <Dialog open={isCreateDialogOpen} onOpenChange={handleCreateDialogClose}>
                 <DialogTrigger asChild>
-                  <Button variant='green'>
+                  <Button variant='greenLight'>
                     <Plus className='h-4 w-4 mr-2' />
                     Thêm danh mục
                   </Button>
@@ -560,7 +560,7 @@ function BlogCategoryListStaff() {
               <Button variant='outline' onClick={() => setIsEditDialogOpen(false)} className='border-border'>
                 Hủy
               </Button>
-              <Button onClick={handleUpdate} disabled={!isFormValid()} variant='green'>
+              <Button onClick={handleUpdate} disabled={!isFormValid()} variant='greenLight'>
                 Cập nhật
               </Button>
             </DialogFooter>
