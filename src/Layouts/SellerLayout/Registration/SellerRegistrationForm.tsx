@@ -1918,7 +1918,7 @@ function SellerRegistrationForm() {
                     maxCount={1}
                   />
                   <FileUploadField
-                    label='Giấy tờ đăng ký bán hàng'
+                    label='Chứng nhận cửa hàng'
                     onChange={(files) => handleFileChange('vendorApplicationImageUrl', files)}
                     multiple
                     description='Có thể upload nhiều file (tối đa 5 file), định dạng JPG/PNG/PDF'

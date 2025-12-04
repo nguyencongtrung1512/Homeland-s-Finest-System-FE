@@ -110,8 +110,10 @@ function ComboListStaff() {
         pageNumber: 1
       }
 
-      const combos = await getAllCombos(params)
-      setData(Array.isArray(combos) ? combos : [])
+      const response = await getAllCombos(params)
+      // Response structure: { data: Combo[], pagination?: {...} }
+      const allCombos: Combo[] = ((response as unknown) as { data: Combo[] }).data || []
+      setData(allCombos)
     } catch (error) {
       console.error('Error fetching combos:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách combo')

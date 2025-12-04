@@ -139,10 +139,12 @@ function ManagerComboStaff() {
       }
 
       // Gọi API Combo với pageSize=0 và pageNumber=1
-      const allCombos = await getAllCombos({
+      const response = await getAllCombos({
         pageSize: 0,
         pageNumber: 1
       })
+      // Response structure: { data: Combo[], pagination?: {...} }
+      const allCombos: Combo[] = ((response as unknown) as { data: Combo[] }).data || []
 
       // Lọc các combo có assignedToId trùng với userId của tài khoản
       const filteredCombos = Array.isArray(allCombos)
