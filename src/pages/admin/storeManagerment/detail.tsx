@@ -250,7 +250,7 @@ function StoreDetailAdmin() {
         pageNumber: 1
       })
 
-      setCombos(response)
+      setCombos(response.data)
     } catch (error: any) {
       const errorMessage = handleApiError(error, 'Có lỗi xảy ra khi tải danh sách combo')
       setComboError(errorMessage)

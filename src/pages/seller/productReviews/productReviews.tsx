@@ -60,7 +60,7 @@ export default function ProductReviews() {
 
         // Fetch combos - filter by isActive=true and status="Approved"
         const combosData = await getAllCombos({ storeId: store.id })
-        const approvedCombos = combosData.filter((combo) => combo.isActive === true && combo.status === 'Approved')
+        const approvedCombos = combosData.data.filter((combo) => combo.isActive === true && combo.status === 'Approved')
         setCombos(approvedCombos)
       } catch (error) {
         console.error('Error fetching items:', error)

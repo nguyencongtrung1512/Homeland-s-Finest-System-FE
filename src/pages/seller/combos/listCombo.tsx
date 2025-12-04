@@ -162,7 +162,7 @@ function ComboSeller() {
         storeId: storeId
       }
       const response = await getAllCombos(params)
-      setAllCombos(response)
+      setAllCombos(response.data)
       setCurrentPage(1)
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : ''

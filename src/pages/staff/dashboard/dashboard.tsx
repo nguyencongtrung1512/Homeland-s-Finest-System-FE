@@ -433,7 +433,7 @@ function StaffDashboard() {
             <CardHeader>
               <CardTitle className='flex items-center gap-2'>
                 <AlertCircle size={20} />
-                Báo cáo chờ xử lí
+                Báo cáo chờ xử lí hôm nay
               </CardTitle>
               <CardDescription>Các báo cáo chờ phê duyệt ({staffStats.pendingReports})</CardDescription>
             </CardHeader>

@@ -12,7 +12,7 @@ interface CategoryWithCount extends BlogCategoryItem {
 
 function BlogList() {
   const navigate = useNavigate()
-  
+
   const [blogList, setBlogList] = useState<BlogItem[]>([])
   const [totalBlogs, setTotalBlogs] = useState<number>(0) // Total blogs count for "Tất cả"
   const [categories, setCategories] = useState<CategoryWithCount[]>([])
@@ -24,7 +24,7 @@ function BlogList() {
   // Helper function to extract data from API response
   const extractData = useCallback((response: any): any => {
     if (!response || typeof response !== 'object') return null
-    
+
     if ('status' in response && response.status === 200 && response.data) {
       return response.data
     } else if (Array.isArray(response)) {
@@ -41,14 +41,14 @@ function BlogList() {
     if (!dateString || dateString.trim() === '') {
       return 'Chưa có ngày'
     }
-    
+
     try {
       let date: Date
-      
+
       // Check if format is "HH:mm:ss DD/MM/YYYY" (from BE)
       const vietnameseFormat = /^(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})$/
       const match = dateString.match(vietnameseFormat)
-      
+
       if (match) {
         // Parse Vietnamese format: "06:12:08 16/11/2025"
         const [, hours, minutes, seconds, day, month, year] = match
@@ -64,13 +64,13 @@ function BlogList() {
         // Try parsing as ISO string or other formats
         date = new Date(dateString)
       }
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         console.error('Invalid date string:', dateString)
         return 'Ngày không hợp lệ'
       }
-      
+
       return date.toLocaleDateString('vi-VN', {
         year: 'numeric',
         month: 'long',
@@ -95,13 +95,13 @@ function BlogList() {
     const fetchCategories = async () => {
       try {
         const categoriesResponse = await blogCategoryApi.getAll({ pageSize: 0 })
-        
+
         let categoriesData: BlogCategoryItem[] = []
         const extracted = extractData(categoriesResponse)
         if (Array.isArray(extracted)) {
           categoriesData = extracted
         }
-        
+
         // Fetch blog count for each category using getBlogCategoryDetail
         const categoriesWithCount = await Promise.all(
           categoriesData.map(async (category) => {
@@ -109,10 +109,10 @@ function BlogList() {
               // Use getBlogCategoryDetail to get accurate blog count
               const categoryDetailResponse = await blogCategoryApi.getDetail(category.categoryId)
               console.log(`Category ${category.name} detail response:`, categoryDetailResponse)
-              
+
               let count = 0
               const extracted = extractData(categoryDetailResponse)
-              
+
               // Handle different response structures
               if (Array.isArray(extracted) && extracted.length > 0) {
                 // Response is array, check first item for blogs
@@ -134,7 +134,7 @@ function BlogList() {
                 const blogs = extractData(blogsResponse)
                 count = Array.isArray(blogs) ? blogs.filter((b: BlogItem) => b.isActive && b.blogCategoryId === category.categoryId).length : 0
               }
-              
+
               console.log(`Category ${category.name} has ${count} blogs`)
               return { ...category, count }
             } catch (err) {
@@ -183,16 +183,16 @@ function BlogList() {
           // Use getBlogCategoryDetail to get accurate blogs in category
           const categoryDetailResponse = await blogCategoryApi.getDetail(selectedCategoryId)
           console.log('Category detail response (raw):', categoryDetailResponse)
-          
+
           let blogs: any[] = []
-          
+
           // Handle response structure - similar to admin page
           if (categoryDetailResponse && typeof categoryDetailResponse === 'object') {
             // Check if response has status and data (from axios interceptor)
             if ('status' in categoryDetailResponse && categoryDetailResponse.status === 200) {
               const responseData = categoryDetailResponse.data
               console.log('Response data:', responseData)
-              
+
               // Response structure: responseData is array, first item has blogs
               if (Array.isArray(responseData) && responseData.length > 0) {
                 const firstItem = responseData[0]
@@ -205,7 +205,7 @@ function BlogList() {
               // Response might already be extracted by interceptor
               const extracted = extractData(categoryDetailResponse)
               console.log('Extracted data:', extracted)
-              
+
               if (Array.isArray(extracted) && extracted.length > 0) {
                 const firstItem = extracted[0]
                 if (firstItem && firstItem.blogs && Array.isArray(firstItem.blogs)) {
@@ -216,7 +216,7 @@ function BlogList() {
               }
             }
           }
-          
+
           // Fallback: use getAll API if getDetail doesn't return blogs
           if (blogs.length === 0) {
             console.log('No blogs from getDetail, trying getAll API...')
@@ -229,7 +229,7 @@ function BlogList() {
             blogs = Array.isArray(blogsData) ? blogsData.filter((b) => b.isActive && b.blogCategoryId === selectedCategoryId) : []
             console.log(`Found ${blogs.length} blogs from getAll API`)
           }
-          
+
           // Map blogs to ensure correct structure
           const mappedBlogs = blogs.map((b: any) => ({
             ...b,
@@ -241,7 +241,7 @@ function BlogList() {
             createdAt: b.createdAt || '',
             user: b.user || null
           }))
-          
+
           console.log('Final blogs to display:', mappedBlogs)
           setBlogList(mappedBlogs)
         } else {
@@ -251,7 +251,7 @@ function BlogList() {
             pageSize: 0,
             ...(searchQuery && { search: searchQuery })
           })
-          
+
           const blogs = extractData(blogListResponse)
           const blogsArray = Array.isArray(blogs) ? blogs : []
           console.log('Blogs from API (all):', blogsArray)
@@ -375,15 +375,12 @@ function BlogList() {
                     Xóa bộ lọc
                   </button>
                 )}
-              </div>  
+              </div>
             ) : (
               <div className='space-y-6'>
                 {filteredBlogs.map((blog) => {
-                  const authorName = blog.user 
-                    ? `${blog.user.firstName} ${blog.user.lastName}`.trim() 
-                    : 'Không xác định'
                   const categoryName = categories.find((cat) => cat.categoryId === blog.blogCategoryId)?.name || 'Chưa phân loại'
-                  
+
                   return (
                     <article
                       key={blog.blogId}
@@ -397,7 +394,7 @@ function BlogList() {
                             alt={blog.title}
                             className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-110'
                             onError={(e) => {
-                              ;(e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'
+                              ; (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'
                             }}
                           />
                           <div className='absolute top-4 left-4'>
@@ -452,19 +449,17 @@ function BlogList() {
                 <div className='space-y-2.5'>
                   <button
                     onClick={() => handleCategoryClick(null)}
-                    className={`w-full text-left px-4 py-3.5 rounded-xl transition-all duration-200 flex items-center justify-between group ${
-                      selectedCategoryId === null
+                    className={`w-full text-left px-4 py-3.5 rounded-xl transition-all duration-200 flex items-center justify-between group ${selectedCategoryId === null
                         ? 'bg-gradient-to-r from-[#ecf2ea] to-green-50 text-[#2D5016] border-2 border-green-400 shadow-md'
                         : 'hover:bg-[#ecf2ea] text-gray-700 border border-transparent hover:border-green-200 hover:shadow-sm'
-                    }`}
+                      }`}
                   >
                     <span className='font-semibold group-hover:text-[#2D5016] transition-colors'>Tất cả</span>
                     <span
-                      className={`text-sm px-3 py-1 rounded-full font-bold transition-all ${
-                        selectedCategoryId === null
+                      className={`text-sm px-3 py-1 rounded-full font-bold transition-all ${selectedCategoryId === null
                           ? 'bg-[#2D5016] text-white shadow-md'
                           : 'bg-gray-100 text-gray-600 group-hover:bg-green-200 group-hover:text-[#2D5016]'
-                      }`}
+                        }`}
                     >
                       {totalBlogs}
                     </span>
@@ -475,19 +470,17 @@ function BlogList() {
                       <button
                         key={category.categoryId}
                         onClick={() => handleCategoryClick(category.categoryId)}
-                        className={`w-full text-left px-4 py-3.5 rounded-xl transition-all duration-200 flex items-center justify-between group ${
-                          selectedCategoryId === category.categoryId
+                        className={`w-full text-left px-4 py-3.5 rounded-xl transition-all duration-200 flex items-center justify-between group ${selectedCategoryId === category.categoryId
                             ? 'bg-gradient-to-r from-[#ecf2ea] to-green-50 text-[#2D5016] border-2 border-green-400 shadow-md'
                             : 'hover:bg-[#ecf2ea] text-gray-700 border border-transparent hover:border-green-200 hover:shadow-sm'
-                        }`}
+                          }`}
                       >
                         <span className='font-semibold group-hover:text-[#2D5016] transition-colors'>{category.name}</span>
                         <span
-                          className={`text-sm px-3 py-1 rounded-full font-bold transition-all ${
-                            selectedCategoryId === category.categoryId
+                          className={`text-sm px-3 py-1 rounded-full font-bold transition-all ${selectedCategoryId === category.categoryId
                               ? 'bg-[#2D5016] text-white shadow-md'
                               : 'bg-gray-100 text-gray-600 group-hover:bg-green-200 group-hover:text-[#2D5016]'
-                          }`}
+                            }`}
                         >
                           {category.count || 0}
                         </span>

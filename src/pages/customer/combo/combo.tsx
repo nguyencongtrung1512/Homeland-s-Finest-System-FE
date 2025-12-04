@@ -242,7 +242,7 @@ export default function ComboPage() {
         setLoading(true)
         setError(null)
         const data = await getAllCombos({ pageNumber: currentPage, pageSize: 12 })
-        setCombos(data)
+        setCombos(data.data)
       } catch {
         setError('Không thể tải combo, vui lòng thử lại.')
       } finally {

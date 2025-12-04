@@ -352,7 +352,7 @@ export const getAdminDashboard = async (): Promise<ApiResponse<AdminDashboardRes
     `${API_URL}/Admin`
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
-  return response as ApiResponse<AdminDashboardResponse>
+  return response as any
 }
 
 /**
@@ -371,7 +371,7 @@ export const getMonthlyRevenue = async (
     }
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
-  return response as ApiResponse<RevenueChartResponse>
+  return response as any
 }
 
 /**
@@ -390,7 +390,7 @@ export const getTopStores = async (
     }
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
-  return response as ApiResponse<StoreAdminRevenueResponse[]>
+  return response as any
 }
 
 /**
@@ -402,7 +402,7 @@ export const getProcessingStores = async (): Promise<ApiResponse<any[]>> => {
     `${API_URL}/Admin/processing-stores`
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
-  return response as ApiResponse<any[]>
+  return response as any
 }
 
 // ========================================
@@ -459,7 +459,7 @@ export const getStaffDashboard = async (): Promise<ApiResponse<StaffDashboardRes
     `${API_URL}/Staff`
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
-  return response as ApiResponse<StaffDashboardResponse>
+  return response as any
 }
 
 /**
@@ -478,7 +478,7 @@ export const getStoreRegistrationChart = async (
     }
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
-  return response as ApiResponse<StoreRegistrationChartResponse>
+  return response as any
 }
 
 /**
@@ -491,7 +491,7 @@ export const getStoreRegionDistribution = async (): Promise<ApiResponse<StoreReg
     `${API_URL}/Admin/store-region-distribution`
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
-  return response as ApiResponse<StoreRegionDistributionResponse>
+  return response as any
 }
 
 // ========================================

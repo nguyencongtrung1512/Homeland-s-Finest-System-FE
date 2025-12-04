@@ -23,113 +23,6 @@ import {
   getProcessingStores
 } from '../../apis/walletDashboard.api'
 
-// Fake data for UI preview
-const generateFakeDashboardData = (year: number): TransactionDashboardData => {
-  const monthKeys = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
-  const revenueByMonth: { [key: string]: number } = {}
-  monthKeys.forEach((month) => {
-    revenueByMonth[month] = Math.floor(Math.random() * 50000000) + 10000000 // 10M - 60M VND
-  })
-
-  const fakeTransactions = Array.from({ length: 10 }, (_, i) => ({
-    id: `trans-${i + 1}`,
-    userId: `user-${i + 1}`,
-    orderId: `order-${i + 1}`,
-    paymentMethod: i % 2 === 0 ? 'Banking' : 'COD',
-    payosOrderCode: `PAYOS-${i + 1}`,
-    checkoutUrl: `https://checkout.payos.vn/${i + 1}`,
-    description: `Thanh toán đơn hàng #${i + 1}`,
-    amount: Math.floor(Math.random() * 5000000) + 500000,
-    status: i < 3 ? 'Pending' : ((i < 8 ? 'Paid' : 'Failed') as 'Paid' | 'Pending' | 'Failed'),
-    createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - i * 86400000).toISOString(),
-    userEmail: `user${i + 1}@example.com`,
-    userFullName: `Nguyễn Văn ${String.fromCharCode(65 + i)}`,
-    orderStatus: (i % 3 === 0 ? 'Processing' : i % 3 === 1 ? 'Delivered' : 'Cancelled') as
-      | 'Processing'
-      | 'Delivered'
-      | 'Cancelled'
-  }))
-
-  return {
-    summary: {
-      totalRevenue: 450000000,
-      totalTransactions: 1250,
-      successfulTransactions: 1100,
-      pendingTransactions: 120,
-      failedTransactions: 30,
-      revenueByPaymentMethod: {
-        Banking: 280000000,
-        COD: 170000000
-      },
-      revenueByMonth,
-      transactionsByMonth: monthKeys.reduce(
-        (acc, month) => {
-          acc[month] = Math.floor(Math.random() * 150) + 50
-          return acc
-        },
-        {} as { [key: string]: number }
-      ),
-      revenueByYear: {
-        [year.toString()]: 450000000
-      },
-      transactionsByYear: {
-        [year.toString()]: 1250
-      },
-      revenueByCategoryPercentage: {
-        'Điện tử': 35.5,
-        'Thời trang': 28.3,
-        'Thực phẩm': 18.7,
-        'Gia dụng': 12.2,
-        Khác: 5.3
-      },
-      revenueByCategory: {
-        'Điện tử': 159750000,
-        'Thời trang': 127350000,
-        'Thực phẩm': 84150000,
-        'Gia dụng': 54900000,
-        Khác: 23850000
-      },
-      topStoresByRevenue: [
-        {
-          storeId: 'store-1',
-          storeName: 'Cửa hàng Điện tử ABC',
-          revenue: 85000000,
-          orderCount: 320
-        },
-        {
-          storeId: 'store-2',
-          storeName: 'Thời trang XYZ',
-          revenue: 72000000,
-          orderCount: 280
-        },
-        {
-          storeId: 'store-3',
-          storeName: 'Thực phẩm sạch 123',
-          revenue: 65000000,
-          orderCount: 195
-        },
-        {
-          storeId: 'store-4',
-          storeName: 'Gia dụng Home',
-          revenue: 58000000,
-          orderCount: 165
-        },
-        {
-          storeId: 'store-5',
-          storeName: 'Đồ chơi trẻ em',
-          revenue: 45000000,
-          orderCount: 140
-        }
-      ]
-    },
-    transactions: fakeTransactions,
-    totalCount: 10,
-    totalPages: 1,
-    currentPage: 1
-  }
-}
-
 // Promotion Stats Interface
 interface PromotionStats {
   totalPromotions: number
@@ -153,90 +46,6 @@ const formatCurrency = (amount: number) => {
 
 const formatNumber = (num: number) => {
   return new Intl.NumberFormat('vi-VN').format(num)
-}
-
-// Generate fake promotion stats
-const generateFakePromotionStats = (): PromotionStats => {
-  return {
-    totalPromotions: 45,
-    activePromotions: 28,
-    expiredPromotions: 12,
-    expiringSoonPromotions: 5,
-    totalDiscountGiven: 125000000,
-    totalOrdersWithPromotion: 850,
-    totalUsage: 3200
-  }
-}
-
-// Generate fake stores needing action (with report count > 0)
-const generateFakeStoresNeedingAction = (): StoreResponse[] => {
-  const storeNames = ['Cửa hàng Điện tử ABC', 'Thời trang XYZ', 'Thực phẩm sạch 123', 'Gia dụng Home', 'Đồ chơi trẻ em']
-  const provinces = ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ']
-  const districts = ['Cầu Giấy', 'Quận 1', 'Hải Châu', 'Ngô Quyền', 'Ninh Kiều']
-  const emails = [
-    'seller1@example.com',
-    'seller2@example.com',
-    'seller3@example.com',
-    'seller4@example.com',
-    'seller5@example.com'
-  ]
-  const reportCounts = [8, 6, 4, 3, 2] // Sorted descending
-
-  return storeNames.map((storeName, index) => ({
-    id: `store-${index + 1}`,
-    sellerId: `seller-${index + 1}`,
-    storeName,
-    province: provinces[index],
-    district: districts[index],
-    ward: `Phường ${index + 1}`,
-    provinceId: index + 1,
-    districtId: index + 1,
-    wardId: index + 1,
-    address: `${index + 1}23 Đường ${storeName}`,
-    logoUrl: null,
-    coverImageUrl: null,
-    status: 'Approved' as const,
-    adminNote: null,
-    reviewedBy: null,
-    approvedBy: null,
-    description: null,
-    vendorApplicationImageUrl: [],
-    staffNotes: null,
-    staffImage: null,
-    staffName: null,
-    submittedDate: new Date(Date.now() - index * 86400000).toISOString(),
-    decisionDate: null,
-    createdAt: new Date(Date.now() - index * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - index * 86400000).toISOString(),
-    sellerInfo: {
-      userId: `user-${index + 1}`,
-      approvedBy: null,
-      businessName: null,
-      businessLicense: null,
-      identifyCard: null,
-      taxCode: null,
-      identifyFrontImage: null,
-      identifyBackImage: null,
-      sellerStatus: 'Active' as const,
-      approvedAt: null,
-      reportCount: reportCounts[index],
-      userInfo: {
-        id: `user-${index + 1}`,
-        email: emails[index],
-        gender: null,
-        phoneNumber: `090${index}${index}${index}${index}${index}${index}${index}`,
-        role: 'Seller' as const,
-        firstName: `Nguyễn`,
-        lastName: `Văn ${String.fromCharCode(65 + index)}`,
-        bankAccount: null,
-        avatar: null,
-        isActive: true,
-        dateOfBirth: null
-      }
-    },
-    storeStories: [],
-    products: []
-  }))
 }
 
 // Month mapping
@@ -649,21 +458,22 @@ function AdminDashboard() {
           <CardContent className='space-y-4'>
             {dashboardData?.summary?.topStoresByRevenue && dashboardData.summary.topStoresByRevenue.length > 0 ? (
               dashboardData.summary.topStoresByRevenue.map((store, index) => {
-                const defaultLogoUrl = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
-                const logoUrl = store.logoUrl || defaultLogoUrl
                 return (
                   <div key={store.storeId} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
                     <div className='flex items-center gap-3'>
-                      <div className='w-10 h-10 rounded-lg overflow-hidden flex-shrink-0'>
-                        <img
-                          src={logoUrl}
-                          alt={store.storeName}
-                          className='w-full h-full object-cover'
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.src = defaultLogoUrl
-                          }}
-                        />
+                      <div className='w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 flex items-center justify-center'>
+                        {store.logoUrl ? (
+                          <img
+                            src={store.logoUrl}
+                            alt={store.storeName}
+                            className='w-full h-full object-cover'
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                            }}
+                          />
+                        ) : null}
+                        {!store.logoUrl && <Store className='w-6 h-6 text-gray-400' />}
                       </div>
                       <div className='flex-1'>
                         <p className='font-medium text-gray-900'>{store.storeName}</p>
@@ -696,21 +506,22 @@ function AdminDashboard() {
             {storesNeedingAction && storesNeedingAction.length > 0 ? (
               storesNeedingAction.map((store) => {
                 const reportCount = store.sellerInfo?.reportCount || 0
-                const defaultLogoUrl = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
-                const logoUrl = store.logoUrl || defaultLogoUrl
                 return (
                   <div key={store.id} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
                     <div className='flex items-center gap-3 flex-1'>
-                      <div className='w-10 h-10 rounded-lg overflow-hidden flex-shrink-0'>
-                        <img
-                          src={logoUrl}
-                          alt={store.storeName}
-                          className='w-full h-full object-cover'
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.src = defaultLogoUrl
-                          }}
-                        />
+                      <div className='w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 flex items-center justify-center'>
+                        {store.logoUrl ? (
+                          <img
+                            src={store.logoUrl}
+                            alt={store.storeName}
+                            className='w-full h-full object-cover'
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                            }}
+                          />
+                        ) : null}
+                        {!store.logoUrl && <Store className='w-6 h-6 text-gray-400' />}
                       </div>
                       <div className='flex-1 min-w-0'>
                         <p className='font-medium text-gray-900 truncate'>{store.storeName}</p>

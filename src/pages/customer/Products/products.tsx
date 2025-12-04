@@ -104,7 +104,7 @@ function Products() {
         setCombosLoading(true)
         setCombosError(null)
         const data = await getAllCombos({ pageNumber: currentPage, pageSize: 12 })
-        setCombos(data)
+        setCombos(data.data)
       } catch {
         setCombosError('Không thể tải combo.')
       } finally {

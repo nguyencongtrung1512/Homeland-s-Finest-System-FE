@@ -869,7 +869,7 @@ export default function WalletContent({
             <div className='space-y-3'>
               {transactions.map((transaction) => {
                 const isPositive = transaction.amount > 0
-                const statusColors = {
+                const statusColors: Record<string, string> = {
                   Completed: 'bg-green-100 text-green-800',
                   Pending: 'bg-yellow-100 text-yellow-800',
                   Approved: 'bg-blue-100 text-blue-800',
@@ -877,6 +877,7 @@ export default function WalletContent({
                   Cancel: 'bg-gray-100 text-gray-800',
                   Disputed: 'bg-orange-100 text-orange-800'
                 }
+                const status = transaction.status || 'Pending'
                 return (
                   <div
                     key={transaction.id}
@@ -886,9 +887,9 @@ export default function WalletContent({
                       <div className='flex items-center gap-2 mb-1'>
                         <span className='font-semibold text-gray-900'>{getTransactionTypeLabel(transaction.type)}</span>
                         <span
-                          className={`text-xs px-2 py-1 rounded-full ${statusColors[transaction.status] || 'bg-gray-100 text-gray-800'}`}
+                          className={`text-xs px-2 py-1 rounded-full ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}
                         >
-                          {getTransactionStatusLabel(transaction.status)}
+                          {getTransactionStatusLabel(status)}
                         </span>
                       </div>
                       <p className='text-sm text-gray-600'>{transaction.description || 'Không có mô tả'}</p>

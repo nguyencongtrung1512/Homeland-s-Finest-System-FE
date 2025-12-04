@@ -136,14 +136,14 @@ function TransactionManagementAdmin() {
 
       // Map transactions
       const mappedTransactions = await Promise.all(
-        response.map((tx: APITransaction) => mapTransactionToUI(tx))
+        response.data.map((tx: APITransaction) => mapTransactionToUI(tx))
       )
 
       // Filter by search text nếu có
       let filteredTransactions = mappedTransactions
       if (searchText) {
         filteredTransactions = mappedTransactions.filter(
-          (tx) =>
+          (tx: Transaction) =>
             tx.id.toLowerCase().includes(searchText.toLowerCase()) ||
             tx.customer.toLowerCase().includes(searchText.toLowerCase())
         )
