@@ -162,7 +162,7 @@ function ManagerComboStaff() {
       updatedAt: formatDate(apiCombo.updatedAt),
       items: apiCombo.comboItems?.length || 0,
       status: (apiCombo.status as ComboData['status']) || 'Pending',
-      assignedToId: apiCombo.assignedToId,
+      assignedToId: apiCombo.assignedToId || '',
       assignedStaffName: apiCombo.assignedToId ? staffMap.get(apiCombo.assignedToId) : undefined
     }
   }

@@ -151,28 +151,41 @@ function BlogByCategory() {
 
   // Trong phần return, thêm nút tạo blog mới bên cạnh nút chỉnh sửa
   return (
-    <div className='min-h-screen bg-background p-6'>
+    <div className='min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 p-6'>
       <div className='max-w-7xl mx-auto space-y-8'>
         {/* Header */}
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center space-x-4'>
-            <Button variant='outline' onClick={handleBack} className='border-border'>
-              <ArrowLeft className='h-4 w-4 mr-2' />
+        <div className='space-y-5'>
+          {/* Back Button */}
+          <div>
+            <Button 
+              variant='outline' 
+              onClick={handleBack} 
+              className='border-gray-300 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 transition-all duration-200 shadow-sm px-5 py-2.5 font-medium group'
+            >
+              <ArrowLeft className='h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform duration-200' />
               Quay lại
             </Button>
-            <div>
-              <h1 className='text-3xl font-bold text-foreground'>{categoryDetail?.name}</h1>
-              <p className='text-muted-foreground'>Chi tiết danh mục blog</p>
-            </div>
           </div>
-          <div className='flex space-x-3'>
-            <Button
-              onClick={() => navigate(path.CREATE_BLOG.replace(':id', categoryDetail?.categoryId || ''))}
-              variant='blue'
-            >
-              <Database className='h-4 w-4 mr-2' />
-              Tạo blog mới
-            </Button>
+
+          {/* Title Section - Title, subtitle and button on same row */}
+          <div className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'>
+            <div className='flex items-center justify-between flex-wrap gap-4'>
+              <div className='flex items-center gap-4 flex-wrap'>
+                <h1 className='text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent'>
+                  {categoryDetail?.name}
+                </h1>
+                <div className='h-8 w-px bg-gray-300'></div>
+                <p className='text-gray-600 font-medium text-lg'>Chi tiết danh mục blog</p>
+              </div>
+              <Button
+                onClick={() => navigate(path.CREATE_BLOG.replace(':id', categoryDetail?.categoryId || ''))}
+                variant='greenLight'
+                className='shadow-md hover:shadow-lg transition-all duration-200'
+              >
+                <Database className='h-4 w-4 mr-2' />
+                Tạo blog mới
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -257,48 +270,23 @@ function BlogByCategory() {
                 {categoryDetail.blogs.map((blog) => (
                   <div
                     key={blog.blogId}
-                    className='bg-muted/50 rounded-lg p-6 border border-border hover:bg-muted/70 transition-colors'
+                    className='bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 relative'
                   >
-                    <div className='flex items-start justify-between'>
-                      <div className='flex-1'>
-                        <div className='flex items-center justify-between mb-2'>
-                          <h4 className='font-semibold text-foreground text-lg'>{blog.title}</h4>
-                          <Badge
-                            variant={blog.isActive ? 'default' : 'destructive'}
-                            className={
-                              blog.isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
-                            }
-                          >
-                            {blog.isActive ? 'Hoạt động' : 'Không hoạt động'}
-                          </Badge>
-                        </div>
-                        <p className='text-muted-foreground mb-4 line-clamp-3'>{blog.description}</p>
-
-                        <div className='flex items-center space-x-6 text-sm text-muted-foreground'>
-                          <div className='flex items-center space-x-2'>
-                            <Calendar className='h-4 w-4' />
-                            <span>{formatDate(categoryDetail.createdAt)}</span>
-                          </div>
-                          {blog.image && (
-                            <div className='mt-3'>
-                              <img
-                                src={resolveImageUrl(blog.image)}
-                                alt={blog.title}
-                                className='w-20 h-20 object-cover rounded-md'
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement
-                                  target.src = 'https://via.placeholder.com/80x80?text=No+Image'
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Thêm nút 3 chấm với dropdown */}
+                    {/* Status Badge and Menu - Top Right */}
+                    <div className='absolute top-6 right-6 flex items-center gap-2'>
+                      <Badge
+                        variant={blog.isActive ? 'default' : 'destructive'}
+                        className={
+                          blog.isActive 
+                            ? 'bg-green-100 text-green-700 border-green-200 font-medium' 
+                            : 'bg-red-100 text-red-700 border-red-200 font-medium'
+                        }
+                      >
+                        {blog.isActive ? 'Hoạt động' : 'Không hoạt động'}
+                      </Badge>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant='ghost' size='icon'>
+                          <Button variant='ghost' size='icon' className='h-8 w-8'>
                             <MoreVertical className='h-4 w-4' />
                           </Button>
                         </DropdownMenuTrigger>
@@ -321,6 +309,47 @@ function BlogByCategory() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                    </div>
+
+                    {/* Main Content Layout */}
+                    <div className='flex items-start gap-6 pr-32'>
+                      {/* Left Side - Image Thumbnail */}
+                      {blog.image ? (
+                        <div className='flex-shrink-0'>
+                          <img
+                            src={resolveImageUrl(blog.image)}
+                            alt={blog.title}
+                            className='w-24 h-24 object-cover rounded-lg border-2 border-gray-200 shadow-sm'
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = 'https://via.placeholder.com/96x96?text=No+Image'
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className='flex-shrink-0 w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50'>
+                          <span className='text-xs text-gray-400'>Ảnh</span>
+                        </div>
+                      )}
+
+                      {/* Right Side - Text Content (Stacked) */}
+                      <div className='flex-1 space-y-3'>
+                        {/* Title */}
+                        <h4 className='text-xl font-bold text-gray-900 leading-tight'>
+                          {blog.title}
+                        </h4>
+                        
+                        {/* Description */}
+                        <p className='text-gray-600 text-base leading-relaxed'>
+                          {blog.description}
+                        </p>
+
+                        {/* Date */}
+                        <div className='flex items-center gap-2 text-sm text-gray-600'>
+                          <Calendar className='h-4 w-4 text-gray-500' />
+                          <span className='font-medium'>{formatDate(blog.createdAt || categoryDetail.createdAt)}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}

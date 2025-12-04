@@ -221,36 +221,55 @@ function CreateBlogByCategoryStaff() {
   }
 
   return (
-    <div className='min-h-screen bg-background p-6'>
-      <div className='max-w-4xl mx-auto space-y-8'>
+    <div className='min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 p-6'>
+      <div className='max-w-5xl mx-auto space-y-8'>
         {/* Header */}
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center space-x-4'>
-            <Button variant='outline' onClick={handleBack} className='border-border'>
-              <ArrowLeft className='h-4 w-4 mr-2' />
+        <div className='space-y-5'>
+          {/* Back Button */}
+          <div>
+            <Button 
+              variant='outline' 
+              onClick={handleBack} 
+              className='border-gray-300 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 transition-all duration-200 shadow-sm px-5 py-2.5 font-medium group'
+            >
+              <ArrowLeft className='h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform duration-200' />
               Quay lại
             </Button>
-            <div>
-              <h1 className='text-3xl font-bold text-foreground'>Tạo Blog Mới</h1>
-              <p className='text-muted-foreground'>Danh mục: {categoryName}</p>
+          </div>
+          
+          {/* Title Section with improved design */}
+          <div className='bg-white rounded-xl shadow-sm border border-gray-200 p-6'>
+            <div className='flex items-center justify-between flex-wrap gap-4'>
+              <div className='flex items-center gap-4 flex-wrap'>
+                <h1 className='text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent'>
+                  Tạo Blog Mới
+                </h1>
+                <div className='h-8 w-px bg-gray-300'></div>
+                <div className='flex items-center gap-2'>
+                  <span className='text-sm font-medium text-gray-500 uppercase tracking-wide'>Danh mục</span>
+                  <span className='px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg font-semibold text-sm shadow-sm'>
+                    {categoryName}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Form */}
-        <Card className='bg-card border-border'>
-          <CardHeader>
-            <CardTitle>Thông tin blog</CardTitle>
+        <Card className='bg-white border-gray-200 shadow-lg shadow-gray-200/50 rounded-xl overflow-hidden'>
+          <CardHeader className='bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200'>
+            <CardTitle className='text-2xl font-semibold text-gray-800'>Thông tin blog</CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className='space-y-6'>
-              <div className='space-y-2'>
+          <CardContent className='p-8'>
+            <form onSubmit={handleSubmit} className='space-y-8'>
+              <div className='space-y-3'>
                 <div className='flex items-center justify-between'>
-                  <Label htmlFor='title'>
-                    Tiêu đề <span className='text-destructive'>*</span>
+                  <Label htmlFor='title' className='text-base font-semibold text-gray-700'>
+                    Tiêu đề <span className='text-red-500'>*</span>
                   </Label>
                   {suggestionLoading && (
-                    <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                    <div className='flex items-center gap-2 text-sm text-blue-600 font-medium'>
                       <Loader2 className='h-4 w-4 animate-spin' />
                       <span>Đang tạo gợi ý...</span>
                     </div>
@@ -262,30 +281,40 @@ function CreateBlogByCategoryStaff() {
                     value={title}
                     onChange={(e) => handleTitleChange(e.target.value)}
                     placeholder='Nhập tiêu đề blog (10-100 ký tự)'
-                    className={titleError ? 'border-destructive' : ''}
+                    className={`transition-all duration-200 ${
+                      titleError 
+                        ? 'border-red-400 focus:border-red-500 focus:ring-red-200' 
+                        : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200'
+                    } focus:ring-2 rounded-lg py-2.5 text-base`}
                   />
                   {suggestionLoading && (
                     <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                      <Loader2 className='h-4 w-4 animate-spin text-primary' />
+                      <Loader2 className='h-4 w-4 animate-spin text-blue-500' />
                     </div>
                   )}
                 </div>
-                {titleError && <p className='text-sm text-destructive'>{titleError}</p>}
+                {titleError && (
+                  <p className='text-sm text-red-600 font-medium flex items-center gap-1'>
+                    <span>⚠</span> {titleError}
+                  </p>
+                )}
                 {!titleError && title && (
-                  <p className='text-xs text-muted-foreground'>
-                    Độ dài: {title.trim().length}/100 ký tự
+                  <p className='text-xs text-gray-500 font-medium'>
+                    Độ dài: <span className='text-blue-600'>{title.trim().length}</span>/100 ký tự
                   </p>
                 )}
               </div>
 
               {/* N8N Suggestion Card */}
               {suggestedContent && (
-                <Card className='bg-blue-50 border-blue-200'>
-                  <CardHeader className='pb-3'>
+                <Card className='bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 shadow-md rounded-xl overflow-hidden'>
+                  <CardHeader className='pb-3 bg-white/50'>
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center gap-2'>
-                        <Sparkles className='h-4 w-4 text-blue-600' />
-                        <CardTitle className='text-sm font-medium text-blue-900'>
+                        <div className='p-1.5 bg-blue-100 rounded-lg'>
+                          <Sparkles className='h-5 w-5 text-blue-600' />
+                        </div>
+                        <CardTitle className='text-base font-semibold text-blue-900'>
                           Gợi ý nội dung từ AI
                         </CardTitle>
                       </div>
@@ -294,16 +323,16 @@ function CreateBlogByCategoryStaff() {
                         variant='outline'
                         size='sm'
                         onClick={handleUseSuggestion}
-                        className='h-7 text-xs'
+                        className='h-8 text-xs bg-blue-600 text-white border-blue-600 hover:bg-blue-700 hover:border-blue-700 transition-all duration-200 shadow-sm'
                       >
                         Áp dụng
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className='pt-4'>
                     <div className='prose prose-sm max-w-none'>
                       <div
-                        className='text-sm text-gray-700 whitespace-pre-wrap max-h-96 overflow-y-auto'
+                        className='text-sm text-gray-800 whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed'
                         dangerouslySetInnerHTML={{ __html: suggestedContent.replace(/\n/g, '<br>') }}
                       />
                     </div>
@@ -311,39 +340,46 @@ function CreateBlogByCategoryStaff() {
                 </Card>
               )}
 
-              <div className='space-y-2'>
-                <Label htmlFor='description'>Mô tả ngắn</Label>
+              <div className='space-y-3'>
+                <Label htmlFor='description' className='text-base font-semibold text-gray-700'>
+                  Mô tả ngắn
+                </Label>
                 <Textarea
                   id='description'
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder='Nhập mô tả ngắn về blog'
                   required
+                  className='border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg transition-all duration-200 min-h-[100px] text-base'
                 />
               </div>
 
-              <div className='space-y-2'>
-                <Label htmlFor='content'>Nội dung</Label>
-                <div className='min-h-[300px]'>
+              <div className='space-y-3'>
+                <Label htmlFor='content' className='text-base font-semibold text-gray-700'>
+                  Nội dung
+                </Label>
+                <div className='min-h-[350px] bg-white rounded-lg border border-gray-300 overflow-hidden'>
                   <ReactQuill
                     theme='snow'
                     value={content}
                     onChange={setContent}
                     modules={modules}
                     placeholder='Nhập nội dung blog...'
-                    className='h-[250px] mb-12'
+                    className='h-[300px] mb-12'
                   />
                 </div>
               </div>
 
-              <div className='space-y-2'>
-                <Label htmlFor='image'>Ảnh đại diện</Label>
-                <div className='flex items-center gap-4'>
+              <div className='space-y-3'>
+                <Label htmlFor='image' className='text-base font-semibold text-gray-700'>
+                  Ảnh đại diện
+                </Label>
+                <div className='flex items-center gap-4 p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-400 transition-all duration-200'>
                   <Button
                     type='button'
                     variant='outline'
                     onClick={() => document.getElementById('image-upload')?.click()}
-                    className='flex items-center gap-2'
+                    className='flex items-center gap-2 bg-white hover:bg-blue-50 border-gray-300 hover:border-blue-400 text-gray-700 hover:text-blue-600 transition-all duration-200 shadow-sm'
                   >
                     <Upload className='h-4 w-4' />
                     Chọn ảnh
@@ -355,25 +391,43 @@ function CreateBlogByCategoryStaff() {
                     onChange={handleImageChange}
                     className='hidden'
                   />
-                  <span className='text-sm text-muted-foreground'>{image ? image.name : 'Chưa chọn file nào'}</span>
+                  <span className={`text-sm font-medium ${image ? 'text-green-600' : 'text-gray-500'}`}>
+                    {image ? `✓ ${image.name}` : 'Chưa chọn file nào'}
+                  </span>
                 </div>
 
                 {imagePreview && (
-                  <div className='mt-4'>
-                    <p className='text-sm font-medium mb-2'>Xem trước:</p>
-                    <div className='relative aspect-video w-full max-w-md overflow-hidden rounded-lg border border-border'>
+                  <div className='mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200'>
+                    <p className='text-sm font-semibold mb-3 text-gray-700'>Xem trước:</p>
+                    <div className='relative aspect-video w-full max-w-2xl overflow-hidden rounded-xl border-2 border-gray-200 shadow-lg'>
                       <img src={imagePreview} alt='Preview' className='h-full w-full object-cover' />
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className='flex justify-end gap-4 pt-4'>
-                <Button type='button' variant='outline' onClick={handleBack}>
+              <div className='flex justify-end gap-4 pt-6 border-t border-gray-200'>
+                <Button 
+                  type='button' 
+                  variant='outline' 
+                  onClick={handleBack}
+                  className='px-6 py-2.5 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm font-medium'
+                >
                   Hủy
                 </Button>
-                <Button type='submit' disabled={loading}>
-                  {loading ? 'Đang tạo...' : 'Tạo blog'}
+                <Button 
+                  type='submit' 
+                  disabled={loading}
+                  variant='greenLight'
+                >
+                  {loading ? (
+                    <span className='flex items-center gap-2'>
+                      <Loader2 className='h-4 w-4 animate-spin' />
+                      Đang tạo...
+                    </span>
+                  ) : (
+                    'Tạo blog'
+                  )}
                 </Button>
               </div>
             </form>
