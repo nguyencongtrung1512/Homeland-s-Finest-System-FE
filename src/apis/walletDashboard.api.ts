@@ -376,16 +376,21 @@ export const getMonthlyRevenue = async (
 
 /**
  * Lấy danh sách cửa hàng có doanh thu cao nhất
- * GET /api/wallet-dashboard/top-stores?topCount=10
+ * GET /api/wallet-dashboard/top-stores?topCount=10&year=2025
+ * 
+ * @param topCount - Số lượng cửa hàng cần lấy (mặc định: 10)
+ * @param year - Năm cần xem (optional)
  */
 export const getTopStores = async (
-  topCount: number = 10
+  topCount: number = 10,
+  year?: number
 ): Promise<ApiResponse<StoreAdminRevenueResponse[]>> => {
   const response = await axiosInstance.get<ApiResponse<StoreAdminRevenueResponse[]>>(
     `${API_URL}/top-stores`,
     {
       params: {
-        topCount
+        topCount,
+        ...(year && { year })
       }
     }
   )
@@ -446,6 +451,26 @@ export interface StoreRegionDistributionResponse {
   TotalStores: number
 }
 
+/**
+ * Payment Method Stats
+ */
+export interface PaymentMethodStats {
+  Revenue: number
+  OrderCount: number
+  Percentage: number // % so với tổng
+}
+
+/**
+ * Payment Method Distribution Response
+ */
+export interface PaymentMethodDistributionResponse {
+  Banking: PaymentMethodStats
+  COD: PaymentMethodStats
+  MyWallet: PaymentMethodStats
+  TotalRevenue: number
+  TotalOrders: number
+}
+
 // ========================================
 // STAFF DASHBOARD API FUNCTIONS
 // ========================================
@@ -483,12 +508,56 @@ export const getStoreRegistrationChart = async (
 
 /**
  * Lấy phân bổ cửa hàng theo 3 miền (Bắc, Trung, Nam)
- * GET /api/wallet-dashboard/Admin/store-region-distribution
+ * GET /api/wallet-dashboard/Admin/store-region-distribution?year=2025
  * (Có thể dùng cho cả Admin và Staff)
+ * 
+ * @param year - Năm cần xem (optional)
  */
-export const getStoreRegionDistribution = async (): Promise<ApiResponse<StoreRegionDistributionResponse>> => {
+export const getStoreRegionDistribution = async (
+  year?: number
+): Promise<ApiResponse<StoreRegionDistributionResponse>> => {
   const response = await axiosInstance.get<ApiResponse<StoreRegionDistributionResponse>>(
-    `${API_URL}/Admin/store-region-distribution`
+    `${API_URL}/Admin/store-region-distribution`,
+    {
+      params: {
+        ...(year && { year })
+      }
+    }
+  )
+  // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+  return response as any
+}
+
+/**
+ * Lấy phân bổ phương thức thanh toán (Banking, COD, MyWallet)
+ * GET /api/wallet-dashboard/Admin/payment-method-distribution
+ * 
+ * @param year - Năm cần xem (nếu có, sẽ tự động convert thành startDate và endDate)
+ * @param startDate - Ngày bắt đầu (yyyy-MM-dd hoặc ISO string). Nếu có year thì sẽ bị override
+ * @param endDate - Ngày kết thúc (yyyy-MM-dd hoặc ISO string). Nếu có year thì sẽ bị override
+ */
+export const getPaymentMethodDistribution = async (
+  year?: number,
+  startDate?: string,
+  endDate?: string
+): Promise<ApiResponse<PaymentMethodDistributionResponse>> => {
+  // Nếu có year, convert thành startDate và endDate
+  let finalStartDate: string | undefined = startDate
+  let finalEndDate: string | undefined = endDate
+
+  if (year) {
+    finalStartDate = `${year}-01-01`
+    finalEndDate = `${year}-12-31`
+  }
+
+  const response = await axiosInstance.get<ApiResponse<PaymentMethodDistributionResponse>>(
+    `${API_URL}/Admin/payment-method-distribution`,
+    {
+      params: {
+        startDate: finalStartDate,
+        endDate: finalEndDate
+      }
+    }
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
   return response as any
@@ -508,6 +577,7 @@ export default {
   getProcessingStores,
   getStaffDashboard,
   getStoreRegistrationChart,
-  getStoreRegionDistribution
+  getStoreRegionDistribution,
+  getPaymentMethodDistribution
 }
 

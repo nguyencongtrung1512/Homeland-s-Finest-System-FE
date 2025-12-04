@@ -93,26 +93,26 @@ function StaffDashboard() {
       if (!selectedYear) return
       setLoading(true)
       try {
-        // Fetch staff dashboard overview - giống admin dashboard
+        // Fetch staff dashboard overview - không hỗ trợ filter theo năm
         const staffDashboardResponse = await getStaffDashboard()
         const staffData = staffDashboardResponse.data
         console.log('Staff Dashboard Response:', staffDashboardResponse)
         console.log('Staff Data:', staffData)
 
-        // Fetch store registration chart
+        // Fetch store registration chart - HỖ TRỢ filter theo năm
         const registrationChartResponse = await getStoreRegistrationChart(selectedYear)
         const registrationData = registrationChartResponse.data
         console.log('Registration Chart Response:', registrationChartResponse)
         console.log('Registration Data:', registrationData)
 
-        // Fetch region distribution
-        const regionDistributionResponse = await getStoreRegionDistribution()
+        // Fetch region distribution - HỖ TRỢ filter theo năm
+        const regionDistributionResponse = await getStoreRegionDistribution(selectedYear)
         const regionData = regionDistributionResponse.data
         console.log('Region Distribution Response:', regionDistributionResponse)
         console.log('Region Data:', regionData)
 
-        // Fetch top stores
-        const topStoresResponse = await getTopStores(5)
+        // Fetch top stores - HỖ TRỢ filter theo năm
+        const topStoresResponse = await getTopStores(5, selectedYear)
         const topStoresData = topStoresResponse.data
         console.log('Top Stores Response:', topStoresResponse)
         console.log('Top Stores Data:', topStoresData)
@@ -266,7 +266,9 @@ function StaffDashboard() {
         <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
           <div>
             <h1 className='text-3xl font-bold tracking-tight'>Dashboard Nhân viên</h1>
-            <p className='text-muted-foreground mt-1'>Tổng quan quản lý cửa hàng, người dùng và hệ thống</p>
+            <p className='text-muted-foreground mt-1'>
+              Tổng quan quản lý cửa hàng, người dùng và hệ thống (Biểu đồ đăng ký cửa hàng có thể filter theo năm)
+            </p>
           </div>
           <div className='flex items-center gap-3'>
             <span className='text-sm font-medium'>Chọn năm:</span>
@@ -309,7 +311,9 @@ function StaffDashboard() {
                 <BarChartIcon size={20} />
                 Biểu đồ cửa hàng đăng kí theo tháng
               </CardTitle>
-              <CardDescription>Số lượng cửa hàng đăng ký mỗi tháng</CardDescription>
+              <CardDescription>
+                Số lượng cửa hàng đăng ký mỗi tháng trong năm {selectedYear}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (

@@ -123,12 +123,12 @@ function AdminDashboard() {
       const adminDashboardResponse = await getAdminDashboard()
       const adminData = adminDashboardResponse.data
 
-      // Fetch monthly revenue
+      // Fetch monthly revenue - HỖ TRỢ filter theo năm
       const revenueResponse = await getMonthlyRevenue(year)
       const revenueData = revenueResponse.data
 
-      // Fetch top stores
-      const topStoresResponse = await getTopStores(5)
+      // Fetch top stores - HỖ TRỢ filter theo năm
+      const topStoresResponse = await getTopStores(5, year)
       const topStoresData = topStoresResponse.data
 
       // Set promotion stats from admin dashboard data
@@ -454,6 +454,7 @@ function AdminDashboard() {
         <Card className='bg-white shadow-sm'>
           <CardHeader>
             <CardTitle className='text-lg font-semibold text-gray-900'>Cửa hàng có doanh thu cao</CardTitle>
+            <p className='text-sm text-gray-600 mt-1'>Top 5 cửa hàng theo doanh thu trong năm {selectedYear}</p>
           </CardHeader>
           <CardContent className='space-y-4'>
             {dashboardData?.summary?.topStoresByRevenue && dashboardData.summary.topStoresByRevenue.length > 0 ? (

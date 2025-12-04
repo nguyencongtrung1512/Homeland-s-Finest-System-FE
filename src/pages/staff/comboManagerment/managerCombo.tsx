@@ -4,15 +4,13 @@ import {
   Filter,
   RefreshCw,
   Package,
-  ExternalLink,
   Calendar,
   User,
   CheckCircle,
   XCircle,
   Clock,
   Store,
-  Eye,
-  ArrowUpDown
+  Eye
 } from 'lucide-react'
 import { staffApi } from '../../../apis/staff.api'
 import { getAllCombos } from '../../../apis/combo.api'
@@ -289,14 +287,14 @@ function ManagerComboStaff() {
     setCurrentPage(1)
   }
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortOrder('asc')
-    }
-  }
+  // const handleSort = (field: SortField) => {
+  //   if (sortField === field) {
+  //     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+  //   } else {
+  //     setSortField(field)
+  //     setSortOrder('asc')
+  //   }
+  // }
 
   // Handle action dialog open
   const handleOpenActionDialog = (combo: ComboData) => {
