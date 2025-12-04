@@ -532,23 +532,34 @@ function ManagerComboStaff() {
           </div>
 
           {/* Action Buttons */}
-          <div className='grid grid-cols-2 gap-2'>
-            <Button
-              variant='outline'
-              onClick={() => navigate(path.detailComboStaff.replace(':id', combo.combo.id))}
-              className='flex items-center justify-center gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300'
-            >
-              <Eye size={16} />
-              Xem
-            </Button>
-            {canProcess && (
+          <div className={canProcess ? 'grid grid-cols-2 gap-2' : 'flex justify-center'}>
+            {canProcess ? (
+              <>
+                <Button
+                  variant='outline'
+                  onClick={() => navigate(path.detailComboStaff.replace(':id', combo.combo.id))}
+                  className='flex items-center justify-center gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300'
+                >
+                  <Eye size={16} />
+                  Xem
+                </Button>
+                <Button
+                  variant='outline'
+                  onClick={() => handleOpenActionDialog(combo)}
+                  className='flex items-center justify-center gap-2 border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300'
+                >
+                  <CheckCircle size={16} />
+                  Xử lý
+                </Button>
+              </>
+            ) : (
               <Button
                 variant='outline'
-                onClick={() => handleOpenActionDialog(combo)}
-                className='flex items-center justify-center gap-2 border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300'
+                onClick={() => navigate(path.detailComboStaff.replace(':id', combo.combo.id))}
+                className='flex items-center justify-center gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 w-full max-w-xs'
               >
-                <CheckCircle size={16} />
-                Xử lý
+                <Eye size={16} />
+                Xem chi tiết
               </Button>
             )}
           </div>
