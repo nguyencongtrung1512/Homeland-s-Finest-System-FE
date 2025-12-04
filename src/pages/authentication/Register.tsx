@@ -301,12 +301,43 @@ function Register() {
           navigate(path.loginCustomer)
         }, 2000)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error submitting form:', error)
-      toast.error('Có lỗi xảy ra. Vui lòng thử lại.', {
+      
+      // Xử lý lỗi từ API response
+      let errorMessage = 'Có lỗi xảy ra. Vui lòng thử lại.'
+      
+      if (error && typeof error === 'object') {
+        // Kiểm tra error có phải là AxiosError với response.data
+        if ('message' in error) {
+          const errorData = error as { message?: string; status?: number }
+          if (errorData.message) {
+            errorMessage = errorData.message
+          }
+        }
+      }
+      
+      // Hiển thị lỗi cụ thể từ server
+      toast.error(errorMessage, {
         position: 'top-right',
         autoClose: 5000
       })
+      
+      // Nếu là lỗi về số điện thoại đã tồn tại, hiển thị lỗi ở field phoneNumber
+      if (errorMessage.includes('Số điện thoại') || errorMessage.includes('số điện thoại')) {
+        setErrors((prev) => ({
+          ...prev,
+          phoneNumber: errorMessage
+        }))
+      }
+      
+      // Nếu là lỗi về email đã tồn tại, hiển thị lỗi ở field email
+      if (errorMessage.includes('Email') || errorMessage.includes('email')) {
+        setErrors((prev) => ({
+          ...prev,
+          email: errorMessage
+        }))
+      }
     } finally {
       setIsSubmitting(false)
     }
