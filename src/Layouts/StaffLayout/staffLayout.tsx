@@ -1,4 +1,5 @@
-import { User, LogOut, Settings } from 'lucide-react'
+import { useState } from 'react'
+import { User, LogOut, Settings, Menu, ChevronRight } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Button } from '../../components/ui/button'
@@ -9,6 +10,7 @@ import SideBar from './sideBar'
 import { Outlet } from 'react-router-dom'
 
 function StaffLayout() {
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const { user, logout } = useAuth()
 
   const handleLogout = async () => {
@@ -17,6 +19,10 @@ function StaffLayout() {
     } catch (error) {
       console.error('Logout error:', error)
     }
+  }
+
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed)
   }
 
   const menuItems = [
@@ -28,13 +34,18 @@ function StaffLayout() {
   return (
     <div className='min-h-screen bg-gray-50 flex'>
       {/* Sidebar */}
-      <SideBar />
+      <SideBar isCollapsed={isCollapsed} />
 
       {/* Main Content */}
       <div className='flex-1 flex flex-col'>
         {/* Header */}
         <header className='bg-white px-6 py-4 shadow-sm border-b border-gray-200 flex items-center justify-between'>
           <div className='flex items-center gap-3'>
+            {/* Toggle Button */}
+            <Button variant='ghost' size='icon' onClick={toggleSidebar} className='h-8 w-8 hover:bg-gray-100'>
+              {isCollapsed ? <ChevronRight size={18} /> : <Menu size={18} />}
+            </Button>
+
             {/* Logo */}
             <div className='flex items-center gap-2'>
               <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none'>
@@ -105,8 +116,8 @@ function StaffLayout() {
                                   <span className='text-sm font-medium text-gray-600'>Vai trò:</span>
                                   <span className='text-sm text-gray-900'>{user?.roleName || 'Staff'}</span>
                                 </div>
-                                
-                              
+
+
                                 <div className='flex justify-between items-center py-2'>
                                   <span className='text-sm font-medium text-gray-600'>Token hết hạn:</span>
                                   <span className='text-sm text-gray-900'>
