@@ -750,7 +750,7 @@ function CreateMyStoryPage() {
                       <img
                         src={URL.createObjectURL(storyData.ThumbnailImage)}
                         alt='Ảnh đại diện câu chuyện'
-                        className='w-full h-32 object-cover rounded mx-auto'
+                        className='w-full object-contain rounded mx-auto'
                       />
                       <p className='text-sm text-gray-500'>{storyData.ThumbnailImage.name}</p>
                       <Button variant='outline' size='sm' onClick={() => handleFileChange('ThumbnailImage', null)}>
@@ -824,7 +824,7 @@ function CreateMyStoryPage() {
                 <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4'>
                   {storyData.VideoOpener ? (
                     <div className='space-y-2'>
-                      <video src={URL.createObjectURL(storyData.VideoOpener)} controls className='w-full h-32 rounded' />
+                      <video src={URL.createObjectURL(storyData.VideoOpener)} controls className='w-full rounded' />
                       <p className='text-sm text-gray-500'>{storyData.VideoOpener.name}</p>
                       <Button variant='outline' size='sm' onClick={() => handleFileChange('VideoOpener', null)}>
                         <X className='w-4 h-4 mr-1' />
@@ -894,7 +894,7 @@ function CreateMyStoryPage() {
                       <img
                         src={URL.createObjectURL(storyData.SingleImage)}
                         alt='Hình ảnh minh họa câu chuyện'
-                        className='w-full h-32 object-cover rounded mx-auto'
+                        className='w-full object-contain rounded mx-auto'
                       />
                       <p className='text-sm text-gray-500'>{storyData.SingleImage.name}</p>
                       <Button variant='outline' size='sm' onClick={() => handleFileChange('SingleImage', null)}>
@@ -1110,7 +1110,7 @@ function CreateMyStoryPage() {
                 <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4'>
                   {storyData.VideoProcess ? (
                     <div className='space-y-2'>
-                      <video src={URL.createObjectURL(storyData.VideoProcess)} controls className='w-full h-32 rounded' />
+                      <video src={URL.createObjectURL(storyData.VideoProcess)} controls className='w-full rounded' />
                       <p className='text-sm text-gray-500'>{storyData.VideoProcess.name}</p>
                       <Button variant='outline' size='sm' onClick={() => handleFileChange('VideoProcess', null)}>
                         <X className='w-4 h-4 mr-1' />
@@ -1165,19 +1165,19 @@ function CreateMyStoryPage() {
             <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
               <CardTitle className='text-green-700 flex items-center gap-2'>
                 <Video className='w-5 h-5' />
-                Video phản hồi từ khách hàng
+                Video tổng kết
               </CardTitle>
             </CardHeader>
             <CardContent className='space-y-4 pt-6'>
               <div>
-                <Label className='text-sm font-medium'>Video phản hồi khách hàng</Label>
+                <Label className='text-sm font-medium'>Video tổng kết</Label>
                 <p className='text-xs text-gray-500 mt-1 mb-2'>
-                  Video này sẽ giúp tăng độ tin cậy với những phản hồi tích cực từ khách hàng đã sử dụng sản phẩm
+                  Video này sẽ là lời kết thúc cho câu chuyện
                 </p>
                 <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4'>
                   {storyData.VideoTestimonial ? (
                     <div className='space-y-2'>
-                      <video src={URL.createObjectURL(storyData.VideoTestimonial)} controls className='w-full h-32 rounded' />
+                      <video src={URL.createObjectURL(storyData.VideoTestimonial)} controls className='w-full rounded' />
                       <p className='text-sm text-gray-500'>{storyData.VideoTestimonial.name}</p>
                       <Button variant='outline' size='sm' onClick={() => handleFileChange('VideoTestimonial', null)}>
                         <X className='w-4 h-4 mr-1' />
@@ -1187,7 +1187,7 @@ function CreateMyStoryPage() {
                   ) : (
                     <>
                       <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                      <p className='text-gray-500 mb-2 text-sm'>Tải lên video phản hồi khách hàng</p>
+                      <p className='text-gray-500 mb-2 text-sm'>Tải lên video tổng kết</p>
                       <p className='text-xs text-gray-400 mb-3'>Định dạng: MP4, MOV. Kích thước tối đa: 50MB</p>
                       <input
                         type='file'
@@ -1198,15 +1198,15 @@ function CreateMyStoryPage() {
                       />
                       <Button variant='outline' size='sm' onClick={() => document.getElementById('video-testimonial-upload')?.click()}>
                         <Upload className='w-4 h-4 mr-1' />
-                        Chọn video phản hồi
+                        Chọn video tổng kết
                       </Button>
                     </>
                   )}
                 </div>
                 <div className='mt-2'>
-                  <Label className='text-xs text-gray-600'>Mô tả cho video phản hồi khách hàng</Label>
+                  <Label className='text-xs text-gray-600'>Mô tả cho video tổng kết</Label>
                   <Textarea
-                    placeholder='Ví dụ: Video chia sẻ cảm nhận của khách hàng về chất lượng sản phẩm...'
+                    placeholder='Ví dụ: Video tổng kết câu chuyện của bạn...'
                     value={storyData.VideoTestimonialDescription}
                     onChange={(e) => handleInputChange('VideoTestimonialDescription', e.target.value)}
                     className={`mt-1 min-h-[60px] text-sm ${
