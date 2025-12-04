@@ -49,6 +49,8 @@ export interface StatusStoreRequest {
 // Interface cho ban/unban store request
 export interface BanStoreRequest {
   reason: string
+  isTemporary?: boolean
+  banUntil?: string
 }
 
 // Interface cho ban/unban store response data

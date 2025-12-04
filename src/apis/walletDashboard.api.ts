@@ -533,8 +533,8 @@ export const getStoreRegionDistribution = async (
  * GET /api/wallet-dashboard/Admin/payment-method-distribution
  * 
  * @param year - Năm cần xem (nếu có, sẽ tự động convert thành startDate và endDate)
- * @param startDate - Ngày bắt đầu (yyyy-MM-dd hoặc ISO string). Nếu có year thì sẽ bị override
- * @param endDate - Ngày kết thúc (yyyy-MM-dd hoặc ISO string). Nếu có year thì sẽ bị override
+ * @param startDate - Ngày bắt đầu (yyyy-MM-dd hoặc ISO string). Nếu có year thì sẽ bị override. Nếu không có thì get all
+ * @param endDate - Ngày kết thúc (yyyy-MM-dd hoặc ISO string). Nếu có year thì sẽ bị override. Nếu không có thì get all
  */
 export const getPaymentMethodDistribution = async (
   year?: number,
@@ -546,17 +546,32 @@ export const getPaymentMethodDistribution = async (
   let finalEndDate: string | undefined = endDate
 
   if (year) {
-    finalStartDate = `${year}-01-01`
-    finalEndDate = `${year}-12-31`
+    finalStartDate = `${year}-01-01T00:00:00.000Z`
+    finalEndDate = `${year}-12-31T23:59:59.999Z`
+  } else if (startDate && endDate) {
+    // Convert date string to UTC ISO format
+    // Nếu là yyyy-MM-dd format, convert sang UTC
+    if (startDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      finalStartDate = new Date(startDate + 'T00:00:00.000Z').toISOString()
+    }
+    if (endDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      finalEndDate = new Date(endDate + 'T23:59:59.999Z').toISOString()
+    }
+  }
+
+  // Chỉ gửi params nếu có giá trị (nếu không có thì get all)
+  const params: Record<string, string> = {}
+  if (finalStartDate) {
+    params.startDate = finalStartDate
+  }
+  if (finalEndDate) {
+    params.endDate = finalEndDate
   }
 
   const response = await axiosInstance.get<ApiResponse<PaymentMethodDistributionResponse>>(
     `${API_URL}/Admin/payment-method-distribution`,
     {
-      params: {
-        startDate: finalStartDate,
-        endDate: finalEndDate
-      }
+      params: Object.keys(params).length > 0 ? params : undefined
     }
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}

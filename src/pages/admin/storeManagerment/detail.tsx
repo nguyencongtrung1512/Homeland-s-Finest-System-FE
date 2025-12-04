@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../compo
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
+import { Input } from '../../../components/ui/input'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { adminApi, type Staff, type StatusStoreRequest, type BanStoreRequest } from '../../../apis/admin.api'
 import { staffApi } from '../../../apis/staff.api'
@@ -52,6 +53,8 @@ function StoreDetailAdmin() {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<'Approve' | 'Reject' | 'Ban' | 'Unban' | null>(null)
   const [reason, setReason] = useState('')
+  const [isTemporary, setIsTemporary] = useState<boolean>(false)
+  const [banUntil, setBanUntil] = useState<string>('')
   const [statusLoading, setStatusLoading] = useState(false)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [productModalOpen, setProductModalOpen] = useState(false)
@@ -380,6 +383,8 @@ function StoreDetailAdmin() {
   const handleStatusAction = (action: 'Approve' | 'Reject' | 'Ban' | 'Unban') => {
     setSelectedAction(action)
     setReason('')
+    setIsTemporary(false)
+    setBanUntil('')
     setStatusDialogOpen(true)
   }
 
@@ -401,6 +406,22 @@ function StoreDetailAdmin() {
       return
     }
 
+    // Validate ban tạm thời
+    if (selectedAction === 'Ban' && isTemporary) {
+      if (!banUntil) {
+        toast.error('Vui lòng chọn ngày kết thúc ban')
+        return
+      }
+
+      const banDate = new Date(banUntil)
+      const now = new Date()
+
+      if (banDate <= now) {
+        toast.error('Ngày kết thúc ban phải sau ngày hiện tại')
+        return
+      }
+    }
+
     setStatusDialogOpen(false)
     setConfirmDialogOpen(true)
   }
@@ -415,7 +436,9 @@ function StoreDetailAdmin() {
       // Sử dụng API riêng cho ban/unban
       if (selectedAction === 'Ban') {
         const banData: BanStoreRequest = {
-          reason: reason.trim()
+          reason: reason.trim(),
+          isTemporary: isTemporary,
+          ...(isTemporary && banUntil ? { banUntil: new Date(banUntil).toISOString() } : {})
         }
         response = await adminApi.banStore(store.id, banData)
       } else if (selectedAction === 'Unban') {
@@ -454,6 +477,8 @@ function StoreDetailAdmin() {
       setConfirmDialogOpen(false)
       setSelectedAction(null)
       setReason('')
+      setIsTemporary(false)
+      setBanUntil('')
     }
   }
 
@@ -462,6 +487,8 @@ function StoreDetailAdmin() {
     setStatusDialogOpen(false)
     setSelectedAction(null)
     setReason('')
+    setIsTemporary(false)
+    setBanUntil('')
   }
 
   const handleAssignStaff = () => {
@@ -708,7 +735,7 @@ function StoreDetailAdmin() {
                           Đang tải...
                         </>
                       ) : (
-                        `Xem sản phẩm (${products.length || store?.products?.length || 0})`
+                        'Xem sản phẩm'
                       )}
                     </Button>
                     <Button
@@ -717,7 +744,7 @@ function StoreDetailAdmin() {
                       className='w-full border-purple-200 text-purple-600 hover:bg-purple-50'
                     >
                       <Package className='w-4 h-4 mr-2' />
-                      Xem combo ({combos.length || 0})
+                      Xem combo
                     </Button>
                   </div>
                 </div>
@@ -1420,13 +1447,78 @@ function StoreDetailAdmin() {
                 </div>
               </div>
 
+              {/* Ban type selection - chỉ hiển thị khi action là Ban */}
+              {selectedAction === 'Ban' && (
+                <div className='space-y-3 pt-4 border-t'>
+                  <Label className='text-sm font-medium text-gray-700'>Loại khóa *</Label>
+                  <div className='space-y-3'>
+                    <div className='flex items-center space-x-2'>
+                      <input
+                        type='radio'
+                        id='ban-permanent'
+                        name='banType'
+                        checked={!isTemporary}
+                        onChange={() => {
+                          setIsTemporary(false)
+                          setBanUntil('')
+                        }}
+                        className='w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500'
+                      />
+                      <Label htmlFor='ban-permanent' className='text-sm font-normal text-gray-700 cursor-pointer'>
+                        Khóa vĩnh viễn
+                      </Label>
+                    </div>
+                    <div className='flex items-center space-x-2'>
+                      <input
+                        type='radio'
+                        id='ban-temporary'
+                        name='banType'
+                        checked={isTemporary}
+                        onChange={() => setIsTemporary(true)}
+                        className='w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500'
+                      />
+                      <Label htmlFor='ban-temporary' className='text-sm font-normal text-gray-700 cursor-pointer'>
+                        Khóa tạm thời
+                      </Label>
+                    </div>
+                  </div>
+
+                  {/* Date picker cho ban tạm thời */}
+                  {isTemporary && (
+                    <div className='space-y-2 pt-2'>
+                      <Label htmlFor='banUntil' className='text-sm font-medium text-gray-700'>
+                        Ngày kết thúc khóa *
+                      </Label>
+                      <Input
+                        id='banUntil'
+                        type='datetime-local'
+                        value={banUntil}
+                        onChange={(e) => setBanUntil(e.target.value)}
+                        min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                        className='w-full'
+                      />
+                      {banUntil && (
+                        <p className='text-xs text-gray-500'>
+                          Cửa hàng sẽ được mở khóa vào: {new Date(banUntil).toLocaleString('vi-VN')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className='flex justify-end gap-3 pt-2'>
                 <Button variant='outline' onClick={() => setStatusDialogOpen(false)}>
                   Hủy
                 </Button>
                 <Button
                   onClick={handleSaveReason}
-                  disabled={!reason.trim() || reason.trim().length < 10 || reason.trim().length > 200}
+                  disabled={
+                    !reason.trim() ||
+                    reason.trim().length < 10 ||
+                    reason.trim().length > 200 ||
+                    (selectedAction === 'Ban' && isTemporary && !banUntil)
+                  }
                   className={
                     selectedAction === 'Approve'
                       ? 'bg-green-500 hover:bg-green-600 text-white'
@@ -1480,6 +1572,19 @@ function StoreDetailAdmin() {
                   <p className='text-xs text-gray-500 mb-1'>Lý do:</p>
                   <p className='text-sm text-gray-900'>{reason}</p>
                 </div>
+                {selectedAction === 'Ban' && (
+                  <div className='mt-3 p-3 bg-white border rounded'>
+                    <p className='text-xs text-gray-500 mb-1'>Loại khóa:</p>
+                    <p className='text-sm font-medium text-gray-900'>
+                      {isTemporary ? 'Khóa tạm thời' : 'Khóa vĩnh viễn'}
+                    </p>
+                    {isTemporary && banUntil && (
+                      <p className='text-xs text-gray-600 mt-1'>
+                        Ngày kết thúc: {new Date(banUntil).toLocaleString('vi-VN')}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className='flex justify-end gap-3 pt-2'>

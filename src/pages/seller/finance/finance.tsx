@@ -458,7 +458,7 @@ function FinanceManagement() {
   return (
     <motion.div
       /* Updated background to use green theme gradient */
-      className='p-4 sm:p-6 bg-gradient-to-br from-emerald-50 via-white to-teal-50 min-h-screen'
+      className='p-4 sm:p-6  min-h-screen'
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
