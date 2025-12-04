@@ -22,6 +22,7 @@ import Loading from '../../../components/Loading/loading'
 import { extractCCCDInfo, extractCCCDBackInfo, type ExtractedCCCDInfo, type ExtractedCCCDBackInfo } from '../../../apis/fptai.api'
 import { getBanks, verifyBankAccount, type Bank } from '../../../apis/user.api'
 import ComboBox from '../../../components/ui/combo-box'
+import { validateCertificate } from '../../../apis/n8n.api'
 
 const checkboxStyles = `
   .custom-checkbox {
@@ -388,7 +389,8 @@ const FileUploadField = ({
   required = false,
   multiple = false,
   description,
-  maxCount = 1
+  maxCount = 1,
+  disabled = false
 }: {
   label: string
   onChange: (files: File[]) => void
@@ -397,6 +399,7 @@ const FileUploadField = ({
   multiple?: boolean
   description?: string
   maxCount?: number
+  disabled?: boolean
 }) => {
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [previewImage, setPreviewImage] = useState<string>('')
@@ -464,9 +467,10 @@ const FileUploadField = ({
         multiple={multiple}
         maxCount={maxCount}
         accept={accept}
+        disabled={disabled}
         showUploadList={{
           showPreviewIcon: true,
-          showRemoveIcon: true,
+          showRemoveIcon: !disabled,
           showDownloadIcon: false
         }}
         className='w-full'
@@ -562,6 +566,18 @@ function SellerRegistrationForm() {
   // State cho ngày cấp từ mặt sau CCCD
   const [issueDate, setIssueDate] = useState<string>('')
   const [issueLocation, setIssueLocation] = useState<string>('')
+
+  // States cho validation giấy tờ - lưu theo index của file
+  const [businessLicenseValidation, setBusinessLicenseValidation] = useState<{
+    isValid: boolean | null
+    reason: string
+    isValidating: boolean
+  }>({ isValid: null, reason: '', isValidating: false })
+  const [vendorApplicationValidations, setVendorApplicationValidations] = useState<Map<number, {
+    isValid: boolean | null
+    reason: string
+    isValidating: boolean
+  }>>(new Map())
 
   // ===== Xử lý dữ liệu từ OCR mặt sau =====
   const handleOCRBackData = async (backData: ExtractedCCCDBackInfo) => {
@@ -741,7 +757,9 @@ function SellerRegistrationForm() {
     }
   }
 
-  const handleFileChange = (field: string, files: File[]) => {
+  const handleFileChange = async (field: string, files: File[]) => {
+    const oldFiles = formData[field as keyof FormData] as File[]
+
     setFormData((prev) => ({
       ...prev,
       [field]: files
@@ -753,6 +771,105 @@ function SellerRegistrationForm() {
         delete newErrors[field]
         return newErrors
       })
+    }
+
+    // Reset validation khi xóa file hoặc thay đổi số lượng file
+    if (field === 'businessLicense') {
+      if (files.length === 0) {
+        setBusinessLicenseValidation({ isValid: null, reason: '', isValidating: false })
+      } else if (files.length > 0) {
+        // Tự động validate file mới
+        const newFile = files[0]
+        const oldFile = oldFiles?.[0]
+        // Chỉ validate nếu là file mới (khác file cũ)
+        if (!oldFile || newFile.name !== oldFile.name || newFile.size !== oldFile.size) {
+          validateFile('businessLicense', newFile)
+        }
+      }
+    } else if (field === 'vendorApplicationImageUrl') {
+      // Rebuild validation map dựa trên file name và size để match file cũ với file mới
+      const newValidations = new Map<number, { isValid: boolean | null; reason: string; isValidating: boolean }>()
+
+      files.forEach((newFile, newIndex) => {
+        // Tìm file tương ứng trong danh sách cũ dựa trên name và size
+        const matchingOldIndex = oldFiles?.findIndex(
+          (oldFile) => oldFile.name === newFile.name && oldFile.size === oldFile.size
+        ) ?? -1
+
+        if (matchingOldIndex !== -1 && vendorApplicationValidations.has(matchingOldIndex)) {
+          // Giữ nguyên validation nếu file vẫn còn và match
+          const oldValidation = vendorApplicationValidations.get(matchingOldIndex)!
+          newValidations.set(newIndex, oldValidation)
+        } else {
+          // File mới - tự động validate
+          newValidations.set(newIndex, { isValid: null, reason: '', isValidating: true })
+          validateFile('vendorApplicationImageUrl', newFile, newIndex)
+        }
+      })
+
+      setVendorApplicationValidations(newValidations)
+    }
+  }
+
+  const validateFile = async (field: string, file: File, fileIndex?: number) => {
+    // Timeout 1 phút (60000ms)
+    const timeoutPromise = new Promise<{ isValid: boolean; reason: string }>((resolve) => {
+      setTimeout(() => {
+        resolve({
+          isValid: true,
+          reason: 'Đã quá thời gian chờ (1 phút). Hệ thống tự động cho phép tiếp tục.'
+        })
+      }, 60000)
+    })
+
+    // Chỉ validate businessLicense và vendorApplicationImageUrl
+    if (field === 'businessLicense') {
+      setBusinessLicenseValidation((prev) => ({ ...prev, isValidating: true }))
+      try {
+        const result = await Promise.race([
+          validateCertificate(file),
+          timeoutPromise
+        ])
+        setBusinessLicenseValidation({
+          isValid: result.isValid,
+          reason: result.reason,
+          isValidating: false
+        })
+      } catch (error) {
+        console.error('Error validating business license:', error)
+        setBusinessLicenseValidation({
+          isValid: false,
+          reason: 'Không thể kiểm tra giấy tờ. Vui lòng thử lại.',
+          isValidating: false
+        })
+      }
+    } else if (field === 'vendorApplicationImageUrl' && fileIndex !== undefined) {
+      try {
+        const result = await Promise.race([
+          validateCertificate(file),
+          timeoutPromise
+        ])
+        setVendorApplicationValidations((prev) => {
+          const newValidations = new Map(prev)
+          newValidations.set(fileIndex, {
+            isValid: result.isValid,
+            reason: result.reason,
+            isValidating: false
+          })
+          return newValidations
+        })
+      } catch (error) {
+        console.error('Error validating vendor application:', error)
+        setVendorApplicationValidations((prev) => {
+          const newValidations = new Map(prev)
+          newValidations.set(fileIndex, {
+            isValid: false,
+            reason: 'Không thể kiểm tra giấy tờ. Vui lòng thử lại.',
+            isValidating: false
+          })
+          return newValidations
+        })
+      }
     }
   }
 
@@ -1909,21 +2026,206 @@ function SellerRegistrationForm() {
                   </div>
                 </div>
                 <div className='space-y-4'>
-                  <FileUploadField
-                    label='Giấy phép kinh doanh'
-                    onChange={(files) => handleFileChange('businessLicense', files)}
-                    required
-                    description='Bắt buộc: 1 file ảnh/PDF rõ nét'
-                    accept='image/*,.pdf'
-                    maxCount={1}
-                  />
-                  <FileUploadField
-                    label='Chứng nhận cửa hàng'
-                    onChange={(files) => handleFileChange('vendorApplicationImageUrl', files)}
-                    multiple
-                    description='Có thể upload nhiều file (tối đa 5 file), định dạng JPG/PNG/PDF'
-                    maxCount={5}
-                  />
+                  <div>
+                    <FileUploadField
+                      label='Giấy phép kinh doanh'
+                      onChange={(files) => handleFileChange('businessLicense', files)}
+                      required
+                      description='Bắt buộc: 1 file ảnh/PDF rõ nét. Hệ thống sẽ tự động kiểm tra sau khi upload.'
+                      accept='image/*,.pdf'
+                      maxCount={1}
+                      disabled={businessLicenseValidation.isValidating}
+                    />
+                    {businessLicenseValidation.isValidating && (
+                      <div className='mt-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm animate-pulse'>
+                        <div className='flex items-center gap-3'>
+                          <div className='relative'>
+                            <Loader2 className='h-6 w-6 animate-spin text-blue-600' />
+                            <div className='absolute inset-0 rounded-full border-2 border-blue-200 animate-ping'></div>
+                          </div>
+                          <div className='flex-1'>
+                            <p className='text-sm font-medium text-blue-900'>Đang kiểm tra giấy phép kinh doanh...</p>
+                            <p className='text-xs text-blue-700 mt-1'>Vui lòng chờ trong giây lát</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {!businessLicenseValidation.isValidating && businessLicenseValidation.isValid !== null && (
+                      <div
+                        className={`mt-3 p-4 rounded-xl border-2 transition-all duration-300 animate-in fade-in slide-in-from-top-2 ${businessLicenseValidation.isValid
+                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 shadow-green-100 shadow-sm'
+                          : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-300 shadow-red-100 shadow-sm'
+                          }`}
+                      >
+                        <div className='flex items-start gap-3'>
+                          {businessLicenseValidation.isValid ? (
+                            <div className='flex-shrink-0 p-2 bg-green-100 rounded-full'>
+                              <svg className='w-6 h-6 text-green-600' fill='currentColor' viewBox='0 0 20 20'>
+                                <path
+                                  fillRule='evenodd'
+                                  d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z'
+                                  clipRule='evenodd'
+                                />
+                              </svg>
+                            </div>
+                          ) : (
+                            <div className='flex-shrink-0 p-2 bg-red-100 rounded-full'>
+                              <svg className='w-6 h-6 text-red-600' fill='currentColor' viewBox='0 0 20 20'>
+                                <path
+                                  fillRule='evenodd'
+                                  d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z'
+                                  clipRule='evenodd'
+                                />
+                              </svg>
+                            </div>
+                          )}
+                          <div className='flex-1'>
+                            <p
+                              className={`text-sm font-semibold ${businessLicenseValidation.isValid ? 'text-green-900' : 'text-red-900'
+                                }`}
+                            >
+                              {businessLicenseValidation.isValid
+                                ? '✓ Giấy phép kinh doanh hợp lệ'
+                                : '✗ Giấy phép kinh doanh không hợp lệ'}
+                            </p>
+                            {businessLicenseValidation.reason && (
+                              <p
+                                className={`text-xs mt-2 leading-relaxed ${businessLicenseValidation.isValid ? 'text-green-800' : 'text-red-800'
+                                  }`}
+                              >
+                                {businessLicenseValidation.reason}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <FileUploadField
+                      label='Chứng nhận cửa hàng'
+                      onChange={(files) => handleFileChange('vendorApplicationImageUrl', files)}
+                      multiple
+                      description='Có thể upload nhiều file (tối đa 5 file), định dạng JPG/PNG/PDF. Hệ thống sẽ tự động kiểm tra từng file sau khi upload.'
+                      maxCount={5}
+                      disabled={Array.from(vendorApplicationValidations.values()).some((v) => v.isValidating)}
+                    />
+                    {/* Hiển thị danh sách file với validation */}
+                    {formData.vendorApplicationImageUrl.length > 0 && (
+                      <div className='mt-4 space-y-3'>
+                        {formData.vendorApplicationImageUrl.map((file, index) => {
+                          const validation = vendorApplicationValidations.get(index) || {
+                            isValid: null,
+                            reason: '',
+                            isValidating: false
+                          }
+                          return (
+                            <div
+                              key={index}
+                              className={`p-4 border-2 rounded-xl transition-all duration-300 ${validation.isValidating
+                                ? 'border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm animate-pulse'
+                                : validation.isValid === true
+                                  ? 'border-green-300 bg-gradient-to-r from-green-50 to-emerald-50 shadow-green-100 shadow-sm'
+                                  : validation.isValid === false
+                                    ? 'border-red-300 bg-gradient-to-r from-red-50 to-rose-50 shadow-red-100 shadow-sm'
+                                    : 'border-gray-200 bg-gray-50'
+                                }`}
+                            >
+                              <div className='flex items-center gap-3 mb-3'>
+                                <div className='flex-1 min-w-0'>
+                                  <p className='text-sm font-semibold text-gray-900 truncate'>
+                                    File {index + 1}: {file.name}
+                                  </p>
+
+                                </div>
+                                {validation.isValidating && (
+                                  <div className='flex-shrink-0'>
+                                    <div className='relative'>
+                                      <Loader2 className='h-5 w-5 animate-spin text-blue-600' />
+                                      <div className='absolute inset-0 rounded-full border-2 border-blue-200 animate-ping'></div>
+                                    </div>
+                                  </div>
+                                )}
+                                {validation.isValid === true && (
+                                  <div className='flex-shrink-0 p-2 bg-green-100 rounded-full'>
+                                    <svg className='w-5 h-5 text-green-600' fill='currentColor' viewBox='0 0 20 20'>
+                                      <path
+                                        fillRule='evenodd'
+                                        d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z'
+                                        clipRule='evenodd'
+                                      />
+                                    </svg>
+                                  </div>
+                                )}
+                                {validation.isValid === false && (
+                                  <div className='flex-shrink-0 p-2 bg-red-100 rounded-full'>
+                                    <svg className='w-5 h-5 text-red-600' fill='currentColor' viewBox='0 0 20 20'>
+                                      <path
+                                        fillRule='evenodd'
+                                        d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z'
+                                        clipRule='evenodd'
+                                      />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                              {validation.isValidating && (
+                                <div className='mt-2 p-3 bg-white/60 rounded-lg'>
+                                  <div className='flex items-center gap-2'>
+                                    <Loader2 className='h-4 w-4 animate-spin text-blue-600' />
+                                    <p className='text-sm text-blue-800 font-medium'>Đang kiểm tra file...</p>
+                                  </div>
+                                  <p className='text-xs text-blue-600 mt-1 ml-6'>Vui lòng chờ trong giây lát</p>
+                                </div>
+                              )}
+                              {!validation.isValidating && validation.isValid !== null && (
+                                <div className='mt-2 animate-in fade-in slide-in-from-top-2'>
+                                  <p
+                                    className={`text-sm font-semibold ${validation.isValid ? 'text-green-900' : 'text-red-900'
+                                      }`}
+                                  >
+                                    {validation.isValid ? '✓ File hợp lệ' : '✗ File không hợp lệ'}
+                                  </p>
+                                  {validation.reason && (
+                                    <p
+                                      className={`text-xs mt-2 leading-relaxed ${validation.isValid ? 'text-green-800' : 'text-red-800'
+                                        }`}
+                                    >
+                                      {validation.reason}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                        {/* Cảnh báo tổng thể nếu có file không hợp lệ */}
+                        {Array.from(vendorApplicationValidations.values()).some((v) => v.isValid === false) && (
+                          <div className='mt-4 p-4 bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-300 rounded-xl shadow-orange-100 shadow-sm animate-in fade-in slide-in-from-bottom-2'>
+                            <div className='flex items-start gap-3'>
+                              <div className='flex-shrink-0 p-2 bg-orange-100 rounded-full'>
+                                <svg className='w-6 h-6 text-orange-600' fill='currentColor' viewBox='0 0 20 20'>
+                                  <path
+                                    fillRule='evenodd'
+                                    d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z'
+                                    clipRule='evenodd'
+                                  />
+                                </svg>
+                              </div>
+                              <div className='flex-1'>
+                                <p className='text-sm font-semibold text-orange-900'>
+                                  ⚠️ Cảnh báo: Có file không hợp lệ
+                                </p>
+                                <p className='text-xs text-orange-800 mt-2 leading-relaxed'>
+                                  Nếu gửi ảnh không hợp lệ, tỷ lệ không được duyệt sẽ thấp. Vui lòng kiểm tra và thay thế các file không hợp lệ bằng file hợp lệ.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   <div className='bg-white/60 rounded-lg p-4 border border-green-200'>
                     <h4 className='font-medium text-gray-900 mb-3'>Các loại giấy tờ có thể upload:</h4>

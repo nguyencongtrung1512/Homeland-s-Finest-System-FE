@@ -35,6 +35,8 @@ import { type Combo } from '../../../types/combo.type'
 import { toast } from '../../../utils/toast'
 import ProductModal, { type ProductWithCreatedAt } from './modalProduct'
 import { exportStoreToExcel } from './excelExport'
+import { productApi } from '../../../apis/product.api'
+import type { Product } from '../../../types'
 
 function StoreDetailAdmin() {
   const { storeId } = useParams<{ storeId: string }>()
@@ -56,6 +58,11 @@ function StoreDetailAdmin() {
   const [comboModalOpen, setComboModalOpen] = useState(false)
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('')
+
+  // Product states
+  const [products, setProducts] = useState<Product[]>([])
+  const [productLoading, setProductLoading] = useState(false)
+  const [productError, setProductError] = useState<string | null>(null)
 
   // Combo states
   const [combos, setCombos] = useState<Combo[]>([])
@@ -234,6 +241,55 @@ function StoreDetailAdmin() {
     } catch (error: unknown) {
       const errorMessage = handleApiError(error, 'Có lỗi xảy ra khi tải danh sách nhân viên')
       toast.error(errorMessage)
+    }
+  }
+
+  const fetchProducts = async () => {
+    if (!storeId) return
+
+    try {
+      setProductLoading(true)
+      setProductError(null)
+
+      const response = await productApi.getByStore(storeId, {
+        pageSize: 0,
+        pageNumber: 1
+      })
+
+      // Handle ProductListResponse format: { status, message, data: Product[], pagination }
+      let productsData: Product[] = []
+
+      if (response && typeof response === 'object') {
+        const responseAny = response as any
+
+        // Check ProductListResponse format: response.data is array
+        if ('data' in responseAny && Array.isArray(responseAny.data)) {
+          productsData = responseAny.data
+        }
+        // Check if response itself is the data array
+        else if (Array.isArray(response)) {
+          productsData = response
+        }
+        // Check nested structure: response.data.data
+        else if (
+          'data' in responseAny &&
+          responseAny.data &&
+          typeof responseAny.data === 'object' &&
+          'data' in responseAny.data
+        ) {
+          if (Array.isArray(responseAny.data.data)) {
+            productsData = responseAny.data.data
+          }
+        }
+      }
+
+      setProducts(productsData)
+    } catch (error: any) {
+      const errorMessage = handleApiError(error, 'Có lỗi xảy ra khi tải danh sách sản phẩm')
+      setProductError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setProductLoading(false)
     }
   }
 
@@ -632,20 +688,28 @@ function StoreDetailAdmin() {
                         <span className='text-sm font-medium text-gray-500 block mb-1'>Ngày nộp đơn</span>
                         <p className='font-semibold text-gray-900'>{formatDateToVietnamese(store.submittedDate)}</p>
                       </div>
-                      <div>
-                        <span className='text-sm font-medium text-gray-500 block mb-1'>Số lượng sản phẩm</span>
-                        <p className='font-semibold text-gray-900'>{store.products?.length || 0} sản phẩm</p>
-                      </div>
+
                     </div>
                   </div>
                   <div className='mt-6 grid grid-cols-1 md:grid-cols-2 gap-4'>
                     <Button
-                      onClick={() => setProductModalOpen(true)}
+                      onClick={async () => {
+                        setProductModalOpen(true)
+                        await fetchProducts()
+                      }}
                       variant='outline'
                       className='w-full border-green-200 text-green-600 hover:bg-green-50'
+                      disabled={productLoading}
                     >
                       <Package className='w-4 h-4 mr-2' />
-                      Xem sản phẩm ({store?.products?.length || 0})
+                      {productLoading ? (
+                        <>
+                          <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                          Đang tải...
+                        </>
+                      ) : (
+                        `Xem sản phẩm (${products.length || store?.products?.length || 0})`
+                      )}
                     </Button>
                     <Button
                       onClick={() => setComboModalOpen(true)}
@@ -1031,9 +1095,15 @@ function StoreDetailAdmin() {
 
       <ProductModal
         isOpen={productModalOpen}
-        onClose={() => setProductModalOpen(false)}
-        products={(store?.products as ProductWithCreatedAt[]) || []}
+        onClose={() => {
+          setProductModalOpen(false)
+          setProductError(null)
+        }}
+        products={(products.length > 0 ? products : (store?.products as ProductWithCreatedAt[]) || []) as ProductWithCreatedAt[]}
         storeName={store?.storeName || ''}
+        loading={productLoading}
+        error={productError}
+        onRetry={fetchProducts}
       />
 
       {/* Combo Modal */}
