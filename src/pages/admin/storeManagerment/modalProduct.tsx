@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Package, Star, Calendar, ShoppingCart } from 'lucide-react'
+import { X, Package, Star, Calendar, ShoppingCart, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -17,9 +17,12 @@ interface ProductModalProps {
   onClose: () => void
   products: ProductWithCreatedAt[]
   storeName: string
+  loading?: boolean
+  error?: string | null
+  onRetry?: () => void
 }
 
-const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, storeName }) => {
+const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, storeName, loading = false, error = null, onRetry }) => {
   const navigate = useNavigate()
 
   const handleProductClick = (productId: string) => {
@@ -92,7 +95,23 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, products, 
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">
-          {products && products.length > 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
+              <p className="text-gray-600">Đang tải danh sách sản phẩm...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-red-500">
+              <Package className="w-16 h-16 mb-4 text-red-300" />
+              <h3 className="text-lg font-medium mb-2">Lỗi khi tải sản phẩm</h3>
+              <p className="text-sm text-center mb-4">{error}</p>
+              {onRetry && (
+                <Button onClick={onRetry} variant="outline">
+                  Thử lại
+                </Button>
+              )}
+            </div>
+          ) : products && products.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
               {products.map((product) => (
                 <Card
