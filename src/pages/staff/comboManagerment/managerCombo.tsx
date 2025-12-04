@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Search,
   Filter,
@@ -9,7 +9,10 @@ import {
   User,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Store,
+  Eye,
+  ArrowUpDown
 } from 'lucide-react'
 import { staffApi } from '../../../apis/staff.api'
 import { getAllCombos } from '../../../apis/combo.api'
@@ -27,6 +30,8 @@ import { Textarea } from '../../../components/ui/textarea'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../contexts/auth.context'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
+import path from '../../../constants/path'
+import Loading from '../../../components/Loading/loading'
 
 interface ComboData {
   key: string
@@ -45,14 +50,20 @@ interface ComboData {
   createdAt: string
   updatedAt: string
   items: number
-  status: 'Processing' | 'Confirmed' | 'Approved' | 'Denied' | 'Rejected'
+  status: 'Processing' | 'Confirmed' | 'Approved' | 'Denied' | 'Rejected' | 'Pending' | 'Cancelled'
+  assignedToId?: string
+  assignedStaffName?: string
 }
+
+type SortField = 'name' | 'createdAt' | 'updatedAt' | 'status' | 'items'
+type SortOrder = 'asc' | 'desc'
 
 function ManagerComboStaff() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [comboData, setComboData] = useState<ComboData[]>([])
   const [loading, setLoading] = useState(false)
@@ -62,7 +73,31 @@ function ManagerComboStaff() {
   const [showActionDialog, setShowActionDialog] = useState(false)
   const [selectedCombo, setSelectedCombo] = useState<ComboData | null>(null)
   const [actionNote, setActionNote] = useState('')
+  const [sortField, setSortField] = useState<SortField>('updatedAt')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+  const [staffMap, setStaffMap] = useState<Map<string, string>>(new Map())
   const pageSize = 12
+
+  // Fetch staff list để hiển thị tên nhân viên được phân công
+  const fetchStaffList = useCallback(async () => {
+    try {
+      const response = await staffApi.getAllStaff({
+        pageSize: 0,
+        pageNumber: 1
+      })
+
+      if (response && Array.isArray(response)) {
+        const map = new Map<string, string>()
+        response.forEach((staff: any) => {
+          const fullName = `${staff.firstName} ${staff.lastName}`.trim()
+          map.set(staff.userId, fullName)
+        })
+        setStaffMap(map)
+      }
+    } catch (error) {
+      console.error('Error fetching staff list:', error)
+    }
+  }, [])
 
   const convertComboResponse = (apiCombo: Combo): ComboData => {
     const formatDate = (dateString: string | undefined) => {
@@ -70,8 +105,6 @@ function ManagerComboStaff() {
         return '-'
       }
 
-      // Xử lý định dạng "HH:MM:SS DD/MM/YYYY" từ API
-      // Ví dụ: "14:58:24 07/10/2025"
       const timeDateMatch = dateString.match(/(\d{2}:\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/)
 
       if (timeDateMatch) {
@@ -79,8 +112,14 @@ function ManagerComboStaff() {
         const [day, month, year] = date.split('/')
         const [hours, minutes, seconds] = time.split(':')
 
-        // Tạo Date object với định dạng chuẩn
-        const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes), parseInt(seconds))
+        const dateObj = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hours),
+          parseInt(minutes),
+          parseInt(seconds)
+        )
 
         if (isNaN(dateObj.getTime())) {
           return '-'
@@ -93,7 +132,6 @@ function ManagerComboStaff() {
         })
       }
 
-      // Fallback cho các định dạng khác
       const date = new Date(dateString)
       if (isNaN(date.getTime())) {
         return '-'
@@ -118,37 +156,33 @@ function ManagerComboStaff() {
         id: apiCombo.storeId || ''
       },
       seller: {
-        name: 'Chưa xác định' // Combo API không trả về sellerName trực tiếp
+        name: 'Chưa xác định'
       },
       createdAt: formatDate(apiCombo.createdAt),
       updatedAt: formatDate(apiCombo.updatedAt),
       items: apiCombo.comboItems?.length || 0,
-      status: apiCombo.status as 'Processing' | 'Confirmed' | 'Approved' | 'Denied' | 'Rejected'
+      status: (apiCombo.status as ComboData['status']) || 'Pending',
+      assignedToId: apiCombo.assignedToId,
+      assignedStaffName: apiCombo.assignedToId ? staffMap.get(apiCombo.assignedToId) : undefined
     }
   }
 
-  // Function để fetch combos for review
-  const fetchCombosForReview = useCallback(async () => {
+  // Function để fetch tất cả combos
+  const fetchCombos = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      if (!user?.userId) {
-        setError('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.')
-        return
-      }
-
-      // Gọi API Combo với pageSize=0 và pageNumber=1
       const response = await getAllCombos({
         pageSize: 0,
         pageNumber: 1
       })
-      // Response structure: { data: Combo[], pagination?: {...} }
+
       const allCombos: Combo[] = ((response as unknown) as { data: Combo[] }).data || []
 
-      // Lọc các combo có assignedToId trùng với userId của tài khoản
+      // Lọc bỏ Draft status
       const filteredCombos = Array.isArray(allCombos)
-        ? allCombos.filter((combo: Combo) => combo.assignedToId === user.userId)
+        ? allCombos.filter((combo: Combo) => combo.status !== 'Draft')
         : []
 
       if (filteredCombos.length > 0) {
@@ -166,32 +200,102 @@ function ManagerComboStaff() {
     } finally {
       setLoading(false)
     }
-  }, [user?.userId])
+  }, [staffMap])
 
   useEffect(() => {
-    if (user?.userId) {
-      fetchCombosForReview()
+    fetchStaffList()
+  }, [fetchStaffList])
+
+  useEffect(() => {
+    if (staffMap.size > 0) {
+      fetchCombos()
     }
-  }, [fetchCombosForReview, user?.userId])
+  }, [fetchCombos, staffMap.size])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchText])
+  }, [searchText, statusFilter, assignmentFilter])
 
-  const filteredCombos = comboData.filter((combo) => {
+  // Filter và sort combos
+  const filteredAndSortedCombos = useMemo(() => {
+    let filtered = [...comboData]
+
+    // Search filter
     const searchLower = searchText.toLowerCase().trim()
-    const matchSearch = !searchLower || combo.combo.name.toLowerCase().includes(searchLower)
-    const matchStatus = statusFilter === 'all' || combo.status === statusFilter
-    return matchSearch && matchStatus
-  })
+    if (searchLower) {
+      filtered = filtered.filter(
+        (combo) =>
+          combo.combo.name.toLowerCase().includes(searchLower) ||
+          combo.store.name.toLowerCase().includes(searchLower)
+      )
+    }
 
-  const totalFilteredCombos = filteredCombos.length
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((combo) => combo.status === statusFilter)
+    }
+
+    // Assignment filter
+    if (assignmentFilter === 'assigned') {
+      filtered = filtered.filter((combo) => combo.assignedToId === user?.userId)
+    } else if (assignmentFilter === 'unassigned') {
+      filtered = filtered.filter((combo) => !combo.assignedToId)
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      let aValue: any
+      let bValue: any
+
+      switch (sortField) {
+        case 'name':
+          aValue = a.combo.name.toLowerCase()
+          bValue = b.combo.name.toLowerCase()
+          break
+        case 'createdAt':
+          aValue = a.createdAt
+          bValue = b.createdAt
+          break
+        case 'updatedAt':
+          aValue = a.updatedAt
+          bValue = b.updatedAt
+          break
+        case 'status':
+          aValue = a.status
+          bValue = b.status
+          break
+        case 'items':
+          aValue = a.items
+          bValue = b.items
+          break
+        default:
+          return 0
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return filtered
+  }, [comboData, searchText, statusFilter, assignmentFilter, sortField, sortOrder, user?.userId])
+
+  const totalFilteredCombos = filteredAndSortedCombos.length
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
-  const paginatedCombos = filteredCombos.slice(startIndex, endIndex)
+  const paginatedCombos = filteredAndSortedCombos.slice(startIndex, endIndex)
 
   const handleFilter = () => {
     setCurrentPage(1)
+  }
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortOrder('asc')
+    }
   }
 
   // Handle action dialog open
@@ -214,7 +318,8 @@ function ManagerComboStaff() {
       toast.success('Đã chấp nhận nhiệm vụ xử lý combo')
       setShowActionDialog(false)
       setActionNote('')
-      await fetchCombosForReview() // Refresh data
+      await fetchCombos()
+      await fetchStaffList()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi chấp nhận nhiệm vụ'
       toast.error(errorMessage)
@@ -236,7 +341,8 @@ function ManagerComboStaff() {
       toast.success('Đã từ chối nhiệm vụ thành công')
       setShowActionDialog(false)
       setActionNote('')
-      await fetchCombosForReview() // Refresh data
+      await fetchCombos()
+      await fetchStaffList()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi từ chối nhiệm vụ'
       toast.error(errorMessage)
@@ -258,7 +364,8 @@ function ManagerComboStaff() {
       toast.success('Đã phê duyệt combo thành công')
       setShowActionDialog(false)
       setActionNote('')
-      await fetchCombosForReview() // Refresh data
+      await fetchCombos()
+      await fetchStaffList()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi phê duyệt combo'
       toast.error(errorMessage)
@@ -280,7 +387,8 @@ function ManagerComboStaff() {
       toast.success('Đã từ chối combo thành công')
       setShowActionDialog(false)
       setActionNote('')
-      await fetchCombosForReview() // Refresh data
+      await fetchCombos()
+      await fetchStaffList()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi từ chối combo'
       toast.error(errorMessage)
@@ -321,6 +429,18 @@ function ManagerComboStaff() {
         text: 'Bị từ chối',
         className: 'bg-orange-100 text-orange-700 hover:bg-orange-100',
         icon: XCircle
+      },
+      Pending: {
+        variant: 'default' as const,
+        text: 'Chờ duyệt',
+        className: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100',
+        icon: Clock
+      },
+      Cancelled: {
+        variant: 'default' as const,
+        text: 'Đã hủy',
+        className: 'bg-gray-100 text-gray-700 hover:bg-gray-100',
+        icon: XCircle
       }
     }
 
@@ -332,6 +452,7 @@ function ManagerComboStaff() {
     }
 
     const StatusIcon = config.icon
+    const canProcess = combo.assignedToId === user?.userId && (combo.status === 'Processing' || combo.status === 'Confirmed')
 
     return (
       <Card
@@ -383,8 +504,8 @@ function ManagerComboStaff() {
           {/* Combo Details */}
           <div className='space-y-3 mb-6'>
             <div className='flex items-center gap-2 text-sm text-gray-600'>
-              <User size={14} className='text-gray-400' />
-              <span>Cửa hàng: {combo.store.name}</span>
+              <Store size={14} className='text-gray-400' />
+              <span className='truncate'>Cửa hàng: {combo.store.name}</span>
             </div>
 
             <div className='flex items-center gap-2 text-sm text-gray-600'>
@@ -399,19 +520,30 @@ function ManagerComboStaff() {
               <Package size={14} className='text-gray-400' />
               <span>{combo.items} sản phẩm</span>
             </div>
+            {combo.assignedToId && (
+              <div className='flex items-center gap-2 text-sm text-gray-600'>
+                <User size={14} className='text-gray-400' />
+                <span>
+                  Nhân viên:{' '}
+                  <span className={`font-medium ${combo.assignedToId === user?.userId ? 'text-blue-600' : ''}`}>
+                    {combo.assignedStaffName || 'Chưa xác định'}
+                  </span>
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
           <div className='grid grid-cols-2 gap-2'>
             <Button
               variant='outline'
-              onClick={() => navigate(`/staff/combo-management/detail-combo/${combo.combo.id}`)}
+              onClick={() => navigate(path.detailComboStaff.replace(':id', combo.combo.id))}
               className='flex items-center justify-center gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300'
             >
-              <ExternalLink size={16} />
+              <Eye size={16} />
               Xem
             </Button>
-            {(combo.status === 'Processing' || combo.status === 'Confirmed') && (
+            {canProcess && (
               <Button
                 variant='outline'
                 onClick={() => handleOpenActionDialog(combo)}
@@ -434,7 +566,7 @@ function ManagerComboStaff() {
         <CardContent className='py-4'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
-              <h2 className='text-3xl font-bold text-white m-0'>Xét duyệt Combo</h2>
+              <h2 className='text-3xl font-bold text-white m-0'>Quản lý Combo</h2>
             </div>
             <ShimmerBorder
               className='cursor-pointer'
@@ -443,7 +575,10 @@ function ManagerComboStaff() {
               contentClassName='bg-white/10 rounded-lg'
             >
               <Button
-                onClick={fetchCombosForReview}
+                onClick={() => {
+                  fetchCombos()
+                  fetchStaffList()
+                }}
                 disabled={loading}
                 variant='blue'
                 className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
@@ -454,7 +589,7 @@ function ManagerComboStaff() {
             </ShimmerBorder>
           </div>
           <p className='text-white/90 mt-2'>
-            Xét duyệt các combo được phân công ({totalCombos} combo)
+            Quản lý và xử lý tất cả combo trong hệ thống ({totalCombos} combo)
           </p>
         </CardContent>
       </Card>
@@ -466,7 +601,7 @@ function ManagerComboStaff() {
             <div className='flex-1 min-w-[300px] relative'>
               <Search size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
               <Input
-                placeholder='Tìm kiếm theo tên combo...'
+                placeholder='Tìm kiếm theo tên combo, cửa hàng...'
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 className='pl-10'
@@ -479,11 +614,45 @@ function ManagerComboStaff() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='all'>Tất cả trạng thái</SelectItem>
+                <SelectItem value='Pending'>Chờ duyệt</SelectItem>
                 <SelectItem value='Processing'>Chờ xác nhận</SelectItem>
                 <SelectItem value='Confirmed'>Đang xét duyệt</SelectItem>
                 <SelectItem value='Approved'>Đã duyệt</SelectItem>
                 <SelectItem value='Denied'>Từ chối</SelectItem>
                 <SelectItem value='Rejected'>Bị từ chối</SelectItem>
+                <SelectItem value='Cancelled'>Đã hủy</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={assignmentFilter} onValueChange={(value: 'all' | 'assigned' | 'unassigned') => setAssignmentFilter(value)}>
+              <SelectTrigger className='w-48'>
+                <SelectValue placeholder='Phân công' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Tất cả</SelectItem>
+                <SelectItem value='assigned'>Được phân công cho tôi</SelectItem>
+                <SelectItem value='unassigned'>Chưa phân công</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={`${sortField}-${sortOrder}`} onValueChange={(value) => {
+              const [field, order] = value.split('-') as [SortField, SortOrder]
+              setSortField(field)
+              setSortOrder(order)
+            }}>
+              <SelectTrigger className='w-48'>
+                <SelectValue placeholder='Sắp xếp' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='updatedAt-desc'>Mới nhất</SelectItem>
+                <SelectItem value='updatedAt-asc'>Cũ nhất</SelectItem>
+                <SelectItem value='name-asc'>Tên A-Z</SelectItem>
+                <SelectItem value='name-desc'>Tên Z-A</SelectItem>
+                <SelectItem value='createdAt-desc'>Ngày tạo (mới)</SelectItem>
+                <SelectItem value='createdAt-asc'>Ngày tạo (cũ)</SelectItem>
+                <SelectItem value='status-asc'>Trạng thái</SelectItem>
+                <SelectItem value='items-desc'>Số sản phẩm (nhiều)</SelectItem>
+                <SelectItem value='items-asc'>Số sản phẩm (ít)</SelectItem>
               </SelectContent>
             </Select>
 
@@ -498,15 +667,13 @@ function ManagerComboStaff() {
       {/* Combo Cards Grid */}
       <div>
         {loading ? (
-          <div className='flex items-center justify-center py-12'>
-            <span className='text-gray-600'>Đang tải danh sách combo...</span>
-          </div>
+          <Loading size='lg' text='Đang tải danh sách combo...' />
         ) : error ? (
           <div className='flex items-center justify-center py-12'>
             <div className='text-center'>
               <div className='text-red-500 text-lg mb-2'>⚠️</div>
               <p className='text-red-600 font-medium mb-4'>{error}</p>
-              <Button onClick={fetchCombosForReview} className='bg-blue-600 hover:bg-blue-700'>
+              <Button onClick={fetchCombos} className='bg-blue-600 hover:bg-blue-700'>
                 Thử lại
               </Button>
             </div>
@@ -515,10 +682,10 @@ function ManagerComboStaff() {
           <div className='flex items-center justify-center py-12'>
             <div className='text-center'>
               <div className='text-gray-400 text-lg mb-2'>📦</div>
-              <p className='text-gray-600'>Chưa có combo nào được phân công</p>
+              <p className='text-gray-600'>Chưa có combo nào</p>
             </div>
           </div>
-        ) : filteredCombos.length === 0 ? (
+        ) : filteredAndSortedCombos.length === 0 ? (
           <div className='flex items-center justify-center py-12'>
             <div className='text-center'>
               <div className='text-gray-400 text-lg mb-2'>🔍</div>

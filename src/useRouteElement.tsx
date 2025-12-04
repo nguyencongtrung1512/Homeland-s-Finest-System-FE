@@ -82,7 +82,6 @@ import FormOrderManagement from './pages/admin/formManagerment/formOrder'
 import FormStoreManagement from './pages/admin/formManagerment/formStore'
 import FormOtherManagement from './pages/admin/formManagerment/formOther'
 import ManagerComboStaff from './pages/staff/comboManagerment/managerCombo'
-import ComboListStaff from './pages/staff/comboManagerment/list'
 import DetailComboStaff from './pages/staff/comboManagerment/detailCombo'
 import ManagerProductAdmin from './pages/admin/productManagerment/list'
 import ManagerComboAdmin from './pages/admin/comboManagerment/list'
@@ -90,7 +89,6 @@ import ComboDetail from './pages/customer/combo/detail'
 import DetailProductAdmin from './pages/admin/productManagerment/detail'
 import ComplainSeller from './pages/seller/complain/complain'
 import PolicyCustomer from './pages/customer/policy/policyCustomer'
-
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -325,10 +323,6 @@ export default function useRouteElements() {
             {
               path: path.comboManagementStaff,
               element: <ManagerComboStaff />
-            },
-            {
-              path: path.comboListStaff,
-              element: <ComboListStaff />
             },
             {
               path: path.detailComboStaff,

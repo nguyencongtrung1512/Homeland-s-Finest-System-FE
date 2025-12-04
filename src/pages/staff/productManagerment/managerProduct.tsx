@@ -18,6 +18,7 @@ import { toast } from '../../../utils/toast'
 import { formatDate } from '../../../utils/formatDate'
 import path from '../../../constants/path'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
+import Loading from '../../../components/Loading/loading'
 
 const DEFAULT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
@@ -367,9 +368,7 @@ function ManagerProduct() {
       <Card>
         <CardContent className='pt-6'>
           {loading ? (
-            <div className='flex items-center justify-center py-12'>
-              <div className='text-gray-500'>Đang tải...</div>
-            </div>
+            <Loading size='lg' text='Đang tải danh sách sản phẩm...' />
           ) : (
             <>
               <div className='rounded-md border'>

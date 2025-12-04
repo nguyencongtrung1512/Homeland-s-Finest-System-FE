@@ -27,7 +27,6 @@ function SideBar({ isCollapsed = false }: SideBarProps) {
   const location = useLocation()
 
   const [storeManagementOpen, setStoreManagementOpen] = useState(true)
-  const [comboManagementOpen, setComboManagementOpen] = useState(true)
 
   const menuItems = [
     {
@@ -39,6 +38,11 @@ function SideBar({ isCollapsed = false }: SideBarProps) {
       key: path.managerProductStaff,
       label: 'Quản lý sản phẩm',
       icon: <CheckCircle size={18} />
+    },
+    {
+      key: path.comboManagementStaff,
+      label: 'Quản lý combo',
+      icon: <Component size={18} />
     },
     {
       key: path.productCategoryStaff,
@@ -82,19 +86,6 @@ function SideBar({ isCollapsed = false }: SideBarProps) {
       key: path.lockedStoresStaff,
       label: 'Cửa hàng bị khóa',
       icon: <Shield size={16} />
-    }
-  ]
-
-  const comboManagementChildren = [
-    {
-      key: path.comboManagementStaff,
-      label: 'Duyệt combo',
-      icon: <CheckCircle size={16} />
-    },
-    {
-      key: path.comboListStaff,
-      label: 'Danh sách combo',
-      icon: <Package size={16} />
     }
   ]
 
@@ -206,54 +197,6 @@ function SideBar({ isCollapsed = false }: SideBarProps) {
           </div>
         )}
 
-        {/* Combo Management Group */}
-        <button
-          type='button'
-          onClick={() => setComboManagementOpen((prev) => !prev)}
-          title={isCollapsed ? 'Quản lý combo' : undefined}
-          className={cn(
-            'staff-menu-item flex items-center h-10 w-full transition-all duration-300 rounded-md px-3 outline-none',
-            isCollapsed ? 'justify-center px-2' : 'justify-start gap-3',
-            'text-gray-700'
-          )}
-        >
-          <span className='staff-menu-icon mr-2'>
-            <Component size={18} />
-          </span>
-          {!isCollapsed && <span className='truncate'>Quản lý combo</span>}
-          {!isCollapsed &&
-            (comboManagementOpen ? (
-              <ChevronDown size={16} className='ml-auto' />
-            ) : (
-              <ChevronRight size={16} className='ml-auto' />
-            ))}
-        </button>
-
-        {/* Combo Management children */}
-        {!isCollapsed && comboManagementOpen && (
-          <div className='space-y-2 pl-6'>
-            {comboManagementChildren.map((child) => {
-              const childFullPath = child.key.startsWith('/') ? child.key : `${path.BASE_STAFF}/${child.key}`
-              const isChildActive =
-                location.pathname === childFullPath || location.pathname.startsWith(childFullPath + '/')
-
-              return (
-                <button
-                  key={child.key}
-                  type='button'
-                  onClick={() => handleMenuClick(child.key)}
-                  className={cn(
-                    'staff-menu-item flex items-center h-9 w-full transition-all duration-300 rounded-md px-3 outline-none',
-                    isChildActive ? 'active text-white' : 'text-gray-700'
-                  )}
-                >
-                  <span className='staff-menu-icon mr-2'>{child.icon}</span>
-                  <span className='truncate'>{child.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        )}
       </nav>
 
       {/* Styles: hover + active màu "xanh da trời" (sky-blue) giống admin sidebar */}

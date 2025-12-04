@@ -12,6 +12,7 @@ import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import ThreeDCard from '../../../components/ui/threed-card'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
+import Loading from '../../../components/Loading/loading'
 
 function DetailComboStaff() {
   const { id } = useParams<{ id: string }>()
@@ -244,14 +245,7 @@ function DetailComboStaff() {
   const DEFAULT_IMAGE_URL = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
   if (loading) {
-    return (
-      <div className='flex items-center justify-center min-h-screen'>
-        <div className='text-center'>
-          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4'></div>
-          <p className='text-gray-600'>Đang tải chi tiết combo...</p>
-        </div>
-      </div>
-    )
+    return <Loading size='lg' text='Đang tải chi tiết combo...' fullScreen={true} />
   }
 
   if (error) {

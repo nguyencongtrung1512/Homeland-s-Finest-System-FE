@@ -18,6 +18,8 @@ import {
 } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import { productCertificateApi } from '../../../apis/productCertificate.api'
+import { n8nApi } from '../../../apis/n8n.api'
+import Loading from '../../../components/Loading/loading'
 import type { ProductCertificateType } from '../../../types/productCertificateType'
 
 interface ProductCertificateProps {
@@ -37,9 +39,11 @@ interface ProductCertificateProps {
 function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCertificateProps) {
   const [certificates, setCertificates] = useState<ProductCertificateType[]>([])
   const [loading, setLoading] = useState(false)
+  const [validating, setValidating] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchCertificates = async () => {
@@ -113,6 +117,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
       }
 
       setSelectedFile(file)
+      setValidationError(null) // Reset validation error when new file is selected
       // Create preview URL
       const url = URL.createObjectURL(file)
       setPreviewUrl(url)
@@ -125,6 +130,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
     }
     setSelectedFile(null)
     setPreviewUrl(null)
+    setValidationError(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -146,7 +152,23 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
     }
 
     try {
+      // Bước 1: Kiểm tra giấy chứng nhận hợp lệ hay không
+      setValidating(true)
+      setValidationError(null)
+
+      const validationResult = await n8nApi.validateCertificate(selectedFile)
+
+      if (!validationResult.isValid) {
+        // Nếu không hợp lệ, hiển thị lý do và không upload (không hiển thị toast)
+        setValidationError(validationResult.reason)
+        setValidating(false)
+        return
+      }
+
+      // Nếu hợp lệ, tiếp tục upload
+      setValidating(false)
       setLoading(true)
+
       await productCertificateApi.create({
         productId,
         certificateImage: selectedFile
@@ -214,9 +236,15 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
         }
       }
 
+      // Nếu lỗi từ validation API, set validation error
+      if (errorMessage.includes('certificate') || errorMessage.includes('chứng nhận')) {
+        setValidationError(errorMessage)
+      }
+
       toast.error(errorMessage)
     } finally {
       setLoading(false)
+      setValidating(false)
     }
   }
 
@@ -287,7 +315,6 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
 
   // Format date helper
 
-
   // Get status badge - chỉ có Active và Inactive
   const getStatusBadge = (status: string) => {
     const isActive = status?.toLowerCase() === 'active'
@@ -349,10 +376,17 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                 Hình ảnh chứng nhận
               </Label>
 
-              {previewUrl ? (
+              {validating ? (
+                <div className='border-2 border-emerald-200 rounded-lg p-8 bg-slate-50'>
+                  <Loading text='Đang kiểm tra giấy chứng nhận...' size='md' />
+                </div>
+              ) : previewUrl ? (
                 <div className='space-y-3'>
                   <div className='relative group'>
-                    <div className='border-2 border-emerald-200 rounded-lg overflow-hidden bg-slate-50'>
+                    <div
+                      className={`border-2 rounded-lg overflow-hidden bg-slate-50 ${validationError ? 'border-red-300' : 'border-emerald-200'
+                        }`}
+                    >
                       <img src={previewUrl} alt='Preview' className='w-full h-auto max-h-64 object-contain' />
                     </div>
                     <button
@@ -363,13 +397,25 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                       <X className='w-4 h-4' />
                     </button>
                   </div>
-                  <div className='flex items-center gap-2 text-sm text-emerald-600'>
-                    <CheckCircle2 className='w-4 h-4' />
-                    <span className='font-medium'>{selectedFile?.name}</span>
-                    <span className='text-xs text-slate-500'>
-                      ({selectedFile?.size ? (selectedFile.size / 1024 / 1024).toFixed(2) : '0'} MB)
-                    </span>
-                  </div>
+                  {validationError ? (
+                    <div className='p-3 bg-red-50 border border-red-200 rounded-lg'>
+                      <div className='flex items-start gap-2'>
+                        <AlertCircle className='w-4 h-4 text-red-600 flex-shrink-0 mt-0.5' />
+                        <div className='flex-1'>
+                          <p className='text-sm font-medium text-red-800 mb-1'>Giấy chứng nhận không hợp lệ</p>
+                          <p className='text-xs text-red-700'>{validationError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className='flex items-center gap-2 text-sm text-emerald-600'>
+                      <CheckCircle2 className='w-4 h-4' />
+                      <span className='font-medium'>{selectedFile?.name}</span>
+                      <span className='text-xs text-slate-500'>
+                        ({selectedFile?.size ? (selectedFile.size / 1024 / 1024).toFixed(2) : '0'} MB)
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div
@@ -403,6 +449,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                         return
                       }
                       setSelectedFile(file)
+                      setValidationError(null) // Reset validation error when new file is dropped
                       setPreviewUrl(URL.createObjectURL(file))
                     } else {
                       toast.error('File phải là hình ảnh')
@@ -440,10 +487,15 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                 )}
                 <Button
                   onClick={handleAddCertificate}
-                  disabled={!selectedFile || loading || !canEdit}
+                  disabled={!selectedFile || loading || validating || !canEdit}
                   className='flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-medium gap-2 transition-colors'
                 >
-                  {loading ? (
+                  {validating ? (
+                    <>
+                      <Clock className='w-4 h-4 animate-spin' />
+                      Đang kiểm tra...
+                    </>
+                  ) : loading ? (
                     <>
                       <Clock className='w-4 h-4 animate-spin' />
                       Đang tải...
@@ -578,12 +630,14 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                         <span className='text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3 block'>
                           Hình ảnh chứng nhận
                         </span>
-                        <div className='relative group'>
-                          <div className='w-full max-w-md rounded-lg overflow-hidden border-2 border-slate-200 bg-slate-50 hover:border-emerald-300 transition-colors'>
+                        <div className='relative group flex justify-center items-center'>
+                          <div
+                            className={`w-full max-w-md rounded-lg overflow-hidden border-2 border-slate-200 bg-slate-50 hover:border-emerald-300 transition-colors flex justify-center items-center min-h-[400px] py-6 px-4`}
+                          >
                             <img
                               src={cert.imageUrl || '/placeholder.svg'}
                               alt='Certificate'
-                              className='w-full h-auto max-h-96 object-contain cursor-pointer'
+                              className='max-w-full max-h-[700px] w-auto h-auto object-contain cursor-pointer mx-auto'
                               onClick={() => {
                                 // Có thể thêm modal preview ở đây nếu cần
                                 window.open(cert.imageUrl, '_blank')
