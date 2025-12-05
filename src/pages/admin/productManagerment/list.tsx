@@ -206,13 +206,45 @@ function ManagerProductAdmin() {
   const loadStaffList = useCallback(async () => {
     try {
       setLoadingStaffList(true)
-      const response = await adminApi.getAllStaff()
+      // Only get active staff for assignment
+      const response = await staffApi.getAllStaff({ isActive: true })
 
-      if (response && response.data && Array.isArray(response.data)) {
-        setStaffList(response.data)
+      // Handle different response formats
+      let staffData: StaffInfo[] = []
+
+      if (Array.isArray(response)) {
+        // Response is directly an array
+        staffData = response
+      } else if (response && typeof response === 'object' && 'data' in response) {
+        const responseWithData = response as { data?: StaffInfo[] }
+        if (Array.isArray(responseWithData.data)) {
+          // Response has structure {status, message, data: [...]}
+          staffData = responseWithData.data
+        }
+      }
+
+      if (staffData.length > 0) {
+        // Map StaffInfo[] to Staff[] format for StaffComboBox
+        const mappedStaffList: Staff[] = staffData.map((staffInfo: StaffInfo) => {
+          // Generate staff name with fallbacks
+          let staffName = 'Nhân viên'
+          if (staffInfo.firstName && staffInfo.lastName) {
+            staffName = `${staffInfo.firstName} ${staffInfo.lastName}`.trim()
+          } else if (staffInfo.email) {
+            // Use email username as fallback
+            staffName = staffInfo.email.split('@')[0]
+          }
+
+          return {
+            staffId: staffInfo.userId,
+            staffName: staffName,
+            email: staffInfo.email || '',
+            processingStoreCount: 0 // StaffInfo doesn't have this field, set default
+          }
+        })
+        setStaffList(mappedStaffList)
       } else {
-        const staffData = response?.data || response || []
-        setStaffList(Array.isArray(staffData) ? staffData : [])
+        setStaffList([])
       }
     } catch (error) {
       console.error('Error loading staff list:', error)
