@@ -136,14 +136,15 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     { value: '12', label: 'Tháng 12' }
   ]
 
+  // Correct API: pageSize=0, pageNumber=1, role=Customer, isActive=true, searchTerm
   const loadUsers = useCallback(async (searchTerm = '') => {
     setLoadingUsers(true)
     try {
       const userList = await getUsers({
         pageSize: 0,
         pageNumber: 1,
-        isActive: true,
         role: 'Customer',
+        isActive: true,
         searchTerm: searchTerm || undefined
       })
       setUsers(userList)

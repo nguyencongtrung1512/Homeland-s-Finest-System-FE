@@ -54,11 +54,11 @@ export interface GetUsersParams {
 export const getUsers = async (params?: GetUsersParams): Promise<User[]> => {
   const queryParams = new URLSearchParams()
 
-  if (params?.pageSize) {
+  if (params?.pageSize !== undefined && params?.pageSize !== null) {
     queryParams.append('pageSize', params.pageSize.toString())
   }
 
-  if (params?.pageNumber) {
+  if (params?.pageNumber !== undefined && params?.pageNumber !== null) {
     queryParams.append('pageNumber', params.pageNumber.toString())
   }
 
