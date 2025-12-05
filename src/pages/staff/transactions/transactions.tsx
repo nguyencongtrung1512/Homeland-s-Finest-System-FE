@@ -25,6 +25,7 @@ interface Transaction {
 function TransactionManagement() {
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
@@ -99,6 +100,11 @@ function TransactionManagement() {
         if (statusFilter === 'refunded') params.status = 'Failed'
       }
 
+      // Filter by payment method
+      if (paymentMethodFilter !== 'all') {
+        params.paymentMethod = paymentMethodFilter
+      }
+
       // Filter by date
       if (dateFilter) {
         const [month, day, year] = dateFilter.split('/')
@@ -163,7 +169,7 @@ function TransactionManagement() {
   useEffect(() => {
     fetchTransactions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, statusFilter, dateFilter])
+  }, [currentPage, statusFilter, paymentMethodFilter, dateFilter])
 
   // Fetch dashboard stats khi component mount
   useEffect(() => {
@@ -175,6 +181,15 @@ function TransactionManagement() {
   const handleFilter = () => {
     setCurrentPage(1)
     fetchTransactions()
+  }
+
+  // Reset filters
+  const handleResetFilters = () => {
+    setSearchText('')
+    setStatusFilter('all')
+    setPaymentMethodFilter('all')
+    setDateFilter('')
+    setCurrentPage(1)
   }
 
   const getStatusConfig = (status: string) => {
@@ -356,6 +371,18 @@ function TransactionManagement() {
               </SelectContent>
             </Select>
 
+            <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+              <SelectTrigger className='w-48 h-10 border-gray-200'>
+                <SelectValue placeholder='Phương thức thanh toán' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Tất cả phương thức</SelectItem>
+                <SelectItem value='COD'>Thanh toán khi nhận hàng</SelectItem>
+                <SelectItem value='Banking'>Thanh toán qua ngân hàng</SelectItem>
+                <SelectItem value='MyWallet'>Ví của tôi</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Input
               placeholder='mm/dd/yyyy'
               value={dateFilter}
@@ -366,6 +393,16 @@ function TransactionManagement() {
             <Button className='h-10 px-6 bg-blue-600 hover:bg-blue-700' onClick={handleFilter} disabled={loading}>
               <Filter size={16} className='mr-2' />
               Lọc
+            </Button>
+
+            <Button
+              variant='outline'
+              className='h-10 px-6 border-gray-300 hover:bg-gray-50'
+              onClick={handleResetFilters}
+              disabled={loading}
+            >
+              <Repeat size={16} className='mr-2' />
+              Đặt lại
             </Button>
           </div>
         </CardContent>

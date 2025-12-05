@@ -81,11 +81,6 @@ function SideBar({ isCollapsed = false }: SideBarProps) {
       key: path.approveStoresStaff,
       label: 'Duyệt cửa hàng',
       icon: <CheckCircle size={16} />
-    },
-    {
-      key: path.lockedStoresStaff,
-      label: 'Cửa hàng bị khóa',
-      icon: <Shield size={16} />
     }
   ]
 

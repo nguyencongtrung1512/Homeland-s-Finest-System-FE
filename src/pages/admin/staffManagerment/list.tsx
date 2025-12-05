@@ -84,7 +84,6 @@ function StaffManagement() {
     DateOfBirth: '',
     HireDate: '',
     IsActive: true,
-    IsPermission: true,
     Note: '',
     EmployeeCode: '',
     Avatar: undefined
@@ -107,6 +106,21 @@ function StaffManagement() {
   // Unban states
   const [showUnbanModal, setShowUnbanModal] = useState(false)
   const [staffToUnban, setStaffToUnban] = useState<StaffInfo | null>(null)
+
+  // Staff assignments states
+  const [staffAssignments, setStaffAssignments] = useState<{
+    products: any[]
+    combos: any[]
+    stores: any[]
+    forms: any[]
+  } | null>(null)
+  const [loadingAssignments, setLoadingAssignments] = useState(false)
+  const [pendingAssignments, setPendingAssignments] = useState<{
+    products: any[]
+    combos: any[]
+    stores: any[]
+    forms: any[]
+  } | null>(null)
 
   // Fetch staff data từ API
   const fetchStaff = useCallback(async () => {
@@ -192,6 +206,48 @@ function StaffManagement() {
     setCurrentPage(page)
   }
 
+  // Fetch staff assignments
+  const fetchStaffAssignments = useCallback(async (staffId: string) => {
+    setLoadingAssignments(true)
+    try {
+      const response = await adminApi.getStaffAssignments(staffId)
+      console.log('response staff assignments', response)
+      if (response) {
+        setStaffAssignments({
+          products: response.products || [],
+          combos: response.combos || [],
+          stores: response.stores || [],
+          forms: response.forms || []
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching staff assignments:', error)
+      setStaffAssignments(null)
+    } finally {
+      setLoadingAssignments(false)
+    }
+  }, [])
+
+  // Fetch pending assignments (chưa hoàn thành)
+  const fetchPendingAssignments = useCallback(async (staffId: string) => {
+    try {
+      const response = await adminApi.getStaffAssignments(staffId)
+      if (response.data) {
+        // Lọc các công việc chưa hoàn thành (status: Processing, Confirmed, Pending)
+        const pendingStatuses = ['Processing', 'Confirmed', 'Pending']
+        setPendingAssignments({
+          products: (response.data.products || []).filter((p: any) => pendingStatuses.includes(p.status)),
+          combos: (response.data.combos || []).filter((c: any) => pendingStatuses.includes(c.status)),
+          stores: (response.data.stores || []).filter((s: any) => pendingStatuses.includes(s.status)),
+          forms: (response.data.forms || []).filter((f: any) => pendingStatuses.includes(f.status))
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching pending assignments:', error)
+      setPendingAssignments(null)
+    }
+  }, [])
+
   // Handle view detail
   const handleViewDetail = async (staffId: string) => {
     try {
@@ -199,6 +255,8 @@ function StaffManagement() {
       setSelectedStaff(response.data)
       setShowDetailModal(true)
       setIsEditing(false) // Reset edit mode
+      // Fetch assignments khi mở modal
+      await fetchStaffAssignments(staffId)
     } catch (error) {
       console.error('Error fetching staff detail:', error)
       toast.error('Không thể tải thông tin chi tiết nhân viên')
@@ -217,7 +275,6 @@ function StaffManagement() {
         DateOfBirth: selectedStaff.dateOfBirth,
         HireDate: selectedStaff.hireDate,
         IsActive: selectedStaff.isActive,
-        IsPermission: selectedStaff.isPermission,
         Note: selectedStaff.note || '',
         EmployeeCode: '', // This field might not be available in StaffInfo
         Avatar: undefined
@@ -363,7 +420,6 @@ function StaffManagement() {
       DateOfBirth: '',
       HireDate: '',
       IsActive: true,
-      IsPermission: true,
       Note: '',
       EmployeeCode: '',
       Avatar: undefined
@@ -626,13 +682,15 @@ function StaffManagement() {
   }, [banDateOption, banType])
 
   // Handle ban
-  const handleBan = (staff: StaffInfo) => {
+  const handleBan = async (staff: StaffInfo) => {
     setStaffToBan(staff)
     setBanReason('')
     setBanType('permanent')
     setBanDateOption('7days')
     setBanUntilDate(undefined)
     setShowBanModal(true)
+    // Fetch pending assignments khi mở modal ban
+    await fetchPendingAssignments(staff.userId)
   }
 
   const confirmBan = async () => {
@@ -684,7 +742,9 @@ function StaffManagement() {
 
       // Hiển thị thông báo từ backend
       const successMessage =
-        response.data?.message || response.message || `Đã ${banType === 'permanent' ? 'khóa vĩnh viễn' : 'khóa có thời hạn'} nhân viên ${staffToBan.firstName} ${staffToBan.lastName}`
+        response.data?.message ||
+        response.message ||
+        `Đã ${banType === 'permanent' ? 'khóa vĩnh viễn' : 'khóa có thời hạn'} nhân viên ${staffToBan.firstName} ${staffToBan.lastName}`
 
       toast.success(successMessage, {
         position: 'top-right',
@@ -725,7 +785,10 @@ function StaffManagement() {
       const response = await adminApi.unbanStaff(staffToUnban.userId)
 
       // Hiển thị thông báo từ backend
-      const successMessage = response.data?.message || response.message || `Đã mở khóa nhân viên ${staffToUnban.firstName} ${staffToUnban.lastName}`
+      const successMessage =
+        response.data?.message ||
+        response.message ||
+        `Đã mở khóa nhân viên ${staffToUnban.firstName} ${staffToUnban.lastName}`
 
       toast.success(successMessage, {
         position: 'top-right',
@@ -760,6 +823,7 @@ function StaffManagement() {
     setBanType('permanent')
     setBanDateOption('7days')
     setBanUntilDate(undefined)
+    setPendingAssignments(null)
   }
 
   return (
@@ -786,7 +850,6 @@ function StaffManagement() {
 
       {/* Filters */}
       <Card>
-
         <CardContent>
           <div className='flex flex-col sm:flex-row gap-4 py-5'>
             <div className='flex-1'>
@@ -810,7 +873,6 @@ function StaffManagement() {
                 </SelectContent>
               </Select>
             </div>
-
           </div>
         </CardContent>
       </Card>
@@ -875,7 +937,6 @@ function StaffManagement() {
                             <CalendarIcon className='w-4 h-4 mr-2 text-gray-400' />
                             {staff.dateOfBirth}
                           </div>
-
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(staff.isActive)}</TableCell>
@@ -1000,13 +1061,7 @@ function StaffManagement() {
                               onCheckedChange={(checked) => handleEditFormChange('IsActive', checked)}
                             />
                           </div>
-                          <div className='flex items-center justify-between'>
-                            <label className='text-sm font-medium'>Quyền truy cập</label>
-                            <Switch
-                              checked={editFormData.IsPermission}
-                              onCheckedChange={(checked) => handleEditFormChange('IsPermission', checked)}
-                            />
-                          </div>
+                          
                         </div>
                       </div>
 
@@ -1079,8 +1134,9 @@ function StaffManagement() {
                             <PopoverTrigger asChild>
                               <Button
                                 variant='outline'
-                                className={`w-full justify-start text-left font-normal ${!editFormData.DateOfBirth ? 'text-muted-foreground' : ''
-                                  }`}
+                                className={`w-full justify-start text-left font-normal ${
+                                  !editFormData.DateOfBirth ? 'text-muted-foreground' : ''
+                                }`}
                               >
                                 <CalendarIcon className='mr-2 h-4 w-4' />
                                 {editFormData.DateOfBirth
@@ -1113,8 +1169,9 @@ function StaffManagement() {
                             <PopoverTrigger asChild>
                               <Button
                                 variant='outline'
-                                className={`w-full justify-start text-left font-normal ${!editFormData.HireDate ? 'text-muted-foreground' : ''
-                                  }`}
+                                className={`w-full justify-start text-left font-normal ${
+                                  !editFormData.HireDate ? 'text-muted-foreground' : ''
+                                }`}
                               >
                                 <CalendarIcon className='mr-2 h-4 w-4' />
                                 {editFormData.HireDate
@@ -1222,98 +1279,143 @@ function StaffManagement() {
                             <span>{selectedStaff.dateOfBirth}</span>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Work Information */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className='flex items-center'>
-                        <Building2 className='w-5 h-5 mr-2' />
-                        Thông tin công việc
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                        <div className='space-y-3'>
-                          <div>
-                            <label className='text-sm font-medium text-gray-500'>Ngày tuyển dụng</label>
-                            <p className='text-lg font-semibold'>{formatDate(selectedStaff.hireDate)}</p>
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                          <div className='space-y-3'>
+                            <div>
+                              <label className='text-sm font-medium text-gray-500'>Ngày tuyển dụng</label>
+                              <p className='text-lg font-semibold'>{formatDate(selectedStaff.hireDate)}</p>
+                            </div>
                           </div>
-
-                        </div>
-                        <div className='space-y-3'>
-                          <div>
-                            <label className='text-sm font-medium text-gray-500'>Ghi chú</label>
-                            <p className='text-sm'>{selectedStaff.note || 'Không có ghi chú'}</p>
+                          <div className='space-y-3'>
+                            <div>
+                              <label className='text-sm font-medium text-gray-500'>Ghi chú</label>
+                              <p className='text-sm'>{selectedStaff.note || 'Không có ghi chú'}</p>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Status and Dates */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className='flex items-center'>
-                        <CalendarIcon className='w-5 h-5 mr-2' />
-                        Trạng thái và thời gian
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-                        <div>
-                          <label className='text-sm font-medium text-gray-500'>Trạng thái quyền</label>
-                          <div className='mt-1'>
-                            {selectedStaff.isPermission ? (
-                              <Badge className='bg-green-100 text-green-800'>
-                                <CheckCircle className='w-3 h-3 mr-1' />
-                                Có quyền
-                              </Badge>
-                            ) : (
-                              <Badge className='bg-yellow-100 text-yellow-800'>
-                                <AlertCircle className='w-3 h-3 mr-1' />
-                                Không có quyền
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <label className='text-sm font-medium text-gray-500'>Ngày tạo tài khoản</label>
-                          <p className='text-sm'>{formatDate(selectedStaff.createdAt)}</p>
-                        </div>
-                        <div>
-                          <label className='text-sm font-medium text-gray-500'>Cập nhật lần cuối</label>
-                          <p className='text-sm'>{formatDate(selectedStaff.updatedAt)}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Statistics */}
+                  {/* Staff Assignments */}
                   <Card>
                     <CardHeader>
                       <CardTitle className='flex items-center'>
                         <FileText className='w-5 h-5 mr-2' />
-                        Thống kê
+                        Công việc được gán
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className='flex items-center space-x-6'>
-                        <div className='text-center'>
-                          <div className='text-2xl font-bold text-blue-600'>
-                            {selectedStaff.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                          </div>
-                          <div className='text-sm text-gray-500'>Trạng thái hiện tại</div>
+                      {loadingAssignments ? (
+                        <div className='flex justify-center items-center py-8'>
+                          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
                         </div>
-                        <div className='text-center'>
-                          <div className='text-2xl font-bold text-green-600'>
-                            {selectedStaff.isPermission ? 'Có quyền' : 'Không quyền'}
-                          </div>
-                          <div className='text-sm text-gray-500'>Quyền truy cập</div>
+                      ) : staffAssignments ? (
+                        <div className='space-y-4'>
+                          {/* Products */}
+                          {staffAssignments.products.length > 0 && (
+                            <div>
+                              <h4 className='font-semibold text-sm mb-2 flex items-center'>
+                                <FileText className='w-4 h-4 mr-2' />
+                                Sản phẩm ({staffAssignments.products.length})
+                              </h4>
+                              <div className='space-y-2 max-h-40 overflow-y-auto'>
+                                {staffAssignments.products.map((product) => (
+                                  <div
+                                    key={product.id}
+                                    className='p-2 bg-gray-50 rounded-md text-sm border border-gray-200'
+                                  >
+                                    <div className='font-medium'>{product.name}</div>
+                                    <div className='text-gray-600 text-xs mt-1'>
+                                      Trạng thái: <Badge variant='outline'>{product.status}</Badge>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Combos */}
+                          {staffAssignments.combos.length > 0 && (
+                            <div>
+                              <h4 className='font-semibold text-sm mb-2 flex items-center'>
+                                <FileText className='w-4 h-4 mr-2' />
+                                Combo ({staffAssignments.combos.length})
+                              </h4>
+                              <div className='space-y-2 max-h-40 overflow-y-auto'>
+                                {staffAssignments.combos.map((combo) => (
+                                  <div
+                                    key={combo.id}
+                                    className='p-2 bg-gray-50 rounded-md text-sm border border-gray-200'
+                                  >
+                                    <div className='font-medium'>{combo.name}</div>
+                                    <div className='text-gray-600 text-xs mt-1'>
+                                      Trạng thái: <Badge variant='outline'>{combo.status}</Badge>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Stores */}
+                          {staffAssignments.stores.length > 0 && (
+                            <div>
+                              <h4 className='font-semibold text-sm mb-2 flex items-center'>
+                                <Building2 className='w-4 h-4 mr-2' />
+                                Cửa hàng ({staffAssignments.stores.length})
+                              </h4>
+                              <div className='space-y-2 max-h-40 overflow-y-auto'>
+                                {staffAssignments.stores.map((store) => (
+                                  <div
+                                    key={store.id}
+                                    className='p-2 bg-gray-50 rounded-md text-sm border border-gray-200'
+                                  >
+                                    <div className='font-medium'>{store.storeName}</div>
+                                    <div className='text-gray-600 text-xs mt-1'>
+                                      Trạng thái: <Badge variant='outline'>{store.status}</Badge>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Forms/Issues */}
+                          {staffAssignments.forms.length > 0 && (
+                            <div>
+                              <h4 className='font-semibold text-sm mb-2 flex items-center'>
+                                <FileText className='w-4 h-4 mr-2' />
+                                Form/Issue ({staffAssignments.forms.length})
+                              </h4>
+                              <div className='space-y-2 max-h-40 overflow-y-auto'>
+                                {staffAssignments.forms.map((form) => (
+                                  <div
+                                    key={form.id}
+                                    className='p-2 bg-gray-50 rounded-md text-sm border border-gray-200'
+                                  >
+                                    <div className='font-medium'>{form.subject || form.type}</div>
+                                    <div className='text-gray-600 text-xs mt-1'>
+                                      Trạng thái: <Badge variant='outline'>{form.status}</Badge>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {staffAssignments.products.length === 0 &&
+                            staffAssignments.combos.length === 0 &&
+                            staffAssignments.stores.length === 0 &&
+                            staffAssignments.forms.length === 0 && (
+                              <div className='text-center py-4 text-gray-500'>
+                                Nhân viên này chưa có công việc nào được gán
+                              </div>
+                            )}
                         </div>
-                      </div>
+                      ) : (
+                        <div className='text-center py-4 text-gray-500'>Không thể tải danh sách công việc</div>
+                      )}
                     </CardContent>
                   </Card>
                 </>
@@ -1403,8 +1505,9 @@ function StaffManagement() {
                   <PopoverTrigger asChild>
                     <Button
                       variant='outline'
-                      className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
-                        }`}
+                      className={`w-full h-10 justify-start text-left font-normal ${
+                        !staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
+                      }`}
                     >
                       <CalendarIcon className='mr-2 h-4 w-4' />
                       {staffFormData.dateOfBirth ? formatDisplayDate(staffFormData.dateOfBirth) : 'Chọn ngày sinh'}
@@ -1435,8 +1538,9 @@ function StaffManagement() {
                   <PopoverTrigger asChild>
                     <Button
                       variant='outline'
-                      className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.hireDate ? 'text-muted-foreground' : ''
-                        }`}
+                      className={`w-full h-10 justify-start text-left font-normal ${
+                        !staffFormData.hireDate ? 'text-muted-foreground' : ''
+                      }`}
                     >
                       <CalendarIcon className='mr-2 h-4 w-4' />
                       {staffFormData.hireDate ? formatDisplayDate(staffFormData.hireDate) : 'Chọn ngày tuyển dụng'}
@@ -1481,7 +1585,7 @@ function StaffManagement() {
 
       {/* Ban Modal */}
       <Dialog open={showBanModal} onOpenChange={setShowBanModal}>
-        <DialogContent className='sm:max-w-md'>
+        <DialogContent className='sm:max-w-2xl max-h-[90vh] overflow-y-auto'>
           <DialogHeader>
             <DialogTitle className='flex items-center'>
               <Ban className='w-5 h-5 mr-2 text-orange-600' />
@@ -1490,7 +1594,10 @@ function StaffManagement() {
             <DialogDescription>
               {staffToBan && (
                 <>
-                  Bạn đang Khóa nhân viên <span className='font-semibold'>{staffToBan.firstName} {staffToBan.lastName}</span>
+                  Bạn đang Khóa nhân viên{' '}
+                  <span className='font-semibold'>
+                    {staffToBan.firstName} {staffToBan.lastName}
+                  </span>
                 </>
               )}
             </DialogDescription>
@@ -1498,6 +1605,41 @@ function StaffManagement() {
 
           {staffToBan && (
             <div className='space-y-4 py-4'>
+              {/* Pending Assignments Warning */}
+              {pendingAssignments &&
+                (pendingAssignments.products.length > 0 ||
+                  pendingAssignments.combos.length > 0 ||
+                  pendingAssignments.stores.length > 0 ||
+                  pendingAssignments.forms.length > 0) && (
+                  <div className='rounded-md bg-orange-50 border border-orange-200 p-4'>
+                    <div className='flex items-start'>
+                      <AlertCircle className='w-5 h-5 text-orange-600 mr-2 mt-0.5' />
+                      <div className='flex-1'>
+                        <h4 className='font-semibold text-orange-900 mb-2'>
+                          Cảnh báo: Nhân viên này còn công việc chưa hoàn thành
+                        </h4>
+                        <div className='text-sm text-orange-800 space-y-1'>
+                          {pendingAssignments.products.length > 0 && (
+                            <div>• Sản phẩm: {pendingAssignments.products.length} công việc</div>
+                          )}
+                          {pendingAssignments.combos.length > 0 && (
+                            <div>• Combo: {pendingAssignments.combos.length} công việc</div>
+                          )}
+                          {pendingAssignments.stores.length > 0 && (
+                            <div>• Cửa hàng: {pendingAssignments.stores.length} công việc</div>
+                          )}
+                          {pendingAssignments.forms.length > 0 && (
+                            <div>• Form/Issue: {pendingAssignments.forms.length} công việc</div>
+                          )}
+                        </div>
+                        <p className='text-xs text-orange-700 mt-2'>
+                          Khi khóa nhân viên, các công việc này sẽ được gỡ gán và chuyển về trạng thái chờ xử lý.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               <div className='space-y-2'>
                 <Label>Lý do khóa *</Label>
                 <Textarea
@@ -1604,7 +1746,8 @@ function StaffManagement() {
 
                   {banDateOption !== 'custom' && banUntilDate && (
                     <div className='text-sm text-gray-600'>
-                      Nhân viên sẽ bị khóa đến ngày: <span className='font-semibold'>{format(banUntilDate, 'dd/MM/yyyy')}</span>
+                      Nhân viên sẽ bị khóa đến ngày:{' '}
+                      <span className='font-semibold'>{format(banUntilDate, 'dd/MM/yyyy')}</span>
                     </div>
                   )}
                 </div>
@@ -1633,7 +1776,11 @@ function StaffManagement() {
             <Button
               variant='red'
               onClick={confirmBan}
-              disabled={actionLoading || !banReason.trim() || (banType === 'temporary' && banDateOption === 'custom' && !banUntilDate)}
+              disabled={
+                actionLoading ||
+                !banReason.trim() ||
+                (banType === 'temporary' && banDateOption === 'custom' && !banUntilDate)
+              }
             >
               {actionLoading ? 'Đang xử lý...' : 'Xác nhận khóa'}
             </Button>
@@ -1653,7 +1800,10 @@ function StaffManagement() {
               {staffToUnban && (
                 <>
                   Bạn có chắc chắn muốn mở khóa nhân viên{' '}
-                  <span className='font-semibold'>{staffToUnban.firstName} {staffToUnban.lastName}</span> không?
+                  <span className='font-semibold'>
+                    {staffToUnban.firstName} {staffToUnban.lastName}
+                  </span>{' '}
+                  không?
                 </>
               )}
             </DialogDescription>

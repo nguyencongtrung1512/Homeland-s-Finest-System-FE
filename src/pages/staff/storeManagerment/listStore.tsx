@@ -46,7 +46,7 @@ interface StoreData {
   }
   createdDate: string
   products: number
-  status: 'Processing' | 'Pending' | 'Approved' | 'Rejected' | 'Denied'
+  status: 'Processing' | 'Pending' | 'Approved' | 'Rejected' | 'Denied' | 'Inactive'
 }
 
 const DEFAULT_STORE_LOGO = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
@@ -201,6 +201,11 @@ function ListStore() {
         variant: 'default' as const,
         text: 'Từ chối',
         className: 'bg-red-100 text-red-700 hover:bg-red-100'
+      },
+      Inactive: {
+        variant: 'default' as const,
+        text: 'Bị khóa',
+        className: 'bg-gray-100 text-gray-700 hover:bg-gray-100'
       },
       Denied: {
         variant: 'default' as const,

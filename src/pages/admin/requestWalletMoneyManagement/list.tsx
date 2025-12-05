@@ -32,8 +32,10 @@ import { formatDate } from '../../../utils/formatDate'
 import { toast } from '../../../utils/toast'
 import Loading from '../../../components/Loading/loading'
 import Pagination from '../../../components/Pagination/Pagination'
+import { formatCompact } from '../../../utils/formatCompact'
 
 function RequestWalletMoneyManagement() {
+
   const [searchText, setSearchText] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'Withdrawal' | 'Refund'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'Pending' | 'Completed' | 'Cancel'>('all')
@@ -581,11 +583,29 @@ function RequestWalletMoneyManagement() {
       className='space-y-4 md:space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen'
     >
       {/* Header */}
-      <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4 }}>
-        <h1 className='text-xl md:text-2xl font-bold text-gray-900'>Quản lý yêu cầu rút tiền & hoàn tiền</h1>
-        <p className='text-gray-600 mt-1 text-sm md:text-base'>Theo dõi và xử lý các yêu cầu rút tiền, hoàn tiền</p>
-      </motion.div>
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className='flex flex-col md:flex-row md:items-center md:justify-between gap-3'
+      >
+        <div>
+          <h1 className='text-xl md:text-2xl font-bold text-gray-900'>Quản lý yêu cầu rút tiền & hoàn tiền</h1>
+          <p className='text-gray-600 mt-1 text-sm md:text-base'>Theo dõi và xử lý các yêu cầu rút tiền, hoàn tiền</p>
+        </div>
 
+        <div className='flex-shrink-0'>
+          <Button
+            size='sm'
+            className='mt-0 md:mt-0 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded shadow-sm'
+            onClick={() => setIsWithdrawModalOpen(true)}
+            disabled={!walletData || walletData.availableBalance <= 0}
+            aria-label='Tạo yêu cầu rút'
+          >
+            Rút tiền
+          </Button>
+        </div>
+      </motion.div>
       {/* Summary Cards */}
       <div className='grid grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-3 md:gap-6'>
         <motion.div
@@ -599,16 +619,8 @@ function RequestWalletMoneyManagement() {
                 <div>
                   <p className='text-xs md:text-sm text-gray-600 mb-1'>Số dư khả dụng</p>
                   <p className='text-xl md:text-2xl font-bold text-emerald-600'>
-                    {walletData ? `${walletData.availableBalance.toLocaleString('vi-VN')}₫` : '--'}
+                    {walletData ? formatCompact(walletData.availableBalance) : '--'}
                   </p>
-                  <Button
-                    size='sm'
-                    className='mt-3 bg-emerald-600 hover:bg-emerald-700 text-white'
-                    onClick={() => setIsWithdrawModalOpen(true)}
-                    disabled={!walletData || walletData.availableBalance <= 0}
-                  >
-                    Tạo yêu cầu rút
-                  </Button>
                 </div>
                 <div className='w-10 h-10 md:w-12 md:h-12 bg-emerald-100 rounded-lg flex items-center justify-center'>
                   <DollarSign className='w-5 h-5 md:w-6 md:h-6 text-emerald-600' />
@@ -1054,7 +1066,7 @@ function RequestWalletMoneyManagement() {
               <p className='text-sm text-gray-600 mb-1'>
                 Số dư khả dụng:{' '}
                 <span className='font-semibold text-emerald-600'>
-                  {walletData ? `${walletData.availableBalance.toLocaleString('vi-VN')}₫` : '--'}
+                  {walletData ? formatCompact(walletData.availableBalance) : '--'}
                 </span>
               </p>
               <Input

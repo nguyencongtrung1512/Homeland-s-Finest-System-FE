@@ -185,6 +185,58 @@ export interface BanStaffResponse {
   data?: BanStaffResponseData | UnbanStaffResponseData
 }
 
+// Interface cho Staff Assignment Item
+export interface StaffAssignmentProduct {
+  id: string
+  name: string
+  status: string
+  storeId: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface StaffAssignmentCombo {
+  id: string
+  name: string
+  status: string
+  storeId: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface StaffAssignmentStore {
+  id: string
+  storeName: string
+  status: string
+  sellerId: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface StaffAssignmentForm {
+  id: string
+  subject?: string
+  type: string
+  status: string
+  storeId?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+// Interface cho Staff Assignments Response
+export interface StaffAssignmentsResponse {
+  status: number
+  message: string
+  data?: {
+    staffId: string
+    staffName?: string
+    products: StaffAssignmentProduct[]
+    combos: StaffAssignmentCombo[]
+    stores: StaffAssignmentStore[]
+    forms: StaffAssignmentForm[]
+  }
+}
+
 // API functions
 export const adminApi = {
   // Lấy danh sách tất cả staff
@@ -388,6 +440,17 @@ export const adminApi = {
     // Accept both 200 and 202 as success statuses
     if (response.status === 200 || response.status === 202) {
       return response.data as BanStaffResponse
+    } else {
+      throw new Error(response.data?.message || `API returned status ${response.status}`)
+    }
+  },
+
+  // Lấy danh sách công việc của staff
+  getStaffAssignments: async (staffId: string): Promise<any> => {
+    const response = await axiosInstance.get(`${API_URL}/staff/${staffId}/assignments`)
+
+    if (response.status === 200 || response.status === 202) {
+      return response.data as StaffAssignmentsResponse
     } else {
       throw new Error(response.data?.message || `API returned status ${response.status}`)
     }

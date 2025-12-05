@@ -56,7 +56,6 @@ export const path = {
   storeDetailStaff: '/staff/store-detail/:storeId',
   listProductByStoreStaff: '/staff/store-detail/:storeId/list-product',
   approveStoresStaff: 'approve-stores',
-  lockedStoresStaff: 'locked-stores',
   approveProductsStaff: 'approve-products',
   managerProductStaff: 'manager-product',
   detailProductStaff: '/staff/manager-product/detail-product/:id',

@@ -155,7 +155,6 @@ export interface UpdateStaffRequest {
   DateOfBirth: string
   HireDate: string
   IsActive: boolean
-  IsPermission: boolean
   Note?: string
   EmployeeCode?: string
   Avatar?: File

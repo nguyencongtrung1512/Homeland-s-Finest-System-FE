@@ -29,7 +29,7 @@ interface StoreData {
   }
   createdAt: string
   products: number
-  status: 'Processing' | 'ApprovedByStaff' | 'RejectedByStaff'
+  status: 'Processing' | 'ApprovedByStaff' | 'RejectedByStaff' | 'Inactive'
 }
 
 const DEFAULT_STORE_LOGO = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
@@ -287,7 +287,8 @@ function ApproveStores() {
       ApprovedByStaff: { variant: 'secondary' as const, className: 'bg-green-100 text-green-800 hover:bg-green-200', text: 'Đã chấp nhận' },
       RejectedByStaff: { variant: 'secondary' as const, className: 'bg-red-100 text-red-800 hover:bg-red-200', text: 'Đã từ chối' },
       Approved: { variant: 'secondary' as const, className: 'bg-green-100 text-green-800 hover:bg-green-200', text: 'Đã chấp nhận' },
-      Rejected: { variant: 'secondary' as const, className: 'bg-red-100 text-red-800 hover:bg-red-200', text: 'Đã từ chối' }
+      Rejected: { variant: 'secondary' as const, className: 'bg-red-100 text-red-800 hover:bg-red-200', text: 'Đã từ chối' },
+      Inactive: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800 hover:bg-gray-200', text: 'Bị khóa' }
     }
     const config = statusConfig[status as keyof typeof statusConfig] || { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', text: status }
     return config

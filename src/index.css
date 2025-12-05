@@ -49,11 +49,18 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* Đảm bảo scrollbar luôn có không gian, ngay cả khi overflow bị thay đổi */
+html {
+  overflow-y: scroll !important; /* Force scrollbar luôn hiển thị */
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
   width: 100%;
+  scrollbar-gutter: stable; /* Giữ không gian cho scrollbar, tránh layout shift */
+  overflow-y: auto !important; /* Force scrollbar luôn hiển thị, không cho phép hidden */
 }
 
 #root {

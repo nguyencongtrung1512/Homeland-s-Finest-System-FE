@@ -1111,7 +1111,7 @@ function Transaction() {
         <Card className='mb-6 sm:mb-8'>
           <CardContent className='p-4 sm:p-6'>
             <div className='flex items-center justify-between mb-4 sm:mb-6'>
-              <h2 className='text-lg sm:text-xl font-semibold text-gray-900'>Lịch sử giao dịch</h2>
+              <h2 className='text-lg sm:text-xl font-semibold text-gray-900'>Lịch sử ví</h2>
             </div>
 
             {/* Filters */}

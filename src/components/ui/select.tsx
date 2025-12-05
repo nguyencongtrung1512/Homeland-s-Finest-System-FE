@@ -48,6 +48,70 @@ function SelectContent({
   position = 'popper',
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  // Ngăn body scroll lock để tránh layout shift - sử dụng class CSS với !important
+  React.useEffect(() => {
+    // Thêm class để force scrollbar luôn hiển thị
+    document.body.classList.add('prevent-scroll-lock')
+    document.documentElement.classList.add('prevent-scroll-lock')
+
+    let rafId: number
+
+    // Hàm để force scrollbar luôn hiển thị bằng cách remove và re-add class
+    const forceScrollbar = () => {
+      // Đảm bảo class luôn được apply
+      if (!document.body.classList.contains('prevent-scroll-lock')) {
+        document.body.classList.add('prevent-scroll-lock')
+      }
+      if (!document.documentElement.classList.contains('prevent-scroll-lock')) {
+        document.documentElement.classList.add('prevent-scroll-lock')
+      }
+      // Override inline style nếu có
+      if (document.body.style.overflow === 'hidden') {
+        document.body.style.overflow = ''
+      }
+      if (document.documentElement.style.overflow === 'hidden') {
+        document.documentElement.style.overflow = ''
+      }
+    }
+
+    // Sử dụng requestAnimationFrame để đảm bảo chạy trước khi render
+    const checkAndForce = () => {
+      forceScrollbar()
+      rafId = requestAnimationFrame(checkAndForce)
+    }
+
+    // Bắt đầu ngay lập tức
+    rafId = requestAnimationFrame(checkAndForce)
+
+    // Fallback với interval để đảm bảo
+    const intervalId = setInterval(forceScrollbar, 16) // ~60fps
+
+    // Sử dụng MutationObserver để bắt mọi thay đổi
+    const observer = new MutationObserver(() => {
+      forceScrollbar()
+    })
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+      subtree: false
+    })
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+      subtree: false
+    })
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      clearInterval(intervalId)
+      observer.disconnect()
+      // Giữ class để đảm bảo scrollbar luôn hiển thị
+      // Không remove class vì có thể có Select khác đang mở
+    }
+  }, [])
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content

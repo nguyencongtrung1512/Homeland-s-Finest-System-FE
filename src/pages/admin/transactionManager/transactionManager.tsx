@@ -37,6 +37,7 @@ interface Transaction {
 function TransactionManagementAdmin() {
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
@@ -116,6 +117,12 @@ function TransactionManagementAdmin() {
       if (statusFilter !== 'all') {
         if (statusFilter === 'waiting') params.status = 'Pending'
         if (statusFilter === 'disbursed') params.status = 'Completed'
+        if (statusFilter === 'refunded') params.status = 'Cancelled'
+      }
+
+      // Filter by payment method
+      if (paymentMethodFilter !== 'all') {
+        params.paymentMethod = paymentMethodFilter
       }
 
       // Filter by date
@@ -135,9 +142,7 @@ function TransactionManagementAdmin() {
       const response = await getAllTransactions(params)
 
       // Map transactions
-      const mappedTransactions = await Promise.all(
-        response.data.map((tx: APITransaction) => mapTransactionToUI(tx))
-      )
+      const mappedTransactions = await Promise.all(response.data.map((tx: APITransaction) => mapTransactionToUI(tx)))
 
       // Filter by search text nếu có
       let filteredTransactions = mappedTransactions
@@ -195,18 +200,26 @@ function TransactionManagementAdmin() {
   useEffect(() => {
     fetchTransactions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, statusFilter, dateFilter])
+  }, [currentPage, statusFilter, paymentMethodFilter, dateFilter])
 
   // Fetch dashboard stats khi component mount
   useEffect(() => {
     fetchDashboardStats()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Handle filter button click
   const handleFilter = () => {
     setCurrentPage(1)
     fetchTransactions()
+  }
+
+  // Reset filters
+  const handleResetFilters = () => {
+    setSearchText('')
+    setStatusFilter('all')
+    setPaymentMethodFilter('all')
+    setDateFilter('')
+    setCurrentPage(1)
   }
 
   const getStatusConfig = (status: string) => {
@@ -313,78 +326,6 @@ function TransactionManagementAdmin() {
         <p className='text-gray-600 mt-1'>Theo dõi và quản lý tất cả giao dịch trên hệ thống</p>
       </div>
 
-      {/* Summary Cards */}
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6'>
-        <Card className='bg-white shadow-sm'>
-          <CardContent className='p-6'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <p className='text-sm text-gray-600 mb-1'>Tổng giao dịch</p>
-                <p className='text-2xl font-bold text-gray-900'>{totalTransactions.toLocaleString()}</p>
-              </div>
-              <div className='w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center'>
-                <Repeat className='w-6 h-6 text-blue-600' />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className='bg-white shadow-sm'>
-          <CardContent className='p-6'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <p className='text-sm text-gray-600 mb-1'>Ví hệ thống</p>
-                <p className='text-2xl font-bold text-green-600'>{systemWallet.toLocaleString()}</p>
-              </div>
-              <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
-                <Wallet className='w-6 h-6 text-green-600' />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className='bg-white shadow-sm'>
-          <CardContent className='p-6'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <p className='text-sm text-gray-600 mb-1'>Đã giải ngân</p>
-                <p className='text-2xl font-bold text-green-600'>{disbursed.toLocaleString()}</p>
-              </div>
-              <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
-                <CheckCircle className='w-6 h-6 text-green-600' />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        {/* Waiting for disbursement */}
-        <Card className='bg-white shadow-sm'>
-          <CardContent className='p-6'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <p className='text-sm text-gray-600 mb-1'>Chờ giải ngân</p>
-                <p className='text-2xl font-bold text-orange-600'>{pendingDisbursement.toLocaleString()}</p>
-              </div>
-              <div className='w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center'>
-                <Clock className='w-6 h-6 text-orange-600' />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className='bg-white shadow-sm'>
-          <CardContent className='p-6'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <p className='text-sm text-gray-600 mb-1'>Hoàn tiền</p>
-                <p className='text-2xl font-bold text-red-600'>{refunded.toLocaleString()}</p>
-              </div>
-              <div className='w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center'>
-                <RefreshCw className='w-6 h-6 text-red-600' />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Filters */}
       <Card className='bg-white shadow-sm'>
         <CardContent className='p-6'>
@@ -408,7 +349,20 @@ function TransactionManagementAdmin() {
               <SelectContent>
                 <SelectItem value='all'>Tất cả trạng thái</SelectItem>
                 <SelectItem value='waiting'>Đang chờ</SelectItem>
-                <SelectItem value='disbursed'>Đã hoàn tiền</SelectItem>
+                <SelectItem value='disbursed'>Đã giải ngân</SelectItem>
+                <SelectItem value='refunded'>Đã hoàn tiền</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+              <SelectTrigger className='w-48 h-10 border-gray-200'>
+                <SelectValue placeholder='Phương thức thanh toán' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Tất cả phương thức</SelectItem>
+                <SelectItem value='COD'>Thanh toán khi nhận hàng</SelectItem>
+                <SelectItem value='Banking'>Thanh toán qua ngân hàng</SelectItem>
+                <SelectItem value='MyWallet'>Ví của tôi</SelectItem>
               </SelectContent>
             </Select>
 
@@ -423,6 +377,15 @@ function TransactionManagementAdmin() {
               <Filter size={16} className='mr-2' />
               Lọc
             </Button>
+
+            <Button
+              variant='outline'
+              className='h-10 px-6 border-gray-300 hover:bg-gray-50'
+              onClick={handleResetFilters}
+            >
+              <Repeat size={16} className='mr-2' />
+              Đặt lại
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -433,12 +396,7 @@ function TransactionManagementAdmin() {
           {error && (
             <div className='p-6 text-center'>
               <p className='text-red-600 text-sm'>{error}</p>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={fetchTransactions}
-                className='mt-4'
-              >
+              <Button variant='outline' size='sm' onClick={fetchTransactions} className='mt-4'>
                 <RefreshCw size={14} className='mr-2' />
                 Thử lại
               </Button>

@@ -32,7 +32,6 @@ import ProfileCustomer from './pages/customer/Profile/ProfileCustomer'
 import ProfileLayout from './Layouts/CustomerLayout/ProfileLayout'
 import ListStore from './pages/staff/storeManagerment/listStore'
 import ApproveStores from './pages/staff/storeManagerment/approveStores'
-import LockedStores from './pages/staff/storeManagerment/lockedStores'
 import ManagerProduct from './pages/staff/productManagerment/managerProduct'
 import TransactionManagement from './pages/staff/transactions/transactions'
 import ReportManagement from './pages/staff/formReport/reports'
@@ -311,10 +310,6 @@ export default function useRouteElements() {
             {
               path: path.approveStoresStaff,
               element: <ApproveStores />
-            },
-            {
-              path: path.lockedStoresStaff,
-              element: <LockedStores />
             },
             {
               path: path.managerProductStaff,
