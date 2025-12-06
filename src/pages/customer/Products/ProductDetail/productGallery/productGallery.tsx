@@ -14,8 +14,7 @@ import {
 import { Button } from '../../../../../components/ui/button'
 import { useProductDetail } from '../../../../../hooks/useProductDetail'
 import ProductImageCarousel from '../../../../../components/ui/product-caroseu'
-import { Stream } from '@cloudflare/stream-react'
-import { Play, Hash } from 'lucide-react'
+import { Hash } from 'lucide-react'
 import { getHashtagById, type HashtagItem } from '../../../../../apis/hashtag.api'
 import { Badge } from '../../../../../components/ui/badge'
 
@@ -256,6 +255,22 @@ function ProductGallery() {
   const currentPrice = currentVariant?.finalPrice || 0
   const currentStock = currentVariant?.availableQuantity || 0
 
+  // ✅ Get video data
+  const videoData = useMemo(() => {
+    const productData = getProductData()
+    if (!productData) return null
+
+    const { video, videoId, videoSources } = processProductVideo(productData)
+    if (!video) return null
+
+    return {
+      url: video,
+      videoId,
+      videoSources,
+      thumbnail: productData.productImages?.[0] || undefined
+    }
+  }, [product])
+
   useEffect(() => {
     const productData = getProductData()
     if (productData?.variantGroups && productData.variantGroups.length > 0) {
@@ -283,31 +298,42 @@ function ProductGallery() {
 
   // ✅ Ensure selectedImage is always valid
   useEffect(() => {
-    if (allImages.length > 0 && selectedImage >= allImages.length) {
+    const hasVideo = videoData !== null
+    const totalMediaCount = allImages.length + (hasVideo ? 1 : 0)
+
+    if (totalMediaCount > 0 && selectedImage >= totalMediaCount) {
       setSelectedImage(0)
-    } else if (allImages.length === 0) {
+    } else if (totalMediaCount === 0) {
       setSelectedImage(0)
     }
-  }, [allImages.length, selectedImage])
+  }, [allImages.length, selectedImage, videoData])
 
   // ✅ Auto-switch to first image of selected variant when variant changes
   useEffect(() => {
-    if (allImages.length === 0) {
+    const hasVideo = videoData !== null
+    const totalMediaCount = allImages.length + (hasVideo ? 1 : 0)
+
+    if (totalMediaCount === 0) {
       return
     }
+
+    // When variant changes, always try to switch to variant's first image
     if (currentVariant?.productImages && currentVariant.productImages.length > 0) {
       const firstVariantImage = currentVariant.productImages[0]
       const imageIndex = allImages.findIndex((img) => img === firstVariantImage)
       if (imageIndex !== -1) {
-        setSelectedImage(imageIndex)
-      } else if (selectedImage >= allImages.length) {
-        setSelectedImage(0)
+        // Adjust index: if video exists, images start at index 1
+        setSelectedImage(hasVideo ? imageIndex + 1 : imageIndex)
+        return
       }
-    } else if (selectedImage >= allImages.length) {
-      setSelectedImage(0)
+    }
+
+    // Fallback: if variant has no images or image not found, ensure valid index
+    if (selectedImage >= totalMediaCount) {
+      setSelectedImage(hasVideo ? 1 : 0)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentVariant?.id])
+  }, [currentVariant?.id, videoData])
 
   // Fetch hashtags if product has hashtagIds
   useEffect(() => {
@@ -509,9 +535,10 @@ function ProductGallery() {
       <div id='product-gallery' className='bg-white'>
         <div className='max-w-7xl mx-auto px-6 py-8'>
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 auto-rows-min'>
-            {/* Image Gallery - Product Carousel */}
+            {/* Media Gallery - Product Images and Video */}
             <div ref={productImageRef} className='space-y-3'>
-              {allImages.length > 0 ? (
+              {/* Product Images and Video Carousel */}
+              {allImages.length > 0 || videoData ? (
                 <ProductImageCarousel
                   images={allImages}
                   productName={product.name}
@@ -520,6 +547,7 @@ function ProductGallery() {
                     setSelectedImage(index)
                   }}
                   defaultImage={defaultImageUrl}
+                  video={videoData}
                 />
               ) : (
                 <div className='aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center'>
@@ -530,75 +558,6 @@ function ProductGallery() {
                   />
                 </div>
               )}
-
-              {/* Product Video */}
-              {(() => {
-                const productData = getProductData()
-                if (!productData) return null
-
-                const { video, videoId, videoSources } = processProductVideo(productData)
-
-                if (!video) return null
-
-                return (
-                  <div className='mt-4'>
-                    <div className='flex items-center gap-2 mb-2'>
-                      <Play size={16} className='text-green-600' />
-                      <span className='text-sm font-medium text-gray-700'>Video sản phẩm</span>
-                    </div>
-                    <div className='w-full rounded-lg overflow-hidden border border-gray-200 bg-gray-100'>
-                      {/* Use Cloudflare Stream component if video ID is available */}
-                      {videoId ? (
-                        <div className='w-full aspect-video'>
-                          <Stream
-                            src={videoId}
-                            controls
-                            responsive
-                            className='w-full h-full'
-                            preload='metadata'
-                          />
-                        </div>
-                      ) : (
-                        /* Fallback to regular video tag if no video ID */
-                        <video
-                          controls
-                          className='w-full aspect-video'
-                          poster={productData.productImages?.[0] || undefined}
-                          preload='metadata'
-                          playsInline
-                        >
-                          {/* Priority: Preview (for compatibility) > HLS > DASH > Fallback > Direct URL */}
-                          {/* Preview URL first - works on all browsers, including those without HLS/DASH support */}
-                          {videoSources?.preview && (
-                            <source src={videoSources.preview} type='video/mp4' />
-                          )}
-                          {/* HLS - supported by Safari, iOS, and some Android browsers */}
-                          {videoSources?.hls && (
-                            <source src={videoSources.hls} type='application/vnd.apple.mpegurl' />
-                          )}
-                          {/* DASH - supported by Chrome, Firefox, Edge (with proper codec support) */}
-                          {videoSources?.dash && (
-                            <source src={videoSources.dash} type='application/dash+xml' />
-                          )}
-                          {/* Fallback URL */}
-                          {videoSources?.fallback && (
-                            <source src={videoSources.fallback} type='video/mp4' />
-                          )}
-                          {/* Fallback to direct video URL if no sources or if videoSources is empty */}
-                          {(!videoSources ||
-                            (!videoSources.hls &&
-                              !videoSources.dash &&
-                              !videoSources.preview &&
-                              !videoSources.fallback)) && (
-                              <source src={video} type='video/mp4' />
-                            )}
-                          Trình duyệt của bạn không hỗ trợ video.
-                        </video>
-                      )}
-                    </div>
-                  </div>
-                )
-              })()}
             </div>
 
             {/* Product Information */}

@@ -23,7 +23,8 @@ import { confirmOrderReceived, getOrderDetail, refundOrder } from '../../../../.
 import { purchaseOrder } from '../../../../../apis/transaction.api'
 import { formApi } from '../../../../../apis/form.api'
 import { getRequestWalletMoney } from '../../../../../apis/requestWalletMoney.api'
-import { path } from '../../../../../constants/path'
+import { addToCart } from '../../../../../apis/cart.api'
+import { getComboById } from '../../../../../apis/combo.api'
 import type { Order as APIOrder, OrderStatus } from '../../../../../types/orderType'
 import type { RequestWalletMoney } from '../../../../../types/requestWalletMoneyType'
 import { toast } from '../../../../../utils/toast'
@@ -429,6 +430,8 @@ export default function OrdersContent({
   const [showRefundInfoModal, setShowRefundInfoModal] = useState(false)
   const [refundInfo, setRefundInfo] = useState<RequestWalletMoney | null>(null)
   const [loadingRefundInfo, setLoadingRefundInfo] = useState(false)
+  const [showOutOfStockDialog, setShowOutOfStockDialog] = useState(false)
+  const [addingToCartOrderId, setAddingToCartOrderId] = useState<string>('')
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -997,15 +1000,155 @@ export default function OrdersContent({
     }
   }
 
-  const handleBuyAgain = (order: Order) => {
-    const firstProduct = order.products[0]
+  const handleBuyAgain = async (order: Order) => {
+    if (!user?.userId) {
+      toast.error('Vui lòng đăng nhập để mua lại sản phẩm')
+      return
+    }
 
-    if (firstProduct?.productInventoryId) {
-      const navigationPath = path.productDetail.replace(':id', firstProduct.productInventoryId)
+    if (!order.products || order.products.length === 0) {
+      toast.error('Đơn hàng không có sản phẩm nào để mua lại.')
+      return
+    }
 
-      navigate(navigationPath)
-    } else {
-      toast.error('Không thể tìm thấy thông tin sản phẩm để mua lại.')
+    try {
+      setAddingToCartOrderId(order.id)
+
+      // Lấy thông tin đơn hàng gốc từ API để có đầy đủ thông tin
+      const apiOrder = await getOrderDetail(order.id)
+      
+      // Tạo danh sách items để thêm vào giỏ hàng
+      const itemsToAdd: Array<{
+        productVariantId?: string
+        comboId?: string
+        quantity: number
+      }> = []
+
+      // Xử lý sản phẩm thường (orderItems)
+      if (apiOrder?.orderItems && Array.isArray(apiOrder.orderItems)) {
+        apiOrder.orderItems.forEach((item: any) => {
+          if (item?.productVariantId && item?.quantity) {
+            itemsToAdd.push({
+              productVariantId: item.productVariantId,
+              quantity: item.quantity
+            })
+          }
+        })
+      }
+
+      // Xử lý combo items (orderItemsWithCombo)
+      // Nhóm combo items theo comboId để tránh thêm trùng và cộng dồn quantity
+      const comboMap = new Map<string, { comboId: string; quantity: number; items: any[] }>()
+      
+      if (apiOrder?.orderItemsWithCombo && Array.isArray(apiOrder.orderItemsWithCombo)) {
+        apiOrder.orderItemsWithCombo.forEach((item: any) => {
+          if (item?.comboId && item?.quantity) {
+            // Nếu combo đã có trong map, cộng dồn quantity và lưu items
+            const existing = comboMap.get(item.comboId)
+            if (existing) {
+              existing.quantity += item.quantity
+              existing.items.push(item)
+            } else {
+              comboMap.set(item.comboId, {
+                comboId: item.comboId,
+                quantity: item.quantity,
+                items: [item]
+              })
+            }
+          } else if (item?.productVariantId && item?.quantity) {
+            // Nếu không có comboId nhưng có productVariantId, thêm như sản phẩm lẻ
+            // (trường hợp combo đã bị xóa nhưng vẫn có thông tin sản phẩm)
+            itemsToAdd.push({
+              productVariantId: item.productVariantId,
+              quantity: item.quantity
+            })
+          }
+        })
+      }
+
+      // Thêm các combo vào danh sách
+      // Với combo, cần lấy thông tin combo từ API để map tất cả các comboItems
+      for (const combo of comboMap.values()) {
+        let comboProcessed = false
+        
+        try {
+          // Lấy thông tin combo từ API
+          const comboResponse = await getComboById(combo.comboId)
+          const comboData = comboResponse?.data?.data ?? comboResponse?.data
+          const comboItems = comboData?.comboItems
+
+          if (Array.isArray(comboItems) && comboItems.length > 0) {
+            // Map tất cả các comboItems thành items với cả productVariantId và comboId
+            // Nhân quantity của combo với quantity của mỗi comboItem
+            const comboItemsToAdd = comboItems.map((comboItem: { productVariantId: string; quantity: number }) => ({
+              productVariantId: comboItem.productVariantId,
+              comboId: combo.comboId,
+              quantity: comboItem.quantity * combo.quantity
+            }))
+            
+            itemsToAdd.push(...comboItemsToAdd)
+            comboProcessed = true
+          }
+        } catch (error: any) {
+          console.error(`Error fetching combo ${combo.comboId}:`, error)
+          console.log(`Combo ${combo.comboId} không tồn tại hoặc đã bị xóa. Sử dụng fallback.`)
+        }
+
+        // Fallback: Nếu không lấy được thông tin combo từ API, 
+        // thêm tất cả các sản phẩm từ orderItemsWithCombo của combo này
+        if (!comboProcessed && combo.items && combo.items.length > 0) {
+          // Nhóm các items theo productVariantId và cộng dồn quantity
+          const productMap = new Map<string, number>()
+          
+          combo.items.forEach((item: any) => {
+            if (item?.productVariantId) {
+              const existingQty = productMap.get(item.productVariantId) || 0
+              productMap.set(item.productVariantId, existingQty + (item.quantity || 0))
+            }
+          })
+
+          // Thêm các sản phẩm vào danh sách
+          productMap.forEach((quantity, productVariantId) => {
+            itemsToAdd.push({
+              productVariantId: productVariantId,
+              comboId: combo.comboId, // Vẫn giữ comboId để backend biết đây là combo
+              quantity: quantity
+            })
+          })
+        }
+      }
+
+      if (itemsToAdd.length === 0) {
+        toast.error('Không thể tìm thấy thông tin sản phẩm để mua lại.')
+        return
+      }
+
+      // Thêm vào giỏ hàng
+      await addToCart(user.userId, itemsToAdd)
+      toast.success('Đã thêm sản phẩm vào giỏ hàng!')
+      
+      // Chuyển đến trang giỏ hàng
+      navigate('/cart')
+    } catch (error: any) {
+      console.error('Error adding products to cart:', error)
+      
+      // Kiểm tra nếu lỗi liên quan đến hết hàng
+      const errorMessage = error?.response?.data?.message || error?.message || ''
+      const isOutOfStockError = 
+        errorMessage.toLowerCase().includes('hết hàng') ||
+        errorMessage.toLowerCase().includes('out of stock') ||
+        errorMessage.toLowerCase().includes('không còn bán') ||
+        errorMessage.toLowerCase().includes('bán hết') ||
+        error?.response?.status === 400 ||
+        error?.response?.status === 404
+
+      if (isOutOfStockError) {
+        setShowOutOfStockDialog(true)
+      } else {
+        toast.error(errorMessage || 'Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.')
+      }
+    } finally {
+      setAddingToCartOrderId('')
     }
   }
 
@@ -1299,9 +1442,17 @@ export default function OrdersContent({
                       variant='outline'
                       size='sm'
                       onClick={() => handleBuyAgain(order)}
-                      className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                      disabled={addingToCartOrderId === order.id}
+                      className='text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50'
                     >
-                      Mua lại
+                      {addingToCartOrderId === order.id ? (
+                        <>
+                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2 inline-block'></div>
+                          Đang thêm...
+                        </>
+                      ) : (
+                        'Mua lại'
+                      )}
                     </Button>
                   )}
               </div>
@@ -1484,6 +1635,23 @@ export default function OrdersContent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Out of Stock Dialog */}
+      <AlertDialog open={showOutOfStockDialog} onOpenChange={setShowOutOfStockDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Không thể mua lại</AlertDialogTitle>
+            <AlertDialogDescription>
+              Xin lỗi, các sản phẩm của đơn hàng đã không còn bán/bán hết. Nên không thể mua lại.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowOutOfStockDialog(false)}>
+              Đã hiểu
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
