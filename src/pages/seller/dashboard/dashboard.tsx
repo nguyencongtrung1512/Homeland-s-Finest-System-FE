@@ -105,11 +105,15 @@ function Dashboard() {
       Confirmed: 'Đã xác nhận',
       Delivered: 'Đã giao',
       Cancelled: 'Đã hủy',
+      Cancel: 'Đã hủy',
       Picking: 'Đang lấy hàng',
+      Picked: 'Đã lấy hàng',
+      ReadyToPick: 'Sẵn sàng lấy hàng',
       Transporting: 'Đang vận chuyển',
+      Paid: 'Đã thanh toán',
       NotYet: 'Chưa xử lý'
     }
-    return statusMap[status] || status
+    return statusMap[status] || 'Chưa xác định'
   }
 
   const getOrderStatusColor = (status: string): string => {
@@ -118,8 +122,12 @@ function Dashboard() {
       Confirmed: 'bg-blue-100 text-blue-800',
       Delivered: 'bg-green-100 text-green-800',
       Cancelled: 'bg-red-100 text-red-800',
+      Cancel: 'bg-red-100 text-red-800',
       Picking: 'bg-purple-100 text-purple-800',
+      Picked: 'bg-purple-100 text-purple-800',
+      ReadyToPick: 'bg-purple-100 text-purple-800',
       Transporting: 'bg-indigo-100 text-indigo-800',
+      Paid: 'bg-green-100 text-green-800',
       NotYet: 'bg-gray-100 text-gray-800'
     }
     return colorMap[status] || 'bg-gray-100 text-gray-800'
@@ -185,11 +193,11 @@ function Dashboard() {
 
   // Helper functions
   const formatCurrency = (amount: number) => {
-    if (!amount && amount !== 0) return '0 VNĐ'
+    if (!amount && amount !== 0) return '0 đ'
     if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(1)}M VNĐ`
+      return `${(amount / 1000000).toFixed(1)} tr đ`
     }
-    return `${(amount / 1000).toFixed(0)}k VNĐ`
+    return `${(amount / 1000).toFixed(0)} nghìn đ`
   }
 
   const formatDate = (dateString: string) => {
@@ -216,7 +224,7 @@ function Dashboard() {
     ? topProducts.map((product, index) => {
       const maxRevenue = topProducts[0]?.totalSold || 1
       return {
-        name: product.productName || 'N/A',
+        name: product.productName || 'Không có',
         revenue: product.totalSold || 0,
         percentage: index === 0 ? 100 : ((product.totalSold || 0) / maxRevenue) * 100
       }
@@ -523,7 +531,7 @@ function Dashboard() {
                         <div
                           className='w-full bg-green-500 rounded-t hover:bg-green-600 transition-colors cursor-pointer'
                           style={{ height: `${height}%` }}
-                          title={`${item.month || 'N/A'}: ${formatCurrency(item.revenue || 0)}`}
+                          title={`${item.month || 'Không có'}: ${formatCurrency(item.revenue || 0)}`}
                         ></div>
                       </div>
                     )
@@ -540,13 +548,13 @@ function Dashboard() {
                 {Array.isArray(revenueByMonth) && revenueByMonth.length > 0 ? (
                   revenueByMonth.map((item, index) => (
                     <span key={index} className='flex-1 text-center'>
-                      {item.month || 'N/A'}
+                      {item.month || 'Không có'}
                     </span>
                   ))
                 ) : null}
               </div>
             </div>
-            <p className='text-xs text-gray-500 mt-2 ml-8'>Doanh thu (VNĐ)</p>
+            <p className='text-xs text-gray-500 mt-2 ml-8'>Doanh thu (đ)</p>
           </div>
 
           {/* Revenue by Payment Method - Placeholder for now */}

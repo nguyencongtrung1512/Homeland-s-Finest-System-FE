@@ -387,7 +387,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                       className={`border-2 rounded-lg overflow-hidden bg-slate-50 ${validationError ? 'border-red-300' : 'border-emerald-200'
                         }`}
                     >
-                      <img src={previewUrl} alt='Preview' className='w-full h-auto max-h-64 object-contain' />
+                      <img src={previewUrl} alt='Xem trước' className='w-full h-auto max-h-64 object-contain' />
                     </div>
                     <button
                       type='button'
@@ -636,7 +636,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                           >
                             <img
                               src={cert.imageUrl || '/placeholder.svg'}
-                              alt='Certificate'
+                              alt='Chứng nhận'
                               className='max-w-full max-h-[700px] w-auto h-auto object-contain cursor-pointer mx-auto'
                               onClick={() => {
                                 // Có thể thêm modal preview ở đây nếu cần

@@ -84,8 +84,8 @@ export function CopyButton({
   className,
   textToCopy = 'https://gemini.google.com/',
   successDuration = 2000,
-  idleText = 'Copy code',
-  copiedText = 'Copied!',
+  idleText = 'Sao chép mã',
+  copiedText = 'Đã sao chép!',
   ...props
 }: CopyButtonProps) {
   const [isCopied, setIsCopied] = useState(false)
@@ -178,8 +178,8 @@ export default function CopyButtonView() {
         `}
       </style>
       <div className='text-center mb-8'>
-        <h1 className='text-3xl font-bold text-white mb-2'>Copy Button</h1>
-        <p className='text-gray-400'>Click the button below to copy the text to your clipboard.</p>
+        <h1 className='text-3xl font-bold text-white mb-2'>Nút Sao Chép</h1>
+        <p className='text-gray-400'>Nhấp vào nút bên dưới để sao chép văn bản vào clipboard của bạn.</p>
       </div>
       <CopyButton />
     </div>

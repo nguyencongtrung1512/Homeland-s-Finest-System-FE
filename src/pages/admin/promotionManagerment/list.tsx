@@ -312,7 +312,7 @@ const AdminPromotionList: React.FC = () => {
   }
 
   const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return 'N/A'
+    if (!dateString) return 'Không có'
     try {
       if (dateString.includes(' ') && dateString.includes('/')) {
         const [timePart, datePart] = dateString.split(' ')
@@ -587,13 +587,13 @@ const AdminPromotionList: React.FC = () => {
                           <span>
                             {promotion.discountType === 'percentage'
                               ? `${promotion.discountValue}%`
-                              : `₫${formatPrice(promotion.discountValue)}`}
+                              : `${formatPrice(promotion.discountValue)} đ`}
                           </span>
                         </div>
                         {promotion.minValueDiscount && (
                           <div className='flex items-center gap-1'>
                             <TrendingUp className='h-4 w-4' />
-                            <span>Tối thiểu ₫{formatPrice(promotion.minValueDiscount)}</span>
+                            <span>Tối thiểu {formatPrice(promotion.minValueDiscount)} đ</span>
                           </div>
                         )}
                       </div>

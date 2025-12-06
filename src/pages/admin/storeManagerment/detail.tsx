@@ -1638,7 +1638,7 @@ function StoreDetailAdmin() {
             </button>
             <img
               src={previewImageUrl}
-              alt='Preview'
+              alt='Xem trước'
               className='max-w-full max-h-full object-contain rounded-lg'
               onClick={(e) => e.stopPropagation()}
               onError={(e) => {

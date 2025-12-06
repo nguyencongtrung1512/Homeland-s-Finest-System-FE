@@ -526,7 +526,7 @@ function CreateMyStoryPage() {
               {imageUrls && imageUrls.length > 0 && (
                 <div className='grid grid-cols-2 gap-2 mt-2'>
                   {imageUrls.map((url: string, idx: number) => (
-                    <img key={idx} src={url} alt={`Image ${idx + 1}`} className='w-full rounded' />
+                    <img key={idx} src={url} alt={`Hình ảnh ${idx + 1}`} className='w-full rounded' />
                   ))}
                 </div>
               )}

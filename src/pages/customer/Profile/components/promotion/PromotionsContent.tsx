@@ -72,7 +72,7 @@ const PromotionsContent: React.FC<PromotionsContentProps> = ({ promotions, loadi
       case 'percentage':
         return <Percent className='h-5 w-5 text-blue-500' />
       case 'fixed_amount':
-        return <DollarSign className='h-5 w-5 text-green-500' />
+        return null // Giá trị đã có ₫ rồi, không cần icon
       case 'freeship':
         return <Users className='h-5 w-5 text-purple-500' />
       default:

@@ -369,7 +369,7 @@ export default function WalletContent({
       Completed: 'Hoàn thành',
       Cancel: 'Đã hủy'
     }
-    return statusMap[status] || status
+    return statusMap[status] || 'Chưa xác định'
   }
 
   if (loading) {
@@ -1028,7 +1028,7 @@ export default function WalletContent({
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-3 text-sm'>
                       <div>
                         <span className='text-gray-600'>Ngân hàng:</span>
-                        <span className='ml-2 font-semibold text-gray-900'>{request.bankName || 'N/A'}</span>
+                        <span className='ml-2 font-semibold text-gray-900'>{request.bankName || 'Không có'}</span>
                       </div>
                       <div>
                         <span className='text-gray-600'>Số tài khoản:</span>
@@ -1041,7 +1041,7 @@ export default function WalletContent({
                       <div>
                         <span className='text-gray-600'>Ngày tạo:</span>
                         <span className='ml-2 text-gray-900'>
-                          {request.createdAt ? formatDate(request.createdAt) : 'N/A'}
+                          {request.createdAt ? formatDate(request.createdAt) : 'Không có'}
                         </span>
                       </div>
                       {request.processedAt && (

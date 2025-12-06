@@ -54,7 +54,7 @@ const monthLabels = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10'
 
 const chartConfig = {
   revenue: {
-    label: 'Doanh thu (VNĐ)',
+    label: 'Doanh thu (đ)',
     color: '#F97316'
   }
 }
@@ -100,7 +100,7 @@ function AdminDashboard() {
           sellerInfo: store.sellerInfo || {
             reportCount: 0,
             userInfo: {
-              email: store.sellerEmail || 'N/A'
+              email: store.sellerEmail || 'Không có'
             }
           }
         })) as StoreResponse[]
@@ -317,11 +317,11 @@ function AdminDashboard() {
               <div>
                 <p className='text-sm font-medium text-gray-600'>Doanh thu</p>
                 <p className='text-3xl font-bold text-gray-900'>
-                  {dashboardData?.summary?.totalRevenue ? formatCurrency(dashboardData.summary.totalRevenue) : '0 VNĐ'}
+                  {dashboardData?.summary?.totalRevenue ? formatCurrency(dashboardData.summary.totalRevenue) : '0 đ'}
                 </p>
               </div>
               <div className='p-3 bg-green-100 rounded-full'>
-                <DollarSign className='w-6 h-6 text-green-600' />
+                <span className='text-green-600 font-bold text-xl'>đ</span>
               </div>
             </div>
           </CardContent>
@@ -410,7 +410,7 @@ function AdminDashboard() {
 
                   <div className='p-4 bg-green-50 rounded-lg border border-green-100'>
                     <div className='flex items-center gap-2 mb-2'>
-                      <DollarSign className='w-5 h-5 text-green-600' />
+                      <span className='text-green-600 font-bold'>đ</span>
                       <p className='text-sm font-medium text-gray-600'>Tổng giảm giá</p>
                     </div>
                     <p className='text-xl font-bold text-green-600'>
@@ -529,7 +529,7 @@ function AdminDashboard() {
                         <p className='text-sm text-gray-600'>
                           {store.province} • {store.district}
                         </p>
-                        <p className='text-xs text-gray-500'>{store.sellerInfo?.userInfo?.email || 'N/A'}</p>
+                        <p className='text-xs text-gray-500'>{store.sellerInfo?.userInfo?.email || 'Không có'}</p>
                       </div>
                     </div>
                     <div className='flex items-center gap-3'>

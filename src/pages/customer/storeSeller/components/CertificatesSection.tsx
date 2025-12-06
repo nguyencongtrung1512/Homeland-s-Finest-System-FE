@@ -16,7 +16,7 @@ interface CertificatesSectionProps {
 const CertificatesSection: FC<CertificatesSectionProps> = ({ certificates }) => {
   return (
     <div className='bg-white rounded-lg p-6 shadow-sm'>
-      <h3 className='text-lg font-semibold mb-4 text-gray-900'>Giấy chứng nhận</h3>
+      <h3 className='text-lg font-semibold mb-4 text-gray-900'>Giấy Chứng Nhận</h3>
 
       {certificates.length > 0 ? (
         <div className='flex flex-col gap-6 items-center justify-center'>

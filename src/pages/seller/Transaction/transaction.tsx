@@ -40,7 +40,6 @@ import {
   Edit,
   Wallet,
   AlertCircle,
-  DollarSign,
   Receipt,
   Info,
   RefreshCw,
@@ -500,13 +499,13 @@ function Transaction() {
 
     if (amount > walletDataDisplay.availableBalance) {
       toast.error(
-        `Số tiền rút không được vượt quá số dư khả dụng (${walletDataDisplay.availableBalance.toLocaleString()} ₫)`
+        `Số tiền rút không được vượt quá số dư khả dụng (${walletDataDisplay.availableBalance.toLocaleString()} đ)`
       )
       return
     }
 
     if (amount < minAmount) {
-      toast.error(`Số tiền rút tối thiểu là ${minAmount.toLocaleString()} ₫`)
+      toast.error(`Số tiền rút tối thiểu là ${minAmount.toLocaleString()} đ`)
       return
     }
 
@@ -526,14 +525,14 @@ function Transaction() {
 
       if (isCustomer) {
         toast.success(
-          `Rút tiền ${amount.toLocaleString()} ₫ thành công! Số tiền đã được chuyển vào tài khoản ngân hàng của bạn.`
+          `Rút tiền ${amount.toLocaleString()} đ thành công! Số tiền đã được chuyển vào tài khoản ngân hàng của bạn.`
         )
       } else if (isSeller) {
         toast.success(
-          `Yêu cầu rút tiền ${amount.toLocaleString()} ₫ đã được gửi thành công! Yêu cầu của bạn đang chờ được duyệt.`
+          `Yêu cầu rút tiền ${amount.toLocaleString()} đ đã được gửi thành công! Yêu cầu của bạn đang chờ được duyệt.`
         )
       } else {
-        toast.success(`Yêu cầu rút tiền ${amount.toLocaleString()} ₫ đã được gửi thành công!`)
+        toast.success(`Yêu cầu rút tiền ${amount.toLocaleString()} đ đã được gửi thành công!`)
       }
 
       setShowWithdrawModal(false)
@@ -570,14 +569,14 @@ function Transaction() {
     const minAmount = 10000
 
     if (amount < minAmount) {
-      toast.error(`Số tiền nạp tối thiểu là ${minAmount.toLocaleString()} ₫`)
+      toast.error(`Số tiền nạp tối thiểu là ${minAmount.toLocaleString()} đ`)
       return
     }
 
     setSubmittingDeposit(true)
     try {
       const response = await depositMoney(amount)
-      toast.success(response.message || `Nạp tiền thành công ${amount.toLocaleString()} ₫`)
+      toast.success(response.message || `Nạp tiền thành công ${amount.toLocaleString()} đ`)
       setShowDepositModal(false)
       setDepositAmount('')
       // Refresh wallet balance after deposit
@@ -616,20 +615,20 @@ function Transaction() {
     const minAmount = 1000
 
     if (amount < minAmount) {
-      toast.error(`Số tiền trả nợ tối thiểu là ${minAmount.toLocaleString()} ₫`)
+      toast.error(`Số tiền trả nợ tối thiểu là ${minAmount.toLocaleString()} đ`)
       return
     }
 
     if (amount > walletDataDisplay.debtBalance) {
       toast.error(
-        `Số tiền trả không được vượt quá số nợ hiện tại (${walletDataDisplay.debtBalance.toLocaleString()} ₫)`
+        `Số tiền trả không được vượt quá số nợ hiện tại (${walletDataDisplay.debtBalance.toLocaleString()} đ)`
       )
       return
     }
 
     if (amount > walletDataDisplay.availableBalance) {
       toast.error(
-        `Số tiền trả không được vượt quá số dư khả dụng (${walletDataDisplay.availableBalance.toLocaleString()} ₫)`
+        `Số tiền trả không được vượt quá số dư khả dụng (${walletDataDisplay.availableBalance.toLocaleString()} đ)`
       )
       return
     }
@@ -637,7 +636,7 @@ function Transaction() {
     setSubmittingPayDebt(true)
     try {
       const response = await payDebt(amount)
-      toast.success(response.message || `Trả nợ thành công ${amount.toLocaleString()} ₫`)
+      toast.success(response.message || `Trả nợ thành công ${amount.toLocaleString()} đ`)
       setShowPayDebtModal(false)
       setPayDebtAmount('')
       // Refresh wallet balance after paying debt
@@ -721,7 +720,7 @@ function Transaction() {
                         transition={{ delay: 0.2, duration: 0.3 }}
                         key={walletDataDisplay.availableBalance}
                       >
-                        {walletDataDisplay.availableBalance.toLocaleString()} ₫
+                        {walletDataDisplay.availableBalance.toLocaleString()} đ
                       </motion.p>
                       <p className='text-xs text-gray-500 mt-2'>Có thể rút ngay bây giờ</p>
                     </div>
@@ -761,7 +760,7 @@ function Transaction() {
                         transition={{ delay: 0.3, duration: 0.3 }}
                         key={walletDataDisplay.pendingBalance}
                       >
-                        {walletDataDisplay.pendingBalance.toLocaleString()} ₫
+                        {walletDataDisplay.pendingBalance.toLocaleString()} đ
                       </motion.p>
                       <p className='text-xs text-gray-500 mt-2'>Từ Banking chưa giao hàng thành công</p>
                     </div>
@@ -801,7 +800,7 @@ function Transaction() {
                         transition={{ delay: 0.4, duration: 0.3 }}
                         key={walletDataDisplay.debtBalance}
                       >
-                        {walletDataDisplay.debtBalance.toLocaleString()} ₫
+                        {walletDataDisplay.debtBalance.toLocaleString()} đ
                       </motion.p>
                       <p className='text-xs text-gray-500 mt-2'>Hoa hồng COD chưa trả</p>
                     </div>
@@ -837,7 +836,7 @@ function Transaction() {
                   className='w-full bg-green-600 hover:bg-green-700 text-white h-12 sm:h-14 text-sm sm:text-base shadow-md hover:shadow-lg transition-all'
                   disabled={walletDataDisplay.availableBalance <= 0}
                 >
-                  <DollarSign className='w-5 h-5 mr-2' />
+                  <span className='text-white font-bold mr-2'>đ</span>
                   Rút tiền
                 </Button>
               </motion.div>
@@ -887,7 +886,7 @@ function Transaction() {
                         transition={{ delay: 0.2, duration: 0.3 }}
                         key={walletDataDisplay.grossRevenue}
                       >
-                        {walletDataDisplay.grossRevenue.toLocaleString()} ₫
+                        {walletDataDisplay.grossRevenue.toLocaleString()} đ
                       </motion.p>
                       <p className='text-xs text-gray-500 mt-2'>Tổng bán được (chưa trừ gì)</p>
                     </div>
@@ -927,7 +926,7 @@ function Transaction() {
                         transition={{ delay: 0.3, duration: 0.3 }}
                         key={walletDataDisplay.totalCommissionPaid}
                       >
-                        {walletDataDisplay.totalCommissionPaid.toLocaleString()} ₫
+                        {walletDataDisplay.totalCommissionPaid.toLocaleString()} đ
                       </motion.p>
                       <p className='text-xs text-gray-500 mt-2'>Tổng hoa hồng đã thanh toán</p>
                     </div>
@@ -958,7 +957,7 @@ function Transaction() {
                           transition={{ delay: 0.4, duration: 0.3 }}
                           key={walletDataDisplay.totalWithdrawn}
                         >
-                          {walletDataDisplay.totalWithdrawn.toLocaleString()} ₫
+                          {walletDataDisplay.totalWithdrawn.toLocaleString()} đ
                         </motion.p>
                         <p className='text-xs text-gray-500 mt-2'>Tổng số tiền đã rút</p>
                       </div>
@@ -1005,7 +1004,7 @@ function Transaction() {
                         transition={{ delay: 0.2, duration: 0.3 }}
                         key={walletDataDisplay.totalSellerDiscount}
                       >
-                        {(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} ₫
+                        {(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} đ
                       </motion.p>
                       <p className='text-xs text-gray-500 mt-2'>Tổng giảm giá bạn đã chi trả cho khách hàng</p>
                     </div>
@@ -1045,7 +1044,7 @@ function Transaction() {
                         transition={{ delay: 0.3, duration: 0.3 }}
                         key={walletDataDisplay.totalSystemDiscount}
                       >
-                        {(walletDataDisplay.totalSystemDiscount || 0).toLocaleString()} ₫
+                        {(walletDataDisplay.totalSystemDiscount || 0).toLocaleString()} đ
                       </motion.p>
                       <p className='text-xs text-gray-500 mt-2'>Tổng giảm giá hệ thống đã hỗ trợ cho khách hàng</p>
                     </div>
@@ -1091,11 +1090,11 @@ function Transaction() {
                         transition={{ delay: 0.2, duration: 0.3 }}
                         key={walletDataDisplay.totalShip + walletDataDisplay.totalInsurance}
                       >
-                        {(walletDataDisplay.totalShip + walletDataDisplay.totalInsurance).toLocaleString()} ₫
+                        {(walletDataDisplay.totalShip + walletDataDisplay.totalInsurance).toLocaleString()} đ
                       </motion.p>
                       <div className='mt-2 space-y-1 text-xs text-gray-500'>
-                        <p>• Tổng phí ship: {walletDataDisplay.totalShip.toLocaleString()} ₫</p>
-                        <p>• Tổng bảo hiểm: {walletDataDisplay.totalInsurance.toLocaleString()} ₫</p>
+                        <p>• Tổng phí ship: {walletDataDisplay.totalShip.toLocaleString()} đ</p>
+                        <p>• Tổng bảo hiểm: {walletDataDisplay.totalInsurance.toLocaleString()} đ</p>
                       </div>
                       <p className='text-xs text-gray-500 mt-2'>
                         Tổng chi phí vận chuyển và bảo hiểm từ tất cả các đơn hàng
@@ -1152,11 +1151,11 @@ function Transaction() {
                         transition={{ delay: 0.2, duration: 0.3 }}
                         key={walletDataDisplay.netRevenue}
                       >
-                        {walletDataDisplay.netRevenue.toLocaleString()} ₫
+                        {walletDataDisplay.netRevenue.toLocaleString()} đ
                       </motion.p>
                     </div>
                     <div className='w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0'>
-                      <DollarSign className='w-5 h-5 text-blue-600' />
+                      <span className='text-blue-600 font-bold text-lg'>đ</span>
                     </div>
                   </div>
                 </CardContent>
@@ -1254,10 +1253,10 @@ function Transaction() {
                                     : transaction.paymentMethod || '-'}
                             </td>
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
-                              {transaction.amount.toLocaleString()} ₫
+                              {transaction.amount.toLocaleString()} đ
                             </td>
                             <td className='py-4 px-4 text-gray-700 text-sm'>
-                              {transaction.balanceAfter.toLocaleString()} ₫
+                              {transaction.balanceAfter.toLocaleString()} đ
                             </td>
                             <td className='py-4 px-4'>{getStatusBadge(transaction.status || 'Completed')}</td>
                           </motion.tr>
@@ -1323,7 +1322,7 @@ function Transaction() {
                                 <div>
                                   <p className='text-xs text-gray-500'>Số tiền</p>
                                   <p className='text-sm font-medium text-gray-900'>
-                                    {transaction.amount.toLocaleString()} ₫
+                                    {transaction.amount.toLocaleString()} đ
                                   </p>
                                 </div>
                               </div>
@@ -1331,7 +1330,7 @@ function Transaction() {
                                 <div>
                                   <p className='text-xs text-gray-500'>Số dư sau</p>
                                   <p className='text-sm font-medium text-green-600'>
-                                    {transaction.balanceAfter.toLocaleString()} ₫
+                                    {transaction.balanceAfter.toLocaleString()} đ
                                   </p>
                                 </div>
                                 <div>
@@ -1412,7 +1411,7 @@ function Transaction() {
                               {request.type === 'Withdrawal' ? 'Rút tiền' : 'Hoàn tiền'}
                             </td>
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
-                              {request.amount.toLocaleString()} ₫
+                              {request.amount.toLocaleString()} đ
                             </td>
                             <td className='py-4 px-4 text-gray-700 text-sm'>{request.bankName || '-'}</td>
                             <td className='py-4 px-4 text-gray-700 text-sm'>
@@ -1459,7 +1458,7 @@ function Transaction() {
                                 <div>
                                   <p className='text-xs text-gray-500'>Số tiền</p>
                                   <p className='text-sm font-medium text-gray-900'>
-                                    {request.amount.toLocaleString()} ₫
+                                    {request.amount.toLocaleString()} đ
                                   </p>
                                 </div>
                               </div>
@@ -1579,30 +1578,30 @@ function Transaction() {
                     <div className='flex flex-col gap-1 text-xs'>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Doanh thu ròng:</span>
-                        <span className='text-gray-600'>{walletDataDisplay.netRevenue.toLocaleString()} ₫</span>
+                        <span className='text-gray-600'>{walletDataDisplay.netRevenue.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Cộng chiết khấu của bạn:</span>
                         <span className='text-green-600'>
-                          +{(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} ₫
+                          +{(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} đ
                         </span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Cộng tổng hoa hồng:</span>
-                        <span className='text-green-600'>+{walletDataDisplay.totalCommission.toLocaleString()} ₫</span>
+                        <span className='text-green-600'>+{walletDataDisplay.totalCommission.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Cộng tổng phí ship:</span>
-                        <span className='text-green-600'>+{walletDataDisplay.totalShip.toLocaleString()} ₫</span>
+                        <span className='text-green-600'>+{walletDataDisplay.totalShip.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Cộng tổng bảo hiểm:</span>
-                        <span className='text-green-600'>+{walletDataDisplay.totalInsurance.toLocaleString()} ₫</span>
+                        <span className='text-green-600'>+{walletDataDisplay.totalInsurance.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2 pt-1 border-t border-green-200'>
                         <span className='font-medium text-gray-700'>Doanh thu gộp:</span>
                         <span className='font-bold text-green-600'>
-                          {walletDataDisplay.grossRevenue.toLocaleString()} ₫
+                          {walletDataDisplay.grossRevenue.toLocaleString()} đ
                         </span>
                       </div>
                     </div>
@@ -1645,7 +1644,7 @@ function Transaction() {
                   <div className='mt-3 pt-3 border-t border-orange-200'>
                     <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
                     <span className='font-bold text-orange-600'>
-                      {(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} ₫
+                      {(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} đ
                     </span>
                   </div>
                 </div>
@@ -1690,7 +1689,7 @@ function Transaction() {
                   <div className='mt-3 pt-3 border-t border-cyan-200'>
                     <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
                     <span className='font-bold text-cyan-600'>
-                      {(walletDataDisplay.totalSystemDiscount || 0).toLocaleString()} ₫
+                      {(walletDataDisplay.totalSystemDiscount || 0).toLocaleString()} đ
                     </span>
                   </div>
                 </div>
@@ -1701,7 +1700,7 @@ function Transaction() {
             {selectedFormula === 'netRevenue' && (
               <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
                 <h3 className='font-semibold text-blue-900 mb-3 flex items-center gap-2'>
-                  <DollarSign className='w-5 h-5' />
+                  <span className='text-blue-900 font-bold'>đ</span>
                   Doanh thu ròng
                 </h3>
                 <div className='space-y-2 text-sm'>
@@ -1728,30 +1727,30 @@ function Transaction() {
                     <div className='flex flex-col gap-1 text-xs'>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Doanh thu gộp:</span>
-                        <span className='text-gray-600'>{walletDataDisplay.grossRevenue.toLocaleString()} ₫</span>
+                        <span className='text-gray-600'>{walletDataDisplay.grossRevenue.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Trừ chiết khấu của bạn:</span>
                         <span className='text-red-600'>
-                          -{(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} ₫
+                          -{(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} đ
                         </span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Trừ tổng hoa hồng:</span>
-                        <span className='text-red-600'>-{walletDataDisplay.totalCommission.toLocaleString()} ₫</span>
+                        <span className='text-red-600'>-{walletDataDisplay.totalCommission.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Trừ tổng phí ship:</span>
-                        <span className='text-red-600'>-{walletDataDisplay.totalShip.toLocaleString()} ₫</span>
+                        <span className='text-red-600'>-{walletDataDisplay.totalShip.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Trừ tổng bảo hiểm:</span>
-                        <span className='text-red-600'>-{walletDataDisplay.totalInsurance.toLocaleString()} ₫</span>
+                        <span className='text-red-600'>-{walletDataDisplay.totalInsurance.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2 pt-1 border-t border-blue-200'>
                         <span className='font-medium text-gray-700'>Doanh thu ròng:</span>
                         <span className='font-bold text-blue-600'>
-                          {walletDataDisplay.netRevenue.toLocaleString()} ₫
+                          {walletDataDisplay.netRevenue.toLocaleString()} đ
                         </span>
                       </div>
                     </div>
@@ -1778,7 +1777,7 @@ function Transaction() {
                   <div className='mt-3 pt-3 border-t border-purple-200'>
                     <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
                     <span className='font-bold text-purple-600'>
-                      {walletDataDisplay.totalCommissionPaid.toLocaleString()} ₫
+                      {walletDataDisplay.totalCommissionPaid.toLocaleString()} đ
                     </span>
                   </div>
                 </div>
@@ -1808,7 +1807,7 @@ function Transaction() {
                   </div>
                   <div className='mt-3 pt-3 border-t border-red-200'>
                     <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
-                    <span className='font-bold text-red-600'>{walletDataDisplay.debtBalance.toLocaleString()} ₫</span>
+                    <span className='font-bold text-red-600'>{walletDataDisplay.debtBalance.toLocaleString()} đ</span>
                   </div>
                 </div>
               </div>
@@ -1834,7 +1833,7 @@ function Transaction() {
                   <div className='mt-3 pt-3 border-t border-green-200'>
                     <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
                     <span className='font-bold text-green-600'>
-                      {walletDataDisplay.availableBalance.toLocaleString()} ₫
+                      {walletDataDisplay.availableBalance.toLocaleString()} đ
                     </span>
                   </div>
                 </div>
@@ -1863,7 +1862,7 @@ function Transaction() {
                   <div className='mt-3 pt-3 border-t border-blue-200'>
                     <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
                     <span className='font-bold text-blue-600'>
-                      {walletDataDisplay.pendingBalance.toLocaleString()} ₫
+                      {walletDataDisplay.pendingBalance.toLocaleString()} đ
                     </span>
                   </div>
                 </div>
@@ -1892,16 +1891,16 @@ function Transaction() {
                     <div className='flex flex-col gap-1 text-xs'>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Tổng phí ship:</span>
-                        <span className='text-gray-600'>{walletDataDisplay.totalShip.toLocaleString()} ₫</span>
+                        <span className='text-gray-600'>{walletDataDisplay.totalShip.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Tổng bảo hiểm:</span>
-                        <span className='text-gray-600'>{walletDataDisplay.totalInsurance.toLocaleString()} ₫</span>
+                        <span className='text-gray-600'>{walletDataDisplay.totalInsurance.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2 pt-1 border-t border-indigo-200'>
                         <span className='font-medium text-gray-700'>Tổng phí ship + Bảo hiểm:</span>
                         <span className='font-bold text-indigo-600'>
-                          {(walletDataDisplay.totalShip + walletDataDisplay.totalInsurance).toLocaleString()} ₫
+                          {(walletDataDisplay.totalShip + walletDataDisplay.totalInsurance).toLocaleString()} đ
                         </span>
                       </div>
                     </div>
@@ -1936,7 +1935,7 @@ function Transaction() {
                 {/* Net Revenue Formula */}
                 <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
                   <h3 className='font-semibold text-blue-900 mb-3 flex items-center gap-2'>
-                    <DollarSign className='w-5 h-5' />
+                    <span className='text-blue-900 font-bold'>đ</span>
                     Doanh thu ròng
                   </h3>
                   <div className='space-y-2 text-sm'>
@@ -2197,13 +2196,13 @@ function Transaction() {
                   <div className='flex justify-between items-center'>
                     <span className='text-sm font-medium text-gray-700'>Số dư khả dụng:</span>
                     <span className='text-lg font-bold text-green-600'>
-                      {walletDataDisplay.availableBalance.toLocaleString()} ₫
+                      {walletDataDisplay.availableBalance.toLocaleString()} đ
                     </span>
                   </div>
                 </div>
                 {/* Amount Input */}
                 <div>
-                  <label className='text-sm font-medium text-gray-700 mb-2 block'>Số tiền muốn rút (₫)</label>
+                  <label className='text-sm font-medium text-gray-700 mb-2 block'>Số tiền muốn rút (đ)</label>
                   <Input
                     type='number'
                     placeholder='Nhập số tiền...'
@@ -2219,8 +2218,8 @@ function Transaction() {
                     max={walletDataDisplay.availableBalance}
                   />
                   <p className='text-xs text-gray-500 mt-1'>
-                    Số tiền tối thiểu: 50,000 ₫ | Số tiền tối đa: {walletDataDisplay.availableBalance.toLocaleString()}{' '}
-                    ₫
+                    Số tiền tối thiểu: 50,000 đ | Số tiền tối đa: {walletDataDisplay.availableBalance.toLocaleString()}{' '}
+                    đ
                   </p>
                 </div>
                 {/* Quick Amount Buttons */}
@@ -2235,7 +2234,7 @@ function Transaction() {
                         className='text-xs'
                         disabled={amount > walletDataDisplay.availableBalance}
                       >
-                        {amount.toLocaleString()} ₫
+                        {amount.toLocaleString()} đ
                       </Button>
                     ))}
                   </div>
@@ -2253,7 +2252,7 @@ function Transaction() {
                     <div className='flex justify-between items-center'>
                       <span className='text-sm font-medium text-gray-700'>Số tiền sẽ rút:</span>
                       <span className='text-xl font-bold text-blue-600'>
-                        {parseFloat(withdrawAmount).toLocaleString()} ₫
+                        {parseFloat(withdrawAmount).toLocaleString()} đ
                       </span>
                     </div>
                   </div>
@@ -2322,14 +2321,14 @@ function Transaction() {
               <div className='flex justify-between items-center'>
                 <span className='text-sm font-medium text-gray-700'>Số dư hiện tại:</span>
                 <span className='text-lg font-bold text-blue-600'>
-                  {walletDataDisplay.availableBalance.toLocaleString()} ₫
+                  {walletDataDisplay.availableBalance.toLocaleString()} đ
                 </span>
               </div>
             </div>
 
             {/* Amount Input */}
             <div>
-              <label className='text-sm font-medium text-gray-700 mb-2 block'>Số tiền muốn nạp (₫)</label>
+              <label className='text-sm font-medium text-gray-700 mb-2 block'>Số tiền muốn nạp (đ)</label>
               <Input
                 type='number'
                 placeholder='Nhập số tiền...'
@@ -2343,7 +2342,7 @@ function Transaction() {
                 className='w-full text-lg'
                 min='10000'
               />
-              <p className='text-xs text-gray-500 mt-1'>Số tiền tối thiểu: 10,000 ₫</p>
+              <p className='text-xs text-gray-500 mt-1'>Số tiền tối thiểu: 10,000 đ</p>
             </div>
 
             {/* Quick Amount Buttons */}
@@ -2357,7 +2356,7 @@ function Transaction() {
                     onClick={() => setDepositAmount(amount.toString())}
                     className='text-xs'
                   >
-                    {amount.toLocaleString()} ₫
+                    {amount.toLocaleString()} đ
                   </Button>
                 ))}
               </div>
@@ -2369,7 +2368,7 @@ function Transaction() {
                     onClick={() => setDepositAmount(amount.toString())}
                     className='text-xs'
                   >
-                    {amount.toLocaleString()} ₫
+                    {amount.toLocaleString()} đ
                   </Button>
                 ))}
               </div>
@@ -2386,14 +2385,14 @@ function Transaction() {
                 <div className='flex justify-between items-center'>
                   <span className='text-sm font-medium text-gray-700'>Số tiền sẽ nạp:</span>
                   <span className='text-xl font-bold text-green-600'>
-                    {parseFloat(depositAmount).toLocaleString()} ₫
+                    {parseFloat(depositAmount).toLocaleString()} đ
                   </span>
                 </div>
                 <div className='mt-2 pt-2 border-t border-green-200'>
                   <div className='flex justify-between items-center text-xs'>
                     <span className='text-gray-600'>Số dư sau khi nạp:</span>
                     <span className='font-semibold text-green-700'>
-                      {(walletDataDisplay.availableBalance + parseFloat(depositAmount)).toLocaleString()} ₫
+                      {(walletDataDisplay.availableBalance + parseFloat(depositAmount)).toLocaleString()} đ
                     </span>
                   </div>
                 </div>
@@ -2461,20 +2460,20 @@ function Transaction() {
               <div className='flex justify-between items-center mb-2'>
                 <span className='text-sm font-medium text-gray-700'>Số nợ hiện tại:</span>
                 <span className='text-lg font-bold text-red-600'>
-                  {walletDataDisplay.debtBalance.toLocaleString()} ₫
+                  {walletDataDisplay.debtBalance.toLocaleString()} đ
                 </span>
               </div>
               <div className='flex justify-between items-center'>
                 <span className='text-sm font-medium text-gray-700'>Số dư khả dụng:</span>
                 <span className='text-sm font-semibold text-green-600'>
-                  {walletDataDisplay.availableBalance.toLocaleString()} ₫
+                  {walletDataDisplay.availableBalance.toLocaleString()} đ
                 </span>
               </div>
             </div>
 
             {/* Amount Input */}
             <div>
-              <label className='text-sm font-medium text-gray-700 mb-2 block'>Số tiền muốn trả (₫)</label>
+              <label className='text-sm font-medium text-gray-700 mb-2 block'>Số tiền muốn trả (đ)</label>
               <Input
                 type='number'
                 placeholder='Nhập số tiền...'
@@ -2490,8 +2489,8 @@ function Transaction() {
                 max={Math.min(walletDataDisplay.debtBalance, walletDataDisplay.availableBalance)}
               />
               <p className='text-xs text-gray-500 mt-1'>
-                Số tiền tối thiểu: 1,000 ₫ | Tối đa:{' '}
-                {Math.min(walletDataDisplay.debtBalance, walletDataDisplay.availableBalance).toLocaleString()} ₫
+                Số tiền tối thiểu: 1,000 đ | Tối đa:{' '}
+                {Math.min(walletDataDisplay.debtBalance, walletDataDisplay.availableBalance).toLocaleString()} đ
               </p>
             </div>
 
@@ -2513,7 +2512,7 @@ function Transaction() {
                       className='text-xs'
                       disabled={amount > walletDataDisplay.availableBalance || amount > walletDataDisplay.debtBalance}
                     >
-                      {amount.toLocaleString()} ₫
+                      {amount.toLocaleString()} đ
                     </Button>
                   ))}
               </div>
@@ -2542,20 +2541,20 @@ function Transaction() {
                 <div className='flex justify-between items-center mb-2'>
                   <span className='text-sm font-medium text-gray-700'>Số tiền sẽ trả:</span>
                   <span className='text-xl font-bold text-orange-600'>
-                    {parseFloat(payDebtAmount).toLocaleString()} ₫
+                    {parseFloat(payDebtAmount).toLocaleString()} đ
                   </span>
                 </div>
                 <div className='space-y-1 pt-2 border-t border-orange-200'>
                   <div className='flex justify-between items-center text-xs'>
                     <span className='text-gray-600'>Số nợ còn lại:</span>
                     <span className='font-semibold text-red-600'>
-                      {(walletDataDisplay.debtBalance - parseFloat(payDebtAmount)).toLocaleString()} ₫
+                      {(walletDataDisplay.debtBalance - parseFloat(payDebtAmount)).toLocaleString()} đ
                     </span>
                   </div>
                   <div className='flex justify-between items-center text-xs'>
                     <span className='text-gray-600'>Số dư sau khi trả:</span>
                     <span className='font-semibold text-green-600'>
-                      {(walletDataDisplay.availableBalance - parseFloat(payDebtAmount)).toLocaleString()} ₫
+                      {(walletDataDisplay.availableBalance - parseFloat(payDebtAmount)).toLocaleString()} đ
                     </span>
                   </div>
                 </div>
@@ -2640,7 +2639,7 @@ function Transaction() {
                 </div>
                 <div>
                   <p className='text-sm font-medium text-gray-700 mb-1'>Số tiền</p>
-                  <p className='text-lg font-bold text-gray-900'>{selectedTransaction.amount.toLocaleString()} ₫</p>
+                  <p className='text-lg font-bold text-gray-900'>{selectedTransaction.amount.toLocaleString()} đ</p>
                 </div>
                 <div>
                   <p className='text-sm font-medium text-gray-700 mb-1'>Phương thức thanh toán</p>
@@ -2656,12 +2655,12 @@ function Transaction() {
                 </div>
                 <div>
                   <p className='text-sm font-medium text-gray-700 mb-1'>Số dư trước</p>
-                  <p className='text-sm text-gray-900'>{selectedTransaction.balanceBefore.toLocaleString()} ₫</p>
+                  <p className='text-sm text-gray-900'>{selectedTransaction.balanceBefore.toLocaleString()} đ</p>
                 </div>
                 <div>
                   <p className='text-sm font-medium text-gray-700 mb-1'>Số dư sau</p>
                   <p className='text-sm font-semibold text-green-600'>
-                    {selectedTransaction.balanceAfter.toLocaleString()} ₫
+                    {selectedTransaction.balanceAfter.toLocaleString()} đ
                   </p>
                 </div>
                 <div>
@@ -2711,7 +2710,7 @@ function Transaction() {
                         <div>
                           <p className='text-xs text-gray-600 mb-1'>Nợ trước</p>
                           <p className='text-sm font-medium text-gray-900'>
-                            {selectedTransaction.debtBefore.toLocaleString()} ₫
+                            {selectedTransaction.debtBefore.toLocaleString()} đ
                           </p>
                         </div>
                       )}
@@ -2719,7 +2718,7 @@ function Transaction() {
                         <div>
                           <p className='text-xs text-gray-600 mb-1'>Nợ sau</p>
                           <p className='text-sm font-medium text-gray-900'>
-                            {selectedTransaction.debtAfter.toLocaleString()} ₫
+                            {selectedTransaction.debtAfter.toLocaleString()} đ
                           </p>
                         </div>
                       )}
@@ -2727,7 +2726,7 @@ function Transaction() {
                         <div>
                           <p className='text-xs text-gray-600 mb-1'>Số tiền đã trả</p>
                           <p className='text-sm font-medium text-green-600'>
-                            {selectedTransaction.debtPaid.toLocaleString()} ₫
+                            {selectedTransaction.debtPaid.toLocaleString()} đ
                           </p>
                         </div>
                       )}
@@ -2751,7 +2750,7 @@ function Transaction() {
                           <div className='flex justify-between items-center'>
                             <span className='text-xs text-gray-600'>Doanh thu gộp:</span>
                             <span className='text-sm font-medium text-gray-900'>
-                              {selectedTransaction.orderGrossRevenue.toLocaleString()} ₫
+                              {selectedTransaction.orderGrossRevenue.toLocaleString()} đ
                             </span>
                           </div>
                         )}
@@ -2760,7 +2759,7 @@ function Transaction() {
                           <div className='flex justify-between items-center'>
                             <span className='text-xs text-gray-600'>Chiết khấu của bạn:</span>
                             <span className='text-sm font-medium text-red-600'>
-                              -{selectedTransaction.totalSellerDiscount.toLocaleString()} ₫
+                              -{selectedTransaction.totalSellerDiscount.toLocaleString()} đ
                             </span>
                           </div>
                         )}
@@ -2769,7 +2768,7 @@ function Transaction() {
                           <div className='flex justify-between items-center'>
                             <span className='text-xs text-gray-600'>Chiết khấu hệ thống:</span>
                             <span className='text-sm font-medium text-gray-500'>
-                              -{selectedTransaction.totalSystemDiscount.toLocaleString()} ₫
+                              -{selectedTransaction.totalSystemDiscount.toLocaleString()} đ
                             </span>
                           </div>
                         )}
@@ -2777,7 +2776,7 @@ function Transaction() {
                         <div className='flex justify-between items-center'>
                           <span className='text-xs text-gray-600'>Phí ship:</span>
                           <span className='text-sm font-medium text-red-600'>
-                            -{selectedTransaction.orderShipFee.toLocaleString()} ₫
+                            -{selectedTransaction.orderShipFee.toLocaleString()} đ
                           </span>
                         </div>
                       )}
@@ -2786,7 +2785,7 @@ function Transaction() {
                           <div className='flex justify-between items-center'>
                             <span className='text-xs text-gray-600'>Bảo hiểm:</span>
                             <span className='text-sm font-medium text-red-600'>
-                              -{selectedTransaction.orderInsurance.toLocaleString()} ₫
+                              -{selectedTransaction.orderInsurance.toLocaleString()} đ
                             </span>
                           </div>
                         )}
@@ -2795,7 +2794,7 @@ function Transaction() {
                           <div className='flex justify-between items-center'>
                             <span className='text-xs text-gray-600'>Hoa hồng:</span>
                             <span className='text-sm font-medium text-red-600'>
-                              -{selectedTransaction.orderCommission.toLocaleString()} ₫
+                              -{selectedTransaction.orderCommission.toLocaleString()} đ
                             </span>
                           </div>
                         )}
@@ -2804,7 +2803,7 @@ function Transaction() {
                           <div className='flex justify-between items-center pt-2 border-t border-blue-200'>
                             <span className='text-sm font-semibold text-gray-900'>Doanh thu ròng:</span>
                             <span className='text-sm font-bold text-blue-600'>
-                              {selectedTransaction.orderNetRevenue.toLocaleString()} ₫
+                              {selectedTransaction.orderNetRevenue.toLocaleString()} đ
                             </span>
                           </div>
                         )}

@@ -131,7 +131,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
         return {
           icon: <CheckCircle className='w-5 h-5 text-green-500' />,
           badge: 'default',
-          text: 'Đã duyệt (Staff)',
+          text: 'Đã duyệt bởi nhân viên',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -139,7 +139,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
         return {
           icon: <XCircle className='w-5 h-5 text-red-500' />,
           badge: 'destructive',
-          text: 'Từ chối (Staff)',
+          text: 'Từ chối bởi nhân viên',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -147,7 +147,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
         return {
           icon: <CheckCircle className='w-5 h-5 text-green-500' />,
           badge: 'default',
-          text: 'Đã duyệt (Admin)',
+          text: 'Đã duyệt bởi admin',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -155,7 +155,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
         return {
           icon: <XCircle className='w-5 h-5 text-red-500' />,
           badge: 'destructive',
-          text: 'Từ chối (Admin)',
+          text: 'Từ chối bởi admin',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -202,7 +202,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
       case 'ReportSeller':
         return 'Báo cáo người bán'
       case 'Orther':
-        return 'Hỗ trợ khác'
+        return 'Các đơn khác'
       default:
         return type
     }
@@ -338,7 +338,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                           <div key={index} className='relative'>
                             <img
                               src={imageUrl}
-                              alt={`Attachment ${index + 1}`}
+                              alt={`Tệp đính kèm ${index + 1}`}
                               className='w-full h-28 sm:h-32 object-cover rounded-lg border border-gray-200 shadow-sm'
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement
@@ -423,7 +423,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                           <div key={index} className='relative'>
                             <img
                               src={imageUrl}
-                              alt={`Seller image ${index + 1}`}
+                              alt={`Hình ảnh người bán ${index + 1}`}
                               className='w-full h-28 sm:h-32 object-cover rounded-lg border border-purple-200 shadow-sm'
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement

@@ -400,7 +400,7 @@ function CreateBlogByCategoryStaff() {
                   <div className='mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200'>
                     <p className='text-sm font-semibold mb-3 text-gray-700'>Xem trước:</p>
                     <div className='relative aspect-video w-full max-w-2xl overflow-hidden rounded-xl border-2 border-gray-200 shadow-lg'>
-                      <img src={imagePreview} alt='Preview' className='h-full w-full object-cover' />
+                      <img src={imagePreview} alt='Xem trước' className='h-full w-full object-cover' />
                     </div>
                   </div>
                 )}

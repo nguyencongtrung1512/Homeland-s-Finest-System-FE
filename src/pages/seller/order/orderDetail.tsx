@@ -314,7 +314,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
       Damaged: 'Hàng hư hỏng',
       Lost: 'Thất lạc'
     }
-    return statusTextMap[status] || status
+    return statusTextMap[status] || 'Chưa xác định'
   }
 
   const formatPrice = (price: number) => {
@@ -743,7 +743,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                       >
                         {/* Logo Section */}
                         <div className='w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0'>
-                          <img src='/src/assets/tinhhoa.svg' alt='Tinh Hoa Logo' className='w-8 h-8' />
+                          <img src='/src/assets/tinhhoa.svg' alt='Logo Tinh Hoa' className='w-8 h-8' />
                         </div>
 
                         {/* Promotion Details Section */}
@@ -793,7 +793,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                     <p className='text-xs text-gray-600'>Người nhận</p>
                     <p className='font-medium text-gray-900 text-sm'>{order.toName}</p>
                     <p className='text-xs text-gray-600 mt-2'>Số điện thoại</p>
-                    <p className='font-medium text-gray-900 text-sm'>{order.fromPhone || 'N/A'}</p>
+                    <p className='font-medium text-gray-900 text-sm'>{order.fromPhone || 'Không có'}</p>
                     <p className='text-xs text-gray-600 mt-2'>Địa chỉ giao hàng</p>
                     <p className='font-medium text-gray-900 text-sm'>{order.toAddress}</p>
                     {order.note && order.status !== 'Cancel' && order.status !== 'Returned' && (
@@ -899,14 +899,14 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                           <div key={index} className='relative group'>
                             <img
                               src={imageUrl}
-                              alt={`Verification ${index + 1}`}
+                              alt={`Xác minh ${index + 1}`}
                               className='w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity'
                               onClick={() => {
                                 const newWindow = window.open()
                                 if (newWindow) {
                                   newWindow.document.write(`
                                     <html>
-                                      <head><title>Verification Image ${index + 1}</title></head>
+                                      <head><title>Hình ảnh xác minh ${index + 1}</title></head>
                                       <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;">
                                         <img src="${imageUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;" />
                                       </body>
@@ -949,14 +949,14 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                             <div key={index} className='relative group'>
                               <img
                                 src={preview}
-                                alt={`New verification ${index + 1}`}
+                                alt={`Xác minh mới ${index + 1}`}
                                 className='w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity'
                                 onClick={() => {
                                   const newWindow = window.open()
                                   if (newWindow) {
                                     newWindow.document.write(`
                                     <html>
-                                      <head><title>New Verification Image ${index + 1}</title></head>
+                                      <head><title>Hình ảnh xác minh mới ${index + 1}</title></head>
                                       <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;">
                                         <img src="${preview}" style="max-width:100%;max-height:100vh;object-fit:contain;" />
                                       </body>

@@ -429,7 +429,7 @@ export const ViewRating: React.FC = () => {
                               transition={{ delay: index * 0.1 }}
                               whileHover={{ scale: 1.05 }}
                               src={imageUrl}
-                              alt={`Review image ${index + 1}`}
+                              alt={`Hình ảnh đánh giá ${index + 1}`}
                               className='w-20 h-20 object-cover rounded-lg cursor-pointer border border-gray-200 hover:border-green-400 transition-all shadow-sm hover:shadow-md'
                               onClick={() => window.open(imageUrl, '_blank')}
                               onError={(e) => {

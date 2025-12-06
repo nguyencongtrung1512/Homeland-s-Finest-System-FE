@@ -15,7 +15,7 @@ interface ComboBoxProps<T = string> {
 
 const ComboBox = <T,>({
   options = [],
-  placeholder = "Select an option...",
+  placeholder = "Chọn một tùy chọn...",
   onSelect,
   value,
   disabled = false,
@@ -213,7 +213,7 @@ const ComboBox = <T,>({
             type="button"
             onClick={handleClearSelection}
             className="absolute right-8 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            aria-label="Clear selection"
+            aria-label="Xóa lựa chọn"
           >
             <svg
               className="w-4 h-4"

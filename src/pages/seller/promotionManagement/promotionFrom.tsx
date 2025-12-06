@@ -634,7 +634,7 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
       case 'percentage':
         return <Percent className='h-5 w-5 text-blue-500' />
       case 'fixed_amount':
-        return <DollarSign className='h-5 w-5 text-green-500' />
+        return <span className='text-green-500 font-bold'>₫</span>
       case 'freeship':
         return <Users className='h-5 w-5 text-purple-500' />
       default:
@@ -1122,9 +1122,6 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
                   </div>
 
                   <div className='text-center p-4 bg-gray-50 rounded-lg'>
-                    <div className='flex items-center justify-center mb-2'>
-                      <DollarSign className='h-5 w-5 text-green-500' />
-                    </div>
                     <p className='text-sm font-medium text-gray-600'>Giá trị giảm</p>
                     <p className='text-lg font-bold text-gray-900'>
                       {promotion?.discountType === 'percentage'

@@ -186,7 +186,7 @@ function CreateComboSeller() {
               ) : (
                 <div className='space-y-4'>
                   <div className='relative inline-block'>
-                    <img src={previewUrl || ''} alt='Preview' className='w-32 h-32 object-cover rounded-lg border' />
+                    <img src={previewUrl || ''} alt='Xem trước' className='w-32 h-32 object-cover rounded-lg border' />
                     <Button
                       type='button'
                       variant='destructive'

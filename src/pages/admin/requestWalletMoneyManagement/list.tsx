@@ -218,14 +218,14 @@ function RequestWalletMoneyManagement() {
 
     const minAmount = 10000
     if (amountNumber < minAmount) {
-      toast.error('Lỗi', `Số tiền nạp tối thiểu là ${minAmount.toLocaleString('vi-VN')}₫`)
+      toast.error('Lỗi', `Số tiền nạp tối thiểu là ${minAmount.toLocaleString('vi-VN')} đ`)
       return
     }
 
     try {
       setIsSubmittingDeposit(true)
       const response = await depositMoney(amountNumber)
-      toast.success('Thành công', response.message || `Đã nạp tiền thành công ${amountNumber.toLocaleString('vi-VN')}₫`)
+      toast.success('Thành công', response.message || `Đã nạp tiền thành công ${amountNumber.toLocaleString('vi-VN')} đ`)
       setIsDepositModalOpen(false)
       setDepositAmount('')
       fetchWalletInfo()
@@ -576,7 +576,7 @@ function RequestWalletMoneyManagement() {
 
         <td className='px-4 md:px-6 py-4'>
           <span className='font-semibold text-gray-900 text-xs md:text-sm'>
-            {request.amount.toLocaleString('vi-VN')}₫
+            {request.amount.toLocaleString('vi-VN')} đ
           </span>
         </td>
 
@@ -677,11 +677,11 @@ function RequestWalletMoneyManagement() {
                 <div>
                   <p className='text-xs md:text-sm text-gray-600 mb-1'>Số dư khả dụng</p>
                   <p className='text-xl md:text-2xl font-bold text-emerald-600'>
-                    {walletData ? formatCompact(walletData.availableBalance) : '--'}
+                    {walletData ? `${formatCompact(walletData.availableBalance)} đ` : '--'}
                   </p>
                 </div>
                 <div className='w-10 h-10 md:w-12 md:h-12 bg-emerald-100 rounded-lg flex items-center justify-center'>
-                  <DollarSign className='w-5 h-5 md:w-6 md:h-6 text-emerald-600' />
+                  <span className='text-emerald-600 font-bold text-lg md:text-xl'> đ</span>
                 </div>
               </div>
             </CardContent>
@@ -784,7 +784,7 @@ function RequestWalletMoneyManagement() {
                 <div>
                   <p className='text-xs md:text-sm text-gray-600 mb-1'>Tổng đã rút</p>
                   <p className='text-xl md:text-2xl font-bold text-indigo-600'>
-                    {walletData.TotalWithdrawn.toLocaleString('vi-VN')}₫
+                    {walletData.TotalWithdrawn.toLocaleString('vi-VN')} đ
                   </p>
                 </div>
                 <div className='w-10 h-10 md:w-12 md:h-12 bg-indigo-100 rounded-lg flex items-center justify-center'>
@@ -1019,7 +1019,7 @@ function RequestWalletMoneyManagement() {
                     <div className='flex justify-between items-start'>
                       <span className='text-sm text-gray-600'>Số tiền:</span>
                       <span className='text-sm font-semibold text-gray-900'>
-                        {selectedRequest.amount.toLocaleString('vi-VN')}₫
+                        {selectedRequest.amount.toLocaleString('vi-VN')} đ
                       </span>
                     </div>
                     <div className='flex justify-between items-start'>
@@ -1124,7 +1124,7 @@ function RequestWalletMoneyManagement() {
               <p className='text-sm text-gray-600 mb-1'>
                 Số dư khả dụng:{' '}
                 <span className='font-semibold text-emerald-600'>
-                  {walletData ? formatCompact(walletData.availableBalance) : '--'}
+                  {walletData ? `${formatCompact(walletData.availableBalance)} đ` : '--'}
                 </span>
               </p>
               <Input
@@ -1135,7 +1135,7 @@ function RequestWalletMoneyManagement() {
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
               />
-              <p className='text-xs text-gray-500 mt-1'>Số tiền tối thiểu 1.000₫ và không vượt quá số dư khả dụng.</p>
+              <p className='text-xs text-gray-500 mt-1'>Số tiền tối thiểu 1.000 đ và không vượt quá số dư khả dụng.</p>
             </div>
           </div>
           <DialogFooter>
@@ -1182,7 +1182,7 @@ function RequestWalletMoneyManagement() {
               <p className='text-sm text-gray-600 mb-1'>
                 Số dư hiện tại:{' '}
                 <span className='font-semibold text-emerald-600'>
-                  {walletData ? formatCompact(walletData.availableBalance) : '--'}
+                  {walletData ? `${formatCompact(walletData.availableBalance)} đ` : '--'}
                 </span>
               </p>
               <Input
@@ -1198,14 +1198,14 @@ function RequestWalletMoneyManagement() {
                   }
                 }}
               />
-              <p className='text-xs text-gray-500 mt-1'>Số tiền tối thiểu 10.000₫</p>
+              <p className='text-xs text-gray-500 mt-1'>Số tiền tối thiểu 10.000 đ</p>
               {depositAmount && parseFloat(depositAmount) > 0 && (
                 <div className='mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200'>
                   <div className='flex justify-between items-center'>
                     <span className='text-sm text-gray-700'>Số dư sau khi nạp:</span>
                     <span className='text-lg font-bold text-blue-600'>
                       {walletData
-                        ? formatCompact(walletData.availableBalance + parseFloat(depositAmount))
+                        ? `${formatCompact(walletData.availableBalance + parseFloat(depositAmount))} đ`
                         : '--'}
                     </span>
                   </div>
@@ -1260,7 +1260,7 @@ function RequestWalletMoneyManagement() {
                     Xử lý yêu cầu
                   </DialogTitle>
                   <p className='text-sm text-gray-500 mt-1'>
-                    {getTypeConfig(selectedRequest.type).text} - {selectedRequest.amount.toLocaleString('vi-VN')}₫
+                    {getTypeConfig(selectedRequest.type).text} - {selectedRequest.amount.toLocaleString('vi-VN')} đ
                   </p>
                 </DialogHeader>
 
@@ -1499,12 +1499,12 @@ function RequestWalletMoneyManagement() {
                                 <div className='text-right'>
                                   <p className={`text-xl font-bold ${typeColor} mb-1`}>
                                     {isPositive ? '+' : '-'}
-                                    {transaction.amount.toLocaleString('vi-VN')}₫
+                                    {transaction.amount.toLocaleString('vi-VN')} đ
                                   </p>
                                   <p className='text-xs text-gray-500'>
                                     Số dư sau:{' '}
                                     <span className='font-semibold text-gray-700'>
-                                      {transaction.balanceAfter.toLocaleString('vi-VN')}₫
+                                      {transaction.balanceAfter.toLocaleString('vi-VN')} đ
                                     </span>
                                   </p>
                                 </div>

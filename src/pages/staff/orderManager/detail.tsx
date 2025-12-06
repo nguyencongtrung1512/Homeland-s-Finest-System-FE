@@ -246,7 +246,7 @@ function OrderDetailStaff() {
   }
 
   const getStatusText = (status: string) => {
-    return statusTextMap[status] || status
+    return statusTextMap[status] || 'Chưa xác định'
   }
 
   const getPaymentTypeText = (paymentType: string) => {

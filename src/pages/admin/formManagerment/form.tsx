@@ -326,7 +326,7 @@ export default function AdminFormManagement() {
                         </Badge>
                         {form.storeId && (
                           <Badge variant='outline' className='text-xs bg-blue-50 text-blue-700 border-blue-200'>
-                            Store: {form.storeId.slice(0, 8)}...
+                            Cửa hàng: {form.storeId.slice(0, 8)}...
                           </Badge>
                         )}
                       </div>
@@ -346,13 +346,13 @@ export default function AdminFormManagement() {
                             <img
                               key={index}
                               src={imageUrl}
-                              alt={`Attachment ${index + 1}`}
+                              alt={`Tệp đính kèm ${index + 1}`}
                               className='w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity'
                               onClick={() => window.open(imageUrl, '_blank')}
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement
                                 target.src = '/src/assets/react.svg'
-                                target.alt = 'Image not available'
+                                target.alt = 'Hình ảnh không khả dụng'
                               }}
                             />
                           ))}

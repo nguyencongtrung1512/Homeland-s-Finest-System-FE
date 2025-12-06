@@ -57,7 +57,7 @@ function HelpCenter() {
       id: 3,
       title: 'Chính sách thanh toán',
       description: 'Hướng dẫn về phương thức thanh toán và quy trình rút tiền.',
-      icon: <DollarSign className='w-6 h-6 text-green-600' />
+      icon: <span className='text-green-600 font-bold text-xl'>₫</span>
     },
     {
       id: 4,

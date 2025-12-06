@@ -100,7 +100,7 @@ export const exportStoreToExcel = (store: StoreResponse) => {
       const productsData: any[][] = [
         ['DANH SÁCH SẢN PHẨM CỦA CỬA HÀNG: ' + (store.storeName || '')],
         [],
-        ['STT', 'Tên sản phẩm', 'Mô tả', 'Giá (VNĐ)', 'Số lượng', 'Danh mục', 'Trạng thái']
+        ['STT', 'Tên sản phẩm', 'Mô tả', 'Giá (đ)', 'Số lượng', 'Danh mục', 'Trạng thái']
       ]
 
       store.products.forEach((product: any, index: number) => {
@@ -111,7 +111,7 @@ export const exportStoreToExcel = (store: StoreResponse) => {
           product.price ? product.price.toLocaleString('vi-VN') : '0',
           product.quantity || 0,
           product.categoryName || 'Chưa phân loại',
-          product.status || 'Active'
+          product.status ? getStatusText(product.status) : 'Hoạt động'
         ])
       })
 

@@ -292,10 +292,10 @@ function FinanceManagement() {
 
   const formatCurrency = (amount: number) => {
     if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(1)}M ₫`
+      return `${(amount / 1000000).toFixed(1)} tr`
     }
     if (amount >= 1000) {
-      return `${(amount / 1000).toFixed(0)}k ₫`
+      return `${(amount / 1000).toFixed(0)} nghìn`
     }
     return `${amount.toLocaleString()} ₫`
   }
@@ -561,7 +561,7 @@ function FinanceManagement() {
                 <div className='flex-1'>
                   <p className='text-sm font-medium text-slate-600 mb-2'>Tỷ suất lợi nhuận</p>
                   <p className='text-2xl font-bold text-teal-600 mb-1'>
-                    {performanceMetrics.profitMargin !== null ? `${performanceMetrics.profitMargin}%` : 'N/A'}
+                    {performanceMetrics.profitMargin !== null ? `${performanceMetrics.profitMargin}%` : 'Không có'}
                   </p>
                   <p className='text-xs text-slate-500'>Thu nhập / Doanh thu</p>
                 </div>

@@ -41,6 +41,19 @@ import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 import { motion, AnimatePresence } from 'motion/react'
 import { Stream } from '@cloudflare/stream-react'
 
+// Helper function to translate product type to Vietnamese
+const getProductTypeLabel = (typeProduct: string | null | undefined): string => {
+  if (!typeProduct) return 'Chưa xác định'
+  switch (typeProduct) {
+    case 'ProductMaster':
+      return 'Sản phẩm chính'
+    case 'ProductDetail':
+      return 'Sản phẩm chi tiết'
+    default:
+      return typeProduct
+  }
+}
+
 function DetailProductStaff() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
@@ -734,7 +747,7 @@ function DetailProductStaff() {
                             <Tag size={16} className='text-green-600 flex-shrink-0' />
                             <div>
                               <span className='text-sm text-gray-600 block'>Loại sản phẩm</span>
-                              <span className='text-sm font-medium text-gray-900'>{product?.typeProduct}</span>
+                              <span className='text-sm font-medium text-gray-900'>{getProductTypeLabel(product?.typeProduct)}</span>
                             </div>
                           </div>
                           <div className='flex items-center gap-2'>
@@ -1066,17 +1079,17 @@ function DetailProductStaff() {
                                   {parentVariant.finalPrice !== null && (
                                     <div className='space-y-2'>
                                       <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
-                                        <DollarSign size={14} />
-                                        Giá bán (VNĐ)
+                                        <span className='text-green-600 font-bold'>₫</span>
+                                        Giá bán (đ)
                                       </label>
                                       <div className='p-3 bg-gray-50 rounded-lg border'>
                                         <span className='text-green-600 font-bold'>
-                                          {parentVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
+                                          {parentVariant.finalPrice.toLocaleString('vi-VN')} đ
                                         </span>
                                         {parentVariant.basePrice !== null &&
                                           parentVariant.basePrice !== parentVariant.finalPrice && (
                                             <span className='ml-2 text-sm text-gray-500 line-through'>
-                                              {parentVariant.basePrice.toLocaleString('vi-VN')} VNĐ
+                                              {parentVariant.basePrice.toLocaleString('vi-VN')} đ
                                             </span>
                                           )}
                                       </div>
@@ -1213,18 +1226,17 @@ function DetailProductStaff() {
                                           {/* Child Price */}
                                           {childVariant.finalPrice !== null && (
                                             <div className='space-y-2'>
-                                              <label className='text-sm font-medium text-gray-700 flex items-center gap-1'>
-                                                <DollarSign size={14} />
-                                                Giá bán (VNĐ)
+                                              <label className='text-sm font-medium text-gray-700'>
+                                                Giá bán (đ)
                                               </label>
                                               <div className='p-2 bg-white rounded border'>
                                                 <span className='text-green-600 font-bold text-sm'>
-                                                  {childVariant.finalPrice.toLocaleString('vi-VN')} VNĐ
+                                                  {childVariant.finalPrice.toLocaleString('vi-VN')} đ
                                                 </span>
                                                 {childVariant.basePrice !== null &&
                                                   childVariant.basePrice !== childVariant.finalPrice && (
                                                     <span className='ml-2 text-xs text-gray-500 line-through'>
-                                                      {childVariant.basePrice.toLocaleString('vi-VN')} VNĐ
+                                                      {childVariant.basePrice.toLocaleString('vi-VN')} đ
                                                     </span>
                                                   )}
                                               </div>
@@ -1380,7 +1392,7 @@ function DetailProductStaff() {
                                   }
                                 })
                                 return prices.length > 0
-                                  ? `${Math.min(...prices).toLocaleString('vi-VN')} - ${Math.max(...prices).toLocaleString('vi-VN')} VNĐ`
+                                  ? `${Math.min(...prices).toLocaleString('vi-VN')} - ${Math.max(...prices).toLocaleString('vi-VN')} đ`
                                   : 'Chưa có giá'
                               })()}
                             </span>

@@ -602,7 +602,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                           <img
                             key={index}
                             src={imageUrl}
-                            alt={`Review image ${index + 1}`}
+                            alt={`Hình ảnh đánh giá ${index + 1}`}
                             className='w-full h-24 object-contain rounded-lg border border-gray-200 bg-gray-50'
                             onError={(e) => {
                               e.currentTarget.src = DEFAULT_PRODUCT_IMAGE
@@ -729,7 +729,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                           <div key={index} className='relative'>
                             <img
                               src={imageUrl}
-                              alt={`Current image ${index + 1}`}
+                              alt={`Hình ảnh hiện tại ${index + 1}`}
                               className='w-full h-24 object-contain rounded-lg border border-gray-200 bg-gray-50'
                               onError={(e) => {
                                 e.currentTarget.src = DEFAULT_PRODUCT_IMAGE

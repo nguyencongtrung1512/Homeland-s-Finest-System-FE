@@ -284,7 +284,7 @@ function TransactionManagementAdmin() {
 
       {/* Số tiền */}
       <td className='px-6 py-4'>
-        <span className='font-semibold text-gray-900 text-sm'>{transaction.amount.toLocaleString('vi-VN')}₫</span>
+        <span className='font-semibold text-gray-900 text-sm'>{transaction.amount.toLocaleString('vi-VN')}đ</span>
       </td>
 
       {/* Trạng thái */}

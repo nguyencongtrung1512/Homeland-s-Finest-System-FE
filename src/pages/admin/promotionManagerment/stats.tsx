@@ -109,11 +109,11 @@ const AdminPromotionStats: React.FC = () => {
           <CardContent className='p-6'>
             <div className='flex items-center'>
               <div className='p-2 bg-purple-100 rounded-lg'>
-                <DollarSign className='h-6 w-6 text-purple-600' />
+                <span className='text-purple-600 font-bold text-xl'>đ</span>
               </div>
               <div className='ml-4'>
                 <p className='text-sm font-medium text-gray-600'>Tổng giá trị giảm</p>
-                <p className='text-2xl font-bold text-gray-900'>₫{formatPrice(stats?.totalDiscountValue || 0)}</p>
+                <p className='text-2xl font-bold text-gray-900'>{formatPrice(stats?.totalDiscountValue || 0)}đ</p>
               </div>
             </div>
           </CardContent>

@@ -40,7 +40,7 @@ const getStatusLabel = (status: FormStatus): string => {
     Confirmed: 'Đang xử lý',
     Cancel: 'Đã hủy'
   }
-  return statusMap[status] || status
+  return statusMap[status] || 'Chưa xác định'
 }
 
 const getStatusColor = (status: FormStatus): string => {
