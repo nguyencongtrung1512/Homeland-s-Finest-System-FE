@@ -161,11 +161,27 @@ function CreateComboSeller() {
               <Label htmlFor='thumbnail'>Ảnh thumbnail</Label>
 
               {!thumbnailFile ? (
-                <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors'>
+                <div
+                  className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                  onClick={() => document.getElementById('thumbnail')?.click()}
+                >
                   <Upload className='w-8 h-8 mx-auto text-gray-400 mb-2' />
                   <p className='text-gray-600 mb-2'>Kéo thả ảnh vào đây hoặc click để chọn</p>
                   <p className='text-sm text-gray-500'>PNG, JPG, JPEG (tối đa 5MB)</p>
-                  <Input id='thumbnail' type='file' accept='image/*' onChange={handleFileChange} className='mt-4' />
+                  <Input id='thumbnail' type='file' accept='image/*' onChange={handleFileChange} className='hidden' />
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    className='mt-4'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      document.getElementById('thumbnail')?.click()
+                    }}
+                  >
+                    <Upload className='w-4 h-4 mr-2' />
+                    Chọn ảnh
+                  </Button>
                 </div>
               ) : (
                 <div className='space-y-4'>
