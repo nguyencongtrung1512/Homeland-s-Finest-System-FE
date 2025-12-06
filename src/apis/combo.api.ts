@@ -31,6 +31,10 @@ export const createComboShell = async (comboData: CreateComboRequest): Promise<a
     formData.append('ThumbnailFile', comboData.thumbnailFile)
   }
 
+  if (comboData.videoFile) {
+    formData.append('VideoFile', comboData.videoFile)
+  }
+
   const response = await axiosInstance.post<ComboResponse>(API_URL, formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
@@ -77,6 +81,19 @@ export const updateComboShell = async (comboId: string, comboData: UpdateComboRe
   } else {
     // Không có file mới, không xóa → giữ nguyên ảnh cũ
     formData.append('RemoveExistingImage', 'false')
+  }
+
+  // Logic xử lý video
+  if (comboData.removeVideo) {
+    // Người dùng muốn xóa video hiện tại
+    formData.append('RemoveExistingVideo', 'true')
+  } else if (comboData.videoFile) {
+    // Có file video mới → thay thế video cũ bằng video mới
+    formData.append('NewVideoFile', comboData.videoFile)
+    formData.append('RemoveExistingVideo', 'true')
+  } else {
+    // Không có file mới, không xóa → giữ nguyên video cũ
+    formData.append('RemoveExistingVideo', 'false')
   }
 
   const response = await axiosInstance.put<ComboResponse>(`${API_URL}/${comboId}`, formData, {

@@ -181,23 +181,21 @@ function ComplainSeller() {
     }
   }
 
-  // Handle open reply modal (only allow if status is Confirmed)
+  // Handle open reply modal (only allow if status is Confirmed and not replied yet)
   const handleOpenReply = (form: FormDTO) => {
     if (form.status !== 'Confirmed') {
       toast.error('Chỉ có thể phản hồi khi trạng thái là "Chờ phản hồi từ người bán"')
       return
     }
+    // Không cho phép chỉnh sửa - chỉ cho phép phản hồi khi chưa phản hồi
+    if (form.isSellerReplied) {
+      toast.error('Bạn đã phản hồi khiếu nại này. Đơn sẽ được nhân viên xử lý và bạn không thể chỉnh sửa phản hồi.')
+      return
+    }
     setSelectedForm(form)
-    // Load existing reply if seller has already replied
-    setSellerReply(form.sellerReply || '')
+    setSellerReply('')
     setSellerImages([])
     setImagePreviews([])
-    // If seller has already replied, we need to reload form to get sellerImages
-    if (form.isSellerReplied && form.sellerImages && form.sellerImages.length > 0) {
-      // Note: sellerImages from backend are URLs, not Files
-      // We'll need to handle this differently - show existing images but allow adding new ones
-      // For now, we'll just show the existing reply text
-    }
     setShowReplyModal(true)
   }
 
@@ -250,8 +248,12 @@ function ComplainSeller() {
         sellerImageFiles: sellerImages
       })
 
-      // Show success toast first
-      toast.success('Phản hồi đã được gửi thành công!', undefined, 4000)
+      // Show success toast with confirmation message
+      toast.success(
+        'Phản hồi đã được gửi thành công! Đơn sẽ được nhân viên xử lý và bạn không thể chỉnh sửa phản hồi.',
+        undefined,
+        6000
+      )
 
       // Close modal and reset after a short delay to ensure toast is visible
       setTimeout(() => {
@@ -465,18 +467,15 @@ function ComplainSeller() {
                         <Eye className='w-4 h-4 mr-2' />
                         Xem chi tiết
                       </Button>
-                      {form.status === 'Confirmed' && (
+                      {/* Chỉ hiển thị nút phản hồi khi chưa phản hồi - không cho phép chỉnh sửa */}
+                      {form.status === 'Confirmed' && !form.isSellerReplied && (
                         <Button
                           variant='default'
                           size='sm'
                           onClick={() => handleOpenReply(form)}
-                          className={
-                            form.isSellerReplied
-                              ? 'bg-yellow-500 text-white hover:bg-[#FFD700]'
-                              : 'bg-yellow-500 text-white hover:bg-[#FFD700]'
-                          }
+                          className='bg-yellow-500 text-white hover:bg-[#FFD700]'
                         >
-                          {form.isSellerReplied ? 'Chỉnh sửa phản hồi' : 'Phản hồi'}
+                          Phản hồi
                         </Button>
                       )}
                     </div>
@@ -610,22 +609,37 @@ function ComplainSeller() {
                     </div>
                   )}
 
-                  {/* Reply Button in Detail Modal - Only show if status is Confirmed */}
-                  {selectedForm.status === 'Confirmed' && (
+                  {/* Reply Button in Detail Modal - Chỉ hiển thị khi chưa phản hồi - không cho phép chỉnh sửa */}
+                  {selectedForm.status === 'Confirmed' && !selectedForm.isSellerReplied && (
                     <div className='pt-4 border-t'>
                       <Button
                         onClick={() => {
                           setShowDetailModal(false)
                           handleOpenReply(selectedForm)
                         }}
-                        className={
-                          selectedForm.isSellerReplied
-                            ? 'w-full bg-blue-600 hover:bg-blue-700 text-white'
-                            : 'w-full bg-orange-600 hover:bg-orange-700 text-white'
-                        }
+                        className='w-full bg-orange-600 hover:bg-orange-700 text-white'
                       >
-                        {selectedForm.isSellerReplied ? 'Chỉnh sửa phản hồi' : 'Phản hồi khiếu nại'}
+                        Phản hồi khiếu nại
                       </Button>
+                    </div>
+                  )}
+
+                  {/* Thông báo khi đã phản hồi */}
+                  {selectedForm.status === 'Confirmed' && selectedForm.isSellerReplied && (
+                    <div className='pt-4 border-t'>
+                      <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
+                        <div className='flex items-start gap-2'>
+                          <AlertCircle className='w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0' />
+                          <div>
+                            <p className='text-sm font-medium text-blue-800'>
+                              Bạn đã phản hồi khiếu nại này
+                            </p>
+                            <p className='text-xs text-blue-600 mt-1'>
+                              Đơn sẽ được nhân viên xử lý và bạn không thể chỉnh sửa phản hồi.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -643,9 +657,7 @@ function ComplainSeller() {
       <Dialog open={showReplyModal} onOpenChange={setShowReplyModal}>
         <DialogContent className='max-w-2xl'>
           <DialogHeader>
-            <DialogTitle className='text-xl font-bold'>
-              {selectedForm?.isSellerReplied ? 'Chỉnh sửa phản hồi' : 'Phản hồi khiếu nại'}
-            </DialogTitle>
+            <DialogTitle className='text-xl font-bold'>Phản hồi khiếu nại</DialogTitle>
           </DialogHeader>
           {selectedForm && (
             <div className='space-y-4'>
@@ -656,9 +668,21 @@ function ComplainSeller() {
                 {selectedForm.deadlineForSellerReply && (
                   <p className='text-xs text-orange-600 mt-1'>Hạn phản hồi: {selectedForm.deadlineForSellerReply}</p>
                 )}
-                {selectedForm.isSellerReplied && (
-                  <p className='text-xs text-blue-600 mt-1 font-medium'>Bạn đã phản hồi trước đó</p>
-                )}
+              </div>
+
+              {/* Warning message */}
+              <div className='bg-amber-50 border border-amber-200 rounded-lg p-4'>
+                <div className='flex items-start gap-2'>
+                  <AlertCircle className='w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0' />
+                  <div>
+                    <p className='text-sm font-medium text-amber-800'>
+                      Lưu ý quan trọng
+                    </p>
+                    <p className='text-xs text-amber-700 mt-1'>
+                      Sau khi gửi phản hồi, đơn sẽ được chuyển cho nhân viên xử lý. Bạn sẽ không thể chỉnh sửa hoặc thay đổi phản hồi sau khi đã gửi. Vui lòng kiểm tra kỹ thông tin trước khi gửi.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -742,9 +766,9 @@ function ComplainSeller() {
                 <Button
                   onClick={handleSubmitReply}
                   disabled={submitting || !sellerReply.trim() || sellerImages.length === 0}
-                  className='flex-1 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                  className='flex-1 bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed'
                 >
-                  {submitting ? 'Đang gửi...' : selectedForm.isSellerReplied ? 'Cập nhật phản hồi' : 'Gửi phản hồi'}
+                  {submitting ? 'Đang gửi...' : 'Gửi phản hồi'}
                 </Button>
               </div>
             </div>

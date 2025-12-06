@@ -5,6 +5,7 @@ export interface CreateComboRequest {
   description?: string
   sellerId: string
   thumbnailFile?: File
+  videoFile?: File
 }
 
 export interface UpdateComboRequest {
@@ -12,8 +13,10 @@ export interface UpdateComboRequest {
   description?: string
   isActive: boolean
   thumbnailFile?: File
+  videoFile?: File
   finalPrice?: number
   removeThumbnail?: boolean
+  removeVideo?: boolean
 }
 
 export interface CreateComboItemRequest {
