@@ -238,6 +238,10 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       const mappedDiscountType = mapDiscountTypeFromAPI(initialData.discountType || 'percentage')
       console.log('📝 Mapped discountType:', mappedDiscountType)
 
+      // Tự động set isPrivate dựa trên userIds: true nếu có người dùng, false nếu không có
+      const hasUsers = userIds.length > 0
+      const autoIsPrivate = processedType === 'User' ? (hasUsers ? true : false) : false
+
       const processedData = {
         ...initialData,
         type: processedType,
@@ -245,7 +249,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         startDate: processedStartDate,
         endDate: processedEndDate,
         userIds: userIds,
-        isPrivate: initialData.isPrivate ?? (processedType === 'User' ? true : undefined)
+        isPrivate: autoIsPrivate
       }
       setFormData(processedData)
       setIsInitialized(true)
@@ -264,6 +268,29 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
       return () => clearTimeout(timeoutId)
     }
   }, [formData.type, userSearchTerm, loadUsers])
+
+  // Tự động cập nhật isPrivate dựa trên userIds
+  useEffect(() => {
+    if (formData.type === 'User') {
+      const hasUsers = (formData.userIds || []).length > 0
+      const expectedIsPrivate = hasUsers ? true : false
+      // Chỉ cập nhật nếu giá trị khác với giá trị hiện tại
+      setFormData((prev) => {
+        if (prev.isPrivate !== expectedIsPrivate) {
+          return { ...prev, isPrivate: expectedIsPrivate }
+        }
+        return prev
+      })
+    } else if (formData.type !== 'User') {
+      // Nếu không phải User type, đảm bảo isPrivate là false
+      setFormData((prev) => {
+        if (prev.isPrivate !== false) {
+          return { ...prev, isPrivate: false }
+        }
+        return prev
+      })
+    }
+  }, [formData.userIds, formData.type])
 
   const validateForm = (): boolean => {
     const newErrors: PromotionFormErrors = {}
@@ -401,9 +428,11 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         const newData = { ...prev, [field]: value as PromotionType }
         if (value !== 'User' && !isEdit) {
           newData.userIds = []
-          newData.isPrivate = undefined
+          newData.isPrivate = false
         } else if (value === 'User') {
-          newData.isPrivate = newData.isPrivate ?? true
+          // Tự động set isPrivate dựa trên userIds
+          const hasUsers = (newData.userIds || []).length > 0
+          newData.isPrivate = hasUsers ? true : false
         }
         return newData
       })
@@ -465,10 +494,17 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
   }
 
   const handleUserToggle = (userId: string, checked: boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      userIds: checked ? [...(prev.userIds || []), userId] : (prev.userIds || []).filter((id) => id !== userId)
-    }))
+    setFormData((prev) => {
+      const newUserIds = checked
+        ? [...(prev.userIds || []), userId]
+        : (prev.userIds || []).filter((id) => id !== userId)
+      // Tự động set isPrivate: true nếu có người dùng, false nếu không có
+      return {
+        ...prev,
+        userIds: newUserIds,
+        isPrivate: newUserIds.length > 0 ? true : false
+      }
+    })
   }
 
   const getMonthFromDate = (dateString?: string) => {
@@ -509,7 +545,9 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     setFormData((prev) => {
       const currentIds = prev.userIds || []
       const combined = new Set([...currentIds, ...filteredUsers.map((user) => user.id)])
-      return { ...prev, userIds: Array.from(combined) }
+      const newUserIds = Array.from(combined)
+      // Tự động set isPrivate: true khi chọn người dùng
+      return { ...prev, userIds: newUserIds, isPrivate: newUserIds.length > 0 ? true : false }
     })
   }
 
@@ -517,7 +555,9 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     setFormData((prev) => {
       const currentIds = prev.userIds || []
       const filteredIds = new Set(filteredUsers.map((user) => user.id))
-      return { ...prev, userIds: currentIds.filter((id) => !filteredIds.has(id)) }
+      const newUserIds = currentIds.filter((id) => !filteredIds.has(id))
+      // Tự động set isPrivate: false khi không có người dùng nào được chọn
+      return { ...prev, userIds: newUserIds, isPrivate: newUserIds.length > 0 ? true : false }
     })
   }
 
@@ -790,17 +830,6 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                     )}
                   </div>
                   {errors.userIds && <p className='text-sm text-red-600'>{errors.userIds}</p>}
-
-                  <div className='flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200 mt-3'>
-                    <Switch
-                      id='isPrivate'
-                      checked={formData.isPrivate ?? true}
-                      onCheckedChange={(checked) => handleInputChange('isPrivate', checked)}
-                    />
-                    <Label htmlFor='isPrivate' className='text-blue-900 font-medium cursor-pointer'>
-                      Mã khuyến mãi riêng tư (chỉ hiển thị cho người dùng được chọn)
-                    </Label>
-                  </div>
                 </div>
               )}
             </motion.div>

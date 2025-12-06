@@ -630,8 +630,8 @@ export default function Checkout() {
   const calculatedShippingFee = shippingFeeData ? shippingFeeData.reduce((sum, store) => sum + store.shipPrice, 0) : 0
   const shippingFee = hasFreeShip ? 0 : calculatedShippingFee
 
-  // Final total does not include shipping fee (only product price)
-  const finalTotal = Math.max(0, subtotal - totalDiscount)
+  // Final total includes shipping fee if not free ship
+  const finalTotal = Math.max(0, subtotal - totalDiscount + shippingFee)
   const selectedItemsList = cartData
     ? cartData.carts.flatMap((store) =>
       store.items

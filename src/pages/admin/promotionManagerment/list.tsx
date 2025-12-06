@@ -292,6 +292,17 @@ const AdminPromotionList: React.FC = () => {
     }
   }
 
+  const getTypeLabel = (type: PromotionType) => {
+    switch (type) {
+      case 'Global':
+        return 'Hệ thống'
+      case 'User':
+        return 'Cá nhân'
+      default:
+        return type
+    }
+  }
+
   const getStatusColor = (isActive: boolean) => {
     return isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
   }
@@ -480,7 +491,7 @@ const AdminPromotionList: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='all'>Tất cả loại</SelectItem>
-                <SelectItem value='Global'>Toàn hệ thống</SelectItem>
+                <SelectItem value='Global'>Hệ thống</SelectItem>
                 <SelectItem value='User'>Cá nhân</SelectItem>
               </SelectContent>
             </Select>
@@ -537,22 +548,22 @@ const AdminPromotionList: React.FC = () => {
                         <h3 className='text-lg font-semibold text-gray-900'>{promotion.title}</h3>
                         <Badge className={getTypeColor(promotion.type)}>
                           {getTypeIcon(promotion.type)}
-                          <span className='ml-1'>{promotion.type}</span>
+                          <span className='ml-1'>{getTypeLabel(promotion.type)}</span>
                         </Badge>
                         <Badge className={getStatusColor(promotion.isActive)}>
                           {promotion.isActive ? 'Hoạt động' : 'Không hoạt động'}
                         </Badge>
                       </div>
 
-                      <div className='flex items-center gap-3 mb-3'>
+                      <div className='flex items-center gap-3 '>
                         {promotion.type === 'User' && (
-                          <Badge
+                          <span
                             className={promotion.isPrivate ? 'bg-gray-100 text-gray-800' : 'bg-gray-100 text-gray-800'}
                           >
                             {promotion.isPrivate ? 'Riêng tư' : 'Công khai'}
-                          </Badge>
+                          </span>
                         )}
-                        <p className='text-gray-600'>{promotion.description}</p>
+                        <span className='text-gray-600'>- {promotion.description}</span>
                       </div>
 
                       {promotion.createdAt && (

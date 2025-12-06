@@ -315,8 +315,14 @@ function ComboItemsManager({
   const activeItemsCount = items.filter((item) => item.isActive).length
   const totalItemsCount = items.length
 
-  // Processing, Approved, Rejected, Confirmed không thể chỉnh sửa
-  const isEditable = canEdit && comboStatus !== 'Approved' && comboStatus !== 'Processing' && comboStatus !== 'Rejected' && comboStatus !== 'Confirmed'
+  // Cho phép chỉnh sửa khi: Draft, Pending, Cancelled, Denied
+  // Không cho phép chỉnh sửa khi: Approved, Processing, Rejected, Confirmed
+  const isEditable =
+    (canEdit || comboStatus === 'Pending' || comboStatus === 'Draft' || comboStatus === 'Cancelled' || comboStatus === 'Denied') &&
+    comboStatus !== 'Approved' &&
+    comboStatus !== 'Processing' &&
+    comboStatus !== 'Rejected' &&
+    comboStatus !== 'Confirmed'
 
   const getStatusMessage = () => {
     switch (comboStatus) {

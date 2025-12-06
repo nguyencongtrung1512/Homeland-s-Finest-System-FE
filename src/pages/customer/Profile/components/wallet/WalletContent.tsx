@@ -57,6 +57,7 @@ export default function WalletContent({
   const [transactionPageSize] = useState(10)
   const [requests, setRequests] = useState<RequestWalletMoney[]>([])
   const [loadingRequests, setLoadingRequests] = useState(false)
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'COD' | 'WalletOrBanking'>('all')
   const { user } = useAuth()
 
   // Fetch wallet data
@@ -79,10 +80,28 @@ export default function WalletContent({
   }
 
   // Fetch transaction history
-  const fetchTransactions = async (page: number = 1, pageSize: number = 10) => {
+  const fetchTransactions = async (
+    page: number = 1,
+    pageSize: number = 10,
+    paymentMethod?: 'COD' | 'WalletOrBanking' | null
+  ) => {
     try {
       setLoadingTransactions(true)
-      const response = await getWalletTransactions({ pageNumber: page, pageSize })
+      const params: {
+        pageNumber: number
+        pageSize: number
+        paymentMethod?: 'COD' | 'WalletOrBanking' | null
+      } = {
+        pageNumber: page,
+        pageSize
+      }
+
+      // Thêm paymentMethod filter nếu không phải 'all'
+      if (paymentMethod) {
+        params.paymentMethod = paymentMethod
+      }
+
+      const response = await getWalletTransactions(params)
       // API có thể trả về data trực tiếp hoặc trong response.data
       const transactionData = response.data || response
       if (Array.isArray(transactionData)) {
@@ -127,6 +146,12 @@ export default function WalletContent({
     fetchRequests()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    const paymentMethod = paymentMethodFilter !== 'all' ? paymentMethodFilter : null
+    fetchTransactions(transactionPage, transactionPageSize, paymentMethod)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentMethodFilter])
 
   // Use data from API or fallback to props
   const walletBalance = walletData?.availableBalance ?? propWalletBalance ?? 0
@@ -842,21 +867,50 @@ export default function WalletContent({
       {/* Transaction History */}
       <Card>
         <CardHeader>
-          <div className='flex items-center justify-between'>
-            <CardTitle className='flex items-center gap-2'>
-              <History className='w-5 h-5 text-blue-600' />
-              Lịch sử giao dịch
-            </CardTitle>
-            <Button
-              onClick={() => fetchTransactions(transactionPage, transactionPageSize)}
-              variant='outline'
-              size='sm'
-              disabled={loadingTransactions}
-              className='flex items-center gap-2'
-            >
-              <RefreshCw className={`w-4 h-4 ${loadingTransactions ? 'animate-spin' : ''}`} />
-              Làm mới
-            </Button>
+          <div className='flex flex-col gap-4'>
+            <div className='flex items-center justify-between'>
+              <CardTitle className='flex items-center gap-2'>
+                <History className='w-5 h-5 text-blue-600' />
+                Lịch sử giao dịch
+              </CardTitle>
+              <Button
+                onClick={() => {
+                  const paymentMethod = paymentMethodFilter !== 'all' ? paymentMethodFilter : null
+                  fetchTransactions(transactionPage, transactionPageSize, paymentMethod)
+                }}
+                variant='outline'
+                size='sm'
+                disabled={loadingTransactions}
+                className='flex items-center gap-2'
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingTransactions ? 'animate-spin' : ''}`} />
+                Làm mới
+              </Button>
+            </div>
+
+            {/* Payment Method Filter */}
+            <div className='bg-gray-50 rounded-lg p-2'>
+              <div className='flex items-center gap-1 w-full'>
+                {[
+                  { value: 'all', label: 'Tất cả' },
+                  { value: 'COD', label: 'Thanh toán khi nhận hàng' },
+                  { value: 'WalletOrBanking', label: 'Thanh toán qua ví/ngân hàng' }
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setPaymentMethodFilter(option.value as 'all' | 'COD' | 'WalletOrBanking')
+                    }}
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${paymentMethodFilter === option.value
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -1033,7 +1087,7 @@ export default function WalletContent({
               <h5 className='font-semibold text-blue-700 mb-2'>Rút tiền:</h5>
               <ul className='text-sm text-gray-600 space-y-1 list-disc list-inside'>
                 <li>Số tiền rút tối thiểu: 50,000 ₫</li>
-                <li>Thời gian xử lý yêu cầu rút tiền: 10-15 phút</li>
+                <li>Thời gian xử lý yêu cầu rút tiền: 24 giờ</li>
                 <li>Vui lòng đảm bảo thông tin tài khoản ngân hàng chính xác</li>
                 <li>Phí giao dịch: Miễn phí</li>
               </ul>

@@ -308,14 +308,14 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   }
 
   const statusInfo = getUIStatus(apiOrder?.status || 'NotYet')
-  
+
   // Điều chỉnh status cho COD khi Returned: chỉ hiển thị "Trả hàng" thay vì "Trả hàng/Hoàn tiền"
-  const adjustedStatusInfo = 
+  const adjustedStatusInfo =
     apiOrder?.status === 'Returned' && apiOrder?.paymentType === 'COD'
       ? {
-          ...statusInfo,
-          status: 'Trả hàng' as const
-        }
+        ...statusInfo,
+        status: 'Trả hàng' as const
+      }
       : statusInfo
 
   const products = [
@@ -569,6 +569,13 @@ export default function OrdersContent({
         return false
       })
     }
+
+    // Sort by date (newest first)
+    filtered.sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0
+      const dateB = b.date ? new Date(b.date).getTime() : 0
+      return dateB - dateA // Descending order (newest first)
+    })
 
     return filtered
   }, [orders, selectedFilter, searchQuery])
@@ -911,7 +918,7 @@ export default function OrdersContent({
       const refundedOrder = await refundOrder(selectedOrderId)
       toast.success('Yêu cầu hoàn tiền đã được gửi thành công!')
       setShowRefundConfirmDialog(false)
-      
+
       // Đợi một chút để đảm bảo backend đã cập nhật xong trước khi refresh
       // Nếu response có isRefunded = true thì có thể refresh ngay, nếu không thì đợi thêm
       if (refundedOrder?.isRefunded) {

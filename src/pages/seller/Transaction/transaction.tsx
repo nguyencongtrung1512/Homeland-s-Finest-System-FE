@@ -4,7 +4,14 @@ import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Badge } from '../../../components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../../components/ui/dialog'
 import ComboBox from '../../../components/ui/combo-box'
 import { useAuth } from '../../../contexts/auth.context'
 import {
@@ -67,6 +74,8 @@ function Transaction() {
   const [submittingPayDebt, setSubmittingPayDebt] = useState(false)
   const [selectedFormula, setSelectedFormula] = useState<string | null>(null)
   const [showFormulaModal, setShowFormulaModal] = useState(false)
+  const [showTransactionDetailModal, setShowTransactionDetailModal] = useState(false)
+  const [selectedTransaction, setSelectedTransaction] = useState<WalletTransactionDTO | null>(null)
 
   // Wallet data from API
   const [walletData, setWalletData] = useState<WalletData | null>(null)
@@ -208,11 +217,7 @@ function Transaction() {
   // Refresh all data
   const handleRefresh = async () => {
     setRefreshing(true)
-    await Promise.all([
-      fetchWalletBalance(),
-      fetchWalletTransactions(1),
-      fetchRequestWalletMoney(1)
-    ])
+    await Promise.all([fetchWalletBalance(), fetchWalletTransactions(1), fetchRequestWalletMoney(1)])
     setRefreshing(false)
     toast.success('Đã làm mới dữ liệu')
   }
@@ -233,6 +238,9 @@ function Transaction() {
     debtBalance: number
     grossRevenue: number
     totalCommissionPaid: number
+    totalCommission: number
+    totalShip: number
+    totalInsurance: number
     netRevenue: number
     netIncome: number
     totalWithdrawn: number
@@ -247,9 +255,12 @@ function Transaction() {
       debtBalance: walletData.debtBalance || 0,
       grossRevenue: walletData.grossRevenue || 0,
       totalCommissionPaid: walletData.totalCommissionPaid || 0,
+      totalCommission: walletData.totalCommission || 0,
+      totalShip: walletData.totalShip || 0,
+      totalInsurance: walletData.totalInsurance || 0,
       netRevenue: walletData.netRevenue || 0,
       netIncome: walletData.netRevenue || 0,
-      totalWithdrawn: 0,
+      totalWithdrawn: walletData.totalWithdrawn || 0,
       totalSellerDiscount: walletData.totalSellerDiscount || 0,
       totalSystemDiscount: walletData.totalSystemDiscount || 0
     }
@@ -259,6 +270,9 @@ function Transaction() {
       debtBalance: 200000,
       grossRevenue: 10000000,
       totalCommissionPaid: 1000000,
+      totalCommission: 1000000,
+      totalShip: 0,
+      totalInsurance: 0,
       netRevenue: 8000000,
       netIncome: 8000000,
       totalWithdrawn: 0,
@@ -803,12 +817,7 @@ function Transaction() {
       </motion.div>
 
       {/* Action Buttons Section */}
-      <motion.div
-        className='mb-6 sm:mb-8'
-        variants={containerVariants}
-        initial='hidden'
-        animate='visible'
-      >
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
         <Card className='bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-200'>
           <CardContent className='p-4 sm:p-6'>
             <h3 className='text-sm sm:text-base font-semibold text-gray-700 mb-4'>Thao tác nhanh</h3>
@@ -1051,6 +1060,58 @@ function Transaction() {
         </div>
       </motion.div>
 
+      {/* 2.2. Chi phí vận chuyển và bảo hiểm */}
+      <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
+        <h2 className='text-lg sm:text-xl font-semibold text-gray-900 mb-4'>Chi phí vận chuyển và bảo hiểm</h2>
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6'>
+          {/* Total Ship + Insurance */}
+          <motion.div variants={itemVariants} className='sm:col-span-2'>
+            <motion.div variants={cardHoverVariants} whileHover='hover'>
+              <Card className='relative overflow-hidden h-full'>
+                <CardContent className='p-4 sm:p-6'>
+                  <div className='flex justify-between items-start'>
+                    <div className='flex-1'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Tổng phí ship + Bảo hiểm</h3>
+                        <button
+                          onClick={() => {
+                            setSelectedFormula('totalShipInsurance')
+                            setShowFormulaModal(true)
+                          }}
+                          className='p-0.5 hover:bg-gray-100 rounded-full transition-colors'
+                          aria-label='Xem công thức'
+                        >
+                          <Info className='w-3 h-3 sm:w-4 sm:h-4 text-gray-400 hover:text-blue-600' />
+                        </button>
+                      </div>
+                      <motion.p
+                        className='text-2xl sm:text-3xl font-bold text-indigo-600'
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.2, duration: 0.3 }}
+                        key={walletDataDisplay.totalShip + walletDataDisplay.totalInsurance}
+                      >
+                        {(walletDataDisplay.totalShip + walletDataDisplay.totalInsurance).toLocaleString()} ₫
+                      </motion.p>
+                      <div className='mt-2 space-y-1 text-xs text-gray-500'>
+                        <p>• Tổng phí ship: {walletDataDisplay.totalShip.toLocaleString()} ₫</p>
+                        <p>• Tổng bảo hiểm: {walletDataDisplay.totalInsurance.toLocaleString()} ₫</p>
+                      </div>
+                      <p className='text-xs text-gray-500 mt-2'>
+                        Tổng chi phí vận chuyển và bảo hiểm từ tất cả các đơn hàng
+                      </p>
+                    </div>
+                    <div className='w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0'>
+                      <Receipt className='w-5 h-5 sm:w-6 sm:h-6 text-indigo-600' />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+        </div>
+      </motion.div>
+
       {/* 3. Derived (Tính toán) */}
       <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
         <div className='flex items-center gap-2 mb-4'>
@@ -1093,7 +1154,6 @@ function Transaction() {
                       >
                         {walletDataDisplay.netRevenue.toLocaleString()} ₫
                       </motion.p>
-
                     </div>
                     <div className='w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0'>
                       <DollarSign className='w-5 h-5 text-blue-600' />
@@ -1156,6 +1216,7 @@ function Transaction() {
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Mã đơn hàng</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Ngày</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Loại</th>
+                        <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Phương thức</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Số tiền</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Số dư sau</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Trạng thái</th>
@@ -1166,11 +1227,15 @@ function Transaction() {
                         {paginatedTransactions.map((transaction, index) => (
                           <motion.tr
                             key={transaction.id}
-                            className='border-b border-gray-100 hover:bg-gray-50'
+                            className='border-b border-gray-100 hover:bg-gray-50 cursor-pointer'
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
                             transition={{ delay: index * 0.05 }}
+                            onClick={() => {
+                              setSelectedTransaction(transaction)
+                              setShowTransactionDetailModal(true)
+                            }}
                           >
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
                               {transaction.orderId ? `#${transaction.orderId}` : 'Rút tiền'}
@@ -1178,6 +1243,15 @@ function Transaction() {
                             <td className='py-4 px-4 text-gray-700 text-sm'>{formatDate(transaction.createdAt)}</td>
                             <td className='py-4 px-4 text-gray-700 text-sm'>
                               {getTransactionTypeLabel(transaction.type as any)}
+                            </td>
+                            <td className='py-4 px-4 text-gray-700 text-sm'>
+                              {transaction.paymentMethod === 'COD'
+                                ? 'Thanh toán khi nhận hàng'
+                                : transaction.paymentMethod === 'Banking'
+                                  ? 'Chuyển khoản ngân hàng'
+                                  : transaction.paymentMethod === 'Wallet'
+                                    ? 'Ví điện tử'
+                                    : transaction.paymentMethod || '-'}
                             </td>
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
                               {transaction.amount.toLocaleString()} ₫
@@ -1204,8 +1278,12 @@ function Transaction() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ delay: index * 0.05 }}
+                        onClick={() => {
+                          setSelectedTransaction(transaction)
+                          setShowTransactionDetailModal(true)
+                        }}
                       >
-                        <Card className='hover:shadow-md transition-shadow'>
+                        <Card className='hover:shadow-md transition-shadow cursor-pointer'>
                           <CardContent className='p-4'>
                             <div className='space-y-3'>
                               <div className='flex justify-between items-start'>
@@ -1224,21 +1302,41 @@ function Transaction() {
                                 </div>
                                 <div>
                                   <p className='text-xs text-gray-500'>Loại</p>
-                                  <p className='text-sm text-gray-700'>{getTransactionTypeLabel(transaction.type as any)}</p>
+                                  <p className='text-sm text-gray-700'>
+                                    {getTransactionTypeLabel(transaction.type as any)}
+                                  </p>
                                 </div>
                               </div>
                               <div className='grid grid-cols-2 gap-3 pt-2 border-t'>
+                                <div>
+                                  <p className='text-xs text-gray-500'>Phương thức</p>
+                                  <p className='text-sm text-gray-700'>
+                                    {transaction.paymentMethod === 'COD'
+                                      ? 'Thanh toán khi nhận hàng'
+                                      : transaction.paymentMethod === 'Banking'
+                                        ? 'Chuyển khoản ngân hàng'
+                                        : transaction.paymentMethod === 'Wallet'
+                                          ? 'Ví điện tử'
+                                          : transaction.paymentMethod || '-'}
+                                  </p>
+                                </div>
                                 <div>
                                   <p className='text-xs text-gray-500'>Số tiền</p>
                                   <p className='text-sm font-medium text-gray-900'>
                                     {transaction.amount.toLocaleString()} ₫
                                   </p>
                                 </div>
+                              </div>
+                              <div className='grid grid-cols-2 gap-3 pt-2 border-t'>
                                 <div>
                                   <p className='text-xs text-gray-500'>Số dư sau</p>
                                   <p className='text-sm font-medium text-green-600'>
                                     {transaction.balanceAfter.toLocaleString()} ₫
                                   </p>
+                                </div>
+                                <div>
+                                  <p className='text-xs text-gray-500'>Xem chi tiết</p>
+                                  <p className='text-sm text-blue-600 font-medium'>Click để xem →</p>
                                 </div>
                               </div>
                             </div>
@@ -1321,9 +1419,7 @@ function Transaction() {
                               {formatAccountNumber(request.bankAccount || null)}
                             </td>
                             <td className='py-4 px-4'>{getStatusBadge(request.status || 'Pending')}</td>
-                            <td className='py-4 px-4 text-gray-700 text-sm'>
-                              {request.processNote || '-'}
-                            </td>
+                            <td className='py-4 px-4 text-gray-700 text-sm'>{request.processNote || '-'}</td>
                           </motion.tr>
                         ))}
                       </AnimatePresence>
@@ -1431,8 +1527,6 @@ function Transaction() {
                       <p className='font-medium text-gray-900'>{formatAccountNumber(userInfo?.bankAccount || null)}</p>
                     </div>
                   </div>
-
-
                 </div>
 
                 {/* Action Buttons */}
@@ -1467,21 +1561,51 @@ function Transaction() {
                   <div className='flex items-center gap-2'>
                     <span className='font-medium text-gray-700'>Công thức:</span>
                     <code className='bg-white px-2 py-1 rounded border border-green-300 text-green-700'>
-                      Doanh thu gộp = Σ(Tổng tiền đơn hàng)
+                      Doanh thu gộp = Doanh thu ròng + Chiết khấu của bạn + Tổng hoa hồng + Tổng phí ship + Tổng bảo
+                      hiểm
                     </code>
                   </div>
                   <div className='text-gray-600 mt-2'>
                     <p className='mb-1'>Trong đó:</p>
                     <ul className='list-disc list-inside space-y-1 ml-2'>
-                      <li>Tổng tiền đơn hàng = Tiền sản phẩm gốc + Tiền ship + Tiền bảo hiểm + Phí sàn thu( từ sản phẩm)</li>
-                      <li>Σ là ký hiệu tổng (tổng tất cả các đơn hàng)</li>
+                      <li>Doanh thu ròng = Số tiền bạn thực sự nhận được sau khi trừ tất cả chi phí</li>
+                      <li>Chiết khấu của bạn = Tổng giảm giá bạn đã chi trả cho khách hàng</li>
+                      <li>Tổng hoa hồng = Tổng phí sàn thu từ các đơn hàng</li>
+                      <li>Tổng phí ship = Tổng chi phí vận chuyển</li>
+                      <li>Tổng bảo hiểm = Tổng chi phí bảo hiểm</li>
                     </ul>
                   </div>
                   <div className='mt-3 pt-3 border-t border-green-200'>
-                    <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
-                    <span className='font-bold text-green-600'>
-                      {walletDataDisplay.grossRevenue.toLocaleString()} ₫
-                    </span>
+                    <div className='flex flex-col gap-1 text-xs'>
+                      <div className='flex items-center gap-2'>
+                        <span className='font-medium text-gray-700'>Doanh thu ròng:</span>
+                        <span className='text-gray-600'>{walletDataDisplay.netRevenue.toLocaleString()} ₫</span>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <span className='font-medium text-gray-700'>Cộng chiết khấu của bạn:</span>
+                        <span className='text-green-600'>
+                          +{(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} ₫
+                        </span>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <span className='font-medium text-gray-700'>Cộng tổng hoa hồng:</span>
+                        <span className='text-green-600'>+{walletDataDisplay.totalCommission.toLocaleString()} ₫</span>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <span className='font-medium text-gray-700'>Cộng tổng phí ship:</span>
+                        <span className='text-green-600'>+{walletDataDisplay.totalShip.toLocaleString()} ₫</span>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <span className='font-medium text-gray-700'>Cộng tổng bảo hiểm:</span>
+                        <span className='text-green-600'>+{walletDataDisplay.totalInsurance.toLocaleString()} ₫</span>
+                      </div>
+                      <div className='flex items-center gap-2 pt-1 border-t border-green-200'>
+                        <span className='font-medium text-gray-700'>Doanh thu gộp:</span>
+                        <span className='font-bold text-green-600'>
+                          {walletDataDisplay.grossRevenue.toLocaleString()} ₫
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1510,7 +1634,9 @@ function Transaction() {
                     </ul>
                   </div>
                   <div className='text-gray-600 mt-3 pt-3 border-t border-orange-200'>
-                    <p className='mb-1'><strong>Logic:</strong></p>
+                    <p className='mb-1'>
+                      <strong>Logic:</strong>
+                    </p>
                     <ul className='list-disc list-inside space-y-1 ml-2'>
                       <li>✅ Tăng khi có đơn hàng sử dụng Product promotions (Bạn chịu chi phí)</li>
                       <li>✅ Đây là số tiền bạn đã giảm giá cho khách hàng từ các khuyến mãi của bạn</li>
@@ -1543,13 +1669,17 @@ function Transaction() {
                   <div className='text-gray-600 mt-2'>
                     <p className='mb-1'>Trong đó:</p>
                     <ul className='list-disc list-inside space-y-1 ml-2'>
-                      <li>platformPromotion = Tổng discount từ các promotion có PromotionType = "Global" hoặc "User"</li>
+                      <li>
+                        platformPromotion = Tổng discount từ các promotion có PromotionType = "Global" hoặc "User"
+                      </li>
                       <li>+ ShipPrice (nếu FreeShip từ Global/User promotions - Platform trả phí ship)</li>
                       <li>Σ là ký hiệu tổng (tổng tất cả các chiết khấu từ đơn hàng đã PayoutSeller)</li>
                     </ul>
                   </div>
                   <div className='text-gray-600 mt-3 pt-3 border-t border-cyan-200'>
-                    <p className='mb-1'><strong>Logic:</strong></p>
+                    <p className='mb-1'>
+                      <strong>Logic:</strong>
+                    </p>
                     <ul className='list-disc list-inside space-y-1 ml-2'>
                       <li>✅ Tăng khi có đơn hàng sử dụng Global/User promotions (Platform chịu chi phí)</li>
                       <li>✅ Tăng khi có đơn hàng FreeShip từ Global/User promotions (Platform trả phí ship)</li>
@@ -1578,15 +1708,20 @@ function Transaction() {
                   <div className='flex items-center gap-2'>
                     <span className='font-medium text-gray-700'>Công thức:</span>
                     <code className='bg-white px-2 py-1 rounded border border-blue-300 text-blue-700'>
-                      Doanh thu ròng = Doanh thu gộp - Giảm giá bạn chịu - Phí ship - Bảo hiểm - Hoa hồng
+                      Doanh thu ròng = Doanh thu gộp - Chiết khấu của bạn - Tổng hoa hồng - Tổng phí ship - Tổng bảo
+                      hiểm
                     </code>
                   </div>
                   <div className='text-gray-600 mt-2'>
                     <p className='mb-1'>Trong đó:</p>
                     <ul className='list-disc list-inside space-y-1 ml-2'>
-                      <li>Doanh thu gộp = Số tiền sản phẩm gốc + tiền hoa hồng</li>
-                      <li>Giảm giá bạn chịu = Tổng giảm giá từ khuyến mãi bạn tạo (Người bán tự giảm giá)</li>
-                      <li>Hoa hồng = Tổng chi phí sàn thu từ đơn hàng</li>
+                      <li>Doanh thu gộp = Tổng giá trị đơn hàng (bao gồm cả phí ship, bảo hiểm, hoa hồng)</li>
+                      <li>
+                        Chiết khấu của bạn = Tổng giảm giá bạn đã chi trả cho khách hàng từ các khuyến mãi Product
+                      </li>
+                      <li>Tổng hoa hồng = Tổng phí sàn thu từ các đơn hàng</li>
+                      <li>Tổng phí ship = Tổng chi phí vận chuyển</li>
+                      <li>Tổng bảo hiểm = Tổng chi phí bảo hiểm</li>
                     </ul>
                   </div>
                   <div className='mt-3 pt-3 border-t border-blue-200'>
@@ -1597,20 +1732,27 @@ function Transaction() {
                       </div>
                       <div className='flex items-center gap-2'>
                         <span className='font-medium text-gray-700'>Trừ chiết khấu của bạn:</span>
-                        <span className='text-red-600'>-{(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} ₫</span>
+                        <span className='text-red-600'>
+                          -{(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} ₫
+                        </span>
                       </div>
                       <div className='flex items-center gap-2'>
-                        <span className='font-medium text-gray-700'>Trừ chiết khấu hệ thống:</span>
-                        <span className='text-gray-500'>-{(walletDataDisplay.totalSystemDiscount || 0).toLocaleString()} ₫</span>
-                        <span className='text-xs text-gray-400'>(Platform hỗ trợ)</span>
+                        <span className='font-medium text-gray-700'>Trừ tổng hoa hồng:</span>
+                        <span className='text-red-600'>-{walletDataDisplay.totalCommission.toLocaleString()} ₫</span>
                       </div>
                       <div className='flex items-center gap-2'>
-                        <span className='font-medium text-gray-700'>Trừ hoa hồng:</span>
-                        <span className='text-red-600'>-{(walletDataDisplay.totalCommissionPaid || 0).toLocaleString()} ₫</span>
+                        <span className='font-medium text-gray-700'>Trừ tổng phí ship:</span>
+                        <span className='text-red-600'>-{walletDataDisplay.totalShip.toLocaleString()} ₫</span>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <span className='font-medium text-gray-700'>Trừ tổng bảo hiểm:</span>
+                        <span className='text-red-600'>-{walletDataDisplay.totalInsurance.toLocaleString()} ₫</span>
                       </div>
                       <div className='flex items-center gap-2 pt-1 border-t border-blue-200'>
                         <span className='font-medium text-gray-700'>Doanh thu ròng:</span>
-                        <span className='font-bold text-blue-600'>{walletDataDisplay.netRevenue.toLocaleString()} ₫</span>
+                        <span className='font-bold text-blue-600'>
+                          {walletDataDisplay.netRevenue.toLocaleString()} ₫
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1660,7 +1802,7 @@ function Transaction() {
                   <div className='text-gray-600 mt-2'>
                     <p className='mb-1'>Trong đó:</p>
                     <ul className='list-disc list-inside space-y-1 ml-2'>
-                      <li>Hoa hồng COD = Hoa hồng từ đơn hàng COD</li>
+                      <li>Hoa hồng COD = Hoa hồng từ sản phẩm đơn hàng COD (Cash On Deliver)</li>
                       <li>Σ là ký hiệu tổng (tổng tất cả các khoản nợ chưa trả)</li>
                     </ul>
                   </div>
@@ -1687,7 +1829,6 @@ function Transaction() {
                       <li>Tiền từ các đơn hàng đã hoàn thành</li>
                       <li>Tiền nạp vào ví</li>
                       <li>Tiền hoàn lại từ các đơn hàng bị hủy</li>
-                      <li>Trừ đi các khoản nợ chưa trả</li>
                     </ul>
                   </div>
                   <div className='mt-3 pt-3 border-t border-green-200'>
@@ -1709,12 +1850,14 @@ function Transaction() {
                 </h3>
                 <div className='space-y-2 text-sm'>
                   <div className='text-gray-600 mt-2'>
-                    <p className='mb-1'>Số dư chờ là số tiền từ các đơn hàng Banking chưa được delivered.</p>
+                    <p className='mb-1'>
+                      Số dư chờ là số tiền từ các đơn hàng chuyển khoản hoặc từ ví điện tử chưa được nhận hàng.
+                    </p>
                     <p className='mb-1'>Bao gồm:</p>
                     <ul className='list-disc list-inside space-y-1 ml-2'>
-                      <li>Tiền từ đơn hàng thanh toán Banking</li>
+                      <li>Tiền từ đơn hàng thanh toán qua ngân hàng hoặc ví điện tử</li>
                       <li>Đơn hàng đang trong trạng thái chờ xác nhận</li>
-                      <li>Sẽ chuyển sang số dư khả dụng khi đơn hàng được delivered</li>
+                      <li>Sẽ chuyển sang số dư khả dụng khi đơn hàng được nhận hàng</li>
                     </ul>
                   </div>
                   <div className='mt-3 pt-3 border-t border-blue-200'>
@@ -1722,6 +1865,46 @@ function Transaction() {
                     <span className='font-bold text-blue-600'>
                       {walletDataDisplay.pendingBalance.toLocaleString()} ₫
                     </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Total Ship + Insurance Formula */}
+            {selectedFormula === 'totalShipInsurance' && (
+              <div className='bg-indigo-50 p-4 rounded-lg border border-indigo-200'>
+                <h3 className='font-semibold text-indigo-900 mb-3 flex items-center gap-2'>
+                  <Receipt className='w-5 h-5' />
+                  Tổng phí ship + Bảo hiểm
+                </h3>
+                <div className='space-y-2 text-sm'>
+                  <div className='flex items-center gap-2'>
+                  </div>
+                  <div className='text-gray-600 mt-2'>
+                    <p className='mb-1'>Trong đó:</p>
+                    <ul className='list-disc list-inside space-y-1 ml-2'>
+                      <li>Tổng phí ship = Tổng chi phí vận chuyển từ tất cả các đơn hàng</li>
+                      <li>Tổng bảo hiểm = Tổng chi phí bảo hiểm từ tất cả các đơn hàng</li>
+                      <li>Đây là tổng chi phí bạn phải trả cho việc vận chuyển và bảo hiểm hàng hóa</li>
+                    </ul>
+                  </div>
+                  <div className='mt-3 pt-3 border-t border-indigo-200'>
+                    <div className='flex flex-col gap-1 text-xs'>
+                      <div className='flex items-center gap-2'>
+                        <span className='font-medium text-gray-700'>Tổng phí ship:</span>
+                        <span className='text-gray-600'>{walletDataDisplay.totalShip.toLocaleString()} ₫</span>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <span className='font-medium text-gray-700'>Tổng bảo hiểm:</span>
+                        <span className='text-gray-600'>{walletDataDisplay.totalInsurance.toLocaleString()} ₫</span>
+                      </div>
+                      <div className='flex items-center gap-2 pt-1 border-t border-indigo-200'>
+                        <span className='font-medium text-gray-700'>Tổng phí ship + Bảo hiểm:</span>
+                        <span className='font-bold text-indigo-600'>
+                          {(walletDataDisplay.totalShip + walletDataDisplay.totalInsurance).toLocaleString()} ₫
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1740,11 +1923,12 @@ function Transaction() {
                     <div className='flex items-center gap-2'>
                       <span className='font-medium text-gray-700'>Công thức:</span>
                       <code className='bg-white px-2 py-1 rounded border border-green-300 text-green-700'>
-                        Doanh thu gộp = Σ(Tổng đơn hàng + Phí ship + Bảo hiểm)
+                        Doanh thu gộp = Doanh thu ròng + Chiết khấu của bạn + Tổng hoa hồng + Tổng phí ship + Tổng bảo
+                        hiểm
                       </code>
                     </div>
                     <div className='text-gray-600 mt-2'>
-                      <p>Trong đó: Tổng đơn hàng = Tổng giá trị sản phẩm trong đơn hàng</p>
+                      <p>Trong đó: Doanh thu gộp là tổng giá trị đơn hàng trước khi trừ các khoản chi phí</p>
                     </div>
                   </div>
                 </div>
@@ -1759,14 +1943,17 @@ function Transaction() {
                     <div className='flex items-center gap-2'>
                       <span className='font-medium text-gray-700'>Công thức:</span>
                       <code className='bg-white px-2 py-1 rounded border border-blue-300 text-blue-700'>
-                        Doanh thu ròng = Doanh thu gộp - Giảm giá bạn chịu - Phí ship - Bảo hiểm - Hoa hồng
+                        Doanh thu ròng = Doanh thu gộp - Chiết khấu của bạn - Tổng hoa hồng - Tổng phí ship - Tổng bảo
+                        hiểm
                       </code>
                     </div>
                     <div className='text-gray-600 mt-2'>
                       <p className='mb-1'>Trong đó:</p>
                       <ul className='list-disc list-inside space-y-1 ml-2'>
-                        <li>Giảm giá bạn chịu = Tổng discount từ Product promotion</li>
-                        <li>Hoa hồng = Tổng hoa hồng platform thu từ đơn hàng</li>
+                        <li>Chiết khấu của bạn = Tổng giảm giá bạn đã chi trả cho khách hàng</li>
+                        <li>Tổng hoa hồng = Tổng phí sàn thu từ đơn hàng</li>
+                        <li>Tổng phí ship = Tổng chi phí vận chuyển</li>
+                        <li>Tổng bảo hiểm = Tổng chi phí bảo hiểm</li>
                       </ul>
                     </div>
                   </div>
@@ -2421,6 +2608,265 @@ function Transaction() {
               </Button>
             </div>
           </motion.div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transaction Detail Modal */}
+      <Dialog open={showTransactionDetailModal} onOpenChange={setShowTransactionDetailModal}>
+        <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
+          <DialogHeader>
+            <DialogTitle>Chi tiết giao dịch</DialogTitle>
+            <DialogDescription>Thông tin chi tiết về giao dịch này</DialogDescription>
+          </DialogHeader>
+          {selectedTransaction && (
+            <div className='space-y-4 mt-4'>
+              {/* Basic Information */}
+              <div className='grid grid-cols-2 gap-4'>
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Mã giao dịch</p>
+                  <p className='text-sm text-gray-900 break-all'>{selectedTransaction.id}</p>
+                </div>
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Mã đơn hàng</p>
+                  <p className='text-sm text-gray-900'>{selectedTransaction.orderId || 'Không có'}</p>
+                </div>
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Loại giao dịch</p>
+                  <p className='text-sm text-gray-900'>{getTransactionTypeLabel(selectedTransaction.type as any)}</p>
+                </div>
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Trạng thái</p>
+                  <div>{getStatusBadge(selectedTransaction.status || 'Completed')}</div>
+                </div>
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Số tiền</p>
+                  <p className='text-lg font-bold text-gray-900'>{selectedTransaction.amount.toLocaleString()} ₫</p>
+                </div>
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Phương thức thanh toán</p>
+                  <p className='text-sm text-gray-900'>
+                    {selectedTransaction.paymentMethod === 'COD'
+                      ? 'Thanh toán khi nhận hàng'
+                      : selectedTransaction.paymentMethod === 'Banking'
+                        ? 'Chuyển khoản ngân hàng'
+                        : selectedTransaction.paymentMethod === 'Wallet'
+                          ? 'Ví điện tử'
+                          : selectedTransaction.paymentMethod || 'Không có'}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Số dư trước</p>
+                  <p className='text-sm text-gray-900'>{selectedTransaction.balanceBefore.toLocaleString()} ₫</p>
+                </div>
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Số dư sau</p>
+                  <p className='text-sm font-semibold text-green-600'>
+                    {selectedTransaction.balanceAfter.toLocaleString()} ₫
+                  </p>
+                </div>
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Ngày tạo</p>
+                  <p className='text-sm text-gray-900'>
+                    {new Date(selectedTransaction.createdAt).toLocaleString('vi-VN', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Ngày cập nhật</p>
+                  <p className='text-sm text-gray-900'>
+                    {selectedTransaction.updatedAt
+                      ? new Date(selectedTransaction.updatedAt).toLocaleString('vi-VN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                      : 'Chưa cập nhật'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Description */}
+              {selectedTransaction.description && (
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-1'>Mô tả</p>
+                  <p className='text-sm text-gray-900 bg-gray-50 p-3 rounded-lg'>{selectedTransaction.description}</p>
+                </div>
+              )}
+
+              {/* Debt Information */}
+              {(selectedTransaction.debtBefore !== null ||
+                selectedTransaction.debtAfter !== null ||
+                selectedTransaction.debtPaid !== null) && (
+                  <div className='bg-yellow-50 p-4 rounded-lg border border-yellow-200'>
+                    <p className='text-sm font-semibold text-gray-900 mb-3'>Thông tin nợ</p>
+                    <div className='grid grid-cols-3 gap-4'>
+                      {selectedTransaction.debtBefore !== null && (
+                        <div>
+                          <p className='text-xs text-gray-600 mb-1'>Nợ trước</p>
+                          <p className='text-sm font-medium text-gray-900'>
+                            {selectedTransaction.debtBefore.toLocaleString()} ₫
+                          </p>
+                        </div>
+                      )}
+                      {selectedTransaction.debtAfter !== null && (
+                        <div>
+                          <p className='text-xs text-gray-600 mb-1'>Nợ sau</p>
+                          <p className='text-sm font-medium text-gray-900'>
+                            {selectedTransaction.debtAfter.toLocaleString()} ₫
+                          </p>
+                        </div>
+                      )}
+                      {selectedTransaction.debtPaid !== null && (
+                        <div>
+                          <p className='text-xs text-gray-600 mb-1'>Số tiền đã trả</p>
+                          <p className='text-sm font-medium text-green-600'>
+                            {selectedTransaction.debtPaid.toLocaleString()} ₫
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+              {/* Order Breakdown (for Seller) */}
+              {(selectedTransaction.orderGrossRevenue !== null ||
+                selectedTransaction.totalSellerDiscount !== null ||
+                selectedTransaction.totalSystemDiscount !== null ||
+                selectedTransaction.orderShipFee !== null ||
+                selectedTransaction.orderInsurance !== null ||
+                selectedTransaction.orderCommission !== null ||
+                selectedTransaction.orderNetRevenue !== null) && (
+                  <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
+                    <p className='text-sm font-semibold text-gray-900 mb-3'>Chi tiết đơn hàng</p>
+                    <div className='space-y-2'>
+                      {selectedTransaction.orderGrossRevenue !== null &&
+                        selectedTransaction.orderGrossRevenue !== undefined && (
+                          <div className='flex justify-between items-center'>
+                            <span className='text-xs text-gray-600'>Doanh thu gộp:</span>
+                            <span className='text-sm font-medium text-gray-900'>
+                              {selectedTransaction.orderGrossRevenue.toLocaleString()} ₫
+                            </span>
+                          </div>
+                        )}
+                      {selectedTransaction.totalSellerDiscount !== null &&
+                        selectedTransaction.totalSellerDiscount !== undefined && (
+                          <div className='flex justify-between items-center'>
+                            <span className='text-xs text-gray-600'>Chiết khấu của bạn:</span>
+                            <span className='text-sm font-medium text-red-600'>
+                              -{selectedTransaction.totalSellerDiscount.toLocaleString()} ₫
+                            </span>
+                          </div>
+                        )}
+                      {selectedTransaction.totalSystemDiscount !== null &&
+                        selectedTransaction.totalSystemDiscount !== undefined && (
+                          <div className='flex justify-between items-center'>
+                            <span className='text-xs text-gray-600'>Chiết khấu hệ thống:</span>
+                            <span className='text-sm font-medium text-gray-500'>
+                              -{selectedTransaction.totalSystemDiscount.toLocaleString()} ₫
+                            </span>
+                          </div>
+                        )}
+                      {selectedTransaction.orderShipFee !== null && selectedTransaction.orderShipFee !== undefined && (
+                        <div className='flex justify-between items-center'>
+                          <span className='text-xs text-gray-600'>Phí ship:</span>
+                          <span className='text-sm font-medium text-red-600'>
+                            -{selectedTransaction.orderShipFee.toLocaleString()} ₫
+                          </span>
+                        </div>
+                      )}
+                      {selectedTransaction.orderInsurance !== null &&
+                        selectedTransaction.orderInsurance !== undefined && (
+                          <div className='flex justify-between items-center'>
+                            <span className='text-xs text-gray-600'>Bảo hiểm:</span>
+                            <span className='text-sm font-medium text-red-600'>
+                              -{selectedTransaction.orderInsurance.toLocaleString()} ₫
+                            </span>
+                          </div>
+                        )}
+                      {selectedTransaction.orderCommission !== null &&
+                        selectedTransaction.orderCommission !== undefined && (
+                          <div className='flex justify-between items-center'>
+                            <span className='text-xs text-gray-600'>Hoa hồng:</span>
+                            <span className='text-sm font-medium text-red-600'>
+                              -{selectedTransaction.orderCommission.toLocaleString()} ₫
+                            </span>
+                          </div>
+                        )}
+                      {selectedTransaction.orderNetRevenue !== null &&
+                        selectedTransaction.orderNetRevenue !== undefined && (
+                          <div className='flex justify-between items-center pt-2 border-t border-blue-200'>
+                            <span className='text-sm font-semibold text-gray-900'>Doanh thu ròng:</span>
+                            <span className='text-sm font-bold text-blue-600'>
+                              {selectedTransaction.orderNetRevenue.toLocaleString()} ₫
+                            </span>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                )}
+
+              {/* Process Information */}
+              {(selectedTransaction.processedBy ||
+                selectedTransaction.processedByName ||
+                selectedTransaction.processNote) && (
+                  <div className='bg-gray-50 p-4 rounded-lg border border-gray-200'>
+                    <p className='text-sm font-semibold text-gray-900 mb-3'>Thông tin xử lý</p>
+                    <div className='space-y-2'>
+                      {selectedTransaction.processedBy && (
+                        <div>
+                          <p className='text-xs text-gray-600 mb-1'>Người xử lý (ID)</p>
+                          <p className='text-sm text-gray-900'>{selectedTransaction.processedBy}</p>
+                        </div>
+                      )}
+                      {selectedTransaction.processedByName && (
+                        <div>
+                          <p className='text-xs text-gray-600 mb-1'>Tên người xử lý</p>
+                          <p className='text-sm text-gray-900'>{selectedTransaction.processedByName}</p>
+                        </div>
+                      )}
+                      {selectedTransaction.processNote && (
+                        <div>
+                          <p className='text-xs text-gray-600 mb-1'>Ghi chú xử lý</p>
+                          <p className='text-sm text-gray-900'>{selectedTransaction.processNote}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+              {/* Bill Images */}
+              {selectedTransaction.billImages && selectedTransaction.billImages.length > 0 && (
+                <div>
+                  <p className='text-sm font-medium text-gray-700 mb-2'>Hình ảnh hóa đơn</p>
+                  <div className='grid grid-cols-2 gap-4'>
+                    {selectedTransaction.billImages.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image}
+                        alt={`Hóa đơn ${index + 1}`}
+                        className='w-full h-auto rounded-lg border border-gray-200'
+                        onError={(e) => {
+                          ; (e.target as HTMLImageElement).style.display = 'none'
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setShowTransactionDetailModal(false)}>
+              Đóng
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </motion.div>

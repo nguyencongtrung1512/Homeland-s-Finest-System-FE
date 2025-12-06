@@ -495,7 +495,7 @@ function FinanceManagement() {
             <CardContent className='p-6'>
               <div className='flex justify-between items-start'>
                 <div className='flex-1'>
-                  <p className='text-sm font-medium text-slate-600 mb-2'>Tổng doanh thu</p>
+                  <p className='text-sm font-medium text-slate-600 mb-2'>Tổng giá trị </p>
                   <p className='text-2xl font-bold text-emerald-600 mb-1'>
                     {walletDataDisplay.grossRevenue.toLocaleString()} ₫
                   </p>

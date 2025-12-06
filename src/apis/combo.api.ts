@@ -66,6 +66,11 @@ export const updateComboShell = async (comboId: string, comboData: UpdateComboRe
     formData.append('FinalPrice', comboData.finalPrice.toString())
   }
 
+  // Gửi DiscountPercent nếu được chỉ định
+  if (comboData.discountPercent !== undefined) {
+    formData.append('DiscountPercent', comboData.discountPercent.toString())
+  }
+
   // Logic xử lý ảnh thumbnail
   if (comboData.removeThumbnail) {
     // Người dùng muốn xóa ảnh hiện tại

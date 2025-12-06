@@ -13,6 +13,7 @@ export interface UpdateComboRequest {
   isActive: boolean
   thumbnailFile?: File
   finalPrice?: number
+  discountPercent?: number
   removeThumbnail?: boolean
 }
 

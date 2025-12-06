@@ -128,6 +128,10 @@ export interface WalletData {
   totalSystemDiscount: number
   TotalWithdrawn: number
   totalCommissionPaid: number
+  totalCommission?: number
+  totalShip?: number
+  totalInsurance?: number
+  totalWithdrawn?: number
   createdAt: string
   updatedAt: string
   walletTransactionDTOs: WalletTransactionDTO[]

@@ -24,7 +24,6 @@ import type {
 } from '../../../types/combo.type'
 import { toast } from '../../../utils/toast'
 import { Input } from '../../../components/ui/input'
-import { Label } from '../../../components/ui/label'
 import { Save } from 'lucide-react'
 
 function DetailComboSeller() {
@@ -33,6 +32,8 @@ function DetailComboSeller() {
   const [combo, setCombo] = useState<Combo | null>(null)
   const [loading, setLoading] = useState(true)
   const [finalPrice, setFinalPrice] = useState<number>(0)
+  const [discountPercent, setDiscountPercent] = useState<number>(0)
+  const [priceInputMode, setPriceInputMode] = useState<'direct' | 'percent'>('direct')
   const [isEditingFinalPrice, setIsEditingFinalPrice] = useState(false)
   const [savingFinalPrice, setSavingFinalPrice] = useState(false)
   const isEditingRef = useRef(false)
@@ -64,9 +65,9 @@ function DetailComboSeller() {
         // Hiển thị thông báo
         const newStatus = res.data?.status || combo.status
         if (newStatus === 'Pending') {
-          toast.success('Đã gửi duyệt. Combo đang chờ Admin phân công.')
+          toast.success('Đã gửi duyệt. Combo đang chờ nhân viên phân công.')
         } else if (newStatus === 'Processing') {
-          toast.success('Đã gửi duyệt. Combo đang được Staff xử lý.')
+          toast.success('Đã gửi duyệt. Combo đang được nhân viên xử lý.')
         } else {
           toast.success('Đã gửi duyệt combo.')
         }
@@ -167,19 +168,36 @@ function DetailComboSeller() {
     [id]
   )
 
-  // Cập nhật finalPrice khi combo data được load lần đầu
+  // Cập nhật finalPrice và tính discountPercent khi combo data được load lần đầu
   useEffect(() => {
-    if (combo?.totalFinalPrice !== undefined && finalPrice === 0 && !isEditingRef.current) {
+    if (combo?.totalFinalPrice !== undefined && combo?.totalBasePrice && finalPrice === 0 && !isEditingRef.current) {
       setFinalPrice(combo.totalFinalPrice || 0)
+      // Tính discountPercent từ finalPrice và totalBasePrice
+      if (combo.totalBasePrice > 0) {
+        const calculatedDiscount = ((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100
+        setDiscountPercent(Math.round(calculatedDiscount * 100) / 100) // Làm tròn 2 chữ số thập phân
+      }
     }
-  }, [combo?.totalFinalPrice, finalPrice])
+  }, [combo?.totalFinalPrice, combo?.totalBasePrice, finalPrice])
 
   const handleUpdateFinalPrice = async () => {
     if (!combo) return
 
-    if (finalPrice < 0) {
-      toast.error('Giá bán không được âm')
-      return
+    // Validate dựa trên mode
+    if (priceInputMode === 'direct') {
+      if (finalPrice < 0) {
+        toast.error('Giá bán không được âm')
+        return
+      }
+      if (finalPrice > combo.totalBasePrice) {
+        toast.error('Giá bán không được lớn hơn giá gốc')
+        return
+      }
+    } else {
+      if (discountPercent < 0 || discountPercent > 100) {
+        toast.error('Phần trăm giảm giá phải từ 0 đến 100')
+        return
+      }
     }
 
     setSavingFinalPrice(true)
@@ -187,8 +205,16 @@ function DetailComboSeller() {
       const updateData: UpdateComboRequest = {
         name: combo.name,
         description: combo.description || '',
-        isActive: combo.isActive,
-        finalPrice: finalPrice
+        isActive: combo.isActive
+      }
+
+      // Chỉ gửi một trong hai: finalPrice HOẶC discountPercent
+      if (priceInputMode === 'percent') {
+        // Nếu nhập theo phần trăm, chỉ gửi discountPercent
+        updateData.discountPercent = discountPercent
+      } else {
+        // Nếu nhập giá trực tiếp, chỉ gửi finalPrice
+        updateData.finalPrice = finalPrice
       }
 
       const response = await updateComboShell(combo.id, updateData)
@@ -201,9 +227,14 @@ function DetailComboSeller() {
             ...updatedCombo,
             isActive: updatedCombo.isActive ?? combo.isActive
           })
-          // Cập nhật finalPrice từ response
+          // Cập nhật finalPrice và discountPercent từ response
           if (!isEditingRef.current) {
             setFinalPrice(updatedCombo.totalFinalPrice || 0)
+            if (updatedCombo.totalBasePrice > 0) {
+              const calculatedDiscount =
+                ((updatedCombo.totalBasePrice - updatedCombo.totalFinalPrice) / updatedCombo.totalBasePrice) * 100
+              setDiscountPercent(Math.round(calculatedDiscount * 100) / 100)
+            }
           }
         } else {
           // Nếu response không có data, chỉ cập nhật totalFinalPrice trong state hiện tại
@@ -216,6 +247,7 @@ function DetailComboSeller() {
         toast.success('Cập nhật giá combo thành công')
         isEditingRef.current = false
         setIsEditingFinalPrice(false)
+        setPriceInputMode('direct')
       } else {
         toast.error('Có lỗi xảy ra khi cập nhật giá combo')
       }
@@ -492,12 +524,12 @@ function DetailComboSeller() {
         }
       case 'Pending':
         return {
-          message: 'Combo đang chờ Admin phân công Staff xử lý. Bạn không thể chỉnh sửa lúc này.',
+          message: 'Combo đang chờ Admin phân công nhân viên xử lý. Bạn không thể chỉnh sửa lúc này.',
           className: 'text-yellow-600 bg-yellow-50'
         }
       case 'Processing':
         return {
-          message: 'Combo đang được Staff xử lý. Bạn không thể chỉnh sửa lúc này.',
+          message: 'Combo đang được nhân viên xử lý. Bạn không thể chỉnh sửa lúc này.',
           className: 'text-orange-600 bg-orange-50'
         }
       case 'Approved':
@@ -548,10 +580,14 @@ function DetailComboSeller() {
     return combo.comboItems.filter((item) => item.isActive).length
   }
 
-  // Cho phép edit khi ở trạng thái Draft, Cancelled, hoặc Denied, bất kể isActive
+  // Cho phép edit khi ở trạng thái Draft, Pending, Cancelled, hoặc Denied, bất kể isActive
   // Processing, Approved, Rejected, Confirmed không thể chỉnh sửa
   // Combo Dừng hoạt động (isActive = false) vẫn có thể edit nếu status phù hợp
-  const canEdit = combo?.status === 'Draft' || combo?.status === 'Cancelled' || combo?.status === 'Denied'
+  const canEdit =
+    combo?.status === 'Draft' ||
+    combo?.status === 'Pending' ||
+    combo?.status === 'Cancelled' ||
+    combo?.status === 'Denied'
 
   if (loading) {
     return (
@@ -765,121 +801,226 @@ function DetailComboSeller() {
               <CardHeader>
                 <CardTitle className='py-2'>Thông tin combo</CardTitle>
               </CardHeader>
-              <CardContent className='space-y-4'>
-                <div className='flex items-center justify-between'>
+              <CardContent className='space-y-3'>
+                {/* Status Row */}
+                <div className='grid grid-cols-2 gap-x-4 items-center'>
                   <span className='text-sm font-medium text-gray-700'>Trạng thái:</span>
-                  <Badge variant='secondary' className={statusInfo.className}>
-                    {statusInfo.text}
-                  </Badge>
+                  <div className='flex justify-end'>
+                    <Badge variant='secondary' className={statusInfo.className}>
+                      {statusInfo.text}
+                    </Badge>
+                  </div>
                 </div>
 
-                <div className='space-y-2'>
-                  <div className='flex items-center justify-between'>
-                    <span className='text-sm font-medium text-gray-700'>Tổng giá gốc:</span>
-                    <span className='text-lg font-semibold text-gray-600'>{totalPrice.toLocaleString()}₫</span>
+                {/* Original Price Row */}
+                <div className='grid grid-cols-2 gap-x-4 items-center'>
+                  <span className='text-sm font-medium text-gray-700'>Tổng giá gốc:</span>
+                  <span className='text-lg font-semibold text-gray-600 text-right'>
+                    {totalPrice.toLocaleString('vi-VN')}₫
+                  </span>
+                </div>
+
+                {/* Selling Price Block - Blue Background */}
+                <div className='bg-blue-50 rounded-lg p-4 relative'>
+                  <div className='flex items-start justify-between mb-2'>
+                    <span className='text-sm font-medium text-gray-700'>Giá Bán:</span>
+                    {!isEditingFinalPrice && canEdit && (
+                      <Button
+                        size='sm'
+                        variant='ghost'
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          isEditingRef.current = true
+                          setIsEditingFinalPrice(true)
+                          setFinalPrice(combo.totalFinalPrice || 0)
+                          if (combo.totalBasePrice > 0) {
+                            const calculatedDiscount =
+                              ((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100
+                            setDiscountPercent(Math.round(calculatedDiscount * 100) / 100)
+                          }
+                          setPriceInputMode('direct')
+                        }}
+                        className='h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-100'
+                        type='button'
+                      >
+                        <Edit className='w-4 h-4' />
+                      </Button>
+                    )}
                   </div>
-                  <div className='space-y-2'>
-                    <div className='flex items-center justify-between min-h-[40px]'>
-                      <Label htmlFor='finalPrice' className='text-sm font-medium text-gray-700 flex-shrink-0'>
-                        Giá Bán:
-                      </Label>
-                      <div className='flex items-center gap-2 flex-1 justify-end'>
-                        {isEditingFinalPrice ? (
+
+                  {isEditingFinalPrice ? (
+                    <div className='space-y-3'>
+                      {/* Mode Selection Buttons */}
+                      <div className='flex items-center gap-2'>
+                        <Button
+                          type='button'
+                          size='sm'
+                          variant={priceInputMode === 'direct' ? 'ghost' : 'outline'}
+                          onClick={() => {
+                            setPriceInputMode('direct')
+                            setFinalPrice(combo.totalFinalPrice || 0)
+                          }}
+                          className={`h-7 text-xs px-3 ${priceInputMode === 'direct'
+                            ? 'bg-gray-100 hover:bg-gray-200 text-white'
+                            : 'bg-white border-gray-300'
+                            }`}
+                        >
+                          Nhập giá
+                        </Button>
+                        <Button
+                          type='button'
+                          size='sm'
+                          variant={priceInputMode === 'percent' ? 'ghost' : 'outline'}
+                          onClick={() => {
+                            setPriceInputMode('percent')
+                            if (combo.totalBasePrice > 0) {
+                              const calculatedDiscount =
+                                ((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100
+                              setDiscountPercent(Math.round(calculatedDiscount * 100) / 100)
+                            }
+                          }}
+                          className={`h-7 text-xs px-3 ${priceInputMode === 'percent'
+                            ? 'bg-gray-100 hover:bg-gray-200 text-white'
+                            : 'bg-white border-gray-300'
+                            }`}
+                        >
+                          Nhập phần trăm
+                        </Button>
+                      </div>
+
+                      {/* Input Section */}
+                      <div className='flex items-center gap-2'>
+                        {priceInputMode === 'direct' ? (
                           <>
                             <Input
                               id='finalPrice'
+                              type='number'
                               value={finalPrice}
-                              onChange={(e) => setFinalPrice(Number(e.target.value))}
-                              className='w-32 h-8'
+                              onChange={(e) => {
+                                const value = Number(e.target.value)
+                                setFinalPrice(value)
+                                if (combo.totalBasePrice > 0 && value >= 0) {
+                                  const calculatedDiscount =
+                                    ((combo.totalBasePrice - value) / combo.totalBasePrice) * 100
+                                  setDiscountPercent(Math.round(calculatedDiscount * 100) / 100)
+                                }
+                              }}
+                              className='w-32 h-9 text-right text-sm bg-white'
                               min='0'
+                              max={combo.totalBasePrice}
                               disabled={savingFinalPrice || !canEdit}
                               autoFocus
                             />
-                            <Button
-                              size='sm'
-                              onClick={handleUpdateFinalPrice}
-                              disabled={savingFinalPrice || !canEdit}
-                              className='bg-green-600 hover:bg-green-700 h-8 flex-shrink-0'
-                            >
-                              <Save className='w-3 h-3 mr-1' />
-                              Lưu
-                            </Button>
-                            <Button
-                              size='sm'
-                              variant='outline'
-                              onClick={() => {
-                                isEditingRef.current = false
-                                setIsEditingFinalPrice(false)
-                                setFinalPrice(combo.totalFinalPrice || 0)
-                              }}
-                              disabled={savingFinalPrice}
-                              className='h-8 flex-shrink-0'
-                            >
-                              Hủy
-                            </Button>
+                            <span className='text-sm text-gray-600 font-medium'>₫</span>
                           </>
                         ) : (
                           <>
-                            <span className='text-lg font-semibold text-green-600 min-w-[100px] text-right'>
-                              {combo.totalFinalPrice.toLocaleString()}₫
+                            <Input
+                              id='discountPercent'
+                              type='number'
+                              value={discountPercent}
+                              onChange={(e) => {
+                                const value = Number(e.target.value)
+                                if (value >= 0 && value <= 100) {
+                                  setDiscountPercent(value)
+                                  if (combo.totalBasePrice > 0) {
+                                    const calculatedPrice = combo.totalBasePrice * (1 - value / 100)
+                                    setFinalPrice(Math.round(calculatedPrice))
+                                  }
+                                }
+                              }}
+                              className='w-20 h-9 text-right text-sm bg-white'
+                              min='0'
+                              max='100'
+                              step='0.01'
+                              disabled={savingFinalPrice || !canEdit}
+                              autoFocus
+                            />
+                            <span className='text-sm text-gray-600 font-medium'>%</span>
+                            <span className='text-xs text-gray-500 ml-1'>
+                              = {finalPrice.toLocaleString('vi-VN')}₫
                             </span>
-                            {canEdit && (
-                              <Button
-                                size='sm'
-                                variant='ghost'
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  isEditingRef.current = true
-                                  setIsEditingFinalPrice(true)
-                                  setFinalPrice(combo.totalFinalPrice || 0)
-                                }}
-                                className='h-6 px-2 flex-shrink-0'
-                                type='button'
-                              >
-                                <Edit className='w-3 h-3' />
-                              </Button>
-                            )}
                           </>
                         )}
                       </div>
+
+                      {/* Action Buttons */}
+                      <div className='flex items-center gap-2'>
+                        <Button
+                          size='sm'
+                          onClick={handleUpdateFinalPrice}
+                          disabled={savingFinalPrice || !canEdit}
+                          className='bg-green-600 hover:bg-green-700 h-8 px-3 text-xs text-white'
+                        >
+                          <Save className='w-3 h-3 mr-1' />
+                          Lưu
+                        </Button>
+                        <Button
+                          size='sm'
+                          variant='outline'
+                          onClick={() => {
+                            isEditingRef.current = false
+                            setIsEditingFinalPrice(false)
+                            setFinalPrice(combo.totalFinalPrice || 0)
+                            if (combo.totalBasePrice > 0) {
+                              const calculatedDiscount =
+                                ((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100
+                              setDiscountPercent(Math.round(calculatedDiscount * 100) / 100)
+                            }
+                            setPriceInputMode('direct')
+                          }}
+                          disabled={savingFinalPrice}
+                          className='h-8 px-3 text-xs bg-white'
+                        >
+                          Hủy
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <span className='text-sm font-medium text-gray-700'>Đã giảm:</span>
-                  <span className='text-lg font-semibold text-gray-900'>{combo.totalSavings.toLocaleString()}₫</span>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <span className='text-sm font-medium text-gray-700'>Tổng số lượng:</span>
-                  <span className='text-lg font-semibold text-gray-900'>{totalItems}</span>
-                </div>
-
-                {combo.availableQuantity !== undefined && (
-                  <div className='flex items-center justify-between'>
-                    <span className='text-sm font-medium text-gray-700'>Số lượng khả dụng:</span>
-                    <span className='text-lg font-semibold text-blue-600'>{combo.availableQuantity}</span>
-                  </div>
-                )}
-
-                {/* <div className='flex items-center justify-between'>
-                  <span className='text-sm font-medium text-gray-700'>Sản phẩm hoạt động:</span>
-                  <span className='text-lg font-semibold text-gray-900'>{activeItemsCount}</span>
+                  ) : (
+                    <div>
+                      <span className='text-2xl font-bold text-blue-600 block mb-1'>
+                        {combo.totalFinalPrice.toLocaleString('vi-VN')}₫
+                      </span>
+                      {combo.totalBasePrice > 0 && (
+                        <span className='text-sm text-green-600 font-medium'>
+                          Giảm{' '}
+                          {Math.round(
+                            ((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100 * 100
+                          ) / 100}
+                          %
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {combo.createdAt && (
-                  <div className='flex items-center justify-between'>
-                    <span className='text-sm font-medium text-gray-700'>Ngày tạo:</span>
-                    <span className='text-sm text-gray-600'>{combo.createdAt}</span>
+                {/* Discounted Amount Block - Green Background */}
+                <div className='bg-green-50 rounded-lg p-4'>
+                  <div className='grid grid-cols-2 gap-x-4 items-center'>
+                    <span className='text-sm font-medium text-gray-700'>Đã giảm:</span>
+                    <span className='text-lg font-semibold text-green-600 text-right'>
+                      {combo.totalSavings.toLocaleString('vi-VN')}₫
+                    </span>
                   </div>
-                )}
+                </div>
 
-                {combo.updatedAt && (
-                  <div className='flex items-center justify-between'>
-                    <span className='text-sm font-medium text-gray-700'>Cập nhật lần cuối:</span>
-                    <span className='text-sm text-gray-600'>{combo.updatedAt}</span>
+                {/* Quantity Blocks - Side by Side */}
+                <div className='grid grid-cols-2 gap-3'>
+                  {/* Total Quantity Block */}
+                  <div className='bg-white border border-gray-200 rounded-lg p-4'>
+                    <span className='text-sm font-medium text-gray-700 block mb-2'>Tổng số lượng</span>
+                    <span className='text-2xl font-bold text-gray-900 block'>{totalItems}</span>
                   </div>
-                )} */}
+
+                  {/* Available Quantity Block */}
+                  {combo.availableQuantity !== undefined && (
+                    <div className='bg-white border border-gray-200 rounded-lg p-4'>
+                      <span className='text-sm font-medium text-gray-700 block mb-2'>Số lượng khả dụng</span>
+                      <span className='text-2xl font-bold text-gray-900 block'>{combo.availableQuantity}</span>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </motion.div>

@@ -4,7 +4,6 @@ import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Headphones, Upload, Send, X } from 'lucide-react'
 import { formApi } from '../../../apis/form.api'
 import type { FormType } from '../../../types/form.type'
@@ -17,16 +16,10 @@ interface CreateHelpModalProps {
   onSuccess?: () => void // callback sau khi tạo thành công
 }
 
-// Danh sách các loại form
-const FORM_TYPES: { value: FormType; label: string }[] = [
-
-  { value: 'Orther', label: 'Hỗ trợ khác' }
-]
-
 function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
   const { user } = useAuth()
   const [formData, setFormData] = useState({
-    type: '' as FormType,
+    type: 'Orther' as FormType,
     subject: '',
     description: '',
     orderId: '',
@@ -129,7 +122,7 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
 
       // Reset form
       setFormData({
-        type: '' as FormType,
+        type: 'Orther' as FormType,
         subject: '',
         description: '',
         orderId: '',
@@ -156,7 +149,7 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
   const handleCancel = () => {
     // Reset form nếu cần
     setFormData({
-      type: '' as FormType,
+      type: 'Orther' as FormType,
       subject: '',
       description: '',
       orderId: '',
@@ -179,24 +172,19 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
 
         {/* Form */}
         <div className='space-y-6'>
-          {/* Type Field - Select */}
           <div>
-            <Label htmlFor='type' className='text-green-700 font-medium mb-2 block'>
-              Chủ đề <span className='text-red-500'>*</span>
+            <Label htmlFor='subject' className='text-green-700 font-medium mb-2 block'>
+              Tiêu đề <span className='text-red-500'>*</span>
             </Label>
-            <Select value={formData.type} onValueChange={(value: FormType) => handleInputChange('type', value)}>
-              <SelectTrigger className='w-full'>
-                <SelectValue placeholder='Chọn chủ đề...' />
-              </SelectTrigger>
-              <SelectContent>
-                {FORM_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              id='subject'
+              placeholder='Nhập tiêu đề vấn đề của bạn...'
+              value={formData.subject}
+              onChange={(e) => handleInputChange('subject', e.target.value)}
+            />
           </div>
+
+
 
           {/* Order ID Field (Optional) */}
           <div>
@@ -212,17 +200,7 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
           </div>
 
           {/* Subject Field */}
-          <div>
-            <Label htmlFor='subject' className='text-green-700 font-medium mb-2 block'>
-              Tiêu đề <span className='text-red-500'>*</span>
-            </Label>
-            <Input
-              id='subject'
-              placeholder='Nhập tiêu đề vấn đề của bạn...'
-              value={formData.subject}
-              onChange={(e) => handleInputChange('subject', e.target.value)}
-            />
-          </div>
+
 
           {/* Description Field */}
           <div>

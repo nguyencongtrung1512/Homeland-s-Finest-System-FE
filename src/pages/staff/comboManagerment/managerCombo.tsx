@@ -4,7 +4,7 @@ import {
   Filter,
   RefreshCw,
   Package,
-  Calendar,
+  Calendar as CalendarIcon,
   User,
   CheckCircle,
   XCircle,
@@ -12,6 +12,8 @@ import {
   Store,
   Eye
 } from 'lucide-react'
+import { format } from 'date-fns'
+import { vi } from 'date-fns/locale'
 import { staffApi } from '../../../apis/staff.api'
 import { getAllCombos } from '../../../apis/combo.api'
 import type { Combo } from '../../../types/combo.type'
@@ -25,6 +27,8 @@ import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
+import { Calendar } from '../../../components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../contexts/auth.context'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
@@ -62,6 +66,10 @@ function ManagerComboStaff() {
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all')
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined)
+  const [toDate, setToDate] = useState<Date | undefined>(undefined)
+  const [fromDateOpen, setFromDateOpen] = useState(false)
+  const [toDateOpen, setToDateOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [comboData, setComboData] = useState<ComboData[]>([])
   const [loading, setLoading] = useState(false)
@@ -171,10 +179,28 @@ function ManagerComboStaff() {
       setLoading(true)
       setError(null)
 
-      const response = await getAllCombos({
+      const params: {
+        pageSize: number
+        pageNumber: number
+        fromDate?: string
+        toDate?: string
+        sortByDate?: string
+      } = {
         pageSize: 0,
         pageNumber: 1
-      })
+      }
+
+      // Thêm filter ngày nếu có
+      if (fromDate) {
+        params.fromDate = fromDate.toISOString()
+        params.sortByDate = 'asc'
+      }
+      if (toDate) {
+        params.toDate = toDate.toISOString()
+        params.sortByDate = 'asc'
+      }
+
+      const response = await getAllCombos(params)
 
       const allCombos: Combo[] = ((response as unknown) as { data: Combo[] }).data || []
 
@@ -198,7 +224,7 @@ function ManagerComboStaff() {
     } finally {
       setLoading(false)
     }
-  }, [staffMap])
+  }, [staffMap, fromDate, toDate])
 
   useEffect(() => {
     fetchStaffList()
@@ -212,7 +238,7 @@ function ManagerComboStaff() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchText, statusFilter, assignmentFilter])
+  }, [searchText, statusFilter, assignmentFilter, fromDate, toDate])
 
   // Filter và sort combos
   const filteredAndSortedCombos = useMemo(() => {
@@ -506,14 +532,14 @@ function ManagerComboStaff() {
               <span className='truncate'>Cửa hàng: {combo.store.name}</span>
             </div>
 
-            <div className='flex items-center gap-2 text-sm text-gray-600'>
+            {/* <div className='flex items-center gap-2 text-sm text-gray-600'>
               <Calendar size={14} className='text-gray-400' />
               <span>Ngày tạo: {combo.createdAt}</span>
             </div>
             <div className='flex items-center gap-2 text-sm text-gray-600'>
               <Calendar size={14} className='text-gray-400' />
               <span>Ngày cập nhật: {combo.updatedAt}</span>
-            </div>
+            </div> */}
             <div className='flex items-center gap-2 text-sm text-gray-600'>
               <Package size={14} className='text-gray-400' />
               <span>{combo.items} sản phẩm</span>
@@ -606,69 +632,135 @@ function ManagerComboStaff() {
       {/* Search and Filters */}
       <Card>
         <CardContent className='pt-6'>
-          <div className='flex flex-wrap items-center gap-4'>
-            <div className='flex-1 min-w-[300px] relative'>
-              <Search size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
-              <Input
-                placeholder='Tìm kiếm theo tên combo, cửa hàng...'
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className='pl-10'
-              />
+          <div className='space-y-4'>
+            {/* First Row: Search and Basic Filters */}
+            <div className='flex flex-wrap items-center gap-4'>
+              <div className='flex-1 min-w-[300px] relative'>
+                <Search size={16} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+                <Input
+                  placeholder='Tìm kiếm theo tên combo, cửa hàng...'
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  className='pl-10'
+                />
+              </div>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className='w-48'>
+                  <SelectValue placeholder='Tất cả trạng thái' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Tất cả trạng thái</SelectItem>
+                  <SelectItem value='Pending'>Chờ duyệt</SelectItem>
+                  <SelectItem value='Processing'>Chờ xác nhận</SelectItem>
+                  <SelectItem value='Confirmed'>Đang xét duyệt</SelectItem>
+                  <SelectItem value='Approved'>Đã duyệt</SelectItem>
+                  <SelectItem value='Denied'>Từ chối</SelectItem>
+                  <SelectItem value='Rejected'>Bị từ chối</SelectItem>
+                  <SelectItem value='Cancelled'>Đã hủy</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={assignmentFilter} onValueChange={(value: 'all' | 'assigned' | 'unassigned') => setAssignmentFilter(value)}>
+                <SelectTrigger className='w-48'>
+                  <SelectValue placeholder='Phân công' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Tất cả</SelectItem>
+                  <SelectItem value='assigned'>Được phân công cho tôi</SelectItem>
+                  <SelectItem value='unassigned'>Chưa phân công</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={`${sortField}-${sortOrder}`} onValueChange={(value) => {
+                const [field, order] = value.split('-') as [SortField, SortOrder]
+                setSortField(field)
+                setSortOrder(order)
+              }}>
+                <SelectTrigger className='w-48'>
+                  <SelectValue placeholder='Sắp xếp' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='updatedAt-desc'>Mới nhất</SelectItem>
+                  <SelectItem value='updatedAt-asc'>Cũ nhất</SelectItem>
+                  <SelectItem value='name-asc'>Tên A-Z</SelectItem>
+                  <SelectItem value='name-desc'>Tên Z-A</SelectItem>
+                  <SelectItem value='items-desc'>Số sản phẩm (nhiều)</SelectItem>
+                  <SelectItem value='items-asc'>Số sản phẩm (ít)</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button onClick={handleFilter} className='bg-blue-600 hover:bg-blue-700'>
+                <Filter size={16} className='mr-2' />
+                Lọc
+              </Button>
             </div>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className='w-48'>
-                <SelectValue placeholder='Tất cả trạng thái' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>Tất cả trạng thái</SelectItem>
-                <SelectItem value='Pending'>Chờ duyệt</SelectItem>
-                <SelectItem value='Processing'>Chờ xác nhận</SelectItem>
-                <SelectItem value='Confirmed'>Đang xét duyệt</SelectItem>
-                <SelectItem value='Approved'>Đã duyệt</SelectItem>
-                <SelectItem value='Denied'>Từ chối</SelectItem>
-                <SelectItem value='Rejected'>Bị từ chối</SelectItem>
-                <SelectItem value='Cancelled'>Đã hủy</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Second Row: Date Filters */}
+            <div className='flex items-center gap-3 border-t pt-4'>
+              <span className='text-sm font-medium text-gray-700 whitespace-nowrap'>Lọc theo ngày:</span>
+              <Popover open={fromDateOpen} onOpenChange={setFromDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    className='w-48 justify-start text-left font-normal'
+                  >
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {fromDate ? format(fromDate, 'dd/MM/yyyy', { locale: vi }) : 'Từ ngày'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar
+                    mode='single'
+                    selected={fromDate}
+                    onSelect={(date) => {
+                      setFromDate(date)
+                      setFromDateOpen(false)
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
 
-            <Select value={assignmentFilter} onValueChange={(value: 'all' | 'assigned' | 'unassigned') => setAssignmentFilter(value)}>
-              <SelectTrigger className='w-48'>
-                <SelectValue placeholder='Phân công' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>Tất cả</SelectItem>
-                <SelectItem value='assigned'>Được phân công cho tôi</SelectItem>
-                <SelectItem value='unassigned'>Chưa phân công</SelectItem>
-              </SelectContent>
-            </Select>
+              <span className='text-gray-500'>-</span>
 
-            <Select value={`${sortField}-${sortOrder}`} onValueChange={(value) => {
-              const [field, order] = value.split('-') as [SortField, SortOrder]
-              setSortField(field)
-              setSortOrder(order)
-            }}>
-              <SelectTrigger className='w-48'>
-                <SelectValue placeholder='Sắp xếp' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='updatedAt-desc'>Mới nhất</SelectItem>
-                <SelectItem value='updatedAt-asc'>Cũ nhất</SelectItem>
-                <SelectItem value='name-asc'>Tên A-Z</SelectItem>
-                <SelectItem value='name-desc'>Tên Z-A</SelectItem>
-                <SelectItem value='createdAt-desc'>Ngày tạo (mới)</SelectItem>
-                <SelectItem value='createdAt-asc'>Ngày tạo (cũ)</SelectItem>
-                <SelectItem value='status-asc'>Trạng thái</SelectItem>
-                <SelectItem value='items-desc'>Số sản phẩm (nhiều)</SelectItem>
-                <SelectItem value='items-asc'>Số sản phẩm (ít)</SelectItem>
-              </SelectContent>
-            </Select>
+              <Popover open={toDateOpen} onOpenChange={setToDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    className='w-48 justify-start text-left font-normal'
+                  >
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {toDate ? format(toDate, 'dd/MM/yyyy', { locale: vi }) : 'Đến ngày'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar
+                    mode='single'
+                    selected={toDate}
+                    onSelect={(date) => {
+                      setToDate(date)
+                      setToDateOpen(false)
+                    }}
+                    disabled={(date) => fromDate ? date < fromDate : false}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
 
-            <Button onClick={handleFilter} className='bg-blue-600 hover:bg-blue-700'>
-              <Filter size={16} className='mr-2' />
-              Lọc
-            </Button>
+              {(fromDate || toDate) && (
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => {
+                    setFromDate(undefined)
+                    setToDate(undefined)
+                  }}
+                >
+                  Xóa bộ lọc ngày
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

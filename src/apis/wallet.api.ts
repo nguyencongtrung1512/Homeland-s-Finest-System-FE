@@ -12,13 +12,24 @@ export const getWalletBalance = async (): Promise<WalletData> => {
   return response.data
 }
 
-export const getWalletTransactions = async (params?: { pageSize?: number; pageNumber?: number }) => {
+export const getWalletTransactions = async (params?: {
+  pageSize?: number
+  pageNumber?: number
+  paymentMethod?: 'COD' | 'WalletOrBanking' | 'Orther' | null
+}) => {
   try {
+    const requestParams: Record<string, number | string> = {
+      pageSize: params?.pageSize || 10,
+      pageNumber: params?.pageNumber || 1
+    }
+
+    // Chỉ thêm paymentMethod nếu có giá trị
+    if (params?.paymentMethod) {
+      requestParams.PaymentMethod = params.paymentMethod
+    }
+
     const response = await axiosInstance.get(`${API_URL}/my-wallet-history`, {
-      params: {
-        PageSize: params?.pageSize || 10,
-        PageNumber: params?.pageNumber || 1
-      }
+      params: requestParams
     })
     return response.data
   } catch (error) {
@@ -97,7 +108,7 @@ export const depositMoney = async (amount: number): Promise<DepositResponse> => 
     if ('data' in response && response.data) {
       return response.data as DepositResponse
     }
-    return response as any
+    return response as unknown as DepositResponse
   } catch (error) {
     console.error('Error depositing money:', error)
     throw error

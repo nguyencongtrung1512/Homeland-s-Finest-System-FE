@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '../../../components/ui/textarea'
 import { Badge } from '../../../components/ui/badge'
 import { getRequestWalletMoney, updateRequestWalletMoney } from '../../../apis/requestWalletMoney.api'
-import { getWalletBalance, withdrawal, getWalletTransactions } from '../../../apis/wallet.api'
+import { getWalletBalance, withdrawal, getWalletTransactions, depositMoney } from '../../../apis/wallet.api'
 import { getOrderDetail } from '../../../apis/order.api'
 import type { RequestWalletMoney, UpdateRequestWalletMoneyInput } from '../../../types/requestWalletMoneyType'
 import type { WalletData, WalletTransactionDTO } from '../../../types/walletType'
@@ -57,10 +57,14 @@ function RequestWalletMoneyManagement() {
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false)
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
+  const [depositAmount, setDepositAmount] = useState('')
+  const [isSubmittingDeposit, setIsSubmittingDeposit] = useState(false)
   const [walletTransactions, setWalletTransactions] = useState<WalletTransactionDTO[]>([])
   const [loadingTransactions, setLoadingTransactions] = useState(false)
   const [transactionPage, setTransactionPage] = useState(1)
   const [transactionPageSize] = useState(10)
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'COD' | 'WalletOrBanking' | 'Orther'>('all')
 
   // Thống kê
   const [stats, setStats] = useState({
@@ -138,10 +142,21 @@ function RequestWalletMoneyManagement() {
   const fetchWalletTransactions = async () => {
     try {
       setLoadingTransactions(true)
-      const response = await getWalletTransactions({
+      const params: {
+        pageSize: number
+        pageNumber: number
+        paymentMethod?: 'COD' | 'WalletOrBanking' | 'Orther' | null
+      } = {
         pageSize: transactionPageSize,
         pageNumber: transactionPage
-      })
+      }
+
+      // Thêm paymentMethod filter nếu không phải 'all'
+      if (paymentMethodFilter !== 'all') {
+        params.paymentMethod = paymentMethodFilter
+      }
+
+      const response = await getWalletTransactions(params)
       // Handle different response structures
       if (response?.data?.items) {
         setWalletTransactions(response.data.items)
@@ -192,6 +207,41 @@ function RequestWalletMoneyManagement() {
     }
   }
 
+  const handleCreateDeposit = async () => {
+    if (!depositAmount) return
+
+    const amountNumber = Number(depositAmount)
+    if (Number.isNaN(amountNumber) || amountNumber <= 0) {
+      toast.error('Lỗi', 'Số tiền không hợp lệ')
+      return
+    }
+
+    const minAmount = 10000
+    if (amountNumber < minAmount) {
+      toast.error('Lỗi', `Số tiền nạp tối thiểu là ${minAmount.toLocaleString('vi-VN')}₫`)
+      return
+    }
+
+    try {
+      setIsSubmittingDeposit(true)
+      const response = await depositMoney(amountNumber)
+      toast.success('Thành công', response.message || `Đã nạp tiền thành công ${amountNumber.toLocaleString('vi-VN')}₫`)
+      setIsDepositModalOpen(false)
+      setDepositAmount('')
+      fetchWalletInfo()
+      fetchWalletTransactions()
+    } catch (err: unknown) {
+      console.error('Error depositing money:', err)
+      const errorMessage =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (err as { message?: string })?.message ||
+        'Không thể nạp tiền'
+      toast.error('Lỗi', errorMessage)
+    } finally {
+      setIsSubmittingDeposit(false)
+    }
+  }
+
   // Filter và search requests ở frontend
   useEffect(() => {
     let filtered = [...allRequests]
@@ -236,7 +286,7 @@ function RequestWalletMoneyManagement() {
   useEffect(() => {
     fetchWalletTransactions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactionPage])
+  }, [transactionPage, paymentMethodFilter])
 
   // Handle filter button click
   const handleFilter = () => {
@@ -594,7 +644,15 @@ function RequestWalletMoneyManagement() {
           <p className='text-gray-600 mt-1 text-sm md:text-base'>Theo dõi và xử lý các yêu cầu rút tiền, hoàn tiền</p>
         </div>
 
-        <div className='flex-shrink-0'>
+        <div className='flex-shrink-0 flex gap-2'>
+          <Button
+            size='sm'
+            className='mt-0 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded shadow-sm'
+            onClick={() => setIsDepositModalOpen(true)}
+            aria-label='Nạp tiền'
+          >
+            Nạp tiền
+          </Button>
           <Button
             size='sm'
             className='mt-0 md:mt-0 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded shadow-sm'
@@ -1105,6 +1163,85 @@ function RequestWalletMoneyManagement() {
         </DialogContent>
       </Dialog>
 
+      {/* Deposit Modal */}
+      <Dialog
+        open={isDepositModalOpen}
+        onOpenChange={(open) => {
+          setIsDepositModalOpen(open)
+          if (!open) {
+            setDepositAmount('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nạp tiền vào ví</DialogTitle>
+          </DialogHeader>
+          <div className='space-y-4 mt-2'>
+            <div>
+              <p className='text-sm text-gray-600 mb-1'>
+                Số dư hiện tại:{' '}
+                <span className='font-semibold text-emerald-600'>
+                  {walletData ? formatCompact(walletData.availableBalance) : '--'}
+                </span>
+              </p>
+              <Input
+                type='number'
+                min={10000}
+                step='1000'
+                placeholder='Nhập số tiền muốn nạp'
+                value={depositAmount}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+                    setDepositAmount(value)
+                  }
+                }}
+              />
+              <p className='text-xs text-gray-500 mt-1'>Số tiền tối thiểu 10.000₫</p>
+              {depositAmount && parseFloat(depositAmount) > 0 && (
+                <div className='mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200'>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-sm text-gray-700'>Số dư sau khi nạp:</span>
+                    <span className='text-lg font-bold text-blue-600'>
+                      {walletData
+                        ? formatCompact(walletData.availableBalance + parseFloat(depositAmount))
+                        : '--'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setIsDepositModalOpen(false)
+                setDepositAmount('')
+              }}
+              disabled={isSubmittingDeposit}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={handleCreateDeposit}
+              disabled={!depositAmount || isSubmittingDeposit || parseFloat(depositAmount) < 10000}
+              className='bg-blue-600 hover:bg-blue-700'
+            >
+              {isSubmittingDeposit ? (
+                <>
+                  <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                  Đang nạp...
+                </>
+              ) : (
+                'Xác nhận nạp tiền'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Update Modal */}
       <AnimatePresence>
         {isUpdateModalOpen && selectedRequest && (
@@ -1238,21 +1375,72 @@ function RequestWalletMoneyManagement() {
       >
         <Card className='bg-white shadow-sm'>
           <CardContent className='p-4 md:p-6'>
-            <div className='flex items-center justify-between mb-4 md:mb-6'>
-              <div>
-                <h2 className='text-lg md:text-xl font-bold text-gray-900'>Lịch sử giao dịch ví</h2>
-                <p className='text-gray-600 text-sm mt-1'>Xem tất cả các giao dịch ví của hệ thống</p>
+            <div className='flex flex-col gap-4 mb-4 md:mb-6'>
+              <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
+                <div>
+                  <h2 className='text-lg md:text-xl font-bold text-gray-900'>Lịch sử giao dịch ví</h2>
+                  <p className='text-gray-600 text-sm mt-1'>Xem tất cả các giao dịch ví của hệ thống</p>
+                </div>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={fetchWalletTransactions}
+                  disabled={loadingTransactions}
+                  className='h-9 w-full md:w-auto'
+                >
+                  <RefreshCw size={14} className={`mr-2 ${loadingTransactions ? 'animate-spin' : ''}`} />
+                  <span className='hidden md:inline'>Làm mới</span>
+                  <span className='md:hidden'>Làm mới</span>
+                </Button>
               </div>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={fetchWalletTransactions}
-                disabled={loadingTransactions}
-                className='h-9'
-              >
-                <RefreshCw size={14} className={`mr-2 ${loadingTransactions ? 'animate-spin' : ''}`} />
-                <span className='hidden md:inline'>Làm mới</span>
-              </Button>
+
+              {/* Payment Method Filter - Desktop: Buttons/Tabs, Mobile: Dropdown */}
+              <div className='bg-gray-50 rounded-lg p-2'>
+                {/* Desktop: Buttons/Tabs */}
+                <div className='hidden md:flex items-center gap-1 w-full'>
+                  {[
+                    { value: 'all', label: 'Tất cả' },
+                    { value: 'COD', label: 'Thanh toán khi nhận hàng' },
+                    { value: 'WalletOrBanking', label: 'Thanh toán qua ví/ngân hàng' },
+                    { value: 'Orther', label: 'Khác' }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setPaymentMethodFilter(option.value as 'all' | 'COD' | 'WalletOrBanking' | 'Orther')
+                        setTransactionPage(1)
+                      }}
+                      className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${paymentMethodFilter === option.value
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-white text-gray-700 hover:bg-gray-100'
+                        }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Mobile: Dropdown */}
+                <div className='md:hidden w-full'>
+                  <Select
+                    value={paymentMethodFilter}
+                    onValueChange={(value: 'all' | 'COD' | 'WalletOrBanking' | 'Orther') => {
+                      setPaymentMethodFilter(value)
+                      setTransactionPage(1)
+                    }}
+                  >
+                    <SelectTrigger className='w-full h-9 border-gray-200 text-sm bg-white'>
+                      <SelectValue placeholder='Phương thức thanh toán' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='all'>Tất cả phương thức</SelectItem>
+                      <SelectItem value='COD'>Thanh toán khi nhận hàng</SelectItem>
+                      <SelectItem value='WalletOrBanking'>Thanh toán qua ví/ngân hàng</SelectItem>
+                      <SelectItem value='Orther'>Khác</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
 
             {loadingTransactions ? (
@@ -1292,7 +1480,7 @@ function RequestWalletMoneyManagement() {
                                       {getTransactionTypeLabel(transaction.type)}
                                     </p>
                                     <Badge
-                                      className={`${statusConfig.bgColor} ${statusConfig.textColor} border-0 text-xs`}
+                                      className={`${statusConfig.bgColor} ${statusConfig.textColor} border-0 text-xs mb-3`}
                                     >
                                       {statusConfig.text}
                                     </Badge>
@@ -1349,7 +1537,7 @@ function RequestWalletMoneyManagement() {
           </CardContent>
         </Card>
       </motion.div>
-    </motion.div>
+    </motion.div >
   )
 }
 
