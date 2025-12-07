@@ -7,13 +7,15 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
 import { useAuth } from '../../../contexts/auth.context'
 import { getCartByUserId, removePromotionFromCart, calculateShippingFee } from '../../../apis/cart.api'
+import { getComboById } from '../../../apis/combo.api'
 import { toast } from '../../../utils/toast'
 import { createOrder } from '../../../apis/order.api'
 import { addressApi } from '../../../apis/address.api'
 import { getWalletBalance } from '../../../apis/wallet.api'
-import type { CartData, StoreShippingFee } from '../../../types/cartType'
+import type { CartData, StoreShippingFee, CartItem as APICartItem } from '../../../types/cartType'
 import type { Address, AddressCreateInput } from '../../../types/addressType'
 import type { WalletData } from '../../../types/walletType'
+import type { ComboItem as ComboDetailItem } from '../../../types/combo.type'
 import AddressModal from '../../customer/Profile/components/address/AddressModal'
 import { PromotionModal } from '../../../components/Promotion'
 import AppliedPromotionModal from '../../../components/Cart/AppliedPromotionModal'
@@ -29,6 +31,22 @@ import {
 } from '../../../components/ui/alert-dialog'
 
 type PaymentMethod = 'COD' | 'Banking' | 'MyWallet'
+
+interface ComboGroup {
+  comboId: string
+  comboName: string
+  items: APICartItem[]
+  quantity: number
+  totalPrice: number
+}
+
+interface ComboChildRequirement {
+  requiredQuantity: number
+  productName: string
+  imageUrl: string
+}
+
+type GroupedItem = APICartItem | ComboGroup
 
 export default function Checkout() {
   const navigate = useNavigate()
@@ -51,6 +69,8 @@ export default function Checkout() {
   const isRemovingExpiredPromotions = useRef(false) // Track if we're removing expired promotions
   const [shippingFeeData, setShippingFeeData] = useState<StoreShippingFee[] | null>(null)
   const [isLoadingShippingFee, setIsLoadingShippingFee] = useState(false)
+  const [comboNames, setComboNames] = useState<Record<string, string>>({})
+  const [comboChildItems, setComboChildItems] = useState<Record<string, Record<string, ComboChildRequirement>>>({})
 
   // Address management states
   const [showAddressModal, setShowAddressModal] = useState(false)
@@ -105,6 +125,71 @@ export default function Checkout() {
     loadUserAddresses()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Fetch combo details
+  useEffect(() => {
+    if (!cartData) return
+    const idsToFetch = new Set<string>()
+    cartData.carts.forEach((store) => {
+      store.items.forEach((item) => {
+        if (item.isCombo && item.comboId && (!comboNames[item.comboId] || !comboChildItems[item.comboId])) {
+          idsToFetch.add(item.comboId)
+        }
+      })
+    })
+    if (idsToFetch.size === 0) return
+    let isCancelled = false
+    const fetchComboDetails = async () => {
+      try {
+        const comboEntries = await Promise.all(
+          Array.from(idsToFetch).map(async (comboId) => {
+            try {
+              const response = await getComboById(comboId)
+              const comboData = response?.data?.data || response?.data
+              const name = comboData?.name || 'Combo'
+              const comboItems = (comboData?.comboItems ?? []) as ComboDetailItem[]
+              const quantityMap = comboItems.reduce<Record<string, ComboChildRequirement>>((acc, comboItem) => {
+                if (!comboItem.productVariantId) return acc
+                acc[comboItem.productVariantId] = {
+                  requiredQuantity: comboItem.quantity ?? 0,
+                  productName: comboItem.productName || comboItem.comboItemName,
+                  imageUrl: comboItem.comboItemImageUrl
+                }
+                return acc
+              }, {})
+              return { comboId, name, quantityMap }
+            } catch (error) {
+              console.error('Error fetching combo detail:', error)
+              return { comboId, name: comboNames[comboId] || 'Combo', quantityMap: {} }
+            }
+          })
+        )
+        if (!isCancelled) {
+          setComboNames((prev) => {
+            const updated = { ...prev }
+            comboEntries.forEach(({ comboId, name }) => {
+              updated[comboId] = name
+            })
+            return updated
+          })
+          setComboChildItems((prev) => {
+            const updated = { ...prev }
+            comboEntries.forEach(({ comboId, quantityMap }) => {
+              updated[comboId] = quantityMap
+            })
+            return updated
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching combo names/details:', error)
+      }
+    }
+    fetchComboDetails()
+    return () => {
+      isCancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartData])
 
   // Auto remove expired promotions
   useEffect(() => {
@@ -432,6 +517,56 @@ export default function Checkout() {
     return new Intl.NumberFormat('vi-VN').format(price)
   }
 
+  // Group combo items for display
+  const groupComboItems = (items: APICartItem[]): GroupedItem[] => {
+    if (!items || items.length === 0) return []
+    const grouped: GroupedItem[] = []
+    const comboMap = new Map<string, ComboGroup>()
+
+    items.forEach((item) => {
+      if (item?.isCombo && item.comboId) {
+        if (!comboMap.has(item.comboId)) {
+          const derivedComboName =
+            (item.comboId && comboNames?.[item.comboId]) ||
+            (item as APICartItem & { comboName?: string }).comboName ||
+            'Combo'
+          const comboRequirement =
+            comboChildItems?.[item.comboId]?.[item.productVariantId]?.requiredQuantity
+          const derivedQuantity =
+            comboRequirement && comboRequirement > 0
+              ? Math.max(1, Math.round(item.quantity / comboRequirement))
+              : item.quantity
+          comboMap.set(item.comboId, {
+            comboId: item.comboId,
+            comboName: derivedComboName,
+            items: [],
+            quantity: derivedQuantity,
+            totalPrice: 0
+          })
+        }
+        const combo = comboMap.get(item.comboId)
+        if (combo) {
+          combo.items.push(item)
+          if (!combo.quantity) {
+            const comboRequirement = comboChildItems?.[item.comboId]?.[item.productVariantId]?.requiredQuantity
+            if (comboRequirement && comboRequirement > 0) {
+              combo.quantity = Math.max(1, Math.round(item.quantity / comboRequirement))
+            }
+          }
+          combo.totalPrice += item.totalPrice || 0
+        }
+      } else {
+        grouped.push(item)
+      }
+    })
+
+    comboMap.forEach((combo) => {
+      grouped.push(combo)
+    })
+
+    return grouped
+  }
+
   const getSelectedTotal = () => {
     let total = 0
     const comboOutOfStockMap = new Map<string, boolean>()
@@ -645,6 +780,44 @@ export default function Checkout() {
     )
     : []
 
+  // Get summary items grouped by combo for order summary display
+  const getSummaryItems = () => {
+    if (!cartData || !cartData.carts) return []
+    try {
+      return cartData.carts.flatMap((store) => {
+        if (!store.items) return []
+        const filteredItems = store.items.filter((item) => item && selectedItems[item.id])
+        const groupedItems = groupComboItems(filteredItems)
+        return groupedItems.map((item) => {
+          if ('comboId' in item && 'items' in item) {
+            const comboGroup = item as ComboGroup
+            const comboTitle =
+              (comboGroup.comboId && comboNames?.[comboGroup.comboId]) || comboGroup.comboName || 'Combo'
+            return {
+              name: comboTitle,
+              price: comboGroup.totalPrice || 0,
+              quantity: comboGroup.quantity || 1,
+              isCombo: true
+            }
+          } else {
+            const regularItem = item as APICartItem
+            return {
+              name: regularItem?.name || 'Sản phẩm',
+              price: regularItem?.totalPrice || 0,
+              quantity: regularItem?.quantity || 1,
+              isCombo: false
+            }
+          }
+        })
+      })
+    } catch (error) {
+      console.error('Error getting summary items:', error)
+      return []
+    }
+  }
+
+  const summaryItems = getSummaryItems()
+
   // Check if wallet balance is sufficient
   const isWalletBalanceSufficient =
     selectedPaymentMethod === 'MyWallet' && walletBalance ? walletBalance.availableBalance >= finalTotal : false
@@ -810,33 +983,111 @@ export default function Checkout() {
                       </div>
                     </div>
                     <div className='space-y-3'>
-                      {store.items
-                        .filter((item) => selectedItems[item.id])
-                        .map((item) => (
-                          <div key={item.id} className='flex items-start gap-4 p-3 bg-gray-50 rounded-lg'>
+                      {groupComboItems(
+                        store.items.filter((item) => selectedItems[item.id])
+                      ).map((item) => {
+                        // Check if it's a combo group
+                        if ('comboId' in item && 'items' in item) {
+                          const comboItem = item as ComboGroup
+                          const comboTitle =
+                            (comboItem.comboId && comboNames[comboItem.comboId]) ||
+                            comboItem.comboName ||
+                            'Combo'
+                          return (
+                            <div
+                              key={comboItem.comboId}
+                              className='p-4 bg-orange-50 rounded-xl border border-orange-100 shadow-sm'
+                            >
+                              <div className='flex items-center gap-2 mb-3'>
+                                <span className='inline-flex items-center text-xs font-semibold text-orange-600 bg-orange-100 px-2 py-1 rounded-full'>
+                                  Sản phẩm combo
+                                </span>
+                                <h3 className='text-base font-semibold text-gray-900'>{comboTitle}</h3>
+                              </div>
+
+                              <div className='flex items-center justify-between mb-3'>
+                                <div className='flex items-center gap-3'>
+                                  <span className='text-sm text-gray-500'>Số lượng: {comboItem.quantity}</span>
+                                  <span className='text-xs text-gray-500'>x</span>
+                                  <span className='text-xs text-gray-500'>
+                                    {formatPrice(
+                                      comboItem.quantity > 0 ? comboItem.totalPrice / comboItem.quantity : 0
+                                    )}đ
+                                  </span>
+                                </div>
+                                <span className='text-lg font-bold text-orange-600'>
+                                  {formatPrice(comboItem.totalPrice)}đ
+                                </span>
+                              </div>
+
+                              <div className='space-y-2 bg-white rounded-lg p-2 border border-orange-100'>
+                                {comboItem.items.map((childItem: APICartItem) => {
+                                  const comboId = childItem.comboId || comboItem.comboId
+                                  const childRequirement =
+                                    (comboId && comboChildItems[comboId]?.[childItem.productVariantId]) || null
+                                  const requiredQuantity = childRequirement?.requiredQuantity
+                                  return (
+                                    <div
+                                      key={childItem.id}
+                                      className='flex items-center gap-3 p-2 bg-gray-50 rounded-lg'
+                                    >
+                                      <div className='w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm'>
+                                        <img
+                                          src={
+                                            childItem.imageUrl ||
+                                            childRequirement?.imageUrl ||
+                                            '/api/placeholder/48/48'
+                                          }
+                                          alt={childItem.name}
+                                          className='w-10 h-10 object-cover rounded'
+                                        />
+                                      </div>
+                                      <div className='flex-1'>
+                                        <p className='text-sm font-medium text-gray-800'>
+                                          {childRequirement?.productName || childItem.name}
+                                        </p>
+                                        <p className='text-xs text-gray-500'>
+                                          {typeof requiredQuantity === 'number'
+                                            ? `Số lượng định mức: ${requiredQuantity}`
+                                            : `Số lượng: ${childItem.quantity}`}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )
+                        }
+
+                        // Regular item
+                        const regularItem = item as APICartItem
+                        return (
+                          <div key={regularItem.id} className='flex items-start gap-4 p-3 bg-gray-50 rounded-lg'>
                             <div className='w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0'>
                               <img
-                                src={item.imageUrl || '/api/placeholder/64/64'}
-                                alt={item.name}
+                                src={regularItem.imageUrl || '/api/placeholder/64/64'}
+                                alt={regularItem.name}
                                 className='w-full h-full object-cover'
                               />
                             </div>
                             <div className='flex-1 min-w-0'>
-                              <h3 className='font-semibold text-gray-800 mb-1'>{item.name}</h3>
+                              <h3 className='font-semibold text-gray-800 mb-1'>{regularItem.name}</h3>
                               <div className='flex items-center justify-between'>
                                 <div className='flex flex-col'>
-                                  <span className='text-sm text-gray-500'>Số lượng: {item.quantity}</span>
+                                  <span className='text-sm text-gray-500'>Số lượng: {regularItem.quantity}</span>
                                   <span className='text-xs text-gray-400'>
-                                    {formatPrice(item.unitPrice)}đ/sản phẩm
+                                    {formatPrice(regularItem.unitPrice)}đ/sản phẩm
                                   </span>
                                 </div>
                                 <span className='text-lg font-bold text-orange-600'>
-                                  {formatPrice(item.totalPrice)}đ
+                                  {formatPrice(regularItem.totalPrice)}đ
                                 </span>
                               </div>
                             </div>
                           </div>
-                        ))}
+                        )
+                      })}
                     </div>
                   </div>
                 ))}
@@ -969,13 +1220,21 @@ export default function Checkout() {
 
               <div className='space-y-3 mb-4 pb-4 border-b border-gray-200'>
                 <div className='space-y-2 max-h-64 overflow-y-auto pr-1'>
-                  {selectedItemsList.map((item) => (
-                    <div key={item.id} className='flex justify-between text-sm text-gray-700'>
-                      <span className='truncate pr-4'>{item.name}</span>
-                      <span>{formatPrice(item.totalPrice)}đ</span>
+                  {summaryItems.map((item, index) => (
+                    <div key={index} className='flex justify-between text-sm text-gray-700'>
+                      <span className='truncate pr-4'>
+                        {item.isCombo && (
+                          <span className='inline-flex items-center text-xs font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded mr-1'>
+                            Combo
+                          </span>
+                        )}
+                        {item.name}
+                        {item.quantity > 1 && ` (x${item.quantity})`}
+                      </span>
+                      <span className='font-medium'>{formatPrice(item.price)}đ</span>
                     </div>
                   ))}
-                  {selectedItemsList.length === 0 && (
+                  {summaryItems.length === 0 && (
                     <p className='text-xs text-gray-500'>Chưa có sản phẩm được chọn.</p>
                   )}
                 </div>
