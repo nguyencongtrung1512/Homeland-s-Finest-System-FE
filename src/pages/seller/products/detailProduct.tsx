@@ -48,6 +48,7 @@ import ModalEditVariant from './modalEditVariant'
 import ModalEditProduct from './modalEditProduct'
 import ProductCertificate from './productCertificate'
 import ProductStoryComponent from './productStory'
+import ProductLivePreview from './components/ProductLivePreview'
 import { toast } from '../../../utils/toast'
 import ProductImageCarousel from '../../../components/ui/product-image-carousel'
 import { motion, AnimatePresence } from 'motion/react'
@@ -1092,10 +1093,13 @@ function DetailProductSeller() {
                     {[
                       { key: 'info', label: 'Thông tin sản phẩm', tab: 'info' },
                       { key: 'certificates', label: 'Chứng nhận', tab: 'certificates' },
-                      { key: 'story', label: 'Câu chuyện', tab: 'story' }
+                      { key: 'story', label: 'Câu chuyện', tab: 'story' },
+                      { key: 'preview', label: 'Xem trước', tab: 'preview', isPreview: true }
                     ].map((step) => {
                       const tabStatus = getTabStatus()
-                      const stepStatus = tabStatus[step.key as keyof typeof tabStatus]
+                      const stepStatus = step.isPreview
+                        ? { completed: true, missingItems: [] }
+                        : tabStatus[step.key as keyof typeof tabStatus]
                       const isActive = activeTab === step.tab
                       const isCompleted = stepStatus.completed
                       const hasError = !isCompleted && stepStatus.missingItems.length > 0
@@ -2180,6 +2184,29 @@ function DetailProductSeller() {
                 />
               </motion.div>
             )}
+          </TabsContent>
+
+          {/* Tab 4: Live Preview */}
+          <TabsContent value='preview' className='space-y-6'>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+              <Card className='shadow-lg'>
+                <CardHeader>
+                  <CardTitle className='flex items-center gap-2'>
+                    <Eye size={20} className='text-green-600' />
+                    Xem trước sản phẩm (Live Preview)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className='bg-gray-50 p-4 rounded-lg mb-4'>
+                    <p className='text-sm text-gray-600'>
+                      Đây là cách khách hàng sẽ nhìn thấy sản phẩm của bạn trên trang chi tiết sản phẩm. Bạn có thể
+                      chọn các biến thể khác nhau để xem giá và hình ảnh tương ứng.
+                    </p>
+                  </div>
+                  <ProductLivePreview product={product} />
+                </CardContent>
+              </Card>
+            </motion.div>
           </TabsContent>
         </Tabs>
       </motion.div>
