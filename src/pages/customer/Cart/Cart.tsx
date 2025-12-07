@@ -461,7 +461,30 @@ export default function Cart() {
         await reloadCartData()
       } catch (error) {
         console.error('Error updating quantity:', error)
-        toast.error('Có lỗi xảy ra khi cập nhật số lượng')
+        
+        // Lấy lỗi từ backend (axios interceptor trả về error.response.data)
+        let errorMessage = 'Có lỗi xảy ra khi cập nhật số lượng'
+        
+        if (error && typeof error === 'object') {
+          const err = error as any
+          
+          // Priority 1: Lấy message từ backend response (vì axios interceptor trả về error.response.data)
+          if (err.message && typeof err.message === 'string') {
+            errorMessage = err.message
+          }
+          // Priority 2: Nếu vẫn có response.data.message (fallback)
+          else if (err.response?.data?.message) {
+            errorMessage = err.response.data.message
+          }
+          // Priority 3: Lấy từ error.message (Error object)
+          else if ((error as Error).message) {
+            errorMessage = (error as Error).message
+          }
+        } else if (typeof error === 'string') {
+          errorMessage = error
+        }
+        
+        toast.error(errorMessage)
         await reloadCartData()
       } finally {
         if (quantityUpdateTimers.current[updateKey]) {
@@ -1014,40 +1037,61 @@ export default function Cart() {
                               </div>
 
                               <div className='flex flex-wrap items-center justify-between gap-4'>
-                                <div className='flex items-center gap-3'>
-                                  <div className='flex items-center border border-gray-300 rounded-lg'>
-                                    <button
-                                      onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity - 1)}
-                                      className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                                      disabled={isComboOutOfStock || comboItem.quantity <= 1}
-                                    >
-                                      <Minus className='w-4 h-4' />
-                                    </button>
-                                    <span className='w-12 text-center font-medium'>{comboItem.quantity}</span>
-                                    <button
-                                      onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity + 1)}
-                                      className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                                      disabled={
-                                        isComboOutOfStock ||
-                                        comboItem.items.some((item: APICartItem) => {
-                                          if (item.availableQuantity === undefined) return false
-                                          const comboId = item.comboId || comboItem.comboId
-                                          const requirement =
-                                            comboId && comboChildItems[comboId]?.[item.productVariantId]?.requiredQuantity || 1
-                                          const currentItemQuantity = requirement * comboItem.quantity
-                                          return currentItemQuantity >= item.availableQuantity
-                                        })
-                                      }
-                                    >
-                                      <Plus className='w-4 h-4' />
-                                    </button>
+                                <div className='flex flex-col gap-1 items-center'>
+                                  <div className='flex items-center gap-3'>
+                                    <div className='flex items-center border border-gray-300 rounded-lg'>
+                                      <button
+                                        onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity - 1)}
+                                        className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                        disabled={isComboOutOfStock || comboItem.quantity <= 1}
+                                      >
+                                        <Minus className='w-4 h-4' />
+                                      </button>
+                                      <span className='w-12 text-center font-medium'>{comboItem.quantity}</span>
+                                      <button
+                                        onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity + 1)}
+                                        className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                        disabled={
+                                          isComboOutOfStock ||
+                                          comboItem.items.some((item: APICartItem) => {
+                                            if (item.availableQuantity === undefined) return false
+                                            const comboId = item.comboId || comboItem.comboId
+                                            const requirement =
+                                              comboId && comboChildItems[comboId]?.[item.productVariantId]?.requiredQuantity || 1
+                                            const currentItemQuantity = requirement * comboItem.quantity
+                                            return currentItemQuantity >= item.availableQuantity
+                                          })
+                                        }
+                                      >
+                                        <Plus className='w-4 h-4' />
+                                      </button>
+                                    </div>
+                                    <div className='flex items-center'>
+                                      <span className='text-xs text-gray-500 mt-2 pl-3'>x</span>
+                                      <span className='text-xs text-gray-500 mt-2 px-2'>
+                                        {formatPrice(comboItem.quantity > 0 ? comboItem.totalPrice / comboItem.quantity : 0)}₫
+                                      </span>
+                                    </div>
                                   </div>
-                                  <div className='flex items-center'>
-                                    <span className='text-xs text-gray-500 mt-2 pl-3'>x</span>
-                                    <span className='text-xs text-gray-500 mt-2 px-2'>
-                                      {formatPrice(comboItem.quantity > 0 ? comboItem.totalPrice / comboItem.quantity : 0)}₫
+                                  {/* Hiển thị availableQuantity cho combo - chính giữa, dưới quantity selector, màu xanh */}
+                                  {comboItem.items.some((item: APICartItem) => item.availableQuantity !== undefined) && (
+                                    <span className='text-xs text-green-600 font-medium text-center w-full block' style={{ marginRight: '46%' }}>
+                                      {(() => {
+                                        // Tìm availableQuantity nhỏ nhất trong combo
+                                        const availableQuantities = comboItem.items
+                                          .filter((item: APICartItem) => item.availableQuantity !== undefined)
+                                          .map((item: APICartItem) => {
+                                            const comboId = item.comboId || comboItem.comboId
+                                            const requirement =
+                                              comboId && comboChildItems[comboId]?.[item.productVariantId]?.requiredQuantity || 1
+                                            // Tính số combo có thể mua dựa trên availableQuantity và requiredQuantity
+                                            return Math.floor((item.availableQuantity || 0) / requirement)
+                                          })
+                                        const minAvailable = Math.min(...availableQuantities)
+                                        return `${minAvailable} combo có sẵn`
+                                      })()}
                                     </span>
-                                  </div>
+                                  )}
                                 </div>
                                 <p className='text-orange-600 font-bold text-lg whitespace-nowrap'>
                                   {formatPrice(comboItem.totalPrice)}đ
@@ -1134,32 +1178,40 @@ export default function Cart() {
                             </div>
 
                             <div className='flex items-center justify-between mt-3'>
-                              <div className='flex items-center'>
-                                <div className='flex items-center border border-gray-300 rounded-lg'>
-                                  <button
-                                    onClick={() => updateQuantity(regularItem.id, regularItem.quantity - 1)}
-                                    className='w-8 h-8  flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                                    disabled={regularItem.quantity <= 1 || isOutOfStock}
-                                  >
-                                    <Minus className='w-4 h-4' />
-                                  </button>
-                                  <span className='w-12 text-center font-medium'>{regularItem.quantity}</span>
-                                  <button
-                                    onClick={() => updateQuantity(regularItem.id, regularItem.quantity + 1)}
-                                    className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                                    disabled={
-                                      isOutOfStock ||
-                                      (regularItem.availableQuantity !== undefined &&
-                                        regularItem.quantity >= regularItem.availableQuantity)
-                                    }
-                                  >
-                                    <Plus className='w-4 h-4' />
-                                  </button>
-                                </div>
+                              <div className='flex flex-col gap-1 items-center'>
                                 <div className='flex items-center'>
-                                  <span className='text-xs text-gray-500 mt-2 pl-3'>x</span>
-                                  <span className='text-xs text-gray-500 mt-2 px-2'>{formatPrice(regularItem.unitPrice)}₫</span>
+                                  <div className='flex items-center border border-gray-300 rounded-lg'>
+                                    <button
+                                      onClick={() => updateQuantity(regularItem.id, regularItem.quantity - 1)}
+                                      className='w-8 h-8  flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                      disabled={regularItem.quantity <= 1 || isOutOfStock}
+                                    >
+                                      <Minus className='w-4 h-4' />
+                                    </button>
+                                    <span className='w-12 text-center font-medium'>{regularItem.quantity}</span>
+                                    <button
+                                      onClick={() => updateQuantity(regularItem.id, regularItem.quantity + 1)}
+                                      className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                      disabled={
+                                        isOutOfStock ||
+                                        (regularItem.availableQuantity !== undefined &&
+                                          regularItem.quantity >= regularItem.availableQuantity)
+                                      }
+                                    >
+                                      <Plus className='w-4 h-4' />
+                                    </button>
+                                  </div>
+                                  <div className='flex items-center'>
+                                    <span className='text-xs text-gray-500 mt-2 pl-3'>x</span>
+                                    <span className='text-xs text-gray-500 mt-2 px-2'>{formatPrice(regularItem.unitPrice)}₫</span>
+                                  </div>
                                 </div>
+                                {/* Hiển thị availableQuantity cho sản phẩm thường - chính giữa, dưới quantity selector, màu xanh */}
+                                {regularItem.availableQuantity !== undefined && (
+                                  <span className='text-xs text-green-600 font-medium text-center w-full block' style={{ marginRight: '46%' }}>
+                                    {regularItem.availableQuantity} sản phẩm có sẵn
+                                  </span>
+                                )}
                               </div>
                               <span className='text-orange-600 font-bold text-lg'>{formatPrice(regularItem.totalPrice)}đ</span>
                             </div>

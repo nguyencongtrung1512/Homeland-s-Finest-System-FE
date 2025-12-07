@@ -587,13 +587,13 @@ const AdminPromotionList: React.FC = () => {
                           <span>
                             {promotion.discountType === 'percentage'
                               ? `${promotion.discountValue}%`
-                              : `${formatPrice(promotion.discountValue)} đ`}
+                              : `${formatPrice(promotion.discountValue)}đ`}
                           </span>
                         </div>
                         {promotion.minValueDiscount && (
                           <div className='flex items-center gap-1'>
                             <TrendingUp className='h-4 w-4' />
-                            <span>Tối thiểu {formatPrice(promotion.minValueDiscount)} đ</span>
+                            <span>Tối thiểu {formatPrice(promotion.minValueDiscount)}đ</span>
                           </div>
                         )}
                       </div>
