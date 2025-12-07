@@ -423,7 +423,7 @@ function ComplainSeller() {
                             <img
                               key={index}
                               src={resolvedUrl}
-                              alt={`Attachment ${index + 1}`}
+                              alt={`Tệp đính kèm ${index + 1}`}
                               className='w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity hover:border-blue-400'
                               onClick={() => {
                                 const images = form.imageUrl
@@ -550,7 +550,7 @@ function ComplainSeller() {
                           >
                             <img
                               src={imageUrl}
-                              alt={`Attachment ${index + 1}`}
+                              alt={`Tệp đính kèm ${index + 1}`}
                               className='w-full h-32 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity'
                             />
                           </div>
@@ -586,7 +586,7 @@ function ComplainSeller() {
                               <img
                                 key={index}
                                 src={resolveImageUrl(imageUrl)}
-                                alt={`Evidence ${index + 1}`}
+                                alt={`Bằng chứng ${index + 1}`}
                                 className='w-full h-24 object-cover rounded border border-purple-200 cursor-pointer hover:opacity-90'
                                 onClick={() => window.open(resolveImageUrl(imageUrl), '_blank')}
                               />
@@ -732,7 +732,7 @@ function ComplainSeller() {
                         <div key={index} className='relative group'>
                           <img
                             src={preview}
-                            alt={`Preview ${index + 1}`}
+                            alt={`Xem trước ${index + 1}`}
                             className='w-full h-24 object-cover rounded border border-gray-200'
                           />
                           <button

@@ -516,7 +516,7 @@ function StaffDashboard() {
                           </div>
                         </div>
                         <div className='text-right'>
-                          <p className='font-semibold text-sm'>{store.revenue.toLocaleString('vi-VN')} VNĐ</p>
+                          <p className='font-semibold text-sm'>{store.revenue.toLocaleString('vi-VN')} đ</p>
                         </div>
                       </motion.div>
                     ))}

@@ -233,7 +233,7 @@ const StorePage = () => {
         <TabsList className='grid w-full grid-cols-3'>
           <TabsTrigger value='story'>Câu Chuyện</TabsTrigger>
           <TabsTrigger value='products'>Sản Phẩm</TabsTrigger>
-          <TabsTrigger value='certificates'>Giấy chứng nhận</TabsTrigger>
+          <TabsTrigger value='certificates'>Giấy Chứng Nhận</TabsTrigger>
         </TabsList>
 
         {/* Câu Chuyện Tab */}

@@ -154,7 +154,7 @@ export default function FormOtherManagement() {
         return {
           icon: <AlertCircle className='w-4 h-4 text-blue-500' />,
           badge: 'default',
-          text: 'Chờ xử lý',
+          text: 'Đang xử lý',
           color: 'text-blue-700',
           bgColor: 'bg-blue-50'
         }
@@ -162,7 +162,7 @@ export default function FormOtherManagement() {
         return {
           icon: <CheckCircle className='w-4 h-4 text-green-500' />,
           badge: 'default',
-          text: 'Chấp nhận bởi nhân viên',
+          text: 'Đã duyệt bởi nhân viên',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -295,7 +295,7 @@ export default function FormOtherManagement() {
         <CardContent>
           <div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
             <div className='rounded-xl border border-blue-100 bg-blue-50/60 p-4'>
-              <p className='uppercase text-blue-600'>Tổng form</p>
+              <p className='uppercase text-blue-600'>Tổng khiếu nại</p>
               <p className='text-2xl font-semibold text-blue-900 mt-1'>{stats.total}</p>
               <p className='text-xs text-blue-700 mt-1'>Tất cả các đơn khác</p>
             </div>
@@ -343,8 +343,8 @@ export default function FormOtherManagement() {
                 <SelectContent>
                   <SelectItem value='all'>Tất cả</SelectItem>
                   <SelectItem value='Pending'>Chờ phân công</SelectItem>
-                  <SelectItem value='Processing'>Chờ xử lý</SelectItem>
-                  <SelectItem value='ApprovedByStaff'>Chấp nhận bởi nhân viên</SelectItem>
+                  <SelectItem value='Processing'>Đang xử lý</SelectItem>
+                  <SelectItem value='ApprovedByStaff'>Đã duyệt bởi nhân viên</SelectItem>
                   <SelectItem value='DeniedByStaff'>Từ chối bởi nhân viên</SelectItem>
                   <SelectItem value='ApprovedByAdmin'>Đã duyệt</SelectItem>
                   <SelectItem value='DeniedByAdmin'>Từ chối</SelectItem>
@@ -419,13 +419,13 @@ export default function FormOtherManagement() {
                             <img
                               key={index}
                               src={imageUrl}
-                              alt={`Attachment ${index + 1}`}
+                              alt={`Tệp đính kèm ${index + 1}`}
                               className='w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity'
                               onClick={() => window.open(imageUrl, '_blank')}
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement
                                 target.src = '/src/assets/react.svg'
-                                target.alt = 'Image not available'
+                                target.alt = 'Hình ảnh không khả dụng'
                               }}
                             />
                           ))}

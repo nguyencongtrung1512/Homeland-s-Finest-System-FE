@@ -81,6 +81,7 @@ function ProductGallery() {
   const [selectedImage, setSelectedImage] = useState(0)
   const [selectedVariants, setSelectedVariants] = useState<VariantSelection>({})
   const [quantity, setQuantity] = useState(1)
+  const [quantityInput, setQuantityInput] = useState<string>('1') // Temporary input value
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [flyingImage, setFlyingImage] = useState<{ src: string; startX: number; startY: number } | null>(null)
@@ -486,6 +487,61 @@ function ProductGallery() {
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity >= 1 && newQuantity <= currentStock) {
       setQuantity(newQuantity)
+      setQuantityInput(newQuantity.toString()) // Sync input value
+    }
+  }
+
+  // Sync quantityInput when quantity changes from outside (e.g., variant change)
+  useEffect(() => {
+    setQuantityInput(quantity.toString())
+  }, [quantity])
+
+  // Handle direct input for quantity - allow free typing
+  const handleQuantityInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    
+    // Allow empty string for better UX while typing
+    if (value === '') {
+      setQuantityInput('')
+      return
+    }
+    
+    // Only allow numbers
+    if (/^\d+$/.test(value)) {
+      setQuantityInput(value)
+    }
+  }
+
+  // Validate and apply quantity when user finishes editing
+  const validateAndSetQuantity = (value: string) => {
+    if (value === '') {
+      setQuantity(1)
+      setQuantityInput('1')
+      return
+    }
+    
+    const numValue = parseInt(value, 10)
+    if (isNaN(numValue) || numValue < 1) {
+      setQuantity(1)
+      setQuantityInput('1')
+    } else if (numValue > currentStock) {
+      setQuantity(currentStock)
+      setQuantityInput(currentStock.toString())
+    } else {
+      setQuantity(numValue)
+      setQuantityInput(numValue.toString())
+    }
+  }
+
+  // Handle blur to ensure valid value
+  const handleQuantityBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    validateAndSetQuantity(e.target.value)
+  }
+
+  // Handle Enter key
+  const handleQuantityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur() // Trigger blur which will validate
     }
   }
 
@@ -608,11 +664,11 @@ function ProductGallery() {
                     <>
                       {currentVariant?.basePrice && currentVariant.basePrice > currentPrice && (
                         <div className='text-gray-400 line-through text-base'>
-                          ₫{currentVariant.basePrice.toLocaleString('vi-VN')}
+                          {currentVariant.basePrice.toLocaleString('vi-VN')}đ
                         </div>
                       )}
                       <div className='text-3xl font-medium text-green-600'>
-                        ₫{currentPrice.toLocaleString('vi-VN')}
+                        {currentPrice.toLocaleString('vi-VN')}đ
                       </div>
                       {currentVariant?.basePrice && currentVariant.basePrice > currentPrice && (
                         <div className='bg-green-600 text-white px-2 py-1 rounded text-xs font-medium'>
@@ -630,7 +686,7 @@ function ProductGallery() {
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>
                     <Hash size={16} className='text-green-600 flex-shrink-0' />
-                    <span className='text-sm text-gray-600 font-medium'>Hashtags</span>
+                    <span className='text-sm text-gray-600 font-medium'>Thẻ bắt đầu bằng #</span>
                   </div>
                   <div className='flex flex-wrap gap-2'>
                     {loadingHashtags ? (
@@ -819,9 +875,11 @@ function ProductGallery() {
                     </button>
                     <input
                       type='text'
-                      value={quantity}
-                      readOnly
-                      className='w-12 text-center border-l border-r border-gray-300 py-1 focus:outline-none'
+                      value={quantityInput}
+                      onChange={handleQuantityInput}
+                      onBlur={handleQuantityBlur}
+                      onKeyDown={handleQuantityKeyDown}
+                      className='w-12 text-center border-l border-r border-gray-300 py-1 focus:outline-none focus:ring-2 focus:ring-green-500'
                     />
                     <button
                       onClick={() => handleQuantityChange(quantity + 1)}
@@ -924,7 +982,7 @@ function ProductGallery() {
           >
             <img
               src={flyingImage.src}
-              alt='Flying to cart'
+              alt='Đang bay vào giỏ hàng'
               style={{
                 width: '100%',
                 height: '100%',

@@ -78,13 +78,13 @@ function OrderManagement() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'N/A'
+    if (!dateString) return 'Không có'
     // Backend đã trả về định dạng "10:03:51 14/10/2025" nên chỉ cần hiển thị
     return dateString
   }
 
   const getStatusText = (status: string) => {
-    return statusTextMap[status] || status
+    return statusTextMap[status] || 'Chưa xác định'
   }
 
   // Create tabs from statusTextMap
@@ -553,7 +553,7 @@ function OrderManagement() {
                             <TableCell className='font-medium'>#{order.ghnorderCode || order.id}</TableCell>
                           )}
                           {columnVisibility.createdAt && <TableCell>{formatDate(order.createdAt)}</TableCell>}
-                          {columnVisibility.toName && <TableCell>{order.toName || 'N/A'}</TableCell>}
+                          {columnVisibility.toName && <TableCell>{order.toName || 'Không có'}</TableCell>}
                           {columnVisibility.finalPrice && (
                             <TableCell className='text-right font-medium'>
                               {(order.finalPrice || 0).toLocaleString('vi-VN')}₫

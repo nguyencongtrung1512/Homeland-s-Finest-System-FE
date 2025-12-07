@@ -248,7 +248,7 @@ function OrderManagementStaff() {
       labels: ['Banking', 'COD', 'MyWallet'],
       datasets: [
         {
-          label: 'Doanh thu (VNĐ)',
+          label: 'Doanh thu (đ)',
           data: [
             banking.Revenue || banking.revenue || 0,
             cod.Revenue || cod.revenue || 0,
@@ -279,7 +279,7 @@ function OrderManagementStaff() {
   ]
 
   const getStatusBadge = (status: OrderStatus) => {
-    const statusText = statusTextMap[status] || status
+    const statusText = statusTextMap[status] || 'Chưa xác định'
     const badgeColor = getStatusBadgeColor(status)
     return <Badge className={badgeColor}>{statusText}</Badge>
   }
@@ -694,7 +694,7 @@ function OrderManagementStaff() {
                           {order.ghnorderCode || `#${order.id.slice(0, 8)}`}
                         </td>
                         <td className='py-4 px-6 text-gray-700'>{formatDate(order.createdAt)}</td>
-                        <td className='py-4 px-6 text-gray-700'>{order.toName || 'N/A'}</td>
+                        <td className='py-4 px-6 text-gray-700'>{order.toName || 'Không có'}</td>
                         <td className='py-4 px-6 text-gray-900 font-medium'>
                           {order.finalPrice.toLocaleString('vi-VN')}₫
                         </td>

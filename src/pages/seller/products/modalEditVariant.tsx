@@ -145,8 +145,8 @@ export default function ModalEditVariant({
   }
 
   const formatCurrency = (value: number) => {
-    if (!value) return '0 VNĐ'
-    return `${value.toLocaleString('vi-VN')} VNĐ`
+    if (!value) return '0 đ'
+    return `${value.toLocaleString('vi-VN')} đ`
   }
 
   // Load data khi mở dialog
@@ -588,7 +588,7 @@ export default function ModalEditVariant({
             {canEditFullFields && (
               <div>
                 <Label htmlFor='edit-price' className='text-sm font-medium'>
-                  Giá cửa hàng thu về (VNĐ) <span className='text-red-500'>*</span>
+                  Giá cửa hàng thu về (đ) <span className='text-red-500'>*</span>
                 </Label>
                 <Input
                   id='edit-price'
@@ -610,7 +610,7 @@ export default function ModalEditVariant({
                   {`Nhập giá gốc. Hệ thống sẽ áp dụng hoa hồng ${commissionLoading ? '...' : `${commissionRate}%`} để tính giá bán ra.`}
                 </p>
                 <div className='mt-4'>
-                  <Label className='text-sm font-medium'>Giá bán trên sàn dự kiến (VNĐ)</Label>
+                  <Label className='text-sm font-medium'>Giá bán trên sàn dự kiến (đ)</Label>
                   <Input
                     value={formatCurrency(computeSalePrice(variantData.basePrice, commissionRate))}
                     readOnly

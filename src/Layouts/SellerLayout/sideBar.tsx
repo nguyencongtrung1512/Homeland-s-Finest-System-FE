@@ -168,7 +168,7 @@ function SideBar() {
       label: 'Tài chính',
       icon: (
         <AnimatedIcon animationType='bounce'>
-          <DollarSign size={18} />
+          <span className='font-bold'>₫</span>
         </AnimatedIcon>
       )
     },

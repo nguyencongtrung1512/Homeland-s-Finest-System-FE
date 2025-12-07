@@ -211,8 +211,8 @@ export default function ModalVariantProduct({
   }
 
   const formatCurrency = (value: number) => {
-    if (!value) return '0 VNĐ'
-    return `${value.toLocaleString('vi-VN')} VNĐ`
+    if (!value) return '0 đ'
+    return `${value.toLocaleString('vi-VN')} đ`
   }
 
   // Helper function to find parent variant's attributeType
@@ -789,7 +789,7 @@ export default function ModalVariantProduct({
             {/* Giá - Hiển thị cho cả nhóm tùy chọn và phiên bản bán được */}
             <div>
               <Label htmlFor='variant-price' className='text-sm font-medium'>
-                Giá cửa hàng thu về (VNĐ) <span className='text-red-500'>*</span>
+                Giá cửa hàng thu về (đ) <span className='text-red-500'>*</span>
               </Label>
               <Input
                 id='variant-price'
@@ -811,7 +811,7 @@ export default function ModalVariantProduct({
 
             {/* Sale Price */}
             <div>
-              <Label className='text-sm font-medium'>Giá bán trên sàn dự kiến (VNĐ)</Label>
+              <Label className='text-sm font-medium'>Giá bán trên sàn dự kiến (đ)</Label>
               <div className='relative mt-1'>
                 <Input
                   value={

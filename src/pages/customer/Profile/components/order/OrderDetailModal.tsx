@@ -232,7 +232,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       Lost: 'Thất lạc',
       Cancel: 'Đã hủy đơn hàng',
     }
-    return statusTextMap[status] || status
+    return statusTextMap[status] || 'Chưa xác định'
   }
 
   const formatPrice = (price: number) => {
@@ -467,7 +467,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                       >
                         {/* Logo Section */}
                         <div className='w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0'>
-                          <img src='/src/assets/tinhhoa.svg' alt='Tinh Hoa Logo' className='w-8 h-8' />
+                          <img src='/src/assets/tinhhoa.svg' alt='Logo Tinh Hoa' className='w-8 h-8' />
                         </div>
 
                         {/* Promotion Details Section */}
@@ -521,7 +521,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                     <p className='text-xs text-gray-600'>Người nhận</p>
                     <p className='font-medium text-gray-900 text-sm'>{order.toName}</p>
                     <p className='text-xs text-gray-600 mt-2'>Số điện thoại</p>
-                    <p className='font-medium text-gray-900 text-sm'>{order.fromPhone || 'N/A'}</p>
+                    <p className='font-medium text-gray-900 text-sm'>{order.fromPhone || 'Không có'}</p>
                     <p className='text-xs text-gray-600 mt-2'>Địa chỉ giao hàng</p>
                     <p className='font-medium text-gray-900 text-sm'>{order.toAddress}</p>
                     <p className='text-xs text-gray-600 mt-2'>Phí vận chuyển</p>

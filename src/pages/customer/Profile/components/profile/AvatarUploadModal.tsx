@@ -95,7 +95,7 @@ export default function AvatarUploadModal({ isOpen, onClose, onSave, currentAvat
                 {preview ? (
                   <motion.img
                     src={preview}
-                    alt='Avatar preview'
+                    alt='Xem trước avatar'
                     className='w-full h-full object-cover'
                     initial={{ scale: 1.2 }}
                     animate={{ scale: 1 }}
@@ -110,7 +110,7 @@ export default function AvatarUploadModal({ isOpen, onClose, onSave, currentAvat
                 ) : currentAvatar ? (
                   <motion.img
                     src={currentAvatar}
-                    alt='Current avatar'
+                    alt='Avatar hiện tại'
                     className='w-full h-full object-cover'
                     onError={(e) => {
                       const target = e.target as HTMLImageElement

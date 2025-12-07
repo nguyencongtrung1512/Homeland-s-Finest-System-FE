@@ -827,11 +827,11 @@ export default function Checkout() {
                                 <div className='flex flex-col'>
                                   <span className='text-sm text-gray-500'>Số lượng: {item.quantity}</span>
                                   <span className='text-xs text-gray-400'>
-                                    ₫{formatPrice(item.unitPrice)}/sản phẩm
+                                    {formatPrice(item.unitPrice)}đ/sản phẩm
                                   </span>
                                 </div>
                                 <span className='text-lg font-bold text-orange-600'>
-                                  ₫{formatPrice(item.totalPrice)}
+                                  {formatPrice(item.totalPrice)}đ
                                 </span>
                               </div>
                             </div>
@@ -972,7 +972,7 @@ export default function Checkout() {
                   {selectedItemsList.map((item) => (
                     <div key={item.id} className='flex justify-between text-sm text-gray-700'>
                       <span className='truncate pr-4'>{item.name}</span>
-                      <span>₫{formatPrice(item.totalPrice)}</span>
+                      <span>{formatPrice(item.totalPrice)}đ</span>
                     </div>
                   ))}
                   {selectedItemsList.length === 0 && (
@@ -984,12 +984,12 @@ export default function Checkout() {
               <div className='space-y-2 mb-4 pb-4 border-b border-gray-200'>
                 <div className='flex justify-between text-sm text-gray-700'>
                   <span>Tạm tính:</span>
-                  <span>₫{formatPrice(subtotal)}</span>
+                  <span>{formatPrice(subtotal)}đ</span>
                 </div>
                 {totalDiscount > 0 && (
                   <div className='flex justify-between text-sm text-green-600'>
                     <span>Giảm giá:</span>
-                    <span>-₫{formatPrice(totalDiscount)}</span>
+                    <span>-{formatPrice(totalDiscount)}đ</span>
                   </div>
                 )}
                 <div className='flex justify-between text-sm text-gray-700'>
@@ -1006,7 +1006,7 @@ export default function Checkout() {
                       {shippingFee === 0 ? (
                         <span className='text-green-600 font-medium'>Miễn phí</span>
                       ) : (
-                        `₫${formatPrice(shippingFee)}`
+                        `${formatPrice(shippingFee)}đ`
                       )}
                     </span>
                   ) : (
@@ -1019,9 +1019,9 @@ export default function Checkout() {
                 <span className='text-lg font-bold text-gray-800'>Tổng cộng</span>
                 <div className='text-right'>
                   {totalDiscount > 0 && (
-                    <div className='text-sm text-gray-500 line-through'>₫{formatPrice(subtotal)}</div>
+                    <div className='text-sm text-gray-500 line-through'>{formatPrice(subtotal)}đ</div>
                   )}
-                  <span className='text-2xl font-bold text-orange-600'>₫{formatPrice(finalTotal)}</span>
+                  <span className='text-2xl font-bold text-orange-600'>{formatPrice(finalTotal)}đ</span>
                 </div>
               </div>
 
@@ -1029,7 +1029,7 @@ export default function Checkout() {
                 <div className='bg-green-50 border border-green-200 rounded-lg p-3 mb-4'>
                   <div className='flex items-center gap-2'>
                     <span className='text-sm font-medium text-green-800'>
-                      Bạn đã tiết kiệm được ₫{formatPrice(totalDiscount)}
+                      Bạn đã tiết kiệm được {formatPrice(totalDiscount)}đ
                     </span>
                   </div>
                 </div>

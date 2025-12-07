@@ -1050,7 +1050,7 @@ export default function Cart() {
                                   </div>
                                 </div>
                                 <p className='text-orange-600 font-bold text-lg whitespace-nowrap'>
-                                  ₫{formatPrice(comboItem.totalPrice)}
+                                  {formatPrice(comboItem.totalPrice)}đ
                                 </p>
                               </div>
 
@@ -1161,7 +1161,7 @@ export default function Cart() {
                                   <span className='text-xs text-gray-500 mt-2 px-2'>{formatPrice(regularItem.unitPrice)}₫</span>
                                 </div>
                               </div>
-                              <span className='text-orange-600 font-bold text-lg'>₫{formatPrice(regularItem.totalPrice)}</span>
+                              <span className='text-orange-600 font-bold text-lg'>{formatPrice(regularItem.totalPrice)}đ</span>
                             </div>
                           </div>
 
@@ -1246,12 +1246,12 @@ export default function Cart() {
                                   {entry.itemCount} sản phẩm · x{entry.quantity}
                                 </span>
                               </span>
-                              <span className='font-semibold text-orange-600'>₫{formatPrice(entry.totalPrice)}</span>
+                              <span className='font-semibold text-orange-600'>{formatPrice(entry.totalPrice)}đ</span>
                             </div>
                           ) : (
                             <div key={entry.id} className='flex justify-between text-sm text-gray-700'>
                               <span className='truncate pr-4'>{entry.name}</span>
-                              <span>₫{formatPrice(entry.totalPrice)}</span>
+                              <span>{formatPrice(entry.totalPrice)}đ</span>
                             </div>
                           )
                         )}
@@ -1268,9 +1268,9 @@ export default function Cart() {
                 <span className='text-lg font-bold text-gray-800'>Tổng cộng</span>
                 <div className='text-right'>
                   {totalDiscount > 0 && (
-                    <div className='text-sm text-gray-500 line-through'>₫{formatPrice(subtotal)}</div>
+                    <div className='text-sm text-gray-500 line-through'>{formatPrice(subtotal)}đ</div>
                   )}
-                  <span className='text-2xl font-bold text-orange-600'>₫{formatPrice(finalTotal)}</span>
+                  <span className='text-2xl font-bold text-orange-600'>{formatPrice(finalTotal)}đ</span>
                 </div>
               </div>
 
@@ -1280,7 +1280,7 @@ export default function Cart() {
                   <div className='flex items-center gap-2'>
                     <Gift className='h-4 w-4 text-green-600' />
                     <span className='text-sm font-medium text-green-800'>
-                      Bạn đã tiết kiệm được ₫{formatPrice(totalDiscount)}
+                      Bạn đã tiết kiệm được {formatPrice(totalDiscount)}đ
                     </span>
                   </div>
                 </div>

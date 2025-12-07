@@ -698,7 +698,7 @@ function Register() {
               <div className='absolute inset-0 z-0'>
                 <img
                   src={unnamedImage}
-                  alt='Background'
+                  alt='Nền'
                   className='w-full h-full object-cover'
                 />
               </div>

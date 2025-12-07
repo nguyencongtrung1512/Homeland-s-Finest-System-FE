@@ -599,7 +599,7 @@ export default function ProductReviews() {
                               <img
                                 key={index}
                                 src={img}
-                                alt={`Review image ${index + 1}`}
+                                alt={`Hình ảnh đánh giá ${index + 1}`}
                                 className='w-16 h-16 object-cover rounded-lg border cursor-pointer hover:opacity-80'
                                 onClick={() => window.open(img, '_blank')}
                                 onError={(e) => {

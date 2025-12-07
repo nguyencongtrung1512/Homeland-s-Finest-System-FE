@@ -232,7 +232,7 @@ const FileUploadFieldWithOCR = ({
             <DialogTitle>Preview ảnh</DialogTitle>
           </DialogHeader>
           <div className='flex justify-center'>
-            <img src={previewImage} alt='Preview' className='max-w-full max-h-96 object-contain rounded-lg' />
+            <img src={previewImage} alt='Xem trước' className='max-w-full max-h-96 object-contain rounded-lg' />
           </div>
         </DialogContent>
       </Dialog>
@@ -374,7 +374,7 @@ const FileUploadFieldWithBackOCR = ({
             <DialogTitle>Preview ảnh</DialogTitle>
           </DialogHeader>
           <div className='flex justify-center'>
-            <img src={previewImage} alt='Preview' className='max-w-full max-h-96 object-contain rounded-lg' />
+            <img src={previewImage} alt='Xem trước' className='max-w-full max-h-96 object-contain rounded-lg' />
           </div>
         </DialogContent>
       </Dialog>
@@ -484,7 +484,7 @@ const FileUploadField = ({
             <DialogTitle>Preview ảnh</DialogTitle>
           </DialogHeader>
           <div className='flex justify-center'>
-            <img src={previewImage} alt='Preview' className='max-w-full max-h-96 object-contain rounded-lg' />
+            <img src={previewImage} alt='Xem trước' className='max-w-full max-h-96 object-contain rounded-lg' />
           </div>
         </DialogContent>
       </Dialog>

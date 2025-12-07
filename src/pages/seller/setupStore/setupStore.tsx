@@ -143,6 +143,24 @@ function SetupStore() {
     return value
   }
 
+  const getSellerStatusLabel = (status?: string | null): string => {
+    if (!status) return 'Chưa có trạng thái'
+    
+    const statusMap: Record<string, string> = {
+      Onboarding: 'Đang hoàn thiện hồ sơ',
+      Active: 'Hoạt động',
+      Inactive: 'Không hoạt động',
+      Pending: 'Chờ duyệt',
+      Suspended: 'Tạm dừng',
+      Banned: 'Bị cấm',
+      Approved: 'Đã duyệt',
+      Rejected: 'Từ chối',
+      Processing: 'Đang xử lý'
+    }
+    
+    return statusMap[status] || status
+  }
+
   const statusDisplay = (() => {
     const statusMap: Record<string, { label: string; classes: string }> = {
       Pending: { label: 'Đang xử lý', classes: 'bg-blue-100 text-blue-800 border border-blue-200' },
@@ -552,7 +570,7 @@ function SetupStore() {
             {/* Cover Image */}
             <div className='relative rounded-3xl border border-gray-100 overflow-hidden shadow-xl bg-gradient-to-r from-emerald-50 to-white'>
               {storeData.coverImageUrl ? (
-                <img src={storeData.coverImageUrl} alt='Store Cover' className='w-full h-64 md:h-80 object-cover' />
+                <img src={storeData.coverImageUrl} alt='Ảnh bìa cửa hàng' className='w-full h-64 md:h-80 object-cover' />
               ) : (
                 <div className='w-full h-64 md:h-80 flex items-center justify-center text-gray-400 gap-3 bg-gradient-to-br from-emerald-50 to-white'>
                   <ImageIcon className='w-16 h-16' />
@@ -579,7 +597,7 @@ function SetupStore() {
               <div className='relative'>
                 <div className='w-32 h-32 md:w-40 md:h-40 rounded-full bg-white ring-4 ring-white shadow-2xl flex items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-100 to-white'>
                   {storeData.logoUrl ? (
-                    <img src={storeData.logoUrl} alt='Store Logo' className='w-full h-full object-cover' />
+                    <img src={storeData.logoUrl} alt='Logo cửa hàng' className='w-full h-full object-cover' />
                   ) : (
                     <ImageIcon className='w-16 h-16 text-emerald-400' />
                   )}
@@ -971,7 +989,7 @@ function SetupStore() {
                         <div className='w-24 h-24 rounded-2xl overflow-hidden ring-2 ring-emerald-200 shadow-md'>
                           <img
                             src={storeData.sellerInfo.userInfo.avatar}
-                            alt='Seller Avatar'
+                            alt='Ảnh đại diện người bán'
                             className='w-full h-full object-cover'
                           />
                         </div>
@@ -1147,7 +1165,7 @@ function SetupStore() {
                       <p className='text-xs text-gray-500 uppercase tracking-wider font-semibold'>
                         Trạng thái người bán
                       </p>
-                      <p className='text-sm font-medium text-gray-900 mt-2'>{storeData.sellerInfo.sellerStatus}</p>
+                      <p className='text-sm font-medium text-gray-900 mt-2'>{getSellerStatusLabel(storeData.sellerInfo.sellerStatus)}</p>
                     </div>
                     <div>
                       <p className='text-xs text-gray-500 uppercase tracking-wider font-semibold'>Lần báo cáo</p>
@@ -1181,7 +1199,7 @@ function SetupStore() {
                           >
                             <img
                               src={url}
-                              alt={`Vendor Application ${index + 1}`}
+                              alt={`Đơn đăng ký người bán ${index + 1}`}
                               className='w-full h-40 object-cover'
                             />
                             <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
@@ -1221,7 +1239,7 @@ function SetupStore() {
                           >
                             <img
                               src={URL.createObjectURL(file)}
-                              alt={`New file ${index + 1}`}
+                              alt={`Tệp mới ${index + 1}`}
                               className='w-full h-40 object-cover'
                             />
                             <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>

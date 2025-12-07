@@ -14,7 +14,6 @@ import {
   Clock,
   Users,
   Percent,
-  DollarSign,
   CheckCircle,
   XCircle,
   AlertCircle
@@ -236,7 +235,7 @@ const SellerPromotionList: React.FC = () => {
       case 'percentage':
         return <Percent className='h-4 w-4 text-blue-500' />
       case 'fixed_amount':
-        return <DollarSign className='h-4 w-4 text-green-500' />
+        return null // Giá trị đã có ₫ rồi, không cần icon
       case 'freeship':
         return <Users className='h-4 w-4 text-purple-500' />
       default:
@@ -373,7 +372,7 @@ const SellerPromotionList: React.FC = () => {
           <CardContent className='p-4'>
             <div className='flex items-center justify-between'>
               <div>
-                <p className='text-sm font-medium text-gray-600'>Tổng Promotion</p>
+                <p className='text-sm font-medium text-gray-600'>Tổng khuyến mãi</p>
                 <p className='text-2xl font-bold text-gray-900'>{totalItems}</p>
               </div>
               <div className='h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center'>
@@ -509,7 +508,7 @@ const SellerPromotionList: React.FC = () => {
         <CardHeader>
           <CardTitle className='flex items-center gap-2'>
             <Calendar className='h-5 w-5' />
-            Danh sách Promotion ({totalItems})
+            Danh sách khuyến mãi ({totalItems})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -521,7 +520,7 @@ const SellerPromotionList: React.FC = () => {
           ) : promotions.length === 0 ? (
             <div className='text-center py-8'>
               <Calendar className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-              <h3 className='text-lg font-medium text-gray-900 mb-2'>Chưa có promotion nào</h3>
+              <h3 className='text-lg font-medium text-gray-900 mb-2'>Chưa có khuyến mãi nào</h3>
               <p className='text-gray-600 mb-4'>Tạo khuyến mãi đầu tiên để bắt đầu</p>
               <Button variant='yellow' onClick={handleCreatePromotion}>
                 <Plus className='h-4 w-4 mr-2' />
@@ -557,12 +556,12 @@ const SellerPromotionList: React.FC = () => {
                           <span className='font-medium'>
                             {promotion.discountType === 'percentage'
                               ? `${promotion.discountValue}%`
-                              : `${promotion.discountValue.toLocaleString()}₫`}
+                              : `${promotion.discountValue.toLocaleString()}đ`}
                           </span>
                         </div>
                         {promotion.minValueDiscount && (
                           <p className='text-xs text-gray-500 mt-1'>
-                            Tối thiểu: {promotion.minValueDiscount.toLocaleString()}₫
+                            Tối thiểu: {promotion.minValueDiscount.toLocaleString()}đ
                           </p>
                         )}
                       </td>
@@ -584,7 +583,7 @@ const SellerPromotionList: React.FC = () => {
                           <p className='text-gray-900'>
                             {promotion.usedQuantity || 0} / {promotion.maxQuantity || '∞'}
                           </p>
-                          <p className='text-gray-500'>{promotion.maxPerUser} lần/user</p>
+                          <p className='text-gray-500'>{promotion.maxPerUser} lần/người dùng</p>
                         </div>
                       </td>
                       <td className='py-4 px-4'>
@@ -612,7 +611,7 @@ const SellerPromotionList: React.FC = () => {
           <CardContent className='p-4'>
             <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
               <div className='text-sm text-gray-600'>
-                Hiển thị {paginationStart}-{paginationEnd} trong tổng số {totalItems} Promotion
+                Hiển thị {paginationStart}-{paginationEnd} trong tổng số {totalItems} khuyến mãi
               </div>
               {totalItems > pageSize && (
                 <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />

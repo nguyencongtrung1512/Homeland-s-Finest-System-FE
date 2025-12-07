@@ -381,7 +381,7 @@ export default function Profile() {
                 <Avatar className='w-20 h-20'>
                   <img
                     src={user?.avatar || 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'}
-                    alt='Profile'
+                    alt='Hồ sơ'
                     className='w-full h-full object-cover rounded-full'
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
