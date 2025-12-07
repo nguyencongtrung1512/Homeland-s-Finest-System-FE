@@ -324,7 +324,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
   const getPaymentTypeText = (paymentType: string) => {
     const paymentTypeMap: Record<string, string> = {
       COD: 'Thanh toán khi nhận hàng',
-      Wallet: 'Thanh toán bằng ví',
+      MyWallet: 'Thanh toán bằng ví',
       Banking: 'Thanh toán bằng thẻ ngân hàng'
     }
     return paymentTypeMap[paymentType] || paymentType
@@ -625,32 +625,23 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                         )}
                         {warning.isOverdue ? (
                           <div className='mt-3 p-3 bg-red-100 rounded-lg border border-red-200'>
-                            <p className='text-sm font-bold text-red-900 mb-1'>⛔ BẠN SẼ BỊ PHẠT TĂNG REPORT COUNT!</p>
+                            <p className='text-sm font-bold text-red-900 mb-1'>⛔ BẠN SẼ BỊ PHẠT TĂNG ĐIỂM VI PHẠM!</p>
                             <p className='text-sm text-red-800'>
                               Đã quá 2 ngày kể từ khi đơn hàng hoàn thành. Nếu không upload ảnh xác minh ngay, hệ thống
-                              sẽ tự động tăng số lượng báo cáo vi phạm (report count) của cửa hàng.
+                              sẽ tự động tăng số lượng điểm vi phạm của cửa hàng.
                             </p>
                           </div>
                         ) : (
                           <div className='mt-3 p-3 bg-yellow-100 rounded-lg border border-yellow-200'>
                             <p className='text-sm font-semibold text-yellow-900 mb-1'>
-                              ⏰ Còn {2 - warning.days} {2 - warning.days === 1 ? 'ngày' : 'ngày'} để upload ảnh
+                               Còn {2 - warning.days} {2 - warning.days === 1 ? 'ngày' : 'ngày'} để upload ảnh
                             </p>
                             <p className='text-sm text-yellow-800'>
-                              Vui lòng upload ảnh xác minh giao hàng ngay để tránh bị phạt tăng report count sau 2 ngày.
+                              Vui lòng upload ảnh xác minh giao hàng ngay để tránh bị phạt tăng điểm vi phạm sau 2 ngày.
                             </p>
                           </div>
                         )}
-                        <div className='mt-3 flex items-center gap-2'>
-                          <span
-                            className={`text-xs font-medium ${warning.isOverdue ? 'text-red-600' : 'text-yellow-600'}`}
-                          >
-                            📋 Hành động khuyến nghị:
-                          </span>
-                          <span className={`text-xs ${warning.isOverdue ? 'text-red-700' : 'text-yellow-700'}`}>
-                            Upload ảnh xác minh ngay bây giờ
-                          </span>
-                        </div>
+
                       </div>
                     </div>
                   </div>

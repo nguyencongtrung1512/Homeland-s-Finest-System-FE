@@ -6,7 +6,7 @@ import { getProvincesDetail, type Province } from '../../../apis/province'
 import type { Product } from '../../../types'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import path from '../../../constants/path'
-import { VideoText } from '../../../components/ui/video-text'
+import { AnimationTextImage } from '../../../components/ui/animation-text-image'
 import NexusOrb from '../../../components/ui/nexusorb'
 
 function VietnamSpecialtyMap() {
@@ -380,8 +380,7 @@ function VietnamSpecialtyMap() {
             <div className='w-full flex flex-col items-center justify-center gap-8'>
               <div className='w-full h-[280px] flex flex-col items-center justify-center gap-2'>
                 <div className='w-full h-[40%]'>
-                  <VideoText
-                    src='https://ls29t3z55w.ufs.sh/f/JEKFIJDsOBct0vrmLYJRG8BKHmvZQkWJ9ElIVcNfzPg63Mbo'
+                  <AnimationTextImage
                     fontFamily='Helvetica, Arial, sans-serif'
                     fontSize={12}
                     letterSpacing='0.15em'
@@ -389,11 +388,10 @@ function VietnamSpecialtyMap() {
                     className='w-full h-full'
                   >
                     Tinh Hoa
-                  </VideoText>
+                  </AnimationTextImage>
                 </div>
                 <div className='w-full h-[40%] py-2'>
-                  <VideoText
-                    src='https://ls29t3z55w.ufs.sh/f/JEKFIJDsOBct0vrmLYJRG8BKHmvZQkWJ9ElIVcNfzPg63Mbo'
+                  <AnimationTextImage
                     fontFamily='Helvetica, Arial, sans-serif'
                     fontSize={12}
                     letterSpacing='0.05em'
@@ -401,7 +399,7 @@ function VietnamSpecialtyMap() {
                     className='w-full h-full'
                   >
                     Quê Nhà
-                  </VideoText>
+                  </AnimationTextImage>
                 </div>
               </div>
               <div className='flex flex-row items-center justify-center gap-10'>

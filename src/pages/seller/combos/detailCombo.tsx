@@ -524,7 +524,7 @@ function DetailComboSeller() {
         }
       case 'Pending':
         return {
-          message: 'Combo đang chờ Admin phân công nhân viên xử lý. Bạn không thể chỉnh sửa lúc này.',
+          message: 'Combo đang chờ nhân viên xử lý. Bạn không thể chỉnh sửa lúc này.',
           className: 'text-yellow-600 bg-yellow-50'
         }
       case 'Processing':

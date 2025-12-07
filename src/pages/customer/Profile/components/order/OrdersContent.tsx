@@ -56,15 +56,15 @@ interface Order {
   date: string
   originalStatus: OrderStatus
   status:
-  | 'Chưa xác nhận'
-  | 'Chờ xác nhận'
-  | 'Chờ thanh toán'
-  | 'Đã xác nhận'
-  | 'Vận chuyển'
-  | 'Hoàn thành'
-  | 'Trả hàng/Hoàn tiền'
-  | 'Trả hàng'
-  | 'Đã hủy'
+    | 'Chưa xác nhận'
+    | 'Chờ xác nhận'
+    | 'Chờ thanh toán'
+    | 'Đã xác nhận'
+    | 'Vận chuyển'
+    | 'Hoàn thành'
+    | 'Trả hàng/Hoàn tiền'
+    | 'Trả hàng'
+    | 'Đã hủy'
   statusColor: string
   statusBgColor: string
   statusText: string
@@ -314,9 +314,9 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   const adjustedStatusInfo =
     apiOrder?.status === 'Returned' && apiOrder?.paymentType === 'COD'
       ? {
-        ...statusInfo,
-        status: 'Trả hàng' as const
-      }
+          ...statusInfo,
+          status: 'Trả hàng' as const
+        }
       : statusInfo
 
   const products = [
@@ -545,9 +545,7 @@ export default function OrdersContent({
         if (order.fromName.toLowerCase().includes(query)) return true
 
         // Search by product names (tên sản phẩm)
-        const productMatch = order.products.some(
-          (product) => product.name.toLowerCase().includes(query)
-        )
+        const productMatch = order.products.some((product) => product.name.toLowerCase().includes(query))
         if (productMatch) return true
 
         // Search by note (ghi chú)
@@ -622,9 +620,7 @@ export default function OrdersContent({
     savedScrollPositionRef.current = container.scrollLeft
 
     setCanScrollLeft(container.scrollLeft > 0)
-    setCanScrollRight(
-      container.scrollLeft < container.scrollWidth - container.clientWidth - 1
-    )
+    setCanScrollRight(container.scrollLeft < container.scrollWidth - container.clientWidth - 1)
   }
 
   const scrollTabs = (direction: 'left' | 'right') => {
@@ -633,9 +629,7 @@ export default function OrdersContent({
 
     const scrollAmount = 200
     const newScrollLeft =
-      direction === 'left'
-        ? container.scrollLeft - scrollAmount
-        : container.scrollLeft + scrollAmount
+      direction === 'left' ? container.scrollLeft - scrollAmount : container.scrollLeft + scrollAmount
 
     container.scrollTo({
       left: newScrollLeft,
@@ -700,8 +694,7 @@ export default function OrdersContent({
         // Kiểm tra xem button có nằm ngoài viewport không (với margin nhỏ)
         const margin = 5
         const isVisible =
-          buttonRect.left >= containerRect.left - margin &&
-          buttonRect.right <= containerRect.right + margin
+          buttonRect.left >= containerRect.left - margin && buttonRect.right <= containerRect.right + margin
 
         if (!isVisible) {
           // Button nằm ngoài viewport, scroll để đưa nó vào view
@@ -1016,7 +1009,7 @@ export default function OrdersContent({
 
       // Lấy thông tin đơn hàng gốc từ API để có đầy đủ thông tin
       const apiOrder = await getOrderDetail(order.id)
-      
+
       // Tạo danh sách items để thêm vào giỏ hàng
       const itemsToAdd: Array<{
         productVariantId?: string
@@ -1039,7 +1032,7 @@ export default function OrdersContent({
       // Xử lý combo items (orderItemsWithCombo)
       // Nhóm combo items theo comboId để tránh thêm trùng và cộng dồn quantity
       const comboMap = new Map<string, { comboId: string; quantity: number; items: any[] }>()
-      
+
       if (apiOrder?.orderItemsWithCombo && Array.isArray(apiOrder.orderItemsWithCombo)) {
         apiOrder.orderItemsWithCombo.forEach((item: any) => {
           if (item?.comboId && item?.quantity) {
@@ -1070,7 +1063,7 @@ export default function OrdersContent({
       // Với combo, cần lấy thông tin combo từ API để map tất cả các comboItems
       for (const combo of comboMap.values()) {
         let comboProcessed = false
-        
+
         try {
           // Lấy thông tin combo từ API
           const comboResponse = await getComboById(combo.comboId)
@@ -1085,7 +1078,7 @@ export default function OrdersContent({
               comboId: combo.comboId,
               quantity: comboItem.quantity * combo.quantity
             }))
-            
+
             itemsToAdd.push(...comboItemsToAdd)
             comboProcessed = true
           }
@@ -1094,12 +1087,12 @@ export default function OrdersContent({
           console.log(`Combo ${combo.comboId} không tồn tại hoặc đã bị xóa. Sử dụng fallback.`)
         }
 
-        // Fallback: Nếu không lấy được thông tin combo từ API, 
+        // Fallback: Nếu không lấy được thông tin combo từ API,
         // thêm tất cả các sản phẩm từ orderItemsWithCombo của combo này
         if (!comboProcessed && combo.items && combo.items.length > 0) {
           // Nhóm các items theo productVariantId và cộng dồn quantity
           const productMap = new Map<string, number>()
-          
+
           combo.items.forEach((item: any) => {
             if (item?.productVariantId) {
               const existingQty = productMap.get(item.productVariantId) || 0
@@ -1126,15 +1119,15 @@ export default function OrdersContent({
       // Thêm vào giỏ hàng
       await addToCart(user.userId, itemsToAdd)
       toast.success('Đã thêm sản phẩm vào giỏ hàng!')
-      
+
       // Chuyển đến trang giỏ hàng
       navigate('/cart')
     } catch (error: any) {
       console.error('Error adding products to cart:', error)
-      
+
       // Kiểm tra nếu lỗi liên quan đến hết hàng
       const errorMessage = error?.response?.data?.message || error?.message || ''
-      const isOutOfStockError = 
+      const isOutOfStockError =
         errorMessage.toLowerCase().includes('hết hàng') ||
         errorMessage.toLowerCase().includes('out of stock') ||
         errorMessage.toLowerCase().includes('không còn bán') ||
@@ -1205,8 +1198,11 @@ export default function OrdersContent({
               <button
                 key={filter.key}
                 onClick={() => handleFilterChange(filter.key)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${selectedFilter === filter.key ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                  selectedFilter === filter.key
+                    ? 'bg-white text-green-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
               >
                 {filter.label}
               </button>
@@ -1307,15 +1303,15 @@ export default function OrdersContent({
                 {(order.originalStatus === 'NotYet' ||
                   order.originalStatus === 'Processing' ||
                   order.originalStatus === 'PendingPayment') && (
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => handleOpenCancelModal(order.id)}
-                      className='text-red-600 border-red-600 hover:bg-red-50'
-                    >
-                      Hủy đơn hàng
-                    </Button>
-                  )}
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleOpenCancelModal(order.id)}
+                    className='text-red-600 border-red-600 hover:bg-red-50'
+                  >
+                    Hủy đơn hàng
+                  </Button>
+                )}
                 {order.canConfirmReceived && (
                   <Button
                     size='sm'
@@ -1333,43 +1329,41 @@ export default function OrdersContent({
                     )}
                   </Button>
                 )}
-                {(order.originalStatus === 'Delivered' || order.originalStatus === 'Paid') && (
-                  <>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => handleOpenReviewModal(order.id)}
-                      disabled={loadingReviewOrderId === order.id}
-                      className='text-green-600 border-green-600 hover:bg-green-50 disabled:opacity-50'
-                    >
-                      {loadingReviewOrderId === order.id ? (
-                        <>
-                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2'></div>
-                          Đang tải...
-                        </>
-                      ) : (
-                        'Đánh giá'
-                      )}
-                    </Button>
-                    {order.canComplain && (
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        onClick={() => handleOpenComplaintModal(order.id)}
-                        disabled={submittingComplaintOrderId === order.id}
-                        className='text-red-600 border-red-600 hover:bg-red-50 disabled:opacity-50'
-                      >
-                        {submittingComplaintOrderId === order.id ? (
-                          <>
-                            <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2'></div>
-                            Đang gửi...
-                          </>
-                        ) : (
-                          'Khiếu nại'
-                        )}
-                      </Button>
+                {order.originalStatus === 'Paid' && (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleOpenReviewModal(order.id)}
+                    disabled={loadingReviewOrderId === order.id}
+                    className='text-green-600 border-green-600 hover:bg-green-50 disabled:opacity-50'
+                  >
+                    {loadingReviewOrderId === order.id ? (
+                      <>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2'></div>
+                        Đang tải...
+                      </>
+                    ) : (
+                      'Đánh giá'
                     )}
-                  </>
+                  </Button>
+                )}
+                {(order.originalStatus === 'Delivered' || order.originalStatus === 'Paid') && order.canComplain && (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleOpenComplaintModal(order.id)}
+                    disabled={submittingComplaintOrderId === order.id}
+                    className='text-red-600 border-red-600 hover:bg-red-50 disabled:opacity-50'
+                  >
+                    {submittingComplaintOrderId === order.id ? (
+                      <>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2'></div>
+                        Đang gửi...
+                      </>
+                    ) : (
+                      'Khiếu nại'
+                    )}
+                  </Button>
                 )}
                 {(order.originalStatus === 'Complaining' || order.originalStatus === 'Complained') && (
                   <Button
@@ -1438,23 +1432,23 @@ export default function OrdersContent({
                   order.originalStatus === 'Delivered' ||
                   order.originalStatus === 'Paid' ||
                   order.originalStatus === 'Returned') && (
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => handleBuyAgain(order)}
-                      disabled={addingToCartOrderId === order.id}
-                      className='text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50'
-                    >
-                      {addingToCartOrderId === order.id ? (
-                        <>
-                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2 inline-block'></div>
-                          Đang thêm...
-                        </>
-                      ) : (
-                        'Mua lại'
-                      )}
-                    </Button>
-                  )}
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleBuyAgain(order)}
+                    disabled={addingToCartOrderId === order.id}
+                    className='text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50'
+                  >
+                    {addingToCartOrderId === order.id ? (
+                      <>
+                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2 inline-block'></div>
+                        Đang thêm...
+                      </>
+                    ) : (
+                      'Mua lại'
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           ))
@@ -1575,9 +1569,7 @@ export default function OrdersContent({
               {/* Amount */}
               <div className='p-4 bg-gray-50 rounded-lg'>
                 <div className='text-sm text-gray-600 mb-1'>Số tiền hoàn lại</div>
-                <div className='text-2xl font-bold text-green-600'>
-                  {formatPrice(refundInfo.amount)}
-                </div>
+                <div className='text-2xl font-bold text-green-600'>{formatPrice(refundInfo.amount)}</div>
               </div>
 
               {/* Bank Information */}
@@ -1646,9 +1638,7 @@ export default function OrdersContent({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowOutOfStockDialog(false)}>
-              Đã hiểu
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => setShowOutOfStockDialog(false)}>Đã hiểu</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

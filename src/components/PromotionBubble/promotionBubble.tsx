@@ -21,7 +21,6 @@ const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => 
   const [promotions, setPromotions] = useState<PromotionDTO[]>([])
   const [claiming, setClaiming] = useState<string | null>(null)
   const [hasCheckedPromotions, setHasCheckedPromotions] = useState(false)
-  const [hasShownAutoModal, setHasShownAutoModal] = useState(false)
 
   const checkActivePromotions = useCallback(async () => {
     if (!user) return
@@ -47,18 +46,6 @@ const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => 
       checkActivePromotions()
     }
   }, [user, hasCheckedPromotions, checkActivePromotions])
-
-  // Auto show modal after 5 seconds when user is logged in and has promotions
-  useEffect(() => {
-    if (user && promotions.length > 0 && !hasShownAutoModal && hasCheckedPromotions) {
-      const timer = setTimeout(() => {
-        setShowModal(true)
-        setHasShownAutoModal(true)
-      }, 5000)
-
-      return () => clearTimeout(timer)
-    }
-  }, [user, promotions, hasShownAutoModal, hasCheckedPromotions])
 
   const handleClaimPromotion = async (promotionId: string) => {
     if (!user) return
@@ -202,7 +189,7 @@ const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => 
           <DialogHeader>
             <DialogTitle className='flex items-center gap-2 text-xl'>
               <Gift className='h-6 w-6 text-pink-500' />
-              🎉 Promotion của bạn ({promotions.length})
+              Khuyến mãi của bạn ({promotions.length})
             </DialogTitle>
           </DialogHeader>
 

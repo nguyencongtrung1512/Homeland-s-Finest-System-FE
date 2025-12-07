@@ -27,7 +27,13 @@ import ProductComboBox from '../../../components/ui/product-combo-box'
 import ComboBox from '../../../components/ui/combo-box'
 import type { Product } from '../../../types/productType'
 import Loading from '../../../components/Loading/loading'
-import { searchHashtags, createHashtag, getAllHashtags, type HashtagItem } from '../../../apis/hashtag.api'
+import {
+  searchHashtags,
+  createHashtag,
+  getAllHashtags,
+  deleteHashtag,
+  type HashtagItem
+} from '../../../apis/hashtag.api'
 
 function CreateProduct() {
   const navigate = useNavigate()
@@ -52,6 +58,7 @@ function CreateProduct() {
   const [mentionSearchKeyword, setMentionSearchKeyword] = useState('')
   const [mentionSearchLoading, setMentionSearchLoading] = useState(false)
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false)
+  const [deletingHashtagId, setDeletingHashtagId] = useState<string | null>(null)
   const mentionRef = useRef<HTMLDivElement>(null)
 
   // Validation constants
@@ -264,6 +271,40 @@ function CreateProduct() {
 
   const handleRemoveHashtag = (hashtagId: string) => {
     setSelectedHashtags((prev) => prev.filter((tag) => tag.id !== hashtagId))
+  }
+
+  // Handle delete hashtag from system
+  const handleDeleteHashtag = async (hashtagId: string) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa hashtag này khỏi hệ thống?')) {
+      return
+    }
+
+    setDeletingHashtagId(hashtagId)
+    try {
+      const response = await deleteHashtag(hashtagId)
+      if (response.status === 200 || response.status === 100) {
+        // Remove from selected list if it's there
+        setSelectedHashtags((prev) => prev.filter((tag) => tag.id !== hashtagId))
+        toast.success('Xóa hashtag thành công!')
+      } else {
+        toast.error('Không thể xóa hashtag')
+      }
+    } catch (error: unknown) {
+      console.error('Error deleting hashtag:', error)
+      let errorMessage = 'Có lỗi xảy ra khi xóa hashtag'
+      if (error && typeof error === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = error as any
+        if (err.response?.data?.message) {
+          errorMessage = err.response.data.message
+        } else if (err.message) {
+          errorMessage = err.message
+        }
+      }
+      toast.error(errorMessage)
+    } finally {
+      setDeletingHashtagId(null)
+    }
   }
 
   // Handle mention search input change
@@ -944,14 +985,29 @@ function CreateProduct() {
                                 : hashtag.usageCount}
                               )
                             </span>
-                            <button
-                              type='button'
-                              onClick={() => handleRemoveHashtag(hashtag.id)}
-                              className='ml-1 text-green-600 hover:text-red-600 transition-colors'
-                              title='Xóa hashtag'
-                            >
-                              <X className='w-3 h-3' />
-                            </button>
+                            <div className='flex items-center gap-1 ml-1'>
+                              <button
+                                type='button'
+                                onClick={() => handleRemoveHashtag(hashtag.id)}
+                                className='text-green-600 hover:text-orange-600 transition-colors'
+                                title='Xóa khỏi danh sách'
+                              >
+                                <X className='w-3 h-3' />
+                              </button>
+                              <button
+                                type='button'
+                                onClick={() => handleDeleteHashtag(hashtag.id)}
+                                disabled={deletingHashtagId === hashtag.id}
+                                className='text-green-600 hover:text-red-600 transition-colors disabled:opacity-50'
+                                title='Xóa khỏi hệ thống'
+                              >
+                                {deletingHashtagId === hashtag.id ? (
+                                  <Loader2 className='w-3 h-3 animate-spin' />
+                                ) : (
+                                  <Trash2 className='w-3 h-3' />
+                                )}
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>

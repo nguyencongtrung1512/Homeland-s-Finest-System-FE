@@ -519,7 +519,7 @@ function OrderCreate() {
                 {ordersFromState.length === 0 && order && (
                   <div className='flex items-center justify-between gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 flex-wrap'>
                     <span className='font-semibold text-blue-800 flex-1 min-w-[200px]'>{order.fromName}</span>
-                    <span className='text-xs text-gray-600 font-mono'>Mã đơn hàng: {order.id}</span>
+                    <span className='text-xs text-gray-600 font-mono'>Mã đơn hàng: {order.id.slice(-8)}</span>
                   </div>
                 )}
 
