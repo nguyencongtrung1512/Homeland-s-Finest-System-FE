@@ -43,7 +43,7 @@ interface ComboGroup {
 interface ComboChildRequirement {
   requiredQuantity: number
   productName: string
-  imageUrl: string
+  imageUrl?: string
 }
 
 type GroupedItem = APICartItem | ComboGroup

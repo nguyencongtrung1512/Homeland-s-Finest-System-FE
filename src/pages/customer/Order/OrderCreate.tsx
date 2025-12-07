@@ -284,6 +284,76 @@ function OrderCreate() {
 
   const { shipping, subtotal, totalDiscount, insurance, total } = calculateTotals()
 
+  // Hàm đếm tổng số sản phẩm bao gồm cả orderItems và orderItemsWithCombo (combo)
+  const getTotalProductCount = () => {
+    const ordersToUse = ordersFromState
+
+    if (ordersToUse.length > 0) {
+      return ordersToUse.reduce((total, order) => {
+        // Đếm orderItems thông thường
+        const regularItemsCount = order.orderItems?.reduce((sum, item) => sum + item.quantity, 0) || 0
+        // Đếm orderItemsWithCombo
+        const comboItemsCount = order.orderItemsWithCombo?.reduce((sum, item) => sum + item.quantity, 0) || 0
+        return total + regularItemsCount + comboItemsCount
+      }, 0)
+    }
+
+    if (order) {
+      const regularItemsCount = order.orderItems?.reduce((sum, item) => sum + item.quantity, 0) || 0
+      const comboItemsCount = order.orderItemsWithCombo?.reduce((sum, item) => sum + item.quantity, 0) || 0
+      return regularItemsCount + comboItemsCount
+    }
+
+    return displayItems.reduce((sum, item) => sum + item.quantity, 0)
+  }
+
+  const totalProductCount = getTotalProductCount()
+
+  // Hàm lấy thông tin combo để hiển thị trong tổng kết
+  const getComboSummaryForDisplay = () => {
+    const ordersToUse = ordersFromState.length > 0 ? ordersFromState : order ? [order] : []
+    const comboList: Array<{
+      orderId: string
+      orderIndex: number
+      storeName: string
+      comboName: string
+      comboTotal: number
+      productCount: number
+      comboQuantity: number
+    }> = []
+
+    ordersToUse.forEach((order, orderIndex) => {
+      if (order.orderItemsWithCombo && order.orderItemsWithCombo.length > 0) {
+        const comboGroups = buildComboGroups(order)
+        comboGroups.forEach((combo) => {
+          const comboTotal = combo.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
+          // Đếm số sản phẩm trong combo (số items unique)
+          const productCount = combo.items.length
+          // Tính số lần combo được đặt (lấy quantity chung của items, thường tất cả items trong combo có cùng quantity)
+          // Nếu có items với quantity khác nhau, lấy quantity nhỏ nhất (số lần combo được đặt)
+          const comboQuantity =
+            combo.items.length > 0
+              ? Math.min(...combo.items.map((item) => item.quantity))
+              : 1
+
+          comboList.push({
+            orderId: order.id,
+            orderIndex: ordersFromState.length > 0 ? orderIndex : 0,
+            storeName: order.fromName,
+            comboName: combo.comboName,
+            comboTotal,
+            productCount,
+            comboQuantity
+          })
+        })
+      }
+    })
+
+    return comboList
+  }
+
+  const comboSummaryList = getComboSummaryForDisplay()
+
   const comboGroupsByOrder = useMemo(() => {
     if (!ordersFromState.length) return {}
     return ordersFromState.reduce(
@@ -337,10 +407,29 @@ function OrderCreate() {
       }
     } catch (error: unknown) {
       console.error('Error in payment process:', error)
-      const errorMessage =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        (error as Error).message ||
-        'Có lỗi xảy ra khi xử lý thanh toán'
+      
+      // Lấy lỗi từ backend (axios interceptor trả về error.response.data)
+      let errorMessage = 'Có lỗi xảy ra khi xử lý thanh toán'
+      
+      if (error && typeof error === 'object') {
+        const err = error as any
+        
+        // Priority 1: Lấy message từ backend response (vì axios interceptor trả về error.response.data)
+        if (err.message && typeof err.message === 'string') {
+          errorMessage = err.message
+        }
+        // Priority 2: Nếu vẫn có response.data.message (fallback)
+        else if (err.response?.data?.message) {
+          errorMessage = err.response.data.message
+        }
+        // Priority 3: Lấy từ error.message (Error object)
+        else if ((error as Error).message) {
+          errorMessage = (error as Error).message
+        }
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
+      
       toast.error(errorMessage)
     }
   }
@@ -417,10 +506,29 @@ function OrderCreate() {
       }
     } catch (error: unknown) {
       console.error('Error processing payment:', error)
-      const errorMessage =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        (error as Error).message ||
-        'Có lỗi xảy ra khi xử lý thanh toán'
+      
+      // Lấy lỗi từ backend (axios interceptor trả về error.response.data)
+      let errorMessage = 'Có lỗi xảy ra khi xử lý thanh toán'
+      
+      if (error && typeof error === 'object') {
+        const err = error as any
+        
+        // Priority 1: Lấy message từ backend response (vì axios interceptor trả về error.response.data)
+        if (err.message && typeof err.message === 'string') {
+          errorMessage = err.message
+        }
+        // Priority 2: Nếu vẫn có response.data.message (fallback)
+        else if (err.response?.data?.message) {
+          errorMessage = err.response.data.message
+        }
+        // Priority 3: Lấy từ error.message (Error object)
+        else if ((error as Error).message) {
+          errorMessage = (error as Error).message
+        }
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
+      
       toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
@@ -697,13 +805,34 @@ function OrderCreate() {
                   {ordersFromState.length > 0 ? (
                     <>
                       <div className='flex justify-between text-sm'>
-                        <span className='text-gray-600'>Tạm tính ({displayItems.length} sản phẩm)</span>
+                        <span className='text-gray-600'>Tạm tính ({totalProductCount} sản phẩm)</span>
                         <span className='font-medium'>{subtotal.toLocaleString('vi-VN')}₫</span>
                       </div>
                       {totalDiscount > 0 && (
                         <div className='flex justify-between text-sm text-green-600'>
                           <span>Giảm giá</span>
                           <span className='font-medium'>-{totalDiscount.toLocaleString('vi-VN')}₫</span>
+                        </div>
+                      )}
+                      {/* Hiển thị combo trong tổng kết */}
+                      {comboSummaryList.length > 0 && (
+                        <div className='space-y-2 mt-2'>
+                          {comboSummaryList.map((comboInfo, idx) => (
+                            <div key={`${comboInfo.orderId}-${comboInfo.comboName}-${idx}`} className='bg-white rounded-lg border border-gray-200 p-3'>
+                              <div className='text-xs text-gray-500 mb-1'>{comboInfo.storeName}</div>
+                              <div className='flex items-start justify-between gap-2'>
+                                <div className='flex-1 min-w-0'>
+                                  <div className='text-sm font-semibold text-gray-900 truncate'>{comboInfo.comboName}</div>
+                                  <div className='text-xs text-gray-500 mt-0.5'>
+                                    {comboInfo.productCount} sản phẩm{comboInfo.comboQuantity > 1 ? ` - x${comboInfo.comboQuantity}` : ''}
+                                  </div>
+                                </div>
+                                <div className='text-sm font-semibold text-orange-600 whitespace-nowrap'>
+                                  {comboInfo.comboTotal.toLocaleString('vi-VN')}₫
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                       <div className='flex justify-between text-sm'>
@@ -738,13 +867,34 @@ function OrderCreate() {
                   ) : (
                     <>
                       <div className='flex justify-between text-sm'>
-                        <span className='text-gray-600'>Tạm tính ({displayItems.length} sản phẩm)</span>
+                        <span className='text-gray-600'>Tạm tính ({totalProductCount} sản phẩm)</span>
                         <span className='font-medium'>{subtotal.toLocaleString('vi-VN')}₫</span>
                       </div>
                       {totalDiscount > 0 && (
                         <div className='flex justify-between text-sm text-green-600'>
                           <span>Giảm giá</span>
                           <span className='font-medium'>-{totalDiscount.toLocaleString('vi-VN')}₫</span>
+                        </div>
+                      )}
+                      {/* Hiển thị combo trong tổng kết */}
+                      {comboSummaryList.length > 0 && (
+                        <div className='space-y-2 mt-2'>
+                          {comboSummaryList.map((comboInfo, idx) => (
+                            <div key={`${comboInfo.orderId}-${comboInfo.comboName}-${idx}`} className='bg-white rounded-lg border border-gray-200 p-3'>
+                              <div className='text-xs text-gray-500 mb-1'>{comboInfo.storeName}</div>
+                              <div className='flex items-start justify-between gap-2'>
+                                <div className='flex-1 min-w-0'>
+                                  <div className='text-sm font-semibold text-gray-900 truncate'>{comboInfo.comboName}</div>
+                                  <div className='text-xs text-gray-500 mt-0.5'>
+                                    {comboInfo.productCount} sản phẩm{comboInfo.comboQuantity > 1 ? ` - x${comboInfo.comboQuantity}` : ''}
+                                  </div>
+                                </div>
+                                <div className='text-sm font-semibold text-orange-600 whitespace-nowrap'>
+                                  {comboInfo.comboTotal.toLocaleString('vi-VN')}₫
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                       <div className='flex justify-between text-sm'>
