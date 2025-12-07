@@ -81,3 +81,15 @@ export const getHashtagById = async (id: string): Promise<HashtagSingleResponse>
   const response = await axiosInstance.get(`${API_URL}/${id}`)
   return response as unknown as HashtagSingleResponse
 }
+
+// Function để xóa mềm Hashtag (soft delete)
+export const softDeleteHashtag = async (id: string): Promise<HashtagSingleResponse> => {
+  const response = await axiosInstance.put(`${API_URL}/delete-hashtag/${id}`)
+  return response as unknown as HashtagSingleResponse
+}
+
+// Function để xóa cứng Hashtag (hard delete)
+export const deleteHashtag = async (id: string): Promise<HashtagSingleResponse> => {
+  const response = await axiosInstance.delete(`${API_URL}/${id}`)
+  return response as unknown as HashtagSingleResponse
+}

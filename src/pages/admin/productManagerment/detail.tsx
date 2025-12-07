@@ -12,7 +12,6 @@ import {
   Play,
   Image as ImageIcon,
   Archive,
-  DollarSign,
   Layers,
   UserPlus,
   User,

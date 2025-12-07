@@ -1,17 +1,5 @@
 import { useState, useEffect } from 'react'
-import {
-  Search,
-  Filter,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-  Repeat,
-  CheckCircle,
-  RefreshCw,
-  Wallet,
-  Clock,
-  Loader2
-} from 'lucide-react'
+import { Search, Eye, ChevronLeft, ChevronRight, Repeat, RefreshCw, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -19,8 +7,7 @@ import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import TransactionDetail from '../../staff/transactions/transactionDetail'
 import { getAllTransactions } from '../../../apis/transaction.api'
-import { getTransactionDashboard } from '../../../apis/dashboardTransaction.api'
-import type { Transaction as APITransaction } from '../../../types/transactionType'
+import type { Transaction as APITransaction, TransactionQueryParams } from '../../../types/transactionType'
 import { formatDate } from '../../../utils/formatDate'
 import { getOrderDetail } from '../../../apis/order.api'
 import { storeApi } from '../../../apis/store.api'
@@ -38,7 +25,6 @@ function TransactionManagementAdmin() {
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all')
-  const [dateFilter, setDateFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -49,13 +35,6 @@ function TransactionManagementAdmin() {
     totalPages: 1,
     pageSize: 10
   })
-
-  // Thống kê - giữ data cứng vì chưa có API đầy đủ
-  const [totalTransactions, setTotalTransactions] = useState(15847)
-  const systemWallet = 12340 // Hardcoded value - API không cung cấp
-  const [disbursed, setDisbursed] = useState(12340)
-  const [pendingDisbursement, setPendingDisbursement] = useState(850)
-  const [refunded, setRefunded] = useState(660)
 
   // Map status từ API sang UI format
   const mapStatusToUI = (status: string, orderStatus?: string): Transaction['status'] => {
@@ -108,7 +87,8 @@ function TransactionManagementAdmin() {
       setError(null)
 
       // Build query params
-      const params: any = {
+      // Note: username parameter được API hỗ trợ nhưng chưa có trong TransactionQueryParams type
+      const params: TransactionQueryParams = {
         pageSize: pagination.pageSize,
         pageNumber: currentPage
       }
@@ -125,47 +105,38 @@ function TransactionManagementAdmin() {
         params.paymentMethod = paymentMethodFilter
       }
 
-      // Filter by date
-      if (dateFilter) {
-        const [month, day, year] = dateFilter.split('/')
-        if (year && month && day) {
-          params.fromDate = `${year}-${month}-${day}`
-          params.toDate = `${year}-${month}-${day}`
-        }
+      // Search by username (API hỗ trợ search theo email/firstName/lastName)
+      // Nếu searchText là transaction ID thì sẽ filter ở client-side sau
+      const isTransactionId = searchText && /^[a-f0-9-]{36}$/i.test(searchText.trim())
+      const apiParams = params as TransactionQueryParams & { username?: string }
+      if (searchText && !isTransactionId) {
+        apiParams.username = searchText
       }
 
-      // Search by transaction ID or customer name
-      if (searchText) {
-        // Note: API có thể không hỗ trợ search, sẽ filter ở client side
-      }
-
-      const response = await getAllTransactions(params)
+      const response = await getAllTransactions(apiParams)
 
       // Map transactions
       const mappedTransactions = await Promise.all(response.data.map((tx: APITransaction) => mapTransactionToUI(tx)))
 
-      // Filter by search text nếu có
+      // Filter by transaction ID nếu searchText là transaction ID
       let filteredTransactions = mappedTransactions
-      if (searchText) {
-        filteredTransactions = mappedTransactions.filter(
-          (tx: Transaction) =>
-            tx.id.toLowerCase().includes(searchText.toLowerCase()) ||
-            tx.customer.toLowerCase().includes(searchText.toLowerCase())
+      if (searchText && isTransactionId) {
+        filteredTransactions = mappedTransactions.filter((tx: Transaction) =>
+          tx.id.toLowerCase().includes(searchText.toLowerCase())
         )
       }
 
       setTransactions(filteredTransactions)
 
-      // Update pagination - tính từ số lượng transactions
-      // Note: API có thể không trả về pagination info, tính từ data
-      const totalItems = filteredTransactions.length
-      const calculatedTotalPages = Math.ceil(totalItems / pagination.pageSize) || 1
-      setPagination((prev) => ({
-        ...prev,
-        totalItems,
-        totalPages: calculatedTotalPages
-      }))
-    } catch (err: any) {
+      // Update pagination từ API response
+      if (response.pagination) {
+        setPagination({
+          pageSize: response.pagination.pageSize || pagination.pageSize,
+          totalItems: response.pagination.totalItems || 0,
+          totalPages: response.pagination.totalPages || 1
+        })
+      }
+    } catch (err) {
       console.error('Error fetching transactions:', err)
       setError('Không thể tải danh sách giao dịch. Vui lòng thử lại sau.')
       setTransactions([])
@@ -174,51 +145,17 @@ function TransactionManagementAdmin() {
     }
   }
 
-  // Fetch dashboard stats (nếu có)
-  const fetchDashboardStats = async () => {
-    try {
-      const currentYear = new Date().getFullYear()
-      const dashboardData = await getTransactionDashboard({
-        StartDate: `${currentYear}-01-01`,
-        EndDate: `${currentYear}-12-31`,
-        Year: currentYear
-      })
-
-      if (dashboardData?.summary) {
-        setTotalTransactions((prev) => dashboardData.summary.totalTransactions || prev)
-        setDisbursed((prev) => dashboardData.summary.successfulTransactions || prev)
-        setRefunded((prev) => dashboardData.summary.failedTransactions || prev)
-        setPendingDisbursement((prev) => dashboardData.summary.pendingTransactions || prev)
-      }
-    } catch (err) {
-      console.error('Error fetching dashboard stats:', err)
-      // Giữ data cứng nếu API lỗi
-    }
-  }
-
   // Fetch data khi component mount và khi filter thay đổi
   useEffect(() => {
     fetchTransactions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, statusFilter, paymentMethodFilter, dateFilter])
-
-  // Fetch dashboard stats khi component mount
-  useEffect(() => {
-    fetchDashboardStats()
-  }, [])
-
-  // Handle filter button click
-  const handleFilter = () => {
-    setCurrentPage(1)
-    fetchTransactions()
-  }
+  }, [currentPage, statusFilter, paymentMethodFilter, searchText])
 
   // Reset filters
   const handleResetFilters = () => {
     setSearchText('')
     setStatusFilter('all')
     setPaymentMethodFilter('all')
-    setDateFilter('')
     setCurrentPage(1)
   }
 
@@ -365,18 +302,6 @@ function TransactionManagementAdmin() {
                 <SelectItem value='MyWallet'>Ví của tôi</SelectItem>
               </SelectContent>
             </Select>
-
-            <Input
-              placeholder='mm/dd/yyyy'
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className='h-10 w-32 border-gray-200'
-            />
-
-            <Button className='h-10 px-6 bg-blue-600 hover:bg-blue-700' onClick={handleFilter}>
-              <Filter size={16} className='mr-2' />
-              Lọc
-            </Button>
 
             <Button
               variant='outline'

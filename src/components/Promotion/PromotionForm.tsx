@@ -281,7 +281,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
         }
         return prev
       })
-    } else if (formData.type !== 'User') {
+    } else {
       // Nếu không phải User type, đảm bảo isPrivate là false
       setFormData((prev) => {
         if (prev.isPrivate !== false) {

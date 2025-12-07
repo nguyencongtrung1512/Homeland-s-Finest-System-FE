@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { X, Package, Star, Calendar, ShoppingCart, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
-import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
 import type { Product } from '../../../types/productType'
 
@@ -49,27 +48,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
     } catch (error) {
       console.error('Error formatting date:', error)
       return 'Ngày không hợp lệ'
-    }
-  }
-
-  const getStatusBadge = (isActive: boolean, status: string) => {
-    if (!isActive) {
-      return <Badge variant='destructive'>Không hoạt động</Badge>
-    }
-
-    switch (status?.toLowerCase()) {
-      case 'active':
-        return (
-          <Badge variant='default' className='bg-green-500'>
-            Hoạt động
-          </Badge>
-        )
-      case 'pending':
-        return <Badge variant='secondary'>Chờ duyệt</Badge>
-      case 'rejected':
-        return <Badge variant='destructive'>Từ chối</Badge>
-      default:
-        return <Badge variant='outline'>{status || 'Không xác định'}</Badge>
     }
   }
 

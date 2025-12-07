@@ -15,6 +15,8 @@ import { productApi } from '../../../apis/product.api'
 import type { Product } from '../../../types'
 import { PromotionBubble } from '../../../components/PromotionBubble'
 import { formatDate } from '../../../utils/formatDate'
+import AsideFilter from './components/asideFilter'
+import SortBar, { type SortOption } from './components/SortBar'
 
 const StorePage = () => {
   const { storeId } = useParams<{ storeId: string }>()
@@ -26,6 +28,12 @@ const StorePage = () => {
   const [products, setProducts] = useState<Product[]>([])
   const [productsLoading, setProductsLoading] = useState(false)
   const [productsError, setProductsError] = useState<string | null>(null)
+
+  // Filter state
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [selectedSuggestion, setSelectedSuggestion] = useState<string>('')
+  const [sortOption, setSortOption] = useState<SortOption>('popular')
+  const [searchQuery, setSearchQuery] = useState<string>('')
 
   // Use custom hook to fetch store data
   const { store, loading, error, refetch } = useStore(storeId)
@@ -119,21 +127,64 @@ const StorePage = () => {
       }))
       : []
 
+  // Filter and sort products
+  const filteredProducts = [...products]
+    .filter((product) => {
+      // Filter by search query
+      if (searchQuery.trim()) {
+        const query = searchQuery.trim().toLowerCase()
+        const productName = product.name?.toLowerCase() || ''
+        const productDescription = product.description?.toLowerCase() || ''
+        const productMaterial = product.material?.toLowerCase() || ''
+
+        return productName.includes(query) || productDescription.includes(query) || productMaterial.includes(query)
+      }
+      return true
+    })
+    .sort((a, b) => {
+      switch (sortOption) {
+        case 'popular':
+          // Sort by rating (higher first), then by review count
+          if (b.rating !== a.rating) {
+            return b.rating - a.rating
+          }
+          return b.reviewCount - a.reviewCount
+
+        case 'newest':
+          // Sort by creation date (newest first) - assuming products have createdAt field
+          // If not available, keep original order
+          return 0
+
+        case 'bestseller':
+          // Sort by saleCount (higher first)
+          return b.saleCount - a.saleCount
+
+        case 'price-low':
+          // Sort by price (lower first)
+          return (a.price || 0) - (b.price || 0)
+
+        case 'price-high':
+          // Sort by price (higher first)
+          return (b.price || 0) - (a.price || 0)
+
+        default:
+          return 0
+      }
+    })
+
   // Transform API data to match component expectations
   const storeData = {
     id: store.id,
     name: store.storeName,
     description: `Cửa hàng tại , ${store.ward} , ${store.district}, ${store.province}`,
     address: store.address,
-    rating: 4.8, // TODO: Calculate from actual reviews when available
-    ratingCount: 0, // TODO: Get from actual reviews when available
     image:
       store.logoUrl || 'https://images.unsplash.com/photo-1560493676-04071c5f467b?w=100&h=100&fit=crop&crop=center',
     coverImage:
       store.coverImageUrl ||
       'https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?w=800&h=300&fit=crop&crop=center',
     story: 'Chúng tôi cam kết mang đến những sản phẩm chất lượng cao nhất cho khách hàng.',
-    products: products.map((product) => {
+    products: filteredProducts.map((product) => {
       // Get price directly from product, fallback to variants if needed
       const price = product.price || 0
 
@@ -188,27 +239,14 @@ const StorePage = () => {
                           <MapPin className='w-4 h-4' />
                           <span className='hover:underline'>{storeData.address}</span>
                         </div>
-                        <div className='flex items-center gap-1'>
-                          <Star className='w-4 h-4 fill-yellow-400 text-yellow-400' />
-                          <span className='font-medium'>{storeData.rating}</span>
-                          <span>({storeData.ratingCount} đánh giá)</span>
-                        </div>
-                        <div className='flex items-center gap-1'>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${store.status === 'Approved'
-                              ? 'bg-green-100 text-green-800'
-                              : store.status === 'Pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
-                              }`}
-                          >
-                            {store.status === 'Approved'
-                              ? 'Đã duyệt'
-                              : store.status === 'Pending'
-                                ? 'Đang chờ duyệt'
-                                : store.status}
-                          </span>
-                        </div>
+
+                        {store.status === 'Inactive' && (
+                          <div className='flex items-center gap-1'>
+                            <span className='px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800'>
+                              Cửa hàng đã bị khóa
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -262,19 +300,51 @@ const StorePage = () => {
                 Thử lại
               </button>
             </div>
-          ) : storeData.products.length > 0 ? (
-            <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
-              {storeData.products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
           ) : (
-            <div className='bg-white rounded-lg p-12 text-center shadow-sm'>
-              <div className='text-gray-400 mb-4'>
-                <Star className='w-12 h-12 mx-auto' />
+            <div className='flex flex-col lg:flex-row gap-6'>
+              {/* Sidebar Filter */}
+              <div className='lg:w-64 flex-shrink-0'>
+                <AsideFilter
+                  onCategoryChange={(category) => setSelectedCategory(category)}
+                  onSuggestionChange={(suggestion) => setSelectedSuggestion(suggestion)}
+                />
               </div>
-              <h3 className='text-lg font-semibold text-gray-900 mb-2'>Chưa có sản phẩm</h3>
-              <p className='text-gray-600'>Cửa hàng này chưa có sản phẩm nào.</p>
+
+              {/* Products Grid */}
+              <div className='flex-1'>
+                {storeData.products.length > 0 ? (
+                  <>
+                    {/* Sort Bar */}
+                    <div className='mb-6'>
+                      <SortBar
+                        selectedSort={sortOption}
+                        onSortChange={setSortOption}
+                        onSearchChange={setSearchQuery}
+                        searchValue={searchQuery}
+                      />
+                    </div>
+
+                    {/* Products Grid */}
+                    <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
+                      {storeData.products.map((product) => (
+                        <ProductCard key={product.id} product={product} />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className='bg-white rounded-lg p-12 text-center shadow-sm'>
+                    <div className='text-gray-400 mb-4'>
+                      <Star className='w-12 h-12 mx-auto' />
+                    </div>
+                    <h3 className='text-lg font-semibold text-gray-900 mb-2'>Chưa có sản phẩm</h3>
+                    <p className='text-gray-600'>
+                      {selectedCategory || selectedSuggestion
+                        ? 'Không tìm thấy sản phẩm phù hợp với bộ lọc đã chọn.'
+                        : 'Cửa hàng này chưa có sản phẩm nào.'}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </TabsContent>

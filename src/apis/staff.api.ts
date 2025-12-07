@@ -487,7 +487,6 @@ export const staffApi = {
     formData.append('DateOfBirth', updateData.DateOfBirth)
     formData.append('HireDate', updateData.HireDate)
     formData.append('IsActive', updateData.IsActive.toString())
-    formData.append('IsPermission', updateData.IsPermission.toString())
 
     if (updateData.Note) {
       formData.append('Note', updateData.Note)

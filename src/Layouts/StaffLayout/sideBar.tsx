@@ -4,7 +4,6 @@ import {
   CheckCircle,
   CreditCard,
   FileText,
-  Shield,
   Leaf,
   LibraryBig,
   ShoppingCart,

@@ -5,7 +5,6 @@ import {
   ShoppingCart,
   BookOpen,
   MessageCircle,
-  DollarSign,
   Store,
   HelpCircle,
   Leaf,

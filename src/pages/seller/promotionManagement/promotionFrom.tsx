@@ -14,7 +14,6 @@ import {
   Calendar as CalendarIcon,
   Clock,
   Percent,
-  DollarSign,
   Users,
   CheckCircle,
   XCircle,

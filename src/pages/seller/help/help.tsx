@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../compo
 import {
   FileText,
   Star,
-  DollarSign,
   Truck,
   RotateCcw,
   Lock,

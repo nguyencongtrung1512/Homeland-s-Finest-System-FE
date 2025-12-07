@@ -10,7 +10,6 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  DollarSign,
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react'
