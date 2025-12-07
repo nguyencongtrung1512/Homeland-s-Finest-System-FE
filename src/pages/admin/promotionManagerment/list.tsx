@@ -6,6 +6,16 @@ import { Badge } from '../../../components/ui/badge'
 import { Input } from '../../../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../../../components/ui/alert-dialog'
+import {
   Plus,
   Search,
   Edit,
@@ -21,7 +31,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Pause
 } from 'lucide-react'
 import { useAdminPromotions } from '../../../hooks/usePromotions'
 import { PromotionForm } from '../../../components/Promotion'
@@ -37,6 +48,8 @@ const AdminPromotionList: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [selectedPromotion, setSelectedPromotion] = useState<PromotionDTO | null>(null)
+  const [pausePromotion, setPausePromotion] = useState<PromotionDTO | null>(null)
+  const [isPausing, setIsPausing] = useState(false)
 
   // Local filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -261,6 +274,50 @@ const AdminPromotionList: React.FC = () => {
       toast.success('Cập nhật mã khuyến mãi thành công')
     } catch {
       toast.error('Có lỗi xảy ra khi cập nhật mã khuyến mãi ')
+    }
+  }
+
+  const handlePausePromotion = async (promotion: PromotionDTO) => {
+    try {
+      setIsPausing(true)
+      // Lấy chi tiết promotion để có đầy đủ thông tin
+      const promotionDetail = await getPromotionDetail(promotion.id)
+      if (!promotionDetail) {
+        toast.error('Không thể lấy chi tiết mã khuyến mãi')
+        setIsPausing(false)
+        return
+      }
+
+      // Map PromotionAdminDTO sang PromotionAdminRequest với đầy đủ field
+      const adminRequest: PromotionAdminRequest = {
+        type: promotionDetail.type,
+        title: promotionDetail.title,
+        description: promotionDetail.description || '',
+        discountType: promotionDetail.discountType,
+        discountValue: promotionDetail.discountValue,
+        minValueDiscount: promotionDetail.minValueDiscount,
+        startDate: promotionDetail.startDate,
+        endDate: promotionDetail.endDate,
+        maxQuantity: promotionDetail.maxQuantity,
+        maxPerUser: promotionDetail.maxPerUser,
+        isActive: false, // Set isActive = false
+        isPrivate: promotionDetail.type === 'User' ? promotionDetail.isPrivate : undefined,
+        userIds:
+          promotionDetail.type === 'User' && promotionDetail.promotionUsers
+            ? promotionDetail.promotionUsers.map((pu) => pu.userID)
+            : []
+      }
+
+      await updatePromotion(promotion.id, adminRequest)
+      setPausePromotion(null)
+      toast.success('Tạm dừng mã khuyến mãi thành công')
+      // Refresh promotions list
+      await fetchPromotions(1, {}, { field: 'createdAt', direction: 'desc' })
+    } catch (error) {
+      console.error('Error pausing promotion:', error)
+      toast.error('Có lỗi xảy ra khi tạm dừng mã khuyến mãi')
+    } finally {
+      setIsPausing(false)
     }
   }
 
@@ -600,6 +657,17 @@ const AdminPromotionList: React.FC = () => {
                     </div>
 
                     <div className='flex items-center gap-2 ml-4'>
+                      {promotion.isActive && (
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => setPausePromotion(promotion)}
+                          className='text-orange-600 hover:text-orange-700 hover:bg-orange-50'
+                        >
+                          <Pause className='h-4 w-4 mr-1' />
+                          Tạm dừng
+                        </Button>
+                      )}
                       <Button variant='outline' size='sm' onClick={() => handleEditPromotion(promotion)}>
                         <Edit className='h-4 w-4' />
                       </Button>
@@ -739,6 +807,33 @@ const AdminPromotionList: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Pause Confirmation Dialog */}
+      <AlertDialog open={pausePromotion !== null} onOpenChange={(open) => !open && setPausePromotion(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận tạm dừng mã khuyến mãi</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn tạm dừng mã khuyến mãi &quot;{pausePromotion?.title}&quot; không? Mã khuyến mãi sẽ
+              không còn hoạt động sau khi tạm dừng.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPausing}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pausePromotion) {
+                  handlePausePromotion(pausePromotion)
+                }
+              }}
+              disabled={isPausing}
+              className='bg-red-600 hover:bg-red-700'
+            >
+              {isPausing ? 'Đang xử lý...' : 'Xác nhận tạm dừng'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
