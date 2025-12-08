@@ -38,6 +38,8 @@ const ComplaintModal = ({
   const [description, setDescription] = useState('')
   const [images, setImages] = useState<File[]>([])
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
+  const [isDragOver, setIsDragOver] = useState(false)
+  const MAX_IMAGES = 5
 
   useEffect(() => {
     const urls = images.map((file) => URL.createObjectURL(file))
@@ -101,6 +103,24 @@ const ComplaintModal = ({
       setImages([])
     }
   }, [isOpen])
+
+  const processFiles = (files: File[]) => {
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'))
+    const currentCount = images.length
+    const remainingSlots = MAX_IMAGES - currentCount
+
+    if (remainingSlots <= 0) {
+      alert(`Bạn chỉ có thể tải lên tối đa ${MAX_IMAGES} hình ảnh`)
+      return
+    }
+
+    const filesToAdd = imageFiles.slice(0, remainingSlots)
+    if (filesToAdd.length < imageFiles.length) {
+      alert(`Bạn chỉ có thể thêm tối đa ${remainingSlots} hình ảnh nữa (tối đa ${MAX_IMAGES} hình)`)
+    }
+
+    setImages((prev: File[]) => [...prev, ...filesToAdd])
+  }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
@@ -236,11 +256,22 @@ const ComplaintModal = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.7 }}
               >
-                <Label className='text-sm font-medium text-gray-700 mb-2 block'>Hình ảnh minh chứng (tùy chọn)</Label>
+                <Label className='text-sm font-medium text-gray-700 mb-2 block'>
+                  Hình ảnh minh chứng (tùy chọn) <span className='text-gray-500 text-xs'>(Tối đa {MAX_IMAGES} ảnh)</span>
+                </Label>
                 <motion.div
-                  whileHover={{ scale: 1.02, borderColor: '#10b981' }}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  animate={{
+                    borderColor: isDragOver ? '#10b981' : images.length >= MAX_IMAGES ? '#ef4444' : '#d1d5db',
+                    backgroundColor: isDragOver ? '#f0fdf4' : 'transparent',
+                    scale: isDragOver ? 1.02 : 1
+                  }}
                   transition={{ duration: 0.2 }}
-                  className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'
+                  className={`border-2 border-dashed rounded-lg p-6 text-center ${
+                    images.length >= MAX_IMAGES ? 'opacity-60' : ''
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   <input
                     type='file'
@@ -249,18 +280,22 @@ const ComplaintModal = ({
                     onChange={handleImageUpload}
                     className='hidden'
                     id='complaint-image-upload'
-                    disabled={isLoading}
+                    disabled={isLoading || images.length >= MAX_IMAGES}
                   />
                   <Label
                     htmlFor='complaint-image-upload'
-                    className={`cursor-pointer ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`cursor-pointer ${isLoading || images.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <motion.div whileHover={{ scale: 1.1, rotate: 5 }} transition={{ duration: 0.2 }}>
-                      <Camera className='w-8 h-8 text-gray-400 mx-auto mb-2' />
+                    <motion.div whileHover={{ scale: images.length >= MAX_IMAGES ? 1 : 1.1, rotate: images.length >= MAX_IMAGES ? 0 : 5 }} transition={{ duration: 0.2 }}>
+                      <Camera className={`w-8 h-8 mx-auto mb-2 ${isDragOver ? 'text-green-500' : 'text-gray-400'}`} />
                     </motion.div>
-                    <span className='text-sm text-gray-600 block'>Thêm hình ảnh</span>
+                    <span className='text-sm text-gray-600 block'>
+                      {isDragOver ? 'Thả ảnh vào đây' : images.length >= MAX_IMAGES ? `Đã đạt giới hạn ${MAX_IMAGES} ảnh` : 'Kéo thả ảnh hoặc click để chọn'}
+                    </span>
                     <span className='text-xs text-gray-500 block mt-1'>
-                      Hình ảnh sẽ giúp chúng tôi hiểu rõ vấn đề hơn
+                      {images.length >= MAX_IMAGES
+                        ? 'Bạn đã tải lên đủ số lượng ảnh cho phép'
+                        : 'Hình ảnh sẽ giúp chúng tôi hiểu rõ vấn đề hơn'}
                     </span>
                   </Label>
                 </motion.div>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getProvinces, type Province } from '../../apis/province'
 import { toast } from '../../utils/toast'
-import { registerCustomer } from '../../apis/auth.api'
+import { registerCustomer, type RegisterCustomerData } from '../../apis/auth.api'
 import { path } from '../../constants/path'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
@@ -170,12 +170,8 @@ function Register() {
 
       if (!formData.phoneNumber.trim()) {
         newErrors.phoneNumber = 'Vui lòng nhập số điện thoại'
-      } else if (!VN_PHONE_REGEX.test(formData.phoneNumber)) {
+      } else       if (!VN_PHONE_REGEX.test(formData.phoneNumber)) {
         newErrors.phoneNumber = 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam (10-11 chữ số)'
-      }
-
-      if (!formData.provinceId) {
-        newErrors.provinceId = 'Vui lòng chọn tỉnh/thành phố'
       }
 
       if (!formData.gender) {
@@ -267,7 +263,7 @@ function Register() {
         })
       } else if (currentStep === 3) {
         // Submit final registration
-        if (!formData.dateOfBirth || !formData.provinceId) {
+        if (!formData.dateOfBirth) {
           toast.error('Vui lòng kiểm tra lại thông tin', {
             position: 'top-right',
             autoClose: 3000
@@ -278,7 +274,7 @@ function Register() {
         // Format dateOfBirth to ISO string (YYYY-MM-DD)
         const dateOfBirthString = formData.dateOfBirth.toISOString().split('T')[0]
 
-        const registrationData = {
+        const registrationData: RegisterCustomerData = {
           email: formData.email,
           password: formData.password,
           firstName: formData.firstName,
@@ -286,7 +282,7 @@ function Register() {
           gender: formData.gender,
           phoneNumber: formData.phoneNumber,
           dateOfBirth: dateOfBirthString,
-          provinceId: formData.provinceId
+          ...(formData.provinceId !== undefined && { provinceId: formData.provinceId })
         }
 
         await registerCustomer(registrationData)
@@ -426,7 +422,7 @@ function Register() {
           {/* Hometown (Province) */}
           <div className='space-y-2'>
             <Label>
-              Quê quán<span className='text-destructive ml-1'>*</span>
+              Quê quán
             </Label>
             <Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
               <PopoverTrigger asChild>
@@ -689,7 +685,7 @@ function Register() {
 
   return (
     <RegisterLayout>
-      <div className='w-full max-w-4xl mx-auto px-4 py-6'>
+      <div className='w-full max-w-4xl mx-auto px-4 py-6' style={{ marginTop: '24px' }}>
         <div className='bg-white rounded-3xl shadow-2xl overflow-hidden'>
           <div className='grid grid-cols-1 lg:grid-cols-[58%_42%] min-h-[350px] relative'>
             {/* Left Panel - Image Background */}
@@ -705,25 +701,8 @@ function Register() {
 
               {/* Content */}
               <div className='relative z-[2] h-full flex flex-col p-6 pr-12 text-white'>
-                {/* Logo and Branding */}
+                {/* Title */}
                 <div className='mb-6'>
-                  <div className='flex items-center space-x-3 mb-3'>
-                    <div className='w-10 h-10 rounded-full bg-yellow-400/90 flex items-center justify-center'>
-                      <svg
-                        xmlns='http://www.w3.org/2000/svg'
-                        width='20'
-                        height='20'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                      >
-                        <path
-                          d='M22 3.25C22 7.6875 18.6953 11.3555 14.4141 11.9219C14.1367 9.83594 13.2188 7.95312 11.8633 6.48047C13.3594 3.80859 16.2188 2 19.5 2H20.75C21.4414 2 22 2.55859 22 3.25ZM2 5.75C2 5.05859 2.55859 4.5 3.25 4.5H4.5C9.33203 4.5 13.25 8.41797 13.25 13.25V14.5V20.75C13.25 21.4414 12.6914 22 12 22C11.3086 22 10.75 21.4414 10.75 20.75V14.5C5.91797 14.5 2 10.582 2 5.75Z'
-                          fill='currentColor'
-                        />
-                      </svg>
-                    </div>
-                    <span className='text-lg font-bold'>Tinh Hoa Quê Nhà</span>
-                  </div>
                   <h1 className='text-4xl font-bold leading-tight'>Khởi đầu hành trình</h1>
                 </div>
 

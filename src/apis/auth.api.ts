@@ -13,7 +13,7 @@ export interface RegisterCustomerData {
   gender: string
   phoneNumber: string
   dateOfBirth: string
-  provinceId: number
+  provinceId?: number
 }
 
 export interface LoginData {
@@ -49,7 +49,9 @@ export const registerCustomer = async (data: RegisterCustomerData) => {
   formData.append('Gender', data.gender)
   formData.append('PhoneNumber', data.phoneNumber)
   formData.append('DateOfBirth', data.dateOfBirth)
-  formData.append('PronviceId', data.provinceId.toString())
+  if (data.provinceId !== undefined) {
+    formData.append('PronviceId', data.provinceId.toString())
+  }
 
   const response = await axiosInstance.post(`${API_URL_CUSTOMER}/Register`, formData, {
     headers: {

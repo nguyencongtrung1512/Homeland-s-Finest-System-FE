@@ -279,8 +279,8 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
       }
 
       await formApi.updateForm(formId, {
-        storeId: form.storeId,
-        orderId: form.orderId,
+        storeId: form.storeId || '',
+        orderId: form.orderId || '',
         type: data.type,
         subject: data.subject,
         description: data.description,
