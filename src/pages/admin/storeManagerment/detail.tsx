@@ -396,11 +396,6 @@ function StoreDetailAdmin() {
       return
     }
 
-    if (trimmedReason.length < 10) {
-      toast.error('Lý do phải có ít nhất 10 ký tự')
-      return
-    }
-
     if (trimmedReason.length > 200) {
       toast.error('Lý do không được vượt quá 200 ký tự')
       return
@@ -888,15 +883,49 @@ function StoreDetailAdmin() {
                 <div>
                   <h4 className='font-semibold text-gray-900 mb-4'>Giấy tờ chứng nhận</h4>
                   <div className='space-y-4'>
+                    {/* Giấy phép kinh doanh */}
                     <div className='p-4 bg-gray-50 rounded-lg border border-gray-200'>
                       <div className='flex items-center gap-3 mb-3'>
                         <FileText size={18} className='text-blue-600' />
                         <span className='font-medium text-gray-700'>Giấy phép kinh doanh</span>
                       </div>
+                      {store.sellerInfo?.businessLicense ? (
+                        <div className='space-y-3'>
+                          <p className='text-sm font-medium text-gray-600'>Ảnh giấy phép (1 ảnh)</p>
+                          <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                            <div
+                              className='cursor-pointer hover:opacity-80 transition-opacity'
+                              onClick={() => handleImagePreview(store.sellerInfo!.businessLicense!)}
+                            >
+                              <img
+                                src={store.sellerInfo.businessLicense}
+                                alt='Giấy phép kinh doanh'
+                                className='w-full h-32 object-cover rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow'
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  if (target.src !== DEFAULT_STORE_LOGO) {
+                                    target.src = DEFAULT_STORE_LOGO
+                                  }
+                                }}
+                              />
+                              <p className='text-xs text-center text-gray-500 font-medium' style={{ marginTop: '2%' }}>Ảnh 1</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className='text-gray-400 text-sm'>Chưa có</span>
+                      )}
+                    </div>
+                    {/* Chứng nhận cửa hàng */}
+                    <div className='p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                      <div className='flex items-center gap-3 mb-3'>
+                        <FileText size={18} className='text-blue-600' />
+                        <span className='font-medium text-gray-700'>Chứng nhận cửa hàng</span>
+                      </div>
                       {store.vendorApplicationImageUrl && store.vendorApplicationImageUrl.length > 0 ? (
                         <div className='space-y-3'>
                           <p className='text-sm font-medium text-gray-600'>
-                            Ảnh giấy phép ({store.vendorApplicationImageUrl.length} ảnh)
+                            Ảnh chứng nhận ({store.vendorApplicationImageUrl.length} ảnh)
                           </p>
                           <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
                             {store.vendorApplicationImageUrl.map((imageUrl, index) => (
@@ -907,7 +936,7 @@ function StoreDetailAdmin() {
                               >
                                 <img
                                   src={imageUrl}
-                                  alt={`Giấy phép ${index + 1}`}
+                                  alt={`Chứng nhận ${index + 1}`}
                                   className='w-full h-32 object-cover rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow'
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement
@@ -916,7 +945,7 @@ function StoreDetailAdmin() {
                                     }
                                   }}
                                 />
-                                <p className='text-xs text-center text-gray-500 mt-1 font-medium'>Ảnh {index + 1}</p>
+                                <p className='text-xs text-center text-gray-500 font-medium' style={{ marginTop: '6%' }}>Ảnh {index + 1}</p>
                               </div>
                             ))}
                           </div>
@@ -1016,27 +1045,55 @@ function StoreDetailAdmin() {
                       </p>
                     </div>
                   )}
-                  {store.staffImage && (
-                    <div>
-                      <h4 className='font-semibold text-gray-900 mb-3'>Ảnh từ nhân viên</h4>
-                      <div
-                        className='cursor-pointer hover:opacity-80 transition-opacity inline-block'
-                        onClick={() => handleImagePreview(store.staffImage!)}
-                      >
-                        <img
-                          src={store.staffImage}
-                          alt='Ảnh từ nhân viên'
-                          className='w-full max-w-md h-48 object-cover rounded-lg border-2 border-indigo-200 shadow-sm hover:shadow-md transition-shadow'
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            if (target.src !== DEFAULT_STORE_LOGO) {
-                              target.src = DEFAULT_STORE_LOGO
-                            }
-                          }}
-                        />
+                  {(() => {
+                    // Xử lý cả trường hợp staffImage là string (có thể chứa nhiều URL phân cách bởi dấu phẩy) hoặc array
+                    let images: string[] = []
+                    
+                    if (Array.isArray(store.staffImage)) {
+                      // Nếu là array, filter các giá trị hợp lệ
+                      images = store.staffImage.filter((img) => img && typeof img === 'string' && img.trim() !== '')
+                    } else if (typeof store.staffImage === 'string' && store.staffImage.trim() !== '') {
+                      // Nếu là string, kiểm tra xem có chứa dấu phẩy không (nhiều URL)
+                      if (store.staffImage.includes(',')) {
+                        // Split thành mảng nếu có dấu phẩy
+                        images = store.staffImage
+                          .split(',')
+                          .map((url) => url.trim())
+                          .filter((url) => url !== '')
+                      } else {
+                        // Nếu không có dấu phẩy, chỉ là 1 URL
+                        images = [store.staffImage.trim()]
+                      }
+                    }
+                    
+                    if (images.length === 0) return null
+                    
+                    return (
+                      <div>
+                        <h4 className='font-semibold text-gray-900 mb-3'>Ảnh từ nhân viên</h4>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
+                          {images.map((imageUrl, index) => (
+                            <div
+                              key={index}
+                              className='cursor-pointer hover:opacity-80 transition-opacity'
+                              onClick={() => handleImagePreview(imageUrl)}
+                            >
+                              <img
+                                src={imageUrl}
+                                alt={`Ảnh từ nhân viên ${index + 1}`}
+                                className='w-full h-48 object-cover rounded-lg border-2 border-indigo-200 shadow-sm hover:shadow-md transition-shadow'
+                                onError={(e) => {
+                                  // Xử lý lỗi khi ảnh không load được
+                                  const target = e.target as HTMLImageElement
+                                  target.style.display = 'none'
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )
+                  })()}
                 </div>
               </CardContent>
             </Card>
@@ -1439,10 +1496,9 @@ function StoreDetailAdmin() {
                 <div className='flex pt-3 justify-between items-center'>
                   <p className='text-xs text-gray-500'>Lý do này sẽ được gửi đến chủ cửa hàng</p>
                   <p
-                    className={`text-xs ${reason.length < 10 ? 'text-red-500' : reason.length > 200 ? 'text-red-500' : 'text-gray-500'}`}
+                    className={`text-xs ${reason.length > 200 ? 'text-red-500' : 'text-gray-500'}`}
                   >
                     {reason.length}/200 ký tự
-                    {reason.length < 10 && reason.length > 0 && ' (tối thiểu 10 ký tự)'}
                   </p>
                 </div>
               </div>
@@ -1515,7 +1571,6 @@ function StoreDetailAdmin() {
                   onClick={handleSaveReason}
                   disabled={
                     !reason.trim() ||
-                    reason.trim().length < 10 ||
                     reason.trim().length > 200 ||
                     (selectedAction === 'Ban' && isTemporary && !banUntil)
                   }

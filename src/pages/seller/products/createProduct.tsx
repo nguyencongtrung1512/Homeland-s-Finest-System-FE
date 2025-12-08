@@ -58,6 +58,7 @@ function CreateProduct() {
   const MAX_NAME_WORDS = 20
   const MAX_DESCRIPTION_WORDS = 500
   const MAX_MATERIAL_WORDS = 10
+  const MAX_PRODUCT_IMAGES = 5
 
   // Error states
   const [nameError, setNameError] = useState('')
@@ -76,6 +77,8 @@ function CreateProduct() {
     productVideo: null as File | null,
     certificateImages: [] as File[]
   })
+  const [isDraggingImages, setIsDraggingImages] = useState(false)
+  const [isDraggingVideo, setIsDraggingVideo] = useState(false)
   const createPreviewUrl = (file: File): string => {
     return URL.createObjectURL(file)
   }
@@ -326,10 +329,26 @@ function CreateProduct() {
 
   // Helper function to add more images to existing array with validation
   const addProductImages = (newFiles: File[]) => {
+    // Check current image count
+    const currentCount = mediaData.productImages.length
+    if (currentCount >= MAX_PRODUCT_IMAGES) {
+      toast.error(`Chỉ được tải tối đa ${MAX_PRODUCT_IMAGES} hình ảnh. Vui lòng xóa một số ảnh trước khi thêm mới.`)
+      return
+    }
+
     const validFiles: File[] = []
     const errors: string[] = []
 
-    newFiles.forEach((file) => {
+    // Calculate how many images can still be added
+    const remainingSlots = MAX_PRODUCT_IMAGES - currentCount
+
+    newFiles.forEach((file, index) => {
+      // Check if we've reached the limit
+      if (validFiles.length >= remainingSlots) {
+        errors.push(`Chỉ có thể thêm tối đa ${remainingSlots} ảnh nữa (tổng cộng ${MAX_PRODUCT_IMAGES} ảnh).`)
+        return
+      }
+
       const validation = validateImageFile(file)
       if (validation.valid) {
         validFiles.push(file)
@@ -351,6 +370,8 @@ function CreateProduct() {
       }))
       if (validFiles.length < newFiles.length) {
         toast.warning(`Đã thêm ${validFiles.length}/${newFiles.length} ảnh hợp lệ.`)
+      } else if (validFiles.length + currentCount >= MAX_PRODUCT_IMAGES) {
+        toast.info(`Đã đạt giới hạn tối đa ${MAX_PRODUCT_IMAGES} hình ảnh.`)
       }
     }
   }
@@ -601,6 +622,12 @@ function CreateProduct() {
       // Validate product images - required and at least 1 image
       if (!mediaData.productImages || mediaData.productImages.length === 0) {
         toast.error('Vui lòng thêm ít nhất một hình ảnh sản phẩm')
+        return
+      }
+
+      // Validate maximum number of images
+      if (mediaData.productImages.length > MAX_PRODUCT_IMAGES) {
+        toast.error(`Chỉ được tải tối đa ${MAX_PRODUCT_IMAGES} hình ảnh. Vui lòng xóa bớt ảnh.`)
         return
       }
 
@@ -1004,42 +1031,94 @@ function CreateProduct() {
             <CardContent className='space-y-6'>
               {/* Product Images */}
               <div>
-                <Label className='text-sm font-medium'>
-                  Hình ảnh sản phẩm <span className='text-red-500'>*</span>
-                </Label>
+                <div className='flex items-center justify-between mb-1'>
+                  <Label className='text-sm font-medium'>
+                    Hình ảnh sản phẩm <span className='text-red-500'>*</span>
+                  </Label>
+                  <p className='text-xs text-gray-500'>
+                    {mediaData.productImages.length}/{MAX_PRODUCT_IMAGES} ảnh
+                  </p>
+                </div>
 
                 {/* Upload Area */}
                 <div
-                  className='mt-2 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-400 hover:bg-green-50 transition-all duration-200 cursor-pointer bg-gradient-to-br from-white to-gray-50'
-                  onClick={() => document.getElementById('product-images')?.click()}
+                  className={`mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 bg-gradient-to-br ${
+                    mediaData.productImages.length >= MAX_PRODUCT_IMAGES
+                      ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                      : isDraggingImages
+                        ? 'border-green-500 bg-green-100 shadow-lg scale-[1.02]'
+                        : 'border-gray-300 hover:border-green-400 hover:bg-green-50 cursor-pointer from-white to-gray-50'
+                  }`}
+                  onClick={() => {
+                    if (mediaData.productImages.length < MAX_PRODUCT_IMAGES) {
+                      document.getElementById('product-images')?.click()
+                    }
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (mediaData.productImages.length < MAX_PRODUCT_IMAGES) {
+                      setIsDraggingImages(true)
+                    }
+                  }}
                   onDragOver={(e) => {
                     e.preventDefault()
-                    e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
+                    e.stopPropagation()
+                    if (mediaData.productImages.length < MAX_PRODUCT_IMAGES) {
+                      setIsDraggingImages(true)
+                    }
                   }}
                   onDragLeave={(e) => {
                     e.preventDefault()
-                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                    e.stopPropagation()
+                    setIsDraggingImages(false)
                   }}
                   onDrop={(e) => {
                     e.preventDefault()
-                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                    const files = Array.from(e.dataTransfer.files)
+                    e.stopPropagation()
+                    setIsDraggingImages(false)
+                    
+                    if (mediaData.productImages.length >= MAX_PRODUCT_IMAGES) {
+                      toast.error(`Chỉ được tải tối đa ${MAX_PRODUCT_IMAGES} hình ảnh.`)
+                      return
+                    }
+
+                    const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'))
                     if (files.length > 0) {
                       addProductImages(files)
+                    } else {
+                      toast.error('Vui lòng kéo thả file ảnh hợp lệ.')
                     }
                   }}
                 >
-                  <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                  <p className='text-gray-600 mb-2'>
-                    {mediaData.productImages.length > 0 ? 'Thêm ảnh khác' : 'Kéo thả hoặc click để tải ảnh lên'}
+                  <ImageIcon
+                    className={`w-10 h-10 mx-auto mb-3 ${
+                      isDraggingImages ? 'text-green-600' : 'text-gray-400'
+                    } transition-colors duration-200`}
+                  />
+                  <p
+                    className={`mb-2 font-medium ${
+                      isDraggingImages ? 'text-green-700' : 'text-gray-600'
+                    } transition-colors duration-200`}
+                  >
+                    {mediaData.productImages.length >= MAX_PRODUCT_IMAGES
+                      ? `Đã đạt giới hạn ${MAX_PRODUCT_IMAGES} ảnh`
+                      : isDraggingImages
+                        ? 'Thả ảnh vào đây để tải lên'
+                        : mediaData.productImages.length > 0
+                          ? 'Kéo thả hoặc click để thêm ảnh khác'
+                          : 'Kéo thả hoặc click để tải ảnh lên'}
                   </p>
-                  <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
+                  <p className='text-sm text-gray-500'>
+                    PNG, JPG tối đa 5MB mỗi ảnh • Tối đa {MAX_PRODUCT_IMAGES} ảnh
+                  </p>
                   <input
                     type='file'
                     multiple
                     accept='image/*'
                     className='hidden'
                     id='product-images'
+                    disabled={mediaData.productImages.length >= MAX_PRODUCT_IMAGES}
                     onChange={(e) => {
                       const files = Array.from(e.target.files || [])
                       if (files.length > 0) {
@@ -1053,14 +1132,25 @@ function CreateProduct() {
                     type='button'
                     variant='outline'
                     size='sm'
-                    className='mt-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 hover:border-green-300 hover:from-green-100 hover:to-emerald-100 text-green-700 hover:text-green-800 font-medium transition-all duration-200 shadow-sm hover:shadow-md'
+                    disabled={mediaData.productImages.length >= MAX_PRODUCT_IMAGES}
+                    className={`mt-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 hover:border-green-300 hover:from-green-100 hover:to-emerald-100 text-green-700 hover:text-green-800 font-medium transition-all duration-200 shadow-sm hover:shadow-md ${
+                      mediaData.productImages.length >= MAX_PRODUCT_IMAGES
+                        ? 'opacity-50 cursor-not-allowed'
+                        : ''
+                    }`}
                     onClick={(e) => {
                       e.stopPropagation()
-                      document.getElementById('product-images')?.click()
+                      if (mediaData.productImages.length < MAX_PRODUCT_IMAGES) {
+                        document.getElementById('product-images')?.click()
+                      }
                     }}
                   >
                     <Upload className='w-4 h-4 mr-2' />
-                    {mediaData.productImages.length > 0 ? 'Thêm ảnh' : 'Chọn ảnh'}
+                    {mediaData.productImages.length >= MAX_PRODUCT_IMAGES
+                      ? 'Đã đạt giới hạn'
+                      : mediaData.productImages.length > 0
+                        ? 'Thêm ảnh'
+                        : 'Chọn ảnh'}
                   </Button>
                 </div>
 
@@ -1068,7 +1158,12 @@ function CreateProduct() {
                 {mediaData.productImages.length > 0 && (
                   <div className='mt-6'>
                     <div className='flex items-center justify-between mb-4'>
-                      <p className='text-sm font-medium text-gray-700'>Đã chọn {mediaData.productImages.length} ảnh</p>
+                      <p className='text-sm font-medium text-gray-700'>
+                        Đã chọn {mediaData.productImages.length}/{MAX_PRODUCT_IMAGES} ảnh
+                        {mediaData.productImages.length >= MAX_PRODUCT_IMAGES && (
+                          <span className='ml-2 text-xs text-orange-600 font-semibold'>(Đã đạt giới hạn)</span>
+                        )}
+                      </p>
                       <Button
                         type='button'
                         variant='outline'
@@ -1140,28 +1235,55 @@ function CreateProduct() {
               <div>
                 <Label className='text-sm font-medium'>Video sản phẩm</Label>
                 <div
-                  className='mt-2 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-400 hover:bg-green-50 transition-all duration-200 cursor-pointer bg-gradient-to-br from-white to-gray-50'
+                  className={`mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer bg-gradient-to-br ${
+                    isDraggingVideo
+                      ? 'border-blue-500 bg-blue-100 shadow-lg scale-[1.02]'
+                      : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50 from-white to-gray-50'
+                  }`}
                   onClick={() => document.getElementById('product-video')?.click()}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setIsDraggingVideo(true)
+                  }}
                   onDragOver={(e) => {
                     e.preventDefault()
-                    e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
+                    e.stopPropagation()
+                    setIsDraggingVideo(true)
                   }}
                   onDragLeave={(e) => {
                     e.preventDefault()
-                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                    e.stopPropagation()
+                    setIsDraggingVideo(false)
                   }}
                   onDrop={(e) => {
                     e.preventDefault()
-                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                    const files = Array.from(e.dataTransfer.files)
+                    e.stopPropagation()
+                    setIsDraggingVideo(false)
+                    
+                    const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('video/'))
                     if (files.length > 0) {
                       handleMediaChange('productVideo', files[0])
+                    } else {
+                      toast.error('Vui lòng kéo thả file video hợp lệ.')
                     }
                   }}
                 >
-                  <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                  <p className='text-gray-600 mb-2'>
-                    {mediaData.productVideo ? 'Thay đổi video' : 'Kéo thả hoặc click để tải video lên'}
+                  <Video
+                    className={`w-10 h-10 mx-auto mb-3 ${
+                      isDraggingVideo ? 'text-blue-600' : 'text-gray-400'
+                    } transition-colors duration-200`}
+                  />
+                  <p
+                    className={`mb-2 font-medium ${
+                      isDraggingVideo ? 'text-blue-700' : 'text-gray-600'
+                    } transition-colors duration-200`}
+                  >
+                    {isDraggingVideo
+                      ? 'Thả video vào đây để tải lên'
+                      : mediaData.productVideo
+                        ? 'Kéo thả hoặc click để thay đổi video'
+                        : 'Kéo thả hoặc click để tải video lên'}
                   </p>
                   <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
                   <input
