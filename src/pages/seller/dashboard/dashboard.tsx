@@ -193,11 +193,10 @@ function Dashboard() {
 
   // Helper functions
   const formatCurrency = (amount: number) => {
-    if (!amount && amount !== 0) return '0 đ'
-    if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(1)} tr đ`
-    }
-    return `${(amount / 1000).toFixed(0)} nghìn đ`
+    if (!amount && amount !== 0) return '0₫'
+    // Format số với dấu chấm phân cách hàng nghìn và ký hiệu ₫ ngay sau số
+    const roundedAmount = Math.round(amount)
+    return `${roundedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')}₫`
   }
 
   const formatDate = (dateString: string) => {
@@ -478,7 +477,7 @@ function Dashboard() {
                   <div className='flex items-center justify-between text-xs text-gray-600'>
                     <span>{order.toName || 'Khách hàng'}</span>
                     <span className='font-medium text-gray-900'>
-                      {(order.finalPrice || order.totalOrder || 0).toLocaleString()} ₫
+                      {formatCurrency(order.finalPrice || order.totalOrder || 0)}
                     </span>
                   </div>
                   {order.createdAt && (
@@ -554,7 +553,7 @@ function Dashboard() {
                 ) : null}
               </div>
             </div>
-            <p className='text-xs text-gray-500 mt-2 ml-8'>Doanh thu (đ)</p>
+            <p className='text-xs text-gray-500 mt-2 ml-8'>Doanh thu (₫)</p>
           </div>
 
           {/* Revenue by Payment Method - Placeholder for now */}

@@ -8,7 +8,7 @@ import { Checkbox } from '../../../components/ui/checkbox'
 import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-import { ChevronDownIcon, Eye, EyeOff, Loader2, MapPinIcon } from 'lucide-react'
+import { ChevronDownIcon, Eye, EyeOff, Loader2, MapPinIcon, Image as ImageIcon, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { Upload as AntUpload, message } from 'antd'
@@ -122,19 +122,14 @@ const FileUploadFieldWithOCR = ({
   const [previewImage, setPreviewImage] = useState<string>('')
   const [showPreview, setShowPreview] = useState(false)
   const [isProcessingOCR, setIsProcessingOCR] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCounter = React.useRef(0)
 
-  const handleChange: UploadProps['onChange'] = async ({ fileList: newFileList }) => {
-    setFileList(newFileList)
-    const newFiles = newFileList.filter((file) => file.originFileObj).map((file) => file.originFileObj as File)
-    onChange(newFiles)
-
-    if (enableOCR && newFiles.length > 0 && onOCRData) {
-      const file = newFiles[0]
+  const processOCR = async (file: File) => {
+    if (enableOCR && onOCRData) {
       setIsProcessingOCR(true)
-
       try {
         const ocrResult = await extractCCCDInfo(file)
-
         if (ocrResult) {
           onOCRData(ocrResult)
           toast.success('Đã đọc thông tin từ CCCD thành công!')
@@ -150,7 +145,17 @@ const FileUploadFieldWithOCR = ({
     }
   }
 
-  const beforeUpload = (file: File) => {
+  const handleChange: UploadProps['onChange'] = async ({ fileList: newFileList }) => {
+    setFileList(newFileList)
+    const newFiles = newFileList.filter((file) => file.originFileObj).map((file) => file.originFileObj as File)
+    onChange(newFiles)
+
+    if (enableOCR && newFiles.length > 0 && onOCRData) {
+      await processOCR(newFiles[0])
+    }
+  }
+
+  const validateFile = (file: File): boolean => {
     const isImage = file.type.startsWith('image/')
     if (!isImage) {
       message.error('Chỉ được upload file ảnh!')
@@ -163,6 +168,104 @@ const FileUploadFieldWithOCR = ({
       return false
     }
 
+    return true
+  }
+
+  const processFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files)
+    const validFiles: File[] = []
+    
+    fileArray.forEach((file) => {
+      if (validateFile(file)) {
+        validFiles.push(file)
+      }
+    })
+
+    if (validFiles.length === 0) return
+
+    // Kiểm tra số lượng file
+    const currentCount = fileList.length
+    const remainingSlots = maxCount - currentCount
+    
+    if (remainingSlots <= 0) {
+      message.warning(`Chỉ được upload tối đa ${maxCount} file`)
+      return
+    }
+
+    const filesToAdd = multiple 
+      ? validFiles.slice(0, remainingSlots)
+      : validFiles.slice(0, 1)
+
+    if (validFiles.length > filesToAdd.length) {
+      message.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
+    }
+
+    // Tạo UploadFile objects
+    const newUploadFiles: UploadFile[] = filesToAdd.map((file) => ({
+      uid: `${Date.now()}-${Math.random()}`,
+      name: file.name,
+      status: 'done',
+      originFileObj: file as any
+    }))
+
+    const updatedFileList = [...fileList, ...newUploadFiles]
+    setFileList(updatedFileList)
+    const allFiles = updatedFileList.filter((file) => file.originFileObj).map((file) => file.originFileObj as File)
+    onChange(allFiles)
+
+    // Process OCR for first file if enabled
+    if (enableOCR && filesToAdd.length > 0 && onOCRData) {
+      await processOCR(filesToAdd[0])
+    }
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isProcessingOCR) {
+      dragCounter.current++
+      if (dragCounter.current === 1) {
+        setIsDragging(true)
+      }
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current--
+    if (dragCounter.current === 0) {
+      setIsDragging(false)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isProcessingOCR && dragCounter.current === 0) {
+      dragCounter.current = 1
+      setIsDragging(true)
+    }
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current = 0
+    setIsDragging(false)
+
+    if (isProcessingOCR) return
+
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      await processFiles(files)
+    }
+  }
+
+  const beforeUpload = (file: File) => {
+    if (!validateFile(file)) {
+      return false
+    }
     return false
   }
 
@@ -206,25 +309,43 @@ const FileUploadFieldWithOCR = ({
       </Label>
       {description && <p className='text-xs text-gray-500'>{description}</p>}
 
-      <AntUpload
-        listType='picture-card'
-        fileList={fileList}
-        onChange={handleChange}
-        beforeUpload={beforeUpload}
-        onPreview={handlePreview}
-        multiple={multiple}
-        maxCount={maxCount}
-        accept={accept}
-        disabled={isProcessingOCR}
-        showUploadList={{
-          showPreviewIcon: true,
-          showRemoveIcon: !isProcessingOCR,
-          showDownloadIcon: false
-        }}
-        className='w-full'
+      <div
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className={`relative transition-all duration-200 ${isDragging ? 'ring-2 ring-green-500 ring-offset-2' : ''} ${isProcessingOCR ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        {fileList.length >= maxCount ? null : uploadButton}
-      </AntUpload>
+        <div
+          className={`absolute inset-0 z-10 bg-green-50 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center pointer-events-none transition-all duration-200 ${
+            isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          }`}
+        >
+          <div className='text-center transform transition-transform duration-200'>
+            <div className='text-green-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
+            <div className='text-green-500 text-sm'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ 1 file'}</div>
+          </div>
+        </div>
+        <AntUpload
+          listType='picture-card'
+          fileList={fileList}
+          onChange={handleChange}
+          beforeUpload={beforeUpload}
+          onPreview={handlePreview}
+          multiple={multiple}
+          maxCount={maxCount}
+          accept={accept}
+          disabled={isProcessingOCR}
+          showUploadList={{
+            showPreviewIcon: true,
+            showRemoveIcon: !isProcessingOCR,
+            showDownloadIcon: false
+          }}
+          className='w-full'
+        >
+          {fileList.length >= maxCount ? null : uploadButton}
+        </AntUpload>
+      </div>
 
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className='max-w-4xl max-h-4xl'>
@@ -265,19 +386,14 @@ const FileUploadFieldWithBackOCR = ({
   const [previewImage, setPreviewImage] = useState<string>('')
   const [showPreview, setShowPreview] = useState(false)
   const [isProcessingOCR, setIsProcessingOCR] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCounter = React.useRef(0)
 
-  const handleChange: UploadProps['onChange'] = async ({ fileList: newFileList }) => {
-    setFileList(newFileList)
-    const newFiles = newFileList.filter((file) => file.originFileObj).map((file) => file.originFileObj as File)
-    onChange(newFiles)
-
-    if (enableOCR && newFiles.length > 0 && onOCRData) {
-      const file = newFiles[0]
+  const processOCR = async (file: File) => {
+    if (enableOCR && onOCRData) {
       setIsProcessingOCR(true)
-
       try {
         const ocrResult = await extractCCCDBackInfo(file)
-
         if (ocrResult) {
           onOCRData(ocrResult)
         } else {
@@ -292,7 +408,17 @@ const FileUploadFieldWithBackOCR = ({
     }
   }
 
-  const beforeUpload = (file: File) => {
+  const handleChange: UploadProps['onChange'] = async ({ fileList: newFileList }) => {
+    setFileList(newFileList)
+    const newFiles = newFileList.filter((file) => file.originFileObj).map((file) => file.originFileObj as File)
+    onChange(newFiles)
+
+    if (enableOCR && newFiles.length > 0 && onOCRData) {
+      await processOCR(newFiles[0])
+    }
+  }
+
+  const validateFile = (file: File): boolean => {
     const isImage = file.type.startsWith('image/')
     if (!isImage) {
       message.error('Chỉ được upload file ảnh!')
@@ -305,6 +431,104 @@ const FileUploadFieldWithBackOCR = ({
       return false
     }
 
+    return true
+  }
+
+  const processFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files)
+    const validFiles: File[] = []
+    
+    fileArray.forEach((file) => {
+      if (validateFile(file)) {
+        validFiles.push(file)
+      }
+    })
+
+    if (validFiles.length === 0) return
+
+    // Kiểm tra số lượng file
+    const currentCount = fileList.length
+    const remainingSlots = maxCount - currentCount
+    
+    if (remainingSlots <= 0) {
+      message.warning(`Chỉ được upload tối đa ${maxCount} file`)
+      return
+    }
+
+    const filesToAdd = multiple 
+      ? validFiles.slice(0, remainingSlots)
+      : validFiles.slice(0, 1)
+
+    if (validFiles.length > filesToAdd.length) {
+      message.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
+    }
+
+    // Tạo UploadFile objects
+    const newUploadFiles: UploadFile[] = filesToAdd.map((file) => ({
+      uid: `${Date.now()}-${Math.random()}`,
+      name: file.name,
+      status: 'done',
+      originFileObj: file as any
+    }))
+
+    const updatedFileList = [...fileList, ...newUploadFiles]
+    setFileList(updatedFileList)
+    const allFiles = updatedFileList.filter((file) => file.originFileObj).map((file) => file.originFileObj as File)
+    onChange(allFiles)
+
+    // Process OCR for first file if enabled
+    if (enableOCR && filesToAdd.length > 0 && onOCRData) {
+      await processOCR(filesToAdd[0])
+    }
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isProcessingOCR) {
+      dragCounter.current++
+      if (dragCounter.current === 1) {
+        setIsDragging(true)
+      }
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current--
+    if (dragCounter.current === 0) {
+      setIsDragging(false)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isProcessingOCR && dragCounter.current === 0) {
+      dragCounter.current = 1
+      setIsDragging(true)
+    }
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current = 0
+    setIsDragging(false)
+
+    if (isProcessingOCR) return
+
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      await processFiles(files)
+    }
+  }
+
+  const beforeUpload = (file: File) => {
+    if (!validateFile(file)) {
+      return false
+    }
     return false
   }
 
@@ -348,25 +572,43 @@ const FileUploadFieldWithBackOCR = ({
       </Label>
       {description && <p className='text-xs text-gray-500'>{description}</p>}
 
-      <AntUpload
-        listType='picture-card'
-        fileList={fileList}
-        onChange={handleChange}
-        beforeUpload={beforeUpload}
-        onPreview={handlePreview}
-        multiple={multiple}
-        maxCount={maxCount}
-        accept={accept}
-        disabled={isProcessingOCR}
-        showUploadList={{
-          showPreviewIcon: true,
-          showRemoveIcon: !isProcessingOCR,
-          showDownloadIcon: false
-        }}
-        className='w-full'
+      <div
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className={`relative transition-all duration-200 ${isDragging ? 'ring-2 ring-green-500 ring-offset-2' : ''} ${isProcessingOCR ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        {fileList.length >= maxCount ? null : uploadButton}
-      </AntUpload>
+        <div
+          className={`absolute inset-0 z-10 bg-green-50 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center pointer-events-none transition-all duration-200 ${
+            isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          }`}
+        >
+          <div className='text-center transform transition-transform duration-200'>
+            <div className='text-green-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
+            <div className='text-green-500 text-sm'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ 1 file'}</div>
+          </div>
+        </div>
+        <AntUpload
+          listType='picture-card'
+          fileList={fileList}
+          onChange={handleChange}
+          beforeUpload={beforeUpload}
+          onPreview={handlePreview}
+          multiple={multiple}
+          maxCount={maxCount}
+          accept={accept}
+          disabled={isProcessingOCR}
+          showUploadList={{
+            showPreviewIcon: true,
+            showRemoveIcon: !isProcessingOCR,
+            showDownloadIcon: false
+          }}
+          className='w-full'
+        >
+          {fileList.length >= maxCount ? null : uploadButton}
+        </AntUpload>
+      </div>
 
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className='max-w-4xl max-h-4xl'>
@@ -382,7 +624,8 @@ const FileUploadFieldWithBackOCR = ({
   )
 }
 
-const FileUploadField = ({
+// Component upload đơn giản theo style productCertificate
+const SimpleFileUploadField = ({
   label,
   onChange,
   accept = 'image/*',
@@ -390,7 +633,9 @@ const FileUploadField = ({
   multiple = false,
   description,
   maxCount = 1,
-  disabled = false
+  disabled = false,
+  previewUrls = [],
+  onRemove
 }: {
   label: string
   onChange: (files: File[]) => void
@@ -400,56 +645,141 @@ const FileUploadField = ({
   description?: string
   maxCount?: number
   disabled?: boolean
+  previewUrls?: string[]
+  onRemove?: (index: number) => void
 }) => {
-  const [fileList, setFileList] = useState<UploadFile[]>([])
-  const [previewImage, setPreviewImage] = useState<string>('')
-  const [showPreview, setShowPreview] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCounter = React.useRef(0)
 
-  const handleChange: UploadProps['onChange'] = ({ fileList: newFileList }) => {
-    setFileList(newFileList)
-    const newFiles = newFileList.filter((file) => file.originFileObj).map((file) => file.originFileObj as File)
-    onChange(newFiles)
-  }
-
-  const beforeUpload = (file: File) => {
-    const isImage = file.type.startsWith('image/')
+  const validateFile = (file: File): boolean => {
+    const isImage = file.type.startsWith('image/') || file.type === 'application/pdf'
     if (!isImage) {
-      message.error('Chỉ được upload file ảnh!')
+      toast.error('Chỉ được upload file ảnh hoặc PDF!')
       return false
     }
 
     const isLt10M = file.size / 1024 / 1024 < 10
     if (!isLt10M) {
-      message.error('Kích thước file phải nhỏ hơn 10MB!')
+      toast.error('Kích thước file phải nhỏ hơn 10MB!')
       return false
     }
 
-    return false
+    return true
   }
 
-  const handlePreview = async (file: UploadFile) => {
-    if (!file.url && !file.preview) {
-      file.preview = await getBase64(file.originFileObj as File)
-    }
-    setPreviewImage(file.url || file.preview || '')
-    setShowPreview(true)
-  }
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
 
-  const getBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = (error) => reject(error)
+    const validFiles: File[] = []
+    files.forEach((file) => {
+      if (validateFile(file)) {
+        validFiles.push(file)
+      }
     })
+
+    if (validFiles.length > 0) {
+      // Kiểm tra số lượng file
+      const currentCount = previewUrls.length
+      const remainingSlots = maxCount - currentCount
+
+      if (remainingSlots <= 0) {
+        toast.warning(`Chỉ được upload tối đa ${maxCount} file`)
+        return
+      }
+
+      const filesToAdd = multiple 
+        ? validFiles.slice(0, remainingSlots)
+        : validFiles.slice(0, 1)
+
+      if (validFiles.length > filesToAdd.length) {
+        toast.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
+      }
+
+      onChange(filesToAdd)
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
-  const uploadButton = (
-    <div className='flex w-full h-full flex-col items-center justify-center space-y-2 p-4 cursor-pointer hover:bg-gray-100 rounded-lg'>
-      <div className='text-sm text-gray-600'>Nhấp để chọn file</div>
-      <div className='text-xs text-gray-500'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ chọn 1 file'}</div>
-    </div>
-  )
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!disabled) {
+      dragCounter.current++
+      if (dragCounter.current === 1) {
+        setIsDragging(true)
+      }
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current--
+    if (dragCounter.current === 0) {
+      setIsDragging(false)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!disabled && dragCounter.current === 0) {
+      dragCounter.current = 1
+      setIsDragging(true)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current = 0
+    setIsDragging(false)
+
+    if (disabled) return
+
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length === 0) return
+
+    const validFiles: File[] = []
+    files.forEach((file) => {
+      if (validateFile(file)) {
+        validFiles.push(file)
+      }
+    })
+
+    if (validFiles.length > 0) {
+      // Kiểm tra số lượng file
+      const currentCount = previewUrls.length
+      const remainingSlots = maxCount - currentCount
+
+      if (remainingSlots <= 0) {
+        toast.warning(`Chỉ được upload tối đa ${maxCount} file`)
+        return
+      }
+
+      const filesToAdd = multiple 
+        ? validFiles.slice(0, remainingSlots)
+        : validFiles.slice(0, 1)
+
+      if (validFiles.length > filesToAdd.length) {
+        toast.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
+      }
+
+      onChange(filesToAdd)
+    }
+  }
+
+  const handleClick = () => {
+    if (!disabled) {
+      fileInputRef.current?.click()
+    }
+  }
 
   return (
     <div className='space-y-2'>
@@ -458,36 +788,89 @@ const FileUploadField = ({
       </Label>
       {description && <p className='text-xs text-gray-500'>{description}</p>}
 
-      <AntUpload
-        listType='picture-card'
-        fileList={fileList}
-        onChange={handleChange}
-        beforeUpload={beforeUpload}
-        onPreview={handlePreview}
-        multiple={multiple}
-        maxCount={maxCount}
-        accept={accept}
-        disabled={disabled}
-        showUploadList={{
-          showPreviewIcon: true,
-          showRemoveIcon: !disabled,
-          showDownloadIcon: false
-        }}
-        className='w-full'
-      >
-        {fileList.length >= maxCount ? null : uploadButton}
-      </AntUpload>
-
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className='max-w-4xl max-h-4xl'>
-          <DialogHeader>
-            <DialogTitle>Preview ảnh</DialogTitle>
-          </DialogHeader>
-          <div className='flex justify-center'>
-            <img src={previewImage} alt='Xem trước' className='max-w-full max-h-96 object-contain rounded-lg' />
+      {previewUrls.length > 0 ? (
+        <div className='space-y-3'>
+          {previewUrls.map((url, index) => (
+            <div key={index} className='relative border-2 border-slate-200 rounded-lg overflow-hidden'>
+              <img src={url} alt={`Preview ${index + 1}`} className='w-full h-48 object-cover' />
+              {onRemove && !disabled && (
+                <button
+                  type='button'
+                  onClick={() => onRemove(index)}
+                  className='absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors'
+                >
+                  <X className='w-4 h-4' />
+                </button>
+              )}
+            </div>
+          ))}
+          {previewUrls.length < maxCount && (
+            <div
+              className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${
+                isDragging 
+                  ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg' 
+                  : 'border-slate-300 hover:border-emerald-400'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={handleClick}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
+              <div className={`absolute inset-0 bg-emerald-50/80 flex items-center justify-center transition-all duration-200 ${
+                isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}>
+                <div className='text-center transform transition-transform duration-200'>
+                  <div className='text-emerald-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
+                  <div className='text-emerald-500 text-sm'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ 1 file'}</div>
+                </div>
+              </div>
+              <div className={`transition-all duration-200 ${isDragging ? 'opacity-0 scale-95' : 'opacity-100'}`}>
+                <ImageIcon className='w-12 h-12 text-slate-400 mx-auto mb-3' />
+                <p className='text-slate-600 mb-1 font-medium'>Kéo thả hoặc click để tải ảnh lên</p>
+                <p className='text-xs text-slate-500'>PNG, JPG, PDF tối đa 10MB</p>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div
+          className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${
+            isDragging 
+              ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg' 
+              : 'border-slate-300 hover:border-emerald-400'
+          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          onClick={handleClick}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          <div className={`absolute inset-0 bg-emerald-50/80 flex items-center justify-center transition-all duration-200 ${
+            isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}>
+            <div className='text-center transform transition-transform duration-200'>
+              <div className='text-emerald-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
+              <div className='text-emerald-500 text-sm'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ 1 file'}</div>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+          <div className={`transition-all duration-200 ${isDragging ? 'opacity-0 scale-95' : 'opacity-100'}`}>
+            <ImageIcon className='w-12 h-12 text-slate-400 mx-auto mb-3' />
+            <p className='text-slate-600 mb-1 font-medium'>Kéo thả hoặc click để tải ảnh lên</p>
+            <p className='text-xs text-slate-500'>PNG, JPG, PDF tối đa 10MB</p>
+          </div>
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type='file'
+        accept={accept}
+        multiple={multiple}
+        onChange={handleFileChange}
+        className='hidden'
+        disabled={disabled}
+      />
     </div>
   )
 }
@@ -578,6 +961,33 @@ function SellerRegistrationForm() {
     reason: string
     isValidating: boolean
   }>>(new Map())
+
+  // States cho preview URLs
+  const [businessLicensePreviewUrl, setBusinessLicensePreviewUrl] = useState<string | null>(null)
+  const [vendorApplicationPreviewUrls, setVendorApplicationPreviewUrls] = useState<string[]>([])
+
+  // Tạo preview URL cho business license
+  React.useEffect(() => {
+    if (formData.businessLicense.length > 0) {
+      const file = formData.businessLicense[0]
+      const url = URL.createObjectURL(file)
+      setBusinessLicensePreviewUrl(url)
+      return () => {
+        URL.revokeObjectURL(url)
+      }
+    } else {
+      setBusinessLicensePreviewUrl(null)
+    }
+  }, [formData.businessLicense])
+
+  // Tạo preview URLs cho vendor application images
+  React.useEffect(() => {
+    const urls = formData.vendorApplicationImageUrl.map((file) => URL.createObjectURL(file))
+    setVendorApplicationPreviewUrls(urls)
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [formData.vendorApplicationImageUrl])
 
   // ===== Xử lý dữ liệu từ OCR mặt sau =====
   const handleOCRBackData = async (backData: ExtractedCCCDBackInfo) => {
@@ -2027,7 +2437,7 @@ function SellerRegistrationForm() {
                 </div>
                 <div className='space-y-4'>
                   <div>
-                    <FileUploadField
+                    <SimpleFileUploadField
                       label='Giấy phép kinh doanh'
                       onChange={(files) => handleFileChange('businessLicense', files)}
                       required
@@ -2035,6 +2445,11 @@ function SellerRegistrationForm() {
                       accept='image/*,.pdf'
                       maxCount={1}
                       disabled={businessLicenseValidation.isValidating}
+                      previewUrls={businessLicensePreviewUrl ? [businessLicensePreviewUrl] : []}
+                      onRemove={() => {
+                        setFormData((prev) => ({ ...prev, businessLicense: [] }))
+                        setBusinessLicenseValidation({ isValid: null, reason: '', isValidating: false })
+                      }}
                     />
                     {businessLicenseValidation.isValidating && (
                       <div className='mt-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm animate-pulse'>
@@ -2102,13 +2517,32 @@ function SellerRegistrationForm() {
                     )}
                   </div>
                   <div>
-                    <FileUploadField
+                    <SimpleFileUploadField
                       label='Chứng nhận cửa hàng'
                       onChange={(files) => handleFileChange('vendorApplicationImageUrl', files)}
                       multiple
                       description='Có thể upload nhiều file (tối đa 5 file), định dạng JPG/PNG/PDF. Hệ thống sẽ tự động kiểm tra từng file sau khi upload.'
                       maxCount={5}
                       disabled={Array.from(vendorApplicationValidations.values()).some((v) => v.isValidating)}
+                      previewUrls={vendorApplicationPreviewUrls}
+                      onRemove={(index) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          vendorApplicationImageUrl: prev.vendorApplicationImageUrl.filter((_, i) => i !== index)
+                        }))
+                        // Xóa validation tương ứng
+                        setVendorApplicationValidations((prev) => {
+                          const newValidations = new Map()
+                          prev.forEach((val, idx) => {
+                            if (idx < index) {
+                              newValidations.set(idx, val)
+                            } else if (idx > index) {
+                              newValidations.set(idx - 1, val)
+                            }
+                          })
+                          return newValidations
+                        })
+                      }}
                     />
                     {/* Hiển thị danh sách file với validation */}
                     {formData.vendorApplicationImageUrl.length > 0 && (

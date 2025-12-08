@@ -1215,7 +1215,7 @@ export default function Checkout() {
 
           {/* Order Summary */}
           <div className='lg:col-span-1'>
-            <div className='bg-white rounded-lg shadow-sm p-6 sticky top-8'>
+            <div className='bg-white rounded-lg shadow-sm p-6 sticky top-20'>
               <h2 className='text-lg font-bold text-gray-800 mb-4'>Tóm tắt đơn hàng</h2>
 
               <div className='space-y-3 mb-4 pb-4 border-b border-gray-200'>

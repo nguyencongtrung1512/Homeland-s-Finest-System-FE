@@ -28,7 +28,7 @@ import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { staffApi } from '../../../apis/staff.api'
 import { toast } from '../../../utils/toast'
 import { cn } from '../../../lib/utils'
-import { formatDate } from '../../../utils/formatDate'
+import { formatDate, formatDateAndTime } from '../../../utils/formatDate'
 
 function StaffStoreDetail() {
   const navigate = useNavigate()
@@ -51,6 +51,7 @@ function StaffStoreDetail() {
 
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('')
+  const [isDragging, setIsDragging] = useState(false)
 
   const handleBack = () => {
     navigate(-1)
@@ -105,23 +106,82 @@ function StaffStoreDetail() {
       setSelectedImages([])
       setImagePreviews([])
       setErrors({})
+      setIsDragging(false)
     }
   }
 
   // Handle image selection and preview
+  const processFiles = (files: File[]) => {
+    if (files.length === 0) return
+
+    const currentCount = selectedImages.length
+    const remainingSlots = 5 - currentCount
+
+    if (remainingSlots <= 0) {
+      toast.error('Bạn chỉ có thể tải lên tối đa 5 hình ảnh')
+      return
+    }
+
+    const filesToAdd = files.slice(0, remainingSlots)
+    
+    if (files.length > remainingSlots) {
+      toast.warning(`Chỉ có thể thêm tối đa ${remainingSlots} hình ảnh nữa (tổng cộng 5 ảnh)`)
+    }
+
+    setSelectedImages((prev) => [...prev, ...filesToAdd])
+
+    // Create previews
+    const newPreviews = filesToAdd.map((file: File) => URL.createObjectURL(file))
+    setImagePreviews((prev) => [...prev, ...newPreviews])
+  }
+
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
     if (!files || files.length === 0) return
 
     const fileArray = Array.from(files)
-    setSelectedImages((prev) => [...prev, ...fileArray])
-
-    // Create previews
-    const newPreviews = fileArray.map((file: File) => URL.createObjectURL(file))
-    setImagePreviews((prev) => [...prev, ...newPreviews])
+    processFiles(fileArray)
 
     // Clear input
     event.target.value = ''
+  }
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Check if we're actually leaving the drop zone (not just moving to a child element)
+    const currentTarget = e.currentTarget as HTMLElement
+    const relatedTarget = e.relatedTarget as HTMLElement | null
+    
+    if (!currentTarget.contains(relatedTarget)) {
+      setIsDragging(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'))
+    if (files.length === 0) {
+      toast.error('Vui lòng kéo thả các file hình ảnh')
+      return
+    }
+
+    processFiles(files)
   }
 
   // Remove image
@@ -154,6 +214,9 @@ function StaffStoreDetail() {
     if (selectedImages.length === 0) {
       newErrors.staffImages = 'Vui lòng chọn ít nhất 1 hình ảnh'
     }
+    if (selectedImages.length > 5) {
+      newErrors.staffImages = 'Bạn chỉ có thể tải lên tối đa 5 hình ảnh'
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
@@ -178,6 +241,7 @@ function StaffStoreDetail() {
         setStaffNotes('')
         setSelectedImages([])
         setImagePreviews([])
+        setIsDragging(false)
         fetchStoreDetail() // Refresh store data
       } else {
         console.error('❌ Unexpected response format:', response)
@@ -221,6 +285,16 @@ function StaffStoreDetail() {
     const firstName = userInfo.firstName || ''
     const lastName = userInfo.lastName || ''
     return `${firstName} ${lastName}`.trim() || 'Chưa cập nhật'
+  }
+
+  const renderDateTime = (dateInput?: string | number | Date | null) => {
+    const dateTime = formatDateAndTime(dateInput)
+    if (!dateTime) return '-'
+    return (
+      <>
+        {dateTime.time} {dateTime.date}
+      </>
+    )
   }
 
   if (loading) {
@@ -440,15 +514,43 @@ function StaffStoreDetail() {
                 <div>
                   <h4 className='font-semibold text-gray-900 mb-4'>Giấy tờ chứng nhận</h4>
                   <div className='space-y-4'>
+                    {/* Giấy phép kinh doanh */}
                     <div className='p-4 bg-gray-50 rounded-lg border border-gray-200'>
                       <div className='flex items-center gap-3 mb-3'>
                         <FileText size={18} className='text-blue-600' />
                         <span className='font-medium text-gray-700'>Giấy phép kinh doanh</span>
                       </div>
+                      {store.sellerInfo?.businessLicense ? (
+                        <div className='space-y-3'>
+                          <p className='text-sm font-medium text-gray-600'>Ảnh giấy phép (1 ảnh)</p>
+                          <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                            <div
+                              className='cursor-pointer hover:opacity-80 transition-opacity'
+                              onClick={() => handleImagePreview(store.sellerInfo!.businessLicense!)}
+                            >
+                              <img
+                                src={store.sellerInfo.businessLicense}
+                                alt='Giấy phép kinh doanh'
+                                className='w-full h-32 object-cover rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow'
+                              />
+                              <p className='text-xs text-center text-gray-500 font-medium' style={{ marginTop: '6%' }}>Ảnh 1</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className='text-gray-400 text-sm'>Chưa có</span>
+                      )}
+                    </div>
+                    {/* Chứng nhận cửa hàng */}
+                    <div className='p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                      <div className='flex items-center gap-3 mb-3'>
+                        <FileText size={18} className='text-blue-600' />
+                        <span className='font-medium text-gray-700'>Chứng nhận cửa hàng</span>
+                      </div>
                       {store.vendorApplicationImageUrl && store.vendorApplicationImageUrl.length > 0 ? (
                         <div className='space-y-3'>
                           <p className='text-sm font-medium text-gray-600'>
-                            Ảnh giấy phép ({store.vendorApplicationImageUrl.length} ảnh)
+                            Ảnh chứng nhận ({store.vendorApplicationImageUrl.length} ảnh)
                           </p>
                           <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
                             {store.vendorApplicationImageUrl.map((imageUrl, index) => (
@@ -459,10 +561,10 @@ function StaffStoreDetail() {
                               >
                                 <img
                                   src={imageUrl}
-                                  alt={`Giấy phép ${index + 1}`}
+                                  alt={`Chứng nhận ${index + 1}`}
                                   className='w-full h-32 object-cover rounded-lg border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow'
                                 />
-                                <p className='text-xs text-center text-gray-500 mt-1 font-medium'>Ảnh {index + 1}</p>
+                                <p className='text-xs text-center text-gray-500 font-medium' style={{ marginTop: '6%' }}>Ảnh {index + 1}</p>
                               </div>
                             ))}
                           </div>
@@ -534,7 +636,7 @@ function StaffStoreDetail() {
                         </div>
                         <p className='text-sm text-gray-600 flex items-center gap-2'>
                           <Clock size={14} />
-                          {formatDate(store.createdAt)}
+                          {renderDateTime(store.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -575,7 +677,7 @@ function StaffStoreDetail() {
                           </div>
                           <p className='text-sm text-gray-600 flex items-center gap-2'>
                             <Clock size={14} />
-                            {formatDate(store.submittedDate)}
+                            {renderDateTime(store.submittedDate)}
                           </p>
                         </div>
                       </div>
@@ -614,7 +716,7 @@ function StaffStoreDetail() {
                           </div>
                           <p className='text-sm text-gray-600 flex items-center gap-2'>
                             <Clock size={14} />
-                            {formatDate(store.decisionDate)}
+                            {renderDateTime(store.decisionDate)}
                           </p>
                         </div>
                       </div>
@@ -626,7 +728,7 @@ function StaffStoreDetail() {
           </Card>
 
           {/* Staff Notes & Feedback */}
-          {store.staffNotes && (
+          {(store.staffNotes || store.staffImage) && (
             <Card className='border-l-4 border-l-indigo-500 shadow-sm'>
               <CardHeader>
                 <CardTitle className='flex items-center gap-2 text-indigo-600'>
@@ -644,21 +746,55 @@ function StaffStoreDetail() {
                       </p>
                     </div>
                   )}
-                  {store.staffImage && (
-                    <div>
-                      <h4 className='font-semibold text-gray-900 mb-3'>Ảnh từ nhân viên</h4>
-                      <div
-                        className='cursor-pointer hover:opacity-80 transition-opacity inline-block'
-                        onClick={() => handleImagePreview(store.staffImage!)}
-                      >
-                        <img
-                          src={store.staffImage}
-                          alt='Ảnh từ nhân viên'
-                          className='w-full max-w-md h-48 object-cover rounded-lg border-2 border-indigo-200 shadow-sm hover:shadow-md transition-shadow'
-                        />
+                  {(() => {
+                    // Xử lý cả trường hợp staffImage là string (có thể chứa nhiều URL phân cách bởi dấu phẩy) hoặc array
+                    let images: string[] = []
+                    
+                    if (Array.isArray(store.staffImage)) {
+                      // Nếu là array, filter các giá trị hợp lệ
+                      images = store.staffImage.filter((img) => img && typeof img === 'string' && img.trim() !== '')
+                    } else if (typeof store.staffImage === 'string' && store.staffImage.trim() !== '') {
+                      // Nếu là string, kiểm tra xem có chứa dấu phẩy không (nhiều URL)
+                      if (store.staffImage.includes(',')) {
+                        // Split thành mảng nếu có dấu phẩy
+                        images = store.staffImage
+                          .split(',')
+                          .map((url) => url.trim())
+                          .filter((url) => url !== '')
+                      } else {
+                        // Nếu không có dấu phẩy, chỉ là 1 URL
+                        images = [store.staffImage.trim()]
+                      }
+                    }
+                    
+                    if (images.length === 0) return null
+                    
+                    return (
+                      <div>
+                        <h4 className='font-semibold text-gray-900 mb-3'>Ảnh từ nhân viên</h4>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
+                          {images.map((imageUrl, index) => (
+                            <div
+                              key={index}
+                              className='cursor-pointer hover:opacity-80 transition-opacity'
+                              onClick={() => handleImagePreview(imageUrl)}
+                            >
+                              <img
+                                src={imageUrl}
+                                alt={`Ảnh từ nhân viên ${index + 1}`}
+                                className='w-full h-48 object-cover rounded-lg border-2 border-indigo-200 shadow-sm hover:shadow-md transition-shadow'
+                                onError={(e) => {
+                                  // Xử lý lỗi khi ảnh không load được
+                                  const target = e.target as HTMLImageElement
+                                  target.style.display = 'none'
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )
+                  })()}
                 </div>
               </CardContent>
             </Card>
@@ -705,12 +841,26 @@ function StaffStoreDetail() {
       </Dialog>
 
       {/* Review Modal */}
-      <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
-        <DialogContent className='max-w-2xl'>
-          <DialogHeader>
+      <Dialog
+        open={reviewModalOpen}
+        onOpenChange={(open) => {
+          setReviewModalOpen(open)
+          if (!open) {
+            setIsDragging(false)
+            setNewStatus('')
+            setStaffNotes('')
+            setSelectedImages([])
+            setImagePreviews([])
+            setErrors({})
+          }
+        }}
+      >
+        <DialogContent className='max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden'>
+          <DialogHeader className='px-6 pt-6 pb-4 flex-shrink-0'>
             <DialogTitle>Đánh giá cửa hàng: {store?.storeName}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleReviewSubmit} className='space-y-6'>
+          <form onSubmit={handleReviewSubmit} className='flex flex-col flex-1 min-h-0'>
+            <div className='flex-1 overflow-y-auto px-6 space-y-6'>
             {/* Quyết định */}
             <div className='space-y-2'>
               <Label htmlFor='newStatus' className='text-sm font-medium text-gray-700'>
@@ -748,53 +898,127 @@ function StaffStoreDetail() {
             <div className='space-y-2'>
               <Label htmlFor='staffImages' className='text-sm font-medium text-gray-700'>
                 Hình ảnh đính kèm (Bắt buộc) <span className='text-red-500'>*</span>
+                {selectedImages.length > 0 && (
+                  <span className='text-gray-500 font-normal ml-2'>
+                    ({selectedImages.length}/5)
+                  </span>
+                )}
               </Label>
               <div className='space-y-4'>
-                <div className='relative'>
-                  <input
-                    type='file'
-                    id='staffImages'
-                    multiple
-                    accept='image/*'
-                    onChange={handleImageChange}
-                    className='hidden'
-                  />
-                  <label htmlFor='staffImages'>
-                    <Button
-                      type='button'
-                      variant='outline'
-                      className='w-full flex items-center justify-center gap-2 cursor-pointer'
-                      onClick={() => document.getElementById('staffImages')?.click()}
+                <input
+                  type='file'
+                  id='staffImages'
+                  multiple
+                  accept='image/*'
+                  onChange={handleImageChange}
+                  className='hidden'
+                />
+                <div
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById('staffImages')?.click()}
+                  className={cn(
+                    'relative border-2 border-dashed rounded-lg p-8 transition-all duration-200 cursor-pointer',
+                    isDragging
+                      ? 'border-green-500 bg-green-50 scale-[1.02]'
+                      : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100',
+                    errors.staffImages && 'border-red-500 bg-red-50'
+                  )}
+                >
+                  <div className='flex flex-col items-center justify-center gap-4 pointer-events-none'>
+                    <div
+                      className={cn(
+                        'p-4 rounded-full transition-colors duration-200',
+                        isDragging ? 'bg-green-100' : 'bg-gray-200'
+                      )}
                     >
-                      <UploadIcon size={16} />
-                      Chọn hình ảnh
-                    </Button>
-                  </label>
+                      <UploadIcon
+                        size={32}
+                        className={cn(
+                          'transition-colors duration-200',
+                          isDragging ? 'text-green-600' : 'text-gray-600'
+                        )}
+                      />
+                    </div>
+                    <div className='text-center'>
+                      <p className='text-sm font-medium text-gray-700 mb-1'>
+                        {isDragging ? (
+                          <span className='text-green-600'>Thả hình ảnh vào đây</span>
+                        ) : (
+                          <span>Kéo thả hình ảnh vào đây hoặc click để chọn</span>
+                        )}
+                      </p>
+                      <p className='text-xs text-gray-500 mt-1'>
+                        Tối đa 5 hình ảnh (JPG, PNG, GIF)
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Image Previews */}
                 {imagePreviews.length > 0 && (
-                  <div className='grid grid-cols-2 gap-4'>
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className='relative border border-gray-200 rounded-lg p-2 bg-gray-50'>
-                        <img src={preview} alt={`Preview ${index + 1}`} className='w-full h-32 object-cover rounded' />
-                        <button
-                          type='button'
-                          onClick={() => removeImage(index)}
-                          className='absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors'
-                        >
-                          ×
-                        </button>
-                        <div className='text-xs text-gray-500 mt-1 truncate'>{selectedImages[index]?.name}</div>
+                  <>
+                    <style>
+                      {`
+                        .image-preview-scroll-container::-webkit-scrollbar {
+                          width: 8px;
+                        }
+                        .image-preview-scroll-container::-webkit-scrollbar-track {
+                          background: #f1f5f9;
+                          border-radius: 10px;
+                        }
+                        .image-preview-scroll-container::-webkit-scrollbar-thumb {
+                          background: #cbd5e1;
+                          border-radius: 10px;
+                          border: 2px solid #f1f5f9;
+                        }
+                        .image-preview-scroll-container::-webkit-scrollbar-thumb:hover {
+                          background: #94a3b8;
+                        }
+                        .image-preview-scroll-container {
+                          scrollbar-width: thin;
+                          scrollbar-color: #cbd5e1 #f1f5f9;
+                        }
+                      `}
+                    </style>
+                    <div
+                      className='image-preview-scroll-container max-h-[200px] sm:max-h-[250px] lg:max-h-[280px] overflow-y-auto overflow-x-hidden pr-2'
+                      style={{
+                        scrollBehavior: 'smooth'
+                      }}
+                    >
+                      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 pb-1'>
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className='relative border border-gray-200 rounded-lg p-2 bg-gray-50 min-w-0'>
+                            <div className='relative w-full aspect-square overflow-hidden rounded'>
+                              <img 
+                                src={preview} 
+                                alt={`Preview ${index + 1}`} 
+                                className='w-full h-full object-cover'
+                              />
+                              <button
+                                type='button'
+                                onClick={() => removeImage(index)}
+                                className='absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors shadow-md z-10'
+                              >
+                                ×
+                              </button>
+                            </div>
+                            <div className='text-xs text-gray-500 mt-2 truncate px-1'>{selectedImages[index]?.name}</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  </>
                 )}
                 {errors.staffImages && <p className='text-sm text-red-500'>{errors.staffImages}</p>}
               </div>
             </div>
 
-            <DialogFooter>
+            </div>
+            <DialogFooter className='px-6 pb-6 pt-4 border-t bg-gray-50 flex-shrink-0 rounded-b-lg'>
               <Button
                 type='button'
                 variant='outline'
@@ -805,12 +1029,17 @@ function StaffStoreDetail() {
                   setSelectedImages([])
                   setImagePreviews([])
                   setErrors({})
+                  setIsDragging(false)
                 }}
                 disabled={reviewLoading}
               >
                 Hủy
               </Button>
-              <Button type='submit' disabled={reviewLoading} className='bg-green-500 hover:bg-green-600 text-white'>
+              <Button 
+                type='submit' 
+                disabled={reviewLoading} 
+                className='bg-green-500 hover:bg-green-600 text-white'
+              >
                 {reviewLoading ? (
                   <>
                     <Loader2 className='mr-2 h-4 w-4 animate-spin' />
