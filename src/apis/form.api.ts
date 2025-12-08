@@ -116,10 +116,17 @@ export const formApi = {
       })
     }
 
-    const response = (await axiosInstance.get(`/Issue?${queryParams.toString()}`)) as ApiResponseWithPagination<FormListResponseData>
-    // axiosInstance đã trả về response.data, nên response đã là ApiResponseWithPagination<FormListResponseData>
-    // response.data là FormListResponseData có property issues
-    return response.data?.issues || []
+    const response = (await axiosInstance.get(`/Issue?${queryParams.toString()}`)) as ApiResponseWithPagination<FormListResponseData | FormDTO[]>
+    // axiosInstance đã trả về response.data
+    // Backend có thể trả về data là array trực tiếp hoặc object có property issues
+    if (Array.isArray(response.data)) {
+      // Nếu data là array trực tiếp
+      return response.data
+    } else if (response.data && typeof response.data === 'object' && 'issues' in response.data) {
+      // Nếu data là object có property issues
+      return (response.data as FormListResponseData).issues || []
+    }
+    return []
   },
 
   // Admin APIs
@@ -154,10 +161,17 @@ export const formApi = {
       })
     }
 
-    const response = (await axiosInstance.get(`/Issue?${queryParams.toString()}`)) as ApiResponseWithPagination<FormListResponseData>
-    // axiosInstance đã trả về response.data, nên response đã là ApiResponseWithPagination<FormListResponseData>
-    // response.data là FormListResponseData có property issues
-    return response.data?.issues || []
+    const response = (await axiosInstance.get(`/Issue?${queryParams.toString()}`)) as ApiResponseWithPagination<FormListResponseData | FormDTO[]>
+    // axiosInstance đã trả về response.data
+    // Backend có thể trả về data là array trực tiếp hoặc object có property issues
+    if (Array.isArray(response.data)) {
+      // Nếu data là array trực tiếp
+      return response.data
+    } else if (response.data && typeof response.data === 'object' && 'issues' in response.data) {
+      // Nếu data là object có property issues
+      return (response.data as FormListResponseData).issues || []
+    }
+    return []
   },
 
   // Staff APIs
@@ -187,10 +201,17 @@ export const formApi = {
       })
     }
 
-    const response = (await axiosInstance.get(`/Issue?${queryParams.toString()}`)) as ApiResponseWithPagination<FormListResponseData>
-    // axiosInstance đã trả về response.data, nên response đã là ApiResponseWithPagination<FormListResponseData>
-    // response.data là FormListResponseData có property issues
-    return response.data?.issues || []
+    const response = (await axiosInstance.get(`/Issue?${queryParams.toString()}`)) as ApiResponseWithPagination<FormListResponseData | FormDTO[]>
+    // axiosInstance đã trả về response.data
+    // Backend có thể trả về data là array trực tiếp hoặc object có property issues
+    if (Array.isArray(response.data)) {
+      // Nếu data là array trực tiếp
+      return response.data
+    } else if (response.data && typeof response.data === 'object' && 'issues' in response.data) {
+      // Nếu data là object có property issues
+      return (response.data as FormListResponseData).issues || []
+    }
+    return []
   },
 
   // Seller APIs
