@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -20,6 +20,18 @@ function CreateMyStoryPage() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [storeId, setStoreId] = useState<string | null>(null)
+  const [isDraggingThumbnail, setIsDraggingThumbnail] = useState(false)
+  const dragCounterThumbnail = React.useRef(0)
+  const [isDraggingSingleImage, setIsDraggingSingleImage] = useState(false)
+  const dragCounterSingleImage = React.useRef(0)
+  const [isDraggingGallery, setIsDraggingGallery] = useState(false)
+  const dragCounterGallery = React.useRef(0)
+  const [isDraggingVideoOpener, setIsDraggingVideoOpener] = useState(false)
+  const dragCounterVideoOpener = React.useRef(0)
+  const [isDraggingVideoProcess, setIsDraggingVideoProcess] = useState(false)
+  const dragCounterVideoProcess = React.useRef(0)
+  const [isDraggingVideoTestimonial, setIsDraggingVideoTestimonial] = useState(false)
+  const dragCounterVideoTestimonial = React.useRef(0)
 
   const [storyData, setStoryData] = useState({
     Title: '',
@@ -744,9 +756,65 @@ function CreateMyStoryPage() {
                 <p className='text-xs text-gray-500 mt-1 mb-2'>
                   Ảnh này sẽ hiển thị ở đầu câu chuyện và trong danh sách câu chuyện của cửa hàng
                 </p>
-                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center'>
+                <div
+                  className={`mt-2 border-2 border-dashed rounded-lg p-4 text-center transition-all duration-200 relative overflow-hidden ${
+                    isDraggingThumbnail
+                      ? 'border-green-500 bg-green-50 scale-[1.02] shadow-lg'
+                      : 'border-gray-300 hover:border-green-400'
+                  }`}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterThumbnail.current++
+                    if (dragCounterThumbnail.current === 1) {
+                      setIsDraggingThumbnail(true)
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterThumbnail.current--
+                    if (dragCounterThumbnail.current === 0) {
+                      setIsDraggingThumbnail(false)
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (dragCounterThumbnail.current === 0) {
+                      dragCounterThumbnail.current = 1
+                      setIsDraggingThumbnail(true)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterThumbnail.current = 0
+                    setIsDraggingThumbnail(false)
+
+                    const files = e.dataTransfer.files
+                    if (files.length > 0) {
+                      const file = files[0]
+                      if (file.type.startsWith('image/')) {
+                        handleFileChange('ThumbnailImage', file)
+                      } else {
+                        toast.error('Chỉ được upload file ảnh!')
+                      }
+                    }
+                  }}
+                >
+                  {/* Overlay khi đang kéo thả */}
+                  {isDraggingThumbnail && (
+                    <div className='absolute inset-0 bg-green-50/90 flex items-center justify-center z-10 transition-all duration-200'>
+                      <div className='text-center transform transition-transform duration-200'>
+                        <div className='text-green-600 font-semibold text-lg mb-2'>Thả ảnh vào đây</div>
+                        <div className='text-green-500 text-sm'>PNG, JPG tối đa 5MB</div>
+                      </div>
+                    </div>
+                  )}
+
                   {storyData.ThumbnailImage ? (
-                    <div className='space-y-2'>
+                    <div className={`space-y-2 transition-all duration-200 ${isDraggingThumbnail ? 'opacity-30' : 'opacity-100'}`}>
                       <img
                         src={URL.createObjectURL(storyData.ThumbnailImage)}
                         alt='Ảnh đại diện câu chuyện'
@@ -759,9 +827,9 @@ function CreateMyStoryPage() {
                       </Button>
                     </div>
                   ) : (
-                    <>
+                    <div className={`transition-all duration-200 ${isDraggingThumbnail ? 'opacity-0 scale-95' : 'opacity-100'}`}>
                       <ImageIcon className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                      <p className='text-gray-500 mb-2 text-sm'>Tải lên ảnh đại diện</p>
+                      <p className='text-gray-500 mb-2 text-sm'>Kéo thả hoặc click để tải ảnh đại diện</p>
                       <p className='text-xs text-gray-400 mb-3'>Định dạng: PNG, JPG. Kích thước tối đa: 5MB</p>
                       <input
                         type='file'
@@ -774,7 +842,7 @@ function CreateMyStoryPage() {
                         <Upload className='w-4 h-4 mr-1' />
                         Chọn ảnh đại diện
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
@@ -821,9 +889,65 @@ function CreateMyStoryPage() {
                 <p className='text-xs text-gray-500 mt-1 mb-2'>
                   Video này sẽ hiển thị ngay sau phần giới thiệu để thu hút người xem
                 </p>
-                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4'>
+                <div
+                  className={`mt-2 border-2 border-dashed rounded-lg p-4 transition-all duration-200 relative overflow-hidden ${
+                    isDraggingVideoOpener
+                      ? 'border-green-500 bg-green-50 scale-[1.02] shadow-lg'
+                      : 'border-gray-300 hover:border-green-400'
+                  }`}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterVideoOpener.current++
+                    if (dragCounterVideoOpener.current === 1) {
+                      setIsDraggingVideoOpener(true)
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterVideoOpener.current--
+                    if (dragCounterVideoOpener.current === 0) {
+                      setIsDraggingVideoOpener(false)
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (dragCounterVideoOpener.current === 0) {
+                      dragCounterVideoOpener.current = 1
+                      setIsDraggingVideoOpener(true)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterVideoOpener.current = 0
+                    setIsDraggingVideoOpener(false)
+
+                    const files = e.dataTransfer.files
+                    if (files.length > 0) {
+                      const file = files[0]
+                      if (file.type.startsWith('video/')) {
+                        handleFileChange('VideoOpener', file)
+                      } else {
+                        toast.error('Chỉ được upload file video!')
+                      }
+                    }
+                  }}
+                >
+                  {/* Overlay khi đang kéo thả */}
+                  {isDraggingVideoOpener && (
+                    <div className='absolute inset-0 bg-green-50/90 flex items-center justify-center z-10 transition-all duration-200'>
+                      <div className='text-center transform transition-transform duration-200'>
+                        <div className='text-green-600 font-semibold text-lg mb-2'>Thả video vào đây</div>
+                        <div className='text-green-500 text-sm'>MP4, MOV tối đa 50MB</div>
+                      </div>
+                    </div>
+                  )}
+
                   {storyData.VideoOpener ? (
-                    <div className='space-y-2'>
+                    <div className={`space-y-2 transition-all duration-200 ${isDraggingVideoOpener ? 'opacity-30' : 'opacity-100'}`}>
                       <video src={URL.createObjectURL(storyData.VideoOpener)} controls className='w-full rounded' />
                       <p className='text-sm text-gray-500'>{storyData.VideoOpener.name}</p>
                       <Button variant='outline' size='sm' onClick={() => handleFileChange('VideoOpener', null)}>
@@ -832,9 +956,9 @@ function CreateMyStoryPage() {
                       </Button>
                     </div>
                   ) : (
-                    <>
+                    <div className={`text-center transition-all duration-200 ${isDraggingVideoOpener ? 'opacity-0 scale-95' : 'opacity-100'}`}>
                       <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                      <p className='text-gray-500 mb-2 text-sm'>Tải lên video mở đầu</p>
+                      <p className='text-gray-500 mb-2 text-sm'>Kéo thả hoặc click để tải video mở đầu</p>
                       <p className='text-xs text-gray-400 mb-3'>Định dạng: MP4, MOV. Kích thước tối đa: 50MB</p>
                       <input
                         type='file'
@@ -843,11 +967,11 @@ function CreateMyStoryPage() {
                         className='hidden'
                         id='video-opener-upload'
                       />
-                      <Button variant='outline' size='sm' onClick={() => document.getElementById('video-opener-upload')?.click()}>
+                      <Button variant='outline' size='sm' onClick={() => document.getElementById('video-opener-upload')?.click()} className='mx-auto'>
                         <Upload className='w-4 h-4 mr-1' />
                         Chọn video mở đầu
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
                 <div className='mt-2'>
@@ -888,9 +1012,65 @@ function CreateMyStoryPage() {
                 <p className='text-xs text-gray-500 mt-1 mb-2'>
                   Tải lên một hình ảnh đẹp để minh họa cho câu chuyện của bạn
                 </p>
-                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4'>
+                <div
+                  className={`mt-2 border-2 border-dashed rounded-lg p-4 transition-all duration-200 relative overflow-hidden ${
+                    isDraggingSingleImage
+                      ? 'border-green-500 bg-green-50 scale-[1.02] shadow-lg'
+                      : 'border-gray-300 hover:border-green-400'
+                  }`}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterSingleImage.current++
+                    if (dragCounterSingleImage.current === 1) {
+                      setIsDraggingSingleImage(true)
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterSingleImage.current--
+                    if (dragCounterSingleImage.current === 0) {
+                      setIsDraggingSingleImage(false)
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (dragCounterSingleImage.current === 0) {
+                      dragCounterSingleImage.current = 1
+                      setIsDraggingSingleImage(true)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterSingleImage.current = 0
+                    setIsDraggingSingleImage(false)
+
+                    const files = e.dataTransfer.files
+                    if (files.length > 0) {
+                      const file = files[0]
+                      if (file.type.startsWith('image/')) {
+                        handleFileChange('SingleImage', file)
+                      } else {
+                        toast.error('Chỉ được upload file ảnh!')
+                      }
+                    }
+                  }}
+                >
+                  {/* Overlay khi đang kéo thả */}
+                  {isDraggingSingleImage && (
+                    <div className='absolute inset-0 bg-green-50/90 flex items-center justify-center z-10 transition-all duration-200'>
+                      <div className='text-center transform transition-transform duration-200'>
+                        <div className='text-green-600 font-semibold text-lg mb-2'>Thả ảnh vào đây</div>
+                        <div className='text-green-500 text-sm'>PNG, JPG tối đa 5MB</div>
+                      </div>
+                    </div>
+                  )}
+
                   {storyData.SingleImage ? (
-                    <div className='space-y-2'>
+                    <div className={`space-y-2 transition-all duration-200 ${isDraggingSingleImage ? 'opacity-30' : 'opacity-100'}`}>
                       <img
                         src={URL.createObjectURL(storyData.SingleImage)}
                         alt='Hình ảnh minh họa câu chuyện'
@@ -903,9 +1083,9 @@ function CreateMyStoryPage() {
                       </Button>
                     </div>
                   ) : (
-                    <>
+                    <div className={`text-center transition-all duration-200 ${isDraggingSingleImage ? 'opacity-0 scale-95' : 'opacity-100'}`}>
                       <ImageIcon className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                      <p className='text-gray-500 mb-2 text-sm'>Tải lên hình ảnh minh họa</p>
+                      <p className='text-gray-500 mb-2 text-sm'>Kéo thả hoặc click để tải hình ảnh minh họa</p>
                       <p className='text-xs text-gray-400 mb-3'>Định dạng: PNG, JPG. Kích thước tối đa: 5MB</p>
                       <input
                         type='file'
@@ -914,11 +1094,11 @@ function CreateMyStoryPage() {
                         className='hidden'
                         id='single-image-upload'
                       />
-                      <Button variant='outline' size='sm' onClick={() => document.getElementById('single-image-upload')?.click()}>
+                      <Button variant='outline' size='sm' onClick={() => document.getElementById('single-image-upload')?.click()} className='mx-auto'>
                         <Upload className='w-4 h-4 mr-1' />
                         Chọn hình ảnh
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
                 <div className='mt-2'>
@@ -968,28 +1148,89 @@ function CreateMyStoryPage() {
                 <p className='text-xs text-gray-500 mb-2'>
                   Tải lên tối đa 3 hình ảnh để tạo bộ sưu tập minh họa cho câu chuyện
                 </p>
-                <div className='border-2 border-dashed border-gray-300 rounded-lg p-4'>
-                  <ImageIcon className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                  <p className='text-gray-500 mb-2 text-sm'>Tải lên nhiều ảnh (tối đa 3 ảnh)</p>
-                  <p className='text-xs text-gray-400 mb-3'>Định dạng: PNG, JPG. Mỗi ảnh tối đa: 5MB</p>
-                  <input
-                    type='file'
-                    accept='image/*'
-                    multiple
-                    onChange={(e) => handleGalleryImagesChange(e.target.files)}
-                    className='hidden'
-                    id='gallery-images-upload'
-                    disabled={storyData.GalleryImages.length + storyData.GalleryImageUrls.length >= 3}
-                  />
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => document.getElementById('gallery-images-upload')?.click()}
-                    disabled={storyData.GalleryImages.length + storyData.GalleryImageUrls.length >= 3}
-                  >
-                    <Upload className='w-4 h-4 mr-1' />
-                    Chọn nhiều ảnh
-                  </Button>
+                <div
+                  className={`border-2 border-dashed rounded-lg p-4 transition-all duration-200 relative overflow-hidden ${
+                    isDraggingGallery
+                      ? 'border-green-500 bg-green-50 scale-[1.02] shadow-lg'
+                      : 'border-gray-300 hover:border-green-400'
+                  }`}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (storyData.GalleryImages.length + storyData.GalleryImageUrls.length < 3) {
+                      dragCounterGallery.current++
+                      if (dragCounterGallery.current === 1) {
+                        setIsDraggingGallery(true)
+                      }
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterGallery.current--
+                    if (dragCounterGallery.current === 0) {
+                      setIsDraggingGallery(false)
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (storyData.GalleryImages.length + storyData.GalleryImageUrls.length < 3 && dragCounterGallery.current === 0) {
+                      dragCounterGallery.current = 1
+                      setIsDraggingGallery(true)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterGallery.current = 0
+                    setIsDraggingGallery(false)
+
+                    if (storyData.GalleryImages.length + storyData.GalleryImageUrls.length >= 3) {
+                      toast.error('Đã đạt tối đa 3 ảnh')
+                      return
+                    }
+
+                    const files = e.dataTransfer.files
+                    if (files.length > 0) {
+                      handleGalleryImagesChange(files)
+                    }
+                  }}
+                >
+                  {/* Overlay khi đang kéo thả */}
+                  {isDraggingGallery && (
+                    <div className='absolute inset-0 bg-green-50/90 flex items-center justify-center z-10 transition-all duration-200'>
+                      <div className='text-center transform transition-transform duration-200'>
+                        <div className='text-green-600 font-semibold text-lg mb-2'>Thả ảnh vào đây</div>
+                        <div className='text-green-500 text-sm'>PNG, JPG tối đa 5MB mỗi ảnh</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`text-center transition-all duration-200 ${isDraggingGallery ? 'opacity-0 scale-95' : 'opacity-100'}`}>
+                    <ImageIcon className='w-8 h-8 text-gray-400 mx-auto mb-2' />
+                    <p className='text-gray-500 mb-2 text-sm'>Kéo thả hoặc click để tải nhiều ảnh (tối đa 3 ảnh)</p>
+                    <p className='text-xs text-gray-400 mb-3'>Định dạng: PNG, JPG. Mỗi ảnh tối đa: 5MB</p>
+                    <input
+                      type='file'
+                      accept='image/*'
+                      multiple
+                      onChange={(e) => handleGalleryImagesChange(e.target.files)}
+                      className='hidden'
+                      id='gallery-images-upload'
+                      disabled={storyData.GalleryImages.length + storyData.GalleryImageUrls.length >= 3}
+                    />
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => document.getElementById('gallery-images-upload')?.click()}
+                      disabled={storyData.GalleryImages.length + storyData.GalleryImageUrls.length >= 3}
+                      className='mx-auto'
+                    >
+                      <Upload className='w-4 h-4 mr-1' />
+                      Chọn nhiều ảnh
+                    </Button>
+                  </div>
                   {(storyData.GalleryImages.length > 0 || storyData.GalleryImageUrls.length > 0) && (
                     <div className='mt-4'>
                       <div className='grid grid-cols-3 gap-2'>
@@ -1107,9 +1348,65 @@ function CreateMyStoryPage() {
                 <p className='text-xs text-gray-500 mt-1 mb-2'>
                   Video này sẽ giúp khách hàng hiểu rõ hơn về quy trình sản xuất sản phẩm của bạn
                 </p>
-                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4'>
+                <div
+                  className={`mt-2 border-2 border-dashed rounded-lg p-4 transition-all duration-200 relative overflow-hidden ${
+                    isDraggingVideoProcess
+                      ? 'border-green-500 bg-green-50 scale-[1.02] shadow-lg'
+                      : 'border-gray-300 hover:border-green-400'
+                  }`}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterVideoProcess.current++
+                    if (dragCounterVideoProcess.current === 1) {
+                      setIsDraggingVideoProcess(true)
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterVideoProcess.current--
+                    if (dragCounterVideoProcess.current === 0) {
+                      setIsDraggingVideoProcess(false)
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (dragCounterVideoProcess.current === 0) {
+                      dragCounterVideoProcess.current = 1
+                      setIsDraggingVideoProcess(true)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterVideoProcess.current = 0
+                    setIsDraggingVideoProcess(false)
+
+                    const files = e.dataTransfer.files
+                    if (files.length > 0) {
+                      const file = files[0]
+                      if (file.type.startsWith('video/')) {
+                        handleFileChange('VideoProcess', file)
+                      } else {
+                        toast.error('Chỉ được upload file video!')
+                      }
+                    }
+                  }}
+                >
+                  {/* Overlay khi đang kéo thả */}
+                  {isDraggingVideoProcess && (
+                    <div className='absolute inset-0 bg-green-50/90 flex items-center justify-center z-10 transition-all duration-200'>
+                      <div className='text-center transform transition-transform duration-200'>
+                        <div className='text-green-600 font-semibold text-lg mb-2'>Thả video vào đây</div>
+                        <div className='text-green-500 text-sm'>MP4, MOV tối đa 50MB</div>
+                      </div>
+                    </div>
+                  )}
+
                   {storyData.VideoProcess ? (
-                    <div className='space-y-2'>
+                    <div className={`space-y-2 transition-all duration-200 ${isDraggingVideoProcess ? 'opacity-30' : 'opacity-100'}`}>
                       <video src={URL.createObjectURL(storyData.VideoProcess)} controls className='w-full rounded' />
                       <p className='text-sm text-gray-500'>{storyData.VideoProcess.name}</p>
                       <Button variant='outline' size='sm' onClick={() => handleFileChange('VideoProcess', null)}>
@@ -1118,9 +1415,9 @@ function CreateMyStoryPage() {
                       </Button>
                     </div>
                   ) : (
-                    <>
+                    <div className={`text-center transition-all duration-200 ${isDraggingVideoProcess ? 'opacity-0 scale-95' : 'opacity-100'}`}>
                       <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                      <p className='text-gray-500 mb-2 text-sm'>Tải lên video quy trình sản xuất</p>
+                      <p className='text-gray-500 mb-2 text-sm'>Kéo thả hoặc click để tải video quy trình sản xuất</p>
                       <p className='text-xs text-gray-400 mb-3'>Định dạng: MP4, MOV. Kích thước tối đa: 50MB</p>
                       <input
                         type='file'
@@ -1129,11 +1426,11 @@ function CreateMyStoryPage() {
                         className='hidden'
                         id='video-process-upload'
                       />
-                      <Button variant='outline' size='sm' onClick={() => document.getElementById('video-process-upload')?.click()}>
+                      <Button variant='outline' size='sm' onClick={() => document.getElementById('video-process-upload')?.click()} className='mx-auto'>
                         <Upload className='w-4 h-4 mr-1' />
                         Chọn video quy trình
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
                 <div className='mt-2'>
@@ -1174,9 +1471,65 @@ function CreateMyStoryPage() {
                 <p className='text-xs text-gray-500 mt-1 mb-2'>
                   Video này sẽ là lời kết thúc cho câu chuyện
                 </p>
-                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4'>
+                <div
+                  className={`mt-2 border-2 border-dashed rounded-lg p-4 transition-all duration-200 relative overflow-hidden ${
+                    isDraggingVideoTestimonial
+                      ? 'border-green-500 bg-green-50 scale-[1.02] shadow-lg'
+                      : 'border-gray-300 hover:border-green-400'
+                  }`}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterVideoTestimonial.current++
+                    if (dragCounterVideoTestimonial.current === 1) {
+                      setIsDraggingVideoTestimonial(true)
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterVideoTestimonial.current--
+                    if (dragCounterVideoTestimonial.current === 0) {
+                      setIsDraggingVideoTestimonial(false)
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (dragCounterVideoTestimonial.current === 0) {
+                      dragCounterVideoTestimonial.current = 1
+                      setIsDraggingVideoTestimonial(true)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    dragCounterVideoTestimonial.current = 0
+                    setIsDraggingVideoTestimonial(false)
+
+                    const files = e.dataTransfer.files
+                    if (files.length > 0) {
+                      const file = files[0]
+                      if (file.type.startsWith('video/')) {
+                        handleFileChange('VideoTestimonial', file)
+                      } else {
+                        toast.error('Chỉ được upload file video!')
+                      }
+                    }
+                  }}
+                >
+                  {/* Overlay khi đang kéo thả */}
+                  {isDraggingVideoTestimonial && (
+                    <div className='absolute inset-0 bg-green-50/90 flex items-center justify-center z-10 transition-all duration-200'>
+                      <div className='text-center transform transition-transform duration-200'>
+                        <div className='text-green-600 font-semibold text-lg mb-2'>Thả video vào đây</div>
+                        <div className='text-green-500 text-sm'>MP4, MOV tối đa 50MB</div>
+                      </div>
+                    </div>
+                  )}
+
                   {storyData.VideoTestimonial ? (
-                    <div className='space-y-2'>
+                    <div className={`space-y-2 transition-all duration-200 ${isDraggingVideoTestimonial ? 'opacity-30' : 'opacity-100'}`}>
                       <video src={URL.createObjectURL(storyData.VideoTestimonial)} controls className='w-full rounded' />
                       <p className='text-sm text-gray-500'>{storyData.VideoTestimonial.name}</p>
                       <Button variant='outline' size='sm' onClick={() => handleFileChange('VideoTestimonial', null)}>
@@ -1185,9 +1538,9 @@ function CreateMyStoryPage() {
                       </Button>
                     </div>
                   ) : (
-                    <>
+                    <div className={`text-center transition-all duration-200 ${isDraggingVideoTestimonial ? 'opacity-0 scale-95' : 'opacity-100'}`}>
                       <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                      <p className='text-gray-500 mb-2 text-sm'>Tải lên video tổng kết</p>
+                      <p className='text-gray-500 mb-2 text-sm'>Kéo thả hoặc click để tải video tổng kết</p>
                       <p className='text-xs text-gray-400 mb-3'>Định dạng: MP4, MOV. Kích thước tối đa: 50MB</p>
                       <input
                         type='file'
@@ -1196,11 +1549,11 @@ function CreateMyStoryPage() {
                         className='hidden'
                         id='video-testimonial-upload'
                       />
-                      <Button variant='outline' size='sm' onClick={() => document.getElementById('video-testimonial-upload')?.click()}>
+                      <Button variant='outline' size='sm' onClick={() => document.getElementById('video-testimonial-upload')?.click()} className='mx-auto'>
                         <Upload className='w-4 h-4 mr-1' />
                         Chọn video tổng kết
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
                 <div className='mt-2'>
@@ -1292,7 +1645,7 @@ function CreateMyStoryPage() {
 
         {/* Right Column - Live Preview (1/3) - Sticky */}
         <div className='lg:col-span-1'>
-          <div className='sticky top-24 self-start'>
+          <div className=' top-20 self-start'>
             <Card className='border-green-100 shadow-lg'>
               <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
                 <CardTitle className='text-green-700 flex items-center gap-2'>
