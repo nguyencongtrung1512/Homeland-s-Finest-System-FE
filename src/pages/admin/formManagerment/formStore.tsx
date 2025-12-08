@@ -47,17 +47,19 @@ export default function FormStoreManagement() {
   const loadForms = async () => {
     try {
       setLoading(true)
-      const response = await formApi.getAllForms({
+      // formApi.getAllForms đã trả về FormDTO[] (đã extract từ response.data.issues)
+      const formsArray = await formApi.getAllForms({
         pageSize: 0,
         pageNumber: 1,
         sortBy: 'createdat',
         sortOrder: 'desc',
         type: 'ReportSeller' as FormType
       })
-      setForms(response || [])
+      setForms(Array.isArray(formsArray) ? formsArray : [])
     } catch (error) {
       console.error('Error loading store complaints:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách khiếu nại cửa hàng')
+      setForms([]) // Set empty array on error
     } finally {
       setLoading(false)
     }

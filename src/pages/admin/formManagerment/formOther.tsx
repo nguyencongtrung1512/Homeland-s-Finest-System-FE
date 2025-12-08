@@ -38,17 +38,19 @@ export default function FormOtherManagement() {
   const loadForms = async () => {
     try {
       setLoading(true)
-      const response = await formApi.getAllForms({
+      // formApi.getAllForms đã trả về FormDTO[] (đã extract từ response.data.issues)
+      const formsArray = await formApi.getAllForms({
         pageSize: 0,
         pageNumber: 1,
         sortBy: 'createdat',
         sortOrder: 'desc',
         type: 'Orther' as FormType
       })
-      setForms(response || [])
+      setForms(Array.isArray(formsArray) ? formsArray : [])
     } catch (error) {
       console.error('Error loading support forms:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách hỗ trợ/khác')
+      setForms([]) // Set empty array on error
     } finally {
       setLoading(false)
     }

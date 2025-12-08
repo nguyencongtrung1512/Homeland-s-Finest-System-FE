@@ -45,26 +45,33 @@ export interface AdminUpdateRequest {
 export interface FormDTO {
   id: string
   userId: string
-  storeId?: string
-  orderId?: string
+  storeId?: string | null
+  orderId?: string | null
   type: FormType
   subject: string
   description: string
   imageUrl: string[]
   status: FormStatus
-  reply?: string
-  staffId?: string
-  staffName?: string
-  lastEditId?: string
-  sellerReply?: string
-  sellerImages?: string[]
+  reply?: string | null
+  staffId?: string | null
+  staffName?: string | null
+  lastEditId?: string | null
+  sellerReply?: string | null
+  sellerImages?: string[] | null
   sellerReplyAt?: string
   deadlineForSellerReply?: string
   isSellerReplied?: boolean
-  adminId?: string
-  adminText?: string
+  adminId?: string | null
+  adminText?: string | null
   createdAt: string
   updatedAt: string
+  hasIncreasedReportCount?: boolean
+}
+
+// Response data structure for list endpoints
+export interface FormListResponseData {
+  issues: FormDTO[]
+  totalViolationCount?: number | null
 }
 
 export interface FormQueryParams {

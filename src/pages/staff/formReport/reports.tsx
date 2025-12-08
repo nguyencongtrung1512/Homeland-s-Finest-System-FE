@@ -56,7 +56,9 @@ function ReportManagement() {
       setLoading(true)
       const response = await staffApi.getMyForms()
       console.log('Staff forms API response:', response)
-      setForms(response.data || [])
+      // axiosInstance đã trả về response.data, nên response đã là ApiResponseWithPagination
+      // Staff API trả về Data là array trực tiếp (không có issues wrapper)
+      setForms(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
       console.error('Error loading staff forms:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách khiếu nại')

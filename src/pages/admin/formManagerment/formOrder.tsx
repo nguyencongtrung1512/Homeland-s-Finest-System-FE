@@ -46,28 +46,15 @@ export default function FormOrderManagement() {
   const loadForms = async () => {
     try {
       setLoading(true)
-      const response = await formApi.getAllForms({
+      // formApi.getAllForms đã trả về FormDTO[] (đã extract từ response.data.issues)
+      const formsArray = await formApi.getAllForms({
         pageSize: 0,
         pageNumber: 1,
         sortBy: 'createdat',
         sortOrder: 'desc',
         type: 'ComplaintOrder' as FormType
       })
-      console.log('response', response)
-      // API returns an object with 'issues' property containing the array
-      let formsArray: FormDTO[] = []
-      if (Array.isArray(response)) {
-        formsArray = response
-      } else if (response && typeof response === 'object') {
-        // Check if response has 'issues' property
-        const responseObj = response as { issues?: FormDTO[]; data?: FormDTO[] }
-        if (responseObj.issues && Array.isArray(responseObj.issues)) {
-          formsArray = responseObj.issues
-        } else if (responseObj.data && Array.isArray(responseObj.data)) {
-          formsArray = responseObj.data
-        }
-      }
-      setForms(formsArray)
+      setForms(Array.isArray(formsArray) ? formsArray : [])
     } catch (error) {
       console.error('Error loading complaint orders:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách khiếu nại đơn hàng')

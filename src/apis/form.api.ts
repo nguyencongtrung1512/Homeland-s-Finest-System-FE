@@ -3,10 +3,30 @@ import type {
   AdminUpdateRequest,
   CreateFormRequest,
   FormDTO,
+  FormListResponseData,
   FormQueryParams,
   StaffUpdateRequest,
   UpdateFormRequest
 } from '../types/form.type'
+
+// API Response types matching backend
+interface ApiResponse<T> {
+  status: number
+  message: string
+  data: T
+}
+
+interface ApiResponseWithPagination<T> {
+  status: number
+  message: string
+  data: T
+  pagination?: {
+    pageNumber: number
+    pageSize: number
+    totalItems: number
+    totalPages?: number
+  }
+}
 
 export const formApi = {
   // Customer APIs
@@ -25,11 +45,12 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.post('/Issue', formData, {
+    const response = (await axiosInstance.post('/Issue', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
-    })
+    })) as ApiResponse<FormDTO>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponse<FormDTO>
     return response.data
   },
 
@@ -56,25 +77,30 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.put(`/Issue/customer-update/${id}`, formData, {
+    const response = (await axiosInstance.put(`/Issue/customer-update/${id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
-    })
+    })) as ApiResponse<FormDTO>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponse<FormDTO>
     return response.data
   },
 
-  cancelForm: async (id: string): Promise<void> => {
-    await axiosInstance.put(`/Issue/cancel-form/${id}`)
+  cancelForm: async (id: string): Promise<FormDTO> => {
+    const response = (await axiosInstance.put(`/Issue/cancel-Issue/${id}`)) as ApiResponse<FormDTO>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponse<FormDTO>
+    return response.data
   },
 
   getFormById: async (id: string): Promise<FormDTO> => {
-    const response = await axiosInstance.get(`/Issue/${id}`)
+    const response = (await axiosInstance.get(`/Issue/${id}`)) as ApiResponse<FormDTO>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponse<FormDTO>
     return response.data
   },
 
   getFormByOrderId: async (orderId: string): Promise<FormDTO> => {
-    const response = await axiosInstance.get(`/Issue/detail-by-orderId/${orderId}`)
+    const response = (await axiosInstance.get(`/Issue/detail-by-orderId/${orderId}`)) as ApiResponse<FormDTO>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponse<FormDTO>
     return response.data
   },
 
@@ -90,25 +116,31 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/Issue?${queryParams.toString()}`)
-    return response.data
+    const response = (await axiosInstance.get(`/Issue?${queryParams.toString()}`)) as ApiResponseWithPagination<FormListResponseData>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponseWithPagination<FormListResponseData>
+    // response.data là FormListResponseData có property issues
+    return response.data?.issues || []
   },
 
   // Admin APIs
-  assignStaff: async (staffId: string, formId: string): Promise<void> => {
-    await axiosInstance.put(`/Issue/Admin/assign-staff/${staffId}/Issue/${formId}`)
+  assignStaff: async (staffId: string, formId: string): Promise<FormDTO> => {
+    const response = (await axiosInstance.put(`/Issue/Admin/assign-staff/${staffId}/Issue/${formId}`)) as ApiResponse<FormDTO>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponse<FormDTO>
+    return response.data
   },
 
-  adminUpdateForm: async (formId: string, data: AdminUpdateRequest): Promise<void> => {
+  adminUpdateForm: async (formId: string, data: AdminUpdateRequest): Promise<FormDTO> => {
     const formData = new FormData()
     formData.append('AdminText', data.adminText)
     formData.append('Status', data.status)
 
-    await axiosInstance.put(`/Issue/${formId}/admin-update`, formData, {
+    const response = (await axiosInstance.put(`/Issue/${formId}/admin-update`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
-    })
+    })) as ApiResponse<FormDTO>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponse<FormDTO>
+    return response.data
   },
 
   getAllForms: async (params?: Partial<FormQueryParams>): Promise<FormDTO[]> => {
@@ -122,21 +154,25 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/Issue?${queryParams.toString()}`)
-    return response.data
+    const response = (await axiosInstance.get(`/Issue?${queryParams.toString()}`)) as ApiResponseWithPagination<FormListResponseData>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponseWithPagination<FormListResponseData>
+    // response.data là FormListResponseData có property issues
+    return response.data?.issues || []
   },
 
   // Staff APIs
-  staffUpdateForm: async (formId: string, data: StaffUpdateRequest): Promise<void> => {
+  staffUpdateForm: async (formId: string, data: StaffUpdateRequest): Promise<FormDTO> => {
     const formData = new FormData()
     formData.append('Reply', data.reply)
     formData.append('Status', data.status)
 
-    await axiosInstance.put(`/Issue/${formId}/staff-update`, formData, {
+    const response = (await axiosInstance.put(`/Issue/${formId}/staff-update`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
-    })
+    })) as ApiResponse<FormDTO>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponse<FormDTO>
+    return response.data
   },
 
   getAssignedForms: async (staffId: string, params?: Partial<FormQueryParams>): Promise<FormDTO[]> => {
@@ -151,12 +187,14 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/Issue?${queryParams.toString()}`)
-    return response.data
+    const response = (await axiosInstance.get(`/Issue?${queryParams.toString()}`)) as ApiResponseWithPagination<FormListResponseData>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponseWithPagination<FormListResponseData>
+    // response.data là FormListResponseData có property issues
+    return response.data?.issues || []
   },
 
   // Seller APIs
-  getFormsByStoreId: async (storeId: string, params?: Partial<FormQueryParams>): Promise<FormDTO[]> => {
+  getFormsByStoreId: async (storeId: string, params?: Partial<FormQueryParams>): Promise<FormListResponseData> => {
     const queryParams = new URLSearchParams()
     queryParams.append('storeId', storeId)
 
@@ -168,11 +206,13 @@ export const formApi = {
       })
     }
 
-    const response = await axiosInstance.get(`/Issue?${queryParams.toString()}`)
-    return response.data
+    const response = (await axiosInstance.get(`/Issue?${queryParams.toString()}`)) as ApiResponseWithPagination<FormListResponseData>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponseWithPagination<FormListResponseData>
+    // response.data là FormListResponseData có property issues và totalViolationCount
+    return response.data || { issues: [], totalViolationCount: null }
   },
 
-  sellerUpdateForm: async (formId: string, data: { sellerReply: string; sellerImageFiles?: File[] }): Promise<void> => {
+  sellerUpdateForm: async (formId: string, data: { sellerReply: string; sellerImageFiles?: File[] }): Promise<FormDTO> => {
     const formData = new FormData()
     formData.append('SellerReply', data.sellerReply)
 
@@ -182,10 +222,12 @@ export const formApi = {
       })
     }
 
-    await axiosInstance.put(`/Issue/seller-update/${formId}`, formData, {
+    const response = (await axiosInstance.put(`/Issue/seller-update/${formId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
-    })
+    })) as ApiResponse<FormDTO>
+    // axiosInstance đã trả về response.data, nên response đã là ApiResponse<FormDTO>
+    return response.data
   }
 }

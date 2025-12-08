@@ -19,6 +19,7 @@ import { CopyButton } from '../../../components/ui/copy'
 function ComplainSeller() {
   const { store, loading: storeLoading } = useStore()
   const [forms, setForms] = useState<FormDTO[]>([])
+  const [totalViolationCount, setTotalViolationCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [selectedForm, setSelectedForm] = useState<FormDTO | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -40,32 +41,24 @@ function ComplainSeller() {
 
     try {
       setLoading(true)
-      const response = await formApi.getFormsByStoreId(store.id, {
+      // formApi.getFormsByStoreId trả về FormListResponseData có issues và totalViolationCount
+      const responseData = await formApi.getFormsByStoreId(store.id, {
         pageSize: 0,
         pageNumber: 1,
         sortBy: 'createdat',
         sortOrder: 'desc'
       })
-      // API returns an object with 'issues' property containing the array
-      let formsArray: FormDTO[] = []
-      if (Array.isArray(response)) {
-        formsArray = response
-      } else if (response && typeof response === 'object') {
-        // Check if response has 'issues' property
-        const responseObj = response as { issues?: FormDTO[]; data?: FormDTO[] }
-        if (responseObj.issues && Array.isArray(responseObj.issues)) {
-          formsArray = responseObj.issues
-        } else if (responseObj.data && Array.isArray(responseObj.data)) {
-          formsArray = responseObj.data
-        }
-      }
       // Filter to only show ComplaintOrder and ReportSeller
-      const filteredForms = formsArray.filter((form) => form.type === 'ComplaintOrder' || form.type === 'ReportSeller')
+      const filteredForms = Array.isArray(responseData.issues)
+        ? responseData.issues.filter((form) => form.type === 'ComplaintOrder' || form.type === 'ReportSeller')
+        : []
       setForms(filteredForms)
+      setTotalViolationCount(responseData.totalViolationCount ?? null)
     } catch (error) {
       console.error('Error loading forms:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách khiếu nại')
       setForms([]) // Set empty array on error
+      setTotalViolationCount(null)
     } finally {
       setLoading(false)
     }
@@ -204,6 +197,10 @@ function ComplainSeller() {
       toast.error('Bạn đã phản hồi khiếu nại này. Đơn sẽ được nhân viên xử lý và bạn không thể chỉnh sửa phản hồi.')
       return
     }
+    // Không cho phép phản hồi nếu đã quá hạn
+    if (form.deadlineForSellerReply && isDeadlineExpired(form.deadlineForSellerReply)) {
+      return // Ẩn button nên không cần toast
+    }
     setSelectedForm(form)
     setSellerReply('')
     setSellerImages([])
@@ -247,6 +244,11 @@ function ComplainSeller() {
       return
     }
 
+    // Không cho phép phản hồi nếu đã quá hạn
+    if (selectedForm.deadlineForSellerReply && isDeadlineExpired(selectedForm.deadlineForSellerReply)) {
+      return // Ẩn button nên không cần toast
+    }
+
     // Backend requires proof images
     if (!sellerImages || sellerImages.length === 0) {
       toast.error('Vui lòng cập nhật ảnh bằng chứng')
@@ -287,10 +289,102 @@ function ComplainSeller() {
     }
   }
 
+  // Helper function to parse deadline date from "HH:mm:ss dd/MM/yyyy" format
+  const parseDeadlineDate = useCallback((deadlineString: string): Date | null => {
+    if (!deadlineString || deadlineString.trim() === '') return null
+    try {
+      // Parse format "HH:mm:ss dd/MM/yyyy"
+      const match = deadlineString.match(/(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})/)
+      if (match) {
+        const [, hours, minutes, seconds, day, month, year] = match
+        return new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hours),
+          parseInt(minutes),
+          parseInt(seconds)
+        )
+      }
+      // Try ISO format
+      const date = new Date(deadlineString)
+      return isNaN(date.getTime()) ? null : date
+    } catch {
+      return null
+    }
+  }, [])
+
+  // Check if deadline is expired
+  const isDeadlineExpired = useCallback(
+    (deadlineString: string | undefined): boolean => {
+      if (!deadlineString) return false
+      const deadline = parseDeadlineDate(deadlineString)
+      if (!deadline) return false
+      return new Date() > deadline
+    },
+    [parseDeadlineDate]
+  )
+
+  // Check if deadline is expiring soon (within 24 hours)
+  const isDeadlineExpiringSoon = useCallback(
+    (deadlineString: string | undefined): boolean => {
+      if (!deadlineString) return false
+      const deadline = parseDeadlineDate(deadlineString)
+      if (!deadline) return false
+      const now = new Date()
+      const diffMs = deadline.getTime() - now.getTime()
+      const diffHours = diffMs / (1000 * 60 * 60)
+      return diffHours > 0 && diffHours <= 24
+    },
+    [parseDeadlineDate]
+  )
+
+  // Get days remaining until deadline
+  const getDaysRemaining = useCallback(
+    (deadlineString: string | undefined): number | null => {
+      if (!deadlineString) return null
+      const deadline = parseDeadlineDate(deadlineString)
+      if (!deadline) return null
+      const now = new Date()
+      const diffMs = deadline.getTime() - now.getTime()
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+      return diffDays
+    },
+    [parseDeadlineDate]
+  )
+
   // Filter forms that need seller response (only Confirmed status)
   const formsNeedingResponse = useMemo(() => {
-    return forms.filter((form) => form.status === 'Confirmed')
+    return forms.filter((form) => form.status === 'Confirmed' && !form.isSellerReplied)
   }, [forms])
+
+  // Filter forms with violations
+  const formsWithViolations = useMemo(() => {
+    return forms.filter((form) => form.hasIncreasedReportCount === true)
+  }, [forms])
+
+  // Filter forms with expired deadlines
+  const formsWithExpiredDeadlines = useMemo(() => {
+    return forms.filter(
+      (form) =>
+        form.status === 'Confirmed' &&
+        !form.isSellerReplied &&
+        form.deadlineForSellerReply &&
+        isDeadlineExpired(form.deadlineForSellerReply)
+    )
+  }, [forms, isDeadlineExpired])
+
+  // Filter forms with expiring soon deadlines
+  const formsWithExpiringSoonDeadlines = useMemo(() => {
+    return forms.filter(
+      (form) =>
+        form.status === 'Confirmed' &&
+        !form.isSellerReplied &&
+        form.deadlineForSellerReply &&
+        isDeadlineExpiringSoon(form.deadlineForSellerReply) &&
+        !isDeadlineExpired(form.deadlineForSellerReply)
+    )
+  }, [forms, isDeadlineExpiringSoon, isDeadlineExpired])
 
   // Calculate attachment images when selectedForm changes
   const attachmentImages = useMemo(() => {
@@ -327,7 +421,7 @@ function ComplainSeller() {
       </div>
 
       {/* Stats */}
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+      <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
         <Card className='border-blue-200'>
           <CardContent className='pt-6'>
             <div className='flex items-center justify-between'>
@@ -346,6 +440,16 @@ function ComplainSeller() {
               <div>
                 <p className='text-sm text-gray-600'>Cần phản hồi</p>
                 <p className='text-2xl font-bold text-orange-600 mt-1'>{formsNeedingResponse.length}</p>
+                {formsWithExpiredDeadlines.length > 0 && (
+                  <p className='text-xs text-red-600 mt-1 font-medium'>
+                    {formsWithExpiredDeadlines.length} đơn quá hạn
+                  </p>
+                )}
+                {formsWithExpiringSoonDeadlines.length > 0 && formsWithExpiredDeadlines.length === 0 && (
+                  <p className='text-xs text-orange-600 mt-1 font-medium'>
+                    {formsWithExpiringSoonDeadlines.length} đơn sắp hết hạn
+                  </p>
+                )}
               </div>
               <Clock className='w-8 h-8 text-orange-500' />
             </div>
@@ -365,137 +469,221 @@ function ComplainSeller() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className='border-red-200'>
+          <CardContent className='pt-6'>
+            <div className='flex items-center justify-between'>
+              <div>
+                <p className='text-sm text-gray-600'>Tổng vi phạm</p>
+                <p className='text-2xl font-bold text-red-600 mt-1'>
+                  {totalViolationCount !== null ? totalViolationCount : '-'}
+                </p>
+                {formsWithViolations.length > 0 && (
+                  <p className='text-xs text-red-600 mt-1 font-medium'>{formsWithViolations.length} đơn vi phạm</p>
+                )}
+              </div>
+              <XCircle className='w-8 h-8 text-red-500' />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Forms List */}
       {forms.length > 0 ? (
         <div className='space-y-4'>
-          {forms.map((form) => {
-            const statusInfo = getStatusInfo(form.status)
-            const canReply = form.status === 'Confirmed'
-            const needsResponse = canReply && !form.isSellerReplied
+          {forms
+            .sort((a, b) => {
+              // Sort priority: expired > expiring soon > others
+              const aExpired =
+                a.status === 'Confirmed' &&
+                !a.isSellerReplied &&
+                a.deadlineForSellerReply &&
+                isDeadlineExpired(a.deadlineForSellerReply)
+              const bExpired =
+                b.status === 'Confirmed' &&
+                !b.isSellerReplied &&
+                b.deadlineForSellerReply &&
+                isDeadlineExpired(b.deadlineForSellerReply)
+              if (aExpired && !bExpired) return -1
+              if (!aExpired && bExpired) return 1
 
-            return (
-              <Card key={form.id} className='hover:shadow-lg transition-shadow border border-gray-100'>
-                <CardHeader className='pb-4 border-b border-gray-100'>
-                  <div className='flex flex-col gap-3'>
-                    <div className='flex flex-wrap items-center gap-2'>
-                      <Badge
-                        variant={statusInfo.badge as 'default' | 'secondary' | 'destructive' | 'outline'}
-                        className={`${statusInfo.bgColor} ${statusInfo.color} border-0 flex items-center gap-1`}
-                      >
-                        {statusInfo.icon}
-                        {statusInfo.text}
-                      </Badge>
-                      <Badge variant='outline' className='text-xs'>
-                        {getTypeText(form.type)}
-                      </Badge>
-                      {needsResponse && (
-                        <Badge variant='destructive' className='text-xs'>
-                          Cần phản hồi
-                        </Badge>
-                      )}
-                      {form.deadlineForSellerReply && (
-                        <Badge variant='secondary' className='text-xs'>
-                          <Clock className='w-3 h-3 mr-1' />
-                          Hạn: {form.deadlineForSellerReply}
-                        </Badge>
-                      )}
-                    </div>
-                    <div>
-                      <h3 className='text-lg font-semibold text-gray-900 mb-1'>{form.subject}</h3>
-                      <p className='text-sm text-gray-600 line-clamp-2'>{form.description}</p>
-                    </div>
-                    {form.orderId && (
-                      <div className='flex items-center gap-2 text-xs text-gray-500'>
-                        <span>Đơn hàng:</span>
-                        <CopyButton
-                          textToCopy={form.orderId}
-                          idleText={form.orderId}
-                          copiedText='Đã copy!'
-                          className='h-6 px-2 text-xs min-w-16'
-                          successDuration={2000}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className='pt-4 space-y-3'>
-                  {/* Images */}
-                  {form.imageUrl && Array.isArray(form.imageUrl) && form.imageUrl.length > 0 && (
-                    <div>
-                      <Label className='text-xs font-medium text-gray-600 mb-2 block flex items-center gap-1'>
-                        <ImageIcon className='w-3 h-3' />
-                        Hình ảnh đính kèm ({form.imageUrl.length})
-                      </Label>
-                      <div className='flex gap-2 flex-wrap'>
-                        {form.imageUrl.map((imageUrl: string, index: number) => {
-                          const resolvedUrl = resolveImageUrl(imageUrl)
-                          return (
-                            <img
-                              key={index}
-                              src={resolvedUrl}
-                              alt={`Tệp đính kèm ${index + 1}`}
-                              className='w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity hover:border-blue-400'
-                              onClick={() => {
-                                const images = form.imageUrl
-                                  .map((img: string) => resolveImageUrl(img))
-                                  .filter((url): url is string => Boolean(url))
-                                setPreviewImages(images)
-                                setListPreviewIndex(index)
-                                setIsListPreviewOpen(true)
-                              }}
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.src = '/placeholder-image.png'
-                              }}
-                            />
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
+              const aExpiringSoon =
+                a.status === 'Confirmed' &&
+                !a.isSellerReplied &&
+                a.deadlineForSellerReply &&
+                isDeadlineExpiringSoon(a.deadlineForSellerReply) &&
+                !isDeadlineExpired(a.deadlineForSellerReply)
+              const bExpiringSoon =
+                b.status === 'Confirmed' &&
+                !b.isSellerReplied &&
+                b.deadlineForSellerReply &&
+                isDeadlineExpiringSoon(b.deadlineForSellerReply) &&
+                !isDeadlineExpired(b.deadlineForSellerReply)
+              if (aExpiringSoon && !bExpiringSoon) return -1
+              if (!aExpiringSoon && bExpiringSoon) return 1
 
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-4 text-xs text-gray-500'>
-                      <div className='flex items-center gap-1'>
-                        <Calendar className='w-3 h-3' />
-                        Tạo: {form.createdAt}
+              // Then sort by created date (newest first)
+              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            })
+            .map((form) => {
+              const statusInfo = getStatusInfo(form.status)
+              const canReply = form.status === 'Confirmed'
+              const needsResponse = canReply && !form.isSellerReplied
+              const isExpired =
+                form.status === 'Confirmed' &&
+                !form.isSellerReplied &&
+                form.deadlineForSellerReply &&
+                isDeadlineExpired(form.deadlineForSellerReply)
+              const isExpiringSoon =
+                form.status === 'Confirmed' &&
+                !form.isSellerReplied &&
+                form.deadlineForSellerReply &&
+                isDeadlineExpiringSoon(form.deadlineForSellerReply) &&
+                !isDeadlineExpired(form.deadlineForSellerReply)
+              const daysRemaining = getDaysRemaining(form.deadlineForSellerReply)
+
+              return (
+                <Card key={form.id} className='hover:shadow-lg transition-shadow border border-gray-100'>
+                  <CardHeader className='pb-4 border-b border-gray-100'>
+                    <div className='flex flex-col gap-3'>
+                      <div className='flex flex-wrap items-center gap-2'>
+                        <Badge
+                          variant={statusInfo.badge as 'default' | 'secondary' | 'destructive' | 'outline'}
+                          className={`${statusInfo.bgColor} ${statusInfo.color} border-0 flex items-center gap-1`}
+                        >
+                          {statusInfo.icon}
+                          {statusInfo.text}
+                        </Badge>
+                        <Badge variant='outline' className='text-xs'>
+                          {getTypeText(form.type)}
+                        </Badge>
+                        {form.hasIncreasedReportCount && (
+                          <Badge variant='destructive' className='text-xs bg-red-600 text-white border-0'>
+                            <XCircle className='w-3 h-3 mr-1' />
+                            Đơn vi phạm
+                          </Badge>
+                        )}
+                        {needsResponse && (
+                          <Badge variant='destructive' className='text-xs'>
+                            Cần phản hồi
+                          </Badge>
+                        )}
+                        {isExpired && (
+                          <Badge variant='destructive' className='text-xs bg-red-700 text-white border-0'>
+                            <AlertCircle className='w-3 h-3 mr-1' />
+                            Đã quá hạn
+                          </Badge>
+                        )}
+                        {isExpiringSoon && !isExpired && (
+                          <Badge variant='destructive' className='text-xs bg-orange-600 text-white border-0'>
+                            <Clock className='w-3 h-3 mr-1' />
+                            Sắp hết hạn (
+                            {daysRemaining !== null && daysRemaining > 0 ? `${daysRemaining} ngày` : 'Hôm nay'})
+                          </Badge>
+                        )}
+                        {form.deadlineForSellerReply && !form.isSellerReplied && !isExpired && !isExpiringSoon && (
+                          <Badge variant='secondary' className='text-xs'>
+                            <Clock className='w-3 h-3 mr-1' />
+                            Hạn: {form.deadlineForSellerReply}
+                          </Badge>
+                        )}
                       </div>
-                      {form.updatedAt !== form.createdAt && (
-                        <div className='flex items-center gap-1'>
-                          <Clock className='w-3 h-3' />
-                          Cập nhật: {form.updatedAt}
+                      <div>
+                        <h3 className='text-lg font-semibold text-gray-900 mb-1'>{form.subject}</h3>
+                        <p className='text-sm text-gray-600 line-clamp-2'>{form.description}</p>
+                      </div>
+                      {form.orderId && (
+                        <div className='flex items-center gap-2 text-xs text-gray-500'>
+                          <span>Đơn hàng:</span>
+                          <CopyButton
+                            textToCopy={form.orderId}
+                            idleText={form.orderId}
+                            copiedText='Đã copy!'
+                            className='h-6 px-2 text-xs min-w-16'
+                            successDuration={2000}
+                          />
                         </div>
                       )}
                     </div>
-                    <div className='flex gap-2'>
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        onClick={() => handleViewDetail(form.id)}
-                        className='text-blue-600 border-blue-600 hover:bg-blue-50'
-                      >
-                        <Eye className='w-4 h-4 mr-2' />
-                        Xem chi tiết
-                      </Button>
-                      {/* Chỉ hiển thị nút phản hồi khi chưa phản hồi - không cho phép chỉnh sửa */}
-                      {form.status === 'Confirmed' && !form.isSellerReplied && (
+                  </CardHeader>
+                  <CardContent className='pt-4 space-y-3'>
+                    {/* Images */}
+                    {form.imageUrl && Array.isArray(form.imageUrl) && form.imageUrl.length > 0 && (
+                      <div>
+                        <Label className='text-xs font-medium text-gray-600 mb-2 block flex items-center gap-1'>
+                          <ImageIcon className='w-3 h-3' />
+                          Hình ảnh đính kèm ({form.imageUrl.length})
+                        </Label>
+                        <div className='flex gap-2 flex-wrap'>
+                          {form.imageUrl.map((imageUrl: string, index: number) => {
+                            const resolvedUrl = resolveImageUrl(imageUrl)
+                            return (
+                              <img
+                                key={index}
+                                src={resolvedUrl}
+                                alt={`Tệp đính kèm ${index + 1}`}
+                                className='w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity hover:border-blue-400'
+                                onClick={() => {
+                                  const images = form.imageUrl
+                                    .map((img: string) => resolveImageUrl(img))
+                                    .filter((url): url is string => Boolean(url))
+                                  setPreviewImages(images)
+                                  setListPreviewIndex(index)
+                                  setIsListPreviewOpen(true)
+                                }}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.src = '/placeholder-image.png'
+                                }}
+                              />
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center gap-4 text-xs text-gray-500'>
+                        <div className='flex items-center gap-1'>
+                          <Calendar className='w-3 h-3' />
+                          Tạo: {form.createdAt}
+                        </div>
+                        {form.updatedAt !== form.createdAt && (
+                          <div className='flex items-center gap-1'>
+                            <Clock className='w-3 h-3' />
+                            Cập nhật: {form.updatedAt}
+                          </div>
+                        )}
+                      </div>
+                      <div className='flex gap-2'>
                         <Button
-                          variant='default'
+                          variant='outline'
                           size='sm'
-                          onClick={() => handleOpenReply(form)}
-                          className='bg-yellow-500 text-white hover:bg-[#FFD700]'
+                          onClick={() => handleViewDetail(form.id)}
+                          className='text-blue-600 border-blue-600 hover:bg-blue-50'
                         >
-                          Phản hồi
+                          <Eye className='w-4 h-4 mr-2' />
+                          Xem chi tiết
                         </Button>
-                      )}
+                        {/* Chỉ hiển thị nút phản hồi khi chưa phản hồi và chưa quá hạn - không cho phép chỉnh sửa */}
+                        {form.status === 'Confirmed' &&
+                          !form.isSellerReplied &&
+                          (!form.deadlineForSellerReply || !isDeadlineExpired(form.deadlineForSellerReply)) && (
+                            <Button
+                              variant='default'
+                              size='sm'
+                              onClick={() => handleOpenReply(form)}
+                              className='bg-yellow-500 text-white hover:bg-[#FFD700]'
+                            >
+                              Phản hồi
+                            </Button>
+                          )}
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+                  </CardContent>
+                </Card>
+              )
+            })}
         </div>
       ) : (
         <EmptyState
@@ -532,6 +720,12 @@ function ComplainSeller() {
                       {getStatusInfo(selectedForm.status).text}
                     </Badge>
                     <Badge variant='outline'>{getTypeText(selectedForm.type)}</Badge>
+                    {selectedForm.hasIncreasedReportCount && (
+                      <Badge variant='destructive' className='bg-red-600 text-white border-0'>
+                        <XCircle className='w-3 h-3 mr-1' />
+                        Đơn vi phạm
+                      </Badge>
+                    )}
                   </div>
                   <CardTitle>{selectedForm.subject}</CardTitle>
                 </CardHeader>
@@ -609,32 +803,65 @@ function ComplainSeller() {
                     </div>
                   )}
 
-                  {/* Deadline */}
-                  {selectedForm.deadlineForSellerReply && (
-                    <div className='bg-orange-50 border border-orange-200 rounded-lg p-3'>
+                  {/* Deadline - Chỉ hiển thị khi chưa phản hồi */}
+                  {selectedForm.deadlineForSellerReply && !selectedForm.isSellerReplied && (
+                    <div
+                      className={`rounded-lg p-3 border ${isDeadlineExpired(selectedForm.deadlineForSellerReply)
+                        ? 'bg-red-50 border-red-200'
+                        : isDeadlineExpiringSoon(selectedForm.deadlineForSellerReply)
+                          ? 'bg-orange-50 border-orange-200'
+                          : 'bg-blue-50 border-blue-200'
+                        }`}
+                    >
                       <div className='flex items-center gap-2'>
-                        <Clock className='w-4 h-4 text-orange-600' />
-                        <span className='text-sm font-medium text-orange-700'>
-                          Hạn phản hồi: {selectedForm.deadlineForSellerReply}
-                        </span>
+                        {isDeadlineExpired(selectedForm.deadlineForSellerReply) ? (
+                          <>
+                            <AlertCircle className='w-4 h-4 text-red-600' />
+                            <span className='text-sm font-medium text-red-700'>
+                              Đã quá hạn phản hồi: {selectedForm.deadlineForSellerReply}
+                            </span>
+                          </>
+                        ) : isDeadlineExpiringSoon(selectedForm.deadlineForSellerReply) ? (
+                          <>
+                            <Clock className='w-4 h-4 text-orange-600' />
+                            <span className='text-sm font-medium text-orange-700'>
+                              Sắp hết hạn phản hồi: {selectedForm.deadlineForSellerReply} (
+                              {getDaysRemaining(selectedForm.deadlineForSellerReply) !== null &&
+                                getDaysRemaining(selectedForm.deadlineForSellerReply)! > 0
+                                ? `Còn ${getDaysRemaining(selectedForm.deadlineForSellerReply)} ngày`
+                                : 'Hôm nay'}
+                              )
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className='w-4 h-4 text-blue-600' />
+                            <span className='text-sm font-medium text-blue-700'>
+                              Hạn phản hồi: {selectedForm.deadlineForSellerReply}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
 
-                  {/* Reply Button in Detail Modal - Chỉ hiển thị khi chưa phản hồi - không cho phép chỉnh sửa */}
-                  {selectedForm.status === 'Confirmed' && !selectedForm.isSellerReplied && (
-                    <div className='pt-4 border-t'>
-                      <Button
-                        onClick={() => {
-                          setShowDetailModal(false)
-                          handleOpenReply(selectedForm)
-                        }}
-                        className='w-full bg-orange-600 hover:bg-orange-700 text-white'
-                      >
-                        Phản hồi khiếu nại
-                      </Button>
-                    </div>
-                  )}
+                  {/* Reply Button in Detail Modal - Chỉ hiển thị khi chưa phản hồi và chưa quá hạn - không cho phép chỉnh sửa */}
+                  {selectedForm.status === 'Confirmed' &&
+                    !selectedForm.isSellerReplied &&
+                    (!selectedForm.deadlineForSellerReply ||
+                      !isDeadlineExpired(selectedForm.deadlineForSellerReply)) && (
+                      <div className='pt-4 border-t'>
+                        <Button
+                          onClick={() => {
+                            setShowDetailModal(false)
+                            handleOpenReply(selectedForm)
+                          }}
+                          className='w-full bg-orange-600 hover:bg-orange-700 text-white'
+                        >
+                          Phản hồi khiếu nại
+                        </Button>
+                      </div>
+                    )}
 
                   {/* Thông báo khi đã phản hồi */}
                   {selectedForm.status === 'Confirmed' && selectedForm.isSellerReplied && (
@@ -675,8 +902,30 @@ function ComplainSeller() {
                 <p className='text-sm text-gray-600'>
                   <span className='font-medium'>Khiếu nại:</span> {selectedForm.subject}
                 </p>
-                {selectedForm.deadlineForSellerReply && (
-                  <p className='text-xs text-orange-600 mt-1'>Hạn phản hồi: {selectedForm.deadlineForSellerReply}</p>
+                {selectedForm.deadlineForSellerReply && !selectedForm.isSellerReplied && (
+                  <p
+                    className={`text-xs mt-1 font-medium ${isDeadlineExpired(selectedForm.deadlineForSellerReply)
+                      ? 'text-red-600'
+                      : isDeadlineExpiringSoon(selectedForm.deadlineForSellerReply)
+                        ? 'text-orange-600'
+                        : 'text-blue-600'
+                      }`}
+                  >
+                    {isDeadlineExpired(selectedForm.deadlineForSellerReply) ? (
+                      <> Đã quá hạn: {selectedForm.deadlineForSellerReply}</>
+                    ) : isDeadlineExpiringSoon(selectedForm.deadlineForSellerReply) ? (
+                      <>
+                        Sắp hết hạn: {selectedForm.deadlineForSellerReply} (Còn{' '}
+                        {getDaysRemaining(selectedForm.deadlineForSellerReply) !== null &&
+                          getDaysRemaining(selectedForm.deadlineForSellerReply)! > 0
+                          ? `${getDaysRemaining(selectedForm.deadlineForSellerReply)} ngày`
+                          : 'hôm nay'}
+                        )
+                      </>
+                    ) : (
+                      <>Hạn phản hồi: {selectedForm.deadlineForSellerReply}</>
+                    )}
+                  </p>
                 )}
               </div>
 
