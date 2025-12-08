@@ -10,7 +10,8 @@ import {
   Package,
   Component,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Tag
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { cn } from '../../lib/utils'
@@ -62,6 +63,11 @@ function SideBar({ isCollapsed = false }: SideBarProps) {
       key: path.reportsStaff,
       label: 'Báo cáo',
       icon: <FileText size={18} />
+    },
+    {
+      key: path.hashtagManagementStaff,
+      label: 'Quản lí nhãn dán',
+      icon: <Tag size={18} />
     },
     {
       key: path.blogStaff,

@@ -49,6 +49,8 @@ export const path = {
   detailHelpSeller: 'help/:requestId',
   productReviewsSeller: 'product-reviews',
   complaintSeller: 'complaint',
+  hashtagManagement: 'hashtag',
+  documentSeller: 'document-management',
   // ============ STAFF========
   BASE_STAFF: '/staff',
   // Staff nested routes (relative paths)
@@ -65,6 +67,7 @@ export const path = {
   reportsStaff: 'formReport',
   reportDetailStaff: 'formReport/:formId',
   blogStaff: 'blogManagerment',
+  hashtagManagementStaff: 'hashtag-management',
   blogDetailStaff: '/staff/blogManagerment/detail/:id',
   createBlogStaff: '/staff/blogManagerment/detail/:id/create-blog',
   updateBlogStaff: '/staff/blogManagerment/edit/:id',

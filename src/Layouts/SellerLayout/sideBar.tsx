@@ -12,7 +12,8 @@ import {
   Gift,
   Star,
   Flag,
-  Receipt
+  Receipt,
+  Tag
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../../contexts/store.context'
@@ -150,6 +151,15 @@ function SideBar() {
       icon: (
         <AnimatedIcon animationType='bounce'>
           <Flag size={18} />
+        </AnimatedIcon>
+      )
+    },
+    {
+      key: path.hashtagManagement,
+      label: 'Quản lí nhãn dán',
+      icon: (
+        <AnimatedIcon animationType='bounce'>
+          <Tag size={18} />
         </AnimatedIcon>
       )
     },

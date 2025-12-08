@@ -88,6 +88,9 @@ import ComboDetail from './pages/customer/combo/detail'
 import DetailProductAdmin from './pages/admin/productManagerment/detail'
 import ComplainSeller from './pages/seller/complain/complain'
 import PolicyCustomer from './pages/customer/policy/policyCustomer'
+import HashtagManagement from './pages/seller/hashtagManagement/hashtagManagement'
+import HashtagManagementStaff from './pages/staff/hashtagManagement/hashtagManagement'
+import DocumentSeller from './pages/seller/documentSeller/document'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -273,6 +276,14 @@ export default function useRouteElements() {
             {
               path: path.complaintSeller,
               element: <ComplainSeller />
+            },
+            {
+              path: path.hashtagManagement,
+              element: <HashtagManagement />
+            },
+            {
+              path: path.documentSeller,
+              element: <DocumentSeller />
             }
           ]
         }
@@ -358,8 +369,11 @@ export default function useRouteElements() {
             {
               path: path.blogDetailStaff,
               element: <BlogByCategoryStaff />
+            },
+            {
+              path: path.hashtagManagementStaff,
+              element: <HashtagManagementStaff />
             }
-
           ]
         }
       ]

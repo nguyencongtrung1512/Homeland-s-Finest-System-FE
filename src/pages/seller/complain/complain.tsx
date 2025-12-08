@@ -46,14 +46,26 @@ function ComplainSeller() {
         sortBy: 'createdat',
         sortOrder: 'desc'
       })
+      // API returns an object with 'issues' property containing the array
+      let formsArray: FormDTO[] = []
+      if (Array.isArray(response)) {
+        formsArray = response
+      } else if (response && typeof response === 'object') {
+        // Check if response has 'issues' property
+        const responseObj = response as { issues?: FormDTO[]; data?: FormDTO[] }
+        if (responseObj.issues && Array.isArray(responseObj.issues)) {
+          formsArray = responseObj.issues
+        } else if (responseObj.data && Array.isArray(responseObj.data)) {
+          formsArray = responseObj.data
+        }
+      }
       // Filter to only show ComplaintOrder and ReportSeller
-      const filteredForms = (response || []).filter(
-        (form) => form.type === 'ComplaintOrder' || form.type === 'ReportSeller'
-      )
+      const filteredForms = formsArray.filter((form) => form.type === 'ComplaintOrder' || form.type === 'ReportSeller')
       setForms(filteredForms)
     } catch (error) {
       console.error('Error loading forms:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách khiếu nại')
+      setForms([]) // Set empty array on error
     } finally {
       setLoading(false)
     }
@@ -631,9 +643,7 @@ function ComplainSeller() {
                         <div className='flex items-start gap-2'>
                           <AlertCircle className='w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0' />
                           <div>
-                            <p className='text-sm font-medium text-blue-800'>
-                              Bạn đã phản hồi khiếu nại này
-                            </p>
+                            <p className='text-sm font-medium text-blue-800'>Bạn đã phản hồi khiếu nại này</p>
                             <p className='text-xs text-blue-600 mt-1'>
                               Đơn sẽ được nhân viên xử lý và bạn không thể chỉnh sửa phản hồi.
                             </p>
@@ -675,11 +685,10 @@ function ComplainSeller() {
                 <div className='flex items-start gap-2'>
                   <AlertCircle className='w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0' />
                   <div>
-                    <p className='text-sm font-medium text-amber-800'>
-                      Lưu ý quan trọng
-                    </p>
+                    <p className='text-sm font-medium text-amber-800'>Lưu ý quan trọng</p>
                     <p className='text-xs text-amber-700 mt-1'>
-                      Sau khi gửi phản hồi, đơn sẽ được chuyển cho nhân viên xử lý. Bạn sẽ không thể chỉnh sửa hoặc thay đổi phản hồi sau khi đã gửi. Vui lòng kiểm tra kỹ thông tin trước khi gửi.
+                      Sau khi gửi phản hồi, đơn sẽ được chuyển cho nhân viên xử lý. Bạn sẽ không thể chỉnh sửa hoặc thay
+                      đổi phản hồi sau khi đã gửi. Vui lòng kiểm tra kỹ thông tin trước khi gửi.
                     </p>
                   </div>
                 </div>

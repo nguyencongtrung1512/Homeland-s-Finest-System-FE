@@ -815,7 +815,7 @@ const AdminPromotionList: React.FC = () => {
             <AlertDialogTitle>Xác nhận tạm dừng mã khuyến mãi</AlertDialogTitle>
             <AlertDialogDescription>
               Bạn có chắc chắn muốn tạm dừng mã khuyến mãi &quot;{pausePromotion?.title}&quot; không? Mã khuyến mãi sẽ
-              không còn hoạt động sau khi tạm dừng.
+              không còn hoạt động sau khi tạm dừng và không thể kích hoạt lại.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -33,16 +33,50 @@ export interface HashtagSingleResponse {
   data: HashtagItem
 }
 
-// Interface cho create/update request
+// Interface cho create request
 export interface HashtagCreateRequest {
   name: string
   storeId: string
-  isActive: boolean
+  usageCount?: number
+  isActive?: boolean
 }
 
-// Function để lấy tất cả Hashtag
-export const getAllHashtags = async (): Promise<HashtagResponse> => {
-  const response = await axiosInstance.get(API_URL)
+// Interface cho update request
+export interface HashtagUpdateRequest {
+  name?: string
+  storeId?: string
+  usageCount?: number
+  isActive?: boolean
+}
+
+// Function để lấy tất cả Hashtag với pagination (dành cho Staff)
+export const getAllHashtags = async (
+  pageSize: number = 0,
+  pageNumber: number = 1,
+  description?: string
+): Promise<HashtagResponse> => {
+  const params: any = {
+    pageSize,
+    pageNumber
+  }
+  if (description) {
+    params.description = description
+  }
+  const response = await axiosInstance.get(API_URL, { params })
+  return response as unknown as HashtagResponse
+}
+
+// Function để lấy Hashtag theo storeId (dành cho Seller)
+export const getHashtagsByStoreId = async (
+  storeId: string,
+  pageSize: number = 0,
+  pageNumber: number = 1
+): Promise<HashtagResponse> => {
+  const params: any = {
+    pageSize,
+    pageNumber
+  }
+  const response = await axiosInstance.get(`${API_URL}/store/${storeId}`, { params })
   return response as unknown as HashtagResponse
 }
 
@@ -57,7 +91,7 @@ export const createHashtag = async (data: HashtagCreateRequest): Promise<Hashtag
 }
 
 // Function để cập nhật Hashtag
-export const updateHashtag = async (id: string, data: HashtagCreateRequest): Promise<HashtagSingleResponse> => {
+export const updateHashtag = async (id: string, data: HashtagUpdateRequest): Promise<HashtagSingleResponse> => {
   const response = await axiosInstance.put(`${API_URL}/${id}`, data, {
     headers: {
       'Content-Type': 'application/json'
@@ -66,11 +100,17 @@ export const updateHashtag = async (id: string, data: HashtagCreateRequest): Pro
   return response as unknown as HashtagSingleResponse
 }
 
-// Function để tìm kiếm Hashtag theo keyword
-export const searchHashtags = async (keyword: string): Promise<HashtagResponse> => {
+// Function để tìm kiếm Hashtag theo description
+export const searchHashtags = async (
+  description: string,
+  pageSize: number = 0,
+  pageNumber: number = 1
+): Promise<HashtagResponse> => {
   const response = await axiosInstance.get(API_URL, {
     params: {
-      keyword: keyword || ''
+      pageSize,
+      pageNumber,
+      description: description || ''
     }
   })
   return response as unknown as HashtagResponse

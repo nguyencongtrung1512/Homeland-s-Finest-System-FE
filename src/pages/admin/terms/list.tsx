@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Search, Plus, Edit, Eye, MoreHorizontal } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -28,7 +28,8 @@ import {
   createDocument,
   updateDocument,
   type DocumentType,
-  type CreateDocumentData
+  type CreateDocumentData,
+  type UpdateDocumentData
 } from '../../../apis/document.api'
 import { toast } from '../../../utils/toast'
 import Pagination from '../../../components/Pagination/Pagination'
@@ -55,33 +56,25 @@ function TermsManagement() {
     content: '',
     version: '1.0',
     isPublished: false,
-    type: '',
-    effectiveDate: new Date().toISOString().split('T')[0]
+    type: 'Customer'
   })
 
-  // Fetch documents from API
-  const fetchDocuments = async () => {
+  // Fetch documents from API - Get all with pageSize = 0
+  const fetchDocuments = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const data = await getDocuments({
-        pageSize: 100,
-        pageNumber: 1,
-        type: typeFilter !== 'all' ? typeFilter : undefined,
-        isPublished: statusFilter !== 'all' ? statusFilter === 'published' : undefined
+      const response = await getDocuments({
+        pageSize: 0,
+        pageNumber: 1
       })
-      // Ensure data is an array
-      let documentsArray: DocumentType[] = []
 
-      if (Array.isArray(data)) {
-        documentsArray = data
-      } else if (data && Array.isArray((data as any).data)) {
-        documentsArray = (data as any).data
-      } else if (data && (data as any).data && Array.isArray((data as any).data.data)) {
-        documentsArray = (data as any).data.data
+      if (response.data) {
+        setDocuments(response.data)
+      } else {
+        setError('Không thể tải danh sách tài liệu')
+        setDocuments([])
       }
-
-      setDocuments(documentsArray)
     } catch (err: unknown) {
       const error = err as { message?: string }
       const errorMessage = error.message || 'Có lỗi xảy ra khi tải danh sách tài liệu'
@@ -90,17 +83,16 @@ function TermsManagement() {
         position: 'top-right',
         autoClose: 5000
       })
-      // Set empty array on error
       setDocuments([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  // Load data on component mount and when filters change (not search text)
+  // Load data on component mount
   useEffect(() => {
     fetchDocuments()
-  }, [typeFilter, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchDocuments])
 
   // Reset to page 1 when search or filters change
   useEffect(() => {
@@ -121,38 +113,54 @@ function TermsManagement() {
       }
   }
 
+  const getTypeLabel = (type: string) => {
+    const typeMap: Record<string, string> = {
+      Customer: 'Khách hàng',
+      Seller: 'Người bán'
+    }
+    return typeMap[type] || type
+  }
+
   // Helper function to safely search in text
   const safeSearch = (text: string | null | undefined, searchTerm: string): boolean => {
     if (!text || !searchTerm) return false
     return text.toLowerCase().includes(searchTerm.toLowerCase())
   }
 
-  // Filter documents based on search text and other filters
-  const filteredDocuments = Array.isArray(documents)
-    ? documents.filter((document) => {
-      // Search filter with safe null checks
+  // Filter documents based on search text and other filters (Frontend filtering)
+  const filteredDocuments = useMemo(() => {
+    return documents.filter((document) => {
+      // Search filter
       const matchesSearch =
         !searchText.trim() ||
         safeSearch(document.title, searchText) ||
         safeSearch(document.slug, searchText) ||
         safeSearch(document.content, searchText)
 
-      return matchesSearch
+      // Type filter
+      const matchesType = typeFilter === 'all' || document.type === typeFilter
+
+      // Status filter
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'published' && document.isPublished) ||
+        (statusFilter === 'draft' && !document.isPublished)
+
+      return matchesSearch && matchesType && matchesStatus
     })
-    : []
+  }, [documents, searchText, typeFilter, statusFilter])
+
+  // Paginated documents
+  const paginatedDocuments = useMemo(() => {
+    return filteredDocuments.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  }, [filteredDocuments, currentPage, pageSize])
 
   // Calculate pagination
-  const totalItems = filteredDocuments.length
-  const totalPages = Math.ceil(totalItems / pageSize) || 1
-  const startIndex = (currentPage - 1) * pageSize
-  const endIndex = startIndex + pageSize
-  const paginatedDocuments = filteredDocuments.slice(startIndex, endIndex)
+  const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / pageSize))
 
   // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
-    // Scroll to top of table when page changes
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleAdd = () => {
@@ -162,8 +170,7 @@ function TermsManagement() {
       content: '',
       version: '1.0',
       isPublished: false,
-      type: '',
-      effectiveDate: new Date().toISOString().split('T')[0]
+      type: 'Customer'
     })
     setShowAddModal(true)
   }
@@ -176,8 +183,7 @@ function TermsManagement() {
       content: document.content,
       version: document.version,
       isPublished: document.isPublished,
-      type: document.type,
-      effectiveDate: document.effectiveDate
+      type: document.type
     })
     setShowEditModal(true)
   }
@@ -226,35 +232,30 @@ function TermsManagement() {
     }
 
     try {
-      // Ensure all required fields are present and not empty
-      const documentData = {
+      // Create document data matching backend DocumentCreateRequest (no effectiveDate)
+      const documentData: CreateDocumentData = {
         slug: formData.slug.trim(),
         title: formData.title.trim(),
         content: formData.content.trim(),
         version: formData.version.trim(),
         isPublished: formData.isPublished,
-        type: formData.type.trim(),
-        effectiveDate: formData.effectiveDate
+        type: formData.type.trim()
       }
 
-      console.log('Sending data:', documentData) // Debug log
-      console.log('Data validation:', {
-        slug: !!documentData.slug,
-        title: !!documentData.title,
-        content: !!documentData.content,
-        type: !!documentData.type
-      })
+      const response = await createDocument(documentData)
 
-      await createDocument(documentData)
-      toast.success('Tạo tài liệu thành công!', {
-        position: 'top-right',
-        autoClose: 3000
-      })
-      setShowAddModal(false)
-      await fetchDocuments()
+      if (response) {
+        toast.success('Tạo tài liệu thành công!', {
+          position: 'top-right',
+          autoClose: 3000
+        })
+        setShowAddModal(false)
+        await fetchDocuments()
+      }
     } catch (err: unknown) {
-      console.error('Create document error:', err) // Debug log
-      const error = err as { message?: string; response?: { data?: { errors?: Record<string, string[]> } } }
+      console.error('Create document error:', err)
+      const error = err as { message?: string; response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+
       // Handle validation errors from API
       if (error.response?.data?.errors) {
         const errors = error.response.data.errors
@@ -264,7 +265,7 @@ function TermsManagement() {
           autoClose: 5000
         })
       } else {
-        const errorMessage = error.message || 'Có lỗi xảy ra khi tạo tài liệu'
+        const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi tạo tài liệu'
         toast.error(errorMessage, {
           position: 'top-right',
           autoClose: 5000
@@ -307,36 +308,29 @@ function TermsManagement() {
     }
 
     try {
-      // Ensure all required fields are present and not empty
-      const documentData = {
+      // Update document data matching backend DocumentUpdateRequest (only slug, title, content, isPublished)
+      const documentData: UpdateDocumentData = {
         slug: formData.slug.trim(),
         title: formData.title.trim(),
         content: formData.content.trim(),
-        version: formData.version.trim(),
-        isPublished: formData.isPublished,
-        type: formData.type.trim(),
-        effectiveDate: formData.effectiveDate
+        isPublished: formData.isPublished
       }
 
-      console.log('Updating document with data:', documentData) // Debug log
-      console.log('Data validation:', {
-        slug: !!documentData.slug,
-        title: !!documentData.title,
-        content: !!documentData.content,
-        type: !!documentData.type
-      })
+      const response = await updateDocument(selectedDocument.id, documentData)
 
-      await updateDocument(selectedDocument.id, documentData)
-      toast.success('Cập nhật tài liệu thành công!', {
-        position: 'top-right',
-        autoClose: 3000
-      })
-      setShowEditModal(false)
-      setSelectedDocument(null)
-      await fetchDocuments()
+      if (response) {
+        toast.success('Cập nhật tài liệu thành công!', {
+          position: 'top-right',
+          autoClose: 3000
+        })
+        setShowEditModal(false)
+        setSelectedDocument(null)
+        await fetchDocuments()
+      }
     } catch (err: unknown) {
-      console.error('Update document error:', err) // Debug log
-      const error = err as { message?: string; response?: { data?: { errors?: Record<string, string[]> } } }
+      console.error('Update document error:', err)
+      const error = err as { message?: string; response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+
       // Handle validation errors from API
       if (error.response?.data?.errors) {
         const errors = error.response.data.errors
@@ -346,7 +340,7 @@ function TermsManagement() {
           autoClose: 5000
         })
       } else {
-        const errorMessage = error.message || 'Có lỗi xảy ra khi cập nhật tài liệu'
+        const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi cập nhật tài liệu'
         toast.error(errorMessage, {
           position: 'top-right',
           autoClose: 5000
@@ -366,8 +360,7 @@ function TermsManagement() {
       content: '',
       version: '1.0',
       isPublished: false,
-      type: '',
-      effectiveDate: new Date().toISOString().split('T')[0]
+      type: 'Customer'
     })
   }
 
@@ -398,7 +391,7 @@ function TermsManagement() {
                   placeholder='Tìm kiếm điều khoản...'
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
-                  className='pl-10 h-10'
+                  className='pl-10 h-9'
                 />
               </div>
             </div>
@@ -407,15 +400,13 @@ function TermsManagement() {
             <div className='w-48'>
               <label className='block text-sm font-medium text-gray-700 mb-2'>Loại tài liệu</label>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className='h-10'>
+                <SelectTrigger className='h-10 w-full'>
                   <SelectValue placeholder='Tất cả loại' />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value='all'>Tất cả loại</SelectItem>
-                  <SelectItem value='Điều khoản'>Điều khoản</SelectItem>
-                  <SelectItem value='Chính sách'>Chính sách</SelectItem>
-                  <SelectItem value='Bảo mật'>Bảo mật</SelectItem>
-                  <SelectItem value='Giao hàng'>Giao hàng</SelectItem>
+                  <SelectItem value='Customer'>Khách hàng</SelectItem>
+                  <SelectItem value='Seller'>Người bán</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -424,7 +415,7 @@ function TermsManagement() {
             <div className='w-48'>
               <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className='h-10'>
+                <SelectTrigger className='h-10 w-full'>
                   <SelectValue placeholder='Tất cả trạng thái' />
                 </SelectTrigger>
                 <SelectContent>
@@ -455,37 +446,38 @@ function TermsManagement() {
       {/* Documents List Section */}
       <Card className='bg-white shadow-sm'>
         <CardHeader className='flex flex-row items-center justify-between p-6 border-b border-gray-200'>
-          <div>
-            <CardTitle className='text-lg font-semibold text-gray-900'>Danh sách tài liệu</CardTitle>
-
-          </div>
+          <CardTitle className='text-lg font-semibold text-gray-900'>Danh sách tài liệu</CardTitle>
         </CardHeader>
         <CardContent className='p-0'>
-          {loading ? (
+          {loading && documents.length === 0 ? (
             <div className='py-12'>
               <Loading size='md' text='Đang tải dữ liệu...' />
             </div>
+          ) : error ? (
+            <div className='text-center py-12'>
+              <p className='text-red-500'>{error}</p>
+              <Button variant='outline' onClick={fetchDocuments} className='mt-4'>
+                Thử lại
+              </Button>
+            </div>
+          ) : paginatedDocuments.length === 0 ? (
+            <div className='text-center py-12'>
+              <p className='text-gray-500'>Không có dữ liệu</p>
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className='px-6 py-3'>Tiêu đề</TableHead>
-                  <TableHead className='px-6 py-3'>Loại</TableHead>
-                  <TableHead className='px-6 py-3'>Phiên bản</TableHead>
-                  <TableHead className='px-6 py-3'>Ngày hiệu lực</TableHead>
-                  <TableHead className='px-6 py-3'>Trạng thái</TableHead>
-                  <TableHead className='px-6 py-3'>Hành động</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedDocuments.length === 0 ? (
+            <>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className='text-center py-12 text-gray-500'>
-                      Không có dữ liệu
-                    </TableCell>
+                    <TableHead className='px-6 py-3'>Tiêu đề</TableHead>
+                    <TableHead className='px-6 py-3'>Loại</TableHead>
+                    <TableHead className='px-6 py-3'>Phiên bản</TableHead>
+                    <TableHead className='px-6 py-3'>Trạng thái</TableHead>
+                    <TableHead className='px-6 py-3'>Hành động</TableHead>
                   </TableRow>
-                ) : (
-                  paginatedDocuments.map((document) => {
+                </TableHeader>
+                <TableBody>
+                  {paginatedDocuments.map((document) => {
                     const statusConfig = getStatusConfig(document.isPublished)
 
                     return (
@@ -497,15 +489,10 @@ function TermsManagement() {
                           </div>
                         </TableCell>
                         <TableCell className='px-6 py-3'>
-                          <span className='text-sm text-gray-700'>{document.type}</span>
+                          <span className='text-sm text-gray-700'>{getTypeLabel(document.type)}</span>
                         </TableCell>
                         <TableCell className='px-6 py-3'>
                           <span className='text-sm text-gray-700'>{document.version}</span>
-                        </TableCell>
-                        <TableCell className='px-6 py-3'>
-                          <span className='text-sm text-gray-700'>
-                            {new Date(document.effectiveDate).toLocaleDateString('vi-VN')}
-                          </span>
                         </TableCell>
                         <TableCell className='px-6 py-3'>
                           <div
@@ -535,19 +522,17 @@ function TermsManagement() {
                         </TableCell>
                       </TableRow>
                     )
-                  })
-                )}
-              </TableBody>
-            </Table>
+                  })}
+                </TableBody>
+              </Table>
+              {totalPages > 1 && (
+                <div className='px-6 pb-6 pt-4'>
+                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+                </div>
+              )}
+            </>
           )}
         </CardContent>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className='px-6 pb-6'>
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
-          </div>
-        )}
       </Card>
 
       {/* Add Document Modal */}
@@ -584,13 +569,15 @@ function TermsManagement() {
             {/* Type Field */}
             <div className='space-y-2'>
               <Label htmlFor='type'>Loại tài liệu *</Label>
-              <Input
-                id='type'
-                placeholder='Nhập loại tài liệu (ví dụ: Điều khoản, Chính sách, Bảo mật, Giao hàng)'
-                value={formData.type}
-                onChange={(e) => handleInputChange('type', e.target.value)}
-              />
-              <p className='text-xs text-gray-500'>Ví dụ: Điều khoản, Chính sách, Bảo mật, Giao hàng…</p>
+              <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
+                <SelectTrigger id='type'>
+                  <SelectValue placeholder='Chọn loại tài liệu' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='Customer'>Khách hàng</SelectItem>
+                  <SelectItem value='Seller'>Người bán</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Version Field */}
@@ -604,23 +591,10 @@ function TermsManagement() {
               />
             </div>
 
-            {/* Effective Date Field */}
-            <div className='space-y-2'>
-              <Label htmlFor='effectiveDate'>Ngày hiệu lực *</Label>
-              <Input
-                id='effectiveDate'
-                type='date'
-                value={formData.effectiveDate}
-                onChange={(e) => handleInputChange('effectiveDate', e.target.value)}
-              />
-            </div>
-
             {/* Content Field */}
             <div className='space-y-2'>
               <Label htmlFor='content'>Nội dung *</Label>
-              <p className='text-xs text-gray-500 mb-2'>
-                Sử dụng các heading levels (#, ##, ###, ####) để tạo cấu trúc rõ ràng cho tài liệu
-              </p>
+
               <div>
                 <ReactQuill
                   theme='snow'
@@ -716,13 +690,15 @@ function TermsManagement() {
             {/* Type Field */}
             <div className='space-y-2'>
               <Label htmlFor='edit-type'>Loại tài liệu *</Label>
-              <Input
-                id='edit-type'
-                placeholder='Nhập loại tài liệu (ví dụ: Điều khoản, Chính sách, Bảo mật, Giao hàng)'
-                value={formData.type}
-                onChange={(e) => handleInputChange('type', e.target.value)}
-              />
-              <p className='text-xs text-gray-500'>Ví dụ: Điều khoản, Chính sách, Bảo mật, Giao hàng…</p>
+              <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
+                <SelectTrigger id='edit-type'>
+                  <SelectValue placeholder='Chọn loại tài liệu' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='Customer'>Khách hàng</SelectItem>
+                  <SelectItem value='Seller'>Người bán</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Version Field */}
@@ -733,17 +709,6 @@ function TermsManagement() {
                 placeholder='Nhập phiên bản (ví dụ: 1.0)'
                 value={formData.version}
                 onChange={(e) => handleInputChange('version', e.target.value)}
-              />
-            </div>
-
-            {/* Effective Date Field */}
-            <div className='space-y-2'>
-              <Label htmlFor='edit-effectiveDate'>Ngày hiệu lực *</Label>
-              <Input
-                id='edit-effectiveDate'
-                type='date'
-                value={formData.effectiveDate}
-                onChange={(e) => handleInputChange('effectiveDate', e.target.value)}
               />
             </div>
 
@@ -831,18 +796,12 @@ function TermsManagement() {
                 <div className='grid grid-cols-2 gap-4'>
                   <div>
                     <Label className='text-sm font-medium text-gray-700 mb-1 block'>Loại</Label>
-                    <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{selectedDocument.type}</div>
+                    <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>{getTypeLabel(selectedDocument.type)}</div>
                   </div>
                   <div>
                     <Label className='text-sm font-medium text-gray-700 mb-1 block'>Phiên bản</Label>
                     <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>
                       {selectedDocument.version}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className='text-sm font-medium text-gray-700 mb-1 block'>Ngày hiệu lực</Label>
-                    <div className='bg-gray-50 px-3 py-2 rounded-md text-sm text-gray-900'>
-                      {new Date(selectedDocument.effectiveDate).toLocaleDateString('vi-VN')}
                     </div>
                   </div>
                   <div>

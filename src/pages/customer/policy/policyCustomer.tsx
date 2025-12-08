@@ -33,20 +33,15 @@ function PolicyCustomer() {
     const fetchDocuments = async () => {
       try {
         setLoading(true)
-        const data = await getDocuments({
-          pageSize: 1000,
-          pageNumber: 1,
-          isPublished: true
+        const response = await getDocuments({
+          pageSize: 0,
+          pageNumber: 1
         })
 
-        let documentsArray: DocumentType[] = []
-        if (Array.isArray(data)) {
-          documentsArray = data
-        } else if (data && Array.isArray((data as any).data)) {
-          documentsArray = (data as any).data
-        } else if (data && (data as any).data && Array.isArray((data as any).data.data)) {
-          documentsArray = (data as any).data.data
-        }
+        // Filter only documents with type = "Customer" and isPublished = true
+        const documentsArray: DocumentType[] = (response.data || []).filter(
+          (doc: DocumentType) => doc.type === 'Customer' && doc.isPublished === true
+        )
 
         setDocuments(documentsArray)
 
@@ -248,14 +243,6 @@ function PolicyCustomer() {
                           <div>
                             <span className='font-medium text-gray-700'>Phiên bản:</span>{' '}
                             <span>{selectedDocument.version}</span>
-                          </div>
-                          <div>
-                            <span className='font-medium text-gray-700'>Ngày hiệu lực:</span>{' '}
-                            <span>
-                              {selectedDocument.effectiveDate
-                                ? new Date(selectedDocument.effectiveDate).toLocaleDateString('vi-VN')
-                                : 'N/A'}
-                            </span>
                           </div>
                         </div>
                       </motion.div>

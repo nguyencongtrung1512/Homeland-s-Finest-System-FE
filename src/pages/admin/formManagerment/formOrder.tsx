@@ -12,7 +12,7 @@ import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, Search, B
 import { formApi } from '../../../apis/form.api'
 import { storeApi } from '../../../apis/store.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import AssignStaffModal from './components/AssignStaffModal'
 import FormDetailModal from './components/FormDetailModal'
 import { CopyButton } from '../../../components/ui/copy'
@@ -53,10 +53,25 @@ export default function FormOrderManagement() {
         sortOrder: 'desc',
         type: 'ComplaintOrder' as FormType
       })
-      setForms(response || [])
+      console.log('response', response)
+      // API returns an object with 'issues' property containing the array
+      let formsArray: FormDTO[] = []
+      if (Array.isArray(response)) {
+        formsArray = response
+      } else if (response && typeof response === 'object') {
+        // Check if response has 'issues' property
+        const responseObj = response as { issues?: FormDTO[]; data?: FormDTO[] }
+        if (responseObj.issues && Array.isArray(responseObj.issues)) {
+          formsArray = responseObj.issues
+        } else if (responseObj.data && Array.isArray(responseObj.data)) {
+          formsArray = responseObj.data
+        }
+      }
+      setForms(formsArray)
     } catch (error) {
       console.error('Error loading complaint orders:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách khiếu nại đơn hàng')
+      setForms([]) // Set empty array on error
     } finally {
       setLoading(false)
     }
@@ -67,6 +82,9 @@ export default function FormOrderManagement() {
   }, [])
 
   useEffect(() => {
+    // Ensure forms is always an array
+    if (!Array.isArray(forms)) return
+
     const storeIds = Array.from(new Set(forms.map((form) => form.storeId).filter(hasStoreId)))
 
     const missingIds = storeIds.filter((id) => !storeNames[id])
@@ -104,6 +122,11 @@ export default function FormOrderManagement() {
 
   // Filter forms based on status and search
   const filteredForms = useMemo(() => {
+    // Ensure forms is always an array
+    if (!Array.isArray(forms)) {
+      return []
+    }
+
     let filtered = forms
 
     // Filter by status
@@ -116,9 +139,9 @@ export default function FormOrderManagement() {
       const term = searchTerm.toLowerCase()
       filtered = filtered.filter(
         (form) =>
-          form.subject.toLowerCase().includes(term) ||
-          form.description.toLowerCase().includes(term) ||
-          form.id.toLowerCase().includes(term)
+          form.subject?.toLowerCase().includes(term) ||
+          form.description?.toLowerCase().includes(term) ||
+          form.id?.toLowerCase().includes(term)
       )
     }
 
@@ -135,16 +158,20 @@ export default function FormOrderManagement() {
   const currentForms = filteredForms.slice(startIndex, endIndex)
 
   const stats = useMemo(() => {
-    const pendingCount = forms.filter((form) => form.status === 'Pending').length
-    const processingCount = forms.filter((form) => form.status === 'Processing').length
-    const uniqueStoreCount = new Set(forms.map((form) => form.storeId).filter(hasStoreId)).size
+    // Ensure forms is always an array
+    const formsArray = Array.isArray(forms) ? forms : []
+    const filteredArray = Array.isArray(filteredForms) ? filteredForms : []
+
+    const pendingCount = formsArray.filter((form) => form.status === 'Pending').length
+    const processingCount = formsArray.filter((form) => form.status === 'Processing').length
+    const uniqueStoreCount = new Set(formsArray.map((form) => form.storeId).filter(hasStoreId)).size
 
     return {
       pendingCount,
       processingCount,
       uniqueStoreCount,
-      total: forms.length,
-      filtered: filteredForms.length
+      total: formsArray.length,
+      filtered: filteredArray.length
     }
   }, [filteredForms, forms, hasStoreId])
 
