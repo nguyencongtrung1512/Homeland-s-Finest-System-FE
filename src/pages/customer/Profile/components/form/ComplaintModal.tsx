@@ -6,7 +6,7 @@ import { Textarea } from '../../../../../components/ui/textarea'
 import { Label } from '../../../../../components/ui/label'
 import { Input } from '../../../../../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select'
-import { Camera, AlertTriangle, Loader2 } from 'lucide-react'
+import { Camera, AlertTriangle, Loader2, X } from 'lucide-react'
 import type { FormType } from '../../../../../types/form.type'
 
 interface ComplaintModalProps {
@@ -105,6 +105,15 @@ const ComplaintModal = ({
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
     setImages((prev: File[]) => [...prev, ...files])
+  }
+
+  const handleRemoveImage = (index: number) => {
+    // Revoke the URL for the removed image before removing
+    if (previewUrls[index]) {
+      URL.revokeObjectURL(previewUrls[index])
+    }
+    // Remove image - useEffect will automatically update previewUrls
+    setImages((prev) => prev.filter((_, i) => i !== index))
   }
 
   return (
@@ -262,17 +271,38 @@ const ComplaintModal = ({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
                       transition={{ duration: 0.2 }}
-                      className='mt-2'
+                      className='mt-4'
                     >
-                      <p className='text-xs text-gray-600 mb-2'>Đã chọn {images.length} hình ảnh</p>
-                      <div className='grid grid-cols-3 gap-2'>
+                      <div className='flex items-center justify-between mb-3'>
+                        <p className='text-sm text-gray-600 font-medium'>
+                          Đã chọn <span className='text-green-600'>{images.length}</span> hình ảnh
+                        </p>
+                      </div>
+                      <div className='grid grid-cols-3 gap-3'>
                         {previewUrls.map((url, idx) => (
-                          <motion.div key={url} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className='relative'>
+                          <motion.div
+                            key={`${url}-${idx}`}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className='relative group'
+                          >
                             <img
                               src={url}
-                              alt={`complaint-image-${idx + 1}`}
-                              className='w-full h-20 object-contain rounded-md border bg-gray-50'
+                              alt={`Xem trước ${idx + 1}`}
+                              className='w-full h-24 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity'
                             />
+                            <motion.button
+                              type='button'
+                              onClick={() => handleRemoveImage(idx)}
+                              disabled={isLoading}
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              className='absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
+                              aria-label='Xóa ảnh'
+                            >
+                              <X className='w-3 h-3' />
+                            </motion.button>
                           </motion.div>
                         ))}
                       </div>

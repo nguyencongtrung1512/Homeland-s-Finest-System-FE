@@ -1,12 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ui/dialog'
 import { Button } from '../../../../components/ui/button'
 import { Label } from '../../../../components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../components/ui/select'
-import { Loader2, UserPlus, Users } from 'lucide-react'
+import { Loader2, UserPlus } from 'lucide-react'
 import { formApi } from '../../../../apis/form.api'
 import { staffApi, type StaffInfo } from '../../../../apis/staff.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../../utils/toast'
+import StaffComboBox from '../../../../components/ui/staff-combo-box'
+import type { Staff } from '../../../../apis/admin.api'
+
+interface ApiError {
+  message?: string
+  errors?: Array<{ field?: string; message: string } | string>
+  response?: {
+    data?: {
+      message?: string
+      errors?: Array<{ field?: string; message: string } | string>
+    }
+  }
+}
 
 interface AssignStaffModalProps {
   isOpen: boolean
@@ -35,13 +47,84 @@ const AssignStaffModal = ({ isOpen, onClose, formId, formSubject, onSuccess }: A
       const response = await staffApi.getAllStaff({
         isActive: true // Only load active staff
       })
-      setStaffList((response as any) || [])
+
+      // Handle different response formats (similar to other components)
+      let staffData: StaffInfo[] = []
+
+      if (Array.isArray(response)) {
+        // Response is directly an array
+        staffData = response
+      } else if (response && typeof response === 'object') {
+        // Check if response has data field
+        if ('data' in response) {
+          const responseWithData = response as { data?: StaffInfo[] | unknown }
+          if (Array.isArray(responseWithData.data)) {
+            // Response has structure {status, message, data: StaffInfo[]}
+            staffData = responseWithData.data
+          }
+        }
+        // Fallback: check if response itself has nested data structure
+        else if ((response as any).data && Array.isArray((response as any).data)) {
+          staffData = (response as any).data
+        }
+      }
+
+      console.log('Staff API Response:', response)
+      console.log('Parsed staff data:', staffData)
+      console.log('Staff list length:', staffData.length)
+      setStaffList(staffData)
     } catch (error) {
       console.error('Error loading staff list:', error)
-      toast.error('Có lỗi xảy ra khi tải danh sách nhân viên')
+
+      // Extract error message from backend response
+      let errorMessage = 'Có lỗi xảy ra khi tải danh sách nhân viên'
+
+      if (error && typeof error === 'object') {
+        const err = error as ApiError
+
+        // Priority 1: Check for direct message field (axios interceptor returns error.response.data directly)
+        if (err.message) {
+          errorMessage = err.message
+        }
+        // Priority 2: Check for errors array
+        else if (err.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+          errorMessage = err.errors.map((e) => (typeof e === 'object' && e.message ? e.message : String(e))).join(', ')
+        }
+        // Priority 3: Check for axios error response structure (fallback)
+        else if (err.response?.data) {
+          const responseData = err.response.data
+          if (responseData.message) {
+            errorMessage = responseData.message
+          } else if (responseData.errors && Array.isArray(responseData.errors)) {
+            errorMessage = responseData.errors.map((e) => (typeof e === 'object' && e.message ? e.message : String(e))).join(', ')
+          }
+        }
+      }
+      // Priority 4: Check if error itself is a string
+      else if (typeof error === 'string') {
+        errorMessage = error
+      }
+
+      toast.error(errorMessage)
     } finally {
       setLoadingStaff(false)
     }
+  }
+
+  // Convert StaffInfo[] to Staff[] format for StaffComboBox
+  const staffOptions: Staff[] = useMemo(() => {
+    const options = staffList.map((staff) => ({
+      staffId: staff.userId,
+      staffName: `${staff.firstName} ${staff.lastName}`.trim(),
+      email: staff.email,
+      processingStoreCount: 0 // Not needed for this use case
+    }))
+    console.log('Staff options for combobox:', options)
+    return options
+  }, [staffList])
+
+  const handleStaffSelect = (staffId: string | null) => {
+    setSelectedStaffId(staffId || '')
   }
 
   const handleAssign = async () => {
@@ -61,7 +144,37 @@ const AssignStaffModal = ({ isOpen, onClose, formId, formSubject, onSuccess }: A
       handleClose()
     } catch (error) {
       console.error('Error assigning staff:', error)
-      toast.error('Có lỗi xảy ra khi phân công nhân viên')
+
+      // Extract error message from backend response
+      let errorMessage = 'Có lỗi xảy ra khi phân công nhân viên'
+
+      if (error && typeof error === 'object') {
+        const err = error as ApiError
+
+        // Priority 1: Check for direct message field (axios interceptor returns error.response.data directly)
+        if (err.message) {
+          errorMessage = err.message
+        }
+        // Priority 2: Check for errors array
+        else if (err.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+          errorMessage = err.errors.map((e) => (typeof e === 'object' && e.message ? e.message : String(e))).join(', ')
+        }
+        // Priority 3: Check for axios error response structure (fallback)
+        else if (err.response?.data) {
+          const responseData = err.response.data
+          if (responseData.message) {
+            errorMessage = responseData.message
+          } else if (responseData.errors && Array.isArray(responseData.errors)) {
+            errorMessage = responseData.errors.map((e) => (typeof e === 'object' && e.message ? e.message : String(e))).join(', ')
+          }
+        }
+      }
+      // Priority 4: Check if error itself is a string
+      else if (typeof error === 'string') {
+        errorMessage = error
+      }
+
+      toast.error(errorMessage)
     } finally {
       setIsAssigning(false)
     }
@@ -98,36 +211,21 @@ const AssignStaffModal = ({ isOpen, onClose, formId, formSubject, onSuccess }: A
             <Label className='text-sm font-medium text-gray-700 mb-2 block'>
               Chọn nhân viên <span className='text-red-500'>*</span>
             </Label>
-            <Select value={selectedStaffId} onValueChange={setSelectedStaffId} disabled={isAssigning || loadingStaff}>
-              <SelectTrigger>
-                <SelectValue placeholder={loadingStaff ? 'Đang tải danh sách...' : 'Chọn nhân viên xử lý'} />
-              </SelectTrigger>
-              <SelectContent>
-                {loadingStaff ? (
-                  <div className='flex items-center justify-center py-4'>
-                    <Loader2 className='w-4 h-4 animate-spin mr-2' />
-                    <span className='text-sm text-gray-500'>Đang tải...</span>
-                  </div>
-                ) : staffList.length > 0 ? (
-                  staffList.map((staff) => (
-                    <SelectItem key={staff.userId} value={staff.userId}>
-                      <div className='flex flex-col'>
-                        <span className='font-medium'>
-                          {staff.firstName} {staff.lastName}
-                        </span>
-                        <span className='text-xs text-gray-500'>{staff.email}</span>
-                      </div>
-                    </SelectItem>
-                  ))
-                ) : (
-                  <div className='flex items-center justify-center py-4'>
-                    <Users className='w-4 h-4 mr-2 text-gray-400' />
-                    <span className='text-sm text-gray-500'>Không có nhân viên nào</span>
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
-            {staffList.length > 0 && (
+            {loadingStaff ? (
+              <div className='flex items-center justify-center py-4 border border-gray-300 rounded-lg bg-gray-50'>
+                <Loader2 className='w-4 h-4 animate-spin mr-2' />
+                <span className='text-sm text-gray-500'>Đang tải danh sách nhân viên...</span>
+              </div>
+            ) : (
+              <StaffComboBox
+                options={staffOptions}
+                placeholder='Chọn nhân viên xử lý'
+                onSelect={handleStaffSelect}
+                value={selectedStaffId}
+                disabled={isAssigning || loadingStaff}
+              />
+            )}
+            {!loadingStaff && staffList.length > 0 && (
               <p className='text-xs text-gray-500 mt-1'>Tìm thấy {staffList.length} nhân viên đang hoạt động</p>
             )}
           </div>
