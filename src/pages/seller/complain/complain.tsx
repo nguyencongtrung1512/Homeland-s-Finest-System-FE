@@ -1,6 +1,9 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../../contexts/store.context'
+import { useAuth } from '../../../contexts/auth.context'
 import { formApi } from '../../../apis/form.api'
+import { createOrGetChatRoom } from '../../../apis/chat.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
 import { toast } from '../../../utils/toast'
 import Loading from '../../../components/Loading/loading'
@@ -11,16 +14,30 @@ import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Eye, Image as ImageIcon, Upload, X } from 'lucide-react'
+import {
+  Calendar,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Eye,
+  Image as ImageIcon,
+  Upload,
+  X,
+  MessageCircle
+} from 'lucide-react'
 import { resolveImageUrl } from '../../../utils/image'
 import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 import { CopyButton } from '../../../components/ui/copy'
 
 function ComplainSeller() {
   const { store, loading: storeLoading } = useStore()
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [forms, setForms] = useState<FormDTO[]>([])
   const [totalViolationCount, setTotalViolationCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
+  const [creatingChat, setCreatingChat] = useState<string | null>(null) // Track which form is creating chat
   const [selectedForm, setSelectedForm] = useState<FormDTO | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showReplyModal, setShowReplyModal] = useState(false)
@@ -191,6 +208,47 @@ function ComplainSeller() {
       toast.error(errorMessage)
     } finally {
       setLoadingDetail(false)
+    }
+  }
+
+  // Handle chat with customer
+  const handleChatWithCustomer = async (form: FormDTO) => {
+    if (!user?.userId || !form.userId) {
+      toast.error('Không thể xác định thông tin người dùng')
+      return
+    }
+
+    // Get sellerId from store
+    if (!store?.sellerId) {
+      toast.error('Không tìm thấy thông tin cửa hàng')
+      return
+    }
+
+    try {
+      setCreatingChat(form.id)
+
+      // Create or get chat room
+      const response = await createOrGetChatRoom({
+        sellerId: store.sellerId,
+        customerId: form.userId
+      })
+
+      if (response?.data?.id) {
+        // Navigate to chat page with roomId
+        navigate(`/seller/chat?roomId=${response.data.id}`)
+        toast.success('Đang chuyển đến cuộc trò chuyện...')
+      } else {
+        toast.error('Không thể tạo phòng chat')
+      }
+    } catch (error: unknown) {
+      console.error('Error creating/getting chat room:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as { message?: string })?.message ||
+        'Có lỗi xảy ra khi tạo phòng chat'
+      toast.error(errorMessage)
+    } finally {
+      setCreatingChat(null)
     }
   }
 
@@ -769,6 +827,17 @@ function ComplainSeller() {
                           <Eye className='w-4 h-4 mr-2' />
                           Xem chi tiết
                         </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => handleChatWithCustomer(form)}
+                          disabled={creatingChat === form.id}
+                          className='text-green-600 border-green-600 hover:bg-green-50'
+                          title='Nhắn tin với khách hàng để giải quyết khiếu nại'
+                        >
+                          <MessageCircle className='w-4 h-4 mr-2' />
+                          {creatingChat === form.id ? 'Đang tải...' : 'Nhắn tin'}
+                        </Button>
                         {/* Chỉ hiển thị nút phản hồi khi chưa phản hồi và chưa quá hạn - không cho phép chỉnh sửa */}
                         {form.status === 'Confirmed' &&
                           !form.isSellerReplied &&
@@ -949,12 +1018,24 @@ function ComplainSeller() {
                     </div>
                   )}
 
-                  {/* Reply Button in Detail Modal - Chỉ hiển thị khi chưa phản hồi và chưa quá hạn - không cho phép chỉnh sửa */}
-                  {selectedForm.status === 'Confirmed' &&
-                    !selectedForm.isSellerReplied &&
-                    (!selectedForm.deadlineForSellerReply ||
-                      !isDeadlineExpired(selectedForm.deadlineForSellerReply)) && (
-                      <div className='pt-4 border-t'>
+                  {/* Action Buttons in Detail Modal */}
+                  <div className='pt-4 border-t space-y-2'>
+                    <Button
+                      onClick={() => {
+                        setShowDetailModal(false)
+                        handleChatWithCustomer(selectedForm)
+                      }}
+                      disabled={creatingChat === selectedForm.id}
+                      className='w-full bg-green-600 hover:bg-green-700 text-white'
+                    >
+                      <MessageCircle className='w-4 h-4 mr-2' />
+                      {creatingChat === selectedForm.id ? 'Đang tải...' : 'Nhắn tin với khách hàng'}
+                    </Button>
+                    {/* Reply Button - Chỉ hiển thị khi chưa phản hồi và chưa quá hạn - không cho phép chỉnh sửa */}
+                    {selectedForm.status === 'Confirmed' &&
+                      !selectedForm.isSellerReplied &&
+                      (!selectedForm.deadlineForSellerReply ||
+                        !isDeadlineExpired(selectedForm.deadlineForSellerReply)) && (
                         <Button
                           onClick={() => {
                             setShowDetailModal(false)
@@ -964,8 +1045,8 @@ function ComplainSeller() {
                         >
                           Phản hồi khiếu nại
                         </Button>
-                      </div>
-                    )}
+                      )}
+                  </div>
 
                   {/* Thông báo khi đã phản hồi */}
                   {selectedForm.status === 'Confirmed' && selectedForm.isSellerReplied && (
@@ -996,7 +1077,7 @@ function ComplainSeller() {
 
       {/* Reply Modal */}
       <Dialog open={showReplyModal} onOpenChange={setShowReplyModal}>
-        <DialogContent className='max-w-2xl w-[90vw] sm:w-full max-h-[90vh] overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-400 [scrollbar-width:thin] [scrollbar-color:rgb(209_213_219)_transparent]'>
+        <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
           <DialogHeader>
             <DialogTitle className='text-lg sm:text-xl font-bold'>Phản hồi khiếu nại</DialogTitle>
           </DialogHeader>
