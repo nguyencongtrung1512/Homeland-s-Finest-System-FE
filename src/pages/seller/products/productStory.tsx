@@ -68,6 +68,10 @@ function ProductStoryComponent({
   const [uploadingImages, setUploadingImages] = useState(false)
   const [uploadingVideo, setUploadingVideo] = useState(false)
 
+  // Drag and drop states
+  const [isDraggingImages, setIsDraggingImages] = useState(false)
+  const [isDraggingVideo, setIsDraggingVideo] = useState(false)
+
   // File input refs
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
@@ -75,7 +79,8 @@ function ProductStoryComponent({
   // Constants for validation
   const MAX_TITLE_WORDS = 50
   const MAX_CONTENT_WORDS = 500
-  const MAX_IMAGES = 3
+  const MIN_IMAGES = 3
+  const MAX_IMAGES = 5
 
   // Helper function to count words
   const countWords = (text: string): number => {
@@ -86,12 +91,9 @@ function ProductStoryComponent({
       .filter((word) => word.length > 0).length
   }
 
-  // Handle image upload - just store files and create preview URLs
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (!files || files.length === 0) return
-
-    setUploadingImages(true) // Set loading state
+  // Helper function to process image files (used by both file input and drag & drop)
+  const processImageFiles = (files: FileList | File[]) => {
+    setUploadingImages(true)
 
     // Check current image count
     const currentImageCount = editData.images.length
@@ -100,9 +102,6 @@ function ProductStoryComponent({
     if (availableSlots <= 0) {
       toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
       setUploadingImages(false)
-      if (imageInputRef.current) {
-        imageInputRef.current.value = ''
-      }
       return
     }
 
@@ -140,20 +139,49 @@ function ProductStoryComponent({
       }))
     }
 
+    setUploadingImages(false)
+  }
+
+  // Handle image upload - just store files and create preview URLs
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    processImageFiles(files)
+
     // Reset input
     if (imageInputRef.current) {
       imageInputRef.current.value = ''
     }
-
-    setUploadingImages(false) // Reset loading state
   }
 
-  // Handle video upload - just store file and create preview URL
-  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+  // Drag and drop handlers for images
+  const handleImageDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingImages(true)
+  }
 
-    setUploadingVideo(true) // Set loading state
+  const handleImageDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingImages(false)
+  }
+
+  const handleImageDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingImages(false)
+
+    const files = e.dataTransfer.files
+    if (!files || files.length === 0) return
+
+    processImageFiles(files)
+  }
+
+  // Helper function to process video file (used by both file input and drag & drop)
+  const processVideoFile = (file: File) => {
+    setUploadingVideo(true)
 
     // Validate file size (50MB max)
     if (file.size > 50 * 1024 * 1024) {
@@ -176,12 +204,47 @@ function ProductStoryComponent({
       video: videoUrl,
       videoFile: file
     }))
+
+    setUploadingVideo(false)
+  }
+
+  // Handle video upload - just store file and create preview URL
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    processVideoFile(file)
+
     // Reset input
     if (videoInputRef.current) {
       videoInputRef.current.value = ''
     }
+  }
 
-    setUploadingVideo(false) // Reset loading state
+  // Drag and drop handlers for video
+  const handleVideoDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingVideo(true)
+  }
+
+  const handleVideoDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingVideo(false)
+  }
+
+  const handleVideoDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingVideo(false)
+
+    const files = e.dataTransfer.files
+    if (!files || files.length === 0) return
+
+    // Only process the first video file
+    const file = files[0]
+    processVideoFile(file)
   }
 
   // Handle title change
@@ -218,9 +281,9 @@ function ProductStoryComponent({
         return
       }
 
-      // Validate images count - BẮTBUỘC PHẢI CÓ ĐÚNG 3 ảnh
-      if (editData.images.length !== MAX_IMAGES) {
-        toast.error(`Bắt buộc phải có đúng ${MAX_IMAGES} hình ảnh. Hiện tại bạn có ${editData.images.length} ảnh.`)
+      // Validate images count - BẮT BUỘC PHẢI CÓ TỪ 3 ĐẾN 5 ảnh
+      if (editData.images.length < MIN_IMAGES || editData.images.length > MAX_IMAGES) {
+        toast.error(`Bắt buộc phải có từ ${MIN_IMAGES} đến ${MAX_IMAGES} hình ảnh. Hiện tại bạn có ${editData.images.length} ảnh.`)
         return
       }
 
@@ -304,15 +367,15 @@ function ProductStoryComponent({
         toast.success('Cập nhật câu chuyện thành công!')
       } else {
         // Create new story
-        // Bắt buộc phải có 3 ảnh và video
+        // Bắt buộc phải có từ 3 đến 5 ảnh và video
         if (!editData.videoFile) {
           toast.error('Bắt buộc phải chọn video cho câu chuyện.')
           return
         }
 
-        if (editData.imageFiles.length !== MAX_IMAGES) {
+        if (editData.imageFiles.length < MIN_IMAGES || editData.imageFiles.length > MAX_IMAGES) {
           toast.error(
-            `Bắt buộc phải có đúng ${MAX_IMAGES} hình ảnh. Hiện tại bạn có ${editData.imageFiles.length} ảnh.`
+            `Bắt buộc phải có từ ${MIN_IMAGES} đến ${MAX_IMAGES} hình ảnh. Hiện tại bạn có ${editData.imageFiles.length} ảnh.`
           )
           return
         }
@@ -804,9 +867,13 @@ function ProductStoryComponent({
               <div className='flex items-center justify-between mb-1'>
                 <Label className='text-sm font-medium'>Hình ảnh minh họa</Label>
                 <span
-                  className={`text-xs ${editData.images.length !== MAX_IMAGES ? 'text-red-500' : 'text-green-600'}`}
+                  className={`text-xs ${
+                    editData.images.length < MIN_IMAGES || editData.images.length > MAX_IMAGES
+                      ? 'text-red-500'
+                      : 'text-green-600'
+                  }`}
                 >
-                  {editData.images.length} / {MAX_IMAGES} ảnh (bắt buộc)
+                  {editData.images.length} / {MIN_IMAGES}-{MAX_IMAGES} ảnh (bắt buộc)
                 </span>
               </div>
               <div className='mt-2 space-y-4'>
@@ -840,11 +907,30 @@ function ProductStoryComponent({
                 {editData.images.length < MAX_IMAGES && (
                   <div className='space-y-3'>
                     <div
-                      className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
+                        isDraggingImages
+                          ? 'border-green-500 bg-green-50 scale-105'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
                       onClick={() => imageInputRef.current?.click()}
+                      onDragOver={handleImageDragOver}
+                      onDragLeave={handleImageDragLeave}
+                      onDrop={handleImageDrop}
                     >
-                      <Image className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                      <p className='text-gray-600 mb-1'>Thêm hình ảnh cho câu chuyện</p>
+                      <Image
+                        className={`w-10 h-10 mx-auto mb-3 ${
+                          isDraggingImages ? 'text-green-600' : 'text-gray-400'
+                        }`}
+                      />
+                      <p
+                        className={`mb-1 ${
+                          isDraggingImages ? 'text-green-700 font-medium' : 'text-gray-600'
+                        }`}
+                      >
+                        {isDraggingImages
+                          ? 'Thả hình ảnh vào đây'
+                          : 'Kéo thả hoặc click để thêm hình ảnh cho câu chuyện'}
+                      </p>
                       <p className='text-sm text-gray-500'>PNG, JPG tối đa 5MB mỗi ảnh</p>
                     </div>
 
@@ -871,7 +957,7 @@ function ProductStoryComponent({
                 )}
                 {editData.images.length >= MAX_IMAGES && (
                   <p className='text-sm text-red-600 text-center py-2 font-medium'>
-                    Đã đủ {MAX_IMAGES} hình ảnh. Xóa ảnh nếu muốn thay đổi.
+                    Đã đủ tối đa {MAX_IMAGES} hình ảnh. Xóa ảnh nếu muốn thay đổi.
                   </p>
                 )}
               </div>
@@ -901,11 +987,30 @@ function ProductStoryComponent({
                 {!editData.video && (
                   <div className='space-y-3'>
                     <div
-                      className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
+                        isDraggingVideo
+                          ? 'border-green-500 bg-green-50 scale-105'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
                       onClick={() => videoInputRef.current?.click()}
+                      onDragOver={handleVideoDragOver}
+                      onDragLeave={handleVideoDragLeave}
+                      onDrop={handleVideoDrop}
                     >
-                      <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                      <p className='text-gray-600 mb-1'>Thêm video cho câu chuyện</p>
+                      <Video
+                        className={`w-10 h-10 mx-auto mb-3 ${
+                          isDraggingVideo ? 'text-green-600' : 'text-gray-400'
+                        }`}
+                      />
+                      <p
+                        className={`mb-1 ${
+                          isDraggingVideo ? 'text-green-700 font-medium' : 'text-gray-600'
+                        }`}
+                      >
+                        {isDraggingVideo
+                          ? 'Thả video vào đây'
+                          : 'Kéo thả hoặc click để thêm video cho câu chuyện'}
+                      </p>
                       <p className='text-sm text-gray-500'>MP4, MOV tối đa 50MB</p>
                     </div>
 
@@ -931,6 +1036,34 @@ function ProductStoryComponent({
                 )}
                 {editData.video && (
                   <div className='space-y-3'>
+                    <div
+                      className={`border-2 border-dashed rounded-lg p-4 text-center transition-all cursor-pointer ${
+                        isDraggingVideo
+                          ? 'border-green-500 bg-green-50 scale-105'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      onClick={() => videoInputRef.current?.click()}
+                      onDragOver={handleVideoDragOver}
+                      onDragLeave={handleVideoDragLeave}
+                      onDrop={handleVideoDrop}
+                    >
+                      <Video
+                        className={`w-8 h-8 mx-auto mb-2 ${
+                          isDraggingVideo ? 'text-green-600' : 'text-gray-400'
+                        }`}
+                      />
+                      <p
+                        className={`text-sm mb-1 ${
+                          isDraggingVideo ? 'text-green-700 font-medium' : 'text-gray-600'
+                        }`}
+                      >
+                        {isDraggingVideo
+                          ? 'Thả video vào đây để thay thế'
+                          : 'Kéo thả hoặc click để thay thế video'}
+                      </p>
+                      <p className='text-xs text-gray-500'>MP4, MOV tối đa 50MB</p>
+                    </div>
+
                     <Button
                       type='button'
                       variant='outline'

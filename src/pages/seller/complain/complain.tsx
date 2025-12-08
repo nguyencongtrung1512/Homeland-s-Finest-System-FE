@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useStore } from '../../../contexts/store.context'
 import { formApi } from '../../../apis/form.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
@@ -34,6 +34,14 @@ function ComplainSeller() {
   const [previewImages, setPreviewImages] = useState<string[]>([])
   const [isListPreviewOpen, setIsListPreviewOpen] = useState(false)
   const [listPreviewIndex, setListPreviewIndex] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  // Ref to track current image count for immediate validation
+  const imageCountRef = useRef(0)
+
+  // Sync ref with state whenever sellerImages changes
+  useEffect(() => {
+    imageCountRef.current = sellerImages.length
+  }, [sellerImages])
 
   // Load forms by storeId (only ComplaintOrder and ReportSeller)
   const loadForms = useCallback(async () => {
@@ -205,25 +213,114 @@ function ComplainSeller() {
     setSellerReply('')
     setSellerImages([])
     setImagePreviews([])
+    imageCountRef.current = 0
     setShowReplyModal(true)
   }
 
-  // Handle image selection
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
+  // Process image files with validation (max 5 images)
+  const processImageFiles = useCallback((files: File[]) => {
     if (files.length === 0) return
 
-    const newFiles = [...sellerImages, ...files]
-    setSellerImages(newFiles)
+    // Filter only image files
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'))
+    if (imageFiles.length === 0) {
+      toast.error('Vui lòng chọn file ảnh hợp lệ')
+      return
+    }
 
-    // Create previews
-    const newPreviews = files.map((file) => URL.createObjectURL(file))
-    setImagePreviews((prev) => [...prev, ...newPreviews])
+    const maxImages = 5
+    const currentCount = imageCountRef.current
+
+    // Early validation using ref for immediate check
+    if (currentCount >= maxImages) {
+      toast.error(`Bạn chỉ có thể tải lên tối đa ${maxImages} ảnh`)
+      return
+    }
+
+    const remainingSlots = maxImages - currentCount
+
+    // Use functional update to get current state and validate again
+    setSellerImages((currentImages) => {
+      // Double check with actual state
+      const actualCurrentCount = currentImages.length
+      const actualRemainingSlots = maxImages - actualCurrentCount
+
+      if (actualRemainingSlots <= 0) {
+        toast.error(`Bạn chỉ có thể tải lên tối đa ${maxImages} ảnh`)
+        imageCountRef.current = actualCurrentCount
+        return currentImages // Return unchanged state
+      }
+
+      // Take only the files that fit within the limit
+      const filesToAdd = imageFiles.slice(0, actualRemainingSlots)
+      const newFiles = [...currentImages, ...filesToAdd]
+      
+      // Update ref immediately
+      imageCountRef.current = newFiles.length
+
+      // Update previews separately
+      const newPreviews = filesToAdd.map((file) => URL.createObjectURL(file))
+      setImagePreviews((prev) => {
+        // Ensure previews match the actual files count
+        const currentPreviewCount = prev.length
+        if (currentPreviewCount >= maxImages) {
+          return prev
+        }
+        const allowedPreviews = newPreviews.slice(0, maxImages - currentPreviewCount)
+        return [...prev, ...allowedPreviews]
+      })
+
+      // Show warning if some files were skipped
+      if (imageFiles.length > actualRemainingSlots) {
+        toast.warning(`Chỉ ${actualRemainingSlots} ảnh được thêm vào (tối đa ${maxImages} ảnh)`)
+      }
+
+      return newFiles
+    })
+  }, [])
+
+  // Handle image selection from file input
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    processImageFiles(files)
+    // Reset input value to allow selecting same file again
+    e.target.value = ''
+  }
+
+  // Handle drag and drop
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = Array.from(e.dataTransfer.files || [])
+    processImageFiles(files)
   }
 
   // Remove image
   const handleRemoveImage = (index: number) => {
-    setSellerImages((prev) => prev.filter((_, i) => i !== index))
+    setSellerImages((prev) => {
+      const newFiles = prev.filter((_, i) => i !== index)
+      imageCountRef.current = newFiles.length
+      return newFiles
+    })
     setImagePreviews((prev) => {
       const newPreviews = prev.filter((_, i) => i !== index)
       // Revoke object URLs
@@ -255,6 +352,12 @@ function ComplainSeller() {
       return
     }
 
+    // Validate max 5 images
+    if (sellerImages.length > 5) {
+      toast.error('Bạn chỉ có thể tải lên tối đa 5 ảnh')
+      return
+    }
+
     try {
       setSubmitting(true)
       await formApi.sellerUpdateForm(selectedForm.id, {
@@ -275,6 +378,7 @@ function ComplainSeller() {
         setSellerReply('')
         setSellerImages([])
         setImagePreviews([])
+        imageCountRef.current = 0
         loadForms() // Reload forms
       }, 500)
     } catch (error: unknown) {
@@ -695,7 +799,7 @@ function ComplainSeller() {
 
       {/* Detail Modal */}
       <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-        <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+        <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-400 [scrollbar-width:thin] [scrollbar-color:rgb(209_213_219)_transparent]'>
           <DialogHeader>
             <DialogTitle className='text-xl font-bold'>Chi tiết khiếu nại</DialogTitle>
           </DialogHeader>
@@ -892,9 +996,9 @@ function ComplainSeller() {
 
       {/* Reply Modal */}
       <Dialog open={showReplyModal} onOpenChange={setShowReplyModal}>
-        <DialogContent className='max-w-2xl'>
+        <DialogContent className='max-w-2xl w-[90vw] sm:w-full max-h-[90vh] overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-400 [scrollbar-width:thin] [scrollbar-color:rgb(209_213_219)_transparent]'>
           <DialogHeader>
-            <DialogTitle className='text-xl font-bold'>Phản hồi khiếu nại</DialogTitle>
+            <DialogTitle className='text-lg sm:text-xl font-bold'>Phản hồi khiếu nại</DialogTitle>
           </DialogHeader>
           {selectedForm && (
             <div className='space-y-4'>
@@ -949,16 +1053,28 @@ function ComplainSeller() {
                   placeholder='Nhập phản hồi và giải thích của bạn...'
                   value={sellerReply}
                   onChange={(e) => setSellerReply(e.target.value)}
-                  className='min-h-[120px] resize-none'
+                  className='min-h-[100px] sm:min-h-[120px] resize-none text-sm sm:text-base'
                 />
               </div>
 
               <div>
                 <Label className='text-sm font-medium text-gray-700 mb-2 block'>
                   Hình ảnh bằng chứng <span className='text-red-500'>*</span>
+                  <span className='text-xs text-gray-500 font-normal ml-2'>(Tối đa 5 ảnh)</span>
                 </Label>
                 <div className='space-y-3'>
-                  <div className='flex items-center gap-2'>
+                  {/* Drag and Drop Zone */}
+                  <div
+                    onDragEnter={handleDragEnter}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-colors ${
+                      isDragging
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
+                    }`}
+                  >
                     <input
                       type='file'
                       id='seller-images'
@@ -967,31 +1083,50 @@ function ComplainSeller() {
                       onChange={handleImageSelect}
                       className='hidden'
                     />
-                    <Button
-                      type='button'
-                      variant='outline'
-                      onClick={() => document.getElementById('seller-images')?.click()}
-                      className='text-blue-600 border-blue-600 hover:bg-blue-50'
-                    >
-                      <Upload className='w-4 h-4 mr-2' />
-                      Chọn ảnh
-                    </Button>
-                    {imagePreviews.length > 0 && (
-                      <span className='text-sm text-green-600 font-medium'>{imagePreviews.length} ảnh đã chọn</span>
-                    )}
-                    {imagePreviews.length === 0 && (
-                      <span className='text-sm text-red-500'>Vui lòng chọn ít nhất 1 ảnh bằng chứng</span>
-                    )}
+                    <div className='flex flex-col items-center gap-2 sm:gap-3'>
+                      <Upload
+                        className={`w-8 h-8 sm:w-10 sm:h-10 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`}
+                      />
+                      <div className='flex flex-col items-center gap-2'>
+                        <p className='text-xs sm:text-sm font-medium text-gray-700'>
+                          {isDragging ? 'Thả ảnh vào đây' : 'Kéo thả ảnh vào đây hoặc'}
+                        </p>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          onClick={() => document.getElementById('seller-images')?.click()}
+                          className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                          size='sm'
+                        >
+                          <Upload className='w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2' />
+                          <span className='text-xs sm:text-sm'>Chọn ảnh</span>
+                        </Button>
+                      </div>
+                      <p className='text-xs text-gray-500 px-2'>
+                        Định dạng hỗ trợ: JPG, PNG, GIF
+                        <br className='sm:hidden' />
+                        <span className='hidden sm:inline'> </span>(Tối đa 5 ảnh)
+                      </p>
+                      {imagePreviews.length > 0 && (
+                        <p className='text-xs sm:text-sm text-green-600 font-medium'>
+                          Đã chọn: {imagePreviews.length}/5 ảnh
+                        </p>
+                      )}
+                    </div>
                   </div>
 
+                  {imagePreviews.length === 0 && (
+                    <p className='text-sm text-red-500 text-center'>Vui lòng chọn ít nhất 1 ảnh bằng chứng</p>
+                  )}
+
                   {imagePreviews.length > 0 && (
-                    <div className='grid grid-cols-3 gap-3'>
+                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3'>
                       {imagePreviews.map((preview, index) => (
                         <div key={index} className='relative group'>
                           <img
                             src={preview}
                             alt={`Xem trước ${index + 1}`}
-                            className='w-full h-24 object-cover rounded border border-gray-200'
+                            className='w-full h-20 sm:h-24 object-cover rounded border border-gray-200'
                           />
                           <button
                             type='button'
@@ -1007,7 +1142,7 @@ function ComplainSeller() {
                 </div>
               </div>
 
-              <div className='flex gap-3 pt-4'>
+              <div className='flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4'>
                 <Button
                   variant='outline'
                   onClick={() => {
@@ -1015,8 +1150,9 @@ function ComplainSeller() {
                     setSellerReply('')
                     setSellerImages([])
                     setImagePreviews([])
+                    imageCountRef.current = 0
                   }}
-                  className='flex-1'
+                  className='flex-1 w-full sm:w-auto'
                   disabled={submitting}
                 >
                   Hủy
@@ -1024,7 +1160,7 @@ function ComplainSeller() {
                 <Button
                   onClick={handleSubmitReply}
                   disabled={submitting || !sellerReply.trim() || sellerImages.length === 0}
-                  className='flex-1 bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                  className='flex-1 w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   {submitting ? 'Đang gửi...' : 'Gửi phản hồi'}
                 </Button>

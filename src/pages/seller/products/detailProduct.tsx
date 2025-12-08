@@ -337,6 +337,54 @@ function DetailProductSeller() {
 
   const hasNumericValue = (value: number | null | undefined): value is number => value !== null && value !== undefined
 
+  // Helper function để xử lý video URLs từ product
+  const getProductVideoData = () => {
+    if (!product) return null
+
+    let video = ''
+    let videoSources: { hls?: string; dash?: string; preview?: string; fallback?: string } | undefined = undefined
+
+    // Priority: videoPlayBackUrl > videoPreviewUrl > videoFallBackUrl > productVideo
+    if (product.videoPlayBackUrl) {
+      const playbackUrls = product.videoPlayBackUrl.split(',').map((url) => url.trim())
+      const hlsUrl = playbackUrls.find((url) => url.includes('.m3u8'))
+      const dashUrl = playbackUrls.find((url) => url.includes('.mpd'))
+
+      videoSources = {}
+      if (hlsUrl) videoSources.hls = hlsUrl
+      if (dashUrl) videoSources.dash = dashUrl
+      if (product.videoPreviewUrl?.trim()) {
+        videoSources.preview = product.videoPreviewUrl.trim()
+      }
+      if (product.videoFallBackUrl?.trim()) {
+        videoSources.fallback = product.videoFallBackUrl.trim()
+      }
+
+      video =
+        product.videoPreviewUrl?.trim() ||
+        hlsUrl ||
+        dashUrl ||
+        product.videoFallBackUrl?.trim() ||
+        playbackUrls[0] ||
+        ''
+    } else if (product.videoPreviewUrl) {
+      video = product.videoPreviewUrl.trim()
+      videoSources = {
+        preview: product.videoPreviewUrl.trim(),
+        fallback: product.videoFallBackUrl?.trim() || undefined
+      }
+    } else if (product.videoFallBackUrl) {
+      video = product.videoFallBackUrl.trim()
+      videoSources = {
+        fallback: product.videoFallBackUrl.trim()
+      }
+    } else if (product.productVideo) {
+      video = product.productVideo
+    }
+
+    return video ? { video, videoSources } : null
+  }
+
   // Helper function để kiểm tra có thể chỉnh sửa product info không (trừ variant)
   // Chỉ cho phép chỉnh sửa khi: Draft, Cancelled, Denied (không bao gồm Approved)
   const canEditProductInfo = (): boolean => {
@@ -1526,20 +1574,42 @@ function DetailProductSeller() {
                   )}
 
                   {/* Product Video */}
-                  {product?.productVideo && (
-                    <div className='mt-6'>
-                      <div className='flex items-center gap-2 mb-2'>
-                        <Play size={16} className='text-green-600' />
-                        <span className='text-sm font-medium text-gray-700'>Video sản phẩm</span>
+                  {(() => {
+                    const videoData = getProductVideoData()
+                    if (!videoData) return null
+
+                    return (
+                      <div className='mt-6'>
+                        <div className='flex items-center gap-2 mb-2'>
+                          <Play size={16} className='text-green-600' />
+                          <span className='text-sm font-medium text-gray-700'>Video sản phẩm</span>
+                        </div>
+                        <div className='h-[350px] bg-gray-100 rounded-lg overflow-hidden'>
+                          <video controls className='w-full h-full' poster={product.productImages?.[0]}>
+                            {/* HLS stream (for Safari and modern browsers) */}
+                            {videoData.videoSources?.hls && (
+                              <source src={videoData.videoSources.hls} type='application/x-mpegURL' />
+                            )}
+                            {/* DASH stream (for Chrome and Firefox) */}
+                            {videoData.videoSources?.dash && (
+                              <source src={videoData.videoSources.dash} type='application/dash+xml' />
+                            )}
+                            {/* Preview URL as fallback */}
+                            {videoData.videoSources?.preview && !videoData.videoSources.hls && !videoData.videoSources.dash && (
+                              <source src={videoData.videoSources.preview} type='video/mp4' />
+                            )}
+                            {/* Fallback URL */}
+                            {videoData.videoSources?.fallback && (
+                              <source src={videoData.videoSources.fallback} type='video/mp4' />
+                            )}
+                            {/* Main video URL */}
+                            <source src={videoData.video} type='video/mp4' />
+                            Trình duyệt của bạn không hỗ trợ video.
+                          </video>
+                        </div>
                       </div>
-                      <div className='h-[350px] bg-gray-100 rounded-lg overflow-hidden'>
-                        <video controls className='w-full h-full' poster={product.productImages?.[0]}>
-                          <source src={product.productVideo} type='video/mp4' />
-                          Trình duyệt của bạn không hỗ trợ video.
-                        </video>
-                      </div>
-                    </div>
-                  )}
+                    )
+                  })()}
                 </CardContent>
               </Card>
             </motion.div>

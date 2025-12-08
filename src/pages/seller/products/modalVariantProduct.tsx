@@ -781,6 +781,7 @@ export default function ModalVariantProduct({
                 placeholder='Ví dụ: Đỏ, 100ml, X, XL...'
                 value={variantData.attributeName}
                 onChange={(e) => handleVariantInputChange('attributeName', e.target.value)}
+                maxLength={MAX_ATTRIBUTE_NAME_LENGTH}
                 className={`mt-1 ${attributeNameError ? 'border-red-500' : ''}`}
               />
               {attributeNameError && <p className='mt-1 text-sm text-red-500'>{attributeNameError}</p>}

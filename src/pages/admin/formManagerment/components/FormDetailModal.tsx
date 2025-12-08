@@ -210,15 +210,14 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
 
   // Handle admin update
   const handleAdminUpdate = async () => {
-    if (!form || !adminText.trim()) {
-      toast.error('Vui lòng nhập phản hồi từ quản trị viên')
+    if (!form) {
       return
     }
 
     try {
       setUpdating(true)
       await formApi.adminUpdateForm(form.id, {
-        adminText: adminText.trim(),
+        adminText: adminText.trim() || '', // Allow empty adminText
         status: adminStatus
       })
 
@@ -248,12 +247,13 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
         <DialogContent
           className='w-[96vw] sm:w-auto sm:max-w-3xl lg:max-w-6xl
               max-h-[85vh] sm:max-h-[90vh]
-             overflow-y-auto p-0 sm:p-6
-              rounded-2xl border border-gray-200 shadow-xl overflow-hidden'
+              p-0 rounded-2xl overflow-hidden'
         >
-          <div className='flex items-center justify-center py-12'>
-            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
-            <span className='ml-3 text-gray-600'>Đang tải chi tiết khiếu nại...</span>
+          <div className='overflow-y-auto max-h-[85vh] sm:max-h-[90vh] p-4 sm:p-6'>
+            <div className='flex items-center justify-center py-12'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
+              <span className='ml-3 text-gray-600'>Đang tải chi tiết khiếu nại...</span>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -263,13 +263,15 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
   if (!form) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className='w-[92vw] sm:max-w-md mx-auto p-0 sm:p-6'>
-          <div className='text-center py-12'>
-            <h2 className='text-xl font-semibold text-gray-900 mb-2'>Không tìm thấy khiếu nại</h2>
-            <p className='text-gray-600 mb-4'>Khiếu nại này có thể đã bị xóa hoặc không tồn tại.</p>
-            <Button onClick={handleClose} variant='outline'>
-              Đóng
-            </Button>
+        <DialogContent className='w-[92vw] sm:max-w-md mx-auto p-0 rounded-2xl overflow-hidden'>
+          <div className='p-4 sm:p-6'>
+            <div className='text-center py-12'>
+              <h2 className='text-xl font-semibold text-gray-900 mb-2'>Không tìm thấy khiếu nại</h2>
+              <p className='text-gray-600 mb-4'>Khiếu nại này có thể đã bị xóa hoặc không tồn tại.</p>
+              <Button onClick={handleClose} variant='outline'>
+                Đóng
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -282,17 +284,18 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent
         className='w-[96vw] sm:w-auto sm:max-w-3xl lg:max-w-6xl
-              max-h-[85vh] sm:max-h-[90vh] overflow-y-auto
-              p-0 sm:p-6'
+              max-h-[85vh] sm:max-h-[90vh]
+              p-0 rounded-2xl overflow-hidden'
       >
-        <DialogHeader>
-          <DialogTitle className='text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2'>
-            <ArrowLeft className='w-5 h-5 text-gray-500' />
-            Chi tiết khiếu nại #{form.id}
-          </DialogTitle>
-        </DialogHeader>
+        <div className='overflow-y-auto max-h-[85vh] sm:max-h-[90vh] p-4 sm:p-6'>
+          <DialogHeader>
+            <DialogTitle className='text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2'>
+              <ArrowLeft className='w-5 h-5 text-gray-500' />
+              Chi tiết khiếu nại #{form.id}
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6'>
           {/* Main Content */}
           <div className='lg:col-span-2 space-y-6'>
             {/* Form Info */}
@@ -473,7 +476,9 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                   </div>
 
                   <div>
-                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>Phản hồi</Label>
+                    <Label className='text-sm font-medium text-gray-700 mb-2 block'>
+                      Phản hồi <span className='text-gray-400 font-normal'>(Tùy chọn)</span>
+                    </Label>
                     <Textarea
                       placeholder='Nhập phản hồi từ quản trị viên...'
                       value={adminText}
@@ -484,7 +489,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
 
                   <Button
                     onClick={handleAdminUpdate}
-                    disabled={updating || !adminText.trim()}
+                    disabled={updating}
                     className='w-full bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
                   >
                     {updating ? (
@@ -586,6 +591,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
             )}
           </div>
         </div>
+      </div>
       </DialogContent>
     </Dialog>
   )

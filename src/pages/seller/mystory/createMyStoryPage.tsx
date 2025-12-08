@@ -155,6 +155,10 @@ function CreateMyStoryPage() {
     return text.trim().split(/\s+/).filter((word) => word.length > 0).length
   }
 
+  const countCharacters = (text: string): number => {
+    return text.trim().length
+  }
+
   const validateForm = (): string | null => {
     if (!storyData.Title.trim()) {
       return 'Vui lòng nhập tiêu đề câu chuyện'
@@ -195,9 +199,9 @@ function CreateMyStoryPage() {
 
     for (const desc of descriptions) {
       if (desc.text.trim()) {
-        const descWords = countWords(desc.text)
-        if (descWords > 200) {
-          return `${desc.label} không được vượt quá 200 từ (hiện tại: ${descWords} từ)`
+        const descChars = countCharacters(desc.text)
+        if (descChars > 500) {
+          return `${desc.label} không được vượt quá 500 ký tự (hiện tại: ${descChars} ký tự)`
         }
       }
     }
@@ -981,16 +985,16 @@ function CreateMyStoryPage() {
                     value={storyData.VideoOpenerDescription}
                     onChange={(e) => handleInputChange('VideoOpenerDescription', e.target.value)}
                     className={`mt-1 min-h-[60px] text-sm ${
-                      countWords(storyData.VideoOpenerDescription) > 200 ? 'border-red-500' : ''
+                      countCharacters(storyData.VideoOpenerDescription) > 500 ? 'border-red-500' : ''
                     }`}
                   />
                   <div className='flex justify-end items-center mt-1'>
                     <p
                       className={`text-xs ${
-                        countWords(storyData.VideoOpenerDescription) > 200 ? 'text-red-500' : 'text-gray-500'
+                        countCharacters(storyData.VideoOpenerDescription) > 500 ? 'text-red-500' : 'text-gray-500'
                       }`}
                     >
-                      {countWords(storyData.VideoOpenerDescription)}/200 từ
+                      {countCharacters(storyData.VideoOpenerDescription)}/500 ký tự
                     </p>
                   </div>
                 </div>
@@ -1108,16 +1112,16 @@ function CreateMyStoryPage() {
                     value={storyData.SingleImageDescription}
                     onChange={(e) => handleInputChange('SingleImageDescription', e.target.value)}
                     className={`mt-1 min-h-[60px] text-sm ${
-                      countWords(storyData.SingleImageDescription) > 200 ? 'border-red-500' : ''
+                      countCharacters(storyData.SingleImageDescription) > 500 ? 'border-red-500' : ''
                     }`}
                   />
                   <div className='flex justify-end items-center mt-1'>
                     <p
                       className={`text-xs ${
-                        countWords(storyData.SingleImageDescription) > 200 ? 'text-red-500' : 'text-gray-500'
+                        countCharacters(storyData.SingleImageDescription) > 500 ? 'text-red-500' : 'text-gray-500'
                       }`}
                     >
-                      {countWords(storyData.SingleImageDescription)}/200 từ
+                      {countCharacters(storyData.SingleImageDescription)}/500 ký tự
                     </p>
                   </div>
                 </div>
@@ -1283,14 +1287,14 @@ function CreateMyStoryPage() {
                     value={storyData.GalleryDescription}
                     onChange={(e) => handleInputChange('GalleryDescription', e.target.value)}
                     className={`mt-1 min-h-[60px] text-sm ${
-                      countWords(storyData.GalleryDescription) > 200 ? 'border-red-500' : ''
+                      countCharacters(storyData.GalleryDescription) > 500 ? 'border-red-500' : ''
                     }`}
                   />
                   <div className='flex justify-end items-center mt-1'>
                     <p
-                      className={`text-xs ${countWords(storyData.GalleryDescription) > 200 ? 'text-red-500' : 'text-gray-500'}`}
+                      className={`text-xs ${countCharacters(storyData.GalleryDescription) > 500 ? 'text-red-500' : 'text-gray-500'}`}
                     >
-                      {countWords(storyData.GalleryDescription)}/200 từ
+                      {countCharacters(storyData.GalleryDescription)}/500 ký tự
                     </p>
                   </div>
                 </div>
@@ -1440,16 +1444,16 @@ function CreateMyStoryPage() {
                     value={storyData.VideoProcessDescription}
                     onChange={(e) => handleInputChange('VideoProcessDescription', e.target.value)}
                     className={`mt-1 min-h-[60px] text-sm ${
-                      countWords(storyData.VideoProcessDescription) > 200 ? 'border-red-500' : ''
+                      countCharacters(storyData.VideoProcessDescription) > 500 ? 'border-red-500' : ''
                     }`}
                   />
                   <div className='flex justify-end items-center mt-1'>
                     <p
                       className={`text-xs ${
-                        countWords(storyData.VideoProcessDescription) > 200 ? 'text-red-500' : 'text-gray-500'
+                        countCharacters(storyData.VideoProcessDescription) > 500 ? 'text-red-500' : 'text-gray-500'
                       }`}
                     >
-                      {countWords(storyData.VideoProcessDescription)}/200 từ
+                      {countCharacters(storyData.VideoProcessDescription)}/500 ký tự
                     </p>
                   </div>
                 </div>
@@ -1563,16 +1567,16 @@ function CreateMyStoryPage() {
                     value={storyData.VideoTestimonialDescription}
                     onChange={(e) => handleInputChange('VideoTestimonialDescription', e.target.value)}
                     className={`mt-1 min-h-[60px] text-sm ${
-                      countWords(storyData.VideoTestimonialDescription) > 200 ? 'border-red-500' : ''
+                      countCharacters(storyData.VideoTestimonialDescription) > 500 ? 'border-red-500' : ''
                     }`}
                   />
                   <div className='flex justify-end items-center mt-1'>
                     <p
                       className={`text-xs ${
-                        countWords(storyData.VideoTestimonialDescription) > 200 ? 'text-red-500' : 'text-gray-500'
+                        countCharacters(storyData.VideoTestimonialDescription) > 500 ? 'text-red-500' : 'text-gray-500'
                       }`}
                     >
-                      {countWords(storyData.VideoTestimonialDescription)}/200 từ
+                      {countCharacters(storyData.VideoTestimonialDescription)}/500 ký tự
                     </p>
                   </div>
                 </div>
