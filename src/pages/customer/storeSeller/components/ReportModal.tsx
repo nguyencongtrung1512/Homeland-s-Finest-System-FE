@@ -1,4 +1,4 @@
-import { Camera, AlertTriangle, Loader2, X } from 'lucide-react'
+import { Camera, AlertTriangle, Loader2, X, Upload } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ui/dialog'
 import { Button } from '../../../../components/ui/button'
 import { Textarea } from '../../../../components/ui/textarea'
@@ -7,12 +7,24 @@ import { useState, useEffect } from 'react'
 import { formApi } from '../../../../apis/form.api'
 import { useAuth } from '../../../../contexts/auth.context'
 import type { CreateFormRequest } from '../../../../types/form.type'
+import { toast } from '../../../../utils/toast'
 
 interface ReportModalProps {
   isOpen: boolean
   onClose: () => void
   storeName: string
   storeId: string
+}
+
+interface ApiError {
+  message?: string
+  errors?: Array<{ field?: string; message: string } | string>
+  response?: {
+    data?: {
+      message?: string
+      errors?: Array<{ field?: string; message: string } | string>
+    }
+  }
 }
 
 const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) => {
@@ -24,6 +36,7 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<{ description?: string; images?: string }>({})
+  const [isDragActive, setIsDragActive] = useState(false)
 
   // Constants for validation
   const MAX_WORDS = 100
@@ -57,22 +70,36 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
     )
   }
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || [])
-    const totalAfterAdd = images.length + files.length
+  // Helper function to process files (used by both upload and drag-drop)
+  const processFiles = (files: File[]) => {
+    // Filter only image files
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'))
+
+    if (imageFiles.length === 0 && files.length > 0) {
+      setErrors((prev) => ({
+        ...prev,
+        images: 'Vui lòng chọn file hình ảnh hợp lệ'
+      }))
+      return
+    }
+
+    const totalAfterAdd = images.length + imageFiles.length
 
     if (totalAfterAdd > MAX_IMAGES) {
       setErrors((prev) => ({
         ...prev,
         images: `Tối đa ${MAX_IMAGES} hình ảnh. Bạn có thể thêm tối đa ${MAX_IMAGES - images.length} hình ảnh nữa.`
       }))
-      // Reset input
-      event.target.value = ''
       return
     }
 
-    setImages((prev: File[]) => [...prev, ...files])
+    setImages((prev: File[]) => [...prev, ...imageFiles])
     setErrors((prev) => ({ ...prev, images: undefined }))
+  }
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    processFiles(files)
     // Reset input để có thể chọn lại file giống nhau
     event.target.value = ''
   }
@@ -80,6 +107,49 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
   const removeImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index))
     setErrors((prev) => ({ ...prev, images: undefined }))
+  }
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isSubmitting && images.length < MAX_IMAGES) {
+      setIsDragActive(true)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isSubmitting && images.length < MAX_IMAGES) {
+      setIsDragActive(true)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Only set to false if we're leaving the drop zone entirely
+    const relatedTarget = e.relatedTarget as HTMLElement
+    const currentTarget = e.currentTarget
+    if (!currentTarget.contains(relatedTarget)) {
+      setIsDragActive(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragActive(false)
+
+    if (isSubmitting || images.length >= MAX_IMAGES) {
+      return
+    }
+
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      processFiles(files)
+    }
   }
 
   const validateForm = (): boolean => {
@@ -130,6 +200,12 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
 
       await formApi.createForm(formData)
 
+      // Hiển thị toast thành công từ FE
+      toast.success(
+        'Gửi khiếu nại thành công',
+        'Khiếu nại của bạn đã được gửi thành công. Chúng tôi sẽ xem xét và phản hồi sớm nhất có thể.'
+      )
+
       // Reset form and close modal
       setSelectedReasons([])
       setDescription('')
@@ -137,7 +213,43 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
       onClose()
     } catch (err) {
       console.error('Error submitting report:', err)
-      setError('Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.')
+
+      // Extract error message from backend response
+      let errorMessage = 'Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.'
+
+      if (err && typeof err === 'object') {
+        const apiError = err as ApiError
+
+        // Priority 1: Check for direct message field (axios interceptor returns error.response.data directly)
+        if (apiError.message) {
+          errorMessage = apiError.message
+        }
+        // Priority 2: Check for errors array
+        else if (apiError.errors && Array.isArray(apiError.errors) && apiError.errors.length > 0) {
+          errorMessage = apiError.errors
+            .map((e) => (typeof e === 'object' && e.message ? e.message : String(e)))
+            .join(', ')
+        }
+        // Priority 3: Check for axios error response structure (fallback)
+        else if (apiError.response?.data) {
+          const responseData = apiError.response.data
+          if (responseData.message) {
+            errorMessage = responseData.message
+          } else if (responseData.errors && Array.isArray(responseData.errors)) {
+            errorMessage = responseData.errors
+              .map((e) => (typeof e === 'object' && e.message ? e.message : String(e)))
+              .join(', ')
+          }
+        }
+      }
+      // Priority 4: Check if error itself is a string
+      else if (typeof err === 'string') {
+        errorMessage = err
+      }
+
+      // Hiển thị toast lỗi với message từ backend
+      toast.error('Gửi khiếu nại thất bại', errorMessage)
+      setError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -160,6 +272,7 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
       setImages([])
       setError(null)
       setErrors({})
+      setIsDragActive(false)
     }
   }, [isOpen])
 
@@ -247,7 +360,14 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
                 <p className='text-xs text-gray-500 mb-2'>
                   Đã chọn {images.length}/{MAX_IMAGES} ảnh
                 </p>
-                <div className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'>
+                <div
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${isDragActive ? 'border-green-500 bg-green-50 border-solid' : 'border-gray-300 hover:border-gray-400'
+                    } ${isSubmitting || images.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
                   <input
                     type='file'
                     multiple
@@ -261,10 +381,18 @@ const ReportModal = ({ isOpen, onClose, storeName, storeId }: ReportModalProps) 
                     htmlFor='image-upload'
                     className={`cursor-pointer ${isSubmitting || images.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <Camera className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                    <span className='text-sm text-gray-600 block'>Thêm Hình ảnh</span>
+                    {isDragActive ? (
+                      <Upload className='w-8 h-8 text-green-500 mx-auto mb-2' />
+                    ) : (
+                      <Camera className='w-8 h-8 text-gray-400 mx-auto mb-2' />
+                    )}
+                    <span
+                      className={`text-sm block mb-1 ${isDragActive ? 'text-green-600 font-semibold' : 'text-gray-600'}`}
+                    >
+                      {isDragActive ? 'Thả ảnh vào đây' : 'Thêm Hình ảnh'}
+                    </span>
                     <span className='text-xs text-gray-500 block mt-1'>
-                      Hình ảnh thực tế sẽ giúp đánh giá của bạn hữu ích hơn
+                      {isDragActive ? 'Thả ảnh để tải lên' : 'Kéo thả ảnh vào đây hoặc click để chọn'}
                     </span>
                   </Label>
                 </div>
