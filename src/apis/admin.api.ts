@@ -74,6 +74,18 @@ export interface BanStoreResponse {
   data?: BanStoreResponseData
 }
 
+// Interface cho active orders response
+export interface ActiveOrdersResponse {
+  status: number
+  message: string
+  data?: {
+    processingCount: number
+    pendingPaymentCount: number
+    notYetCount: number
+    confirmedCount: number
+  }
+}
+
 // Interface cho review store response
 export interface ReviewStoreResponse {
   status: number
@@ -454,5 +466,12 @@ export const adminApi = {
     } else {
       throw new Error(response.data?.message || `API returned status ${response.status}`)
     }
+  },
+
+  // Lấy số lượng đơn hàng đang xử lý của cửa hàng
+  getActiveOrders: async (storeId: string): Promise<ActiveOrdersResponse> => {
+    const response = await axiosInstance.get(`${API_URL}/store/${storeId}/active-orders`)
+    // axiosInstance đã trả về response.data rồi, nên response đã là data object
+    return response as any
   }
 }

@@ -29,7 +29,13 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 import { Input } from '../../../components/ui/input'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
-import { adminApi, type Staff, type StatusStoreRequest, type BanStoreRequest } from '../../../apis/admin.api'
+import {
+  adminApi,
+  type Staff,
+  type StatusStoreRequest,
+  type BanStoreRequest,
+  type ActiveOrdersResponse
+} from '../../../apis/admin.api'
 import { staffApi } from '../../../apis/staff.api'
 import { getAllCombos } from '../../../apis/combo.api'
 import { type Combo } from '../../../types/combo.type'
@@ -61,6 +67,8 @@ function StoreDetailAdmin() {
   const [comboModalOpen, setComboModalOpen] = useState(false)
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('')
+  const [activeOrders, setActiveOrders] = useState<ActiveOrdersResponse['data'] | null>(null)
+  const [activeOrdersLoading, setActiveOrdersLoading] = useState(false)
 
   // Product states
   const [products, setProducts] = useState<Product[]>([])
@@ -380,11 +388,43 @@ function StoreDetailAdmin() {
     }
   }
 
-  const handleStatusAction = (action: 'Approve' | 'Reject' | 'Ban' | 'Unban') => {
+  const fetchActiveOrders = async () => {
+    if (!storeId) return
+
+    try {
+      setActiveOrdersLoading(true)
+      const response = await adminApi.getActiveOrders(storeId)
+      console.log('Active orders response:', response)
+      // response đã là ActiveOrdersResponse rồi (axiosInstance đã trả về data)
+      // Cấu trúc: { status, message, data: { processingCount, pendingPaymentCount, notYetCount, confirmedCount } }
+      if (response?.data) {
+        setActiveOrders(response.data)
+        console.log('Active orders data:', response.data)
+      } else {
+        console.warn('No data in active orders response')
+        setActiveOrders(null)
+      }
+    } catch (error: any) {
+      console.error('Error fetching active orders:', error)
+      // Không hiển thị toast error vì đây là thông tin bổ sung
+      setActiveOrders(null)
+    } finally {
+      setActiveOrdersLoading(false)
+    }
+  }
+
+  const handleStatusAction = async (action: 'Approve' | 'Reject' | 'Ban' | 'Unban') => {
     setSelectedAction(action)
     setReason('')
     setIsTemporary(false)
     setBanUntil('')
+    setActiveOrders(null)
+
+    // Nếu là action Ban, fetch active orders
+    if (action === 'Ban' && storeId) {
+      await fetchActiveOrders()
+    }
+
     setStatusDialogOpen(true)
   }
 
@@ -1048,7 +1088,7 @@ function StoreDetailAdmin() {
                   {(() => {
                     // Xử lý cả trường hợp staffImage là string (có thể chứa nhiều URL phân cách bởi dấu phẩy) hoặc array
                     let images: string[] = []
-                    
+
                     if (Array.isArray(store.staffImage)) {
                       // Nếu là array, filter các giá trị hợp lệ
                       images = store.staffImage.filter((img) => img && typeof img === 'string' && img.trim() !== '')
@@ -1065,9 +1105,9 @@ function StoreDetailAdmin() {
                         images = [store.staffImage.trim()]
                       }
                     }
-                    
+
                     if (images.length === 0) return null
-                    
+
                     return (
                       <div>
                         <h4 className='font-semibold text-gray-900 mb-3'>Ảnh từ nhân viên</h4>
@@ -1448,7 +1488,7 @@ function StoreDetailAdmin() {
 
       {/* Status Action Dialog */}
       <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-        <DialogContent className='sm:max-w-md'>
+        <DialogContent className='max-h-[90vh] w-full overflow-y-auto'>
           <DialogHeader>
             <DialogTitle className='flex items-center gap-2 text-gray-900'>
               {selectedAction === 'Approve' && <Check className='w-5 h-5 text-green-500' />}
@@ -1473,6 +1513,67 @@ function StoreDetailAdmin() {
                 </div>
               </div>
 
+              {/* Active Orders Warning - chỉ hiển thị khi action là Ban */}
+              {selectedAction === 'Ban' && (
+                <div className='p-4 bg-orange-50 border border-orange-200 rounded-lg'>
+                  {activeOrdersLoading ? (
+                    <div className='flex items-center gap-2 text-orange-700'>
+                      <Loader2 className='w-4 h-4 animate-spin' />
+                      <span className='text-sm'>Đang kiểm tra đơn hàng đang xử lý...</span>
+                    </div>
+                  ) : activeOrders !== null ? (
+                    <div className='space-y-2'>
+                      <div className='flex items-center gap-2'>
+                        <AlertTriangle className='w-4 h-4 text-orange-600' />
+                        <h4 className='text-sm font-medium text-orange-800'>
+                          Cảnh báo: Các đơn hàng sau sẽ bị hủy khi khóa cửa hàng
+                        </h4>
+                      </div>
+                      {activeOrders.processingCount +
+                        activeOrders.pendingPaymentCount +
+                        activeOrders.notYetCount +
+                        activeOrders.confirmedCount >
+                        0 ? (
+                        <div className='grid grid-cols-2 gap-2 mt-3'>
+                          {activeOrders.processingCount > 0 && (
+                            <div className='bg-white p-2 rounded border border-orange-200'>
+                              <p className='text-xs text-gray-600'>Đang xử lý</p>
+                              <p className='text-sm font-semibold text-orange-700'>
+                                {activeOrders.processingCount} đơn
+                              </p>
+                            </div>
+                          )}
+                          {activeOrders.pendingPaymentCount > 0 && (
+                            <div className='bg-white p-2 rounded border border-orange-200'>
+                              <p className='text-xs text-gray-600'>Chờ thanh toán</p>
+                              <p className='text-sm font-semibold text-orange-700'>
+                                {activeOrders.pendingPaymentCount} đơn
+                              </p>
+                            </div>
+                          )}
+                          {activeOrders.notYetCount > 0 && (
+                            <div className='bg-white p-2 rounded border border-orange-200'>
+                              <p className='text-xs text-gray-600'>Chưa xử lý</p>
+                              <p className='text-sm font-semibold text-orange-700'>{activeOrders.notYetCount} đơn</p>
+                            </div>
+                          )}
+                          {activeOrders.confirmedCount > 0 && (
+                            <div className='bg-white p-2 rounded border border-orange-200'>
+                              <p className='text-xs text-gray-600'>Đã xác nhận</p>
+                              <p className='text-sm font-semibold text-orange-700'>{activeOrders.confirmedCount} đơn</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className='text-xs text-orange-600 mt-2'>Không có đơn hàng đang xử lý</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className='text-sm text-orange-700'>Không thể tải thông tin đơn hàng</p>
+                  )}
+                </div>
+              )}
+
               <div className='space-y-3'>
                 <Label htmlFor='reason' className='text-sm font-medium text-gray-700'>
                   Lý do{' '}
@@ -1495,9 +1596,7 @@ function StoreDetailAdmin() {
                 />
                 <div className='flex pt-3 justify-between items-center'>
                   <p className='text-xs text-gray-500'>Lý do này sẽ được gửi đến chủ cửa hàng</p>
-                  <p
-                    className={`text-xs ${reason.length > 200 ? 'text-red-500' : 'text-gray-500'}`}
-                  >
+                  <p className={`text-xs ${reason.length > 200 ? 'text-red-500' : 'text-gray-500'}`}>
                     {reason.length}/200 ký tự
                   </p>
                 </div>
