@@ -163,14 +163,14 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
   const getStatusBadgeVariant = (status: FormStatus) => {
     switch (status) {
       case 'Pending':
-        return 'secondary'
+        return 'outline'
       case 'Processing':
-        return 'default'
+        return 'outline'
       case 'Confirmed':
-        return 'default'
+        return 'outline'
       case 'ApprovedByStaff':
       case 'ApprovedByAdmin':
-        return 'default'
+        return 'outline'
       case 'DeniedByStaff':
       case 'DeniedByAdmin':
       case 'Rejected':
@@ -450,7 +450,10 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
                       <span className='px-3 text-center text-xl py-1 rounded-full bg-green-50 text-green-700'>
                         {getTypeText(form.type)}
                       </span>
-                      <Badge variant={getStatusBadgeVariant(form.status)} className='text-xs flex items-center gap-1'>
+                      <Badge
+                        variant={getStatusBadgeVariant(form.status)}
+                        className='text-xs flex items-center gap-1 bg-gray-100 text-gray-700 border-gray-300'
+                      >
                         {getStatusIcon(form.status)}
                         {getStatusText(form.status)}
                       </Badge>
@@ -472,7 +475,6 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
                         })()}
                       {form.orderId && (
                         <div className='flex items-center gap-2'>
-
                           <CopyButton
                             textToCopy={form.orderId}
                             idleText={`${form.orderId}`}

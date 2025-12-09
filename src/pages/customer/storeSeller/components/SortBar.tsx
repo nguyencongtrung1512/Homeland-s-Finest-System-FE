@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import { Search } from 'lucide-react'
 import { Input } from '../../../../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../components/ui/select'
@@ -74,8 +74,8 @@ function SortBar({ selectedSort, onSortChange, onSearchChange, searchValue = '' 
         <button
           onClick={() => handleButtonClick('bestseller')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${selectedSort === 'bestseller'
-            ? 'bg-green-600 text-white shadow-sm'
-            : 'bg-white text-gray-700 hover:bg-gray-50'
+              ? 'bg-green-600 text-white shadow-sm'
+              : 'bg-white text-gray-700 hover:bg-gray-50'
             }`}
         >
           Bán Chạy
@@ -99,5 +99,5 @@ function SortBar({ selectedSort, onSortChange, onSearchChange, searchValue = '' 
   )
 }
 
-export default SortBar
-
+// Memoize để tránh re-render không cần thiết khi products loading
+export default memo(SortBar)

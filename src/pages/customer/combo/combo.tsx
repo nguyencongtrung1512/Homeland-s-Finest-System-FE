@@ -208,6 +208,10 @@ export const ComboList = ({ combos, loading, error, onAddToCart, currentPage, on
 
   return (
     <>
+      <div className='text-center text-sm text-gray-600 mt-4 py-4'>
+        Hiển thị {combosWithSavings.length} / {combos.length} combo
+      </div>
+
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
         {combosWithSavings.map((combo) => (
           <ComboCard key={combo.id} combo={combo} onAddToCart={onAddToCart} />
@@ -220,9 +224,6 @@ export const ComboList = ({ combos, loading, error, onAddToCart, currentPage, on
         onPageChange={(page) => onPageChange(page - 1)}
         maxVisiblePages={5}
       />
-
-      {/* Results info */}
-      <div className='text-center text-sm text-gray-600 mt-4'>Hiển thị {combosWithSavings.length} combo</div>
     </>
   )
 }

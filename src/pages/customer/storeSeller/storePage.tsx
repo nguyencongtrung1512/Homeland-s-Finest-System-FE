@@ -1,22 +1,25 @@
 import { useParams, useSearchParams } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import { Star, MapPin, Flag, AlertCircle } from 'lucide-react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { MapPin, Flag } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import StorySection from './components/StorySection'
 import MapComponent from '../../../components/Mapbox/mapBox'
 import { useStore } from '../../../hooks/useStore'
+import { useStoreProducts } from '../../../hooks/useStoreProducts'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import CertificatesSection from './components/CertificatesSection'
 import ReportModal from './components/ReportModal'
-import ProductCard from '../Products/Product/productCard'
-import { productApi } from '../../../apis/product.api'
 import type { Product } from '../../../types'
+import type { StoreProductItemDTO } from '../../../apis/store.api'
+import { getHashtagsByStoreId } from '../../../apis/hashtag.api'
+import type { HashtagItem } from '../../../apis/hashtag.api'
 import { PromotionBubble } from '../../../components/PromotionBubble'
 import { formatDate } from '../../../utils/formatDate'
 import AsideFilter from './components/asideFilter'
 import SortBar, { type SortOption } from './components/SortBar'
+import ProductsGrid from './components/ProductsGrid'
 
 const StorePage = () => {
   const { storeId } = useParams<{ storeId: string }>()
@@ -24,16 +27,19 @@ const StorePage = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
 
-  // Products state
-  const [products, setProducts] = useState<Product[]>([])
-  const [productsLoading, setProductsLoading] = useState(false)
-  const [productsError, setProductsError] = useState<string | null>(null)
-
-  // Filter state
+  // Filter state - mặc định là "Tất cả" (empty string = không filter theo type)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
-  const [selectedSuggestion, setSelectedSuggestion] = useState<string>('')
+  const [selectedHashtagIds, setSelectedHashtagIds] = useState<string[]>([])
   const [sortOption, setSortOption] = useState<SortOption>('popular')
   const [searchQuery, setSearchQuery] = useState<string>('')
+
+  // Pagination state
+  const [pageNumber, setPageNumber] = useState(1)
+  const [pageSize] = useState(20)
+
+  // Hashtags state
+  const [storeHashtags, setStoreHashtags] = useState<HashtagItem[]>([])
+  const [hashtagsLoading, setHashtagsLoading] = useState(false)
 
   // Use custom hook to fetch store data
   const { store, loading, error, refetch } = useStore(storeId)
@@ -64,33 +70,157 @@ const StorePage = () => {
     refetch()
   }
 
-  // Fetch products by store
-  const fetchProductsByStore = async (storeId: string) => {
-    if (!storeId) return
+  // Memoize callbacks để tránh re-render không cần thiết
+  const handleCategoryChange = useCallback((category: string) => {
+    // Nếu category là 'all' thì set empty string (không filter theo type)
+    setSelectedCategory(category === 'all' ? '' : category)
+  }, [])
 
-    setProductsLoading(true)
-    setProductsError(null)
+  const handleSuggestionChange = useCallback((hashtagIds: string[]) => {
+    setSelectedHashtagIds(hashtagIds)
+  }, [])
 
-    try {
-      const response = await productApi.getByStore(storeId, {
-        pageSize: 50, // Get more products to display
-        pageNumber: 1
-      })
-      setProducts(response.data)
-    } catch (err) {
-      console.error('Error fetching products by store:', err)
-      setProductsError('Không thể tải danh sách sản phẩm')
-    } finally {
-      setProductsLoading(false)
+  const handleSortChange = useCallback((sort: SortOption) => {
+    setSortOption(sort)
+  }, [])
+
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query)
+  }, [])
+
+  // Map sort option to API format
+  const mapSortOption = (option: SortOption): 'popular' | 'newest' | 'price-low' | 'price-high' => {
+    switch (option) {
+      case 'bestseller':
+        return 'popular' // Map bestseller to popular
+      case 'popular':
+      case 'newest':
+      case 'price-low':
+      case 'price-high':
+        return option
+      default:
+        return 'popular'
     }
   }
 
-  // Fetch products when store is loaded
+  // Extract hashtagIds string for dependency comparison
+  const hashtagIdsString = selectedHashtagIds.join(',')
+
+  // Use store products hook
+  const {
+    products: storeProducts,
+    loading: productsLoading,
+    error: productsError,
+    refetch: refetchProducts
+  } = useStoreProducts(store?.id, {
+    pageSize,
+    pageNumber,
+    productType: selectedCategory === 'Product' ? 'Product' : selectedCategory === 'combo' ? 'Combo' : null,
+    hashtagIds: selectedHashtagIds.length > 0 ? selectedHashtagIds : undefined,
+    sortBy: mapSortOption(sortOption),
+    name: searchQuery.trim() || undefined
+  })
+
+  // Fetch store hashtags when store is loaded
   useEffect(() => {
-    if (store?.id) {
-      fetchProductsByStore(store.id)
+    const fetchStoreHashtags = async () => {
+      if (!store?.id) {
+        setStoreHashtags([])
+        return
+      }
+
+      try {
+        setHashtagsLoading(true)
+        const response = await getHashtagsByStoreId(store.id, 0, 1) // Get all hashtags (pageSize=0 means all)
+        setStoreHashtags(response.data || [])
+      } catch (err) {
+        console.error('Error fetching store hashtags:', err)
+        setStoreHashtags([])
+      } finally {
+        setHashtagsLoading(false)
+      }
     }
+
+    fetchStoreHashtags()
   }, [store?.id])
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setPageNumber(1)
+  }, [selectedCategory, hashtagIdsString, sortOption, searchQuery])
+
+  // Map StoreProductItemDTO to Product type for ProductCard
+  const mapStoreProductToProduct = (item: StoreProductItemDTO): Product => {
+    return {
+      id: item.id,
+      storeId: store?.id || '',
+      storeName: store?.storeName || '',
+      provinceId: store?.provinceId || 0,
+      editedById: '',
+      summaryPrice: item.price,
+      price: item.price,
+      name: item.name,
+      description: item.description || '',
+      productImages: item.imageUrl ? [item.imageUrl] : [],
+      productVideo: '',
+      material: '',
+      saleCount: item.saleCount,
+      rating: item.rating,
+      reviewCount: item.reviewCount,
+      isActive: !item.soldOut,
+      typeProduct: item.type,
+      status: 'Approved',
+      staffNote: '',
+      soldOut: item.soldOut,
+      variantGroups: [],
+      productCategories: {
+        id: '',
+        name: '',
+        description: '',
+        isActive: true,
+        createdAt: '',
+        updatedAt: ''
+      },
+      productCertificateDTOs: []
+    }
+  }
+
+  // Memoize products để tránh re-render không cần thiết
+  const products = useMemo(() => {
+    return storeProducts.map(mapStoreProductToProduct)
+  }, [storeProducts, store?.id, store?.storeName, store?.provinceId])
+
+  // Memoize storeData để tránh re-render không cần thiết
+  const storeData = useMemo(() => {
+    return {
+      id: store?.id || '',
+      name: store?.storeName || '',
+      description: `Cửa hàng tại , ${store?.ward || ''} , ${store?.district || ''}, ${store?.province || ''}`,
+      address: store?.address || '',
+      image:
+        store?.logoUrl || 'https://images.unsplash.com/photo-1560493676-04071c5f467b?w=100&h=100&fit=crop&crop=center',
+      coverImage:
+        store?.coverImageUrl ||
+        'https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?w=800&h=300&fit=crop&crop=center',
+      story: 'Chúng tôi cam kết mang đến những sản phẩm chất lượng cao nhất cho khách hàng.',
+      products: products.map((product) => ({
+        ...product,
+        // Hiển thị badge "Combo" nếu type là "Combo", không hiển thị gì nếu là "Product"
+        badge: product.typeProduct === 'Combo' ? { text: 'Combo', color: 'bg-orange-500' } : undefined
+      })),
+      certificates:
+        store?.vendorApplicationImageUrl &&
+        Array.isArray(store.vendorApplicationImageUrl) &&
+        store.vendorApplicationImageUrl.length > 0
+          ? store.vendorApplicationImageUrl.map((imageUrl, index) => ({
+              id: `cert-${index}`,
+              name: `Giấy phép kinh doanh ${index + 1}`,
+              image: imageUrl,
+              issueDate: store.submittedDate ? formatDate(store.submittedDate) : undefined
+            }))
+          : []
+    }
+  }, [store, products])
 
   if (loading) {
     return (
@@ -112,89 +242,6 @@ const StorePage = () => {
         />
       </div>
     )
-  }
-
-  // Transform vendorApplicationImageUrl to certificates format
-  const certificates =
-    store.vendorApplicationImageUrl &&
-      Array.isArray(store.vendorApplicationImageUrl) &&
-      store.vendorApplicationImageUrl.length > 0
-      ? store.vendorApplicationImageUrl.map((imageUrl, index) => ({
-        id: `cert-${index}`,
-        name: `Giấy phép kinh doanh ${index + 1}`,
-        image: imageUrl,
-        issueDate: store.submittedDate ? formatDate(store.submittedDate) : undefined
-      }))
-      : []
-
-  // Filter and sort products
-  const filteredProducts = [...products]
-    .filter((product) => {
-      // Filter by search query
-      if (searchQuery.trim()) {
-        const query = searchQuery.trim().toLowerCase()
-        const productName = product.name?.toLowerCase() || ''
-        const productDescription = product.description?.toLowerCase() || ''
-        const productMaterial = product.material?.toLowerCase() || ''
-
-        return productName.includes(query) || productDescription.includes(query) || productMaterial.includes(query)
-      }
-      return true
-    })
-    .sort((a, b) => {
-      switch (sortOption) {
-        case 'popular':
-          // Sort by rating (higher first), then by review count
-          if (b.rating !== a.rating) {
-            return b.rating - a.rating
-          }
-          return b.reviewCount - a.reviewCount
-
-        case 'newest':
-          // Sort by creation date (newest first) - assuming products have createdAt field
-          // If not available, keep original order
-          return 0
-
-        case 'bestseller':
-          // Sort by saleCount (higher first)
-          return b.saleCount - a.saleCount
-
-        case 'price-low':
-          // Sort by price (lower first)
-          return (a.price || 0) - (b.price || 0)
-
-        case 'price-high':
-          // Sort by price (higher first)
-          return (b.price || 0) - (a.price || 0)
-
-        default:
-          return 0
-      }
-    })
-
-  // Transform API data to match component expectations
-  const storeData = {
-    id: store.id,
-    name: store.storeName,
-    description: `Cửa hàng tại , ${store.ward} , ${store.district}, ${store.province}`,
-    address: store.address,
-    image:
-      store.logoUrl || 'https://images.unsplash.com/photo-1560493676-04071c5f467b?w=100&h=100&fit=crop&crop=center',
-    coverImage:
-      store.coverImageUrl ||
-      'https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?w=800&h=300&fit=crop&crop=center',
-    story: 'Chúng tôi cam kết mang đến những sản phẩm chất lượng cao nhất cho khách hàng.',
-    products: filteredProducts.map((product) => {
-      // Get price directly from product, fallback to variants if needed
-      const price = product.price || 0
-
-      return {
-        ...product, // Spread all product properties
-        price: price, // Add price for ProductCard
-        badge: product.status === 'active' ? { text: 'Đang bán', color: 'bg-green-500' } : undefined
-      }
-    }),
-    certificates: certificates
   }
 
   return (
@@ -281,72 +328,43 @@ const StorePage = () => {
 
         {/* Sản Phẩm Tab */}
         <TabsContent value='products'>
-          {productsLoading ? (
-            <div className='flex items-center justify-center py-16'>
-              <Loading />
-              <span className='ml-2 text-gray-600'>Đang tải sản phẩm...</span>
+          <div className='flex flex-col lg:flex-row gap-6'>
+            {/* Sidebar Filter - Luôn hiển thị, không bị reload */}
+            <div className='lg:w-64 flex-shrink-0'>
+              <AsideFilter
+                selectedCategory={selectedCategory}
+                selectedHashtagIds={selectedHashtagIds}
+                onCategoryChange={handleCategoryChange}
+                onSuggestionChange={handleSuggestionChange}
+                hashtags={storeHashtags}
+                hashtagsLoading={hashtagsLoading}
+              />
             </div>
-          ) : productsError ? (
-            <div className='bg-white rounded-lg p-12 text-center shadow-sm'>
-              <div className='text-red-500 mb-4'>
-                <AlertCircle className='w-12 h-12 mx-auto' />
-              </div>
-              <h3 className='text-lg font-semibold text-gray-900 mb-2'>Không thể tải sản phẩm</h3>
-              <p className='text-gray-600 mb-4'>{productsError}</p>
-              <button
-                onClick={() => store?.id && fetchProductsByStore(store.id)}
-                className='px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors'
-              >
-                Thử lại
-              </button>
-            </div>
-          ) : (
-            <div className='flex flex-col lg:flex-row gap-6'>
-              {/* Sidebar Filter */}
-              <div className='lg:w-64 flex-shrink-0'>
-                <AsideFilter
-                  onCategoryChange={(category) => setSelectedCategory(category)}
-                  onSuggestionChange={(suggestion) => setSelectedSuggestion(suggestion)}
+
+            {/* Products Content - Chỉ phần này reload khi filter */}
+            <div className='flex-1'>
+              {/* Sort Bar - Luôn hiển thị, không bị reload */}
+              <div className='mb-6'>
+                <SortBar
+                  selectedSort={sortOption}
+                  onSortChange={handleSortChange}
+                  onSearchChange={handleSearchChange}
+                  searchValue={searchQuery}
                 />
               </div>
 
-              {/* Products Grid */}
-              <div className='flex-1'>
-                {storeData.products.length > 0 ? (
-                  <>
-                    {/* Sort Bar */}
-                    <div className='mb-6'>
-                      <SortBar
-                        selectedSort={sortOption}
-                        onSortChange={setSortOption}
-                        onSearchChange={setSearchQuery}
-                        searchValue={searchQuery}
-                      />
-                    </div>
-
-                    {/* Products Grid */}
-                    <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
-                      {storeData.products.map((product) => (
-                        <ProductCard key={product.id} product={product} />
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className='bg-white rounded-lg p-12 text-center shadow-sm'>
-                    <div className='text-gray-400 mb-4'>
-                      <Star className='w-12 h-12 mx-auto' />
-                    </div>
-                    <h3 className='text-lg font-semibold text-gray-900 mb-2'>Chưa có sản phẩm</h3>
-                    <p className='text-gray-600'>
-                      {selectedCategory || selectedSuggestion
-                        ? 'Không tìm thấy sản phẩm phù hợp với bộ lọc đã chọn.'
-                        : 'Cửa hàng này chưa có sản phẩm nào.'}
-                    </p>
-                  </div>
-                )}
-              </div>
+              {/* Products Grid - Chỉ phần này thay đổi khi loading */}
+              <ProductsGrid
+                products={storeData.products}
+                loading={productsLoading}
+                error={productsError}
+                onRetry={refetchProducts}
+                selectedCategory={selectedCategory}
+                selectedHashtagIds={selectedHashtagIds}
+                searchQuery={searchQuery}
+              />
             </div>
-          )}
+          </div>
         </TabsContent>
 
         {/* Giấy chứng nhận Tab */}

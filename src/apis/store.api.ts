@@ -92,6 +92,45 @@ export interface StoreFilterByLocationParams {
   pageNumber?: number
 }
 
+// Interface cho Store Product Item DTO (response từ API)
+export interface StoreProductItemDTO {
+  id: string
+  type: 'Product' | 'Combo'
+  name: string
+  description?: string
+  price: number
+  imageUrl: string
+  saleCount: number
+  rating: number
+  reviewCount: number
+  soldOut: boolean
+  hashtagIds?: string[]
+  createdAt: string
+}
+
+// Interface cho Store Products Request params
+export interface StoreProductsRequest {
+  pageSize?: number
+  pageNumber?: number
+  productType?: 'Product' | 'Combo' | null
+  hashtagIds?: string[]
+  sortBy?: 'popular' | 'newest' | 'price-low' | 'price-high'
+  name?: string
+}
+
+// Interface cho Store Products Response
+export interface StoreProductsResponse {
+  status: number
+  message: string
+  data: StoreProductItemDTO[]
+  pagination: {
+    pageSize: number
+    pageNumber: number
+    totalItems: number
+    totalPages: number
+  }
+}
+
 // API function để lấy danh sách store
 export const storeApi = {
   // Lấy danh sách tất cả stores
@@ -164,5 +203,32 @@ export const storeApi = {
     const url = `/Store/filter-by-location${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
 
     return await axiosInstance.get(url)
+  },
+
+  // Get store products with filters
+  getStoreProducts: async (storeId: string, params?: StoreProductsRequest): Promise<StoreProductsResponse> => {
+    const queryParams: any = {}
+
+    if (params?.pageSize !== undefined) {
+      queryParams.pageSize = params.pageSize
+    }
+    if (params?.pageNumber !== undefined) {
+      queryParams.pageNumber = params.pageNumber
+    }
+    if (params?.productType) {
+      queryParams.productType = params.productType
+    }
+    if (params?.hashtagIds && params.hashtagIds.length > 0) {
+      // Axios will handle array params as hashtagIds[]=id1&hashtagIds[]=id2
+      queryParams.hashtagIds = params.hashtagIds
+    }
+    if (params?.sortBy) {
+      queryParams.sortBy = params.sortBy
+    }
+    if (params?.name) {
+      queryParams.name = params.name
+    }
+
+    return await axiosInstance.get(`/Store/${storeId}/products`, { params: queryParams })
   }
 }

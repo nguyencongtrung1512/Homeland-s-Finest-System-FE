@@ -125,3 +125,64 @@ export interface ComboParams {
   fromDate?: string
   toDate?: string
 }
+
+export interface ComboFilterRequest {
+  // Price Filters
+  minPrice?: number
+  maxPrice?: number
+
+  // Location Filters
+  provinceFilters?: string[]
+  regionFilters?: string[]
+  subRegionFilters?: string[]
+
+  // Category Filters
+  categoryFilterIds?: string[]
+
+  // Store Filters
+  storeFilters?: string[]
+  storeNameFilters?: string[]
+
+  // Status Filters
+  statusFilters?: string[]
+  isActiveFilter?: boolean
+
+  // Date Filters
+  fromDate?: string
+  toDate?: string
+
+  // Sales Filters
+  minSaleCount?: number
+  maxSaleCount?: number
+
+  // Rating Filters
+  minRating?: number
+  maxRating?: number
+  hasRating?: boolean
+
+  // Savings Filters
+  minSavings?: number
+  maxSavings?: number
+
+  // Stock Filters
+  minAvailableQuantity?: number
+  maxAvailableQuantity?: number
+  inStock?: boolean
+
+  // Item Count Filters
+  minItemCount?: number
+  maxItemCount?: number
+
+  // Sorting Options
+  sortBy?: string
+
+  // Search Text
+  queryText?: string
+
+  // Staff Filters
+  assignedToFilters?: string[]
+
+  // Pagination
+  pageNumber?: number
+  pageSize?: number
+}
