@@ -124,7 +124,11 @@ const ComplaintModal = ({
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
-    setImages((prev: File[]) => [...prev, ...files])
+    if (files.length > 0) {
+      processFiles(files)
+    }
+    // Reset input value to allow selecting the same file again
+    event.target.value = ''
   }
 
   const handleRemoveImage = (index: number) => {
@@ -134,6 +138,35 @@ const ComplaintModal = ({
     }
     // Remove image - useEffect will automatically update previewUrls
     setImages((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isLoading && images.length < MAX_IMAGES) {
+      setIsDragOver(true)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+
+    if (isLoading || images.length >= MAX_IMAGES) {
+      return
+    }
+
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      processFiles(files)
+    }
   }
 
   return (
@@ -269,9 +302,8 @@ const ComplaintModal = ({
                     scale: isDragOver ? 1.02 : 1
                   }}
                   transition={{ duration: 0.2 }}
-                  className={`border-2 border-dashed rounded-lg p-6 text-center ${
-                    images.length >= MAX_IMAGES ? 'opacity-60' : ''
-                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center ${images.length >= MAX_IMAGES ? 'opacity-60' : ''
+                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   <input
                     type='file'
