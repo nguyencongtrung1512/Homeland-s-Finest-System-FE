@@ -13,7 +13,8 @@ import {
   Star,
   Flag,
   Receipt,
-  Tag
+  Tag,
+  List
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../../contexts/store.context'
@@ -106,6 +107,15 @@ function SideBar() {
       icon: (
         <AnimatedIcon animationType='bounce'>
           <Component size={18} />
+        </AnimatedIcon>
+      )
+    },
+    {
+      key: path.categorySeller,
+      label: 'Danh mục sử dụng',
+      icon: (
+        <AnimatedIcon animationType='bounce'>
+          <List size={18} />
         </AnimatedIcon>
       )
     },

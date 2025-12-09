@@ -91,6 +91,7 @@ import PolicyCustomer from './pages/customer/policy/policyCustomer'
 import HashtagManagement from './pages/seller/hashtagManagement/hashtagManagement'
 import HashtagManagementStaff from './pages/staff/hashtagManagement/hashtagManagement'
 import DocumentSeller from './pages/seller/documentSeller/document'
+import CategoriesSeller from './pages/seller/categories/categories'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -284,6 +285,10 @@ export default function useRouteElements() {
             {
               path: path.documentSeller,
               element: <DocumentSeller />
+            },
+            {
+              path: path.categorySeller,
+              element: <CategoriesSeller />
             }
           ]
         }
