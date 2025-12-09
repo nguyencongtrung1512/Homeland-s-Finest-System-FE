@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EllipsisVertical, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { motion, type PanInfo } from 'framer-motion'
 import { Button } from '../../../../../components/ui/button'
 import { Badge } from '../../../../../components/ui/badge'
 import {
@@ -24,7 +25,8 @@ import { purchaseOrder } from '../../../../../apis/transaction.api'
 import { formApi } from '../../../../../apis/form.api'
 import { getRequestWalletMoney } from '../../../../../apis/requestWalletMoney.api'
 import { addToCart } from '../../../../../apis/cart.api'
-import { getComboById } from '../../../../../apis/combo.api'
+import { getComboById, getCombosByOrderId } from '../../../../../apis/combo.api'
+import { productApi } from '../../../../../apis/product.api'
 import type { Order as APIOrder, OrderStatus } from '../../../../../types/orderType'
 import type { RequestWalletMoney } from '../../../../../types/requestWalletMoneyType'
 import { toast } from '../../../../../utils/toast'
@@ -33,6 +35,7 @@ import { useChat } from '../../../../../contexts/chat.context'
 import type { CreateFormRequest, FormType } from '../../../../../types/form.type'
 import { Input } from '../../../../../components/ui/input'
 import Pagination from '../../../../../components/Pagination/Pagination'
+import path from '../../../../../constants/path'
 
 const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
@@ -56,15 +59,15 @@ interface Order {
   date: string
   originalStatus: OrderStatus
   status:
-    | 'Chưa xác nhận'
-    | 'Chờ xác nhận'
-    | 'Chờ thanh toán'
-    | 'Đã xác nhận'
-    | 'Vận chuyển'
-    | 'Hoàn thành'
-    | 'Trả hàng/Hoàn tiền'
-    | 'Trả hàng'
-    | 'Đã hủy'
+  | 'Chưa xác nhận'
+  | 'Chờ xác nhận'
+  | 'Chờ thanh toán'
+  | 'Đã xác nhận'
+  | 'Vận chuyển'
+  | 'Hoàn thành'
+  | 'Trả hàng/Hoàn tiền'
+  | 'Trả hàng'
+  | 'Đã hủy'
   statusColor: string
   statusBgColor: string
   statusText: string
@@ -92,6 +95,8 @@ interface Order {
   isComplained?: boolean
   canReturn?: boolean
   returnDeadline?: string
+  shipPrice?: number
+  itemsWithComboItemId?: any[] // Items with comboItemId that need to be grouped
   // Action states
   showRefundRequest?: boolean // TH1: Shipper giao mà khách không nhận
   autoRefund?: boolean // TH2: Chưa xác nhận, tự hoàn tiền
@@ -314,13 +319,16 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   const adjustedStatusInfo =
     apiOrder?.status === 'Returned' && apiOrder?.paymentType === 'COD'
       ? {
-          ...statusInfo,
-          status: 'Trả hàng' as const
-        }
+        ...statusInfo,
+        status: 'Trả hàng' as const
+      }
       : statusInfo
 
-  const products = [
-    ...(apiOrder?.orderItems || []).map((item) => ({
+  // Filter out items with comboItemId - they will be grouped as combo
+  // Regular products (items without comboItemId)
+  const regularProducts = (apiOrder?.orderItems || [])
+    .filter((item: any) => !item?.comboItemId) // Exclude items with comboItemId
+    .map((item) => ({
       id: item?.id || '',
       productInventoryId: item?.productVariantId || '',
       name: item?.orderItemName || 'Sản phẩm không xác định',
@@ -333,25 +341,55 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
           ? `${item.length}x${item.width}x${item.height}cm, ${item.weight}g`
           : 'Thông tin kích thước không có',
       isCombo: false
-    })),
-
-    ...(apiOrder?.orderItemsWithCombo || []).map((item) => ({
-      id: item?.id || '',
-      productInventoryId: item?.productVariantId || '',
-      name: item?.orderItemName || 'Sản phẩm không xác định',
-      image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
-      quantity: (item?.quantity || 0).toString(),
-      price: item?.finalPrice || 0,
-      finalPrice: item?.finalPrice || 0,
-      variant:
-        item?.length > 0 && item?.width > 0 && item?.height > 0 && item?.weight > 0
-          ? `${item.length}x${item.width}x${item.height}cm, ${item.weight}g`
-          : 'Thông tin kích thước không có',
-      isCombo: true,
-      comboId: item?.comboId,
-      comboName: item?.comboName
     }))
-  ]
+
+  // Group combo items by comboId from orderItemsWithCombo
+  const comboMap = new Map<string, {
+    comboId: string
+    comboName: string
+    image: string
+    totalQuantity: number
+    totalPrice: number
+  }>()
+
+    ; (apiOrder?.orderItemsWithCombo || []).forEach((item) => {
+      const comboId = item?.comboId || ''
+      if (!comboId) return
+
+      if (comboMap.has(comboId)) {
+        const existing = comboMap.get(comboId)!
+        existing.totalQuantity += item?.quantity || 0
+        existing.totalPrice += item?.finalPrice || 0
+      } else {
+        comboMap.set(comboId, {
+          comboId: comboId,
+          comboName: item?.comboName || 'Combo',
+          image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
+          totalQuantity: item?.quantity || 0,
+          totalPrice: item?.finalPrice || 0
+        })
+      }
+    })
+
+  // Convert combo map to array
+  const comboProducts = Array.from(comboMap.values()).map((combo) => ({
+    id: combo.comboId,
+    productInventoryId: '', // Not needed for combo navigation
+    name: combo.comboName,
+    image: combo.image,
+    quantity: combo.totalQuantity.toString(),
+    price: combo.totalPrice,
+    finalPrice: combo.totalPrice,
+    variant: '',
+    isCombo: true,
+    comboId: combo.comboId,
+    comboName: combo.comboName
+  }))
+
+  // Store items with comboItemId for later processing (will be grouped by comboId from API)
+  const itemsWithComboItemId = (apiOrder?.orderItems || []).filter((item: any) => item?.comboItemId)
+
+  const products = [...regularProducts, ...comboProducts]
 
   const orderHistories = apiOrder?.orderHistories || []
 
@@ -373,7 +411,9 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
     isRefunded: apiOrder?.isRefunded || false,
     ...adjustedStatusInfo,
     isFreeship: apiOrder?.isFreeship || false,
+    shipPrice: apiOrder?.shipPrice || 0,
     products,
+    itemsWithComboItemId, // Store items with comboItemId for later processing
     total: formatPrice(apiOrder?.finalPrice),
     totalAmount: apiOrder?.finalPrice || 0,
     note: apiOrder?.note || '',
@@ -437,6 +477,10 @@ export default function OrdersContent({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const savedScrollPositionRef = useRef<number | null>(null)
   const shouldPreserveScrollRef = useRef<boolean>(false)
+  const [loadingProductIds, setLoadingProductIds] = useState<Set<string>>(new Set())
+  const [comboInfoMap, setComboInfoMap] = useState<Map<string, { thumbnailUrl: string; name: string }>>(new Map())
+  const [loadingComboIds, setLoadingComboIds] = useState<Set<string>>(new Set())
+  const [orderComboMap, setOrderComboMap] = useState<Map<string, Map<string, string>>>(new Map()) // orderId -> comboItemId -> comboId
   const ordersPerPage = 3
 
   const extractReviewProducts = (orderDetail?: APIOrder | null): ReviewProduct[] => {
@@ -485,6 +529,216 @@ export default function OrdersContent({
     }
   }, [apiOrders])
 
+  // Fetch combo info and comboIds for orders
+  useEffect(() => {
+    const fetchComboData = async () => {
+      const comboIds = new Set<string>()
+      const orderIdsToFetch = new Set<string>()
+
+      // Collect comboIds from existing products and orderIds that need combo mapping
+      orders.forEach((order) => {
+        // Collect comboIds from existing combo products
+        order.products.forEach((product) => {
+          if (product.isCombo && product.comboId && !comboInfoMap.has(product.comboId) && !loadingComboIds.has(product.comboId)) {
+            comboIds.add(product.comboId)
+          }
+        })
+
+        // Collect orderIds that have items with comboItemId
+        if (order.itemsWithComboItemId && order.itemsWithComboItemId.length > 0 && !orderComboMap.has(order.id)) {
+          orderIdsToFetch.add(order.id)
+        }
+      })
+
+      // Fetch comboIds from orderIds
+      const orderFetchPromises = Array.from(orderIdsToFetch).map(async (orderId) => {
+        try {
+          const response = await getCombosByOrderId(orderId)
+          const combos = response?.data || []
+
+          // Create mapping: productVariantId -> comboId from API response
+          const variantToComboMap = new Map<string, string>()
+          combos.forEach((combo: any) => {
+            if (combo.productVariantId && combo.comboId) {
+              variantToComboMap.set(combo.productVariantId, combo.comboId)
+            }
+          })
+
+          // Create mapping: comboItemId -> comboId by matching productVariantId
+          const comboItemToComboMap = new Map<string, string>()
+          const order = orders.find((o) => o.id === orderId)
+          if (order?.itemsWithComboItemId) {
+            order.itemsWithComboItemId.forEach((item: any) => {
+              const comboId = variantToComboMap.get(item.productVariantId)
+              if (comboId && item.comboItemId) {
+                comboItemToComboMap.set(item.comboItemId, comboId)
+              }
+            })
+          }
+
+          if (comboItemToComboMap.size > 0) {
+            setOrderComboMap((prev) => {
+              const newMap = new Map(prev)
+              newMap.set(orderId, comboItemToComboMap)
+              return newMap
+            })
+
+            // Collect comboIds for fetching combo info
+            comboItemToComboMap.forEach((comboId) => {
+              if (!comboInfoMap.has(comboId) && !loadingComboIds.has(comboId)) {
+                comboIds.add(comboId)
+              }
+            })
+          }
+        } catch (error) {
+          console.error(`Error fetching combos for order ${orderId}:`, error)
+        }
+      })
+
+      await Promise.all(orderFetchPromises)
+
+      // Fetch combo info for each comboId
+      if (comboIds.size > 0) {
+        const comboFetchPromises = Array.from(comboIds).map(async (comboId) => {
+          setLoadingComboIds((prev) => new Set(prev).add(comboId))
+          try {
+            const response = await getComboById(comboId)
+            const comboData = response?.data?.data || response?.data
+            if (comboData?.thumbnailUrl) {
+              setComboInfoMap((prev) => {
+                const newMap = new Map(prev)
+                newMap.set(comboId, {
+                  thumbnailUrl: comboData.thumbnailUrl,
+                  name: comboData.name || ''
+                })
+                return newMap
+              })
+            }
+          } catch (error) {
+            console.error(`Error fetching combo ${comboId}:`, error)
+          } finally {
+            setLoadingComboIds((prev) => {
+              const newSet = new Set(prev)
+              newSet.delete(comboId)
+              return newSet
+            })
+          }
+        })
+
+        await Promise.all(comboFetchPromises)
+      }
+    }
+
+    if (orders.length > 0) {
+      fetchComboData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders])
+
+  // Merge itemsWithComboItemId into products after getting comboIds from API
+  const ordersWithCombos: Order[] = useMemo(() => {
+    return orders.map((order) => {
+      if (!order.itemsWithComboItemId || order.itemsWithComboItemId.length === 0) {
+        return order
+      }
+
+      const comboItemToComboMap = orderComboMap.get(order.id)
+      if (!comboItemToComboMap || comboItemToComboMap.size === 0) {
+        return order
+      }
+
+      // Group items by comboId from itemsWithComboItemId
+      const comboGroups = new Map<string, {
+        comboId: string
+        items: any[]
+        totalQuantity: number
+        totalPrice: number
+      }>()
+
+      order.itemsWithComboItemId.forEach((item: any) => {
+        const comboId = comboItemToComboMap.get(item.comboItemId)
+        if (!comboId) return
+
+        if (comboGroups.has(comboId)) {
+          const existing = comboGroups.get(comboId)!
+          existing.items.push(item)
+          existing.totalQuantity += item.quantity || 0
+          existing.totalPrice += item.totalPrice || 0
+        } else {
+          comboGroups.set(comboId, {
+            comboId,
+            items: [item],
+            totalQuantity: item.quantity || 0,
+            totalPrice: item.totalPrice || 0
+          })
+        }
+      })
+
+      // Create a map of existing combo products by comboId for merging
+      const existingComboProductsMap = new Map<string, typeof order.products[0]>()
+      const regularProductsList: typeof order.products = []
+
+      order.products.forEach((product) => {
+        if (product.isCombo && product.comboId) {
+          existingComboProductsMap.set(product.comboId, product)
+        } else {
+          regularProductsList.push(product)
+        }
+      })
+
+      // Merge combo products: combine existing combos with new combos from itemsWithComboItemId
+      const mergedComboProducts = Array.from(comboGroups.values()).map((group) => {
+        const comboInfo = comboInfoMap.get(group.comboId)
+        const existingCombo = existingComboProductsMap.get(group.comboId)
+
+        // If combo already exists, merge quantity and price
+        if (existingCombo) {
+          const existingQuantity = parseInt(existingCombo.quantity || '0', 10)
+          const newQuantity = group.totalQuantity
+          const mergedQuantity = existingQuantity + newQuantity
+          const mergedPrice = (existingCombo.finalPrice || 0) + group.totalPrice
+
+          return {
+            ...existingCombo,
+            quantity: mergedQuantity.toString(),
+            price: mergedPrice,
+            finalPrice: mergedPrice,
+            name: comboInfo?.name || existingCombo.name || 'Combo',
+            image: comboInfo?.thumbnailUrl || existingCombo.image || DEFAULT_PRODUCT_IMAGE,
+            comboName: comboInfo?.name || existingCombo.comboName || 'Combo'
+          }
+        }
+
+        // New combo from itemsWithComboItemId
+        return {
+          id: group.comboId,
+          productInventoryId: '',
+          name: comboInfo?.name || 'Combo',
+          image: comboInfo?.thumbnailUrl || DEFAULT_PRODUCT_IMAGE,
+          quantity: group.totalQuantity.toString(),
+          price: group.totalPrice,
+          finalPrice: group.totalPrice,
+          variant: '',
+          isCombo: true,
+          comboId: group.comboId,
+          comboName: comboInfo?.name || 'Combo'
+        }
+      })
+
+      // Add combos that exist in orderItemsWithCombo but not in itemsWithComboItemId
+      existingComboProductsMap.forEach((combo, comboId) => {
+        if (!comboGroups.has(comboId)) {
+          mergedComboProducts.push(combo)
+        }
+      })
+
+      return {
+        ...order,
+        products: [...regularProductsList, ...mergedComboProducts]
+      }
+    })
+  }, [orders, orderComboMap, comboInfoMap])
+
   const getStatusesForTab = (tabKey: string): OrderStatus[] => {
     switch (tabKey) {
       case 'Chưa xác nhận':
@@ -518,7 +772,7 @@ export default function OrdersContent({
   }
 
   const filteredOrders = useMemo(() => {
-    let filtered = orders
+    let filtered = ordersWithCombos
 
     // Filter by status if not "all"
     if (selectedFilter !== 'all') {
@@ -1145,6 +1399,45 @@ export default function OrdersContent({
     }
   }
 
+  const handleProductClick = async (productVariantId: string, isCombo: boolean, comboId?: string) => {
+    try {
+      if (isCombo && comboId) {
+        // Navigate directly to combo detail
+        navigate(path.detailCombo.replace(':id', comboId))
+        return
+      }
+
+      // Validate productVariantId
+      if (!productVariantId) {
+        toast.error('Không tìm thấy thông tin sản phẩm')
+        return
+      }
+
+      // For products, get productId from variantId
+      setLoadingProductIds((prev) => new Set(prev).add(productVariantId))
+      const response = await productApi.getDisplayRootByVariantId(productVariantId)
+
+      if (response?.data?.id) {
+        navigate(path.productDetail.replace(':id', response.data.id))
+      } else {
+        toast.error('Không thể tìm thấy thông tin sản phẩm')
+      }
+    } catch (error) {
+      console.error('Error getting product ID:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error).message ||
+        'Có lỗi xảy ra khi tải thông tin sản phẩm. Vui lòng thử lại.'
+      toast.error(errorMessage)
+    } finally {
+      setLoadingProductIds((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(productVariantId)
+        return newSet
+      })
+    }
+  }
+
   if (loading) {
     return (
       <div className='flex justify-center items-center h-64'>
@@ -1198,11 +1491,10 @@ export default function OrdersContent({
               <button
                 key={filter.key}
                 onClick={() => handleFilterChange(filter.key)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-                  selectedFilter === filter.key
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${selectedFilter === filter.key
                     ? 'bg-white text-green-600 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
-                }`}
+                  }`}
               >
                 {filter.label}
               </button>
@@ -1275,9 +1567,36 @@ export default function OrdersContent({
                 </div>
               </div>
 
-              <div className='flex justify-between items-center pt-4 border-t'>
-                <span className='text-gray-600'>Tổng tiền:</span>
-                <span className='text-lg font-semibold text-gray-900'>{order.total}</span>
+              {/* Products/Combo List */}
+              {order.products && order.products.length > 0 && (
+                <div className='pt-4 border-t'>
+                  <ProductCarousel
+                    products={order.products}
+                    loadingProductIds={loadingProductIds}
+                    loadingComboIds={loadingComboIds}
+                    comboInfoMap={comboInfoMap}
+                    onProductClick={handleProductClick}
+                  />
+                </div>
+              )}
+
+              <div className='space-y-2 pt-4 border-t'>
+                <div className='flex justify-between items-center'>
+                  <span className='text-gray-600'>Tổng tiền sản phẩm:</span>
+                  <span className='text-base font-semibold text-gray-900'>
+                    {formatPrice((order.totalAmount || 0) - (order.shipPrice || 0))}
+                  </span>
+                </div>
+                <div className='flex justify-between items-center'>
+                  <span className='text-gray-600'>Phí ship:</span>
+                  <span className={`text-base font-semibold ${order.isFreeship ? 'text-green-600' : 'text-gray-900'}`}>
+                    {order.isFreeship ? 'Miễn phí' : formatPrice(order.shipPrice || 0)}
+                  </span>
+                </div>
+                <div className='flex justify-between items-center pt-2 border-t'>
+                  <span className='text-gray-600 font-medium'>Tổng tiền:</span>
+                  <span className='text-lg font-semibold text-gray-900'>{order.total}</span>
+                </div>
               </div>
 
               <div className='flex gap-2 pt-4 flex-wrap'>
@@ -1303,15 +1622,15 @@ export default function OrdersContent({
                 {(order.originalStatus === 'NotYet' ||
                   order.originalStatus === 'Processing' ||
                   order.originalStatus === 'PendingPayment') && (
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handleOpenCancelModal(order.id)}
-                    className='text-red-600 border-red-600 hover:bg-red-50'
-                  >
-                    Hủy đơn hàng
-                  </Button>
-                )}
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleOpenCancelModal(order.id)}
+                      className='text-red-600 border-red-600 hover:bg-red-50'
+                    >
+                      Hủy đơn hàng
+                    </Button>
+                  )}
                 {order.canConfirmReceived && (
                   <Button
                     size='sm'
@@ -1432,23 +1751,23 @@ export default function OrdersContent({
                   order.originalStatus === 'Delivered' ||
                   order.originalStatus === 'Paid' ||
                   order.originalStatus === 'Returned') && (
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handleBuyAgain(order)}
-                    disabled={addingToCartOrderId === order.id}
-                    className='text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50'
-                  >
-                    {addingToCartOrderId === order.id ? (
-                      <>
-                        <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2 inline-block'></div>
-                        Đang thêm...
-                      </>
-                    ) : (
-                      'Mua lại'
-                    )}
-                  </Button>
-                )}
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleBuyAgain(order)}
+                      disabled={addingToCartOrderId === order.id}
+                      className='text-blue-600 border-blue-600 hover:bg-blue-50 disabled:opacity-50'
+                    >
+                      {addingToCartOrderId === order.id ? (
+                        <>
+                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2 inline-block'></div>
+                          Đang thêm...
+                        </>
+                      ) : (
+                        'Mua lại'
+                      )}
+                    </Button>
+                  )}
               </div>
             </div>
           ))
@@ -1642,6 +1961,194 @@ export default function OrdersContent({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  )
+}
+
+// Product Carousel Component
+interface ProductCarouselProps {
+  products: Order['products']
+  loadingProductIds: Set<string>
+  loadingComboIds: Set<string>
+  comboInfoMap: Map<string, { thumbnailUrl: string; name: string }>
+  onProductClick: (productVariantId: string, isCombo: boolean, comboId?: string) => void
+}
+
+function ProductCarousel({
+  products,
+  loadingProductIds,
+  loadingComboIds,
+  comboInfoMap,
+  onProductClick
+}: ProductCarouselProps) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const itemsPerView = 3 // Số sản phẩm hiển thị cùng lúc
+  const canScrollLeft = activeIndex > 0
+  const canScrollRight = activeIndex < products.length - itemsPerView
+
+  const scrollToIndex = (index: number) => {
+    const newIndex = Math.max(0, Math.min(index, products.length - itemsPerView))
+    setActiveIndex(newIndex)
+
+    if (containerRef.current) {
+      const scrollAmount = newIndex * (320 + 12) // min-w-[320px] + gap-3
+      containerRef.current.scrollTo({
+        left: scrollAmount,
+        behavior: 'smooth'
+      })
+    }
+  }
+
+  const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const dragThreshold = 50
+    const dragOffset = info.offset.x
+
+    if (dragOffset > dragThreshold && canScrollLeft) {
+      scrollToIndex(activeIndex - 1)
+    } else if (dragOffset < -dragThreshold && canScrollRight) {
+      scrollToIndex(activeIndex + 1)
+    }
+  }
+
+  // Auto-detect scroll position
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      const scrollLeft = container.scrollLeft
+      const itemWidth = 320 + 12 // min-w-[320px] + gap-3
+      const newIndex = Math.round(scrollLeft / itemWidth)
+      setActiveIndex(Math.max(0, Math.min(newIndex, products.length - itemsPerView)))
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [products.length])
+
+  if (products.length === 0) return null
+
+  return (
+    <div className='relative'>
+      {canScrollLeft && (
+        <button
+          onClick={() => scrollToIndex(activeIndex - 1)}
+          className='absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors'
+          aria-label='Cuộn trái'
+        >
+          <ChevronLeft className='h-5 w-5 text-gray-700' />
+        </button>
+      )}
+
+      <div
+        ref={containerRef}
+        className='flex overflow-x-auto gap-3 pb-2 scrollbar-hide scroll-smooth'
+        style={{ scrollSnapType: 'x mandatory' }}
+      >
+        <motion.div
+          className='flex gap-3'
+          drag='x'
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.2}
+          onDragEnd={onDragEnd}
+        >
+          {products.map((product, index) => {
+            const isLoading = loadingProductIds.has(product.productInventoryId || '')
+            const isDisabled = isLoading
+
+            // Get combo thumbnailUrl from comboInfoMap if available
+            const comboInfo = product.isCombo && product.comboId ? comboInfoMap.get(product.comboId) : null
+            const displayImage = comboInfo?.thumbnailUrl || product.image || DEFAULT_PRODUCT_IMAGE
+            const displayName = comboInfo?.name || product.name
+
+            return (
+              <div
+                key={`${product.id || index}-${product.productInventoryId || ''}-${product.comboId || ''}`}
+                className={`flex-shrink-0 bg-white rounded-lg border border-gray-200 overflow-hidden transition-all ${isDisabled ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:shadow-md hover:border-green-300'
+                  }`}
+                style={{ scrollSnapAlign: 'start', minWidth: '320px' }}
+                onClick={() => {
+                  if (!isDisabled) {
+                    onProductClick(
+                      product.productInventoryId || '',
+                      product.isCombo || false,
+                      product.comboId
+                    )
+                  }
+                }}
+              >
+                <div className='flex items-center gap-3 p-2'>
+                  <div className='relative flex-shrink-0'>
+                    {(loadingComboIds.has(product.comboId || '') || isLoading) && (
+                      <div className='absolute inset-0 bg-black bg-opacity-30 rounded-lg flex items-center justify-center z-10'>
+                        <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-white'></div>
+                      </div>
+                    )}
+                    <img
+                      src={displayImage}
+                      alt={displayName}
+                      className='w-20 h-20 object-cover rounded-lg border'
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = DEFAULT_PRODUCT_IMAGE
+                      }}
+                    />
+                    {product.isCombo && (
+                      <div className='absolute top-1 right-1 bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded'>
+                        Combo
+                      </div>
+                    )}
+                  </div>
+                  <div className='flex-1 min-w-0'>
+                    <p className='text-sm font-medium text-gray-900 line-clamp-2'>{displayName}</p>
+                    {product.variant && !product.isCombo && (
+                      <p className='text-xs text-gray-500 mt-1'>{product.variant}</p>
+                    )}
+                    <div className='flex flex-col gap-1 mt-1'>
+                      <div className='flex items-center gap-2'>
+                        <span className='text-xs text-gray-500'>Số lượng: {product.quantity}</span>
+                        {product.finalPrice > 0 && (
+                          <span className='text-xs font-semibold text-green-600'>
+                            {formatPrice(product.finalPrice)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </motion.div>
+      </div>
+
+      {canScrollRight && (
+        <button
+          onClick={() => scrollToIndex(activeIndex + 1)}
+          className='absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors'
+          aria-label='Cuộn phải'
+        >
+          <ChevronRight className='h-5 w-5 text-gray-700' />
+        </button>
+      )}
+
+      {/* Dots indicator */}
+      {products.length > itemsPerView && (
+        <div className='flex items-center justify-center gap-2 mt-3'>
+          {Array.from({ length: Math.ceil(products.length / itemsPerView) }).map((_, index) => (
+            <button
+              key={index}
+              onClick={() => scrollToIndex(index * itemsPerView)}
+              className={`h-2 rounded-full transition-all ${Math.floor(activeIndex / itemsPerView) === index
+                  ? 'w-6 bg-green-600'
+                  : 'w-2 bg-gray-300 hover:bg-gray-400'
+                }`}
+              aria-label={`Go to page ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
