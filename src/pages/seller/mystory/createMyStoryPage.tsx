@@ -14,6 +14,7 @@ import { Stream } from '@cloudflare/stream-react'
 import { StoryContentCarousel } from '../../../components/ui/next-storyConten'
 import { formatDate } from '../../../utils/formatDate'
 import path from '../../../constants/path'
+import { StickyPreviewCard } from './components/StickyPreviewCard'
 
 function CreateMyStoryPage() {
   const navigate = useNavigate()
@@ -1644,23 +1645,9 @@ function CreateMyStoryPage() {
         </div>
 
         {/* Right Column - Live Preview (1/3) - Sticky */}
-        <div className='lg:col-span-1'>
-          <div className=' top-20 self-start'>
-            <Card className='border-green-100 shadow-lg'>
-              <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
-                <CardTitle className='text-green-700 flex items-center gap-2'>
-                  <FileText className='w-5 h-5' />
-                  Xem trước trực tiếp
-                </CardTitle>
-              </CardHeader>
-              <CardContent className='p-0'>
-                <div className='h-[calc(100vh-180px)] overflow-y-auto'>
-                  <StoryPreview />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <StickyPreviewCard>
+          <StoryPreview />
+        </StickyPreviewCard>
       </div>
     </div>
   )
