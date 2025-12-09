@@ -38,6 +38,14 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
             target.src = defaultImage
           }}
         />
+        {/* Badge hiển thị ở góc trên bên phải */}
+        {product.badge && (
+          <div
+            className={`absolute top-2 right-2 ${product.badge.color} text-white px-2 py-1 rounded text-xs font-medium shadow-md z-10`}
+          >
+            {product.badge.text}
+          </div>
+        )}
         {product.soldOut && (
           <div className='absolute inset-0 bg-black/30 flex items-center justify-center'>
             <span className='bg-red-600 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-lg'>

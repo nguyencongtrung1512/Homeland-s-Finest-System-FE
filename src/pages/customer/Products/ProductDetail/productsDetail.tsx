@@ -4,6 +4,7 @@ import ProductGallery from './productGallery/productGallery'
 import { ProductTabs } from './ProductTab/productsTab'
 import { ViewRating } from './Rating/viewRating'
 import Brand from './brand/brand'
+import Suggest from './suggested/suggest'
 import Loading from '../../../../components/Loading/loading'
 import EmptyState from '../../../../components/EmptyState/emptyState'
 import { useProductDetail, type ProductDetailData } from '../../../../hooks/useProductDetail'
@@ -77,6 +78,7 @@ function ProductsDetail() {
           <Brand />
           <ProductTabs />
           <ViewRating />
+          <Suggest />
         </div>
       </div>
       <div>{isAuthenticated ? <ChatSystem /> : <ChatBot />}</div>

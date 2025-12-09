@@ -5,8 +5,8 @@ import Discover from './discover'
 import Pagination from '../../../components/Pagination/Pagination'
 import Loading from '../../../components/Loading/loading'
 import { useCart } from '../../../contexts/cart.context'
-import { getAllCombos } from '../../../apis/combo.api'
-import { type Combo } from '../../../types/combo.type'
+import { filterCombos } from '../../../apis/combo.api'
+import { type Combo, type ComboFilterRequest } from '../../../types/combo.type'
 import { ComboList } from '../combo/combo'
 import { PromotionBubble } from '../../../components/PromotionBubble'
 import ChatBot from '../../../components/ChatBot/chatbot'
@@ -19,19 +19,16 @@ function Products() {
   const { isAuthenticated, user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1) // 1-based for UI
-  const [pageSize] = useState(12) // Items per page
+  const [pageSize] = useState(24) // Items per page
   const { addToCart } = useCart()
   const [activeTab, setActiveTab] = useState<'product' | 'combo'>('product')
-  const [combos, setCombos] = useState<Combo[]>([])
-  const [combosLoading, setCombosLoading] = useState(false)
-  const [combosError, setCombosError] = useState<string | null>(null)
 
-  // Search state
+  // Product state
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<string | null>(null)
-  const [filters, setFilters] = useState<{
+  const [productFilters, setProductFilters] = useState<{
     minPrice?: number
     maxPrice?: number
     categoryFilterIds?: string[]
@@ -40,20 +37,53 @@ function Products() {
     subRegionFilters?: string[]
   }>({})
 
-  // Handler để nhận filters từ AsideFilter
+  // Combo state
+  const [combos, setCombos] = useState<Combo[]>([])
+  const [combosLoading, setCombosLoading] = useState(false)
+  const [combosError, setCombosError] = useState<string | null>(null)
+  const [comboFilters, setComboFilters] = useState<ComboFilterRequest>({
+    pageNumber: 1,
+    pageSize: 24,
+    isActiveFilter: true,
+    statusFilters: ['Approved']
+  })
+  const [comboPagination, setComboPagination] = useState<{
+    pageSize: number
+    pageNumber: number
+    totalItems: number
+    totalPages?: number
+  } | null>(null)
+
+  // Handler để nhận filters từ AsideFilter - áp dụng cho cả product và combo
   const handleFilterChange = (filterState: {
     minPrice?: number
     maxPrice?: number
     categoryFilterIds?: string[]
+    regionFilters?: string[]
     subRegionFilters?: string[]
   }) => {
-    setFilters({
-      minPrice: filterState.minPrice,
-      maxPrice: filterState.maxPrice,
-      categoryFilterIds: filterState.categoryFilterIds,
-      subRegionFilters: filterState.subRegionFilters
-    })
-    setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
+    if (activeTab === 'product') {
+      // Apply filters for products
+      setProductFilters({
+        minPrice: filterState.minPrice,
+        maxPrice: filterState.maxPrice,
+        categoryFilterIds: filterState.categoryFilterIds,
+        subRegionFilters: filterState.subRegionFilters,
+        regionFilters: filterState.regionFilters
+      })
+      setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
+    } else if (activeTab === 'combo') {
+      // Apply filters for combos
+      setComboFilters((prev) => ({
+        ...prev,
+        minPrice: filterState.minPrice,
+        maxPrice: filterState.maxPrice,
+        categoryFilterIds: filterState.categoryFilterIds,
+        subRegionFilters: filterState.subRegionFilters,
+        regionFilters: filterState.regionFilters,
+        pageNumber: 1 // Reset về trang đầu khi filter thay đổi
+      }))
+    }
   }
 
   // Fetch products using search API
@@ -73,12 +103,12 @@ function Products() {
           userId: user?.userId || null,
           limit: limit,
           sortBy: sortBy || null,
-          minPrice: filters.minPrice || null,
-          maxPrice: filters.maxPrice || null,
-          categoryFilterIds: filters.categoryFilterIds || null,
-          provinceFilters: filters.provinceFilters || null,
-          regionFilters: filters.regionFilters || null,
-          subRegionFilters: filters.subRegionFilters || null
+          minPrice: productFilters.minPrice || null,
+          maxPrice: productFilters.maxPrice || null,
+          categoryFilterIds: productFilters.categoryFilterIds || null,
+          provinceFilters: productFilters.provinceFilters || null,
+          regionFilters: productFilters.regionFilters || null,
+          subRegionFilters: productFilters.subRegionFilters || null
         }
 
         const results = await searchApi.search(searchRequest)
@@ -94,25 +124,57 @@ function Products() {
     }
 
     fetchProducts()
-  }, [activeTab, searchQuery, sortBy, filters, currentPage, pageSize, user?.userId])
+  }, [activeTab, searchQuery, sortBy, productFilters, currentPage, pageSize, user?.userId])
 
-  // Fetch combos
+  // Fetch combos with filters
   useEffect(() => {
     const fetchCombos = async () => {
       if (activeTab !== 'combo') return
       try {
         setCombosLoading(true)
         setCombosError(null)
-        const data = await getAllCombos({ pageNumber: currentPage, pageSize: 12 })
-        setCombos(data.data)
-      } catch {
-        setCombosError('Không thể tải combo.')
+
+        // Prepare filter request
+        const filterRequest: ComboFilterRequest = {
+          ...comboFilters,
+          pageNumber: currentPage,
+          pageSize: 12,
+          isActiveFilter: true,
+          statusFilters: ['Approved']
+        }
+
+        // Add search and sort if provided
+        if (searchQuery.trim()) {
+          filterRequest.queryText = searchQuery.trim()
+        }
+        if (sortBy) {
+          filterRequest.sortBy = sortBy
+        }
+
+        // Remove undefined and empty array values (but keep pageNumber and pageSize)
+        Object.keys(filterRequest).forEach((key) => {
+          if (key === 'pageNumber' || key === 'pageSize') return // Always keep pagination
+
+          const value = filterRequest[key as keyof ComboFilterRequest]
+          if (value === undefined || (Array.isArray(value) && value.length === 0)) {
+            delete filterRequest[key as keyof ComboFilterRequest]
+          }
+        })
+
+        const result = await filterCombos(filterRequest)
+        setCombos(result.data)
+        setComboPagination(result.pagination || null)
+      } catch (err) {
+        console.error('Error fetching combos:', err)
+        const errorMessage = err instanceof Error ? err.message : 'Không thể tải combo.'
+        setCombosError(errorMessage)
+        setCombos([])
       } finally {
         setCombosLoading(false)
       }
     }
     fetchCombos()
-  }, [activeTab, currentPage])
+  }, [activeTab, currentPage, comboFilters, searchQuery, sortBy])
 
   // Client-side pagination - slice products for current page
   const paginatedProducts = useMemo(() => {
@@ -149,7 +211,33 @@ function Products() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setCurrentPage(1) // Reset to first page on new search
+
+    // Update combo filters if on combo tab
+    if (activeTab === 'combo') {
+      setComboFilters((prev) => ({
+        ...prev,
+        pageNumber: 1
+      }))
+    }
   }
+
+  // Map API sortBy values to UI sort labels (reverse mapping)
+  const sortLabelMap: Record<string, string> = {
+    'newest': 'Mới nhất',
+    'best-selling': 'Bán chạy',
+    'price-asc': 'Giá thấp → cao',
+    'price-desc': 'Giá cao → thấp'
+  }
+
+  // Get current selected sort label based on active tab
+  const getSelectedSortLabel = () => {
+    if (activeTab === 'combo') {
+      return comboFilters.sortBy ? sortLabelMap[comboFilters.sortBy] || null : null
+    } else {
+      return sortBy ? sortLabelMap[sortBy] || null : null
+    }
+  }
+  const selectedSortLabel = getSelectedSortLabel()
 
   const handleSortChange = (sort: string) => {
     // Map UI sort labels to API sortBy values
@@ -159,19 +247,63 @@ function Products() {
       'Giá thấp → cao': 'price-asc',
       'Giá cao → thấp': 'price-desc'
     }
-    setSortBy(sortMap[sort] || null)
+    const sortValue = sortMap[sort] || null
+    setSortBy(sortValue)
     setCurrentPage(1) // Reset to first page on sort change
+
+    // Update combo filters if on combo tab
+    if (activeTab === 'combo') {
+      setComboFilters((prev) => ({
+        ...prev,
+        sortBy: sortValue || undefined,
+        pageNumber: 1
+      }))
+    }
   }
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
   }
 
+  const handleTabChange = (tab: 'product' | 'combo') => {
+    setActiveTab(tab)
+    setCurrentPage(1) // Reset to first page when switching tabs
+    setSearchQuery('') // Reset search query when switching tabs
+    // Reset sort when switching tabs
+    setSortBy(null)
+    if (tab === 'combo') {
+      setComboFilters((prev) => ({
+        ...prev,
+        sortBy: undefined,
+        pageNumber: 1
+      }))
+    }
+  }
+
   return (
     <div>
       <div className='max-w-7xl mx-auto px-6 py-8 flex flex-col lg:flex-row gap-6'>
         <div className='lg:w-64 flex-shrink-0'>
-          <AsideFilter onFilterChange={handleFilterChange} />
+          <AsideFilter
+            onFilterChange={handleFilterChange}
+            initialFilters={
+              activeTab === 'combo'
+                ? {
+                  minPrice: comboFilters.minPrice,
+                  maxPrice: comboFilters.maxPrice,
+                  categoryFilterIds: comboFilters.categoryFilterIds,
+                  regionFilters: comboFilters.regionFilters,
+                  subRegionFilters: comboFilters.subRegionFilters
+                }
+                : {
+                  minPrice: productFilters.minPrice,
+                  maxPrice: productFilters.maxPrice,
+                  categoryFilterIds: productFilters.categoryFilterIds,
+                  regionFilters: productFilters.regionFilters,
+                  subRegionFilters: productFilters.subRegionFilters
+                }
+            }
+          />
         </div>
 
         {/* Main content */}
@@ -181,13 +313,13 @@ function Products() {
             <div className='flex gap-2'>
               <button
                 className={`px-3 py-1.5 rounded-full text-sm ${activeTab === 'product' ? 'bg-green-600 text-white' : 'border bg-white hover:border-green-400'}`}
-                onClick={() => setActiveTab('product')}
+                onClick={() => handleTabChange('product')}
               >
                 Sản phẩm
               </button>
               <button
                 className={`px-3 py-1.5 rounded-full text-sm ${activeTab === 'combo' ? 'bg-green-600 text-white' : 'border bg-white hover:border-green-400'}`}
-                onClick={() => setActiveTab('combo')}
+                onClick={() => handleTabChange('combo')}
               >
                 Combo
               </button>
@@ -201,7 +333,10 @@ function Products() {
                 <button
                   key={sort}
                   onClick={() => handleSortChange(sort)}
-                  className='px-3 py-1.5 rounded-full border text-sm bg-white hover:border-green-400 transition-colors'
+                  className={`px-3 py-1.5 rounded-full border text-sm transition-colors ${selectedSortLabel === sort
+                    ? 'bg-green-600 text-white border-green-600 font-semibold'
+                    : 'bg-white hover:border-green-400'
+                    }`}
                 >
                   {sort}
                 </button>
@@ -262,9 +397,10 @@ function Products() {
                 onClick={() => {
                   if (activeTab === 'product') {
                     // Trigger refetch by updating a dependency
-                    setFilters({ ...filters })
+                    setProductFilters({ ...productFilters })
                   } else {
-                    setActiveTab('combo')
+                    // Trigger refetch for combo
+                    setComboFilters({ ...comboFilters })
                   }
                 }}
                 className='px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors'
@@ -284,14 +420,27 @@ function Products() {
                   ))}
                 </div>
               ) : (
-                <ComboList
-                  combos={combos}
-                  loading={combosLoading}
-                  error={combosError}
-                  onAddToCart={handleAddCombo}
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                />
+                <>
+                  <ComboList
+                    combos={combos}
+                    loading={combosLoading}
+                    error={combosError}
+                    onAddToCart={handleAddCombo}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                  />
+                  {comboPagination && (
+                    <>
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={comboPagination.totalPages || Math.ceil(comboPagination.totalItems / comboPagination.pageSize)}
+                        onPageChange={handlePageChange}
+                        maxVisiblePages={5}
+                      />
+
+                    </>
+                  )}
+                </>
               )}
 
               {activeTab === 'product' && productCardData.length === 0 && (
@@ -318,12 +467,7 @@ function Products() {
                     totalPages={totalPages}
                     onPageChange={handlePageChange}
                     maxVisiblePages={5}
-                  />
-
-                  {/* Results info */}
-                  <div className='text-center text-sm text-gray-600 mt-4'>
-                    Hiển thị {productCardData.length} trong tổng số {products.length} sản phẩm
-                  </div>
+                  />  
                 </>
               )}
             </>

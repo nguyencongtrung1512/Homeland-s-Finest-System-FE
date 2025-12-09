@@ -1,18 +1,39 @@
-import { useState } from 'react'
-import { Gift, Package, Calendar, Utensils, Cookie, Trophy } from 'lucide-react'
+import { memo } from 'react'
+import { Gift, Package, Calendar, Utensils, Cookie, Trophy, Tag, Grid3x3 } from 'lucide-react'
+import type { HashtagItem } from '../../../../apis/hashtag.api'
 
 interface AsideFilterProps {
   onCategoryChange?: (category: string) => void
-  onSuggestionChange?: (suggestion: string) => void
+  onSuggestionChange?: (hashtagIds: string[]) => void
+  hashtags?: HashtagItem[]
+  hashtagsLoading?: boolean
+  selectedCategory?: string // Prop để sync selected category từ parent
+  selectedHashtagIds?: string[] // Prop để sync selected hashtag IDs từ parent
 }
 
-function AsideFilter({ onCategoryChange, onSuggestionChange }: AsideFilterProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null)
+function AsideFilter({
+  onCategoryChange,
+  onSuggestionChange,
+  hashtags = [],
+  hashtagsLoading = false,
+  selectedCategory: selectedCategoryProp = '', // Nhận từ parent, empty string = "Tất cả"
+  selectedHashtagIds: selectedHashtagIdsProp = [] // Nhận từ parent, empty array = "Tất cả"
+}: AsideFilterProps) {
+  // Map selectedCategoryProp từ parent: empty string = 'all', 'Product' = 'Product', 'combo' = 'combo'
+  const selectedCategoryId = selectedCategoryProp === '' ? 'all' : selectedCategoryProp
+
+  // Map selectedHashtagIdsProp: empty array = "Tất cả" được chọn, có ID = hashtag đó được chọn
+  const selectedHashtagId = selectedHashtagIdsProp.length > 0 ? selectedHashtagIdsProp[0] : 'all'
 
   const categories = [
     {
-      id: 'individual',
+      id: 'all',
+      label: 'Tất cả',
+      icon: Grid3x3,
+      color: 'text-green-600'
+    },
+    {
+      id: 'Product',
       label: 'sản phẩm lẻ',
       icon: Gift,
       color: 'text-green-600'
@@ -25,41 +46,42 @@ function AsideFilter({ onCategoryChange, onSuggestionChange }: AsideFilterProps)
     }
   ]
 
-  const suggestions = [
-    {
-      id: 'tet-gifts',
-      label: 'Quà tết',
-      icon: Calendar,
-      color: 'text-green-600'
-    },
-    {
-      id: 'specialties',
-      label: 'Đặc sản',
-      icon: Utensils,
-      color: 'text-green-600'
-    },
-    {
-      id: 'snacks',
-      label: 'Đồ ăn vặt',
-      icon: Cookie,
-      color: 'text-green-600'
-    },
-    {
-      id: 'bestsellers',
-      label: 'Bán chạy',
-      icon: Trophy,
-      color: 'text-green-600'
-    }
-  ]
-
-  const handleCategoryClick = (categoryId: string) => {
-    setSelectedCategory(categoryId === selectedCategory ? null : categoryId)
-    onCategoryChange?.(categoryId === selectedCategory ? '' : categoryId)
+  // Helper function to get icon based on hashtag name
+  const getHashtagIcon = (hashtagName: string) => {
+    const nameLower = hashtagName.toLowerCase()
+    if (nameLower.includes('tết') || nameLower.includes('tet')) return Calendar
+    if (nameLower.includes('đặc sản') || nameLower.includes('specialty') || nameLower.includes('đặc biệt'))
+      return Utensils
+    if (nameLower.includes('ăn vặt') || nameLower.includes('snack')) return Cookie
+    if (nameLower.includes('bán chạy') || nameLower.includes('bestseller') || nameLower.includes('hot')) return Trophy
+    return Tag // Default icon
   }
 
-  const handleSuggestionClick = (suggestionId: string) => {
-    setSelectedSuggestion(suggestionId === selectedSuggestion ? null : suggestionId)
-    onSuggestionChange?.(suggestionId === selectedSuggestion ? '' : suggestionId)
+  const handleCategoryClick = (categoryId: string) => {
+    // Nếu click vào option đang được chọn, thì không làm gì (giữ nguyên selection)
+    if (categoryId === selectedCategoryId) {
+      return
+    }
+
+    // Chọn option mới
+    // Nếu là "Tất cả" thì gửi empty string, nếu không thì gửi categoryId
+    onCategoryChange?.(categoryId === 'all' ? '' : categoryId)
+  }
+
+  const handleHashtagClick = (hashtagId: string) => {
+    // Nếu click vào "Tất cả" hoặc hashtag đang được chọn
+    if (hashtagId === 'all') {
+      // Click "Tất cả" → gửi empty array
+      onSuggestionChange?.([])
+    } else {
+      // Nếu click vào hashtag đang được chọn, thì deselect (chọn "Tất cả")
+      if (selectedHashtagId === hashtagId) {
+        onSuggestionChange?.([])
+      } else {
+        // Chọn hashtag mới
+        onSuggestionChange?.([hashtagId])
+      }
+    }
   }
 
   return (
@@ -70,7 +92,7 @@ function AsideFilter({ onCategoryChange, onSuggestionChange }: AsideFilterProps)
         <div className='space-y-2'>
           {categories.map((category) => {
             const Icon = category.icon
-            const isSelected = selectedCategory === category.id
+            const isSelected = selectedCategoryId === category.id
 
             return (
               <button
@@ -93,28 +115,56 @@ function AsideFilter({ onCategoryChange, onSuggestionChange }: AsideFilterProps)
       <div>
         <h3 className='text-lg font-semibold text-gray-900 mb-4'>Gợi ý Đặc biệt</h3>
         <div className='space-y-2'>
-          {suggestions.map((suggestion) => {
-            const Icon = suggestion.icon
-            const isSelected = selectedSuggestion === suggestion.id
-
-            return (
+          {hashtagsLoading ? (
+            <div className='text-center py-4'>
+              <span className='text-sm text-gray-500'>Đang tải...</span>
+            </div>
+          ) : (
+            <>
+              {/* Option "Tất cả" - luôn hiển thị đầu tiên */}
               <button
-                key={suggestion.id}
-                onClick={() => handleSuggestionClick(suggestion.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-left ${isSelected
+                onClick={() => handleHashtagClick('all')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-left ${selectedHashtagId === 'all'
                   ? 'bg-green-50 border-2 border-green-500 text-green-700 font-medium'
                   : 'bg-gray-50 hover:bg-green-50 border-2 border-transparent hover:border-green-200 text-gray-700'
                   }`}
               >
-                <Icon className={`w-5 h-5 ${suggestion.color} flex-shrink-0`} />
-                <span className='text-sm'>{suggestion.label}</span>
+                <Grid3x3 className='w-5 h-5 text-green-600 flex-shrink-0' />
+                <span className='text-sm'>Tất cả</span>
               </button>
-            )
-          })}
+
+              {/* Danh sách hashtags từ API */}
+              {hashtags.length > 0 ? (
+                hashtags.map((hashtag) => {
+                  const Icon = getHashtagIcon(hashtag.name)
+                  const isSelected = selectedHashtagId === hashtag.id
+
+                  return (
+                    <button
+                      key={hashtag.id}
+                      onClick={() => handleHashtagClick(hashtag.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-left ${isSelected
+                        ? 'bg-green-50 border-2 border-green-500 text-green-700 font-medium'
+                        : 'bg-gray-50 hover:bg-green-50 border-2 border-transparent hover:border-green-200 text-gray-700'
+                        }`}
+                    >
+                      <Icon className='w-5 h-5 text-green-600 flex-shrink-0' />
+                      <span className='text-sm'>{hashtag.name}</span>
+                    </button>
+                  )
+                })
+              ) : (
+                <div className='text-center py-4'>
+                  <span className='text-sm text-gray-500'>Chưa có gợi ý đặc biệt</span>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </aside>
   )
 }
 
-export default AsideFilter
+// Memoize để tránh re-render không cần thiết khi products loading
+export default memo(AsideFilter)

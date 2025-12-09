@@ -9,7 +9,8 @@ import type {
   UpdateComboItemRequest,
   ComboResponse,
   ComboParams,
-  Combo
+  Combo,
+  ComboFilterRequest
 } from '../types/combo.type'
 
 const API_URL = `/Combo`
@@ -178,9 +179,153 @@ export const getAllCombos = async (params?: ComboParams): Promise<{
   }
 }
 
+// POST /api/Combo/filter - Get combos with comprehensive filtering
+export const filterCombos = async (filterRequest: ComboFilterRequest): Promise<{
+  data: Combo[]
+  pagination?: {
+    pageSize: number
+    pageNumber: number
+    totalItems: number
+    totalPages?: number
+  }
+}> => {
+  try {
+    console.log('filterCombos request:', filterRequest)
+
+    // Prepare request body - convert to match backend naming (PascalCase)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const requestBody: Record<string, any> = {
+      PageNumber: filterRequest.pageNumber || 1,
+      PageSize: filterRequest.pageSize || 12
+    }
+
+    // Add optional filters only if they have values
+    if (filterRequest.minPrice !== undefined) requestBody.MinPrice = filterRequest.minPrice
+    if (filterRequest.maxPrice !== undefined) requestBody.MaxPrice = filterRequest.maxPrice
+    if (filterRequest.provinceFilters && filterRequest.provinceFilters.length > 0) {
+      requestBody.ProvinceFilters = filterRequest.provinceFilters
+    }
+    if (filterRequest.regionFilters && filterRequest.regionFilters.length > 0) {
+      requestBody.RegionFilters = filterRequest.regionFilters
+    }
+    if (filterRequest.subRegionFilters && filterRequest.subRegionFilters.length > 0) {
+      requestBody.SubRegionFilters = filterRequest.subRegionFilters
+    }
+    if (filterRequest.categoryFilterIds && filterRequest.categoryFilterIds.length > 0) {
+      requestBody.CategoryFilterIds = filterRequest.categoryFilterIds
+    }
+    if (filterRequest.storeFilters && filterRequest.storeFilters.length > 0) {
+      requestBody.StoreFilters = filterRequest.storeFilters
+    }
+    if (filterRequest.storeNameFilters && filterRequest.storeNameFilters.length > 0) {
+      requestBody.StoreNameFilters = filterRequest.storeNameFilters
+    }
+    if (filterRequest.statusFilters && filterRequest.statusFilters.length > 0) {
+      requestBody.StatusFilters = filterRequest.statusFilters
+    }
+    if (filterRequest.isActiveFilter !== undefined) {
+      requestBody.IsActiveFilter = filterRequest.isActiveFilter
+    }
+    if (filterRequest.fromDate) requestBody.FromDate = filterRequest.fromDate
+    if (filterRequest.toDate) requestBody.ToDate = filterRequest.toDate
+    if (filterRequest.minSaleCount !== undefined) requestBody.MinSaleCount = filterRequest.minSaleCount
+    if (filterRequest.maxSaleCount !== undefined) requestBody.MaxSaleCount = filterRequest.maxSaleCount
+    if (filterRequest.minRating !== undefined) requestBody.MinRating = filterRequest.minRating
+    if (filterRequest.maxRating !== undefined) requestBody.MaxRating = filterRequest.maxRating
+    if (filterRequest.hasRating !== undefined) requestBody.HasRating = filterRequest.hasRating
+    if (filterRequest.minSavings !== undefined) requestBody.MinSavings = filterRequest.minSavings
+    if (filterRequest.maxSavings !== undefined) requestBody.MaxSavings = filterRequest.maxSavings
+    if (filterRequest.minAvailableQuantity !== undefined) requestBody.MinAvailableQuantity = filterRequest.minAvailableQuantity
+    if (filterRequest.maxAvailableQuantity !== undefined) requestBody.MaxAvailableQuantity = filterRequest.maxAvailableQuantity
+    if (filterRequest.inStock !== undefined) requestBody.InStock = filterRequest.inStock
+    if (filterRequest.minItemCount !== undefined) requestBody.MinItemCount = filterRequest.minItemCount
+    if (filterRequest.maxItemCount !== undefined) requestBody.MaxItemCount = filterRequest.maxItemCount
+    if (filterRequest.sortBy) requestBody.SortBy = filterRequest.sortBy
+    if (filterRequest.queryText) requestBody.QueryText = filterRequest.queryText
+    if (filterRequest.assignedToFilters && filterRequest.assignedToFilters.length > 0) {
+      requestBody.AssignedToFilters = filterRequest.assignedToFilters
+    }
+
+    const response = await axiosInstance.post(`${API_URL}/filter`, requestBody, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    console.log('filterCombos response:', response)
+
+    // Backend trả về ApiResponseWithPagination với structure:
+    // { status, message, data: Combo[], pagination: {...} }
+    const responseData = response.data || response
+
+    let combos: Combo[] = []
+    let pagination: {
+      pageSize: number
+      pageNumber: number
+      totalItems: number
+      totalPages?: number
+    } | undefined
+
+    if (Array.isArray(responseData)) {
+      combos = responseData
+    } else if (responseData && typeof responseData === 'object') {
+      if (Array.isArray(responseData.data)) {
+        combos = responseData.data
+      }
+
+      if (responseData.pagination) {
+        pagination = {
+          pageSize: responseData.pagination.pageSize || filterRequest.pageSize || 12,
+          pageNumber: responseData.pagination.pageNumber || filterRequest.pageNumber || 1,
+          totalItems: responseData.pagination.totalItems || 0,
+          totalPages: responseData.pagination.totalPages || Math.ceil((responseData.pagination.totalItems || 0) / (filterRequest.pageSize || 12))
+        }
+      }
+    }
+
+    console.log('filterCombos processed data:', { combos, pagination })
+    return { data: combos, pagination }
+  } catch (error) {
+    console.error('filterCombos API error:', error)
+    throw error
+  }
+}
+
 export const getComboById = async (comboId: string): Promise<any> => {
   const response = await axiosInstance.get<ComboResponse>(`${API_URL}/${comboId}`)
   return response
+}
+
+// GET /api/products/{productId}/combos - Lấy danh sách combo gợi ý theo product ID
+export const getCombosByProductId = async (productId: string): Promise<{
+  data: Combo[]
+}> => {
+  try {
+    const response = await axiosInstance.get<{
+      status: number
+      message: string
+      data: Combo[]
+    }>(`/products/${productId}/combos`)
+
+    // Backend trả về ApiResponse với structure:
+    // { status, message, data: Combo[] }
+    const responseData = response.data || response
+
+    let combos: Combo[] = []
+
+    if (Array.isArray(responseData)) {
+      combos = responseData
+    } else if (responseData && typeof responseData === 'object') {
+      if (Array.isArray(responseData.data)) {
+        combos = responseData.data
+      }
+    }
+
+    return { data: combos }
+  } catch (error) {
+    console.error('getCombosByProductId API error:', error)
+    throw error
+  }
 }
 
 export const createCompleteCombo = async (
@@ -298,7 +443,9 @@ export const comboApi = {
   updateComboShell,
   updateComboItem,
   getAllCombos,
+  filterCombos,
   getComboById,
+  getCombosByProductId,
   createCompleteCombo,
   updateCompleteCombo,
   removeItemFromCombo,
