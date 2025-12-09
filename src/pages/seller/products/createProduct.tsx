@@ -342,7 +342,7 @@ function CreateProduct() {
     // Calculate how many images can still be added
     const remainingSlots = MAX_PRODUCT_IMAGES - currentCount
 
-    newFiles.forEach((file, index) => {
+    newFiles.forEach((file) => {
       // Check if we've reached the limit
       if (validFiles.length >= remainingSlots) {
         errors.push(`Chỉ có thể thêm tối đa ${remainingSlots} ảnh nữa (tổng cộng ${MAX_PRODUCT_IMAGES} ảnh).`)
@@ -1042,13 +1042,12 @@ function CreateProduct() {
 
                 {/* Upload Area */}
                 <div
-                  className={`mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 bg-gradient-to-br ${
-                    mediaData.productImages.length >= MAX_PRODUCT_IMAGES
+                  className={`mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 bg-gradient-to-br ${mediaData.productImages.length >= MAX_PRODUCT_IMAGES
                       ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
                       : isDraggingImages
                         ? 'border-green-500 bg-green-100 shadow-lg scale-[1.02]'
                         : 'border-gray-300 hover:border-green-400 hover:bg-green-50 cursor-pointer from-white to-gray-50'
-                  }`}
+                    }`}
                   onClick={() => {
                     if (mediaData.productImages.length < MAX_PRODUCT_IMAGES) {
                       document.getElementById('product-images')?.click()
@@ -1077,7 +1076,7 @@ function CreateProduct() {
                     e.preventDefault()
                     e.stopPropagation()
                     setIsDraggingImages(false)
-                    
+
                     if (mediaData.productImages.length >= MAX_PRODUCT_IMAGES) {
                       toast.error(`Chỉ được tải tối đa ${MAX_PRODUCT_IMAGES} hình ảnh.`)
                       return
@@ -1092,14 +1091,12 @@ function CreateProduct() {
                   }}
                 >
                   <ImageIcon
-                    className={`w-10 h-10 mx-auto mb-3 ${
-                      isDraggingImages ? 'text-green-600' : 'text-gray-400'
-                    } transition-colors duration-200`}
+                    className={`w-10 h-10 mx-auto mb-3 ${isDraggingImages ? 'text-green-600' : 'text-gray-400'
+                      } transition-colors duration-200`}
                   />
                   <p
-                    className={`mb-2 font-medium ${
-                      isDraggingImages ? 'text-green-700' : 'text-gray-600'
-                    } transition-colors duration-200`}
+                    className={`mb-2 font-medium ${isDraggingImages ? 'text-green-700' : 'text-gray-600'
+                      } transition-colors duration-200`}
                   >
                     {mediaData.productImages.length >= MAX_PRODUCT_IMAGES
                       ? `Đã đạt giới hạn ${MAX_PRODUCT_IMAGES} ảnh`
@@ -1133,11 +1130,10 @@ function CreateProduct() {
                     variant='outline'
                     size='sm'
                     disabled={mediaData.productImages.length >= MAX_PRODUCT_IMAGES}
-                    className={`mt-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 hover:border-green-300 hover:from-green-100 hover:to-emerald-100 text-green-700 hover:text-green-800 font-medium transition-all duration-200 shadow-sm hover:shadow-md ${
-                      mediaData.productImages.length >= MAX_PRODUCT_IMAGES
+                    className={`mt-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 hover:border-green-300 hover:from-green-100 hover:to-emerald-100 text-green-700 hover:text-green-800 font-medium transition-all duration-200 shadow-sm hover:shadow-md ${mediaData.productImages.length >= MAX_PRODUCT_IMAGES
                         ? 'opacity-50 cursor-not-allowed'
                         : ''
-                    }`}
+                      }`}
                     onClick={(e) => {
                       e.stopPropagation()
                       if (mediaData.productImages.length < MAX_PRODUCT_IMAGES) {
@@ -1235,11 +1231,10 @@ function CreateProduct() {
               <div>
                 <Label className='text-sm font-medium'>Video sản phẩm</Label>
                 <div
-                  className={`mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer bg-gradient-to-br ${
-                    isDraggingVideo
+                  className={`mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer bg-gradient-to-br ${isDraggingVideo
                       ? 'border-blue-500 bg-blue-100 shadow-lg scale-[1.02]'
                       : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50 from-white to-gray-50'
-                  }`}
+                    }`}
                   onClick={() => document.getElementById('product-video')?.click()}
                   onDragEnter={(e) => {
                     e.preventDefault()
@@ -1260,7 +1255,7 @@ function CreateProduct() {
                     e.preventDefault()
                     e.stopPropagation()
                     setIsDraggingVideo(false)
-                    
+
                     const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('video/'))
                     if (files.length > 0) {
                       handleMediaChange('productVideo', files[0])
@@ -1270,14 +1265,12 @@ function CreateProduct() {
                   }}
                 >
                   <Video
-                    className={`w-10 h-10 mx-auto mb-3 ${
-                      isDraggingVideo ? 'text-blue-600' : 'text-gray-400'
-                    } transition-colors duration-200`}
+                    className={`w-10 h-10 mx-auto mb-3 ${isDraggingVideo ? 'text-blue-600' : 'text-gray-400'
+                      } transition-colors duration-200`}
                   />
                   <p
-                    className={`mb-2 font-medium ${
-                      isDraggingVideo ? 'text-blue-700' : 'text-gray-600'
-                    } transition-colors duration-200`}
+                    className={`mb-2 font-medium ${isDraggingVideo ? 'text-blue-700' : 'text-gray-600'
+                      } transition-colors duration-200`}
                   >
                     {isDraggingVideo
                       ? 'Thả video vào đây để tải lên'

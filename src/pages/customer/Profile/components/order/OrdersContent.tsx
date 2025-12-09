@@ -647,7 +647,7 @@ export default function OrdersContent({
         return order
       }
 
-      // Group items by comboId from itemsWithComboItemId
+      // Group items by comboId
       const comboGroups = new Map<string, {
         comboId: string
         items: any[]
@@ -674,42 +674,9 @@ export default function OrdersContent({
         }
       })
 
-      // Create a map of existing combo products by comboId for merging
-      const existingComboProductsMap = new Map<string, typeof order.products[0]>()
-      const regularProductsList: typeof order.products = []
-
-      order.products.forEach((product) => {
-        if (product.isCombo && product.comboId) {
-          existingComboProductsMap.set(product.comboId, product)
-        } else {
-          regularProductsList.push(product)
-        }
-      })
-
-      // Merge combo products: combine existing combos with new combos from itemsWithComboItemId
-      const mergedComboProducts = Array.from(comboGroups.values()).map((group) => {
+      // Create combo products from groups
+      const comboProductsFromItems = Array.from(comboGroups.values()).map((group) => {
         const comboInfo = comboInfoMap.get(group.comboId)
-        const existingCombo = existingComboProductsMap.get(group.comboId)
-
-        // If combo already exists, merge quantity and price
-        if (existingCombo) {
-          const existingQuantity = parseInt(existingCombo.quantity || '0', 10)
-          const newQuantity = group.totalQuantity
-          const mergedQuantity = existingQuantity + newQuantity
-          const mergedPrice = (existingCombo.finalPrice || 0) + group.totalPrice
-
-          return {
-            ...existingCombo,
-            quantity: mergedQuantity.toString(),
-            price: mergedPrice,
-            finalPrice: mergedPrice,
-            name: comboInfo?.name || existingCombo.name || 'Combo',
-            image: comboInfo?.thumbnailUrl || existingCombo.image || DEFAULT_PRODUCT_IMAGE,
-            comboName: comboInfo?.name || existingCombo.comboName || 'Combo'
-          }
-        }
-
-        // New combo from itemsWithComboItemId
         return {
           id: group.comboId,
           productInventoryId: '',
@@ -725,16 +692,13 @@ export default function OrdersContent({
         }
       })
 
-      // Add combos that exist in orderItemsWithCombo but not in itemsWithComboItemId
-      existingComboProductsMap.forEach((combo, comboId) => {
-        if (!comboGroups.has(comboId)) {
-          mergedComboProducts.push(combo)
-        }
-      })
+      // Filter out existing combo products with same comboId to avoid duplicates
+      const existingComboIds = new Set(order.products.filter((p) => p.isCombo && p.comboId).map((p) => p.comboId))
+      const newComboProducts = comboProductsFromItems.filter((p) => !existingComboIds.has(p.comboId))
 
       return {
         ...order,
-        products: [...regularProductsList, ...mergedComboProducts]
+        products: [...order.products, ...newComboProducts]
       }
     })
   }, [orders, orderComboMap, comboInfoMap])
@@ -1492,8 +1456,8 @@ export default function OrdersContent({
                 key={filter.key}
                 onClick={() => handleFilterChange(filter.key)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${selectedFilter === filter.key
-                    ? 'bg-white text-green-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-green-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
                   }`}
               >
                 {filter.label}
@@ -2108,9 +2072,9 @@ function ProductCarousel({
                     <div className='flex flex-col gap-1 mt-1'>
                       <div className='flex items-center gap-2'>
                         <span className='text-xs text-gray-500'>Số lượng: {product.quantity}</span>
-                        {product.finalPrice > 0 && (
+                        {(product.finalPrice ?? 0) > 0 && (
                           <span className='text-xs font-semibold text-green-600'>
-                            {formatPrice(product.finalPrice)}
+                            {formatPrice(product.finalPrice ?? 0)}
                           </span>
                         )}
                       </div>
@@ -2141,8 +2105,8 @@ function ProductCarousel({
               key={index}
               onClick={() => scrollToIndex(index * itemsPerView)}
               className={`h-2 rounded-full transition-all ${Math.floor(activeIndex / itemsPerView) === index
-                  ? 'w-6 bg-green-600'
-                  : 'w-2 bg-gray-300 hover:bg-gray-400'
+                ? 'w-6 bg-green-600'
+                : 'w-2 bg-gray-300 hover:bg-gray-400'
                 }`}
               aria-label={`Go to page ${index + 1}`}
             />

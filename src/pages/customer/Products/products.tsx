@@ -292,15 +292,13 @@ function Products() {
                   minPrice: comboFilters.minPrice,
                   maxPrice: comboFilters.maxPrice,
                   categoryFilterIds: comboFilters.categoryFilterIds,
-                  regionFilters: comboFilters.regionFilters,
-                  subRegionFilters: comboFilters.subRegionFilters
+                  regionFilters: comboFilters.regionFilters
                 }
                 : {
                   minPrice: productFilters.minPrice,
                   maxPrice: productFilters.maxPrice,
                   categoryFilterIds: productFilters.categoryFilterIds,
-                  regionFilters: productFilters.regionFilters,
-                  subRegionFilters: productFilters.subRegionFilters
+                  regionFilters: productFilters.regionFilters
                 }
             }
           />

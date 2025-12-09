@@ -1521,7 +1521,7 @@ function StoreDetailAdmin() {
                       <Loader2 className='w-4 h-4 animate-spin' />
                       <span className='text-sm'>Đang kiểm tra đơn hàng đang xử lý...</span>
                     </div>
-                  ) : activeOrders !== null ? (
+                  ) : activeOrders !== null && activeOrders !== undefined ? (
                     <div className='space-y-2'>
                       <div className='flex items-center gap-2'>
                         <AlertTriangle className='w-4 h-4 text-orange-600' />
