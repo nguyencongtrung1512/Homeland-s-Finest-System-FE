@@ -17,14 +17,18 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
       onClick()
       return
     }
-    navigate(path.productDetail.replace(':id', product.id))
+    // Nếu là Combo thì điều hướng đến combo detail, ngược lại điều hướng đến product detail
+    if (product.typeProduct === 'Combo') {
+      navigate(path.detailCombo.replace(':id', product.id))
+    } else {
+      navigate(path.productDetail.replace(':id', product.id))
+    }
   }
 
   return (
     <div
-      className={`bg-white rounded-xl shadow-md hover:shadow-xl transition p-2 flex flex-col cursor-pointer ${
-        product.soldOut ? 'opacity-75' : ''
-      }`}
+      className={`bg-white rounded-xl shadow-md hover:shadow-xl transition p-2 flex flex-col cursor-pointer ${product.soldOut ? 'opacity-75' : ''
+        }`}
       onClick={handleProductClick}
     >
       {/* Ảnh */}
