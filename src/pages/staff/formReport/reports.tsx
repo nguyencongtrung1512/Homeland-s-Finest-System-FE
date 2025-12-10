@@ -21,8 +21,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Calendar as CalendarComponent } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { format } from 'date-fns'
-import { staffApi } from '../../../apis/staff.api'
 import type { StaffForm } from '../../../apis/staff.api'
+import { formApi } from '../../../apis/form.api'
+import { useAuth } from '../../../contexts/auth.context'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from 'react-toastify'
@@ -32,6 +33,7 @@ import { formatDate } from '../../../utils/formatDate'
 
 function ReportManagement() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [forms, setForms] = useState<StaffForm[]>([])
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
@@ -50,22 +52,31 @@ function ReportManagement() {
     return compareDate > today
   }
 
-  // Load assigned forms
+  // Load assigned forms - Sử dụng formApi.getAssignedForms để lấy TẤT CẢ các status
   const loadAssignedForms = useCallback(async () => {
+    if (!user?.userId) {
+      console.error('User ID not found')
+      return
+    }
+
     try {
       setLoading(true)
-      const response = await staffApi.getMyForms()
+      // Sử dụng formApi.getAssignedForms thay vì staffApi.getMyForms để lấy tất cả forms với mọi status
+      const response = await formApi.getAssignedForms(user.userId, {
+        pageSize: 0, // Load all forms
+        pageNumber: 1
+      })
       console.log('Staff forms API response:', response)
-      // axiosInstance đã trả về response.data, nên response đã là ApiResponseWithPagination
-      // Staff API trả về Data là array trực tiếp (không có issues wrapper)
-      setForms(Array.isArray(response.data) ? response.data : [])
+      // formApi.getAssignedForms đã trả về FormDTO[] trực tiếp
+      // Convert FormDTO[] sang StaffForm[] format (nếu cần) hoặc dùng trực tiếp
+      setForms(Array.isArray(response) ? (response as StaffForm[]) : [])
     } catch (error) {
       console.error('Error loading staff forms:', error)
       toast.error('Có lỗi xảy ra khi tải danh sách khiếu nại')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user?.userId])
 
   useEffect(() => {
     loadAssignedForms()
@@ -164,25 +175,25 @@ function ReportManagement() {
         icon: <XCircle className='w-3 h-3' />
       },
       ApprovedByAdmin: {
-        text: 'Đã duyệt',
+        text: 'Đã duyệt bởi quản trị viên',
         bgColor: 'bg-green-100',
         textColor: 'text-green-600',
         icon: <CheckCircle className='w-3 h-3' />
       },
       DeniedByAdmin: {
-        text: 'Từ chối',
+        text: 'Từ chối bởi quản trị viên',
         bgColor: 'bg-red-100',
         textColor: 'text-red-600',
         icon: <XCircle className='w-3 h-3' />
       },
       Rejected: {
-        text: 'Bị từ chối',
+        text: 'Nhân viên đã từ chối tiếp nhận đơn',
         bgColor: 'bg-gray-100',
         textColor: 'text-gray-600',
         icon: <XCircle className='w-3 h-3' />
       },
       Confirmed: {
-        text: 'Đang xử lí đơn',
+        text: 'Nhân viên đã xác nhận tiếp nhận đơn',
         bgColor: 'bg-orange-100',
         textColor: 'text-orange-600',
         icon: <Clock className='w-3 h-3' />
@@ -341,10 +352,10 @@ function ReportManagement() {
                     <SelectItem value='Processing'>Chờ xử lý</SelectItem>
                     <SelectItem value='ApprovedByStaff'>Chấp nhận bởi nhân viên</SelectItem>
                     <SelectItem value='DeniedByStaff'>Từ chối bởi nhân viên</SelectItem>
-                    <SelectItem value='ApprovedByAdmin'>Đã duyệt</SelectItem>
-                    <SelectItem value='DeniedByAdmin'>Từ chối</SelectItem>
-                    <SelectItem value='Rejected'>Bị từ chối</SelectItem>
-                    <SelectItem value='Confirmed'>Đang xử lí đơn</SelectItem>
+                    <SelectItem value='ApprovedByAdmin'>Đã duyệt bởi quản trị viên</SelectItem>
+                    <SelectItem value='DeniedByAdmin'>Từ chối bởi quản trị viên</SelectItem>
+                    <SelectItem value='Rejected'>Nhân viên đã từ chối tiếp nhận đơn</SelectItem>
+                    <SelectItem value='Confirmed'>Nhân viên đã xác nhận tiếp nhận đơn</SelectItem>
                     <SelectItem value='Cancel'>Đã hủy</SelectItem>
                   </SelectContent>
                 </Select>

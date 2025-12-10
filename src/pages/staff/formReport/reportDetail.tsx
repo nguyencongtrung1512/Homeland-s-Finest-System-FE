@@ -62,14 +62,70 @@ function ReportDetail() {
     ? rawSellerImages.map((img) => resolveImageUrl(img)).filter((url): url is string => Boolean(url))
     : []
 
+  // Helper function to extract error message from various error formats
+  // Note: axiosInstance rejects with error.response.data, so error is already the response data object
+  const getErrorMessage = useCallback((error: unknown, defaultMessage: string): string => {
+    if (!error) return defaultMessage
+
+    // axiosInstance rejects with error.response.data, so error is already:
+    // { status: 400, message: "...", data: null }
+    const errorObj = error as {
+      message?: string | null
+      status?: number
+      data?: unknown
+      response?: { data?: { message?: string } }
+      errors?: Array<{ field: string; message: string }> | Record<string, string[]>
+    }
+
+    // Priority 1: Direct message property (most common case from axiosInstance)
+    if (errorObj?.message && typeof errorObj.message === 'string') {
+      return errorObj.message
+    }
+
+    // Priority 2: Check response.data.message (fallback for other error formats)
+    if (errorObj?.response?.data?.message) {
+      return errorObj.response.data.message
+    }
+
+    // Priority 3: Check for validation errors array
+    if (errorObj?.errors) {
+      if (Array.isArray(errorObj.errors)) {
+        const messages = errorObj.errors.map((e) => e.message).filter(Boolean)
+        if (messages.length > 0) {
+          return messages.join(', ')
+        }
+      } else if (typeof errorObj.errors === 'object') {
+        const messages: string[] = []
+        Object.values(errorObj.errors).forEach((fieldErrors) => {
+          if (Array.isArray(fieldErrors)) {
+            messages.push(...fieldErrors)
+          } else if (typeof fieldErrors === 'string') {
+            messages.push(fieldErrors)
+          }
+        })
+        if (messages.length > 0) {
+          return messages.join(', ')
+        }
+      }
+    }
+
+    // Priority 4: Check if error itself is a string
+    if (typeof error === 'string') {
+      return error
+    }
+
+    return defaultMessage
+  }, [])
+
   // Set default status based on current form status
   useEffect(() => {
     if (form) {
       if (form.status === 'Processing') {
         setSelectedStatus('Confirmed') // Default to waiting seller response for initial processing
-      } else if (form.status === 'Confirmed' || form.status === 'Rejected') {
-        setSelectedStatus('ApprovedByStaff') // Default to approve for waiting seller response/rejected
+      } else if (form.status === 'Confirmed') {
+        setSelectedStatus('ApprovedByStaff') // Default to approve for waiting seller response
       }
+      // Note: Rejected and DeniedByStaff statuses don't need default status as staff cannot take action
     }
   }, [form])
 
@@ -122,11 +178,12 @@ function ReportDetail() {
       }
     } catch (error) {
       console.error('Error loading form detail:', error)
-      toast.error('Có lỗi xảy ra khi tải chi tiết khiếu nại')
+      const errorMessage = getErrorMessage(error, 'Có lỗi xảy ra khi tải chi tiết khiếu nại')
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
-  }, [formId])
+  }, [formId, getErrorMessage])
 
   useEffect(() => {
     loadFormDetail()
@@ -241,18 +298,21 @@ function ReportDetail() {
 
     try {
       setUpdating(true)
-      await formApi.staffUpdateForm(form.id, {
+      const response = await formApi.staffUpdateForm(form.id, {
         reply: staffReply.trim() || '',
         status: selectedStatus
       })
 
-      toast.success('Cập nhật thành công!')
+      // Hiển thị message từ BE, nếu không có thì dùng message mặc định
+      const successMessage = response.message || 'Cập nhật thành công!'
+      toast.success(successMessage)
       setShowUpdateModal(false)
       setStaffReply('')
       loadFormDetail() // Reload form data
     } catch (error) {
       console.error('Error updating form:', error)
-      toast.error('Có lỗi xảy ra khi cập nhật')
+      const errorMessage = getErrorMessage(error, 'Có lỗi xảy ra khi cập nhật')
+      toast.error(errorMessage)
     } finally {
       setUpdating(false)
     }
@@ -267,17 +327,20 @@ function ReportDetail() {
 
     try {
       setUpdating(true)
-      await formApi.staffUpdateForm(form.id, {
+      const response = await formApi.staffUpdateForm(form.id, {
         reply: '', // Send empty reply for Confirmed and Rejected
         status: selectedStatus
       })
 
-      toast.success('Cập nhật thành công!')
+      // Hiển thị message từ BE, nếu không có thì dùng message mặc định
+      const successMessage = response.message || 'Cập nhật thành công!'
+      toast.success(successMessage)
       setShowConfirmDialog(false)
       loadFormDetail() // Reload form data
     } catch (error) {
       console.error('Error updating form:', error)
-      toast.error('Có lỗi xảy ra khi cập nhật')
+      const errorMessage = getErrorMessage(error, 'Có lỗi xảy ra khi cập nhật')
+      toast.error(errorMessage)
     } finally {
       setUpdating(false)
     }
@@ -691,8 +754,9 @@ function ReportDetail() {
             </Card>
           )}
 
-          {/* Staff Actions - Show for Processing, Confirmed, and Rejected status */}
-          {(form.status === 'Processing' || form.status === 'Confirmed' || form.status === 'Rejected') && (
+          {/* Staff Actions - Show for Processing and Confirmed status only */}
+          {/* Rejected status: đã từ chối tiếp nhận, không còn hành động nào */}
+          {(form.status === 'Processing' || form.status === 'Confirmed') && (
             <Card className='bg-white shadow-sm border-blue-200'>
               <CardHeader className='pb-3 bg-blue-50/50'>
                 <CardTitle className='flex items-center gap-2 text-lg text-blue-700'>
@@ -730,33 +794,55 @@ function ReportDetail() {
                         </Button>
                       </div>
                     </div>
-                  ) : form.status === 'Confirmed' || form.status === 'Rejected' ? (
-                    <div className='space-y-3'>
-                      <div className='grid grid-cols-2 gap-3'>
-                        <Button
-                          onClick={() => {
-                            setSelectedStatus('ApprovedByStaff')
-                            setShowUpdateModal(true)
-                          }}
-                          disabled={updating}
-                          className='w-full bg-green-600 hover:bg-green-700 text-white h-12'
-                        >
-                          <CheckCircle className='w-4 h-4 mr-2' />
-                          Duyệt đơn
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setSelectedStatus('DeniedByStaff')
-                            setShowUpdateModal(true)
-                          }}
-                          disabled={updating}
-                          className='w-full bg-red-600 hover:bg-red-700 text-white h-12'
-                        >
-                          <XCircle className='w-4 h-4 mr-2' />
-                          Từ chối đơn
-                        </Button>
+                  ) : form.status === 'Confirmed' ? (
+                    // Check if seller has replied
+                    form.sellerReply || form.isSellerReplied ? (
+                      // Seller has replied - show action buttons
+                      <div className='space-y-3'>
+                        <div className='grid grid-cols-2 gap-3'>
+                          <Button
+                            onClick={() => {
+                              setSelectedStatus('ApprovedByStaff')
+                              setShowUpdateModal(true)
+                            }}
+                            disabled={updating}
+                            className='w-full bg-green-600 hover:bg-green-700 text-white h-12'
+                          >
+                            <CheckCircle className='w-4 h-4 mr-2' />
+                            Duyệt đơn
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setSelectedStatus('DeniedByStaff')
+                              setShowUpdateModal(true)
+                            }}
+                            disabled={updating}
+                            className='w-full bg-red-600 hover:bg-red-700 text-white h-12'
+                          >
+                            <XCircle className='w-4 h-4 mr-2' />
+                            Từ chối đơn
+                          </Button>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      // Seller hasn't replied yet - show waiting message
+                      <div className='bg-orange-50 border border-orange-200 rounded-lg p-4'>
+                        <div className='flex items-center gap-3'>
+                          <Clock className='w-5 h-5 text-orange-600' />
+                          <div>
+                            <p className='text-orange-800 font-medium'>Chờ người bán phản hồi</p>
+                            <p className='text-orange-600 text-sm mt-1'>
+                              Đơn khiếu nại đã được tiếp nhận. Vui lòng đợi người bán phản hồi trước khi thực hiện các hành động tiếp theo.
+                            </p>
+                            {form.deadlineForSellerReply && (
+                              <p className='text-orange-500 text-xs mt-2'>
+                                Hạn phản hồi: {form.deadlineForSellerReply}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
                   ) : null}
                 </div>
               </CardContent>

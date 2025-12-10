@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../../contexts/store.context'
 import { useAuth } from '../../../contexts/auth.context'
@@ -312,7 +312,7 @@ function ComplainSeller() {
       // Take only the files that fit within the limit
       const filesToAdd = imageFiles.slice(0, actualRemainingSlots)
       const newFiles = [...currentImages, ...filesToAdd]
-      
+
       // Update ref immediately
       imageCountRef.current = newFiles.length
 
@@ -1150,11 +1150,10 @@ function ComplainSeller() {
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-colors ${
-                      isDragging
+                    className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-colors ${isDragging
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <input
                       type='file'
