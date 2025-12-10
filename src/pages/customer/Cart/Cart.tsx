@@ -975,7 +975,12 @@ export default function Cart() {
                           Đã áp dụng ({store.appliedPromotions.length})
                         </Button>
                       )}
-                      <button className='text-sm text-orange-600 hover:text-orange-700 font-medium'>Xem shop</button>
+                      <button
+                        className='text-sm text-orange-600 hover:text-orange-700 font-medium'
+                        onClick={() => navigate(`/store/${store.storeId}`)}
+                      >
+                        Xem shop
+                      </button>
                     </div>
                   </div>
                 </div>

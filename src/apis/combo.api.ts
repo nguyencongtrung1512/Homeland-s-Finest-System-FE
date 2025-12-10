@@ -296,6 +296,21 @@ export const getComboById = async (comboId: string): Promise<any> => {
   return response
 }
 
+// Get combos by order ID
+export const getCombosByOrderId = async (orderId: string): Promise<{
+  status: number
+  message: string
+  data: Array<{
+    productVariantId: string
+    comboId: string
+    quantity: number
+    availableQuantity: number
+  }>
+}> => {
+  const response = await axiosInstance.get(`/orders/${orderId}/combos`)
+  return response as any
+}
+
 // GET /api/products/{productId}/combos - Lấy danh sách combo gợi ý theo product ID
 export const getCombosByProductId = async (productId: string): Promise<{
   data: Combo[]

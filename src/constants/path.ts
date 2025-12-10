@@ -32,6 +32,7 @@ export const path = {
   productsSeller: 'product-management',
   promotionSeller: 'promotion-management',
   createProduct: 'create-product',
+  categorySeller: 'category',
   detailProductSeller: 'product-management/detail-product/:id',
   comboSeller: 'combo-management',
   createComboSeller: 'create-combo',

@@ -295,8 +295,6 @@ function ComplainSeller() {
       return
     }
 
-    const remainingSlots = maxImages - currentCount
-
     // Use functional update to get current state and validate again
     setSellerImages((currentImages) => {
       // Double check with actual state
@@ -1151,8 +1149,8 @@ function ComplainSeller() {
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     className={`border-2 border-dashed rounded-lg p-4 sm:p-6 text-center transition-colors ${isDragging
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
                       }`}
                   >
                     <input

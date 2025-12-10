@@ -131,6 +131,27 @@ export interface StoreProductsResponse {
   }
 }
 
+// Interface cho Category Product
+export interface CategoryProduct {
+  id: string
+  imageUrl: string
+  name: string
+}
+
+// Interface cho Store Category
+export interface StoreCategory {
+  categoryId: string
+  categoryName: string
+  products: CategoryProduct[]
+}
+
+// Interface cho Store Categories Response
+export interface StoreCategoriesResponse {
+  status: number
+  message: string
+  data: StoreCategory[]
+}
+
 // API function để lấy danh sách store
 export const storeApi = {
   // Lấy danh sách tất cả stores
@@ -230,5 +251,10 @@ export const storeApi = {
     }
 
     return await axiosInstance.get(`/Store/${storeId}/products`, { params: queryParams })
+  },
+
+  // Lấy danh sách categories và products của store
+  getStoreCategories: async (storeId: string): Promise<StoreCategoriesResponse> => {
+    return await axiosInstance.get(`/Store/${storeId}/categories`)
   }
 }

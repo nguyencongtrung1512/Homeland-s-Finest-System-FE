@@ -59,6 +59,15 @@ export interface ProductSkuResponse {
   data: ProductSku[]
 }
 
+// Display Root ID Response type
+export interface DisplayRootIdResponse {
+  status: number
+  message: string
+  data: {
+    id: string
+  }
+}
+
 // Category Groups Response Type
 export interface CategoryGroupsResponse {
   status: number
@@ -354,6 +363,12 @@ export const productApi = {
   getCategoryGroups: async (): Promise<CategoryGroupsResponse> => {
     const response = await axiosInstance.get(`${API_URL}/category-groups`)
     return response as unknown as CategoryGroupsResponse
+  },
+
+  // Get Display Root by Product Variant ID
+  getDisplayRootByVariantId: async (variantId: string): Promise<DisplayRootIdResponse> => {
+    const response = await axiosInstance.get(`${API_URL}/variant/${variantId}/display-root`)
+    return response as unknown as DisplayRootIdResponse
   }
 }
 
