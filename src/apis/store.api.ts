@@ -92,6 +92,31 @@ export interface StoreFilterByLocationParams {
   pageNumber?: number
 }
 
+// Interface cho StoreLocationDTO (response từ filter-by-location API)
+export interface StoreLocationDTO {
+  id: string
+  storeName: string
+  logo: string
+  coverImage: string
+  province: string
+  district: string
+  ward: string
+  address: string
+  description: string
+}
+
+// Interface cho StoreLocationListResponse (response từ filter-by-location API)
+export interface StoreLocationListResponse {
+  status: number
+  message: string
+  data: StoreLocationDTO[]
+  pagination?: {
+    pageNumber: number
+    pageSize: number
+    totalItems: number
+  }
+}
+
 // Interface cho Store Product Item DTO (response từ API)
 export interface StoreProductItemDTO {
   id: string
@@ -205,7 +230,7 @@ export const storeApi = {
   },
 
   // Filter stores by location
-  filterStoresByLocation: async (params: StoreFilterByLocationParams): Promise<StoreListResponse> => {
+  filterStoresByLocation: async (params: StoreFilterByLocationParams): Promise<StoreLocationListResponse> => {
     const queryParams = new URLSearchParams()
 
     if (params.region) {

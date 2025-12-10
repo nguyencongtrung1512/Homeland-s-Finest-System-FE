@@ -19,6 +19,7 @@ import type { ComboItem as ComboDetailItem } from '../../../types/combo.type'
 import AddressModal from '../../customer/Profile/components/address/AddressModal'
 import { PromotionModal } from '../../../components/Promotion'
 import AppliedPromotionModal from '../../../components/Cart/AppliedPromotionModal'
+import SwipeButton from '../../../components/ui/SwipeButton'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1295,29 +1296,35 @@ export default function Checkout() {
               )}
 
               <div className='flex flex-col gap-4'>
-                <button
-                  onClick={handleCreateOrder}
-                  className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                  disabled={
-                    selectedItemsList.length === 0 ||
-                    !selectedPaymentMethod ||
-                    !selectedAddress ||
-                    isSubmitting ||
-                    isLoadingWallet ||
-                    (selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient) ||
-                    hasOutOfStockSelectedItems()
-                  }
-                >
-                  {isSubmitting
-                    ? 'Đang tạo đơn hàng...'
-                    : isLoadingWallet
-                      ? 'Đang kiểm tra số dư...'
-                      : hasOutOfStockSelectedItems()
-                        ? 'Có sản phẩm hết hàng'
-                        : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
-                          ? 'Số dư không đủ'
-                          : 'Đặt hàng'}
-                </button>
+                {selectedItemsList.length === 0 ||
+                  !selectedPaymentMethod ||
+                  !selectedAddress ||
+                  isSubmitting ||
+                  isLoadingWallet ||
+                  (selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient) ||
+                  hasOutOfStockSelectedItems() ? (
+                  <button
+                    onClick={handleCreateOrder}
+                    className='w-full bg-gray-400 hover:bg-gray-500 text-white font-semibold py-3 rounded-lg mb-3 transition-colors cursor-not-allowed'
+                    disabled
+                  >
+                    {isSubmitting
+                      ? 'Đang tạo đơn hàng...'
+                      : isLoadingWallet
+                        ? 'Đang kiểm tra số dư...'
+                        : hasOutOfStockSelectedItems()
+                          ? 'Có sản phẩm hết hàng'
+                          : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
+                            ? 'Số dư không đủ'
+                            : !selectedAddress
+                              ? 'Vui lòng chọn địa chỉ'
+                              : !selectedPaymentMethod
+                                ? 'Vui lòng chọn phương thức thanh toán'
+                                : 'Vui lòng chọn sản phẩm'}
+                  </button>
+                ) : (
+                  <SwipeButton onConfirm={handleCreateOrder} />
+                )}
 
                 <button
                   onClick={() => navigate('/cart')}

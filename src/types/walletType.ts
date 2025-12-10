@@ -40,8 +40,39 @@ export type TransactionWalletType =
 
 /**
  * Chuyển đổi TransactionWalletType sang tiếng Việt
+ * Ưu tiên dùng typeDisplay từ BE, fallback về typeMap nếu không có
  */
-export const getTransactionTypeLabel = (type: TransactionWalletType): string => {
+export const getTransactionTypeLabel = (transaction: WalletTransactionDTO | TransactionWalletType): string => {
+  // Nếu nhận WalletTransactionDTO, ưu tiên dùng typeDisplay
+  if (typeof transaction === 'object' && 'typeDisplay' in transaction) {
+    if (transaction.typeDisplay) {
+      return transaction.typeDisplay
+    }
+    // Fallback về type nếu không có typeDisplay
+    const type = transaction.type
+    const typeMap: Record<TransactionWalletType, string> = {
+      OrderPayment: 'Thanh toán đơn hàng',
+      CustomerPayment: 'Khách hàng thanh toán',
+      OrderBankingPending: 'Chờ thanh toán đơn hàng',
+      OrderBankingCompleted: 'Hoàn thành thanh toán đơn hàng',
+      OrderCodDebt: 'Ghi nợ COD',
+      OrderCodPaid: 'Đã trả nợ COD',
+      Deposit: 'Nạp tiền',
+      CommissionReceived: 'Nhận hoa hồng',
+      DebtPayment: 'Trả nợ từ nạp tiền',
+      Withdrawal: 'Rút tiền',
+      SystemDiscountCompensation: 'Nhận bù giảm giá hệ thống',
+      SystemDiscountCompensationPayout: 'Trả bù giảm giá hệ thống',
+      PayDebt: 'Trả nợ',
+      PayoutToSeller: 'Thanh toán cho người bán',
+      RefundToCustomer: 'Hoàn tiền cho khách hàng',
+      Refund: 'Nhận hoàn tiền'
+    }
+    return typeMap[type] || type
+  }
+
+  // Nếu nhận TransactionWalletType (backward compatibility)
+  const type = transaction as TransactionWalletType
   const typeMap: Record<TransactionWalletType, string> = {
     OrderPayment: 'Thanh toán đơn hàng',
     CustomerPayment: 'Khách hàng thanh toán',
@@ -84,6 +115,7 @@ export interface WalletTransactionDTO {
   orderId: string | null
   transactionId: string | null
   type: TransactionWalletType
+  typeDisplay: string
   amount: number
   balanceBefore: number
   balanceAfter: number
@@ -92,9 +124,6 @@ export interface WalletTransactionDTO {
   paymentMethod: string
   orderVerificationId?: string
   billImages: string[] | null
-  debtBefore: number | null
-  debtAfter: number | null
-  debtPaid: number | null
   processedBy?: string
   processedByName?: string
   processNote?: string

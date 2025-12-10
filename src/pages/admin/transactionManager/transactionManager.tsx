@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Eye, ChevronLeft, ChevronRight, Repeat, RefreshCw, Loader2 } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Repeat, RefreshCw, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -7,7 +7,12 @@ import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import TransactionDetail from '../../staff/transactions/transactionDetail'
 import { getAllTransactions } from '../../../apis/transaction.api'
-import type { Transaction as APITransaction, TransactionQueryParams } from '../../../types/transactionType'
+import type {
+  Transaction as APITransaction,
+  TransactionQueryParams,
+  TransactionType
+} from '../../../types/transactionType'
+import { getTransactionTypeLabel } from '../../../types/transactionType'
 import { formatDate } from '../../../utils/formatDate'
 import { getOrderDetail } from '../../../apis/order.api'
 import { storeApi } from '../../../apis/store.api'
@@ -16,6 +21,7 @@ interface Transaction {
   id: string
   customer: string
   shop: string
+  type: string
   createDate: string
   amount: number
   status: 'pending' | 'disbursed' | 'delivering' | 'pending_confirmation' | 'refunded'
@@ -74,6 +80,7 @@ function TransactionManagementAdmin() {
       id: apiTransaction.id,
       customer: apiTransaction.userFullName || 'Khách hàng',
       shop: shopName,
+      type: apiTransaction.type || 'Sale',
       createDate: formatDate(apiTransaction.createdAt) || '',
       amount: apiTransaction.amount,
       status: mapStatusToUI(apiTransaction.status, apiTransaction.orderStatus)
@@ -161,7 +168,7 @@ function TransactionManagementAdmin() {
 
   const getStatusConfig = (status: string) => {
     const configs = {
-      disbursed: { color: 'green', text: 'Đã giải ngân', bgColor: 'bg-green-100', textColor: 'text-green-600' },
+      disbursed: { color: 'green', text: 'Đã hoàn thành', bgColor: 'bg-green-100', textColor: 'text-green-600' },
       waiting: { color: 'blue', text: 'Đang giao', bgColor: 'bg-blue-100', textColor: 'text-blue-600' },
       pending_confirmation: {
         color: 'yellow',
@@ -180,10 +187,6 @@ function TransactionManagementAdmin() {
         textColor: 'text-gray-600'
       }
     )
-  }
-
-  const handleView = (record: Transaction) => {
-    setSelectedTransaction(record)
   }
 
   const handleCloseModal = () => {
@@ -209,9 +212,9 @@ function TransactionManagementAdmin() {
         </div>
       </td>
 
-      {/* Cửa hàng */}
+      {/* Thể loại */}
       <td className='px-6 py-4'>
-        <span className='text-gray-700 text-sm'>{transaction.shop}</span>
+        <span className='text-gray-700 text-sm'>{getTransactionTypeLabel(transaction.type as TransactionType)}</span>
       </td>
 
       {/* Ngày tạo */}
@@ -240,18 +243,6 @@ function TransactionManagementAdmin() {
           })()}
         </div>
       </td>
-
-      {/* Hành động */}
-      <td className='px-6 py-4'>
-        <Button
-          variant='ghost'
-          size='sm'
-          onClick={() => handleView(transaction)}
-          className='h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full'
-        >
-          <Eye size={14} />
-        </Button>
-      </td>
     </tr>
   )
 
@@ -260,7 +251,7 @@ function TransactionManagementAdmin() {
       {/* Header */}
       <div>
         <h1 className='text-2xl font-bold text-gray-900'>Quản lý giao dịch</h1>
-        <p className='text-gray-600 mt-1'>Theo dõi và quản lý tất cả giao dịch trên hệ thống</p>
+        <p className='text-gray-600 mt-1'>Theo dõi và quản lý tất cả giao dịch đi vào và đi ra hệ thống</p>
       </div>
 
       {/* Filters */}
@@ -286,7 +277,7 @@ function TransactionManagementAdmin() {
               <SelectContent>
                 <SelectItem value='all'>Tất cả trạng thái</SelectItem>
                 <SelectItem value='waiting'>Đang chờ</SelectItem>
-                <SelectItem value='disbursed'>Đã giải ngân</SelectItem>
+                <SelectItem value='disbursed'>Đã hoàn thành</SelectItem>
                 <SelectItem value='refunded'>Đã hoàn tiền</SelectItem>
               </SelectContent>
             </Select>
@@ -342,11 +333,10 @@ function TransactionManagementAdmin() {
                     <tr className='border-b border-gray-200 bg-gray-50'>
                       <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Mã giao dịch</th>
                       <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Khách hàng</th>
-                      <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Cửa hàng</th>
+                      <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Thể loại</th>
                       <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Ngày tạo</th>
                       <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Số tiền</th>
                       <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Trạng thái</th>
-                      <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Hành động</th>
                     </tr>
                   </thead>
 
@@ -390,10 +380,11 @@ function TransactionManagementAdmin() {
                       size='sm'
                       onClick={() => setCurrentPage(page)}
                       disabled={loading}
-                      className={`h-8 w-8 p-0 ${currentPage === page
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                        }`}
+                      className={`h-8 w-8 p-0 ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                      }`}
                     >
                       {page}
                     </Button>

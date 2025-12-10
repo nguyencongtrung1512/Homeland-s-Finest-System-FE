@@ -198,16 +198,16 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
 
           // Fallback: Sử dụng vị trí mặc định (HCM)
           console.log('🔄 Sử dụng vị trí mặc định (HCM)')
-          const defaultCoords: [number, number] = [106.6297, 10.8231]
+          const defaultCoords: [number, number] = [106.809432, 10.841679]
           setCoordinates(defaultCoords)
 
           // Tạo marker mặc định
           const el = document.createElement('div')
           el.className = 'location-marker'
           el.style.cssText = `
-            width: 30px;
+            width: 15px;
             height: 30px;
-            background-color: #3b82f6;
+            background-color: #3fd23a;
             border: 3px solid #ffffff;
             border-radius: 50%;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -270,7 +270,8 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
         console.log('✅ Đã tìm thấy địa chỉ:', placeName)
 
         // Phân tích thông tin địa chỉ từ placeName
-        // Thông thường, placeName có dạng: "Số nhà, Đường, Phường/Xã, Quận/Huyện, Tỉnh/Thành phố, Việt Nam"
+        // Mapbox có thể trả về: "Đường, Tên Phường/Xã, Mã Phường/Xã, Quận/Huyện, Tỉnh/Thành phố, Việt Nam"
+        // Ví dụ: "Đường D1, Long Thạnh Mỹ, 71200, Quận 9, Ho Chi Minh City, Vietnam"
         const addressParts = placeName.split(', ')
 
         // Lấy thông tin tỉnh/thành phố, quận/huyện, phường/xã
@@ -288,13 +289,36 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
             districtName = addressParts[addressParts.length - 3]
           }
 
-          // Phường/Xã thường là phần tử thứ 4 từ cuối
+          // Xử lý Phường/Xã - Mapbox có thể trả về mã phường/xã (số) giữa tên phường và quận
+          // Ví dụ: "Long Thạnh Mỹ, 71200, Quận 9" → cần lấy "Long Thạnh Mỹ" chứ không phải "71200"
           if (addressParts.length >= 5) {
-            wardName = addressParts[addressParts.length - 4]
-          }
+            const potentialWardIndex = addressParts.length - 4
+            const potentialWard = addressParts[potentialWardIndex]
 
-          // Địa chỉ đường phố là các phần còn lại
-          streetAddress = addressParts.slice(0, addressParts.length - 4).join(', ')
+            // Kiểm tra nếu phần tử này là mã phường/xã (chỉ chứa số, không có chữ)
+            const isWardCode = /^\d+$/.test(potentialWard.trim())
+
+            if (isWardCode) {
+              // Nếu là mã phường, lấy phần trước đó làm tên phường
+              if (addressParts.length >= 6) {
+                wardName = addressParts[potentialWardIndex - 1]
+                // Địa chỉ đường phố là các phần từ đầu đến trước tên phường
+                streetAddress = addressParts.slice(0, potentialWardIndex - 1).join(', ')
+              } else {
+                // Nếu không có phần trước, dùng mã phường (fallback - ít xảy ra)
+                wardName = potentialWard
+                streetAddress = addressParts.slice(0, potentialWardIndex).join(', ')
+              }
+            } else {
+              // Nếu không phải mã phường, đó là tên phường
+              wardName = potentialWard
+              // Địa chỉ đường phố là các phần còn lại
+              streetAddress = addressParts.slice(0, potentialWardIndex).join(', ')
+            }
+          } else if (addressParts.length >= 4) {
+            // Trường hợp không có phường/xã rõ ràng
+            streetAddress = addressParts.slice(0, addressParts.length - 3).join(', ')
+          }
         }
 
         console.log('📍 Phân tích địa chỉ:', { provinceName, districtName, wardName, streetAddress })

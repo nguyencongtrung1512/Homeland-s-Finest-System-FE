@@ -5,6 +5,12 @@ export type TransactionStatus =
   | 'Failed'      // Thất bại
   | 'Cancelled'   // Đã hủy
 
+export type TransactionType =
+  | 'Sale' // Khách mua hàng thông qua cổng thanh toán Payos
+  | 'Refund' // Hoàn tiền
+  | 'Payout' // Thanh toán
+  | 'Withdrawal' // Rút tiền
+  | 'Deposit' // Nạp tiền
 // Transaction interface
 export interface Transaction {
   id: string
@@ -12,7 +18,7 @@ export interface Transaction {
   orderId: string
   paymentMethod: string
   payosOrderCode: string
-  type: 'Sale' | 'Refund' | 'Payout' | 'Withdrawal' | 'Deposit'
+  type: TransactionType
   checkoutUrl: string
   description: string
   amount: number

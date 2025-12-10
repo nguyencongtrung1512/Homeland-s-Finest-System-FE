@@ -27,7 +27,6 @@ import { getWalletBalance, withdrawal, getWalletTransactions, depositMoney } fro
 import { getOrderDetail } from '../../../apis/order.api'
 import type { RequestWalletMoney, UpdateRequestWalletMoneyInput } from '../../../types/requestWalletMoneyType'
 import type { WalletData, WalletTransactionDTO } from '../../../types/walletType'
-import { getTransactionTypeLabel } from '../../../types/walletType'
 import { formatDate } from '../../../utils/formatDate'
 import { toast } from '../../../utils/toast'
 import Loading from '../../../components/Loading/loading'
@@ -107,7 +106,29 @@ function RequestWalletMoneyManagement() {
       }
 
       const response = await getRequestWalletMoney(params)
-      const requests = response.data || []
+
+      // Handle different response structures
+      // getRequestWalletMoney returns { data: RequestWalletMoney[], pagination?: {...} }
+      let requests: RequestWalletMoney[] = []
+
+      if (response && typeof response === 'object') {
+        if (Array.isArray(response)) {
+          // Response is array directly (unlikely but handle it)
+          requests = response
+        } else if ('data' in response && Array.isArray(response.data)) {
+          // Response has data property with array
+          requests = response.data
+        } else {
+          // Try to access data property with type assertion
+          const responseWithData = response as { data?: RequestWalletMoney[] }
+          if (Array.isArray(responseWithData.data)) {
+            requests = responseWithData.data
+          }
+        }
+      }
+
+      console.log('API Response structure:', response)
+      console.log('Extracted requests:', requests.length, requests)
 
       // Lưu tất cả requests
       setAllRequests(requests)
@@ -122,9 +143,10 @@ function RequestWalletMoneyManagement() {
       })
     } catch (err: unknown) {
       console.error('Error fetching requests:', err)
-      setError('Không thể tải danh sách yêu cầu. Vui lòng thử lại sau.')
+      const errorMessage = (err as { message?: string })?.message || 'Không thể tải danh sách yêu cầu. Vui lòng thử lại sau.'
+      setError(errorMessage)
       setAllRequests([])
-      toast.error('Lỗi', 'Không thể tải danh sách yêu cầu')
+      toast.error('Lỗi', errorMessage)
     } finally {
       setLoading(false)
     }
@@ -488,29 +510,52 @@ function RequestWalletMoneyManagement() {
 
   // Check if transaction is debt-related
   const isDebtTransaction = (type: string): boolean => {
-    return ['DebtPayment', 'OrderCodDebt', 'OrderCodPaid', 'PayDebt'].includes(type)
+    return ['OrderCodDebt', 'DebtPayment'].includes(type)
   }
 
   // Get transaction type icon color based on guide specifications
   const getTransactionTypeColor = (type: string) => {
-    // Debt transactions
+    // ─────────────────────────────────────────────────────
+    // DEBT TRANSACTIONS (Yellow/Blue)
+    // ─────────────────────────────────────────────────────
     if (type === 'OrderCodDebt') {
-      return 'text-yellow-600' // 🟡 Debt increase
+      return 'text-yellow-600' // 🟡 Nợ tăng
     }
-    if (type === 'OrderCodPaid' || type === 'PayDebt') {
-      return 'text-blue-600' // 🔵 Debt decrease
-    }
+
     if (type === 'DebtPayment') {
-      return 'text-red-600' // 🔴 Balance decreases (trả nợ từ deposit)
+      return 'text-blue-600' // 🔵 Trả nợ (nợ giảm)
     }
 
-    // Balance transactions - Money in (green)
-    if (['Deposit', 'CommissionReceived', 'Refund', 'RefundToCustomer', 'CustomerPayment', 'OrderBankingCompleted', 'SystemDiscountCompensation', 'PayoutToSeller'].includes(type)) {
-      return 'text-green-600' // 🟢 Money in
+    // ─────────────────────────────────────────────────────
+    // BALANCE TRANSACTIONS - MONEY IN (Green)
+    // ─────────────────────────────────────────────────────
+    const moneyInTypes = [
+      'Deposit',                          // Nạp tiền
+      'Refund',                           // Hoàn tiền (customer)
+      'RefundToCustomer',                 // Hoàn tiền cho khách (system)
+      'CommissionReceived',               // Nhận trả nợ (system)
+      'CustomerPayment',                  // Nhận từ khách (system)
+      'OrderBankingCompleted',            // Nhận tiền đơn hàng (seller)
+      'SystemDiscountCompensation',       // Nhận bù giảm giá (seller)
+      'PayoutToSeller'                    // Trả seller (system - hiển thị bên system)
+    ]
+
+    if (moneyInTypes.includes(type)) {
+      return 'text-green-600' // 🟢 Tiền vào
     }
 
-    // Balance transactions - Money out (red)
-    return 'text-red-600' // 🔴 Money out
+    // ─────────────────────────────────────────────────────
+    // BALANCE TRANSACTIONS - MONEY OUT (Red)
+    // ─────────────────────────────────────────────────────
+    return 'text-red-600' // 🔴 Tiền ra (OrderPayment, Withdrawal, etc.)
+  }
+
+  // Get balance change sign based on balanceBefore and balanceAfter
+  const getBalanceChangeSign = (balanceBefore: number, balanceAfter: number): string => {
+    const change = balanceAfter - balanceBefore
+    if (change > 0) return '+' // Tăng
+    if (change < 0) return ''  // Giảm (số âm đã có dấu -)
+    return ''                  // Không đổi
   }
 
   // Get order status config - convert sang tiếng Việt
@@ -1473,16 +1518,12 @@ function RequestWalletMoneyManagement() {
                     const typeColor = getTransactionTypeColor(transaction.type)
                     const isDebt = isDebtTransaction(transaction.type)
 
-                    // Determine amount sign based on transaction type
-                    let amountSign = ''
-                    if (isDebt) {
-                      // Debt transactions: + for increase (OrderCodDebt), - for decrease (OrderCodPaid, PayDebt)
-                      amountSign = transaction.type === 'OrderCodDebt' ? '+' : '-'
-                    } else {
-                      // Balance transactions: + for money in, - for money out
-                      const moneyInTypes = ['Deposit', 'CommissionReceived', 'Refund', 'RefundToCustomer', 'CustomerPayment', 'OrderBankingCompleted', 'SystemDiscountCompensation', 'PayoutToSeller']
-                      amountSign = moneyInTypes.includes(transaction.type) ? '+' : '-'
-                    }
+                    // ✅ TỰ ĐỘNG TÍNH SIGN DựA VÀO balanceBefore/After
+                    const balanceChange = transaction.balanceAfter - transaction.balanceBefore
+                    const amountSign = getBalanceChangeSign(transaction.balanceBefore, transaction.balanceAfter)
+
+                    // ✅ Label: "Số dư" vs "Nợ"
+                    const balanceLabel = isDebt ? 'Nợ' : 'Số dư'
 
                     return (
                       <motion.div
@@ -1494,12 +1535,15 @@ function RequestWalletMoneyManagement() {
                         <Card className='hover:shadow-md transition-shadow'>
                           <CardContent className='p-4'>
                             <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
-                              {/* Left Section - Transaction Type and Status */}
+                              {/* ═══════════════════════════════════════════════════════════ */}
+                              {/* LEFT: Transaction Info */}
+                              {/* ═══════════════════════════════════════════════════════════ */}
                               <div className='flex items-start gap-3 flex-1'>
                                 <div className='flex-1'>
                                   <div className='flex items-center gap-2 mb-1 flex-wrap'>
+                                    {/* ✅ DÙNG typeDisplay từ BE */}
                                     <p className='text-sm font-bold text-gray-900'>
-                                      {getTransactionTypeLabel(transaction.type)}
+                                      {transaction.typeDisplay || transaction.type}
                                     </p>
                                     <Badge
                                       className={`${statusConfig.bgColor} ${statusConfig.textColor} border-0 text-xs`}
@@ -1507,72 +1551,54 @@ function RequestWalletMoneyManagement() {
                                       {statusConfig.text}
                                     </Badge>
                                   </div>
+
                                   {transaction.description && (
                                     <p className='text-xs text-gray-500 mt-1'>{transaction.description}</p>
                                   )}
+
                                   <p className='text-xs text-gray-400 mt-1'>
                                     {formatDate(transaction.createdAt) || 'Không xác định'}
                                   </p>
                                 </div>
                               </div>
 
-                              {/* Right Section - Amount and Balance/Debt Info */}
+                              {/* ═══════════════════════════════════════════════════════════ */}
+                              {/* RIGHT: Amount and Balance Info */}
+                              {/* ═══════════════════════════════════════════════════════════ */}
                               <div className='flex flex-col md:items-end gap-2 flex-shrink-0'>
-                                {/* Amount */}
+
+                                {/* Amount Display */}
                                 <div className='text-right'>
                                   <p className={`text-xl font-bold ${typeColor} mb-2`}>
                                     {amountSign}
-                                    {transaction.amount.toLocaleString('vi-VN')} đ
+                                    {Math.abs(balanceChange).toLocaleString('vi-VN')} đ
                                   </p>
                                 </div>
 
-                                {/* Balance or Debt Information */}
-                                {isDebt ? (
-                                  // Debt Transaction Display
-                                  <div className='text-right space-y-1'>
-                                    {transaction.debtBefore !== null && transaction.debtBefore !== undefined && (
-                                      <p className='text-xs text-gray-600'>
-                                        Nợ trước:{' '}
-                                        <span className='font-semibold text-gray-700'>
-                                          {transaction.debtBefore.toLocaleString('vi-VN')} đ
-                                        </span>
-                                      </p>
-                                    )}
-                                    {transaction.debtAfter !== null && transaction.debtAfter !== undefined && (
-                                      <p className='text-xs text-gray-600'>
-                                        Nợ sau:{' '}
-                                        <span className='font-semibold text-gray-700'>
-                                          {transaction.debtAfter.toLocaleString('vi-VN')} đ
-                                        </span>
-                                      </p>
-                                    )}
-                                    {transaction.debtPaid !== null && transaction.debtPaid !== undefined && transaction.debtPaid > 0 && (
-                                      <p className='text-xs text-blue-600 font-semibold'>
-                                        Đã trả: {transaction.debtPaid.toLocaleString('vi-VN')} đ
-                                      </p>
-                                    )}
-                                  </div>
-                                ) : (
-                                  // Balance Transaction Display
-                                  <div className='text-right space-y-1'>
-                                    {transaction.balanceBefore !== null && transaction.balanceBefore !== undefined && (
-                                      <p className='text-xs text-gray-600'>
-                                        Số dư trước:{' '}
-                                        <span className='font-semibold text-gray-700'>
-                                          {transaction.balanceBefore.toLocaleString('vi-VN')} đ
-                                        </span>
-                                      </p>
-                                    )}
-                                    {transaction.balanceAfter !== null && transaction.balanceAfter !== undefined && (
-                                      <p className='text-xs text-gray-600'>
-                                        Số dư sau:{' '}
-                                        <span className='font-semibold text-gray-700'>
-                                          {transaction.balanceAfter.toLocaleString('vi-VN')} đ
-                                        </span>
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
+                                {/* ✅ Balance/Debt Info - LUÔN DÙNG balanceBefore/After */}
+                                <div className='text-right space-y-1'>
+                                  <p className='text-xs text-gray-600'>
+                                    {balanceLabel} trước:{' '}
+                                    <span className='font-semibold text-gray-700'>
+                                      {transaction.balanceBefore.toLocaleString('vi-VN')} đ
+                                    </span>
+                                  </p>
+
+                                  <p className='text-xs text-gray-600'>
+                                    {balanceLabel} sau:{' '}
+                                    <span className='font-semibold text-gray-700'>
+                                      {transaction.balanceAfter.toLocaleString('vi-VN')} đ
+                                    </span>
+                                  </p>
+
+                                  {/* Optional: Show breakdown for seller/admin */}
+                                  {transaction.orderCommission && (
+                                    <p className='text-xs text-blue-600 font-semibold mt-2'>
+                                      Commission: {transaction.orderCommission.toLocaleString('vi-VN')} đ
+                                    </p>
+                                  )}
+                                </div>
+
                               </div>
                             </div>
                           </CardContent>

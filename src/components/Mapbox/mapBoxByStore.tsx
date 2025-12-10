@@ -10,11 +10,8 @@ interface Store {
   ID: string
   StoreName: string
   Province: string
-  ProvinceID: number | null
   District: string
-  DistrictID: number | null
   Ward: string
-  WardID: number | null
   Address: string
   LogoURL: string | null
   Description: string
@@ -107,6 +104,17 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
   const geocodeStoreAddress = useCallback(async (store: Store): Promise<Store> => {
     try {
       const fullAddress = `${store.Address}, ${store.Ward}, ${store.District}, ${store.Province}, Việt Nam`
+
+      console.log('📍 [GEOCODE] Bắt đầu geocode:', {
+        storeId: store.ID,
+        storeName: store.StoreName,
+        originalAddress: store.Address,
+        ward: store.Ward,
+        district: store.District,
+        province: store.Province,
+        fullAddress: fullAddress
+      })
+
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
           fullAddress
@@ -114,17 +122,47 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       )
       const data = await response.json()
 
+      console.log('📍 [GEOCODE] Mapbox response:', {
+        storeId: store.ID,
+        storeName: store.StoreName,
+        fullAddress: fullAddress,
+        responseData: data,
+        featuresCount: data.features?.length || 0
+      })
+
       if (data.features && data.features.length > 0) {
         const coordinates = data.features[0].geometry.coordinates as [number, number]
+        const placeName = data.features[0].place_name
+
+        console.log('✅ [GEOCODE] Thành công:', {
+          storeId: store.ID,
+          storeName: store.StoreName,
+          originalAddress: store.Address,
+          mapboxPlaceName: placeName,
+          coordinates: coordinates,
+          lng: coordinates[0],
+          lat: coordinates[1]
+        })
+
         return {
           ...store,
           lng: coordinates[0],
           lat: coordinates[1]
         }
+      } else {
+        console.warn('⚠️ [GEOCODE] Không tìm thấy kết quả:', {
+          storeId: store.ID,
+          storeName: store.StoreName,
+          fullAddress: fullAddress
+        })
+        return store
       }
-      return store
     } catch (error) {
-      console.error(`❌ Lỗi khi geocoding địa chỉ của cửa hàng ${store.StoreName}:`, error)
+      console.error(`❌ [GEOCODE] Lỗi khi geocoding địa chỉ của cửa hàng ${store.StoreName}:`, {
+        storeId: store.ID,
+        storeName: store.StoreName,
+        error: error
+      })
       return store
     }
   }, [])
@@ -137,11 +175,42 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
 
     const geocodeAllStores = async () => {
       try {
+        console.log('🔄 [GEOCODE ALL] Bắt đầu geocode tất cả stores, tổng số:', stores.length)
+        console.log('🔄 [GEOCODE ALL] Danh sách stores:', stores.map(s => ({
+          id: s.ID,
+          name: s.StoreName,
+          address: s.Address,
+          ward: s.Ward,
+          district: s.District,
+          province: s.Province
+        })))
+
         const storesPromises = stores.map((store) => geocodeStoreAddress(store))
         const storesWithCoords = await Promise.all(storesPromises)
-        setStoresWithCoordinates(storesWithCoords.filter((store) => store.lng && store.lat))
+        const validStores = storesWithCoords.filter((store) => store.lng && store.lat)
+
+        console.log('✅ [GEOCODE ALL] Hoàn thành geocode:', {
+          total: stores.length,
+          valid: validStores.length,
+          invalid: stores.length - validStores.length,
+          validStores: validStores.map(s => ({
+            id: s.ID,
+            name: s.StoreName,
+            address: s.Address,
+            coordinates: [s.lng, s.lat]
+          })),
+          invalidStores: storesWithCoords
+            .filter((store) => !store.lng || !store.lat)
+            .map(s => ({
+              id: s.ID,
+              name: s.StoreName,
+              address: s.Address
+            }))
+        })
+
+        setStoresWithCoordinates(validStores)
       } catch (error) {
-        console.error('❌ Lỗi khi geocoding các cửa hàng:', error)
+        console.error('❌ [GEOCODE ALL] Lỗi khi geocoding các cửa hàng:', error)
       } finally {
         setIsLoading(false)
       }
@@ -207,8 +276,28 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
     const bounds = new mapboxgl.LngLatBounds()
 
     // Thêm markers mới
+    console.log('🗺️ [MARKERS] Bắt đầu thêm markers, tổng số:', storesWithCoordinates.length)
+
     storesWithCoordinates.forEach((store) => {
-      if (!store.lng || !store.lat) return
+      if (!store.lng || !store.lat) {
+        console.warn('⚠️ [MARKERS] Store không có tọa độ:', {
+          storeId: store.ID,
+          storeName: store.StoreName,
+          address: store.Address
+        })
+        return
+      }
+
+      console.log('📍 [MARKERS] Thêm marker:', {
+        storeId: store.ID,
+        storeName: store.StoreName,
+        address: store.Address,
+        ward: store.Ward,
+        district: store.District,
+        province: store.Province,
+        coordinates: [store.lng, store.lat],
+        fullAddress: `${store.Address}, ${store.Ward}, ${store.District}, ${store.Province}`
+      })
 
       const isSelected = selectedStoreId === store.ID
       const el = createMarkerElement(store, isSelected)

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import MapBoxByStore from '../../../components/Mapbox/mapBoxByStore'
 import { storeApi } from '../../../apis/store.api'
-import type { StoreResponse } from '../../../apis/store.api'
+import type { StoreLocationDTO } from '../../../apis/store.api'
 import Loading from '../../../components/Loading/loading'
 
 const DEFAULT_IMAGE_URL = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
@@ -10,11 +10,8 @@ interface Store {
   ID: string
   StoreName: string
   Province: string
-  ProvinceID: number | null
   District: string
-  DistrictID: number | null
   Ward: string
-  WardID: number | null
   Address: string
   LogoURL: string | null
   CoverImageURL: string | null
@@ -30,20 +27,17 @@ function Discover() {
   const [selectedRegion, setSelectedRegion] = useState<string | null>('Miền bắc')
   const [provinceSearch, setProvinceSearch] = useState('')
 
-  // Map StoreResponse to Store format
-  const mapStoreResponseToStore = (storeResponse: StoreResponse): Store => {
+  // Map StoreLocationDTO to Store format
+  const mapStoreResponseToStore = (storeResponse: StoreLocationDTO): Store => {
     return {
       ID: storeResponse.id,
       StoreName: storeResponse.storeName,
       Province: storeResponse.province,
-      ProvinceID: storeResponse.provinceId,
       District: storeResponse.district,
-      DistrictID: storeResponse.districtId,
       Ward: storeResponse.ward,
-      WardID: storeResponse.wardId,
       Address: storeResponse.address,
-      LogoURL: storeResponse.logoUrl || DEFAULT_IMAGE_URL,
-      CoverImageURL: storeResponse.coverImageUrl || DEFAULT_IMAGE_URL,
+      LogoURL: storeResponse.logo || DEFAULT_IMAGE_URL,
+      CoverImageURL: storeResponse.coverImage || DEFAULT_IMAGE_URL,
       Description: storeResponse.description || ''
     }
   }
@@ -122,7 +116,7 @@ function Discover() {
       />
 
       {/* Left Panel - Store List with Search */}
-      <div className='absolute top-0 left-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col'>
+      <div className='absolute top-0 left-0 h-full w-96 bg-white shadow-2xl z-30 flex flex-col'>
         {/* Header with Title */}
         <div className='bg-white p-6 border-b-2 border-gray-200'>
           <p className='text-sm text-gray-600'>Khám phá các cửa hàng đặc sản trên khắp Việt Nam</p>

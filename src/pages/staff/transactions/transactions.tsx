@@ -294,7 +294,7 @@ function TransactionManagement() {
       {/* Header */}
       <div>
         <h1 className='text-2xl font-bold text-gray-900'>Quản lý giao dịch</h1>
-        <p className='text-gray-600 mt-1'>Theo dõi và quản lý tất cả giao dịch trên hệ thống</p>
+        <p className='text-gray-600 mt-1'>Theo dõi và quản lý tất cả giao dịch đi vào hệ thống</p>
       </div>
 
       {/* Summary Cards */}
@@ -418,7 +418,7 @@ function TransactionManagement() {
                 <tr className='border-b border-gray-200 bg-gray-50'>
                   <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Mã giao dịch</th>
                   <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Khách hàng</th>
-                  <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Cửa hàng</th>
+                  <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Thể loại</th>
                   <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Ngày tạo</th>
                   <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Số tiền</th>
                   <th className='text-left px-6 py-4 font-medium text-gray-700 text-sm'>Trạng thái</th>
