@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { EllipsisVertical, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { EllipsisVertical, MessageCircle, ChevronLeft, ChevronRight, Eye, HelpCircle } from 'lucide-react'
 import { motion, type PanInfo } from 'framer-motion'
 import { Button } from '../../../../../components/ui/button'
 import { Badge } from '../../../../../components/ui/badge'
@@ -15,10 +15,17 @@ import {
   AlertDialogTitle
 } from '../../../../../components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../../../../components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '../../../../../components/ui/dropdown-menu'
 import CancelOrderModal from './CancelOrderModal'
 import OrderDetailModal from './OrderDetailModal'
 import ReviewModal, { type ReviewProduct } from './ReviewModal'
 import ComplaintModal from '../form/ComplaintModal'
+import SupportModal from '../form/SupportModal'
 import ViewComplaintModal from '../form/ViewComplaintModal'
 import { confirmOrderReceived, getOrderDetail, refundOrder } from '../../../../../apis/order.api'
 import { purchaseOrder } from '../../../../../apis/transaction.api'
@@ -457,6 +464,7 @@ export default function OrdersContent({
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showComplaintModal, setShowComplaintModal] = useState(false)
+  const [showSupportModal, setShowSupportModal] = useState(false)
   const [showViewComplaintModal, setShowViewComplaintModal] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('')
@@ -1103,6 +1111,16 @@ export default function OrdersContent({
     setSelectedOrderId('')
   }
 
+  const handleOpenSupportModal = (orderId: string) => {
+    setSelectedOrderId(orderId)
+    setShowSupportModal(true)
+  }
+
+  const handleCloseSupportModal = () => {
+    setShowSupportModal(false)
+    setSelectedOrderId('')
+  }
+
   const handleOpenViewComplaintModal = (orderId: string) => {
     setSelectedOrderId(orderId)
     setShowViewComplaintModal(true)
@@ -1522,12 +1540,23 @@ export default function OrdersContent({
                     <MessageCircle className='h-4 w-4 mr-1' />
                     <span className='text-xs'>Nhắn tin</span>
                   </Button>
-                  <button
-                    className='text-gray-600 hover:text-green-900 pl-2'
-                    onClick={() => handleOpenOrderDetailModal(order.id)}
-                  >
-                    <EllipsisVertical className='h-4 w-4' />
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className='text-gray-600 hover:text-green-900 pl-2'>
+                        <EllipsisVertical className='h-4 w-4' />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='end'>
+                      <DropdownMenuItem onClick={() => handleOpenOrderDetailModal(order.id)}>
+                        <Eye className='h-4 w-4 mr-2' />
+                        Xem chi tiết
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenSupportModal(order.id)}>
+                        <HelpCircle className='h-4 w-4 mr-2' />
+                        Xin hỗ trợ
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 
@@ -1786,6 +1815,16 @@ export default function OrdersContent({
       <ComplaintModal
         isOpen={showComplaintModal}
         onClose={handleCloseComplaintModal}
+        orderId={selectedOrderId}
+        storeId={orders.find((order) => order.id === selectedOrderId)?.storeId || ''}
+        userId={user?.userId || ''}
+        onSubmit={handleComplaint}
+        isLoading={submittingComplaintOrderId === selectedOrderId}
+      />
+
+      <SupportModal
+        isOpen={showSupportModal}
+        onClose={handleCloseSupportModal}
         orderId={selectedOrderId}
         storeId={orders.find((order) => order.id === selectedOrderId)?.storeId || ''}
         userId={user?.userId || ''}

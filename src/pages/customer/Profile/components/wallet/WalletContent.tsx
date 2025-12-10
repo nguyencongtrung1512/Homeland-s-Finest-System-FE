@@ -25,6 +25,10 @@ import { toast } from '../../../../../utils/toast'
 import walletImage from '../../../../../assets/wallet.png'
 import { getRequestWalletMoney } from '../../../../../apis/requestWalletMoney.api'
 import type { RequestWalletMoney } from '../../../../../types/requestWalletMoneyType'
+import {
+  getRequestWalletMoneyTypeLabel,
+  getRequestWalletMoneyStatusLabel
+} from '../../../../../types/requestWalletMoneyType'
 import { useAuth } from '../../../../../contexts/auth.context'
 import { formatDate } from '../../../../../utils/formatDate'
 
@@ -57,7 +61,7 @@ export default function WalletContent({
   const [transactionPageSize] = useState(10)
   const [requests, setRequests] = useState<RequestWalletMoney[]>([])
   const [loadingRequests, setLoadingRequests] = useState(false)
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'COD' | 'WalletOrBanking'>('all')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'WalletOrBanking'>('all')
   const { user } = useAuth()
 
   // Fetch wallet data
@@ -353,24 +357,6 @@ export default function WalletContent({
   // Get quick select options for current input
   const depositQuickOptions = getQuickSelectOptions(depositAmount)
   const withdrawQuickOptions = getQuickSelectOptions(withdrawAmount)
-
-  // Helper functions to translate request types and statuses to Vietnamese
-  const getRequestTypeLabel = (type: string): string => {
-    const typeMap: Record<string, string> = {
-      Withdrawal: 'Rút tiền',
-      Refund: 'Hoàn tiền'
-    }
-    return typeMap[type] || type
-  }
-
-  const getRequestStatusLabel = (status: string): string => {
-    const statusMap: Record<string, string> = {
-      Pending: 'Đang chờ',
-      Completed: 'Hoàn thành',
-      Cancel: 'Đã hủy'
-    }
-    return statusMap[status] || 'Chưa xác định'
-  }
 
   if (loading) {
     return (
@@ -893,18 +879,18 @@ export default function WalletContent({
               <div className='flex items-center gap-1 w-full'>
                 {[
                   { value: 'all', label: 'Tất cả' },
-                  { value: 'COD', label: 'Thanh toán khi nhận hàng' },
                   { value: 'WalletOrBanking', label: 'Thanh toán qua ví/ngân hàng' }
                 ].map((option) => (
                   <button
                     key={option.value}
                     onClick={() => {
-                      setPaymentMethodFilter(option.value as 'all' | 'COD' | 'WalletOrBanking')
+                      setPaymentMethodFilter(option.value as 'all' | 'WalletOrBanking')
                     }}
-                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${paymentMethodFilter === option.value
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-white text-gray-700 hover:bg-gray-100'
-                      }`}
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${
+                      paymentMethodFilter === option.value
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-white text-gray-700 hover:bg-gray-100'
+                    }`}
                   >
                     {option.label}
                   </button>
@@ -1007,15 +993,14 @@ export default function WalletContent({
                 }
                 const statusColor = statusColors[request.status] || 'bg-gray-100 text-gray-800'
                 return (
-                  <div
-                    key={request.id}
-                    className='p-4 border rounded-lg hover:bg-gray-50 transition-colors space-y-3'
-                  >
+                  <div key={request.id} className='p-4 border rounded-lg hover:bg-gray-50 transition-colors space-y-3'>
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center gap-2'>
-                        <span className='font-semibold text-gray-900'>{getRequestTypeLabel(request.type)}</span>
+                        <span className='font-semibold text-gray-900'>
+                          {getRequestWalletMoneyTypeLabel(request.type)}
+                        </span>
                         <span className={`text-xs px-2 py-1 rounded-full ${statusColor}`}>
-                          {getRequestStatusLabel(request.status)}
+                          {getRequestWalletMoneyStatusLabel(request.status)}
                         </span>
                       </div>
                       <div className='text-right'>

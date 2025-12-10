@@ -5,7 +5,6 @@ import { Button } from '../../../../../components/ui/button'
 import { Textarea } from '../../../../../components/ui/textarea'
 import { Label } from '../../../../../components/ui/label'
 import { Input } from '../../../../../components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../../components/ui/select'
 import { Camera, AlertTriangle, Loader2, X } from 'lucide-react'
 import type { FormType } from '../../../../../types/form.type'
 
@@ -33,7 +32,8 @@ const ComplaintModal = ({
   onSubmit,
   isLoading = false
 }: ComplaintModalProps) => {
-  const [formType, setFormType] = useState<FormType>('ComplaintOrder')
+  // FormType luôn là 'ComplaintOrder' cho khiếu nại đơn hàng
+  const formType: FormType = 'ComplaintOrder'
   const [subject, setSubject] = useState('')
   const [description, setDescription] = useState('')
   const [images, setImages] = useState<File[]>([])
@@ -48,25 +48,6 @@ const ComplaintModal = ({
       urls.forEach((url) => URL.revokeObjectURL(url))
     }
   }, [images])
-
-  const formTypeOptions = [
-    { value: 'ComplaintOrder' as FormType, label: 'Khiếu nại đơn hàng' },
-    { value: 'ReportSeller' as FormType, label: 'Khiếu nại cửa hàng' },
-    { value: 'Orther' as FormType, label: 'Các đơn khác' }
-  ]
-
-  const getFormTypeDescription = (type: FormType) => {
-    switch (type) {
-      case 'ComplaintOrder':
-        return 'Khiếu nại liên quan trực tiếp đến đơn hàng (giao nhận, thiếu/hư hỏng)'
-      case 'ReportSeller':
-        return 'Khiếu nại về cửa hàng, người bán hoặc dịch vụ của cửa hàng'
-      case 'Orther':
-        return 'Các vấn đề khác không thuộc khiếu nại đơn hàng hoặc cửa hàng'
-      default:
-        return ''
-    }
-  }
 
   const handleSubmit = () => {
     if (!subject.trim()) {
@@ -87,7 +68,6 @@ const ComplaintModal = ({
   }
 
   const handleCancel = () => {
-    setFormType('ComplaintOrder')
     setSubject('')
     setDescription('')
     setImages([])
@@ -97,7 +77,6 @@ const ComplaintModal = ({
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setFormType('ComplaintOrder')
       setSubject('')
       setDescription('')
       setImages([])
@@ -208,51 +187,16 @@ const ComplaintModal = ({
                 transition={{ duration: 0.3, delay: 0.3 }}
                 className='bg-gray-50 rounded-lg p-3'
               >
-                <p className='text-sm text-gray-600'>
-                  <span className='font-medium'>Mã đơn hàng:</span> {orderId}
-                </p>
                 <p className='text-xs text-gray-500 mt-1'>
                   Vui lòng mô tả chi tiết vấn đề bạn gặp phải với đơn hàng này
                 </p>
-              </motion.div>
-
-              {/* Form Type Selection */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.4 }}
-              >
-                <Label className='text-sm font-medium text-gray-700 mb-2 block'>
-                  Loại khiếu nại <span className='text-red-500'>*</span>
-                </Label>
-                <Select value={formType} onValueChange={(value: FormType) => setFormType(value)} disabled={isLoading}>
-                  <SelectTrigger>
-                    <SelectValue placeholder='Chọn loại khiếu nại' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formTypeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <motion.p
-                  key={formType}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.2 }}
-                  className='text-xs text-gray-500 mt-1'
-                >
-                  {getFormTypeDescription(formType)}
-                </motion.p>
               </motion.div>
 
               {/* Subject */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.5 }}
+                transition={{ duration: 0.3, delay: 0.4 }}
               >
                 <Label className='text-sm font-medium text-gray-700 mb-2 block'>
                   Tiêu đề khiếu nại <span className='text-red-500'>*</span>
@@ -269,7 +213,7 @@ const ComplaintModal = ({
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.6 }}
+                transition={{ duration: 0.3, delay: 0.5 }}
               >
                 <Label className='text-sm font-medium text-gray-700 mb-2 block'>
                   Mô tả chi tiết <span className='text-red-500'>*</span>
@@ -287,10 +231,11 @@ const ComplaintModal = ({
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.7 }}
+                transition={{ duration: 0.3, delay: 0.6 }}
               >
                 <Label className='text-sm font-medium text-gray-700 mb-2 block'>
-                  Hình ảnh minh chứng (tùy chọn) <span className='text-gray-500 text-xs'>(Tối đa {MAX_IMAGES} ảnh)</span>
+                  Hình ảnh minh chứng (tùy chọn){' '}
+                  <span className='text-gray-500 text-xs'>(Tối đa {MAX_IMAGES} ảnh)</span>
                 </Label>
                 <motion.div
                   onDragOver={handleDragOver}
@@ -302,8 +247,9 @@ const ComplaintModal = ({
                     scale: isDragOver ? 1.02 : 1
                   }}
                   transition={{ duration: 0.2 }}
-                  className={`border-2 border-dashed rounded-lg p-6 text-center ${images.length >= MAX_IMAGES ? 'opacity-60' : ''
-                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center ${
+                    images.length >= MAX_IMAGES ? 'opacity-60' : ''
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   <input
                     type='file'
@@ -318,11 +264,21 @@ const ComplaintModal = ({
                     htmlFor='complaint-image-upload'
                     className={`cursor-pointer ${isLoading || images.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <motion.div whileHover={{ scale: images.length >= MAX_IMAGES ? 1 : 1.1, rotate: images.length >= MAX_IMAGES ? 0 : 5 }} transition={{ duration: 0.2 }}>
+                    <motion.div
+                      whileHover={{
+                        scale: images.length >= MAX_IMAGES ? 1 : 1.1,
+                        rotate: images.length >= MAX_IMAGES ? 0 : 5
+                      }}
+                      transition={{ duration: 0.2 }}
+                    >
                       <Camera className={`w-8 h-8 mx-auto mb-2 ${isDragOver ? 'text-green-500' : 'text-gray-400'}`} />
                     </motion.div>
                     <span className='text-sm text-gray-600 block'>
-                      {isDragOver ? 'Thả ảnh vào đây' : images.length >= MAX_IMAGES ? `Đã đạt giới hạn ${MAX_IMAGES} ảnh` : 'Kéo thả ảnh hoặc click để chọn'}
+                      {isDragOver
+                        ? 'Thả ảnh vào đây'
+                        : images.length >= MAX_IMAGES
+                          ? `Đã đạt giới hạn ${MAX_IMAGES} ảnh`
+                          : 'Kéo thả ảnh hoặc click để chọn'}
                     </span>
                     <span className='text-xs text-gray-500 block mt-1'>
                       {images.length >= MAX_IMAGES
@@ -382,7 +338,7 @@ const ComplaintModal = ({
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.9 }}
+                transition={{ duration: 0.3, delay: 0.8 }}
                 className='text-xs text-gray-500 text-center'
               >
                 Chúng tôi sẽ xem xét khiếu nại của bạn và phản hồi trong vòng 24-48 giờ
@@ -395,7 +351,7 @@ const ComplaintModal = ({
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.8 }}
+              transition={{ duration: 0.3, delay: 0.7 }}
               className='flex gap-3'
             >
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className='flex-1'>
