@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Filter, Eye, ChevronLeft, ChevronRight, Repeat, CheckCircle, RefreshCw, Loader2 } from 'lucide-react'
+import { Search, Filter, Eye, ChevronLeft, ChevronRight, Repeat, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -11,6 +11,7 @@ import { getStaffDashboard } from '../../../apis/walletDashboard.api'
 import { getOrderDetail } from '../../../apis/order.api'
 import { storeApi } from '../../../apis/store.api'
 import type { Transaction as APITransaction } from '../../../types/transactionType'
+import { getTransactionTypeLabel } from '../../../types/transactionType'
 import { formatDate } from '../../../utils/formatDate'
 
 interface Transaction {
@@ -20,6 +21,7 @@ interface Transaction {
   createDate: string
   amount: number
   status: 'disbursed' | 'pending' | 'delivering' | 'pending_confirmation' | 'refunded'
+  type: APITransaction['type']
 }
 
 function TransactionManagement() {
@@ -76,7 +78,8 @@ function TransactionManagement() {
       shop: shopName,
       createDate: formatDate(apiTransaction.createdAt) || '',
       amount: apiTransaction.amount,
-      status: mapStatusToUI(apiTransaction.status, apiTransaction.orderStatus)
+      status: mapStatusToUI(apiTransaction.status, apiTransaction.orderStatus),
+      type: apiTransaction.type
     }
   }
 
@@ -194,7 +197,7 @@ function TransactionManagement() {
 
   const getStatusConfig = (status: string) => {
     const configs = {
-      disbursed: { color: 'green', text: 'Đã giải ngân', bgColor: 'bg-green-100', textColor: 'text-green-600' },
+      disbursed: { color: 'green', text: 'Thành công', bgColor: 'bg-green-100', textColor: 'text-green-600' },
       delivering: { color: 'blue', text: 'Đang giao', bgColor: 'bg-blue-100', textColor: 'text-blue-600' },
       pending_confirmation: {
         color: 'yellow',
@@ -227,7 +230,7 @@ function TransactionManagement() {
     <tr key={transaction.id} className='border-b border-gray-100 hover:bg-gray-50'>
       {/* Mã giao dịch */}
       <td className='px-6 py-4'>
-        <span className='font-mono text-gray-900 font-medium text-sm'>#{transaction.id}</span>
+        <span className='font-mono text-gray-900 font-medium text-sm'>#{(transaction.id).slice(0, 8)}</span>
       </td>
 
       {/* Khách hàng */}
@@ -242,9 +245,9 @@ function TransactionManagement() {
         </div>
       </td>
 
-      {/* Cửa hàng */}
+      {/* Thể loại */}
       <td className='px-6 py-4'>
-        <span className='text-gray-700 text-sm'>{transaction.shop}</span>
+        <span className='text-gray-700 text-sm'>{getTransactionTypeLabel(transaction.type)}</span>
       </td>
 
       {/* Ngày tạo */}
@@ -298,7 +301,7 @@ function TransactionManagement() {
       </div>
 
       {/* Summary Cards */}
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
+      {/* <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
         <Card className='bg-white shadow-sm'>
           <CardContent className='p-6'>
             <div className='flex items-center justify-between'>
@@ -317,7 +320,7 @@ function TransactionManagement() {
           <CardContent className='p-6'>
             <div className='flex items-center justify-between'>
               <div>
-                <p className='text-sm text-gray-600 mb-1'>Đã giải ngân</p>
+                <p className='text-sm text-gray-600 mb-1'>Thành công</p>
                 <p className='text-2xl font-bold text-green-600'>{disbursed.toLocaleString()}</p>
               </div>
               <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
@@ -340,7 +343,7 @@ function TransactionManagement() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
       {/* Filters */}
       <Card className='bg-white shadow-sm'>
@@ -364,7 +367,7 @@ function TransactionManagement() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='all'>Tất cả trạng thái</SelectItem>
-                <SelectItem value='disbursed'>Đã giải ngân</SelectItem>
+                <SelectItem value='disbursed'>Thành công</SelectItem>
                 <SelectItem value='delivering'>Đang giao</SelectItem>
                 <SelectItem value='pending_confirmation'>Chờ xác nhận</SelectItem>
                 <SelectItem value='refunded'>Hoàn tiền</SelectItem>

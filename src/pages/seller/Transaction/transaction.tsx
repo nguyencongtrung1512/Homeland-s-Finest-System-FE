@@ -47,7 +47,8 @@ import {
   ArrowDownCircle,
   ArrowUpRight,
   Tag,
-  Gift
+  Gift,
+  Eye
 } from 'lucide-react'
 
 function Transaction() {
@@ -1215,10 +1216,10 @@ function Transaction() {
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Mã đơn hàng</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Ngày</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Loại</th>
-                        <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Phương thức</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Số tiền</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Số dư sau</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Trạng thái</th>
+                        <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Hành động</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1226,15 +1227,11 @@ function Transaction() {
                         {paginatedTransactions.map((transaction, index) => (
                           <motion.tr
                             key={transaction.id}
-                            className='border-b border-gray-100 hover:bg-gray-50 cursor-pointer'
+                            className='border-b border-gray-100 hover:bg-gray-50'
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
                             transition={{ delay: index * 0.05 }}
-                            onClick={() => {
-                              setSelectedTransaction(transaction)
-                              setShowTransactionDetailModal(true)
-                            }}
                           >
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
                               {transaction.orderId ? `#${transaction.orderId}` : 'Rút tiền'}
@@ -1243,15 +1240,6 @@ function Transaction() {
                             <td className='py-4 px-4 text-gray-700 text-sm'>
                               {getTransactionTypeLabel(transaction.type as any)}
                             </td>
-                            <td className='py-4 px-4 text-gray-700 text-sm'>
-                              {transaction.paymentMethod === 'COD'
-                                ? 'Thanh toán khi nhận hàng'
-                                : transaction.paymentMethod === 'Banking'
-                                  ? 'Chuyển khoản ngân hàng'
-                                  : transaction.paymentMethod === 'Wallet'
-                                    ? 'Ví điện tử'
-                                    : transaction.paymentMethod || '-'}
-                            </td>
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
                               {transaction.amount.toLocaleString()} đ
                             </td>
@@ -1259,6 +1247,21 @@ function Transaction() {
                               {transaction.balanceAfter.toLocaleString()} đ
                             </td>
                             <td className='py-4 px-4'>{getStatusBadge(transaction.status || 'Completed')}</td>
+                            <td className='py-4 px-4'>
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedTransaction(transaction)
+                                  setShowTransactionDetailModal(true)
+                                }}
+                                className='h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full'
+                                title='Xem chi tiết'
+                              >
+                                <Eye size={14} />
+                              </Button>
+                            </td>
                           </motion.tr>
                         ))}
                       </AnimatePresence>
@@ -1277,12 +1280,8 @@ function Transaction() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ delay: index * 0.05 }}
-                        onClick={() => {
-                          setSelectedTransaction(transaction)
-                          setShowTransactionDetailModal(true)
-                        }}
                       >
-                        <Card className='hover:shadow-md transition-shadow cursor-pointer'>
+                        <Card className='hover:shadow-md transition-shadow'>
                           <CardContent className='p-4'>
                             <div className='space-y-3'>
                               <div className='flex justify-between items-start'>
@@ -1308,18 +1307,6 @@ function Transaction() {
                               </div>
                               <div className='grid grid-cols-2 gap-3 pt-2 border-t'>
                                 <div>
-                                  <p className='text-xs text-gray-500'>Phương thức</p>
-                                  <p className='text-sm text-gray-700'>
-                                    {transaction.paymentMethod === 'COD'
-                                      ? 'Thanh toán khi nhận hàng'
-                                      : transaction.paymentMethod === 'Banking'
-                                        ? 'Chuyển khoản ngân hàng'
-                                        : transaction.paymentMethod === 'Wallet'
-                                          ? 'Ví điện tử'
-                                          : transaction.paymentMethod || '-'}
-                                  </p>
-                                </div>
-                                <div>
                                   <p className='text-xs text-gray-500'>Số tiền</p>
                                   <p className='text-sm font-medium text-gray-900'>
                                     {transaction.amount.toLocaleString()} đ
@@ -1334,8 +1321,20 @@ function Transaction() {
                                   </p>
                                 </div>
                                 <div>
-                                  <p className='text-xs text-gray-500'>Xem chi tiết</p>
-                                  <p className='text-sm text-blue-600 font-medium'>Click để xem →</p>
+                                  <p className='text-xs text-gray-500 mb-1'>Hành động</p>
+                                  <Button
+                                    variant='ghost'
+                                    size='sm'
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setSelectedTransaction(transaction)
+                                      setShowTransactionDetailModal(true)
+                                    }}
+                                    className='h-8 px-3 text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                                  >
+                                    <Eye size={14} className='mr-1' />
+                                    Xem chi tiết
+                                  </Button>
                                 </div>
                               </div>
                             </div>
@@ -1389,10 +1388,7 @@ function Transaction() {
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Ngày yêu cầu</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Loại</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Số tiền</th>
-                        <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Ngân hàng</th>
-                        <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Số tài khoản</th>
                         <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Trạng thái</th>
-                        <th className='text-left py-3 px-4 font-medium text-gray-700 text-sm'>Ghi chú</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1413,12 +1409,7 @@ function Transaction() {
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
                               {request.amount.toLocaleString()} đ
                             </td>
-                            <td className='py-4 px-4 text-gray-700 text-sm'>{request.bankName || '-'}</td>
-                            <td className='py-4 px-4 text-gray-700 text-sm'>
-                              {formatAccountNumber(request.bankAccount || null)}
-                            </td>
                             <td className='py-4 px-4'>{getStatusBadge(request.status || 'Pending')}</td>
-                            <td className='py-4 px-4 text-gray-700 text-sm'>{request.processNote || '-'}</td>
                           </motion.tr>
                         ))}
                       </AnimatePresence>
@@ -1462,24 +1453,6 @@ function Transaction() {
                                   </p>
                                 </div>
                               </div>
-                              <div className='grid grid-cols-2 gap-3 pt-2 border-t'>
-                                <div>
-                                  <p className='text-xs text-gray-500'>Ngân hàng</p>
-                                  <p className='text-sm text-gray-700'>{request.bankName || '-'}</p>
-                                </div>
-                                <div>
-                                  <p className='text-xs text-gray-500'>Số tài khoản</p>
-                                  <p className='text-sm text-gray-700'>
-                                    {formatAccountNumber(request.bankAccount || null)}
-                                  </p>
-                                </div>
-                              </div>
-                              {request.processNote && (
-                                <div className='pt-2 border-t'>
-                                  <p className='text-xs text-gray-500'>Ghi chú</p>
-                                  <p className='text-sm text-gray-700'>{request.processNote}</p>
-                                </div>
-                              )}
                             </div>
                           </CardContent>
                         </Card>
@@ -2699,40 +2672,6 @@ function Transaction() {
                 </div>
               )}
 
-              {/* Debt Information */}
-              {(selectedTransaction.debtBefore !== null ||
-                selectedTransaction.debtAfter !== null ||
-                selectedTransaction.debtPaid !== null) && (
-                  <div className='bg-yellow-50 p-4 rounded-lg border border-yellow-200'>
-                    <p className='text-sm font-semibold text-gray-900 mb-3'>Thông tin nợ</p>
-                    <div className='grid grid-cols-3 gap-4'>
-                      {selectedTransaction.debtBefore !== null && (
-                        <div>
-                          <p className='text-xs text-gray-600 mb-1'>Nợ trước</p>
-                          <p className='text-sm font-medium text-gray-900'>
-                            {selectedTransaction.debtBefore.toLocaleString()} đ
-                          </p>
-                        </div>
-                      )}
-                      {selectedTransaction.debtAfter !== null && (
-                        <div>
-                          <p className='text-xs text-gray-600 mb-1'>Nợ sau</p>
-                          <p className='text-sm font-medium text-gray-900'>
-                            {selectedTransaction.debtAfter.toLocaleString()} đ
-                          </p>
-                        </div>
-                      )}
-                      {selectedTransaction.debtPaid !== null && (
-                        <div>
-                          <p className='text-xs text-gray-600 mb-1'>Số tiền đã trả</p>
-                          <p className='text-sm font-medium text-green-600'>
-                            {selectedTransaction.debtPaid.toLocaleString()} đ
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
               {/* Order Breakdown (for Seller) */}
               {(selectedTransaction.orderGrossRevenue !== null ||

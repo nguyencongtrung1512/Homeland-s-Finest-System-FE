@@ -12,7 +12,8 @@ import {
   Loader2,
   ArrowUpRight,
   ArrowDownRight,
-  ArrowDownLeft
+  ArrowDownLeft,
+  EllipsisVertical
 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -27,6 +28,7 @@ import { getWalletBalance, withdrawal, getWalletTransactions, depositMoney } fro
 import { getOrderDetail } from '../../../apis/order.api'
 import type { RequestWalletMoney, UpdateRequestWalletMoneyInput } from '../../../types/requestWalletMoneyType'
 import type { WalletData, WalletTransactionDTO } from '../../../types/walletType'
+import { getTransactionTypeLabel } from '../../../types/walletType'
 import { formatDate } from '../../../utils/formatDate'
 import { toast } from '../../../utils/toast'
 import Loading from '../../../components/Loading/loading'
@@ -64,6 +66,8 @@ function RequestWalletMoneyManagement() {
   const [transactionPage, setTransactionPage] = useState(1)
   const [transactionPageSize] = useState(10)
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'COD' | 'WalletOrBanking' | 'Orther'>('all')
+  const [selectedTransaction, setSelectedTransaction] = useState<WalletTransactionDTO | null>(null)
+  const [isTransactionDetailModalOpen, setIsTransactionDetailModalOpen] = useState(false)
 
   // Thống kê
   const [stats, setStats] = useState({
@@ -1516,14 +1520,10 @@ function RequestWalletMoneyManagement() {
                   {walletTransactions.map((transaction, index) => {
                     const statusConfig = getTransactionStatusConfig(transaction.status || '')
                     const typeColor = getTransactionTypeColor(transaction.type)
-                    const isDebt = isDebtTransaction(transaction.type)
 
                     // ✅ TỰ ĐỘNG TÍNH SIGN DựA VÀO balanceBefore/After
                     const balanceChange = transaction.balanceAfter - transaction.balanceBefore
                     const amountSign = getBalanceChangeSign(transaction.balanceBefore, transaction.balanceAfter)
-
-                    // ✅ Label: "Số dư" vs "Nợ"
-                    const balanceLabel = isDebt ? 'Nợ' : 'Số dư'
 
                     return (
                       <motion.div
@@ -1532,9 +1532,21 @@ function RequestWalletMoneyManagement() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.05 }}
                       >
-                        <Card className='hover:shadow-md transition-shadow'>
+                        <Card className='hover:shadow-md transition-shadow relative'>
                           <CardContent className='p-4'>
-                            <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
+                            {/* Action Button - Absolute positioned at top right */}
+                            <button
+                              onClick={() => {
+                                setSelectedTransaction(transaction)
+                                setIsTransactionDetailModalOpen(true)
+                              }}
+                              className='absolute top-3 right-3 text-gray-600 hover:text-blue-600 transition-colors p-1 z-10'
+                              title='Xem chi tiết'
+                            >
+                              <EllipsisVertical className='h-5 w-5' />
+                            </button>
+
+                            <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4 pr-8'>
                               {/* ═══════════════════════════════════════════════════════════ */}
                               {/* LEFT: Transaction Info */}
                               {/* ═══════════════════════════════════════════════════════════ */}
@@ -1546,7 +1558,7 @@ function RequestWalletMoneyManagement() {
                                       {transaction.typeDisplay || transaction.type}
                                     </p>
                                     <Badge
-                                      className={`${statusConfig.bgColor} ${statusConfig.textColor} border-0 text-xs`}
+                                      className={`${statusConfig.bgColor} ${statusConfig.textColor} border-0 text-xs mb-3`}
                                     >
                                       {statusConfig.text}
                                     </Badge>
@@ -1557,48 +1569,22 @@ function RequestWalletMoneyManagement() {
                                   )}
 
                                   <p className='text-xs text-gray-400 mt-1'>
-                                    {formatDate(transaction.createdAt) || 'Không xác định'}
+                                    {transaction.createdAt || 'Không xác định'}
                                   </p>
                                 </div>
                               </div>
 
                               {/* ═══════════════════════════════════════════════════════════ */}
-                              {/* RIGHT: Amount and Balance Info */}
+                              {/* RIGHT: Amount */}
                               {/* ═══════════════════════════════════════════════════════════ */}
-                              <div className='flex flex-col md:items-end gap-2 flex-shrink-0'>
-
+                              <div className='flex-shrink-0'>
                                 {/* Amount Display */}
                                 <div className='text-right'>
-                                  <p className={`text-xl font-bold ${typeColor} mb-2`}>
+                                  <p className={`text-xl font-bold ${typeColor}`}>
                                     {amountSign}
                                     {Math.abs(balanceChange).toLocaleString('vi-VN')} đ
                                   </p>
                                 </div>
-
-                                {/* ✅ Balance/Debt Info - LUÔN DÙNG balanceBefore/After */}
-                                <div className='text-right space-y-1'>
-                                  <p className='text-xs text-gray-600'>
-                                    {balanceLabel} trước:{' '}
-                                    <span className='font-semibold text-gray-700'>
-                                      {transaction.balanceBefore.toLocaleString('vi-VN')} đ
-                                    </span>
-                                  </p>
-
-                                  <p className='text-xs text-gray-600'>
-                                    {balanceLabel} sau:{' '}
-                                    <span className='font-semibold text-gray-700'>
-                                      {transaction.balanceAfter.toLocaleString('vi-VN')} đ
-                                    </span>
-                                  </p>
-
-                                  {/* Optional: Show breakdown for seller/admin */}
-                                  {transaction.orderCommission && (
-                                    <p className='text-xs text-blue-600 font-semibold mt-2'>
-                                      Commission: {transaction.orderCommission.toLocaleString('vi-VN')} đ
-                                    </p>
-                                  )}
-                                </div>
-
                               </div>
                             </div>
                           </CardContent>
@@ -1628,6 +1614,227 @@ function RequestWalletMoneyManagement() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Transaction Detail Modal */}
+      <Dialog open={isTransactionDetailModalOpen} onOpenChange={setIsTransactionDetailModalOpen}>
+        <DialogContent className='max-w-3xl max-h-[90vh] overflow-y-auto'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2'>
+              <Eye className='w-5 h-5' />
+              Chi tiết giao dịch
+            </DialogTitle>
+          </DialogHeader>
+          {selectedTransaction && (
+            <div className='space-y-4 mt-4'>
+              {/* Basic Info */}
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                {selectedTransaction.id && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Mã giao dịch</p>
+                    <p className='text-sm font-semibold text-gray-900'>{selectedTransaction.id}</p>
+                  </div>
+                )}
+                {selectedTransaction.typeDisplay && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Loại giao dịch</p>
+                    <p className='text-sm font-semibold text-gray-900'>
+                      {getTransactionTypeLabel(selectedTransaction)}
+                    </p>
+                  </div>
+                )}
+                {selectedTransaction.status && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Trạng thái</p>
+                    <Badge
+                      className={`${getTransactionStatusConfig(selectedTransaction.status).bgColor} ${getTransactionStatusConfig(selectedTransaction.status).textColor} border-0`}
+                    >
+                      {getTransactionStatusConfig(selectedTransaction.status).text}
+                    </Badge>
+                  </div>
+                )}
+                {selectedTransaction.amount !== undefined && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Số tiền</p>
+                    <p className={`text-lg font-bold ${getTransactionTypeColor(selectedTransaction.type)}`}>
+                      {selectedTransaction.amount >= 0 ? '+' : ''}
+                      {selectedTransaction.amount.toLocaleString('vi-VN')} đ
+                    </p>
+                  </div>
+                )}
+                {selectedTransaction.balanceBefore !== undefined && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Số dư trước</p>
+                    <p className='text-sm font-semibold text-gray-900'>
+                      {selectedTransaction.balanceBefore.toLocaleString('vi-VN')} đ
+                    </p>
+                  </div>
+                )}
+                {selectedTransaction.balanceAfter !== undefined && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Số dư sau</p>
+                    <p className='text-sm font-semibold text-gray-900'>
+                      {selectedTransaction.balanceAfter.toLocaleString('vi-VN')} đ
+                    </p>
+                  </div>
+                )}
+                {selectedTransaction.paymentMethod && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Phương thức thanh toán</p>
+                    <p className='text-sm font-semibold text-gray-900'>{selectedTransaction.paymentMethod}</p>
+                  </div>
+                )}
+                {selectedTransaction.orderId && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Mã đơn hàng</p>
+                    <p className='text-sm font-semibold text-gray-900'>{selectedTransaction.orderId}</p>
+                  </div>
+                )}
+                {selectedTransaction.transactionId && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Mã giao dịch liên quan</p>
+                    <p className='text-sm font-semibold text-gray-900'>{selectedTransaction.transactionId}</p>
+                  </div>
+                )}
+                {selectedTransaction.createdAt && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Ngày tạo</p>
+                    <p className='text-sm font-semibold text-gray-900'>{selectedTransaction.createdAt}</p>
+                  </div>
+                )}
+                {/* Description */}
+                {selectedTransaction.description && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Mô tả</p>
+                    <p className='text-sm text-gray-900'>{selectedTransaction.description}</p>
+                  </div>
+                )}
+              </div>
+
+
+
+              {/* Order Breakdown - Only show if not null */}
+              {(selectedTransaction.orderGrossRevenue !== null && selectedTransaction.orderGrossRevenue !== undefined) ||
+                (selectedTransaction.orderCommission !== null && selectedTransaction.orderCommission !== undefined) ||
+                (selectedTransaction.orderNetRevenue !== null && selectedTransaction.orderNetRevenue !== undefined) ||
+                (selectedTransaction.orderShipFee !== null && selectedTransaction.orderShipFee !== undefined) ||
+                (selectedTransaction.orderInsurance !== null && selectedTransaction.orderInsurance !== undefined) ||
+                (selectedTransaction.totalSellerDiscount !== null && selectedTransaction.totalSellerDiscount !== undefined) ||
+                (selectedTransaction.totalSystemDiscount !== null && selectedTransaction.totalSystemDiscount !== undefined) ? (
+                <div className='border-t pt-4'>
+                  <p className='text-sm font-semibold text-gray-900 mb-3'>Chi tiết đơn hàng</p>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    {selectedTransaction.orderGrossRevenue !== null && selectedTransaction.orderGrossRevenue !== undefined && (
+                      <div>
+                        <p className='text-sm text-gray-600 mb-1'>Doanh thu gộp</p>
+                        <p className='text-sm font-semibold text-gray-900'>
+                          {selectedTransaction.orderGrossRevenue.toLocaleString('vi-VN')} đ
+                        </p>
+                      </div>
+                    )}
+                    {selectedTransaction.totalSellerDiscount !== null && selectedTransaction.totalSellerDiscount !== undefined && (
+                      <div>
+                        <p className='text-sm text-gray-600 mb-1'>Giảm giá người bán</p>
+                        <p className='text-sm font-semibold text-gray-900'>
+                          {selectedTransaction.totalSellerDiscount.toLocaleString('vi-VN')} đ
+                        </p>
+                      </div>
+                    )}
+                    {selectedTransaction.totalSystemDiscount !== null && selectedTransaction.totalSystemDiscount !== undefined && (
+                      <div>
+                        <p className='text-sm text-gray-600 mb-1'>Giảm giá hệ thống</p>
+                        <p className='text-sm font-semibold text-gray-900'>
+                          {selectedTransaction.totalSystemDiscount.toLocaleString('vi-VN')} đ
+                        </p>
+                      </div>
+                    )}
+                    {selectedTransaction.orderShipFee !== null && selectedTransaction.orderShipFee !== undefined && (
+                      <div>
+                        <p className='text-sm text-gray-600 mb-1'>Phí vận chuyển</p>
+                        <p className='text-sm font-semibold text-gray-900'>
+                          {selectedTransaction.orderShipFee.toLocaleString('vi-VN')} đ
+                        </p>
+                      </div>
+                    )}
+                    {selectedTransaction.orderInsurance !== null && selectedTransaction.orderInsurance !== undefined && (
+                      <div>
+                        <p className='text-sm text-gray-600 mb-1'>Phí bảo hiểm</p>
+                        <p className='text-sm font-semibold text-gray-900'>
+                          {selectedTransaction.orderInsurance.toLocaleString('vi-VN')} đ
+                        </p>
+                      </div>
+                    )}
+                    {selectedTransaction.orderCommission !== null && selectedTransaction.orderCommission !== undefined && (
+                      <div>
+                        <p className='text-sm text-gray-600 mb-1'>Hoa hồng</p>
+                        <p className='text-sm font-semibold text-blue-600'>
+                          {selectedTransaction.orderCommission.toLocaleString('vi-VN')} đ
+                        </p>
+                      </div>
+                    )}
+                    {selectedTransaction.orderNetRevenue !== null && selectedTransaction.orderNetRevenue !== undefined && (
+                      <div>
+                        <p className='text-sm text-gray-600 mb-1'>Doanh thu ròng</p>
+                        <p className='text-sm font-semibold text-green-600'>
+                          {selectedTransaction.orderNetRevenue.toLocaleString('vi-VN')} đ
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Process Info */}
+              {(selectedTransaction.processedBy || selectedTransaction.processedByName || selectedTransaction.processNote) && (
+                <div className='border-t pt-4'>
+                  <p className='text-sm font-semibold text-gray-900 mb-3'>Thông tin xử lý</p>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    {selectedTransaction.processedBy && (
+                      <div>
+                        <p className='text-sm text-gray-600 mb-1'>Người xử lý (ID)</p>
+                        <p className='text-sm font-semibold text-gray-900'>{selectedTransaction.processedBy}</p>
+                      </div>
+                    )}
+                    {selectedTransaction.processedByName && (
+                      <div>
+                        <p className='text-sm text-gray-600 mb-1'>Người xử lý</p>
+                        <p className='text-sm font-semibold text-gray-900'>{selectedTransaction.processedByName}</p>
+                      </div>
+                    )}
+                    {selectedTransaction.processNote && (
+                      <div className='md:col-span-2'>
+                        <p className='text-sm text-gray-600 mb-1'>Ghi chú xử lý</p>
+                        <p className='text-sm text-gray-900'>{selectedTransaction.processNote}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Bill Images */}
+              {selectedTransaction.billImages && selectedTransaction.billImages.length > 0 && (
+                <div className='border-t pt-4'>
+                  <p className='text-sm font-semibold text-gray-900 mb-3'>Hình ảnh hóa đơn</p>
+                  <div className='grid grid-cols-3 gap-3'>
+                    {selectedTransaction.billImages.map((image, idx) => (
+                      <img
+                        key={idx}
+                        src={image}
+                        alt={`Hóa đơn ${idx + 1}`}
+                        className='w-full h-24 object-cover rounded-lg border border-gray-200'
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setIsTransactionDetailModalOpen(false)}>
+              Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div >
   )
 }

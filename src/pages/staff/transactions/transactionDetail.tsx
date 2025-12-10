@@ -373,7 +373,7 @@ function TransactionDetail({ transaction, open, onClose }: TransactionDetailProp
                 </CardContent>
               </Card>
 
-              {/* Status & Timeline */}
+           
               <Card className='shadow-sm border border-gray-100'>
                 <CardContent className='p-4'>
                   <div className='flex items-center justify-between mb-4'>

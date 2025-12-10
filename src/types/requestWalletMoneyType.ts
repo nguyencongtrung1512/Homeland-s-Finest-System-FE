@@ -77,3 +77,27 @@ export interface UpdateRequestWalletMoneyResponse {
   message: string
   data: RequestWalletMoney
 }
+
+/**
+ * Chuyển đổi RequestWalletMoney type sang tiếng Việt
+ */
+export const getRequestWalletMoneyTypeLabel = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    Withdrawal: 'Rút tiền',
+    Refund: 'Hoàn tiền',
+    Deposit: 'Nạp tiền'
+  }
+  return typeMap[type] || type
+}
+
+/**
+ * Chuyển đổi RequestWalletMoney status sang tiếng Việt
+ */
+export const getRequestWalletMoneyStatusLabel = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    Pending: 'Đang chờ',
+    Completed: 'Hoàn thành',
+    Cancel: 'Đã hủy'
+  }
+  return statusMap[status] || status
+}
