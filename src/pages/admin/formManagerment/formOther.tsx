@@ -196,7 +196,7 @@ export default function FormOtherManagement() {
         return {
           icon: <XCircle className='w-4 h-4 text-red-500' />,
           badge: 'destructive',
-          text: 'Bị từ chối',
+          text: 'Nhân viên đã từ chối kiểm duyệt',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -468,7 +468,7 @@ export default function FormOtherManagement() {
                       >
                         Xem chi tiết
                       </Button>
-                      {form.status === 'Pending' && (
+                      {(form.status === 'Pending' || form.status === 'Rejected' || form.status === 'DeniedByStaff') && (
                         <Button
                           variant='outline'
                           size='sm'

@@ -23,6 +23,7 @@ import { getUserById } from '../../../../apis/user.api'
 import { storeApi, type StoreResponse } from '../../../../apis/store.api'
 import { toast } from '../../../../utils/toast'
 import { useNavigate } from 'react-router-dom'
+import AssignStaffModal from './AssignStaffModal'
 
 interface FormDetailModalProps {
   isOpen: boolean
@@ -42,6 +43,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
   const [loadingUser, setLoadingUser] = useState(false)
   const [storeInfo, setStoreInfo] = useState<StoreResponse | null>(null)
   const [loadingStore, setLoadingStore] = useState(false)
+  const [showAssignModal, setShowAssignModal] = useState(false)
 
   // Load user info
   const loadUserInfo = useCallback(async (userId: string) => {
@@ -163,7 +165,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
         return {
           icon: <XCircle className='w-5 h-5 text-red-500' />,
           badge: 'destructive',
-          text: 'Bị từ chối',
+          text: 'Nhân viên đã từ chối tiếp nhận đơn',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -238,7 +240,22 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
     setAdminStatus('ApprovedByAdmin')
     setUserInfo(null)
     setStoreInfo(null)
+    setShowAssignModal(false)
     onClose()
+  }
+
+  const handleAssignStaff = () => {
+    setShowAssignModal(true)
+  }
+
+  const handleCloseAssignModal = () => {
+    setShowAssignModal(false)
+  }
+
+  const handleAssignSuccess = () => {
+    onSuccess() // Notify parent to reload forms
+    loadFormDetail() // Reload form detail to get updated status
+    setShowAssignModal(false)
   }
 
   if (!form && loading) {
@@ -452,8 +469,36 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
 
           {/* Sidebar */}
           <div className='space-y-6'>
-            {/* Admin Actions - Only show if status is not Cancel */}
-            {form.status !== 'Cancel' && (
+            {/* Re-assign Staff - Show when status is DeniedByStaff or Rejected */}
+            {(form.status === 'DeniedByStaff' || form.status === 'Rejected') && (
+              <Card className='border-blue-200 shadow-sm'>
+                <CardHeader className='bg-blue-50/50'>
+                  <CardTitle className='text-lg text-blue-700 flex items-center gap-2'>
+                    <User className='w-5 h-5 text-blue-500' />
+                    Phân công lại nhân viên
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className='space-y-4 pt-4'>
+                  <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-3'>
+                    <p className='text-sm text-yellow-800'>
+                      {form.status === 'Rejected'
+                        ? 'Nhân viên trước đó đã từ chối tiếp nhận đơn này. Vui lòng phân công lại cho một nhân viên khác.'
+                        : 'Nhân viên trước đó đã từ chối xử lý đơn này. Vui lòng phân công lại cho một nhân viên khác.'}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleAssignStaff}
+                    className='w-full bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-200'
+                  >
+                    <User className='w-4 h-4 mr-2' />
+                    Phân công nhân viên mới
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Admin Actions - Only show if status is not Cancel, not DeniedByStaff, and not Rejected */}
+            {form.status !== 'Cancel' && form.status !== 'DeniedByStaff' && form.status !== 'Rejected' && (
               <Card className='border-green-200 shadow-sm'>
                 <CardHeader className='bg-green-50/50'>
                   <CardTitle className='text-lg text-green-700'>Phản hồi quản trị viên</CardTitle>
@@ -593,6 +638,17 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
         </div>
       </div>
       </DialogContent>
+
+      {/* Assign Staff Modal */}
+      {form && (
+        <AssignStaffModal
+          isOpen={showAssignModal}
+          onClose={handleCloseAssignModal}
+          formId={form.id}
+          formSubject={form.subject}
+          onSuccess={handleAssignSuccess}
+        />
+      )}
     </Dialog>
   )
 }

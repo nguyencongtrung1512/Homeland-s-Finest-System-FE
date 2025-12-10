@@ -175,7 +175,7 @@ export const formApi = {
   },
 
   // Staff APIs
-  staffUpdateForm: async (formId: string, data: StaffUpdateRequest): Promise<FormDTO> => {
+  staffUpdateForm: async (formId: string, data: StaffUpdateRequest): Promise<ApiResponse<FormDTO>> => {
     const formData = new FormData()
     formData.append('Reply', data.reply)
     formData.append('Status', data.status)
@@ -186,7 +186,7 @@ export const formApi = {
       }
     })) as ApiResponse<FormDTO>
     // axiosInstance đã trả về response.data, nên response đã là ApiResponse<FormDTO>
-    return response.data
+    return response
   },
 
   getAssignedForms: async (staffId: string, params?: Partial<FormQueryParams>): Promise<FormDTO[]> => {
