@@ -49,6 +49,7 @@ export interface Cart {
   totalDiscount?: number
   finalTotal?: number
   totalItems: number
+  isMax?: boolean
 }
 
 // Cart summary interface

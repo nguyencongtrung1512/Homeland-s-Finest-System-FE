@@ -206,7 +206,16 @@ const ChatSystem: React.FC = () => {
         const mappedConversations: Conversation[] = response.data.map((room: ChatRoomData) => {
           // Xác định tên và avatar dựa trên role của user hiện tại
           const isCustomer = user.userId === room.customerId
-          const otherName = isCustomer ? room.sellerName : room.customername
+          
+          // Ưu tiên storeName nếu có, nếu không thì dùng sellerName hoặc customername
+          let otherName: string
+          if (isCustomer) {
+            // Nếu là customer, hiển thị storeName hoặc sellerName
+            otherName = room.storeName || room.sellerName || 'Cửa hàng'
+          } else {
+            // Nếu là seller, hiển thị customername
+            otherName = room.customername || 'Khách hàng'
+          }
 
           return {
             id: room.id,
@@ -293,7 +302,7 @@ const ChatSystem: React.FC = () => {
 
           const newConversation: Conversation = {
             id: response.data.id,
-            name: selectedStoreName || response.data.sellerName || 'Cửa hàng',
+            name: selectedStoreName || response.data.storeName || response.data.sellerName || 'Cửa hàng',
             avatar: '🏪',
             lastMessage: 'Bắt đầu cuộc trò chuyện',
             online: false,

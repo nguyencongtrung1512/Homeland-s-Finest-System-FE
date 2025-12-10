@@ -14,8 +14,10 @@ import {
   type PromotionAdminDTO,
   type PromotionSellerDTO,
   type PromotionUserDTO,
+  type PromotionUserDetailDTO,
   type PromotionFilter,
-  type PromotionSort
+  type PromotionSort,
+  type PaginatedApiResponse
 } from '../types/promotionType'
 
 // ========================================
@@ -661,6 +663,23 @@ export const getPromotionById = async (id: string): Promise<ApiResponse<Promotio
   return axiosInstance.get(`/Admin/Promotion/${id}`)
 }
 
+/**
+ * Lấy danh sách users có promotion (Admin)
+ * Dùng để xem danh sách users đã claim một promotion cụ thể (isPrivate = true)
+ */
+export const getUsersHavingPromotion = async (
+  promotionId: string,
+  pageSize: number = 10,
+  pageNumber: number = 1
+): Promise<PaginatedApiResponse<PromotionUserDetailDTO[]>> => {
+  const params = new URLSearchParams({
+    pageSize: pageSize.toString(),
+    pageNumber: pageNumber.toString()
+  })
+
+  return axiosInstance.get(`/Admin/Promotion/${promotionId}/Users?${params.toString()}`)
+}
+
 // ========================================
 // EXPORT ALL FUNCTIONS
 // ========================================
@@ -674,6 +693,7 @@ export const promotionApi = {
   getPromotionById,
   deletePromotion,
   getPromotionStats,
+  getUsersHavingPromotion,
 
   // Seller APIs
   getSellerPromotions,

@@ -16,6 +16,14 @@ import {
   AlertDialogTitle
 } from '../../../components/ui/alert-dialog'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../../components/ui/dialog'
+import {
   Plus,
   Search,
   Edit,
@@ -40,9 +48,11 @@ import type {
   PromotionType,
   PromotionDTO,
   PromotionAdminRequest,
-  PromotionFormData
+  PromotionFormData,
+  PromotionUserDetailDTO
 } from '../../../types/promotionType'
 import { toast } from '../../../utils/toast'
+import { getUsersHavingPromotion } from '../../../apis/promotion.api'
 
 const AdminPromotionList: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -50,6 +60,12 @@ const AdminPromotionList: React.FC = () => {
   const [selectedPromotion, setSelectedPromotion] = useState<PromotionDTO | null>(null)
   const [pausePromotion, setPausePromotion] = useState<PromotionDTO | null>(null)
   const [isPausing, setIsPausing] = useState(false)
+  const [viewUsersPromotion, setViewUsersPromotion] = useState<PromotionDTO | null>(null)
+  const [usersList, setUsersList] = useState<PromotionUserDetailDTO[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [usersPage, setUsersPage] = useState(1)
+  const [usersTotalItems, setUsersTotalItems] = useState(0)
+  const usersPageSize = 10
 
   // Local filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -72,6 +88,7 @@ const AdminPromotionList: React.FC = () => {
   // Load all promotions once
   useEffect(() => {
     fetchPromotions(1, {}, { field: 'createdAt', direction: 'desc' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Parse backend date
@@ -141,8 +158,8 @@ const AdminPromotionList: React.FC = () => {
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aValue: any
-      let bValue: any
+      let aValue: string | number
+      let bValue: string | number
 
       switch (sortBy) {
         case 'title':
@@ -324,6 +341,34 @@ const AdminPromotionList: React.FC = () => {
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= paginationData.totalPages) {
       setCurrentPage(page)
+    }
+  }
+
+  const handleViewUsers = async (promotion: PromotionDTO) => {
+    setViewUsersPromotion(promotion)
+    setUsersPage(1)
+    await fetchUsersList(promotion.id, 1)
+  }
+
+  const fetchUsersList = async (promotionId: string, page: number = 1) => {
+    setUsersLoading(true)
+    try {
+      const response = await getUsersHavingPromotion(promotionId, usersPageSize, page)
+      setUsersList(response.data || [])
+      setUsersTotalItems(response.pagination?.totalItems || 0)
+      setUsersPage(page)
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      toast.error('Không thể tải danh sách người dùng')
+      setUsersList([])
+    } finally {
+      setUsersLoading(false)
+    }
+  }
+
+  const handleUsersPageChange = (page: number) => {
+    if (viewUsersPromotion) {
+      fetchUsersList(viewUsersPromotion.id, page)
     }
   }
 
@@ -657,6 +702,17 @@ const AdminPromotionList: React.FC = () => {
                     </div>
 
                     <div className='flex items-center gap-2 ml-4'>
+                      {promotion.type === 'User' && promotion.isPrivate && (
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => handleViewUsers(promotion)}
+                          className='text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                        >
+                          <Users className='h-4 w-4 mr-1' />
+                          Xem Users
+                        </Button>
+                      )}
                       {promotion.isActive && (
                         <Button
                           variant='outline'
@@ -834,6 +890,163 @@ const AdminPromotionList: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Users Dialog */}
+      <Dialog open={viewUsersPromotion !== null} onOpenChange={(open) => !open && setViewUsersPromotion(null)}>
+        <DialogContent className='max-w-6xl w-full max-h-[90vh] flex flex-col p-0' showCloseButton={true}>
+          <div className='px-6 pt-6 pb-4 border-b'>
+            <DialogHeader>
+              <DialogTitle className='text-xl'>Danh sách người dùng đã claim mã khuyến mãi</DialogTitle>
+              <DialogDescription className='text-base mt-1'>
+                <span className='font-medium text-gray-900'>{viewUsersPromotion?.title}</span>
+                <span className='text-gray-500 ml-2'>
+                  ({usersTotalItems} {usersTotalItems === 1 ? 'người dùng' : 'người dùng'})
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className='flex-1 overflow-y-auto px-6 py-4'>
+            {usersLoading ? (
+              <div className='flex items-center justify-center py-12'>
+                <div className='animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600'></div>
+              </div>
+            ) : usersList.length > 0 ? (
+              <div className='overflow-x-auto'>
+                <table className='w-full'>
+                  <thead>
+                    <tr className='border-b bg-gray-50'>
+                      <th className='text-left py-3 px-4 font-semibold text-gray-700 text-sm'>STT</th>
+                      <th className='text-left py-3 px-4 font-semibold text-gray-700 text-sm'>Tên người dùng</th>
+                      <th className='text-left py-3 px-4 font-semibold text-gray-700 text-sm'>Email</th>
+                      <th className='text-center py-3 px-4 font-semibold text-gray-700 text-sm'>Tối đa</th>
+                      <th className='text-center py-3 px-4 font-semibold text-gray-700 text-sm'>Đã dùng</th>
+                      <th className='text-center py-3 px-4 font-semibold text-gray-700 text-sm'>Còn lại</th>
+                      <th className='text-center py-3 px-4 font-semibold text-gray-700 text-sm min-w-[120px]'>
+                        Tỷ lệ sử dụng
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usersList.map((user, index) => {
+                      const usagePercentage =
+                        user.usagePercentage ?? (user.maxPerUser > 0 ? (user.usedQuantity / user.maxPerUser) * 100 : 0)
+                      const rowNumber = (usersPage - 1) * usersPageSize + index + 1
+
+                      return (
+                        <tr key={user.userId} className='border-b hover:bg-gray-50 transition-colors'>
+                          <td className='py-3 px-4 text-sm text-gray-600'>{rowNumber}</td>
+                          <td className='py-3 px-4'>
+                            <div className='font-medium text-gray-900'>{user.userName}</div>
+                          </td>
+                          <td className='py-3 px-4'>
+                            <div className='text-sm text-gray-600'>{user.userEmail}</div>
+                          </td>
+                          <td className='py-3 px-4 text-center'>
+                            <span className='text-sm font-medium text-gray-700'>{user.maxPerUser}</span>
+                          </td>
+                          <td className='py-3 px-4 text-center'>
+                            <span className='text-sm font-medium text-orange-600'>{user.usedQuantity}</span>
+                          </td>
+                          <td className='py-3 px-4 text-center'>
+                            <span className='text-sm font-medium text-green-600'>{user.quantity}</span>
+                          </td>
+                          <td className='py-3 px-4'>
+                            <div className='flex items-center gap-2'>
+                              <div className='flex-1 bg-gray-200 rounded-full h-2 min-w-[80px]'>
+                                <div
+                                  className={`h-2 rounded-full transition-all ${usagePercentage >= 80
+                                    ? 'bg-red-500'
+                                    : usagePercentage >= 50
+                                      ? 'bg-orange-500'
+                                      : 'bg-blue-500'
+                                    }`}
+                                  style={{ width: `${Math.min(usagePercentage, 100)}%` }}
+                                ></div>
+                              </div>
+                              <span className='text-sm font-medium text-gray-700 min-w-[45px] text-right'>
+                                {usagePercentage.toFixed(1)}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className='text-center py-12'>
+                <Users className='h-16 w-16 mx-auto text-gray-400 mb-4' />
+                <h3 className='text-lg font-medium text-gray-900 mb-2'>Chưa có người dùng nào</h3>
+                <p className='text-gray-500'>Chưa có người dùng nào được tặng mã khuyến mãi này</p>
+              </div>
+            )}
+          </div>
+
+          {/* Pagination for Users */}
+          {usersList.length > 0 && Math.ceil(usersTotalItems / usersPageSize) > 1 && (
+            <div className='px-6 py-4 border-t bg-gray-50'>
+              <div className='flex items-center justify-between'>
+                <div className='text-sm text-gray-600'>
+                  Hiển thị <span className='font-medium'>{(usersPage - 1) * usersPageSize + 1}</span> -{' '}
+                  <span className='font-medium'>{Math.min(usersPage * usersPageSize, usersTotalItems)}</span> trong tổng
+                  số <span className='font-medium'>{usersTotalItems}</span> người dùng
+                </div>
+                <div className='flex items-center gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleUsersPageChange(1)}
+                    disabled={usersPage === 1}
+                    className='h-8'
+                  >
+                    <ChevronsLeft className='h-4 w-4' />
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleUsersPageChange(usersPage - 1)}
+                    disabled={usersPage === 1}
+                    className='h-8'
+                  >
+                    <ChevronLeft className='h-4 w-4' />
+                  </Button>
+                  <span className='text-sm text-gray-700 font-medium px-3'>
+                    Trang {usersPage} / {Math.ceil(usersTotalItems / usersPageSize)}
+                  </span>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleUsersPageChange(usersPage + 1)}
+                    disabled={usersPage >= Math.ceil(usersTotalItems / usersPageSize)}
+                    className='h-8'
+                  >
+                    <ChevronRight className='h-4 w-4' />
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleUsersPageChange(Math.ceil(usersTotalItems / usersPageSize))}
+                    disabled={usersPage >= Math.ceil(usersTotalItems / usersPageSize)}
+                    className='h-8'
+                  >
+                    <ChevronsRight className='h-4 w-4' />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className='px-6 py-4 border-t'>
+            <DialogFooter className='sm:justify-end'>
+              <Button variant='outline' onClick={() => setViewUsersPromotion(null)}>
+                Đóng
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -201,6 +201,24 @@ export interface PromotionUserDTO extends UserPromotionDetailDTO {
   reason?: string
 }
 
+export interface PromotionUserDetailDTO {
+  // User Info
+  userId: string
+  userName: string
+  userEmail: string
+
+  // Promotion Info
+  promotionId: string
+  promotionTitle: string
+  maxPerUser: number
+
+  // Usage Info từ PromotionUser
+  quantity: number // Số lượt còn lại
+  usedQuantity: number // Số lượt đã dùng
+  remainingQuantity: number // Còn lại (= Quantity)
+  usagePercentage?: number // Phần trăm sử dụng
+}
+
 // ========================================
 // UTILITY TYPES
 // ========================================

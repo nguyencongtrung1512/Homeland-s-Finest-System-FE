@@ -55,7 +55,7 @@ const statusTextMap: Record<string, string> = {
 function OrderManagement() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useState<string>('all')
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -92,15 +92,28 @@ function OrderManagement() {
     const statusTabs = Object.keys(statusTextMap)
       .filter((key) => !HIDDEN_STATUSES.includes(key as OrderStatus))
       .map((key) => ({
-        key: key as OrderStatus,
+        key: key as OrderStatus | 'all' | 'pendingVerification',
         label: statusTextMap[key]
       }))
-    return [{ key: 'all' as const, label: 'Tất cả' }, ...statusTabs]
+    return [
+      { key: 'all' as const, label: 'Tất cả' },
+      { key: 'pendingVerification' as const, label: 'Chờ xác minh' },
+      ...statusTabs
+    ]
   }, [])
 
   // Count orders by status
   const orderCounts = useMemo(() => {
     const counts: Record<string, number> = { all: allOrders.length }
+
+    // Count pending verification orders (isVerification: false, status: Paid or Delivered)
+    const pendingVerificationCount = allOrders.filter(
+      (order) =>
+        !order.isVerification &&
+        (order.status === 'Paid' || order.status === 'Delivered')
+    ).length
+    counts.pendingVerification = pendingVerificationCount
+
     allOrders.forEach((order) => {
       counts[order.status] = (counts[order.status] || 0) + 1
     })
@@ -260,7 +273,7 @@ function OrderManagement() {
   }, [user?.userId])
 
   const fetchOrders = useCallback(
-    async (status?: OrderStatus) => {
+    async (status?: OrderStatus | 'pendingVerification') => {
       if (!user?.userId) {
         setError('Vui lòng đăng nhập để xem đơn hàng')
         setLoading(false)
@@ -270,9 +283,34 @@ function OrderManagement() {
       try {
         setLoading(true)
         setError(null)
-        const params = status ? { status } : undefined
-        const ordersData = await getCustomerOrders(user.userId, params)
-        setOrders(ordersData.filter((order) => !HIDDEN_STATUSES.includes(order.status as OrderStatus)))
+
+        if (status === 'pendingVerification') {
+          // Fetch orders with Paid and Delivered status
+          const [paidOrders, deliveredOrders] = await Promise.all([
+            getCustomerOrders(user.userId, { status: 'Paid' }),
+            getCustomerOrders(user.userId, { status: 'Delivered' })
+          ])
+
+          // Combine and filter: isVerification: false
+          const allOrdersData = [...paidOrders, ...deliveredOrders]
+          const filteredOrders = allOrdersData.filter(
+            (order) =>
+              !HIDDEN_STATUSES.includes(order.status as OrderStatus) &&
+              !order.isVerification &&
+              (order.status === 'Paid' || order.status === 'Delivered')
+          )
+
+          // Remove duplicates by order id
+          const uniqueOrders = Array.from(
+            new Map(filteredOrders.map((order) => [order.id, order])).values()
+          )
+
+          setOrders(uniqueOrders)
+        } else {
+          const params = status ? { status } : undefined
+          const ordersData = await getCustomerOrders(user.userId, params)
+          setOrders(ordersData.filter((order) => !HIDDEN_STATUSES.includes(order.status as OrderStatus)))
+        }
       } catch (err) {
         console.error('Error fetching orders:', err)
         setError('Không thể tải danh sách đơn hàng')
@@ -290,7 +328,7 @@ function OrderManagement() {
   }, [fetchAllOrders])
 
   useEffect(() => {
-    const status = activeTab === 'all' ? undefined : (activeTab as OrderStatus)
+    const status = activeTab === 'all' ? undefined : (activeTab as OrderStatus | 'pendingVerification')
     fetchOrders(status)
     setCurrentPage(1) // Reset to first page when tab changes
     setIsMobileMenuOpen(false) // Close mobile menu when tab changes

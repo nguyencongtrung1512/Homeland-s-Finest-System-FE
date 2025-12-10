@@ -6,7 +6,19 @@ import { Dialog, DialogContent } from '../../../../../components/ui/dialog'
 import { getOrderDetail } from '../../../../../apis/order.api'
 import { storeApi } from '../../../../../apis/store.api'
 import type { StoreResponse } from '../../../../../apis/store.api'
-import { Loader2, Package, MapPin, CreditCard, Clock, RefreshCw, AlertCircle, Gift, Store } from 'lucide-react'
+import {
+  Loader2,
+  Package,
+  MapPin,
+  CreditCard,
+  Clock,
+  RefreshCw,
+  AlertCircle,
+  Gift,
+  Store,
+  Image as ImageIcon,
+  CheckCircle
+} from 'lucide-react'
 import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router-dom'
 import { path } from '../../../../../constants/path'
@@ -73,6 +85,8 @@ interface Order {
     time: string
   }>
   orderPromotions: OrderPromotion[]
+  VerificationImages?: string[]
+  VerificationAt?: string | null
 }
 
 interface OrderDetailModalProps {
@@ -81,6 +95,17 @@ interface OrderDetailModalProps {
   orderId: string | null
 }
 const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
+
+// Helper function to get verification images from API response (handles both camelCase and PascalCase)
+const getVerificationImages = (apiOrder: Record<string, unknown>): string[] => {
+  // Check both possible field names (camelCase and PascalCase)
+  return (apiOrder?.VerificationImages as string[]) || (apiOrder?.verificationImages as string[]) || []
+}
+
+// Helper function to get verification timestamp from API response
+const getVerificationAt = (apiOrder: Record<string, unknown>): string | null => {
+  return (apiOrder?.VerificationAt as string | null) || (apiOrder?.verificationAt as string | null) || null
+}
 
 const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId }) => {
   const navigate = useNavigate()
@@ -92,58 +117,60 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
   const [storeError, setStoreError] = useState<string | null>(null)
 
   // Transform API order to UI order format
-  const transformAPIOrderToUIOrder = (apiOrder: any): Order => {
+  const transformAPIOrderToUIOrder = (apiOrder: Record<string, unknown>): Order => {
     return {
-      id: apiOrder?.id || '',
-      ghnorderCode: apiOrder?.ghnorderCode || '',
-      status: apiOrder?.status || '',
-      createdAt: apiOrder?.createdAt || '',
-      toName: apiOrder?.toName || '',
-      toAddress: apiOrder?.toAddress || '',
-      fromPhone: apiOrder?.fromPhone || '',
-      paymentType: apiOrder?.paymentType || '',
-      totalOrder: apiOrder?.totalOrder || 0,
-      totalDiscount: apiOrder?.totalDiscount || 0,
-      shipPrice: apiOrder?.shipPrice || 0,
-      finalPrice: apiOrder?.finalPrice || 0,
-      isFreeship: apiOrder?.isFreeship || false,
-      note: apiOrder?.note || undefined,
-      orderItems: (apiOrder?.orderItems || []).map((item: any) => ({
-        id: item?.id || '',
-        orderItemName: item?.orderItemName || 'Sản phẩm không xác định',
-        orderItemImageUrl: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
-        quantity: item?.quantity || 0,
-        finalPrice: item?.finalPrice,
-        totalPrice: item?.totalPrice || 0,
-        length: item?.length,
-        width: item?.width,
-        height: item?.height,
-        weight: item?.weight
+      id: (apiOrder?.id as string) || '',
+      ghnorderCode: (apiOrder?.ghnorderCode as string) || '',
+      status: (apiOrder?.status as string) || '',
+      createdAt: (apiOrder?.createdAt as string) || '',
+      toName: (apiOrder?.toName as string) || '',
+      toAddress: (apiOrder?.toAddress as string) || '',
+      fromPhone: (apiOrder?.fromPhone as string) || undefined,
+      paymentType: (apiOrder?.paymentType as string) || '',
+      totalOrder: (apiOrder?.totalOrder as number) || 0,
+      totalDiscount: (apiOrder?.totalDiscount as number) || 0,
+      shipPrice: (apiOrder?.shipPrice as number) || 0,
+      finalPrice: (apiOrder?.finalPrice as number) || 0,
+      isFreeship: (apiOrder?.isFreeship as boolean) || false,
+      note: (apiOrder?.note as string) || undefined,
+      orderItems: ((apiOrder?.orderItems as Array<Record<string, unknown>>) || []).map((item) => ({
+        id: (item?.id as string) || '',
+        orderItemName: (item?.orderItemName as string) || 'Sản phẩm không xác định',
+        orderItemImageUrl: (item?.orderItemImageUrl as string) || DEFAULT_PRODUCT_IMAGE,
+        quantity: (item?.quantity as number) || 0,
+        finalPrice: item?.finalPrice as number | undefined,
+        totalPrice: (item?.totalPrice as number) || 0,
+        length: item?.length as number | undefined,
+        width: item?.width as number | undefined,
+        height: item?.height as number | undefined,
+        weight: item?.weight as number | undefined
       })),
-      orderItemsWithCombo: (apiOrder?.orderItemsWithCombo || []).map((item: any) => ({
-        id: item?.id || '',
-        comboItemId: item?.comboItemId,
-        comboId: item?.comboId,
-        comboName: item?.comboName,
-        orderItemName: item?.orderItemName || 'Sản phẩm không xác định',
-        orderItemImageUrl: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
-        quantity: item?.quantity || 0,
-        finalPrice: item?.finalPrice,
-        totalPrice: item?.totalPrice || 0,
-        length: item?.length,
-        width: item?.width,
-        height: item?.height,
-        weight: item?.weight
+      orderItemsWithCombo: ((apiOrder?.orderItemsWithCombo as Array<Record<string, unknown>>) || []).map((item) => ({
+        id: (item?.id as string) || '',
+        comboItemId: item?.comboItemId as string | undefined,
+        comboId: item?.comboId as string | undefined,
+        comboName: item?.comboName as string | undefined,
+        orderItemName: (item?.orderItemName as string) || 'Sản phẩm không xác định',
+        orderItemImageUrl: (item?.orderItemImageUrl as string) || DEFAULT_PRODUCT_IMAGE,
+        quantity: (item?.quantity as number) || 0,
+        finalPrice: item?.finalPrice as number | undefined,
+        totalPrice: (item?.totalPrice as number) || 0,
+        length: item?.length as number | undefined,
+        width: item?.width as number | undefined,
+        height: item?.height as number | undefined,
+        weight: item?.weight as number | undefined
       })),
-      orderHistories: apiOrder?.orderHistories || [],
-      orderPromotions: (apiOrder?.orderPromotions || []).map((promo: any) => ({
-        promotionType: promo?.promotionType || '',
-        title: promo?.title || '',
-        description: promo?.description || '',
-        discountType: promo?.discountType || '',
-        discountValue: promo?.discountValue || 0,
-        discountAmount: promo?.discountAmount || 0
-      }))
+      orderHistories: (apiOrder?.orderHistories as Array<{ id: string; description: string; time: string }>) || [],
+      orderPromotions: ((apiOrder?.orderPromotions as Array<Record<string, unknown>>) || []).map((promo) => ({
+        promotionType: (promo?.promotionType as string) || '',
+        title: (promo?.title as string) || '',
+        description: (promo?.description as string) || '',
+        discountType: (promo?.discountType as string) || '',
+        discountValue: (promo?.discountValue as number) || 0,
+        discountAmount: (promo?.discountAmount as number) || 0
+      })),
+      VerificationImages: getVerificationImages(apiOrder),
+      VerificationAt: getVerificationAt(apiOrder)
     }
   }
 
@@ -230,7 +257,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       Exception: 'Gặp sự cố',
       Damaged: 'Hàng hư hỏng',
       Lost: 'Thất lạc',
-      Cancel: 'Đã hủy đơn hàng',
+      Cancel: 'Đã hủy đơn hàng'
     }
     return statusTextMap[status] || 'Chưa xác định'
   }
@@ -476,11 +503,10 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                             <h4 className='font-semibold text-gray-900 text-sm'>{promotion.title}</h4>
                             <Badge
                               variant='outline'
-                              className={`text-xs ${
-                                promotion.promotionType === 'Product'
-                                  ? 'border-blue-200 text-blue-700 bg-blue-50'
-                                  : 'border-purple-200 text-purple-700 bg-purple-50'
-                              }`}
+                              className={`text-xs ${promotion.promotionType === 'Product'
+                                ? 'border-blue-200 text-blue-700 bg-blue-50'
+                                : 'border-purple-200 text-purple-700 bg-purple-50'
+                                }`}
                             >
                               {promotion.promotionType === 'Product' ? 'Sản phẩm' : 'Toàn cửa hàng'}
                             </Badge>
@@ -582,13 +608,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                         return (
                           <div key={history.id} className='flex items-start gap-4 relative'>
                             <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
-                                isCurrent
-                                  ? 'bg-green-600'
-                                  : isCompleted
-                                    ? 'bg-gray-400'
-                                    : 'bg-white border-2 border-gray-300'
-                              }`}
+                              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${isCurrent
+                                ? 'bg-green-600'
+                                : isCompleted
+                                  ? 'bg-gray-400'
+                                  : 'bg-white border-2 border-gray-300'
+                                }`}
                             >
                               {isCurrent ? (
                                 <Package className='h-5 w-5 text-white' />
@@ -610,6 +635,68 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                   </div>
                 </div>
               )}
+
+              {/* Verification Images Display Section */}
+              <div className='bg-white rounded-lg p-4 shadow-sm border border-gray-100'>
+                <div className='flex items-center gap-2 mb-3'>
+                  <ImageIcon className='h-4 w-4 text-green-600' />
+                  <h3 className='font-semibold text-gray-900'>Ảnh xác minh đơn hàng</h3>
+                </div>
+
+                {/* Display verification images if available */}
+                {order.VerificationImages && order.VerificationImages.length > 0 ? (
+                  <div>
+                    {/* Verification timestamp */}
+                    {order.VerificationAt && (
+                      <div className='mb-3 p-2 bg-green-50 rounded-lg border border-green-200'>
+                        <div className='flex items-center gap-2'>
+                          <CheckCircle className='h-4 w-4 text-green-600' />
+                          <span className='text-xs text-gray-600'>Thời gian cập nhật:</span>
+                          <span className='text-sm font-medium text-gray-900'>{formatDate(order.VerificationAt)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Verification Images */}
+                    <div>
+                      <p className='text-sm font-medium text-gray-700 mb-2'>Ảnh xác minh giao hàng:</p>
+                      <div className='grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3'>
+                        {order.VerificationImages.map((imageUrl, index) => (
+                          <div key={index} className='relative group'>
+                            <img
+                              src={imageUrl}
+                              alt={`Xác minh ${index + 1}`}
+                              className='w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity'
+                              onClick={() => {
+                                const newWindow = window.open()
+                                if (newWindow) {
+                                  newWindow.document.write(`
+                                    <html>
+                                      <head><title>Hình ảnh xác minh ${index + 1}</title></head>
+                                      <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;">
+                                        <img src="${imageUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;" />
+                                      </body>
+                                    </html>
+                                  `)
+                                }
+                              }}
+                              onError={handleImageError}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className='p-6 text-center bg-gray-50 rounded-lg border border-gray-200'>
+                    <div className='flex flex-col items-center justify-center gap-2'>
+                      <AlertCircle className='h-8 w-8 text-gray-400' />
+                      <p className='text-sm font-medium text-gray-600'>Chưa cập nhật</p>
+                      <p className='text-xs text-gray-500 mt-1'>Chưa có ảnh xác minh đơn hàng</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : null}
         </div>

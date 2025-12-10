@@ -11,7 +11,8 @@ import {
   XCircle,
   Loader2,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  ArrowDownLeft
 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -36,7 +37,7 @@ import { formatCompact } from '../../../utils/formatCompact'
 function RequestWalletMoneyManagement() {
 
   const [searchText, setSearchText] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'Withdrawal' | 'Refund'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'Withdrawal' | 'Refund' | 'Deposit'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'Pending' | 'Completed' | 'Cancel'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedRequest, setSelectedRequest] = useState<RequestWalletMoney | null>(null)
@@ -450,6 +451,14 @@ function RequestWalletMoneyManagement() {
         bgColor: 'bg-blue-50'
       }
     }
+    if (type === 'Deposit') {
+      return {
+        text: 'Nạp tiền',
+        icon: ArrowDownLeft,
+        color: 'text-green-600',
+        bgColor: 'bg-green-50'
+      }
+    }
     return {
       text: 'Hoàn tiền',
       icon: ArrowDownRight,
@@ -477,10 +486,31 @@ function RequestWalletMoneyManagement() {
     )
   }
 
-  // Get transaction type icon color
+  // Check if transaction is debt-related
+  const isDebtTransaction = (type: string): boolean => {
+    return ['DebtPayment', 'OrderCodDebt', 'OrderCodPaid', 'PayDebt'].includes(type)
+  }
+
+  // Get transaction type icon color based on guide specifications
   const getTransactionTypeColor = (type: string) => {
-    const isPositive = ['Deposit', 'CommissionReceived', 'Refund', 'RefundToCustomer'].includes(type)
-    return isPositive ? 'text-green-600' : 'text-red-600'
+    // Debt transactions
+    if (type === 'OrderCodDebt') {
+      return 'text-yellow-600' // 🟡 Debt increase
+    }
+    if (type === 'OrderCodPaid' || type === 'PayDebt') {
+      return 'text-blue-600' // 🔵 Debt decrease
+    }
+    if (type === 'DebtPayment') {
+      return 'text-red-600' // 🔴 Balance decreases (trả nợ từ deposit)
+    }
+
+    // Balance transactions - Money in (green)
+    if (['Deposit', 'CommissionReceived', 'Refund', 'RefundToCustomer', 'CustomerPayment', 'OrderBankingCompleted', 'SystemDiscountCompensation', 'PayoutToSeller'].includes(type)) {
+      return 'text-green-600' // 🟢 Money in
+    }
+
+    // Balance transactions - Money out (red)
+    return 'text-red-600' // 🔴 Money out
   }
 
   // Get order status config - convert sang tiếng Việt
@@ -664,7 +694,7 @@ function RequestWalletMoneyManagement() {
         </div>
       </motion.div>
       {/* Summary Cards */}
-      <div className='grid grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-3 md:gap-6'>
+      {/* <div className='grid grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-3 md:gap-6'>
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -696,7 +726,7 @@ function RequestWalletMoneyManagement() {
             <CardContent className='p-4 md:p-6'>
               <div className='flex items-center justify-between'>
                 <div>
-                  <p className='text-xs md:text-sm text-gray-600 mb-1'>Tổng yêu cầu</p>
+                  <p className='text-xs md:text-sm text-gray-600 mb-1'>Đang chờ duyệt</p>
                   <p className='text-xl md:text-2xl font-bold text-gray-900'>{stats.total.toLocaleString()}</p>
                 </div>
                 <div className='w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-lg flex items-center justify-center'>
@@ -767,7 +797,7 @@ function RequestWalletMoneyManagement() {
             </CardContent>
           </Card>
         </motion.div>
-      </div>
+      </div> */}
 
       {/* Total Withdrawn Card */}
       {walletData && walletData.TotalWithdrawn !== undefined && (
@@ -818,7 +848,7 @@ function RequestWalletMoneyManagement() {
 
               <Select
                 value={typeFilter}
-                onValueChange={(value: 'all' | 'Withdrawal' | 'Refund') => setTypeFilter(value)}
+                onValueChange={(value: 'all' | 'Withdrawal' | 'Refund' | 'Deposit') => setTypeFilter(value)}
               >
                 <SelectTrigger className='w-full md:w-48 h-10 border-gray-200 text-sm'>
                   <SelectValue placeholder='Loại yêu cầu' />
@@ -826,6 +856,7 @@ function RequestWalletMoneyManagement() {
                 <SelectContent>
                   <SelectItem value='all'>Tất cả loại</SelectItem>
                   <SelectItem value='Withdrawal'>Rút tiền</SelectItem>
+                  <SelectItem value='Deposit'>Nạp tiền</SelectItem>
                   <SelectItem value='Refund'>Hoàn tiền</SelectItem>
                 </SelectContent>
               </Select>
@@ -1033,24 +1064,7 @@ function RequestWalletMoneyManagement() {
                   </div>
                 </div>
 
-                {/* Thông tin ngân hàng */}
-                {/* <div className='space-y-3'>
-                  <h3 className='text-sm font-semibold text-gray-900 border-b pb-2'>Thông tin ngân hàng</h3>
-                  <div className='space-y-2'>
-                    <div className='flex justify-between items-start'>
-                      <span className='text-sm text-gray-600'>Tên ngân hàng:</span>
-                      <span className='text-sm font-medium text-gray-900'>{selectedRequest.bankName}</span>
-                    </div>
-                    <div className='flex justify-between items-start'>
-                      <span className='text-sm text-gray-600'>Số tài khoản:</span>
-                      <span className='text-sm font-medium text-gray-900 font-mono'>{selectedRequest.bankAccount}</span>
-                    </div>
-                    <div className='flex justify-between items-start'>
-                      <span className='text-sm text-gray-600'>Tên chủ tài khoản:</span>
-                      <span className='text-sm font-medium text-gray-900'>{selectedRequest.accountHolderName}</span>
-                    </div>
-                  </div>
-                </div> */}
+
 
                 {/* Ghi chú xử lý */}
                 {selectedRequest.processNote && (
@@ -1457,9 +1471,18 @@ function RequestWalletMoneyManagement() {
                   {walletTransactions.map((transaction, index) => {
                     const statusConfig = getTransactionStatusConfig(transaction.status || '')
                     const typeColor = getTransactionTypeColor(transaction.type)
-                    const isPositive = ['Deposit', 'CommissionReceived', 'Refund', 'RefundToCustomer'].includes(
-                      transaction.type
-                    )
+                    const isDebt = isDebtTransaction(transaction.type)
+
+                    // Determine amount sign based on transaction type
+                    let amountSign = ''
+                    if (isDebt) {
+                      // Debt transactions: + for increase (OrderCodDebt), - for decrease (OrderCodPaid, PayDebt)
+                      amountSign = transaction.type === 'OrderCodDebt' ? '+' : '-'
+                    } else {
+                      // Balance transactions: + for money in, - for money out
+                      const moneyInTypes = ['Deposit', 'CommissionReceived', 'Refund', 'RefundToCustomer', 'CustomerPayment', 'OrderBankingCompleted', 'SystemDiscountCompensation', 'PayoutToSeller']
+                      amountSign = moneyInTypes.includes(transaction.type) ? '+' : '-'
+                    }
 
                     return (
                       <motion.div
@@ -1470,22 +1493,22 @@ function RequestWalletMoneyManagement() {
                       >
                         <Card className='hover:shadow-md transition-shadow'>
                           <CardContent className='p-4'>
-                            <div className='flex items-center justify-between gap-4'>
+                            <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
                               {/* Left Section - Transaction Type and Status */}
-                              <div className='flex items-center gap-3 flex-shrink-0'>
-                                <div>
-                                  <div className='flex items-center gap-2 mb-1'>
+                              <div className='flex items-start gap-3 flex-1'>
+                                <div className='flex-1'>
+                                  <div className='flex items-center gap-2 mb-1 flex-wrap'>
                                     <p className='text-sm font-bold text-gray-900'>
                                       {getTransactionTypeLabel(transaction.type)}
                                     </p>
                                     <Badge
-                                      className={`${statusConfig.bgColor} ${statusConfig.textColor} border-0 text-xs mb-3`}
+                                      className={`${statusConfig.bgColor} ${statusConfig.textColor} border-0 text-xs`}
                                     >
                                       {statusConfig.text}
                                     </Badge>
                                   </div>
                                   {transaction.description && (
-                                    <p className='text-xs text-gray-500'>{transaction.description}</p>
+                                    <p className='text-xs text-gray-500 mt-1'>{transaction.description}</p>
                                   )}
                                   <p className='text-xs text-gray-400 mt-1'>
                                     {formatDate(transaction.createdAt) || 'Không xác định'}
@@ -1493,20 +1516,63 @@ function RequestWalletMoneyManagement() {
                                 </div>
                               </div>
 
-                              {/* Right Section - Amount and Balance */}
-                              <div className='flex items-center gap-6 flex-shrink-0'>
+                              {/* Right Section - Amount and Balance/Debt Info */}
+                              <div className='flex flex-col md:items-end gap-2 flex-shrink-0'>
+                                {/* Amount */}
                                 <div className='text-right'>
-                                  <p className={`text-xl font-bold ${typeColor} mb-1`}>
-                                    {isPositive ? '+' : '-'}
+                                  <p className={`text-xl font-bold ${typeColor} mb-2`}>
+                                    {amountSign}
                                     {transaction.amount.toLocaleString('vi-VN')} đ
                                   </p>
-                                  <p className='text-xs text-gray-500'>
-                                    Số dư sau:{' '}
-                                    <span className='font-semibold text-gray-700'>
-                                      {transaction.balanceAfter.toLocaleString('vi-VN')} đ
-                                    </span>
-                                  </p>
                                 </div>
+
+                                {/* Balance or Debt Information */}
+                                {isDebt ? (
+                                  // Debt Transaction Display
+                                  <div className='text-right space-y-1'>
+                                    {transaction.debtBefore !== null && transaction.debtBefore !== undefined && (
+                                      <p className='text-xs text-gray-600'>
+                                        Nợ trước:{' '}
+                                        <span className='font-semibold text-gray-700'>
+                                          {transaction.debtBefore.toLocaleString('vi-VN')} đ
+                                        </span>
+                                      </p>
+                                    )}
+                                    {transaction.debtAfter !== null && transaction.debtAfter !== undefined && (
+                                      <p className='text-xs text-gray-600'>
+                                        Nợ sau:{' '}
+                                        <span className='font-semibold text-gray-700'>
+                                          {transaction.debtAfter.toLocaleString('vi-VN')} đ
+                                        </span>
+                                      </p>
+                                    )}
+                                    {transaction.debtPaid !== null && transaction.debtPaid !== undefined && transaction.debtPaid > 0 && (
+                                      <p className='text-xs text-blue-600 font-semibold'>
+                                        Đã trả: {transaction.debtPaid.toLocaleString('vi-VN')} đ
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  // Balance Transaction Display
+                                  <div className='text-right space-y-1'>
+                                    {transaction.balanceBefore !== null && transaction.balanceBefore !== undefined && (
+                                      <p className='text-xs text-gray-600'>
+                                        Số dư trước:{' '}
+                                        <span className='font-semibold text-gray-700'>
+                                          {transaction.balanceBefore.toLocaleString('vi-VN')} đ
+                                        </span>
+                                      </p>
+                                    )}
+                                    {transaction.balanceAfter !== null && transaction.balanceAfter !== undefined && (
+                                      <p className='text-xs text-gray-600'>
+                                        Số dư sau:{' '}
+                                        <span className='font-semibold text-gray-700'>
+                                          {transaction.balanceAfter.toLocaleString('vi-VN')} đ
+                                        </span>
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </CardContent>

@@ -81,6 +81,7 @@ interface Order {
     time: string
   }>
   orderPromotions: OrderPromotion[]
+  deadlineVerificationAt?: string | null
 }
 
 const DEFAULT_PRODUCT_IMAGE = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
@@ -213,7 +214,8 @@ function OrderDetailStaff() {
         discountType: promo?.discountType || '',
         discountValue: promo?.discountValue || 0,
         discountAmount: promo?.discountAmount || 0
-      }))
+      })),
+      deadlineVerificationAt: apiOrder?.deadlineVerificationAt || null
     }
   }
 

@@ -9,6 +9,7 @@ import { getTransactionDetail } from '../../../apis/transaction.api'
 import { getOrderDetail } from '../../../apis/order.api'
 import { storeApi } from '../../../apis/store.api'
 import type { Transaction as APITransaction } from '../../../types/transactionType'
+import { getTransactionTypeLabel } from '../../../types/transactionType'
 import { formatDate } from '../../../utils/formatDate'
 
 interface TransactionDetailProps {
@@ -345,17 +346,29 @@ function TransactionDetail({ transaction, open, onClose }: TransactionDetailProp
 
               {/* Payment Method & Transaction Info */}
               <Card className='shadow-sm border border-gray-100'>
-                <CardContent className='p-4'>
-                    {/* Payment Method */}
-                    <div className='flex items-center gap-3 p-3 bg-gray-50 rounded-lg'>
-                      <div className='w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-lg'>
-                        {getPaymentMethodIcon(paymentMethod)}
+                <CardContent className='p-4 space-y-3'>
+                  {/* Transaction Type */}
+                  {apiTransaction?.type && (
+                    <div className='flex items-center gap-3 p-3 bg-purple-50 rounded-lg'>
+                      <div className='w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center text-lg'>
+                        <TrendingUp className='w-5 h-5 text-purple-600' />
                       </div>
                       <div className='flex-1'>
-                        <p className='text-xs text-gray-500 mb-1'>Phương thức thanh toán</p>
-                        <p className='font-semibold text-gray-900 text-sm'>{getPaymentMethodText(paymentMethod)}</p>
+                        <p className='text-xs text-gray-500 mb-1'>Loại giao dịch</p>
+                        <p className='font-semibold text-gray-900 text-sm'>{getTransactionTypeLabel(apiTransaction.type)}</p>
                       </div>
                     </div>
+                  )}
+                  {/* Payment Method */}
+                  <div className='flex items-center gap-3 p-3 bg-gray-50 rounded-lg'>
+                    <div className='w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-lg'>
+                      {getPaymentMethodIcon(paymentMethod)}
+                    </div>
+                    <div className='flex-1'>
+                      <p className='text-xs text-gray-500 mb-1'>Phương thức thanh toán</p>
+                      <p className='font-semibold text-gray-900 text-sm'>{getPaymentMethodText(paymentMethod)}</p>
+                    </div>
+                  </div>
 
                 </CardContent>
               </Card>

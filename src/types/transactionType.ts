@@ -12,6 +12,7 @@ export interface Transaction {
   orderId: string
   paymentMethod: string
   payosOrderCode: string
+  type: 'Sale' | 'Refund' | 'Payout' | 'Withdrawal' | 'Deposit'
   checkoutUrl: string
   description: string
   amount: number
@@ -67,4 +68,18 @@ export interface TransactionListResponse {
     totalItems: number
     totalPages: number
   }
+}
+
+/**
+ * Chuyển đổi Transaction type sang tiếng Việt
+ */
+export const getTransactionTypeLabel = (type: Transaction['type']): string => {
+  const typeMap: Record<Transaction['type'], string> = {
+    Sale: 'Bán hàng',
+    Refund: 'Hoàn tiền',
+    Payout: 'Thanh toán',
+    Withdrawal: 'Rút tiền',
+    Deposit: 'Nạp tiền'
+  }
+  return typeMap[type] || type
 }

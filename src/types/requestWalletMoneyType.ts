@@ -6,12 +6,12 @@ export interface RequestWalletMoneyQueryParams {
   pageNumber?: number
   userId?: string
   orderId?: string
-  type?: 'Withdrawal' | 'Refund' | string
+  type?: 'Withdrawal' | 'Refund' | 'Deposit' | string
   status?: 'Pending' | 'Completed' | 'Cancel' | string
 }
 
 /**
- * Request Wallet Money item - Yêu cầu rút tiền/hoàn tiền
+ * Request Wallet Money item - Yêu cầu rút tiền/nạp tiền/hoàn tiền
  */
 export interface RequestWalletMoney {
   id: string
@@ -20,7 +20,7 @@ export interface RequestWalletMoney {
   userId: string
   userEmail: string
   userPhoneNumber: string
-  type: string // 'Withdrawal' | 'Refund' | etc.
+  type: string // 'Withdrawal' | 'Deposit' | 'Refund' | etc.
   amount: number
   bankAccount: string
   bankName: string
@@ -62,7 +62,7 @@ export interface RequestWalletMoneyListData {
 }
 
 /**
- * Input để cập nhật yêu cầu rút tiền/hoàn tiền
+ * Input để cập nhật yêu cầu rút tiền/nạp tiền/hoàn tiền
  */
 export interface UpdateRequestWalletMoneyInput {
   note?: string

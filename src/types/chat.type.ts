@@ -43,6 +43,7 @@ export interface ChatRoomData {
   customername: string
   customerEmail: string
   customerPhoneNumber: string
+  storeName?: string // Store name from API response
   status: boolean
   createdAt: string
   updatedAt: string

@@ -181,6 +181,7 @@ export interface Order {
   isRefunded?: boolean
   isPayOut?: boolean
   isVerification?: boolean
+  deadlineVerificationAt: string
   shipPrice: number
   totalOrder: number
   totalCommission: number

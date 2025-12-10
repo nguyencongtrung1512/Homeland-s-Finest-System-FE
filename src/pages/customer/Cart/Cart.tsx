@@ -461,13 +461,13 @@ export default function Cart() {
         await reloadCartData()
       } catch (error) {
         console.error('Error updating quantity:', error)
-        
+
         // Lấy lỗi từ backend (axios interceptor trả về error.response.data)
         let errorMessage = 'Có lỗi xảy ra khi cập nhật số lượng'
-        
+
         if (error && typeof error === 'object') {
           const err = error as any
-          
+
           // Priority 1: Lấy message từ backend response (vì axios interceptor trả về error.response.data)
           if (err.message && typeof err.message === 'string') {
             errorMessage = err.message
@@ -483,7 +483,7 @@ export default function Cart() {
         } else if (typeof error === 'string') {
           errorMessage = error
         }
-        
+
         toast.error(errorMessage)
         await reloadCartData()
       } finally {
@@ -705,6 +705,24 @@ export default function Cart() {
         return selectedItems[item.id] && (!isInStock || isComboDisabled)
       })
     )
+  }
+
+  // Check if any selected items are from stores that exceed shipping limit
+  const hasMaxShippingLimitStores = () => {
+    if (!cartData) return false
+    return cartData.carts.some((store) => {
+      if (!store.isMax) return false
+      // Check if this store has any selected items
+      return store.items.some((item) => selectedItems[item.id])
+    })
+  }
+
+  // Get list of stores that exceed shipping limit and have selected items
+  const getMaxShippingLimitStores = () => {
+    if (!cartData) return []
+    return cartData.carts
+      .filter((store) => store.isMax && store.items.some((item) => selectedItems[item.id]))
+      .map((store) => store.storeName)
   }
 
   const getSelectedCount = () => {
@@ -953,6 +971,11 @@ export default function Cart() {
                           Miễn phí vận chuyển
                         </span>
                       )}
+                      {store.isMax && (
+                        <span className='bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium'>
+                          Quá số lượng vận chuyển
+                        </span>
+                      )}
                     </div>
                     <div className='flex items-center gap-2'>
                       <Button
@@ -983,6 +1006,21 @@ export default function Cart() {
                       </button>
                     </div>
                   </div>
+                  {/* Warning message for stores exceeding shipping limit */}
+                  {store.isMax && (
+                    <div className='mt-2 bg-red-50 border border-red-200 rounded-lg p-3'>
+                      <div className='flex items-start gap-2'>
+                        <div className='flex-1'>
+                          <p className='text-sm font-medium text-red-800'>
+                            Cửa hàng này đã vượt quá số lượng vận chuyển cho phép
+                          </p>
+                          <p className='text-xs text-red-600 mt-1'>
+                            Vui lòng giảm số lượng sản phẩm để có thể đặt hàng, vui lòng tách đơn.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {/* Items */}
                 <div className='divide-y divide-gray-100'>
@@ -1342,6 +1380,18 @@ export default function Cart() {
                   </div>
                 </div>
               )}
+              {/* Warning for stores exceeding shipping limit */}
+              {hasMaxShippingLimitStores() && (
+                <div className='mb-4 bg-red-50 border border-red-200 rounded-lg p-3'>
+                  <div className='flex items-start gap-2'>
+                    <div className='flex-1'>
+                      <p className='text-sm font-medium text-red-800'>
+                        Không thể đặt hàng, vui lòng tách đơn.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className='flex flex-col gap-4'>
                 <button
                   onClick={() => {
@@ -1353,6 +1403,11 @@ export default function Cart() {
                       toast.error('Vui lòng bỏ chọn các sản phẩm đã hết hàng')
                       return
                     }
+                    if (hasMaxShippingLimitStores()) {
+                      const storeNames = getMaxShippingLimitStores().join(', ')
+                      toast.error(`Không thể đặt hàng. Các cửa hàng sau vượt quá số lượng vận chuyển: ${storeNames}`)
+                      return
+                    }
                     navigate('/cart/checkout', {
                       state: {
                         selectedItems: selectedItems,
@@ -1361,9 +1416,13 @@ export default function Cart() {
                     })
                   }}
                   className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                  disabled={getSelectedCount() === 0 || hasOutOfStockSelectedItems()}
+                  disabled={getSelectedCount() === 0 || hasOutOfStockSelectedItems() || hasMaxShippingLimitStores()}
                 >
-                  {hasOutOfStockSelectedItems() ? 'Có sản phẩm hết hàng' : 'Mua hàng'}
+                  {hasOutOfStockSelectedItems()
+                    ? 'Có sản phẩm hết hàng'
+                    : hasMaxShippingLimitStores()
+                      ? 'Vượt quá số lượng vận chuyển'
+                      : 'Mua hàng'}
                 </button>
 
                 <button
