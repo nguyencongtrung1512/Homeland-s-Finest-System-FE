@@ -45,6 +45,7 @@ export interface Product {
   id: string // UUID - Primary Key
   storeId: string // UUID - Foreign Key to Store
   storeName: string // varchar(255)
+  provinceName: string // varchar(255)
   provinceId: number // Foreign Key to Province
   editedById: string // UUID - Foreign Key to User who edited
   summaryPrice: number // numeric(10,2)
@@ -58,7 +59,7 @@ export interface Product {
   videoPlayBackUrl?: string | null // Video playback URL (HLS/DASH)
   videoFallBackUrl?: string | null // Video fallback URL (highest priority)
   material: string // varchar(255) - Brand/Manufacturer
-  sale_count: number // integer
+  saleCount: number // integer
   rating: number // numeric(3,2) - Average rating
   reviewCount: number // integer
   isActive: boolean // boolean

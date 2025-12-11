@@ -7,7 +7,6 @@ import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import TransactionDetail from './transactionDetail'
 import { getAllTransactions } from '../../../apis/transaction.api'
-import { getStaffDashboard } from '../../../apis/walletDashboard.api'
 import { getOrderDetail } from '../../../apis/order.api'
 import { storeApi } from '../../../apis/store.api'
 import type { Transaction as APITransaction } from '../../../types/transactionType'
@@ -40,9 +39,6 @@ function TransactionManagement() {
     totalItems: 0,
     totalPages: 1
   })
-  const [totalTransactions, setTotalTransactions] = useState(0)
-  const [disbursed, setDisbursed] = useState(0)
-  const [refunded, setRefunded] = useState(0)
 
   // Map status từ API sang UI
   const mapStatusToUI = (apiStatus: string, orderStatus?: string): Transaction['status'] => {
@@ -153,32 +149,11 @@ function TransactionManagement() {
     }
   }
 
-  // Fetch dashboard stats
-  const fetchDashboardStats = async () => {
-    try {
-      const dashboardData = await getStaffDashboard()
-      if (dashboardData?.data) {
-        setTotalTransactions(dashboardData.data.TotalTransaction || 0)
-        setDisbursed(dashboardData.data.TotalSuccessTransaction || 0)
-        setRefunded(dashboardData.data.TotalCancelTransaction || 0)
-      }
-    } catch (err) {
-      console.error('Error fetching dashboard stats:', err)
-      // Giữ giá trị mặc định nếu API lỗi
-    }
-  }
-
   // Fetch data khi component mount và khi filter thay đổi
   useEffect(() => {
     fetchTransactions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, statusFilter, paymentMethodFilter, dateFilter])
-
-  // Fetch dashboard stats khi component mount
-  useEffect(() => {
-    fetchDashboardStats()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // Handle filter button click
   const handleFilter = () => {

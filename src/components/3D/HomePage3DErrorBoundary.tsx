@@ -1,5 +1,4 @@
-import { Component, ReactNode } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
+import { Component, type ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
@@ -22,17 +21,13 @@ class HomePage3DErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center h-screen bg-gray-100">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Không thể tải trang
-            </h2>
-            <p className="text-gray-600 mb-4">
-              Vui lòng thử lại sau hoặc liên hệ hỗ trợ
-            </p>
+        <div className='flex items-center justify-center h-screen bg-gray-100'>
+          <div className='text-center'>
+            <h2 className='text-2xl font-bold text-gray-800 mb-4'>Không thể tải trang</h2>
+            <p className='text-gray-600 mb-4'>Vui lòng thử lại sau hoặc liên hệ hỗ trợ</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className='px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'
             >
               Tải lại trang
             </button>
@@ -41,7 +36,7 @@ class HomePage3DErrorBoundary extends Component<Props, State> {
       )
     }
 
-    return this.props.children
+    return <>{this.props.children}</>
   }
 }
 

@@ -28,11 +28,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
-import type { Product, VariantGroup, VariantOption } from '../../../types/productType'
+import type { Product, VariantGroup, VariantOption, ProductCategory } from '../../../types/productType'
 import { productApi } from '../../../apis/product.api'
 import { staffApi } from '../../../apis/staff.api'
 import { getHashtagById, type HashtagItem } from '../../../apis/hashtag.api'
 import { toast } from '../../../utils/toast'
+import { useAuth } from '../../../contexts/auth.context'
 import ProductCertificate from './productCertificate'
 import ProductStoryComponent from './productStory'
 import ProductImageCarousel from '../../../components/ui/product-image-carousel'
@@ -53,9 +54,30 @@ const getProductTypeLabel = (typeProduct: string | null | undefined): string => 
   }
 }
 
+// Helper function to get category with highest level
+const getHighestLevelCategory = (
+  categories: ProductCategory[] | ProductCategory | null | undefined
+): ProductCategory | null => {
+  if (!categories) return null
+
+  // Handle case where categories is a single object (backward compatibility)
+  if (!Array.isArray(categories)) {
+    return categories
+  }
+
+  // Handle case where categories is an array
+  if (categories.length === 0) return null
+
+  // Find category with highest level
+  return categories.reduce((highest, current) => {
+    return (current.level || 0) > (highest.level || 0) ? current : highest
+  })
+}
+
 function DetailProductStaff() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -276,14 +298,45 @@ function DetailProductStaff() {
     }
   }
 
-  // Handle action button click
-  const handleActionClick = (type: 'Confirmed' | 'Rejected' | 'Approved' | 'Denied') => {
+  // Handle direct action (Confirmed, Rejected) - không cần note
+  const handleDirectAction = async (type: 'Confirmed' | 'Rejected') => {
+    if (!id) return
+
+    try {
+      setProcessingAction(true)
+      const response = await staffApi.updateProductStatus(id, type, '')
+
+      // Lấy thông báo từ backend response
+      const successMessage =
+        (response as { data?: { message?: string }; message?: string })?.data?.message ||
+        (response as { message?: string })?.message ||
+        'Cập nhật trạng thái thành công'
+
+      toast.success(successMessage)
+      await handleRefreshProduct()
+    } catch (error) {
+      console.error('Error updating product status:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (error as { response?: { data?: { errors?: string[] }; errors?: string[] } })?.response?.data?.errors?.join(
+          ', '
+        ) ||
+        (error as { message?: string })?.message ||
+        'Có lỗi xảy ra khi cập nhật trạng thái'
+      toast.error(errorMessage)
+    } finally {
+      setProcessingAction(false)
+    }
+  }
+
+  // Handle action button click (chỉ cho Approved, Denied - cần note)
+  const handleActionClick = (type: 'Approved' | 'Denied') => {
     setActionType(type)
     setActionNote('')
     setShowActionModal(true)
   }
 
-  // Handle confirm action
+  // Handle confirm action (cho Approved, Denied - có note)
   const handleConfirmAction = async () => {
     if (!id || !actionType) return
 
@@ -315,6 +368,13 @@ function DetailProductStaff() {
     } finally {
       setProcessingAction(false)
     }
+  }
+
+  // Check if current staff is assigned to this product
+  const isAssignedToCurrentStaff = () => {
+    if (!product || !user?.userId) return false
+    const productWithAssignment = product as Product & { assignedToId?: string | null }
+    return productWithAssignment.assignedToId === user.userId
   }
 
   // Check if product status is Pending, Processing, or Rejected - can be processed
@@ -512,31 +572,43 @@ function DetailProductStaff() {
           </CardHeader>
           <CardContent>
             <div className='space-y-4'>
-              {/* Show initial actions if status is Pending or Rejected */}
-              {canProcess() && (
+              {/* Check if staff is assigned to this product */}
+              {!isAssignedToCurrentStaff() && (
+                <div className='flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg'>
+                  <AlertCircle className='w-5 h-5 text-yellow-600' />
+                  <span className='text-yellow-800 font-medium'>
+                    Bạn không được gán cho nhiệm vụ này. Chỉ nhân viên được gán mới có thể xử lý sản phẩm này.
+                  </span>
+                </div>
+              )}
+
+              {/* Show initial actions if status is Pending or Rejected AND staff is assigned */}
+              {canProcess() && isAssignedToCurrentStaff() && (
                 <div className='flex flex-wrap gap-3'>
                   <Button
-                    onClick={() => handleActionClick('Confirmed')}
+                    onClick={() => handleDirectAction('Confirmed')}
                     className='bg-green-600 hover:bg-green-700 text-white'
                     size='lg'
+                    disabled={processingAction}
                   >
                     <CheckCircle className='w-5 h-5 mr-2' />
-                    Tiếp nhận xử lý
+                    {processingAction ? 'Đang xử lý...' : 'Tiếp nhận xử lý'}
                   </Button>
                   <Button
-                    onClick={() => handleActionClick('Rejected')}
+                    onClick={() => handleDirectAction('Rejected')}
                     variant='destructive'
                     size='lg'
                     className='bg-red-600 hover:bg-red-700'
+                    disabled={processingAction}
                   >
                     <XCircle className='w-5 h-5 mr-2' />
-                    Từ chối xử lý
+                    {processingAction ? 'Đang xử lý...' : 'Từ chối xử lý'}
                   </Button>
                 </div>
               )}
 
-              {/* Show final actions if status is Confirmed */}
-              {isConfirmed() && (
+              {/* Show final actions if status is Confirmed AND staff is assigned */}
+              {isConfirmed() && isAssignedToCurrentStaff() && (
                 <div className='flex flex-wrap gap-3'>
                   <Button
                     onClick={() => handleActionClick('Approved')}
@@ -759,24 +831,27 @@ function DetailProductStaff() {
                           <div className='flex items-center gap-2'>
                             <FileText size={16} className='text-green-600 flex-shrink-0' />
                             <div>
-                              <span className='text-sm text-gray-600 block'>Mã tỉnh</span>
-                              <span className='text-sm font-medium text-gray-900'>{product?.provinceId}</span>
+                              <span className='text-sm text-gray-600 block'>Tỉnh/Thành phố</span>
+                              <span className='text-sm font-medium text-gray-900'>{product?.provinceName}</span>
                             </div>
                           </div>
-                          {product?.productCategories && (
-                            <div className='flex items-center gap-2'>
-                              <Layers size={16} className='text-green-600 flex-shrink-0' />
-                              <div>
-                                <span className='text-sm text-gray-600 block'>Danh mục</span>
-                                <Badge
-                                  variant='outline'
-                                  className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100 text-xs'
-                                >
-                                  {product.productCategories.name}
-                                </Badge>
+                          {(() => {
+                            const highestCategory = getHighestLevelCategory(product?.productCategories)
+                            return highestCategory ? (
+                              <div className='flex items-center gap-2'>
+                                <Layers size={16} className='text-green-600 flex-shrink-0' />
+                                <div>
+                                  <span className='text-sm text-gray-600 block'>Danh mục</span>
+                                  <Badge
+                                    variant='outline'
+                                    className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100 text-xs'
+                                  >
+                                    {highestCategory.name}
+                                  </Badge>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            ) : null
+                          })()}
                         </div>
 
                         {/* Hashtags */}
@@ -936,7 +1011,7 @@ function DetailProductStaff() {
                   <CardContent>
                     <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                       <div className='text-center p-4 bg-green-50 rounded-lg'>
-                        <div className='text-2xl font-bold text-green-600'>{product?.saleCount || 0}</div>
+                        <div className='text-2xl font-bold text-green-600'>{product.saleCount || 0}</div>
                         <div className='text-sm text-gray-600'>Lượt bán</div>
                       </div>
                       <div className='text-center p-4 bg-yellow-50 rounded-lg'>

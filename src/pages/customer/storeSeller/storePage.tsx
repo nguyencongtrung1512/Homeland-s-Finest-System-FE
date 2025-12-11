@@ -149,46 +149,38 @@ const StorePage = () => {
     setPageNumber(1)
   }, [selectedCategory, hashtagIdsString, sortOption, searchQuery])
 
-  // Map StoreProductItemDTO to Product type for ProductCard
-  const mapStoreProductToProduct = (item: StoreProductItemDTO): Product => {
-    return {
-      id: item.id,
-      storeId: store?.id || '',
-      storeName: store?.storeName || '',
-      provinceId: store?.provinceId || 0,
-      editedById: '',
-      summaryPrice: item.price,
-      price: item.price,
-      name: item.name,
-      description: item.description || '',
-      productImages: item.imageUrl ? [item.imageUrl] : [],
-      productVideo: '',
-      material: '',
-      saleCount: item.saleCount,
-      rating: item.rating,
-      reviewCount: item.reviewCount,
-      isActive: !item.soldOut,
-      typeProduct: item.type,
-      status: 'Approved',
-      staffNote: '',
-      soldOut: item.soldOut,
-      variantGroups: [],
-      productCategories: {
-        id: '',
-        name: '',
-        description: '',
-        isActive: true,
-        createdAt: '',
-        updatedAt: ''
-      },
-      productCertificateDTOs: []
-    }
-  }
-
   // Memoize products để tránh re-render không cần thiết
   const products = useMemo(() => {
-    return storeProducts.map(mapStoreProductToProduct)
-  }, [storeProducts, store?.id, store?.storeName, store?.provinceId])
+    // Map StoreProductItemDTO to Product type for ProductCard
+    return storeProducts.map((item: StoreProductItemDTO): Product => {
+      return {
+        id: item.id,
+        storeId: store?.id || '',
+        storeName: store?.storeName || '',
+        provinceId: store?.provinceId || 0,
+        provinceName: store?.province || '',
+        editedById: '',
+        summaryPrice: item.price,
+        price: item.price,
+        name: item.name,
+        description: item.description || '',
+        productImages: item.imageUrl ? [item.imageUrl] : [],
+        productVideo: '',
+        material: '',
+        saleCount: item.saleCount,
+        rating: item.rating,
+        reviewCount: item.reviewCount,
+        isActive: !item.soldOut,
+        typeProduct: item.type,
+        status: 'Approved',
+        staffNote: '',
+        soldOut: item.soldOut,
+        variantGroups: [],
+        productCategories: [],
+        productCertificateDTOs: []
+      }
+    })
+  }, [storeProducts, store?.id, store?.storeName, store?.provinceId, store?.province])
 
   // Memoize storeData để tránh re-render không cần thiết
   const storeData = useMemo(() => {
@@ -210,14 +202,14 @@ const StorePage = () => {
       })),
       certificates:
         store?.vendorApplicationImageUrl &&
-        Array.isArray(store.vendorApplicationImageUrl) &&
-        store.vendorApplicationImageUrl.length > 0
+          Array.isArray(store.vendorApplicationImageUrl) &&
+          store.vendorApplicationImageUrl.length > 0
           ? store.vendorApplicationImageUrl.map((imageUrl, index) => ({
-              id: `cert-${index}`,
-              name: `Giấy phép kinh doanh ${index + 1}`,
-              image: imageUrl,
-              issueDate: store.submittedDate ? formatDate(store.submittedDate) : undefined
-            }))
+            id: `cert-${index}`,
+            name: `Giấy phép kinh doanh ${index + 1}`,
+            image: imageUrl,
+            issueDate: store.submittedDate ? formatDate(store.submittedDate) : undefined
+          }))
           : []
     }
   }, [store, products])

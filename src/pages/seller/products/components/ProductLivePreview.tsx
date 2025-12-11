@@ -354,12 +354,12 @@ function ProductLivePreview({ product }: ProductLivePreviewProps) {
               <div className='flex items-center gap-4 mb-3'>
                 <div className='flex items-center gap-1'>
                   <span className='text-green-500 text-lg font-medium border-b border-green-500'>
-                    {product.rating.toFixed(1)}
+                    {(product.rating ?? 0).toFixed(1)}
                   </span>
                   {[...Array(5)].map((_, i) => (
                     <svg
                       key={i}
-                      className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'text-green-500' : 'text-gray-300'}`}
+                      className={`w-4 h-4 ${i < Math.floor(product.rating ?? 0) ? 'text-green-500' : 'text-gray-300'}`}
                       fill='currentColor'
                       viewBox='0 0 20 20'
                     >

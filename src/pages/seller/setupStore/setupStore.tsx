@@ -1065,6 +1065,20 @@ function SetupStore() {
                 </DialogDescription>
               </DialogHeader>
               <div className='space-y-4 py-4'>
+                {/* Changes Summary */}
+                {pendingChanges && pendingChanges.fields.length > 0 && (
+                  <div className='rounded-xl border border-gray-200 bg-gray-50 p-4'>
+                    <h4 className='font-semibold text-gray-900 mb-2'>Các thay đổi sẽ được nhân viên duyệt:</h4>
+                    <ul className='space-y-1'>
+                      {pendingChanges.fields.map((field, index) => (
+                        <li key={index} className='text-sm text-gray-700 flex items-center gap-2'>
+                          <span className='w-2 h-2 rounded-full bg-amber-500'></span>
+                          {field.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {/* Warning Box */}
                 <div className='rounded-2xl border-2 border-amber-200 bg-amber-50 p-6 space-y-3'>
                   <div className='flex items-start gap-3'>

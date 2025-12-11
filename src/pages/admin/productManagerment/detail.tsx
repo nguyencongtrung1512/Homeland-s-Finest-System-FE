@@ -27,7 +27,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
-import type { Product, VariantGroup, VariantOption } from '../../../types/productType'
+import type { Product, VariantGroup, VariantOption, ProductCategory } from '../../../types/productType'
 import { productApi } from '../../../apis/product.api'
 import { adminApi, type Staff } from '../../../apis/admin.api'
 import { staffApi, type StaffInfo } from '../../../apis/staff.api'
@@ -57,6 +57,24 @@ const getProductTypeLabel = (typeProduct: string | null | undefined): string => 
   }
 }
 
+// Helper function to get category with highest level
+const getHighestLevelCategory = (categories: ProductCategory[] | ProductCategory | null | undefined): ProductCategory | null => {
+  if (!categories) return null
+
+  // Handle case where categories is a single object (backward compatibility)
+  if (!Array.isArray(categories)) {
+    return categories
+  }
+
+  // Handle case where categories is an array
+  if (categories.length === 0) return null
+
+  // Find category with highest level
+  return categories.reduce((highest, current) => {
+    return (current.level || 0) > (highest.level || 0) ? current : highest
+  })
+}
+
 function DetailProductAdmin() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
@@ -69,6 +87,7 @@ function DetailProductAdmin() {
   // States for assigned staff
   const [assignedStaffId, setAssignedStaffId] = useState<string | null>(null)
   const [assignedStaffName, setAssignedStaffName] = useState<string | null>(null)
+  const [assignedStaffEmail, setAssignedStaffEmail] = useState<string | null>(null)
   const [loadingStaff, setLoadingStaff] = useState(false)
 
   // States for store info
@@ -154,9 +173,14 @@ function DetailProductAdmin() {
       const staffInfo: StaffInfo | undefined =
         response.data?.data || (response.data as StaffInfo) || (response as unknown as StaffInfo)
 
-      if (staffInfo && staffInfo.firstName && staffInfo.lastName) {
-        const fullName = `${staffInfo.firstName} ${staffInfo.lastName}`.trim()
-        setAssignedStaffName(fullName)
+      if (staffInfo) {
+        if (staffInfo.firstName && staffInfo.lastName) {
+          const fullName = `${staffInfo.firstName} ${staffInfo.lastName}`.trim()
+          setAssignedStaffName(fullName)
+        }
+        if (staffInfo.email) {
+          setAssignedStaffEmail(staffInfo.email)
+        }
       }
     } catch (error) {
       console.error(`Error fetching staff info for ${staffId}:`, error)
@@ -632,38 +656,91 @@ function DetailProductAdmin() {
           </CardHeader>
           <CardContent>
             <div className='space-y-4'>
-              {assignedStaffId ? (
-                <div className='space-y-3'>
-                  <div className='flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200'>
-                    <User size={20} className='text-green-600' />
-                    <div className='flex-1'>
-                      <div className='text-sm font-medium text-gray-700 mb-1'>Nhân viên đã được gán:</div>
-                      <div className='text-lg font-semibold text-green-900'>
-                        {loadingStaff ? 'Đang tải...' : assignedStaffName || assignedStaffId.slice(0, 8) + '...'}
+              {/* Chỉ hiển thị phần gán nhân viên khi status là Pending hoặc Processing */}
+              {product?.status?.toLowerCase() === 'pending' ||
+                product?.status?.toLowerCase() === 'processing' ? (
+                assignedStaffId ? (
+                  <div className='space-y-3'>
+                    <div className='flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200'>
+                      <User size={20} className='text-green-600' />
+                      <div className='flex-1'>
+                        <div className='text-sm font-medium text-gray-700 mb-1'>Nhân viên đã được gán:</div>
+                        <div className='text-lg font-semibold text-green-900'>
+                          {loadingStaff ? 'Đang tải...' : assignedStaffName || assignedStaffId.slice(0, 8) + '...'}
+                        </div>
+                        {assignedStaffEmail && (
+                          <div className='text-sm text-gray-600 mt-1'>
+                            <span className='font-medium'>Email:</span> {assignedStaffEmail}
+                          </div>
+                        )}
                       </div>
                     </div>
+                    {product?.staffNote && (
+                      <div className='p-4 bg-yellow-50 rounded-lg border border-yellow-200'>
+                        <div className='text-sm font-medium text-yellow-800 mb-2'>Ghi chú từ nhân viên:</div>
+                        <div className='text-gray-900 whitespace-pre-wrap'>{product.staffNote}</div>
+                      </div>
+                    )}
+                    <Button onClick={handleOpenAssignModal} variant='outline' className='w-full'>
+                      <UserPlus size={16} className='mr-2' />
+                      Thay đổi nhân viên
+                    </Button>
                   </div>
+                ) : (
+                  <div className='space-y-3'>
+                    <div className='p-4 bg-gray-50 rounded-lg border border-gray-200 text-center'>
+                      <User size={24} className='text-gray-400 mx-auto mb-2' />
+                      <div className='text-sm text-gray-600 mb-3'>Chưa có nhân viên được gán</div>
+                    </div>
+                    <Button onClick={handleOpenAssignModal} className='w-full bg-green-600 hover:bg-green-700 text-white'>
+                      <UserPlus size={16} className='mr-2' />
+                      Gán nhân viên
+                    </Button>
+                  </div>
+                )
+              ) : (
+                <div className='space-y-3'>
+                  {assignedStaffId ? (
+                    <div className='flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200'>
+                      <User size={20} className='text-green-600' />
+                      <div className='flex-1'>
+                        <div className='text-sm font-medium text-gray-700 mb-1'>Nhân viên đã được gán:</div>
+                        <div className='text-lg font-semibold text-green-900'>
+                          {loadingStaff ? 'Đang tải...' : assignedStaffName || assignedStaffId.slice(0, 8) + '...'}
+                        </div>
+                        {assignedStaffEmail && (
+                          <div className='text-sm text-gray-600 mt-1'>
+                            <span className='font-medium'>Email:</span> {assignedStaffEmail}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className='p-4 bg-gray-50 rounded-lg border border-gray-200 text-center'>
+                      <User size={24} className='text-gray-400 mx-auto mb-2' />
+                      <div className='text-sm text-gray-600'>Chưa có nhân viên được gán</div>
+                    </div>
+                  )}
                   {product?.staffNote && (
                     <div className='p-4 bg-yellow-50 rounded-lg border border-yellow-200'>
                       <div className='text-sm font-medium text-yellow-800 mb-2'>Ghi chú từ nhân viên:</div>
                       <div className='text-gray-900 whitespace-pre-wrap'>{product.staffNote}</div>
                     </div>
                   )}
-                  <Button onClick={handleOpenAssignModal} variant='outline' className='w-full'>
-                    <UserPlus size={16} className='mr-2' />
-                    Thay đổi nhân viên
-                  </Button>
-                </div>
-              ) : (
-                <div className='space-y-3'>
-                  <div className='p-4 bg-gray-50 rounded-lg border border-gray-200 text-center'>
-                    <User size={24} className='text-gray-400 mx-auto mb-2' />
-                    <div className='text-sm text-gray-600 mb-3'>Chưa có nhân viên được gán</div>
+                  <div className='p-3 bg-blue-50 rounded-lg border border-blue-200 text-center'>
+                    <div className='text-sm text-blue-800 font-medium'>
+                      Sản phẩm đã ở trạng thái{' '}
+                      {product?.status === 'Approved'
+                        ? 'Đã duyệt'
+                        : product?.status === 'Denied'
+                          ? 'Từ chối xử lý'
+                          : product?.status === 'Confirmed'
+                            ? 'Đã xác nhận'
+                            : product?.status === 'Rejected'
+                              ? 'Từ chối'
+                              : product?.status}
+                    </div>
                   </div>
-                  <Button onClick={handleOpenAssignModal} className='w-full bg-green-600 hover:bg-green-700 text-white'>
-                    <UserPlus size={16} className='mr-2' />
-                    Gán nhân viên
-                  </Button>
                 </div>
               )}
             </div>
@@ -950,24 +1027,27 @@ function DetailProductAdmin() {
                           <div className='flex items-center gap-2'>
                             <FileText size={16} className='text-green-600 flex-shrink-0' />
                             <div>
-                              <span className='text-sm text-gray-600 block'>Mã tỉnh</span>
-                              <span className='text-sm font-medium text-gray-900'>{product?.provinceId}</span>
+                              <span className='text-sm text-gray-600 block'>Tỉnh/Thành phố</span>
+                              <span className='text-sm font-medium text-gray-900'>{product?.provinceName}</span>
                             </div>
                           </div>
-                          {product?.productCategories && (
-                            <div className='flex items-center gap-2'>
-                              <Layers size={16} className='text-green-600 flex-shrink-0' />
-                              <div>
-                                <span className='text-sm text-gray-600 block'>Danh mục</span>
-                                <Badge
-                                  variant='outline'
-                                  className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100 text-xs'
-                                >
-                                  {product.productCategories.name}
-                                </Badge>
+                          {(() => {
+                            const highestCategory = getHighestLevelCategory(product?.productCategories)
+                            return highestCategory ? (
+                              <div className='flex items-center gap-2'>
+                                <Layers size={16} className='text-green-600 flex-shrink-0' />
+                                <div>
+                                  <span className='text-sm text-gray-600 block'>Danh mục</span>
+                                  <Badge
+                                    variant='outline'
+                                    className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100 text-xs'
+                                  >
+                                    {highestCategory.name}
+                                  </Badge>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            ) : null
+                          })()}
                         </div>
 
                         {/* Hashtags */}
@@ -1241,33 +1321,48 @@ function DetailProductAdmin() {
                               )}
 
                               {/* Images */}
-                              {parentVariant.productImages && parentVariant.productImages.length > 0 && (
-                                <div className='mt-4 space-y-2'>
-                                  <label className='text-sm font-medium text-gray-700'>Hình ảnh ({parentVariant.productImages.length})</label>
-                                  <div className='grid grid-cols-3 md:grid-cols-4 gap-2'>
-                                    {parentVariant.productImages.map((image, idx) => (
-                                      <div
-                                        key={idx}
-                                        className='relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer group hover:ring-2 ring-green-500 transition-all'
-                                        onClick={() => handleImagePreview(image, parentVariant.productImages || [], idx)}
-                                      >
-                                        <img
-                                          src={image}
-                                          alt={`${parentVariant.name} ${idx + 1}`}
-                                          className='w-full h-full object-cover transition-transform duration-300 group-hover:scale-110'
-                                          onError={(e) => {
-                                            const target = e.target as HTMLImageElement
-                                            target.src = '/placeholder-image.png'
-                                          }}
-                                        />
-                                        <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300 flex items-center justify-center'>
-                                          <ZoomIn className='w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
-                                        </div>
-                                      </div>
-                                    ))}
+                              {parentVariant.productImages &&
+                                Array.isArray(parentVariant.productImages) &&
+                                parentVariant.productImages.length > 0 &&
+                                parentVariant.productImages.some((img) => img && img.trim() !== '') && (
+                                  <div className='mt-4 space-y-2'>
+                                    <label className='text-sm font-medium text-gray-700'>
+                                      Hình ảnh (
+                                      {parentVariant.productImages.filter((img) => img && img.trim() !== '').length})
+                                    </label>
+                                    <div className='grid grid-cols-3 md:grid-cols-4 gap-2'>
+                                      {parentVariant.productImages
+                                        .filter((img) => img && img.trim() !== '')
+                                        .map((image, idx) => (
+                                          <div
+                                            key={idx}
+                                            className='relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer group hover:ring-2 ring-green-500 transition-all bg-gray-100'
+                                            onClick={() => {
+                                              const validImages = (parentVariant.productImages || []).filter(
+                                                (img) => img && img.trim() !== ''
+                                              )
+                                              handleImagePreview(image, validImages, validImages.indexOf(image))
+                                            }}
+                                          >
+                                            <img
+                                              src={image}
+                                              alt={`${parentVariant.name} ${idx + 1}`}
+                                              className='block w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 bg-white'
+                                              loading='lazy'
+                                              onError={(e) => {
+                                                const target = e.target as HTMLImageElement
+                                                target.src = '/placeholder-image.png'
+                                                target.onerror = null // Prevent infinite loop
+                                              }}
+                                            />
+                                            <div className='absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-opacity duration-300 flex items-center justify-center pointer-events-none'>
+                                              <ZoomIn className='w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
+                                            </div>
+                                          </div>
+                                        ))}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
 
                               {/* SKU Details - Chỉ hiển thị nếu KHÔNG có variant con */}
                               {!hasChildren && (
@@ -1482,33 +1577,57 @@ function DetailProductAdmin() {
                                             )}
 
                                           {/* Child Images */}
-                                          {childVariant.productImages && childVariant.productImages.length > 0 && (
-                                            <div className='space-y-2 md:col-span-2 lg:col-span-3'>
-                                              <label className='text-sm font-medium text-gray-700'>Hình ảnh ({childVariant.productImages.length})</label>
-                                              <div className='grid grid-cols-4 md:grid-cols-6 gap-2'>
-                                                {childVariant.productImages.map((image, idx) => (
-                                                  <div
-                                                    key={idx}
-                                                    className='relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer group hover:ring-2 ring-green-500 transition-all'
-                                                    onClick={() => handleImagePreview(image, childVariant.productImages || [], idx)}
-                                                  >
-                                                    <img
-                                                      src={image}
-                                                      alt={`${childVariant.name} ${idx + 1}`}
-                                                      className='w-full h-full object-cover transition-transform duration-300 group-hover:scale-110'
-                                                      onError={(e) => {
-                                                        const target = e.target as HTMLImageElement
-                                                        target.src = '/placeholder-image.png'
-                                                      }}
-                                                    />
-                                                    <div className='absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300 flex items-center justify-center'>
-                                                      <ZoomIn className='w-3 h-3 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
-                                                    </div>
-                                                  </div>
-                                                ))}
+                                          {childVariant.productImages &&
+                                            Array.isArray(childVariant.productImages) &&
+                                            childVariant.productImages.length > 0 &&
+                                            childVariant.productImages.some((img) => img && img.trim() !== '') && (
+                                              <div className='space-y-2 md:col-span-2 lg:col-span-3'>
+                                                <label className='text-sm font-medium text-gray-700'>
+                                                  Hình ảnh (
+                                                  {
+                                                    childVariant.productImages.filter(
+                                                      (img) => img && img.trim() !== ''
+                                                    ).length
+                                                  }
+                                                  )
+                                                </label>
+                                                <div className='grid grid-cols-4 md:grid-cols-6 gap-2'>
+                                                  {childVariant.productImages
+                                                    .filter((img) => img && img.trim() !== '')
+                                                    .map((image, idx) => (
+                                                      <div
+                                                        key={idx}
+                                                        className='relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer group hover:ring-2 ring-green-500 transition-all bg-gray-100'
+                                                        onClick={() => {
+                                                          const validImages = (childVariant.productImages || []).filter(
+                                                            (img) => img && img.trim() !== ''
+                                                          )
+                                                          handleImagePreview(
+                                                            image,
+                                                            validImages,
+                                                            validImages.indexOf(image)
+                                                          )
+                                                        }}
+                                                      >
+                                                        <img
+                                                          src={image}
+                                                          alt={`${childVariant.name} ${idx + 1}`}
+                                                          className='block w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 bg-white'
+                                                          loading='lazy'
+                                                          onError={(e) => {
+                                                            const target = e.target as HTMLImageElement
+                                                            target.src = '/placeholder-image.png'
+                                                            target.onerror = null // Prevent infinite loop
+                                                          }}
+                                                        />
+                                                        <div className='absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-opacity duration-300 flex items-center justify-center pointer-events-none'>
+                                                          <ZoomIn className='w-3 h-3 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
+                                                        </div>
+                                                      </div>
+                                                    ))}
+                                                </div>
                                               </div>
-                                            </div>
-                                          )}
+                                            )}
                                         </div>
 
                                         {/* Child Stock Status */}
@@ -1557,8 +1676,8 @@ function DetailProductAdmin() {
                         <h3 className='text-lg font-semibold text-green-800 mb-2'>Tổng quan</h3>
                         <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
                           <div>
-                            <span className='text-green-700 font-medium'>Tổng số variant cha:</span>
-                            <span className='ml-2 text-green-900'>{parentVariants.length} loại</span>
+                            <span className='text-green-700 font-medium'>Tổng số nhóm</span>
+                            <span className='ml-2 text-green-900'>{parentVariants.length}</span>
                           </div>
                           <div>
                             <span className='text-green-700 font-medium'>Tổng tồn kho:</span>

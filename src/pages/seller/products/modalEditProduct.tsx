@@ -8,7 +8,7 @@ import { Upload, Image as ImageIcon, X, Loader2, Video } from 'lucide-react'
 import { productApi } from '../../../apis/product.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { toast } from '../../../utils/toast'
-import type { Product } from '../../../types/productType'
+import type { Product, ProductCategory } from '../../../types/productType'
 
 interface ModalEditProductProps {
   open: boolean
@@ -57,6 +57,26 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
       .filter((word) => word.length > 0).length
   }
 
+  // Helper function to get category with highest level
+  const getHighestLevelCategory = (
+    categories: ProductCategory[] | ProductCategory | null | undefined
+  ): ProductCategory | null => {
+    if (!categories) return null
+
+    // Handle case where categories is a single object (backward compatibility)
+    if (!Array.isArray(categories)) {
+      return categories
+    }
+
+    // Handle case where categories is an array
+    if (categories.length === 0) return null
+
+    // Find category with highest level
+    return categories.reduce((highest, current) => {
+      return (current.level || 0) > (highest.level || 0) ? current : highest
+    })
+  }
+
   // Fetch categories when dialog opens
   useEffect(() => {
     if (open) {
@@ -83,11 +103,12 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
   // Load data khi mở dialog
   useEffect(() => {
     if (open && product) {
+      const highestCategory = getHighestLevelCategory(product.productCategories)
       setProductData({
         name: product.name || '',
         description: product.description || '',
         material: product.material || '',
-        categoryId: product.productCategories?.id || '',
+        categoryId: highestCategory?.id || '',
         isActive: product.isActive ?? true
       })
       setExistingImages(product.productImages || [])

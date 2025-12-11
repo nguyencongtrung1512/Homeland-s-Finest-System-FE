@@ -14,7 +14,7 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
   const defaultImage = 'https://toigingiuvedep.vn/wp-content/uploads/2023/03/anh-kha-banh-trai-tim-om-bo-hoa.jpg'
 
   // Lấy số lượt bán từ sale_count
-  const saleCount = product.sale_count || 0
+  const saleCount = product.saleCount || 0
   const isHotProduct = saleCount >= 100 // Sản phẩm bán chạy nếu >= 100 lượt bán
 
   // Format số lượt bán

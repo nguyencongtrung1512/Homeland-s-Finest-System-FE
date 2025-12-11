@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Search, Eye, CalendarIcon, RefreshCw } from 'lucide-react'
+import { Search, Eye, CalendarIcon, RefreshCw, Package } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -102,9 +102,16 @@ function ManagerProduct() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, productStatusFilter, isActiveFilter])
 
-  // Apply client-side filters (date)
+  // Apply client-side filters (date, exclude Draft)
+  // Always filter out Draft status products - they should never appear in UI
   const filteredProducts = useMemo(() => {
     let filtered = [...allProducts]
+
+    // Filter out Draft status products - always exclude them from UI
+    filtered = filtered.filter((p) => {
+      const status = p.status?.toLowerCase() || ''
+      return status !== 'draft'
+    })
 
     // Filter by date (client-side)
     if (dateFilter) {
@@ -174,12 +181,14 @@ function ManagerProduct() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
-    // Chỉ fetch từ server nếu không có client-side filters (date)
-    // Nếu có client-side filters, chỉ cần set page (pagination sẽ được tính từ filteredProducts)
-    const hasClientSideFilters = dateFilter !== undefined
-    if (!hasClientSideFilters) {
+    // Nếu có client-side filter (date), không cần fetch lại từ server
+    // Pagination sẽ được tính từ filteredProducts
+    // Nếu không có client-side filter, fetch từ server với page mới
+    if (!dateFilter) {
       fetchProducts(page)
     }
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleClearFilter = async () => {
@@ -231,20 +240,55 @@ function ManagerProduct() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText])
 
-  // Calculate pagination for filtered products (when using client-side filters)
-  const hasClientSideFilters = dateFilter !== undefined
-  const effectiveTotalPages = hasClientSideFilters ? Math.ceil(filteredProducts.length / pageSize) : totalPages
-  const effectiveTotalItems = hasClientSideFilters ? filteredProducts.length : totalItems
+  // Calculate pagination
+  // Strategy:
+  // - If no date filter: Use server-side pagination (totalPages, totalItems from API)
+  //   Note: API might include Draft in totalItems, but we filter Draft client-side
+  // - If has date filter: Use client-side pagination (calculate from filteredProducts)
+  const effectiveTotalPages = useMemo(() => {
+    if (dateFilter) {
+      // Client-side pagination: calculate from filtered products
+      return Math.ceil(filteredProducts.length / pageSize)
+    } else {
+      // Server-side pagination: use totalPages from API
+      // If totalPages is available and > 0, use it
+      // Otherwise, calculate from current filtered products
+      if (totalPages > 0) {
+        return totalPages
+      }
+      // Fallback: calculate from filtered products
+      return Math.ceil(filteredProducts.length / pageSize)
+    }
+  }, [filteredProducts.length, pageSize, dateFilter, totalPages])
 
-  // Use filtered products directly if no client-side filters, otherwise paginate filtered results
+  const effectiveTotalItems = useMemo(() => {
+    if (dateFilter) {
+      // Client-side: use filtered products count
+      return filteredProducts.length
+    } else {
+      // Server-side: use totalItems from API
+      // Note: This might include Draft products, but it's the best estimate we have
+      // The actual displayed count will be less due to Draft filtering
+      if (totalItems > 0) {
+        return totalItems
+      }
+      // Fallback: use filtered products count
+      return filteredProducts.length
+    }
+  }, [filteredProducts.length, dateFilter, totalItems])
+
+  // Paginate products
   const paginatedProducts = useMemo(() => {
-    if (hasClientSideFilters) {
+    if (dateFilter) {
+      // Client-side pagination: slice from filteredProducts
       const startIndex = (currentPage - 1) * pageSize
       return filteredProducts.slice(startIndex, startIndex + pageSize)
+    } else {
+      // Server-side pagination: use filteredProducts directly
+      // filteredProducts already contains only the current page's data (after Draft filter)
+      return filteredProducts
     }
-    // Server-side pagination: use allProducts directly (already paginated from server)
-    return allProducts
-  }, [filteredProducts, allProducts, currentPage, pageSize, hasClientSideFilters])
+  }, [filteredProducts, currentPage, pageSize, dateFilter])
 
   return (
     <div className='space-y-6 p-6'>
@@ -367,7 +411,7 @@ function ManagerProduct() {
       {/* Table */}
       <Card>
         <CardContent className='pt-6'>
-          {loading ? (
+          {loading && allProducts.length === 0 ? (
             <Loading size='lg' text='Đang tải danh sách sản phẩm...' />
           ) : (
             <>
@@ -385,16 +429,24 @@ function ManagerProduct() {
                   <TableBody>
                     {paginatedProducts.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className='text-center py-8 text-gray-500'>
-                          Không có dữ liệu
+                        <TableCell colSpan={5} className='text-center py-12 text-gray-500'>
+                          <div className='flex flex-col items-center gap-3'>
+                            <Package className='w-12 h-12 text-gray-400' />
+                            <p className='text-base font-medium'>Không có dữ liệu</p>
+                            <p className='text-sm text-gray-400'>
+                              {dateFilter || searchText || productStatusFilter !== 'all' || isActiveFilter !== 'all'
+                                ? 'Thử điều chỉnh bộ lọc của bạn'
+                                : 'Chưa có sản phẩm nào được phân công'}
+                            </p>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ) : (
                       paginatedProducts.map((record) => (
-                        <TableRow key={record.id}>
+                        <TableRow key={record.id} className='hover:bg-gray-50 transition-colors'>
                           <TableCell>
                             <div className='flex items-center gap-3'>
-                              <div className='w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative'>
+                              <div className='w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative flex-shrink-0'>
                                 {record.productImages && record.productImages.length > 0 ? (
                                   <img
                                     src={record.productImages[0]}
@@ -409,14 +461,16 @@ function ManagerProduct() {
                                   <img src={DEFAULT_IMAGE} alt={record.name} className='w-full h-full object-cover' />
                                 )}
                               </div>
-                              <div>
-                                <div className='font-medium text-gray-900'>{record.name}</div>
+                              <div className='min-w-0 flex-1'>
+                                <div className='font-medium text-gray-900 truncate' title={record.name}>
+                                  {record.name}
+                                </div>
                                 {record.description && (
-                                  <div className='text-sm' title={record.description}>
-                                    Mô tả {truncateText(record.description, 60)}
+                                  <div className='text-sm text-gray-600 truncate' title={record.description}>
+                                    {truncateText(record.description, 60)}
                                   </div>
                                 )}
-                                <div className='text-sm' title={record.material}>
+                                <div className='text-sm text-gray-500 truncate' title={record.material}>
                                   Xuất xứ: {record.material}
                                 </div>
                               </div>
@@ -424,7 +478,7 @@ function ManagerProduct() {
                           </TableCell>
 
                           <TableCell>
-                            <span className='text-gray-700'>
+                            <span className='text-gray-700 whitespace-nowrap'>
                               {(() => {
                                 const productWithDate = record as Product & { createdAt?: string }
                                 return productWithDate.createdAt ? formatDate(productWithDate.createdAt) : 'N/A'
@@ -463,20 +517,26 @@ function ManagerProduct() {
               </div>
 
               {/* Pagination */}
-              <div className='flex items-center justify-between mt-6'>
-                <div className='text-sm text-gray-600'>
-                  Hiển thị {(currentPage - 1) * pageSize + 1} đến{' '}
-                  {Math.min(currentPage * pageSize, effectiveTotalItems)} của {effectiveTotalItems} kết quả
+              {effectiveTotalPages > 0 && (
+                <div className='flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200'>
+                  <div className='text-sm text-gray-600'>
+                    Hiển thị{' '}
+                    <span className='font-medium'>
+                      {Math.min((currentPage - 1) * pageSize + 1, effectiveTotalItems)}
+                    </span>{' '}
+                    đến <span className='font-medium'>{Math.min(currentPage * pageSize, effectiveTotalItems)}</span>{' '}
+                    trong <span className='font-medium'>{effectiveTotalItems}</span> kết quả
+                  </div>
+                  {effectiveTotalPages > 1 && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={effectiveTotalPages}
+                      onPageChange={handlePageChange}
+                      maxVisiblePages={5}
+                    />
+                  )}
                 </div>
-                {effectiveTotalPages > 1 && (
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={effectiveTotalPages}
-                    onPageChange={handlePageChange}
-                    maxVisiblePages={5}
-                  />
-                )}
-              </div>
+              )}
             </>
           )}
         </CardContent>

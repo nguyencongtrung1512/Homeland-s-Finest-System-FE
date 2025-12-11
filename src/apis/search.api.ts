@@ -58,6 +58,7 @@ function mapSearchResultToProduct(result: SearchResult): Product {
     storeId: '', // Not available in search result
     storeName: '', // Not available in search result
     provinceId: 0, // Not available in search result
+    provinceName: '', // Not available in search result
     editedById: '', // Not available in search result
     summaryPrice: result.price || 0,
     price: result.price || 0,
@@ -74,14 +75,20 @@ function mapSearchResultToProduct(result: SearchResult): Product {
     status: result.store_status || '', // Not available in search result
     staffNote: '', // Not available in search result
     variantGroups: [], // Not available in search result
-    productCategories: {
-      id: '',
-      name: result.category_names?.[0] || '',
-      description: '',
-      isActive: true,
-      createdAt: '',
-      updatedAt: ''
-    },
+    productCategories: result.category_names?.[0]
+      ? [
+        {
+          id: '',
+          name: result.category_names[0],
+          description: '',
+          level: 0,
+          parentId: null,
+          isActive: true,
+          createdAt: '',
+          updatedAt: ''
+        }
+      ]
+      : [],
     productCertificateDTOs: [] // Not available in search result
   }
 }

@@ -74,7 +74,7 @@ function RequestWalletMoneyManagement() {
 
   // Thống kê (đang dùng trong phần code đã comment)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [stats, setStats] = useState({
+  const [_stats, _setStats] = useState({
     total: 0,
     pending: 0,
     completed: 0,
@@ -142,7 +142,7 @@ function RequestWalletMoneyManagement() {
       setAllRequests(requests)
 
       // Tính toán thống kê từ tất cả requests
-      setStats({
+      _setStats({
         total: requests.length,
         pending: requests.filter((r) => canProcessRequest(r.status)).length,
         completed: requests.filter((r) => r.status === 'Completed' || r.status === 'completed').length,
@@ -536,9 +536,9 @@ function RequestWalletMoneyManagement() {
 
   // Check if transaction is debt-related (có thể dùng sau)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const isDebtTransaction = (type: string): boolean => {
-    return ['OrderCodDebt', 'DebtPayment'].includes(type)
-  }
+  // const _isDebtTransaction = (type: string): boolean => {
+  //   return ['OrderCodDebt', 'DebtPayment'].includes(type)
+  // }
 
   // Get transaction type icon color based on guide specifications
   const getTransactionTypeColor = (type: string) => {
@@ -741,7 +741,7 @@ function RequestWalletMoneyManagement() {
         className='flex flex-col md:flex-row md:items-center md:justify-between gap-3'
       >
         <div>
-          <h1 className='text-xl md:text-2xl font-bold text-gray-900'>Quản lý yêu cầu rút tiền & hoàn tiền</h1>
+          <h1 className='text-xl md:text-2xl font-bold text-gray-900'>Quản lý tiền vào tiền ra</h1>
           <p className='text-gray-600 mt-1 text-sm md:text-base'>Theo dõi và xử lý các yêu cầu rút tiền, hoàn tiền</p>
         </div>
 
@@ -1093,7 +1093,7 @@ function RequestWalletMoneyManagement() {
           <CardContent className='p-0'>
             {/* Table Header */}
             <div className='px-4 md:px-6 py-4 border-b border-gray-200'>
-              <h2 className='text-lg md:text-xl font-bold text-gray-900'>Danh sách yêu cầu rút tiền & hoàn tiền</h2>
+              <h2 className='text-lg md:text-xl font-bold text-gray-900'>Danh sách tiền vào tiền ra</h2>
               <p className='text-gray-600 text-sm mt-1'>Quản lý và xử lý các yêu cầu rút tiền, hoàn tiền từ người dùng</p>
             </div>
 

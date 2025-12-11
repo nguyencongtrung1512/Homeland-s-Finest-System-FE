@@ -35,7 +35,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../components/ui/dialog'
-import type { Product, VariantGroup, VariantOption } from '../../../types/productType'
+import type { Product, VariantGroup, VariantOption, ProductCategory } from '../../../types/productType'
 import type { ProductCertificateType } from '../../../types/productCertificateType'
 import type { ProductStory } from '../../../types/productStoryType'
 import { productApi } from '../../../apis/product.api'
@@ -64,6 +64,24 @@ const getProductTypeLabel = (typeProduct: string | null | undefined): string => 
     default:
       return typeProduct
   }
+}
+
+// Helper function to get category with highest level
+const getHighestLevelCategory = (categories: ProductCategory[] | ProductCategory | null | undefined): ProductCategory | null => {
+  if (!categories) return null
+
+  // Handle case where categories is a single object (backward compatibility)
+  if (!Array.isArray(categories)) {
+    return categories
+  }
+
+  // Handle case where categories is an array
+  if (categories.length === 0) return null
+
+  // Find category with highest level
+  return categories.reduce((highest, current) => {
+    return (current.level || 0) > (highest.level || 0) ? current : highest
+  })
 }
 
 function DetailProductSeller() {
@@ -497,7 +515,7 @@ function DetailProductSeller() {
       productName: !!(product.name && product.name.trim() !== ''),
       productDescription: !!(product.description && product.description.trim() !== ''),
       productImages: !!(product.productImages && product.productImages.length > 0),
-      productCategory: !!(product.productCategories && product.productCategories.id),
+      productCategory: !!getHighestLevelCategory(product.productCategories),
       productMaterial: !!(product.material && product.material.trim() !== ''),
       productVariant: hasVariant,
       certificates: certificates.length > 0,
@@ -524,8 +542,8 @@ function DetailProductSeller() {
           !checklist.productDescription && 'Mô tả sản phẩm',
           !checklist.productImages && 'Hình ảnh sản phẩm (ít nhất 1 ảnh)',
           !checklist.productCategory && 'Danh mục sản phẩm',
-          !checklist.productMaterial && 'Xuất xứ (Material)',
-          !checklist.productVariant && 'Ít nhất 1 product variant'
+          !checklist.productMaterial && 'Nguyên liệu',
+          !checklist.productVariant && 'Ít nhất 1 nhóm sản phẩm'
         ].filter(Boolean) as string[]
       },
       certificates: {
@@ -676,8 +694,9 @@ function DetailProductSeller() {
         formData.append('Material', productData.material)
       }
 
-      if (productData.productCategories?.id) {
-        formData.append('CategoryId', productData.productCategories.id)
+      const highestCategory = getHighestLevelCategory(productData.productCategories)
+      if (highestCategory?.id) {
+        formData.append('CategoryId', highestCategory.id)
       }
 
       // Existing image URLs
@@ -741,8 +760,9 @@ function DetailProductSeller() {
         formData.append('Material', productData.material)
       }
 
-      if (productData.productCategories?.id) {
-        formData.append('CategoryId', productData.productCategories.id)
+      const highestCategory = getHighestLevelCategory(productData.productCategories)
+      if (highestCategory?.id) {
+        formData.append('CategoryId', highestCategory.id)
       }
 
       // Existing image URLs
@@ -1305,24 +1325,27 @@ function DetailProductSeller() {
                           <div className='flex items-center gap-2'>
                             <FileText size={16} className='text-green-600 flex-shrink-0' />
                             <div>
-                              <span className='text-sm text-gray-600 block'>Mã tỉnh</span>
-                              <span className='text-sm font-medium text-gray-900'>{product?.provinceId}</span>
+                              <span className='text-sm text-gray-600 block'>Tỉnh/Thành phố</span>
+                              <span className='text-sm font-medium text-gray-900'>{product?.provinceName}</span>
                             </div>
                           </div>
-                          {product?.productCategories && (
-                            <div className='flex items-center gap-2'>
-                              <Layers size={16} className='text-green-600 flex-shrink-0' />
-                              <div>
-                                <span className='text-sm text-gray-600 block'>Danh mục</span>
-                                <Badge
-                                  variant='outline'
-                                  className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100 text-xs'
-                                >
-                                  {product.productCategories.name}
-                                </Badge>
+                          {(() => {
+                            const highestCategory = getHighestLevelCategory(product?.productCategories)
+                            return highestCategory ? (
+                              <div className='flex items-center gap-2'>
+                                <Layers size={16} className='text-green-600 flex-shrink-0' />
+                                <div>
+                                  <span className='text-sm text-gray-600 block'>Danh mục</span>
+                                  <Badge
+                                    variant='outline'
+                                    className='bg-green-50 text-green-700 border-green-200 hover:bg-green-100 text-xs'
+                                  >
+                                    {highestCategory.name}
+                                  </Badge>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            ) : null
+                          })()}
                         </div>
 
                         {/* Hashtags */}

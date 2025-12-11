@@ -25,7 +25,12 @@ import {
 import { toast } from '../../../utils/toast'
 import ProductComboBox from '../../../components/ui/product-combo-box'
 import ComboBox from '../../../components/ui/combo-box'
-import type { Product } from '../../../types/productType'
+// Type for ProductComboBox (simplified Product interface)
+interface ProductForCombo {
+  id: string
+  name: string
+  description: string
+}
 import Loading from '../../../components/Loading/loading'
 import { createHashtag, getHashtagsByStoreId, type HashtagItem } from '../../../apis/hashtag.api'
 
@@ -38,7 +43,7 @@ function CreateProduct() {
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<ProductCategoryItem[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<ProductForCombo[]>([])
   const [productsLoading, setProductsLoading] = useState(false)
   const [selectedParentProduct, setSelectedParentProduct] = useState<{ id: string; name: string } | null>(null)
 
@@ -486,17 +491,12 @@ function CreateProduct() {
       setProductsLoading(true)
       const response = await productApi.getForCombo()
       if (response && response.status === 200 && response.data) {
-        // Map ProductForCombo to Product format for compatibility
-        const productsList: Product[] = response.data.map(
-          (item) =>
-            ({
-              id: item.id,
-              name: item.name,
-              description: item.categoryName || '',
-              productImages: item.thumbnailUrl ? [item.thumbnailUrl] : [],
-              productCategories: { id: '', name: item.categoryName || '', description: '', isActive: true }
-            }) as Product
-        )
+        // Map ProductForCombo to ProductForCombo format for ProductComboBox
+        const productsList: ProductForCombo[] = response.data.map((item) => ({
+          id: item.id,
+          name: item.name,
+          description: item.categoryName || ''
+        }))
         setProducts(productsList)
       } else {
         setProducts([])
@@ -1043,10 +1043,10 @@ function CreateProduct() {
                 {/* Upload Area */}
                 <div
                   className={`mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 bg-gradient-to-br ${mediaData.productImages.length >= MAX_PRODUCT_IMAGES
-                      ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
-                      : isDraggingImages
-                        ? 'border-green-500 bg-green-100 shadow-lg scale-[1.02]'
-                        : 'border-gray-300 hover:border-green-400 hover:bg-green-50 cursor-pointer from-white to-gray-50'
+                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                    : isDraggingImages
+                      ? 'border-green-500 bg-green-100 shadow-lg scale-[1.02]'
+                      : 'border-gray-300 hover:border-green-400 hover:bg-green-50 cursor-pointer from-white to-gray-50'
                     }`}
                   onClick={() => {
                     if (mediaData.productImages.length < MAX_PRODUCT_IMAGES) {
@@ -1131,8 +1131,8 @@ function CreateProduct() {
                     size='sm'
                     disabled={mediaData.productImages.length >= MAX_PRODUCT_IMAGES}
                     className={`mt-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 hover:border-green-300 hover:from-green-100 hover:to-emerald-100 text-green-700 hover:text-green-800 font-medium transition-all duration-200 shadow-sm hover:shadow-md ${mediaData.productImages.length >= MAX_PRODUCT_IMAGES
-                        ? 'opacity-50 cursor-not-allowed'
-                        : ''
+                      ? 'opacity-50 cursor-not-allowed'
+                      : ''
                       }`}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -1232,8 +1232,8 @@ function CreateProduct() {
                 <Label className='text-sm font-medium'>Video sản phẩm</Label>
                 <div
                   className={`mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer bg-gradient-to-br ${isDraggingVideo
-                      ? 'border-blue-500 bg-blue-100 shadow-lg scale-[1.02]'
-                      : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50 from-white to-gray-50'
+                    ? 'border-blue-500 bg-blue-100 shadow-lg scale-[1.02]'
+                    : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50 from-white to-gray-50'
                     }`}
                   onClick={() => document.getElementById('product-video')?.click()}
                   onDragEnter={(e) => {
@@ -1443,11 +1443,7 @@ function CreateProduct() {
                 ) : (
                   <div className='mt-1'>
                     <ProductComboBox
-                      products={products.map((p) => ({
-                        id: p.id,
-                        name: p.name,
-                        description: p.description || ''
-                      }))}
+                      products={products}
                       placeholder='Tìm kiếm sản phẩm liên quan...'
                       onSelect={(product) => {
                         if (product) {

@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const N8N_WEBHOOK_BLOG_URL = 'https://trung8b.app.n8n.cloud/webhook/thb'
-const N8N_WEBHOOK_VALIDATE_CERTIFICATE_URL = 'https://trung8b.app.n8n.cloud/webhook/validate-certificate'
+const N8N_WEBHOOK_VALIDATE_CERTIFICATE_URL = '  '
 export interface N8NSuggestionRequest {
   topic: string
 }

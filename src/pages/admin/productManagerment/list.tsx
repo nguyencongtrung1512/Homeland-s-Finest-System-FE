@@ -509,7 +509,6 @@ function ManagerProductAdmin() {
                             <div className='text-sm font-medium text-gray-900 truncate max-w-[200px]'>
                               {product.name}
                             </div>
-                            <div className='text-xs text-gray-500'>#{product.id.slice(0, 8)}...</div>
                           </div>
                         </div>
                       </td>
@@ -538,15 +537,19 @@ function ManagerProductAdmin() {
                         >
                           <Eye className='w-4 h-4' />
                         </Button>
-                        <Button
-                          variant='outline'
-                          title='Gán nhân viên'
-                          size='sm'
-                          onClick={() => handleOpenAssignModal(product)}
-                          className='text-green-600 hover:text-green-900'
-                        >
-                          <UserPlus className='w-4 h-4' />
-                        </Button>
+                        {/* Chỉ hiển thị button gán nhân viên khi status là Pending hoặc Processing */}
+                        {(product.status?.toLowerCase() === 'pending' ||
+                          product.status?.toLowerCase() === 'processing') && (
+                            <Button
+                              variant='outline'
+                              title='Gán nhân viên'
+                              size='sm'
+                              onClick={() => handleOpenAssignModal(product)}
+                              className='text-green-600 hover:text-green-900'
+                            >
+                              <UserPlus className='w-4 h-4' />
+                            </Button>
+                          )}
                       </td>
                     </tr>
                   )

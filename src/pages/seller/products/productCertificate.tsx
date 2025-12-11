@@ -152,20 +152,27 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
     }
 
     try {
-      // Bước 1: Kiểm tra giấy chứng nhận hợp lệ hay không
+      // Bước 1: Kiểm tra giấy chứng nhận hợp lệ hay không (nếu n8n hoạt động)
       setValidating(true)
       setValidationError(null)
 
-      const validationResult = await n8nApi.validateCertificate(selectedFile)
+      try {
+        const validationResult = await n8nApi.validateCertificate(selectedFile)
 
-      if (!validationResult.isValid) {
-        // Nếu không hợp lệ, hiển thị lý do và không upload (không hiển thị toast)
-        setValidationError(validationResult.reason)
-        setValidating(false)
-        return
+        if (!validationResult.isValid) {
+          // Nếu không hợp lệ, hiển thị lý do và không upload (không hiển thị toast)
+          setValidationError(validationResult.reason)
+          setValidating(false)
+          return
+        }
+        // Nếu hợp lệ, tiếp tục upload
+      } catch (validationError: unknown) {
+        // Nếu n8n API bị lỗi (network error, server error, invalid response, etc.)
+        // Bỏ qua validation và vẫn cho phép upload
+        console.warn('n8n validation API error, skipping validation:', validationError)
       }
 
-      // Nếu hợp lệ, tiếp tục upload
+      // Nếu validation bị skip hoặc hợp lệ, tiếp tục upload
       setValidating(false)
       setLoading(true)
 
