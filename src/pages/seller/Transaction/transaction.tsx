@@ -55,6 +55,7 @@ function Transaction() {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFilter, setDateFilter] = useState('')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<'COD' | 'WalletOrBanking' | 'Orther' | null>(null)
   const [userInfo, setUserInfo] = useState<UserType | null>(null)
   const [loadingUserInfo, setLoadingUserInfo] = useState(false)
   const [showUpdateBankModal, setShowUpdateBankModal] = useState(false)
@@ -120,7 +121,8 @@ function Transaction() {
       setLoadingTransactions(true)
       const response = await getWalletTransactions({
         pageSize: 10,
-        pageNumber: page
+        pageNumber: page,
+        paymentMethod: paymentMethodFilter
       })
 
       // Handle different response structures
@@ -357,7 +359,8 @@ function Transaction() {
 
   useEffect(() => {
     setTransactionPage(1)
-  }, [searchTerm, dateFilter])
+    fetchWalletTransactions(1)
+  }, [searchTerm, dateFilter, paymentMethodFilter])
 
   useEffect(() => {
     if (transactionPage > totalTransactionPages && totalTransactionPages > 0) {
@@ -1174,6 +1177,46 @@ function Transaction() {
               <h2 className='text-lg sm:text-xl font-semibold text-gray-900'>Lịch sử ví</h2>
             </div>
 
+            {/* Tab Filter */}
+            <div className='flex flex-wrap gap-2 mb-4 sm:mb-6 border-b border-gray-200'>
+              <button
+                onClick={() => setPaymentMethodFilter(null)}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${paymentMethodFilter === null
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                  }`}
+              >
+                Tất cả
+              </button>
+              <button
+                onClick={() => setPaymentMethodFilter('COD')}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${paymentMethodFilter === 'COD'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                  }`}
+              >
+                COD
+              </button>
+              <button
+                onClick={() => setPaymentMethodFilter('WalletOrBanking')}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${paymentMethodFilter === 'WalletOrBanking'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                  }`}
+              >
+                Ví/Banking
+              </button>
+              <button
+                onClick={() => setPaymentMethodFilter('Orther')}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${paymentMethodFilter === 'Orther'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                  }`}
+              >
+                Khác
+              </button>
+            </div>
+
             {/* Filters */}
             <div className='flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6'>
               <div className='relative w-full sm:w-auto'>
@@ -1288,7 +1331,9 @@ function Transaction() {
                                 <div>
                                   <p className='text-xs text-gray-500'>Mã đơn hàng</p>
                                   <p className='font-medium text-gray-900'>
-                                    {transaction.orderId ? `#${transaction.orderId}` : 'Không có'}
+                                    {transaction.orderId && transaction.orderId.slice(0, 8)
+                                      ? `#${transaction.orderId.slice(0, 8)}`
+                                      : 'Không có'}
                                   </p>
                                 </div>
                                 {getStatusBadge(transaction.status || 'Completed')}

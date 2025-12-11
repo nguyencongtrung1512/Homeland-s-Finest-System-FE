@@ -125,6 +125,9 @@ function SetupStore() {
   }, [logoFile])
 
   const [originalData, setOriginalData] = useState<StoreResponse | null>(null)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [pendingChanges, setPendingChanges] = useState<{ score: number; fields: Array<{ name: string; points: number }> } | null>(null)
+  const [pendingSaveAction, setPendingSaveAction] = useState<'save' | 'saveCover' | 'saveLogo' | null>(null)
 
   const formatDateTime = (value?: string | null) => {
     if (!value) return 'Chưa có thông tin'
@@ -145,7 +148,7 @@ function SetupStore() {
 
   const getSellerStatusLabel = (status?: string | null): string => {
     if (!status) return 'Chưa có trạng thái'
-    
+
     const statusMap: Record<string, string> = {
       Onboarding: 'Đang hoàn thiện hồ sơ',
       Active: 'Hoạt động',
@@ -157,7 +160,7 @@ function SetupStore() {
       Rejected: 'Từ chối',
       Processing: 'Đang xử lý'
     }
-    
+
     return statusMap[status] || status
   }
 
@@ -274,7 +277,8 @@ function SetupStore() {
     return formData
   }
 
-  const handleSaveCover = async () => {
+  // Execute save cover (actual API call)
+  const executeSaveCover = async () => {
     if (!user?.userId || !storeData || !coverFile) return
 
     try {
@@ -318,7 +322,25 @@ function SetupStore() {
     }
   }
 
-  const handleSaveLogo = async () => {
+  const handleSaveCover = async () => {
+    if (!user?.userId || !storeData || !coverFile) return
+
+    // Calculate change score for cover image update and any other field changes
+    const changeResult = calculateChangeScore({ cover: true, logo: !!logoFile, vendorApp: vendorAppFiles.length > 0 })
+
+    // If score >= 3, show confirmation modal
+    if (changeResult.score >= 3) {
+      setPendingChanges(changeResult)
+      setPendingSaveAction('saveCover')
+      setShowConfirmModal(true)
+    } else {
+      // Direct save for cold updates
+      await executeSaveCover()
+    }
+  }
+
+  // Execute save logo (actual API call)
+  const executeSaveLogo = async () => {
     if (!user?.userId || !storeData || !logoFile) return
 
     try {
@@ -362,7 +384,25 @@ function SetupStore() {
     }
   }
 
-  const handleSave = async () => {
+  const handleSaveLogo = async () => {
+    if (!user?.userId || !storeData || !logoFile) return
+
+    // Calculate change score for logo update and any other field changes
+    const changeResult = calculateChangeScore({ logo: true, cover: !!coverFile, vendorApp: vendorAppFiles.length > 0 })
+
+    // If score >= 3, show confirmation modal
+    if (changeResult.score >= 3) {
+      setPendingChanges(changeResult)
+      setPendingSaveAction('saveLogo')
+      setShowConfirmModal(true)
+    } else {
+      // Direct save for cold updates
+      await executeSaveLogo()
+    }
+  }
+
+  // Execute save (actual API call)
+  const executeSave = async () => {
     if (!user?.userId || !storeData) return
 
     try {
@@ -453,6 +493,27 @@ function SetupStore() {
     }
   }
 
+  const handleSave = async () => {
+    if (!user?.userId || !storeData) return
+
+    // Calculate change score for all fields
+    const changeResult = calculateChangeScore({
+      logo: !!logoFile,
+      cover: !!coverFile,
+      vendorApp: vendorAppFiles.length > 0
+    })
+
+    // If score >= 3, show confirmation modal
+    if (changeResult.score >= 3) {
+      setPendingChanges(changeResult)
+      setPendingSaveAction('save')
+      setShowConfirmModal(true)
+    } else {
+      // Direct save for cold updates
+      await executeSave()
+    }
+  }
+
   const handleCancel = () => {
     setStoreData(originalData)
     setLogoFile(null)
@@ -462,6 +523,83 @@ function SetupStore() {
     if (coverFileRef.current) coverFileRef.current.value = ''
     if (vendorAppFileRef.current) vendorAppFileRef.current.value = ''
     setIsEditMode(false)
+  }
+
+  // Calculate change score based on hot update fields
+  const calculateChangeScore = (includeFiles: {
+    logo?: boolean
+    cover?: boolean
+    vendorApp?: boolean
+  }): { score: number; fields: Array<{ name: string; points: number }> } => {
+    if (!storeData || !originalData) {
+      return { score: 0, fields: [] }
+    }
+
+    let score = 0
+    const changedFields: Array<{ name: string; points: number }> = []
+
+    // StoreName: +1 point
+    if (storeData.storeName !== originalData.storeName) {
+      score += 1
+      changedFields.push({ name: 'Tên cửa hàng', points: 1 })
+    }
+
+    // Address: +3 points
+    if (storeData.address !== originalData.address) {
+      score += 3
+      changedFields.push({ name: 'Địa chỉ', points: 3 })
+    }
+
+    // Province/ProvinceId: +3 points
+    if (
+      storeData.province !== originalData.province ||
+      storeData.provinceId !== originalData.provinceId
+    ) {
+      score += 3
+      changedFields.push({ name: 'Tỉnh/Thành phố', points: 3 })
+    }
+
+    // District/DistrictId: +3 points
+    if (
+      storeData.district !== originalData.district ||
+      storeData.districtId !== originalData.districtId
+    ) {
+      score += 3
+      changedFields.push({ name: 'Quận/Huyện', points: 3 })
+    }
+
+    // Ward/WardId: +3 points
+    if (
+      storeData.ward !== originalData.ward ||
+      storeData.wardId !== originalData.wardId
+    ) {
+      score += 3
+      changedFields.push({ name: 'Phường/Xã', points: 3 })
+    }
+
+    // Logo: +2 points
+    if (includeFiles.logo && logoFile) {
+      score += 2
+      changedFields.push({ name: 'Logo cửa hàng', points: 2 })
+    }
+
+    // Cover Image: +2 points
+    if (includeFiles.cover && coverFile) {
+      score += 2
+      changedFields.push({ name: 'Ảnh bìa cửa hàng', points: 2 })
+    }
+
+    // Vendor Application Images: +5 points per file
+    if (includeFiles.vendorApp && vendorAppFiles.length > 0) {
+      const vendorAppScore = vendorAppFiles.length * 5
+      score += vendorAppScore
+      changedFields.push({
+        name: `Ảnh giấy phép kinh doanh (${vendorAppFiles.length} file)`,
+        points: vendorAppScore
+      })
+    }
+
+    return { score, fields: changedFields }
   }
 
   const handleLogoUpload = () => {
@@ -539,6 +677,28 @@ function SetupStore() {
 
   const removeExistingVendorAppUrl = (index: number) => {
     setExistingVendorAppUrls((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  // Handle confirmation modal actions
+  const handleConfirmSave = async () => {
+    setShowConfirmModal(false)
+
+    if (pendingSaveAction === 'save') {
+      await executeSave()
+    } else if (pendingSaveAction === 'saveCover') {
+      await executeSaveCover()
+    } else if (pendingSaveAction === 'saveLogo') {
+      await executeSaveLogo()
+    }
+
+    setPendingChanges(null)
+    setPendingSaveAction(null)
+  }
+
+  const handleCancelConfirm = () => {
+    setShowConfirmModal(false)
+    setPendingChanges(null)
+    setPendingSaveAction(null)
   }
 
   return (
@@ -836,6 +996,63 @@ function SetupStore() {
                     <>
                       <Check className='w-4 h-4 mr-2' />
                       Lưu thay đổi
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Confirmation Modal for Hot Updates */}
+          <Dialog open={showConfirmModal} onOpenChange={(open) => !open && handleCancelConfirm()}>
+            <DialogContent className='sm:max-w-[600px]'>
+              <DialogHeader>
+                <DialogTitle className='flex items-center gap-2 text-amber-700'>
+                  <AlertCircle className='w-6 h-6 text-amber-600' />
+                  Xác nhận cập nhật cửa hàng
+                </DialogTitle>
+                <DialogDescription>
+                  Những thay đổi này sẽ yêu cầu duyệt lại bởi nhân viên
+                </DialogDescription>
+              </DialogHeader>
+              <div className='space-y-4 py-4'>
+                {/* Warning Box */}
+                <div className='rounded-2xl border-2 border-amber-200 bg-amber-50 p-6 space-y-3'>
+                  <div className='flex items-start gap-3'>
+                    <div className='flex-shrink-0 pt-0.5'>
+                      <AlertCircle className='w-5 h-5 text-amber-600' />
+                    </div>
+                    <div className='flex-1'>
+                      <h3 className='font-semibold text-amber-900 mb-2'>Lưu ý quan trọng</h3>
+                      <p className='text-sm text-amber-800 mb-3'>
+                        Cửa hàng sẽ chuyển về trạng thái <strong>"Chờ duyệt"</strong> và cần đợi nhân viên xem xét trong vòng <strong>24 giờ</strong>.
+                      </p>
+                      <p className='text-sm text-amber-800'>
+                        Trong thời gian chờ duyệt, cửa hàng vẫn hoạt động bình thường (nếu đang ở trạng thái "Đã duyệt").
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleCancelConfirm} variant='outline' disabled={saving || savingCover || savingLogo}>
+                  <X className='w-4 h-4 mr-2' />
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleConfirmSave}
+                  className='bg-green-600 hover:bg-green-700 text-white'
+                  disabled={saving || savingCover || savingLogo}
+                >
+                  {saving || savingCover || savingLogo ? (
+                    <>
+                      <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                      Đang lưu...
+                    </>
+                  ) : (
+                    <>
+                      <Check className='w-4 h-4 mr-2' />
+                      Xác nhận cập nhật
                     </>
                   )}
                 </Button>

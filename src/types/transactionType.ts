@@ -1,9 +1,9 @@
 // Transaction Status Enum
 export type TransactionStatus =
-  | 'Pending'     // Chờ thanh toán (Banking)
-  | 'Completed'   // Đã hoàn thành (COD)
-  | 'Failed'      // Thất bại
-  | 'Cancelled'   // Đã hủy
+  | 'Pending' // Chờ thanh toán (Banking)
+  | 'Completed' // Đã hoàn thành (COD)
+  | 'Failed' // Thất bại
+  | 'Cancelled' // Đã hủy
 
 export type TransactionType =
   | 'Sale' // Khách mua hàng thông qua cổng thanh toán Payos

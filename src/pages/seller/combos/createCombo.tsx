@@ -6,7 +6,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { ArrowLeft, Upload, X } from 'lucide-react'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import { createComboShell } from '../../../apis/combo.api'
 import { useAuth } from '../../../contexts/auth.context'
 import path from '../../../constants/path'
@@ -98,7 +98,22 @@ function CreateComboSeller() {
       }
     } catch (error: unknown) {
       console.error('Error creating combo:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi tạo combo'
+      // Lấy thông báo lỗi từ backend response
+      let errorMessage = 'Có lỗi xảy ra khi tạo combo'
+      if (error && typeof error === 'object') {
+        // Error từ axios interceptor có dạng { status, message, data }
+        if ('message' in error && typeof error.message === 'string') {
+          errorMessage = error.message
+        } else if ('response' in error) {
+          // Fallback cho axios error structure
+          const axiosError = error as { response?: { data?: { message?: string } } }
+          if (axiosError.response?.data?.message) {
+            errorMessage = axiosError.response.data.message
+          }
+        }
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
       toast.error(errorMessage)
     } finally {
       setLoading(false)

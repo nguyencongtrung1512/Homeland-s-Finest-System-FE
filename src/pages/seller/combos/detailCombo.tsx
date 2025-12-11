@@ -4,7 +4,7 @@ import { motion } from 'motion/react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
-import { ArrowLeft, Package, FileText, Clock, CheckCircle, XCircle, Upload, Edit } from 'lucide-react'
+import { ArrowLeft, Package, FileText, Clock, CheckCircle, XCircle, Upload, Edit, AlertCircle, Check, X } from 'lucide-react'
 import ThreeDCard from '../../../components/ui/threed-card'
 import {
   getComboById,
@@ -25,6 +25,14 @@ import type {
 import { toast } from '../../../utils/toast'
 import { Input } from '../../../components/ui/input'
 import { Save } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '../../../components/ui/dialog'
 
 function DetailComboSeller() {
   const { id } = useParams<{ id: string }>()
@@ -37,6 +45,8 @@ function DetailComboSeller() {
   const [isEditingFinalPrice, setIsEditingFinalPrice] = useState(false)
   const [savingFinalPrice, setSavingFinalPrice] = useState(false)
   const isEditingRef = useRef(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [confirmModalType, setConfirmModalType] = useState<'inactive' | 'approved-inactive'>('inactive')
 
   // Gửi duyệt: chỉ khi status là Draft, Rejected (Denied), hoặc Cancelled và có ≥ 2 combo items
   // Combo Dừng hoạt động (isActive = false) vẫn có thể gửi duyệt lại nếu status phù hợp
@@ -180,25 +190,32 @@ function DetailComboSeller() {
     }
   }, [combo?.totalFinalPrice, combo?.totalBasePrice, finalPrice])
 
-  const handleUpdateFinalPrice = async () => {
-    if (!combo) return
+  // Check if price has changed
+  const hasPriceChanges = (): boolean => {
+    if (!combo) return false
 
-    // Validate dựa trên mode
-    if (priceInputMode === 'direct') {
-      if (finalPrice < 0) {
-        toast.error('Giá bán không được âm')
-        return
-      }
-      if (finalPrice > combo.totalBasePrice) {
-        toast.error('Giá bán không được lớn hơn giá gốc')
-        return
-      }
-    } else {
-      if (discountPercent < 0 || discountPercent > 100) {
-        toast.error('Phần trăm giảm giá phải từ 0 đến 100')
-        return
+    // Check if FinalPrice changed
+    if (priceInputMode === 'direct' && finalPrice !== combo.totalFinalPrice) {
+      return true
+    }
+
+    // Check if DiscountPercent changed
+    if (priceInputMode === 'percent') {
+      const currentDiscount =
+        combo.totalBasePrice > 0
+          ? ((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100
+          : 0
+      if (Math.abs(discountPercent - currentDiscount) > 0.01) {
+        return true
       }
     }
+
+    return false
+  }
+
+  // Execute save final price (actual API call)
+  const executeUpdateFinalPrice = async () => {
+    if (!combo) return
 
     setSavingFinalPrice(true)
     try {
@@ -271,6 +288,57 @@ function DetailComboSeller() {
     } finally {
       setSavingFinalPrice(false)
     }
+  }
+
+  // Handle confirmation modal actions for price update
+  const handleConfirmPriceUpdate = async () => {
+    setShowConfirmModal(false)
+    await executeUpdateFinalPrice()
+    // Fetch lại combo để cập nhật status mới sau khi backend xử lý
+    await fetchCombo(false)
+  }
+
+  const handleCancelPriceConfirm = () => {
+    setShowConfirmModal(false)
+    setConfirmModalType('inactive')
+  }
+
+  const handleUpdateFinalPrice = async () => {
+    if (!combo) return
+
+    // Validate dựa trên mode
+    if (priceInputMode === 'direct') {
+      if (finalPrice < 0) {
+        toast.error('Giá bán không được âm')
+        return
+      }
+      if (finalPrice > combo.totalBasePrice) {
+        toast.error('Giá bán không được lớn hơn giá gốc')
+        return
+      }
+    } else {
+      if (discountPercent < 0 || discountPercent > 100) {
+        toast.error('Phần trăm giảm giá phải từ 0 đến 100')
+        return
+      }
+    }
+
+    // Check if combo is Approved but inactive - need special warning
+    if (combo.status === 'Approved' && combo.isActive === false && hasPriceChanges()) {
+      setConfirmModalType('approved-inactive')
+      setShowConfirmModal(true)
+      return
+    }
+
+    // Only show confirmation modal if combo is inactive (tạm dừng) and has price changes
+    if (combo.isActive === false && hasPriceChanges()) {
+      setConfirmModalType('inactive')
+      setShowConfirmModal(true)
+      return
+    }
+
+    // Direct save for active combo or when no changes
+    await executeUpdateFinalPrice()
   }
 
   const handleAddItem = async (itemData: CreateComboItemRequest) => {
@@ -501,11 +569,17 @@ function DetailComboSeller() {
 
   const getStatusMessage = (status: string, isActive: boolean) => {
     if (!isActive) {
-      // Combo Dừng hoạt động nhưng vẫn có thể gửi duyệt lại nếu status là Draft hoặc Cancelled
-      // Processing, Approved, Rejected, Confirmed không thể chỉnh sửa
+      // Combo Dừng hoạt động nhưng vẫn có thể gửi duyệt lại nếu status là Draft, Cancelled, Denied, hoặc Approved
       if (status === 'Draft' || status === 'Cancelled' || status === 'Denied') {
         return {
           message: 'Combo đã bị xóa. Bạn có thể chỉnh sửa và gửi duyệt lại khi đã có ít nhất 2 sản phẩm.',
+          className: 'text-orange-600 bg-orange-50'
+        }
+      }
+      // Approved nhưng isActive = false: có thể chỉnh sửa và gửi duyệt lại
+      if (status === 'Approved') {
+        return {
+          message: 'Combo đã dừng hoạt động nhưng bạn có thể chỉnh sửa và gửi duyệt lại.',
           className: 'text-orange-600 bg-orange-50'
         }
       }
@@ -581,13 +655,15 @@ function DetailComboSeller() {
   }
 
   // Cho phép edit khi ở trạng thái Draft, Pending, Cancelled, hoặc Denied, bất kể isActive
-  // Processing, Approved, Rejected, Confirmed không thể chỉnh sửa
+  // Approved với isActive = false cũng có thể chỉnh sửa
+  // Processing, Approved (với isActive = true), Rejected, Confirmed không thể chỉnh sửa
   // Combo Dừng hoạt động (isActive = false) vẫn có thể edit nếu status phù hợp
   const canEdit =
     combo?.status === 'Draft' ||
     combo?.status === 'Pending' ||
     combo?.status === 'Cancelled' ||
-    combo?.status === 'Denied'
+    combo?.status === 'Denied' ||
+    (combo?.status === 'Approved' && combo?.isActive === false)
 
   if (loading) {
     return (
@@ -1060,6 +1136,81 @@ function DetailComboSeller() {
           )} */}
         </motion.div>
       </motion.div>
+
+      {/* Confirmation Modal for Price Updates */}
+      <Dialog open={showConfirmModal} onOpenChange={(open) => !open && handleCancelPriceConfirm()}>
+        <DialogContent className='sm:max-w-[600px]'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-amber-700'>
+              <AlertCircle className='w-6 h-6 text-amber-600' />
+              Xác nhận cập nhật giá combo
+            </DialogTitle>
+            <DialogDescription>
+              {confirmModalType === 'approved-inactive'
+                ? 'Combo sẽ về trạng thái nháp và cần gửi duyệt lại'
+                : 'Những thay đổi này sẽ yêu cầu duyệt lại bởi nhân viên'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4 py-4'>
+            {/* Warning Box */}
+            <div className='rounded-2xl border-2 border-amber-200 bg-amber-50 p-6 space-y-3'>
+              <div className='flex items-start gap-3'>
+                <div className='flex-shrink-0 pt-0.5'>
+                  <AlertCircle className='w-5 h-5 text-amber-600' />
+                </div>
+                <div className='flex-1'>
+                  <h3 className='font-semibold text-amber-900 mb-2'>Lưu ý quan trọng</h3>
+                  {confirmModalType === 'approved-inactive' ? (
+                    <>
+                      <p className='text-sm text-amber-800 mb-3'>
+                        Combo hiện đang ở trạng thái <strong>"Đã duyệt"</strong> nhưng đã bị <strong>"Dừng hoạt động"</strong>.
+                      </p>
+                      <p className='text-sm text-amber-800 mb-3'>
+                        Khi bạn cập nhật giá, combo sẽ chuyển về trạng thái <strong>"Nháp"</strong> và bạn sẽ cần <strong>gửi duyệt lại</strong> để combo có thể hoạt động trở lại.
+                      </p>
+                      <p className='text-sm text-amber-800'>
+                        Sau khi lưu, bạn sẽ thấy nút <strong>"Gửi duyệt"</strong> để gửi combo đi duyệt lại.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className='text-sm text-amber-800 mb-3'>
+                        Combo sẽ chuyển về trạng thái <strong>"Chờ duyệt"</strong> và cần đợi nhân viên xem xét trong vòng <strong>24 giờ</strong>.
+                      </p>
+                      <p className='text-sm text-amber-800'>
+                        Trong thời gian chờ duyệt, combo vẫn hoạt động bình thường (nếu đang ở trạng thái "Đã duyệt").
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleCancelPriceConfirm} variant='outline' disabled={savingFinalPrice}>
+              <X className='w-4 h-4 mr-2' />
+              Hủy
+            </Button>
+            <Button
+              onClick={handleConfirmPriceUpdate}
+              className='bg-green-600 hover:bg-green-700 text-white'
+              disabled={savingFinalPrice}
+            >
+              {savingFinalPrice ? (
+                <>
+                  <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                  Đang lưu...
+                </>
+              ) : (
+                <>
+                  <Check className='w-4 h-4 mr-2' />
+                  Xác nhận cập nhật
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   )
 }

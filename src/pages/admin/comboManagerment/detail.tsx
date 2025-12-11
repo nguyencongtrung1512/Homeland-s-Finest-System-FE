@@ -399,7 +399,7 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
                 )}
                 {combo.staffNote && (
                   <div className='flex justify-between'>
-                    <span className='text-gray-600'>Staff Note:</span>
+                    <span className='text-gray-600'>Ghi chú nhân  viên:</span>
                     <span className='font-medium'>{combo.staffNote}</span>
                   </div>
                 )}

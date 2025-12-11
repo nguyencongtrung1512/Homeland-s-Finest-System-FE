@@ -193,7 +193,8 @@ function ComboItemsManager({
       return
     }
 
-    if (newItemData.quantity <= 0) {
+    // Chỉ validate cơ bản, validation chi tiết (1-10) để backend xử lý
+    if (newItemData.quantity <= 0 || !Number.isInteger(newItemData.quantity)) {
       toast.error('Số lượng phải lớn hơn 0')
       return
     }
@@ -209,8 +210,10 @@ function ComboItemsManager({
       setSelectedProductId('')
       setSkus([])
       setShowAddDialog(false)
-    } catch {
-      toast.error('Có lỗi xảy ra khi thêm sản phẩm')
+    } catch (error) {
+      // Không hiển thị toast ở đây vì onAddItem (handleAddItem trong detailCombo.tsx) đã xử lý và hiển thị toast rồi
+      // Chỉ cần log error để debug nếu cần
+      console.error('Error adding item:', error)
     } finally {
       setSaving(false)
     }
@@ -229,8 +232,9 @@ function ComboItemsManager({
       return
     }
 
-    if (editItemData.quantity <= 0) {
-      toast.error('Số lượng phải lớn hơn 0')
+    // Chỉ validate cơ bản, validation chi tiết (1-50) để backend xử lý
+    if (editItemData.quantity <= 0 || !Number.isInteger(editItemData.quantity)) {
+      toast.error('Số lượng phải là số nguyên lớn hơn 0')
       return
     }
 
@@ -241,10 +245,11 @@ function ComboItemsManager({
       setEditingItem(null)
       setSelectedEditProductId('')
       setSkus([])
-      // Không hiển thị toast ở đây vì updateCombo sẽ hiển thị
+      // Không hiển thị toast ở đây vì onUpdateItem (handleUpdateItem trong detailCombo.tsx) đã xử lý và hiển thị toast rồi
     } catch (error) {
+      // Không hiển thị toast ở đây vì onUpdateItem đã xử lý và hiển thị toast rồi
+      // Chỉ cần log error để debug nếu cần
       console.error('Error updating item:', error)
-      // Không hiển thị toast error ở đây vì updateCombo sẽ hiển thị
     } finally {
       setSaving(false)
     }
@@ -315,16 +320,21 @@ function ComboItemsManager({
   const activeItemsCount = items.filter((item) => item.isActive).length
   const totalItemsCount = items.length
 
-  // Cho phép chỉnh sửa khi: Draft, Pending, Cancelled, Denied
-  // Không cho phép chỉnh sửa khi: Approved, Processing, Rejected, Confirmed
+  // Cho phép chỉnh sửa khi: Draft, Pending, Cancelled, Denied, hoặc Approved với isActive = false
+  // Không cho phép chỉnh sửa khi: Processing, Rejected, Confirmed
+  // canEdit prop đã xử lý logic cho Approved với isActive = false
   const isEditable =
-    (canEdit || comboStatus === 'Pending' || comboStatus === 'Draft' || comboStatus === 'Cancelled' || comboStatus === 'Denied') &&
-    comboStatus !== 'Approved' &&
+    canEdit &&
     comboStatus !== 'Processing' &&
     comboStatus !== 'Rejected' &&
     comboStatus !== 'Confirmed'
 
   const getStatusMessage = () => {
+    // Không hiển thị thông báo nếu có thể chỉnh sửa (bao gồm Approved với isActive = false)
+    if (canEdit) {
+      return null
+    }
+
     switch (comboStatus) {
       case 'Pending':
         return {

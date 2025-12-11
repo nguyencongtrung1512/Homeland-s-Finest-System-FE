@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
-import { Save, Upload, X } from 'lucide-react'
+import { Save, Upload, X, AlertCircle, Check } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import { getComboById, updateComboShell } from '../../../apis/combo.api'
 import type { Combo, UpdateComboRequest } from '../../../types/combo.type'
@@ -28,6 +35,7 @@ function UpdateComboModal({ open, onOpenChange, combo: initialCombo, onSuccess }
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [removeThumbnail, setRemoveThumbnail] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
 
   // Fetch combo data when modal opens
   useEffect(() => {
@@ -109,7 +117,24 @@ function UpdateComboModal({ open, onOpenChange, combo: initialCombo, onSuccess }
     setPreviewUrl(null)
   }
 
-  const handleSaveComboShell = async () => {
+  // Check if there are any changes
+  const hasChanges = (): boolean => {
+    if (!combo) return false
+
+    // Check if name changed
+    if (formData.name.trim() !== combo.name) return true
+
+    // Check if description changed
+    if ((formData.description || '').trim() !== (combo.description || '').trim()) return true
+
+    // Check if thumbnail changed
+    if (thumbnailFile || removeThumbnail) return true
+
+    return false
+  }
+
+  // Execute save combo shell (actual API call)
+  const executeSaveComboShell = async () => {
     if (!combo || !formData.name.trim()) {
       toast.error('Vui lòng nhập tên combo')
       return
@@ -150,6 +175,32 @@ function UpdateComboModal({ open, onOpenChange, combo: initialCombo, onSuccess }
     } finally {
       setSaving(false)
     }
+  }
+
+  // Handle confirmation modal actions
+  const handleConfirmSave = async () => {
+    setShowConfirmModal(false)
+    await executeSaveComboShell()
+  }
+
+  const handleCancelConfirm = () => {
+    setShowConfirmModal(false)
+  }
+
+  const handleSaveComboShell = async () => {
+    if (!combo || !formData.name.trim()) {
+      toast.error('Vui lòng nhập tên combo')
+      return
+    }
+
+    // Only show confirmation modal if combo is inactive (tạm dừng) and has changes
+    if (combo.isActive === false && hasChanges()) {
+      setShowConfirmModal(true)
+      return
+    }
+
+    // Direct save for active combo or when no changes
+    await executeSaveComboShell()
   }
 
   // Chỉ cho phép chỉnh sửa khi status là 'Draft'
@@ -308,6 +359,64 @@ function UpdateComboModal({ open, onOpenChange, combo: initialCombo, onSuccess }
           </div>
         )}
       </DialogContent>
+
+      {/* Confirmation Modal for Hot Updates */}
+      <Dialog open={showConfirmModal} onOpenChange={(open) => !open && handleCancelConfirm()}>
+        <DialogContent className='sm:max-w-[600px]'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-amber-700'>
+              <AlertCircle className='w-6 h-6 text-amber-600' />
+              Xác nhận cập nhật combo
+            </DialogTitle>
+            <DialogDescription>
+              Những thay đổi này sẽ yêu cầu duyệt lại bởi nhân viên
+            </DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4 py-4'>
+            {/* Warning Box */}
+            <div className='rounded-2xl border-2 border-amber-200 bg-amber-50 p-6 space-y-3'>
+              <div className='flex items-start gap-3'>
+                <div className='flex-shrink-0 pt-0.5'>
+                  <AlertCircle className='w-5 h-5 text-amber-600' />
+                </div>
+                <div className='flex-1'>
+                  <h3 className='font-semibold text-amber-900 mb-2'>Lưu ý quan trọng</h3>
+                  <p className='text-sm text-amber-800 mb-3'>
+                    Combo sẽ chuyển về trạng thái <strong>"Chờ duyệt"</strong> và cần đợi nhân viên xem xét trong vòng <strong>24 giờ</strong>.
+                  </p>
+                  <p className='text-sm text-amber-800'>
+                    Trong thời gian chờ duyệt, combo vẫn hoạt động bình thường (nếu đang ở trạng thái "Đã duyệt").
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <DialogFooter>
+            <Button onClick={handleCancelConfirm} variant='outline' disabled={saving}>
+              <X className='w-4 h-4 mr-2' />
+              Hủy
+            </Button>
+            <Button
+              onClick={handleConfirmSave}
+              className='bg-green-600 hover:bg-green-700 text-white'
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                  Đang lưu...
+                </>
+              ) : (
+                <>
+                  <Check className='w-4 h-4 mr-2' />
+                  Xác nhận cập nhật
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }
