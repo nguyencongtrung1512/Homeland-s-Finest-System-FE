@@ -26,9 +26,11 @@ import {
   UserRound,
   Eye,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  RefreshCw
 } from 'lucide-react'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
+import { sellerApi } from '../../../apis/seller.api'
 import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 import { useAuth } from '../../../contexts/auth.context'
 import { useStore } from '../../../contexts/store.context'
@@ -46,6 +48,8 @@ function SetupStore() {
   const [savingCover, setSavingCover] = useState(false)
   const [savingLogo, setSavingLogo] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [resubmitting, setResubmitting] = useState(false)
+  const [showResubmitModal, setShowResubmitModal] = useState(false)
   const [storeData, setStoreData] = useState<StoreResponse | null>(null)
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
   const [previewImages, setPreviewImages] = useState<string[]>([])
@@ -701,8 +705,53 @@ function SetupStore() {
     setPendingSaveAction(null)
   }
 
+  // Handle resubmit application
+  const handleResubmitApplication = async () => {
+    if (!user?.userId) return
+
+    try {
+      setResubmitting(true)
+      const response = await sellerApi.resubmitSellerApplication(user.userId)
+
+      // axiosInstance interceptor returns response.data which is {status, message, data}
+      if (response.status === 200 || response.status === 202) {
+        toast.success(response.message || 'Đơn đăng ký đã được gửi lại thành công và đang chờ duyệt!')
+        setShowResubmitModal(false)
+
+        // Refresh store data
+        setRefreshing(true)
+        try {
+          await refreshStore()
+          await fetchStoreData()
+        } catch (error) {
+          console.error('Error refreshing store data:', error)
+        } finally {
+          setRefreshing(false)
+        }
+      } else {
+        toast.error('Có lỗi xảy ra khi gửi lại đơn đăng ký')
+      }
+    } catch (error: unknown) {
+      console.error('Error resubmitting application:', error)
+      // axios interceptor returns error.response.data directly
+      const errorMessage =
+        (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+          ? error.message
+          : null) || 'Có lỗi xảy ra khi gửi lại đơn đăng ký'
+      toast.error(errorMessage)
+    } finally {
+      setResubmitting(false)
+    }
+  }
+
+  // Check if store can resubmit
+  const canResubmit = () => {
+    const resubmitStatuses = ['RejectedByStaff', 'Rejected']
+    return storeData?.status && resubmitStatuses.includes(storeData.status)
+  }
+
   return (
-    <div className='min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-100 py-10 px-4'>
+    <div className='min-h-screen  py-10 px-4'>
       {refreshing && (
         <Loading size='lg' text='Đang làm mới dữ liệu...' fullScreen={true} />
       )}
@@ -1060,6 +1109,67 @@ function SetupStore() {
             </DialogContent>
           </Dialog>
 
+          {/* Resubmit Application Confirmation Modal */}
+          <Dialog open={showResubmitModal} onOpenChange={(open) => !open && setShowResubmitModal(false)}>
+            <DialogContent className='sm:max-w-[600px]'>
+              <DialogHeader>
+                <DialogTitle className='flex items-center gap-2 text-amber-700'>
+                  <RefreshCw className='w-6 h-6 text-amber-600' />
+                  Xác nhận gửi lại đơn đăng ký
+                </DialogTitle>
+                <DialogDescription>
+                  Bạn có chắc chắn muốn gửi lại đơn đăng ký cửa hàng?
+                </DialogDescription>
+              </DialogHeader>
+              <div className='space-y-4 py-4'>
+                {/* Info Box */}
+                <div className='rounded-2xl border-2 border-blue-200 bg-blue-50 p-6 space-y-3'>
+                  <div className='flex items-start gap-3'>
+                    <div className='flex-shrink-0 pt-0.5'>
+                      <AlertCircle className='w-5 h-5 text-blue-600' />
+                    </div>
+                    <div className='flex-1'>
+                      <h3 className='font-semibold text-blue-900 mb-2'>Thông tin quan trọng</h3>
+                      <p className='text-sm text-blue-800 mb-3'>
+                        Đơn đăng ký sẽ được gửi lại và cửa hàng sẽ chuyển về trạng thái <strong>"Chờ duyệt"</strong>.
+                      </p>
+                      <p className='text-sm text-blue-800'>
+                        Đơn đăng ký của bạn sẽ được nhân viên xem xét lại trong vòng <strong>24 giờ</strong>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={() => setShowResubmitModal(false)}
+                  variant='outline'
+                  disabled={resubmitting}
+                >
+                  <X className='w-4 h-4 mr-2' />
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleResubmitApplication}
+                  className='bg-amber-600 hover:bg-amber-700 text-white'
+                  disabled={resubmitting}
+                >
+                  {resubmitting ? (
+                    <>
+                      <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                      Đang gửi...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className='w-4 h-4 mr-2' />
+                      Xác nhận gửi lại
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <Card className='border-none shadow-2xl backdrop-blur-sm bg-white/95 rounded-3xl'>
             <CardContent className='p-8 space-y-10'>
               {/* Admin Note Alert - Show when admin made final decision */}
@@ -1085,6 +1195,40 @@ function SetupStore() {
                     <div className='flex-1'>
                       <h3 className='font-semibold text-green-900'>Ghi chú phê duyệt</h3>
                       <p className='text-sm text-green-800 mt-2'>{storeData.adminNote}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Resubmit Button - Show when status is Inactive, RejectedByStaff, or Rejected */}
+              {canResubmit() && (
+                <div className='rounded-2xl border-2 border-amber-200 bg-amber-50 p-6 space-y-4'>
+                  <div className='flex items-start gap-3'>
+                    <div className='flex-shrink-0 pt-0.5'>
+                      <AlertCircle className='w-5 h-5 text-amber-600' />
+                    </div>
+                    <div className='flex-1'>
+                      <h3 className='font-semibold text-amber-900 mb-2'>Đơn đăng ký chưa được duyệt</h3>
+                      <p className='text-sm text-amber-800 mb-4'>
+                        Cửa hàng của bạn đang ở trạng thái <strong>{statusDisplay.label}</strong>. Bạn có thể gửi lại đơn đăng ký để được xem xét lại.
+                      </p>
+                      <Button
+                        onClick={() => setShowResubmitModal(true)}
+                        className='bg-amber-600 hover:bg-amber-700 text-white rounded-xl'
+                        disabled={resubmitting}
+                      >
+                        {resubmitting ? (
+                          <>
+                            <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                            Đang gửi...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className='w-4 h-4 mr-2' />
+                            Gửi lại đơn đăng ký
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
                 </div>

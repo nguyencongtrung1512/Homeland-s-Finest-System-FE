@@ -61,7 +61,7 @@ export default function WalletContent({
   const [transactionPageSize] = useState(10)
   const [requests, setRequests] = useState<RequestWalletMoney[]>([])
   const [loadingRequests, setLoadingRequests] = useState(false)
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'WalletOrBanking'>('all')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'WalletOrBanking' | 'Orther'>('all')
   const { user } = useAuth()
 
   // Fetch wallet data
@@ -87,14 +87,14 @@ export default function WalletContent({
   const fetchTransactions = async (
     page: number = 1,
     pageSize: number = 10,
-    paymentMethod?: 'COD' | 'WalletOrBanking' | null
+    paymentMethod?: 'COD' | 'WalletOrBanking' | 'Orther' | null
   ) => {
     try {
       setLoadingTransactions(true)
       const params: {
         pageNumber: number
         pageSize: number
-        paymentMethod?: 'COD' | 'WalletOrBanking' | null
+        paymentMethod?: 'COD' | 'WalletOrBanking' | 'Orther' | null
       } = {
         pageNumber: page,
         pageSize
@@ -879,18 +879,18 @@ export default function WalletContent({
               <div className='flex items-center gap-1 w-full'>
                 {[
                   { value: 'all', label: 'Tất cả' },
-                  { value: 'WalletOrBanking', label: 'Thanh toán qua ví/ngân hàng' }
+                  { value: 'WalletOrBanking', label: 'Thanh toán qua ví/ngân hàng' },
+                  { value: 'Orther', label: 'Khác' }
                 ].map((option) => (
                   <button
                     key={option.value}
                     onClick={() => {
-                      setPaymentMethodFilter(option.value as 'all' | 'WalletOrBanking')
+                      setPaymentMethodFilter(option.value as 'all' | 'WalletOrBanking' | 'Orther')
                     }}
-                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${
-                      paymentMethodFilter === option.value
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${paymentMethodFilter === option.value
                         ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-white text-gray-700 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     {option.label}
                   </button>

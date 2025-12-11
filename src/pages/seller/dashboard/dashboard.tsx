@@ -1,4 +1,17 @@
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js'
+import { Line } from 'react-chartjs-2'
 import StoreStatusNotice from '../../../components/Seller/StoreStatusNotice'
 import { useStore } from '../../../contexts/store.context'
 import { Button } from '../../../components/ui/button'
@@ -6,13 +19,18 @@ import { Badge } from '../../../components/ui/badge'
 import Loading from '../../../components/Loading/loading'
 import { toast } from '../../../utils/toast'
 import { sellerApi } from '../../../apis/seller.api'
+import type { Order } from '../../../types/orderType'
+
+// Register Chart.js components
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 import type {
   OverviewStats,
   OrderStatusDistribution,
   TopSellingProduct,
   LowStockProduct,
   PromotionStatistics,
-  SalesReport
+  SalesReport,
+  OrderCountResponse
 } from '../../../apis/seller.api'
 import {
   TrendingUp,
@@ -34,8 +52,9 @@ function Dashboard() {
   // State for API data
   const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null)
   const [orderStatusDistribution, setOrderStatusDistribution] = useState<OrderStatusDistribution | null>(null)
-  const [ordersNeedingProcessing, setOrdersNeedingProcessing] = useState<any[]>([])
+  const [ordersNeedingProcessing, setOrdersNeedingProcessing] = useState<Order[]>([])
   const [salesReport, setSalesReport] = useState<SalesReport | null>(null)
+  const [orderCount, setOrderCount] = useState<OrderCountResponse | null>(null)
   const [topProducts, setTopProducts] = useState<TopSellingProduct[]>([])
   const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([])
   const [promotionStats, setPromotionStats] = useState<PromotionStatistics | null>(null)
@@ -54,14 +73,18 @@ function Dashboard() {
         orderStatusData,
         ordersData,
         salesData,
+        orderCountData,
         topProductsData,
         lowStockData,
         promotionData
       ] = await Promise.all([
         sellerApi.getOverviewStats().catch(() => null),
         sellerApi.getOrderStatusDistribution().catch(() => null),
-        sellerApi.getOrdersNeedingProcessing({ pageSize: 5, pageNumber: 1 }).catch(() => ({ data: [], pagination: { totalItems: 0 } })),
+        sellerApi
+          .getOrdersNeedingProcessing({ pageSize: 5, pageNumber: 1 })
+          .catch(() => ({ data: [], pagination: { totalItems: 0 } })),
         sellerApi.getSalesReport({ period: 'year', year: selectedYear }).catch(() => null),
+        sellerApi.getOrderCount({ year: selectedYear }).catch(() => null),
         sellerApi.getTopSellingProducts({ limit: 5 }).catch(() => []),
         sellerApi.getLowStockProducts({ limit: 5 }).catch(() => []),
         sellerApi.getPromotionStatistics().catch(() => null)
@@ -71,6 +94,7 @@ function Dashboard() {
       if (orderStatusData) setOrderStatusDistribution(orderStatusData)
       if (ordersData?.data) setOrdersNeedingProcessing(ordersData.data)
       if (salesData) setSalesReport(salesData)
+      if (orderCountData) setOrderCount(orderCountData)
       if (topProductsData) setTopProducts(topProductsData)
       if (lowStockData) setLowStockProducts(lowStockData)
       if (promotionData) setPromotionStats(promotionData)
@@ -134,31 +158,39 @@ function Dashboard() {
   }
 
   // Transform order status distribution to array
-  const orderStatusData = orderStatusDistribution && orderStatusDistribution.statusCounts && typeof orderStatusDistribution.statusCounts === 'object'
-    ? Object.entries(orderStatusDistribution.statusCounts).map(([status, count]) => ({
-      status,
-      label: getOrderStatusLabel(status),
-      count: (count as number) || 0,
-      color: getOrderStatusColor(status)
-    }))
-    : []
+  const orderStatusData =
+    orderStatusDistribution &&
+      orderStatusDistribution.statusCounts &&
+      typeof orderStatusDistribution.statusCounts === 'object'
+      ? Object.entries(orderStatusDistribution.statusCounts).map(([status, count]) => ({
+        status,
+        label: getOrderStatusLabel(status),
+        count: (count as number) || 0,
+        color: getOrderStatusColor(status)
+      }))
+      : []
 
   // Transform sales report to chart data
-  const revenueByMonth = salesReport && salesReport.labels && Array.isArray(salesReport.labels) && salesReport.data && Array.isArray(salesReport.data)
-    ? salesReport.labels.map((label, index) => ({
-      month: label,
-      revenue: salesReport.data[index] || 0
-    }))
-    : []
+  const revenueByMonth =
+    salesReport &&
+      salesReport.labels &&
+      Array.isArray(salesReport.labels) &&
+      salesReport.data &&
+      Array.isArray(salesReport.data)
+      ? salesReport.labels.map((label, index) => ({
+        month: label,
+        revenue: salesReport.data[index] || 0
+      }))
+      : []
 
-  // For orders by month, we'll use the same sales report data structure
-  // If API doesn't provide separate orders data, we can estimate or use revenue data
-  const ordersByMonth = revenueByMonth && Array.isArray(revenueByMonth)
-    ? revenueByMonth.map((item) => ({
-      month: item.month,
-      orders: Math.floor(item.revenue / 50000) // Estimate: ~50k per order
-    }))
-    : []
+  // Orders by month from API
+  const ordersByMonth =
+    orderCount && orderCount.monthlyBreakdown && Array.isArray(orderCount.monthlyBreakdown)
+      ? orderCount.monthlyBreakdown.map((item) => ({
+        month: item.label,
+        orders: item.count || 0
+      }))
+      : []
 
   // Calculate alerts from real data
   const alerts = []
@@ -208,36 +240,39 @@ function Dashboard() {
     }
   }
 
-  const getMaxRevenue = () => {
-    if (!Array.isArray(revenueByMonth) || revenueByMonth.length === 0) return 1
-    return Math.max(...revenueByMonth.map((m) => m.revenue || 0), 1)
-  }
+  // Chart.js tự động tính toán max values, không cần các hàm này nữa
+  // const getMaxRevenue = () => {
+  //   if (!Array.isArray(revenueByMonth) || revenueByMonth.length === 0) return 1
+  //   return Math.max(...revenueByMonth.map((m) => m.revenue || 0), 1)
+  // }
 
-  const getMaxOrders = () => {
-    if (!Array.isArray(ordersByMonth) || ordersByMonth.length === 0) return 1
-    return Math.max(...ordersByMonth.map((m) => m.orders || 0), 1)
-  }
+  // const getMaxOrders = () => {
+  //   if (!Array.isArray(ordersByMonth) || ordersByMonth.length === 0) return 1
+  //   return Math.max(...ordersByMonth.map((m) => m.orders || 0), 1)
+  // }
 
   // Calculate top products percentage
-  const topProductsWithPercentage = Array.isArray(topProducts) && topProducts.length > 0
-    ? topProducts.map((product, index) => {
-      const maxRevenue = topProducts[0]?.totalSold || 1
-      return {
-        name: product.productName || 'Không có',
-        revenue: product.totalSold || 0,
-        percentage: index === 0 ? 100 : ((product.totalSold || 0) / maxRevenue) * 100
-      }
-    })
-    : []
+  const topProductsWithPercentage =
+    Array.isArray(topProducts) && topProducts.length > 0
+      ? topProducts.map((product, index) => {
+        const maxRevenue = topProducts[0]?.totalSold || 1
+        return {
+          name: product.productName || 'Không có',
+          revenue: product.totalSold || 0,
+          percentage: index === 0 ? 100 : ((product.totalSold || 0) / maxRevenue) * 100
+        }
+      })
+      : []
 
   // Transform low stock products
-  const lowStockProductsDisplay = Array.isArray(lowStockProducts) && lowStockProducts.length > 0
-    ? lowStockProducts.map((product) => ({
-      name: product.productName || 'N/A',
-      quantity: product.remainingQuantity || 0,
-      level: (product.remainingQuantity || 0) <= 5 ? ('critical' as const) : ('warning' as const)
-    }))
-    : []
+  const lowStockProductsDisplay =
+    Array.isArray(lowStockProducts) && lowStockProducts.length > 0
+      ? lowStockProducts.map((product) => ({
+        name: product.productName || 'N/A',
+        quantity: product.remainingQuantity || 0,
+        level: (product.remainingQuantity || 0) <= 5 ? ('critical' as const) : ('warning' as const)
+      }))
+      : []
 
   // Nếu store chưa được duyệt, hiển thị thông báo thay vì dashboard thông thường
   if (store && !isStoreApproved) {
@@ -280,9 +315,7 @@ function Dashboard() {
           </Button>
           {store && (
             <Badge
-              className={`px-3 py-1 ${store.status === 'Approved'
-                ? 'bg-green-100 text-green-800'
-                : 'bg-yellow-100 text-yellow-800'
+              className={`px-3 py-1 ${store.status === 'Approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                 }`}
             >
               {store.status === 'Approved' ? 'Đã duyệt' : 'Chờ duyệt'}
@@ -341,9 +374,7 @@ function Dashboard() {
               {revenueChange > 0 && (
                 <div className='flex items-center gap-1 mt-2'>
                   <TrendingUp className='w-4 h-4 text-green-600' />
-                  <span className='text-xs text-green-600 font-medium'>
-                    +{revenueChange}% so với tháng trước
-                  </span>
+                  <span className='text-xs text-green-600 font-medium'>+{revenueChange}% so với tháng trước</span>
                 </div>
               )}
             </div>
@@ -362,9 +393,7 @@ function Dashboard() {
               {ordersChange > 0 && (
                 <div className='flex items-center gap-1 mt-2'>
                   <Package className='w-4 h-4 text-blue-600' />
-                  <span className='text-xs text-blue-600 font-medium'>
-                    +{ordersChange}% so với tháng trước
-                  </span>
+                  <span className='text-xs text-blue-600 font-medium'>+{ordersChange}% so với tháng trước</span>
                 </div>
               )}
             </div>
@@ -460,7 +489,7 @@ function Dashboard() {
             <p className='text-sm text-gray-500 text-center py-4'>Không có đơn hàng cần xử lý</p>
           ) : (
             <div className='space-y-3'>
-              {ordersNeedingProcessing.map((order: any) => (
+              {ordersNeedingProcessing.map((order: Order) => (
                 <div key={order.id} className='p-3 bg-gray-50 rounded-lg border border-gray-200'>
                   <div className='flex items-center justify-between mb-2'>
                     <span className='text-sm font-medium text-gray-900'>#{order.ghnorderCode || order.id}</span>
@@ -480,9 +509,7 @@ function Dashboard() {
                       {formatCurrency(order.finalPrice || order.totalOrder || 0)}
                     </span>
                   </div>
-                  {order.createdAt && (
-                    <p className='text-xs text-gray-500 mt-1'>{formatDate(order.createdAt)}</p>
-                  )}
+                  {order.createdAt && <p className='text-xs text-gray-500 mt-1'>{formatDate(order.createdAt)}</p>}
                 </div>
               ))}
             </div>
@@ -506,113 +533,194 @@ function Dashboard() {
         </div>
 
         {/* Charts Grid */}
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
+        <div className='space-y-8'>
           {/* Revenue by Month Chart */}
-          <div className='lg:col-span-2'>
+          <motion.div
+            className='w-full'
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
             <h4 className='text-md font-medium text-gray-700 mb-4'>Doanh thu theo tháng</h4>
-            <div className='h-64 relative'>
-              {/* Y-axis labels */}
-              <div className='absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500 pr-2'>
-                <span>{formatCurrency(getMaxRevenue())}</span>
-                <span>{formatCurrency(getMaxRevenue() * 0.75)}</span>
-                <span>{formatCurrency(getMaxRevenue() * 0.5)}</span>
-                <span>{formatCurrency(getMaxRevenue() * 0.25)}</span>
-                <span>0</span>
-              </div>
-
-              {/* Chart area */}
-              <div className='ml-8 h-full flex items-end justify-between gap-1'>
-                {Array.isArray(revenueByMonth) && revenueByMonth.length > 0 ? (
-                  revenueByMonth.map((item, index) => {
-                    const height = ((item.revenue || 0) / getMaxRevenue()) * 100
-                    return (
-                      <div key={index} className='flex-1 flex flex-col items-center'>
-                        <div
-                          className='w-full bg-green-500 rounded-t hover:bg-green-600 transition-colors cursor-pointer'
-                          style={{ height: `${height}%` }}
-                          title={`${item.month || 'Không có'}: ${formatCurrency(item.revenue || 0)}`}
-                        ></div>
-                      </div>
-                    )
-                  })
-                ) : (
-                  <div className='w-full flex items-center justify-center text-sm text-gray-500'>
-                    Chưa có dữ liệu
-                  </div>
-                )}
-              </div>
-
-              {/* X-axis labels */}
-              <div className='absolute bottom-0 left-8 right-0 flex justify-between text-xs text-gray-500'>
-                {Array.isArray(revenueByMonth) && revenueByMonth.length > 0 ? (
-                  revenueByMonth.map((item, index) => (
-                    <span key={index} className='flex-1 text-center'>
-                      {item.month || 'Không có'}
-                    </span>
-                  ))
-                ) : null}
-              </div>
-            </div>
-            <p className='text-xs text-gray-500 mt-2 ml-8'>Doanh thu (₫)</p>
-          </div>
-
-          {/* Revenue by Payment Method - Placeholder for now */}
-          <div>
-            <h4 className='text-md font-medium text-gray-700 mb-4'>Doanh thu theo phương thức</h4>
-            <div className='space-y-4'>
-              <p className='text-sm text-gray-500 text-center py-4'>Dữ liệu đang được cập nhật</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Orders by Month Chart */}
-        <div className='mt-8'>
-          <h4 className='text-md font-medium text-gray-700 mb-4'>Số lượng đơn hàng theo tháng</h4>
-          <div className='h-64 relative'>
-            {/* Y-axis labels */}
-            <div className='absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500 pr-2'>
-              <span>{getMaxOrders()}</span>
-              <span>{Math.round(getMaxOrders() * 0.75)}</span>
-              <span>{Math.round(getMaxOrders() * 0.5)}</span>
-              <span>{Math.round(getMaxOrders() * 0.25)}</span>
-              <span>0</span>
-            </div>
-
-            {/* Chart area */}
-            <div className='ml-8 h-full flex items-end justify-between gap-1'>
-              {Array.isArray(ordersByMonth) && ordersByMonth.length > 0 ? (
-                ordersByMonth.map((item, index) => {
-                  const height = ((item.orders || 0) / getMaxOrders()) * 100
-                  return (
-                    <div key={index} className='flex-1 flex flex-col items-center'>
-                      <div
-                        className='w-full bg-blue-500 rounded-t hover:bg-blue-600 transition-colors cursor-pointer'
-                        style={{ height: `${height}%` }}
-                        title={`${item.month || 'N/A'}: ${item.orders || 0} đơn`}
-                      ></div>
-                    </div>
-                  )
-                })
+            <div className='h-64 w-full'>
+              {Array.isArray(revenueByMonth) && revenueByMonth.length > 0 ? (
+                <Line
+                  data={{
+                    labels: revenueByMonth.map((item) => item.month),
+                    datasets: [
+                      {
+                        label: 'Doanh thu (₫)',
+                        data: revenueByMonth.map((item) => item.revenue || 0),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2
+                      }
+                    ]
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        display: false
+                      },
+                      tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: {
+                          size: 14,
+                          weight: 'bold'
+                        },
+                        bodyFont: {
+                          size: 13
+                        },
+                        callbacks: {
+                          label: function (context) {
+                            const value = Number(context.parsed.y) || 0
+                            return `Doanh thu: ${formatCurrency(value)}`
+                          }
+                        }
+                      }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        ticks: {
+                          callback: function (value) {
+                            return formatCurrency(Number(value))
+                          },
+                          font: {
+                            size: 11
+                          }
+                        },
+                        grid: {
+                          color: 'rgba(229, 231, 235, 0.5)'
+                        }
+                      },
+                      x: {
+                        ticks: {
+                          font: {
+                            size: 11
+                          }
+                        },
+                        grid: {
+                          display: false
+                        }
+                      }
+                    },
+                    animation: {
+                      duration: 1500,
+                      easing: 'easeInOutQuart'
+                    }
+                  }}
+                />
               ) : (
-                <div className='w-full flex items-center justify-center text-sm text-gray-500'>
+                <div className='w-full h-full flex items-center justify-center text-sm text-gray-500'>
                   Chưa có dữ liệu
                 </div>
               )}
             </div>
-
-            {/* X-axis labels */}
-            <div className='absolute bottom-0 left-8 right-0 flex justify-between text-xs text-gray-500'>
-              {Array.isArray(ordersByMonth) && ordersByMonth.length > 0 ? (
-                ordersByMonth.map((item, index) => (
-                  <span key={index} className='flex-1 text-center'>
-                    {item.month || 'N/A'}
-                  </span>
-                ))
-              ) : null}
-            </div>
-          </div>
-          <p className='text-xs text-gray-500 mt-2 ml-8'>Số lượng đơn hàng</p>
+          </motion.div>
         </div>
+
+        {/* Orders by Month Chart */}
+        <motion.div
+          className='mt-8'
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <h4 className='text-md font-medium text-gray-700 mb-4'>Số lượng đơn hàng theo tháng</h4>
+          <div className='h-64'>
+            {Array.isArray(ordersByMonth) && ordersByMonth.length > 0 ? (
+              <Line
+                data={{
+                  labels: ordersByMonth.map((item) => item.month),
+                  datasets: [
+                    {
+                      label: 'Số lượng đơn hàng',
+                      data: ordersByMonth.map((item) => item.orders || 0),
+                      borderColor: '#3b82f6',
+                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                      borderWidth: 2,
+                      fill: true,
+                      tension: 0.4,
+                      pointRadius: 4,
+                      pointHoverRadius: 6,
+                      pointBackgroundColor: '#3b82f6',
+                      pointBorderColor: '#ffffff',
+                      pointBorderWidth: 2
+                    }
+                  ]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      display: false
+                    },
+                    tooltip: {
+                      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                      padding: 12,
+                      titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                      },
+                      bodyFont: {
+                        size: 13
+                      },
+                      callbacks: {
+                        label: function (context) {
+                          return `Số lượng: ${context.parsed.y} đơn`
+                        }
+                      }
+                    }
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: {
+                        stepSize: 1,
+                        font: {
+                          size: 11
+                        }
+                      },
+                      grid: {
+                        color: 'rgba(229, 231, 235, 0.5)'
+                      }
+                    },
+                    x: {
+                      ticks: {
+                        font: {
+                          size: 11
+                        }
+                      },
+                      grid: {
+                        display: false
+                      }
+                    }
+                  },
+                  animation: {
+                    duration: 1500,
+                    easing: 'easeInOutQuart'
+                  }
+                }}
+              />
+            ) : (
+              <div className='w-full h-full flex items-center justify-center text-sm text-gray-500'>
+                Chưa có dữ liệu
+              </div>
+            )}
+          </div>
+        </motion.div>
       </div>
 
       {/* Product Performance Section */}

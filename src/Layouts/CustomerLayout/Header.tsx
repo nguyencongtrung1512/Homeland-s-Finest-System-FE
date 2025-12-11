@@ -98,8 +98,8 @@ function Header() {
           <Link to={path.product} className='hover:text-green-700 transition whitespace-nowrap'>
             Sản phẩm
           </Link>
-          <Link to={path.stories} className='hover:text-green-700 transition whitespace-nowrap'>
-            Câu chuyện
+          <Link to={path.homepage3D} className='hover:text-green-700 transition whitespace-nowrap'>
+            Về chúng tôi
           </Link>
           <Link to={path.discover} className='hover:text-green-700 transition whitespace-nowrap'>
             Khám phá cửa hàng

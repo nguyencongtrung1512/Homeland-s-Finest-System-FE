@@ -92,6 +92,7 @@ import HashtagManagement from './pages/seller/hashtagManagement/hashtagManagemen
 import HashtagManagementStaff from './pages/staff/hashtagManagement/hashtagManagement'
 import DocumentSeller from './pages/seller/documentSeller/document'
 import CategoriesSeller from './pages/seller/categories/categories'
+import HomePage3D from './pages/customer/Home3D/HomePage3D'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -107,6 +108,10 @@ export default function useRouteElements() {
         {
           path: path.product,
           element: <Products />
+        },
+        {
+          path: path.homepage3D,
+          element: <HomePage3D />
         },
         {
           path: path.productDetail,

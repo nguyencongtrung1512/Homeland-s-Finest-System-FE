@@ -32,11 +32,13 @@ export interface VariantGroup {
 // Product Category Interface
 export interface ProductCategory {
   id: string // UUID
+  level: number // integer - Category level in hierarchy (1, 2, 3, ...)
   name: string // varchar(255)
   description: string // text
   isActive: boolean // boolean
-  createdAt: string // TIMESTAMPTZ
-  updatedAt: string // TIMESTAMPTZ
+  parentId: string | null // UUID - Foreign Key to parent category, null for root categories
+  createdAt?: string // TIMESTAMPTZ (optional)
+  updatedAt?: string // TIMESTAMPTZ (optional)
 }
 
 export interface Product {
@@ -56,7 +58,7 @@ export interface Product {
   videoPlayBackUrl?: string | null // Video playback URL (HLS/DASH)
   videoFallBackUrl?: string | null // Video fallback URL (highest priority)
   material: string // varchar(255) - Brand/Manufacturer
-  saleCount: number // integer
+  sale_count: number // integer
   rating: number // numeric(3,2) - Average rating
   reviewCount: number // integer
   isActive: boolean // boolean
@@ -65,7 +67,7 @@ export interface Product {
   staffNote: string // text
   soldOut?: boolean // boolean - Product sold out status
   variantGroups: VariantGroup[] // Array of variant groups
-  productCategories: ProductCategory // Single product category
+  productCategories: ProductCategory[] // Array of product categories (hierarchical path from root to leaf)
   productCertificateDTOs: ProductCertificateType[] // Array of product certificates
 }
 

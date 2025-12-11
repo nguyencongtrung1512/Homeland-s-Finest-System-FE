@@ -257,6 +257,7 @@ function StaffStoreDetail() {
 
   const getStatusDisplay = (status: string) => {
     const statusMap = {
+      Pending: { text: 'Chờ duyệt', color: 'yellow' },
       Processing: { text: 'Đang xử lý', color: 'blue' },
       ApprovedByStaff: { text: 'Đã chấp nhận', color: 'blue' },
       RejectedByStaff: { text: 'Đã từ chối', color: 'red' },

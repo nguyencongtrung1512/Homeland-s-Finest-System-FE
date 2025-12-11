@@ -9,10 +9,11 @@ import {
   AlertCircle,
   TrendingUp
 } from 'lucide-react'
+import VietnamMap from '../../components/Province/VietnamMap'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { ChartContainer, ChartTooltip } from '../../components/ui/chart'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts'
 import type { TransactionDashboardData } from '../../types/transactionDashboardType'
 import type { StoreResponse } from '../../apis/store.api'
 import {
@@ -54,7 +55,7 @@ const monthLabels = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10'
 const chartConfig = {
   revenue: {
     label: 'Doanh thu (đ)',
-    color: '#F97316'
+    color: '#3B82F6'
   }
 }
 
@@ -67,6 +68,9 @@ function AdminDashboard() {
   const [storesNeedingAction, setStoresNeedingAction] = useState<StoreResponse[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [mapZoom, setMapZoom] = useState<number>(1)
+  const [revenueLoading, setRevenueLoading] = useState<boolean>(false)
+  const [storesLoading, setStoresLoading] = useState<boolean>(false)
 
   // Fetch available years
   const fetchAvailableYears = async () => {
@@ -109,6 +113,80 @@ function AdminDashboard() {
       console.error('Error fetching stores needing action:', err)
       // Fallback to empty array on error
       setStoresNeedingAction([])
+    }
+  }
+
+  // Fetch revenue data only (for chart)
+  const fetchRevenueData = async (year: number) => {
+    try {
+      setRevenueLoading(true)
+      const revenueResponse = await getMonthlyRevenue(year)
+      const revenueData = revenueResponse.data
+
+      // Update only revenue data in dashboardData
+      if (dashboardData) {
+        const monthMap: Record<string, string> = {
+          T1: '01',
+          T2: '02',
+          T3: '03',
+          T4: '04',
+          T5: '05',
+          T6: '06',
+          T7: '07',
+          T8: '08',
+          T9: '09',
+          T10: '10',
+          T11: '11',
+          T12: '12'
+        }
+        const revenueByMonth: Record<string, number> = {}
+        Object.keys(revenueData.revenueByMonth || {}).forEach((key) => {
+          const monthKey = monthMap[key] || key
+          revenueByMonth[monthKey] = revenueData.revenueByMonth[key] || 0
+        })
+
+        setDashboardData({
+          ...dashboardData,
+          summary: {
+            ...dashboardData.summary,
+            revenueByMonth
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Error fetching revenue data:', err)
+    } finally {
+      setRevenueLoading(false)
+    }
+  }
+
+  // Fetch top stores data only
+  const fetchTopStoresData = async (year: number) => {
+    try {
+      setStoresLoading(true)
+      const topStoresResponse = await getTopStores(5, year)
+      const topStoresData = topStoresResponse.data
+
+      // Update only top stores data in dashboardData
+      if (dashboardData) {
+        setDashboardData({
+          ...dashboardData,
+          summary: {
+            ...dashboardData.summary,
+            topStoresByRevenue: topStoresData.map((store) => ({
+              storeId: store.storeId,
+              storeName: store.storeName,
+              revenue: store.totalRevenues,
+              orderCount: 0,
+              logoUrl: null
+            }))
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Error fetching top stores data:', err)
+    } finally {
+      setStoresLoading(false)
     }
   }
 
@@ -231,8 +309,14 @@ function AdminDashboard() {
     }))
     : []
 
-  const handleYearChange = (year: number) => {
+  const handleYearChange = (year: number, component?: 'revenue' | 'stores') => {
     setSelectedYear(year)
+    // Only fetch data for the specific component
+    if (component === 'revenue') {
+      fetchRevenueData(year)
+    } else if (component === 'stores') {
+      fetchTopStoresData(year)
+    }
   }
 
   if (loading) {
@@ -274,20 +358,6 @@ function AdminDashboard() {
       {/* Header */}
       <div className='flex items-center justify-between'>
         <h1 className='text-2xl font-bold text-gray-900'>Dashboard Admin</h1>
-        <div className='flex items-center gap-2'>
-          <span className='text-sm text-gray-600'>Năm:</span>
-          <select
-            value={selectedYear}
-            onChange={(e) => handleYearChange(parseInt(e.target.value))}
-            className='px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-          >
-            {availableYears.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {/* Key Metrics */}
@@ -346,117 +416,281 @@ function AdminDashboard() {
       </div>
 
       {/* Charts Section */}
-      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        {/* Revenue Chart */}
+      <div className='space-y-6'>
+        {/* Revenue Chart - Full Width */}
         <Card className='bg-white shadow-sm'>
           <CardHeader className='flex flex-row items-center justify-between'>
             <CardTitle className='text-lg font-semibold text-gray-900'>Doanh thu theo tháng</CardTitle>
-            <div className='text-sm text-gray-600'>Năm {selectedYear}</div>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm text-gray-600'>Năm:</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => handleYearChange(parseInt(e.target.value), 'revenue')}
+                className='px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                disabled={revenueLoading}
+              >
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              {revenueLoading && (
+                <Loader2 className='w-4 h-4 animate-spin text-gray-400' />
+              )}
+            </div>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className='h-[300px]'>
-              <BarChart data={revenueData}>
-                <CartesianGrid strokeDasharray='3 3' />
-                <XAxis dataKey='month' />
-                <YAxis />
-                <ChartTooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload
-                      return (
-                        <div className='bg-white p-3 border rounded-lg shadow-lg'>
-                          <p className='font-medium'>{data.month}</p>
-                          <p className='text-sm text-gray-600'>{formatCurrency(data.revenue)}</p>
-                        </div>
-                      )
-                    }
-                    return null
-                  }}
-                />
-                <Bar dataKey='revenue' fill='#F97316' radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        {/* Promotion Overview */}
-        <Card className='bg-white shadow-sm'>
-          <CardHeader>
-            <CardTitle className='text-lg font-semibold text-gray-900'>Tổng quan khuyến mãi</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {promotionStats ? (
-              <div className='space-y-4'>
-                {/* Stats Grid */}
-                <div className='grid grid-cols-2 gap-4'>
-                  <div className='p-4 bg-purple-50 rounded-lg border border-purple-100'>
-                    <div className='flex items-center gap-2 mb-2'>
-                      <Tag className='w-5 h-5 text-purple-600' />
-                      <p className='text-sm font-medium text-gray-600'>Đang hoạt động</p>
-                    </div>
-                    <p className='text-2xl font-bold text-purple-600'>{promotionStats.activePromotions}</p>
-                    <p className='text-xs text-gray-500 mt-1'>trong tổng {promotionStats.totalPromotions} khuyến mãi</p>
-                  </div>
-
-                  <div className='p-4 bg-orange-50 rounded-lg border border-orange-100'>
-                    <div className='flex items-center gap-2 mb-2'>
-                      <AlertCircle className='w-5 h-5 text-orange-600' />
-                      <p className='text-sm font-medium text-gray-600'>Sắp hết hạn</p>
-                    </div>
-                    <p className='text-2xl font-bold text-orange-600'>{promotionStats.expiringSoonPromotions}</p>
-                    <p className='text-xs text-gray-500 mt-1'>cần kiểm tra</p>
-                  </div>
-
-                  <div className='p-4 bg-green-50 rounded-lg border border-green-100'>
-                    <div className='flex items-center gap-2 mb-2'>
-                      <span className='text-green-600 font-bold'>đ</span>
-                      <p className='text-sm font-medium text-gray-600'>Tổng giảm giá</p>
-                    </div>
-                    <p className='text-xl font-bold text-green-600'>
-                      {formatCurrency(promotionStats.totalDiscountGiven)}
-                    </p>
-                    <p className='text-xs text-gray-500 mt-1'>đã áp dụng</p>
-                  </div>
-
-                  <div className='p-4 bg-blue-50 rounded-lg border border-blue-100'>
-                    <div className='flex items-center gap-2 mb-2'>
-                      <TrendingUp className='w-5 h-5 text-blue-600' />
-                      <p className='text-sm font-medium text-gray-600'>Lượt sử dụng</p>
-                    </div>
-                    <p className='text-2xl font-bold text-blue-600'>{formatNumber(promotionStats.totalUsage)}</p>
-                    <p className='text-xs text-gray-500 mt-1'>
-                      {formatNumber(promotionStats.totalOrdersWithPromotion)} đơn hàng
-                    </p>
-                  </div>
-                </div>
-
-                {/* Summary Info */}
-                <div className='pt-4 border-t border-gray-200'>
-                  <div className='flex items-center justify-between text-sm'>
-                    <span className='text-gray-600'>Đã hết hạn:</span>
-                    <span className='font-medium text-gray-900'>{promotionStats.expiredPromotions}</span>
-                  </div>
+          <CardContent className='w-full'>
+            {revenueLoading ? (
+              <div className='h-[300px] flex items-center justify-center'>
+                <div className='flex items-center gap-2'>
+                  <Loader2 className='w-6 h-6 animate-spin text-gray-400' />
+                  <span className='text-gray-600'>Đang tải dữ liệu...</span>
                 </div>
               </div>
             ) : (
-              <div className='h-[300px] flex items-center justify-center text-gray-500'>
-                <p>Không có dữ liệu khuyến mãi</p>
+              <div className='w-full'>
+                <ChartContainer config={chartConfig} className='h-[300px] w-full'>
+                  <LineChart
+                    data={revenueData}
+                    width={undefined}
+                    height={300}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray='3 3' stroke='#E5E7EB' />
+                    <XAxis dataKey='month' stroke='#6B7280' tick={{ fill: '#6B7280' }} />
+                    <YAxis stroke='#6B7280' tick={{ fill: '#6B7280' }} />
+                    <ChartTooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className='bg-white p-3 border rounded-lg shadow-lg'>
+                              <p className='font-medium'>{data.month}</p>
+                              <p className='text-sm text-gray-600'>{formatCurrency(data.revenue)}</p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Line
+                      type='monotone'
+                      dataKey='revenue'
+                      stroke='#3B82F6'
+                      strokeWidth={3}
+                      dot={{ fill: '#3B82F6', r: 5 }}
+                      activeDot={{ r: 7 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Promotion Overview and Vietnam Map - Same Row */}
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+          {/* Promotion Overview */}
+          <Card className='bg-white shadow-sm'>
+            <CardHeader>
+              <CardTitle className='text-lg font-semibold text-gray-900'>Tổng quan khuyến mãi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {promotionStats ? (
+                <div className='space-y-4'>
+                  {/* Stats Grid */}
+                  <div className='grid grid-cols-2 gap-4'>
+                    <div className='p-4 bg-purple-50 rounded-lg border border-purple-100'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <Tag className='w-5 h-5 text-purple-600' />
+                        <p className='text-sm font-medium text-gray-600'>Đang hoạt động</p>
+                      </div>
+                      <p className='text-2xl font-bold text-purple-600'>{promotionStats.activePromotions}</p>
+                      <p className='text-xs text-gray-500 mt-1'>trong tổng {promotionStats.totalPromotions} khuyến mãi</p>
+                    </div>
+
+                    <div className='p-4 bg-orange-50 rounded-lg border border-orange-100'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <AlertCircle className='w-5 h-5 text-orange-600' />
+                        <p className='text-sm font-medium text-gray-600'>Sắp hết hạn</p>
+                      </div>
+                      <p className='text-2xl font-bold text-orange-600'>{promotionStats.expiringSoonPromotions}</p>
+                      <p className='text-xs text-gray-500 mt-1'>cần kiểm tra</p>
+                    </div>
+
+                    <div className='p-4 bg-green-50 rounded-lg border border-green-100'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <span className='text-green-600 font-bold'>đ</span>
+                        <p className='text-sm font-medium text-gray-600'>Tổng giảm giá</p>
+                      </div>
+                      <p className='text-xl font-bold text-green-600'>
+                        {formatCurrency(promotionStats.totalDiscountGiven)}
+                      </p>
+                      <p className='text-xs text-gray-500 mt-1'>đã áp dụng</p>
+                    </div>
+
+                    <div className='p-4 bg-blue-50 rounded-lg border border-blue-100'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <TrendingUp className='w-5 h-5 text-blue-600' />
+                        <p className='text-sm font-medium text-gray-600'>Lượt sử dụng</p>
+                      </div>
+                      <p className='text-2xl font-bold text-blue-600'>{formatNumber(promotionStats.totalUsage)}</p>
+                      <p className='text-xs text-gray-500 mt-1'>
+                        {formatNumber(promotionStats.totalOrdersWithPromotion)} đơn hàng
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Summary Info */}
+                  <div className='pt-4 border-t border-gray-200'>
+                    <div className='flex items-center justify-between text-sm'>
+                      <span className='text-gray-600'>Đã hết hạn:</span>
+                      <span className='font-medium text-gray-900'>{promotionStats.expiredPromotions}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className='h-[300px] flex items-center justify-center text-gray-500'>
+                  <p>Không có dữ liệu khuyến mãi</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Vietnam Region Map */}
+          <Card className='bg-white shadow-sm'>
+            <CardHeader>
+              <CardTitle className='text-lg font-semibold text-gray-900'>Bản đồ tỉnh</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className='relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200  overflow-hidden'>
+                <div className='relative flex items-center justify-center' style={{ transformOrigin: 'center center' }}>
+                  <div
+                    className='transition-transform duration-300'
+                    style={{
+                      transform: `scale(${0.9 * mapZoom})`,
+                      transformOrigin: 'center center'
+                    }}
+                  >
+                    <VietnamMap setSelectedProvince={() => { }} />
+                  </div>
+                </div>
+                {/* Zoom Controls */}
+                <div className='absolute bottom-4 right-4 flex flex-col gap-2 z-10'>
+                  <button
+                    onClick={() => setMapZoom((prev) => Math.min(prev * 1.2, 3))}
+                    className='w-10 h-10 bg-white rounded-lg shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors'
+                    aria-label='Zoom in'
+                    title='Phóng to'
+                  >
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      width='20'
+                      height='20'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      stroke='currentColor'
+                      strokeWidth='2'
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                    >
+                      <circle cx='11' cy='11' r='8'></circle>
+                      <path d='m21 21-4.35-4.35'></path>
+                      <line x1='11' y1='8' x2='11' y2='14'></line>
+                      <line x1='8' y1='11' x2='14' y2='11'></line>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setMapZoom((prev) => Math.max(prev / 1.2, 0.5))}
+                    className='w-10 h-10 bg-white rounded-lg shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors'
+                    aria-label='Zoom out'
+                    title='Thu nhỏ'
+                  >
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      width='20'
+                      height='20'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      stroke='currentColor'
+                      strokeWidth='2'
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                    >
+                      <circle cx='11' cy='11' r='8'></circle>
+                      <path d='m21 21-4.35-4.35'></path>
+                      <line x1='8' y1='11' x2='14' y2='11'></line>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setMapZoom(1)}
+                    className='w-10 h-10 bg-white rounded-lg shadow-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors'
+                    aria-label='Reset zoom'
+                    title='Đặt lại'
+                  >
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      width='20'
+                      height='20'
+                      viewBox='0 0 24 24'
+                      fill='none'
+                      stroke='currentColor'
+                      strokeWidth='2'
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                    >
+                      <path d='M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8'></path>
+                      <path d='M21 3v5h-5'></path>
+                      <path d='M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16'></path>
+                      <path d='M3 21v-5h5'></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
       </div>
 
       {/* Lists Section */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         {/* High Revenue Stores */}
         <Card className='bg-white shadow-sm'>
-          <CardHeader>
-            <CardTitle className='text-lg font-semibold text-gray-900'>Cửa hàng có doanh thu cao</CardTitle>
-            <p className='text-sm text-gray-600 mt-1'>Top 5 cửa hàng theo doanh thu trong năm {selectedYear}</p>
+          <CardHeader className='flex flex-row items-center justify-between'>
+            <div>
+              <CardTitle className='text-lg font-semibold text-gray-900'>Cửa hàng có doanh thu cao</CardTitle>
+              <p className='text-sm text-gray-600 mt-1'>Top 5 cửa hàng theo doanh thu</p>
+            </div>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm text-gray-600'>Năm:</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => handleYearChange(parseInt(e.target.value), 'stores')}
+                className='px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                disabled={storesLoading}
+              >
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              {storesLoading && (
+                <Loader2 className='w-4 h-4 animate-spin text-gray-400' />
+              )}
+            </div>
           </CardHeader>
           <CardContent className='space-y-4'>
-            {dashboardData?.summary?.topStoresByRevenue && dashboardData.summary.topStoresByRevenue.length > 0 ? (
+            {storesLoading ? (
+              <div className='flex items-center justify-center py-8'>
+                <div className='flex items-center gap-2'>
+                  <Loader2 className='w-6 h-6 animate-spin text-gray-400' />
+                  <span className='text-gray-600'>Đang tải dữ liệu...</span>
+                </div>
+              </div>
+            ) : dashboardData?.summary?.topStoresByRevenue && dashboardData.summary.topStoresByRevenue.length > 0 ? (
               dashboardData.summary.topStoresByRevenue.map((store, index) => {
                 return (
                   <div key={store.storeId} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>

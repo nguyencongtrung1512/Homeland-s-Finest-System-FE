@@ -471,6 +471,18 @@ export interface PaymentMethodDistributionResponse {
   TotalOrders: number
 }
 
+/**
+ * Admin Dashboard KPI Response
+ */
+export interface AdminDashboardKpiDTO {
+  totalAvailableBalance: number
+  pendingRequestCount: number
+  processingBankAmount: number
+  totalDebtReceivable: number
+  totalDisbursed: number
+  calculatedAt: string
+}
+
 // ========================================
 // STAFF DASHBOARD API FUNCTIONS
 // ========================================
@@ -578,6 +590,18 @@ export const getPaymentMethodDistribution = async (
   return response as any
 }
 
+/**
+ * Lấy thống kê KPI cho Admin
+ * GET /api/wallet-dashboard/Admin/kpi
+ */
+export const getAdminKpi = async (): Promise<ApiResponse<AdminDashboardKpiDTO>> => {
+  const response = await axiosInstance.get<ApiResponse<AdminDashboardKpiDTO>>(
+    `${API_URL}/Admin/kpi`
+  )
+  // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+  return response as any
+}
+
 // ========================================
 // DEFAULT EXPORT
 // ========================================
@@ -593,6 +617,7 @@ export default {
   getStaffDashboard,
   getStoreRegistrationChart,
   getStoreRegionDistribution,
-  getPaymentMethodDistribution
+  getPaymentMethodDistribution,
+  getAdminKpi
 }
 

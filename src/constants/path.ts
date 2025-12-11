@@ -6,6 +6,7 @@ export const path = {
   blogDetail: '/view-blog/:id',
   login: '/login',
   product: '/products',
+  homepage3D: '/homepage3D',
   detailCombo: '/combo/:id',
   productDetail: '/product/:id',
   store: '/store/:storeId',

@@ -238,6 +238,27 @@ export interface OrdersNeedingProcessingParams {
   pageNumber?: number // Default: 1
 }
 
+// Order Count Types
+export interface MonthlyOrderCount {
+  month: number
+  label: string
+  count: number
+  countByStatus: Record<string, number>
+}
+
+export interface OrderCountResponse {
+  year: number
+  filteredStatuses: string[] | null
+  totalCount: number
+  countByStatus: Record<string, number>
+  monthlyBreakdown: MonthlyOrderCount[]
+}
+
+export interface OrderCountParams {
+  year: number
+  filteredStatuses?: string[]
+}
+
 export const sellerApi = {
   // Lấy danh sách tất cả seller (backend trả về tất cả, frontend tự phân trang)
   getAllSellers: async (params?: SellersListParams): Promise<SellersListResponse> => {
@@ -299,13 +320,9 @@ export const sellerApi = {
   },
 
   // Gửi lại đơn đăng ký seller
-  resubmitSellerApplication: async (userId: string, formData: FormData): Promise<any> => {
-    const response = await axiosInstance.put(`${API_URL}/${userId}/ResubmitApplication`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    return response
+  resubmitSellerApplication: async (userId: string): Promise<ApiResponse<unknown>> => {
+    const response = await axiosInstance.put(`${API_URL}/${userId}/ResubmitApplication`)
+    return response as any
   },
 
   // Lấy thống kê tổng quan dashboard
@@ -430,6 +447,24 @@ export const sellerApi = {
     const url = `${API_URL}/finance-dashboard/product-revenue-report${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
     // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
     const response = (await axiosInstance.get(url)) as unknown as ApiResponse<ProductRevenueReport>
+    return response.data
+  },
+
+  // Lấy số lượng đơn hàng theo tháng
+  getOrderCount: async (params: OrderCountParams): Promise<OrderCountResponse> => {
+    const queryParams = new URLSearchParams()
+
+    queryParams.append('year', params.year.toString())
+
+    if (params.filteredStatuses && params.filteredStatuses.length > 0) {
+      params.filteredStatuses.forEach((status) => {
+        queryParams.append('filteredStatuses', status)
+      })
+    }
+
+    const url = `${API_URL}/dashboard/order-count${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
+    const response = (await axiosInstance.get(url)) as ApiResponse<OrderCountResponse>
     return response.data
   }
 }

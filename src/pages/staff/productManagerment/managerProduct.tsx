@@ -27,7 +27,7 @@ function ManagerProduct() {
   const [allProducts, setAllProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchText, setSearchText] = useState('')
-  const [productStatusFilter, setProductStatusFilter] = useState<string>('Processing')
+  const [productStatusFilter, setProductStatusFilter] = useState<string>('all')
   const [isActiveFilter, setIsActiveFilter] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
   const [currentPage, setCurrentPage] = useState(1)

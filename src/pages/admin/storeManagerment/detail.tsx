@@ -1157,10 +1157,16 @@ function StoreDetailAdmin() {
                 </div>
                 <div className='space-y-3'>
                   {store.status === 'Pending' && (
-                    <Button onClick={() => handleStatusAction('Ban')} variant='destructive' className='w-full'>
-                      <Ban className='w-4 h-4 mr-2' />
-                      Khóa cửa hàng
-                    </Button>
+                    <div className='grid grid-row-2 gap-4'>
+                      <Button onClick={() => handleStatusAction('Reject')} variant='destructive' className='w-full'>
+                        <X className='w-4 h-4 mr-2' />
+                        Từ chối cửa hàng
+                      </Button>
+                      <Button onClick={() => handleStatusAction('Ban')} variant='destructive' className='w-full'>
+                        <Ban className='w-4 h-4 mr-2' />
+                        Khóa cửa hàng
+                      </Button>
+                    </div>
                   )}
 
                   {store.status === 'ApprovedByStaff' && (
@@ -1203,13 +1209,17 @@ function StoreDetailAdmin() {
                     </Button>
                   )}
 
-                  {/* Nút giao cho nhân viên - hiển thị cho tất cả trạng thái */}
-                  <div className='pt-3 border-t border-gray-200'>
-                    <Button onClick={handleAssignStaff} className='w-full bg-purple-500 hover:bg-purple-600 text-white'>
-                      <UserPlus className='w-4 h-4 mr-2' />
-                      Giao cho nhân viên
-                    </Button>
-                  </div>
+                  {/* Nút giao cho nhân viên - ẩn khi Processing, RejectedByStaff, Rejected */}
+                  {store.status !== 'Processing' &&
+                    store.status !== 'RejectedByStaff' &&
+                    store.status !== 'Rejected' && (
+                      <div className='pt-3 border-t border-gray-200'>
+                        <Button onClick={handleAssignStaff} className='w-full bg-purple-500 hover:bg-purple-600 text-white'>
+                          <UserPlus className='w-4 h-4 mr-2' />
+                          Giao cho nhân viên
+                        </Button>
+                      </div>
+                    )}
                 </div>
               </div>
             </CardContent>

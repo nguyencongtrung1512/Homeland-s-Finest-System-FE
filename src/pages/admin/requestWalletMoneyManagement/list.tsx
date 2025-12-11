@@ -26,6 +26,8 @@ import { Badge } from '../../../components/ui/badge'
 import { getRequestWalletMoney, updateRequestWalletMoney } from '../../../apis/requestWalletMoney.api'
 import { getWalletBalance, withdrawal, getWalletTransactions, depositMoney } from '../../../apis/wallet.api'
 import { getOrderDetail } from '../../../apis/order.api'
+import { getAdminKpi } from '../../../apis/walletDashboard.api'
+import type { AdminDashboardKpiDTO } from '../../../apis/walletDashboard.api'
 import type { RequestWalletMoney, UpdateRequestWalletMoneyInput } from '../../../types/requestWalletMoneyType'
 import type { WalletData, WalletTransactionDTO } from '../../../types/walletType'
 import { getTransactionTypeLabel } from '../../../types/walletType'
@@ -33,7 +35,6 @@ import { formatDate } from '../../../utils/formatDate'
 import { toast } from '../../../utils/toast'
 import Loading from '../../../components/Loading/loading'
 import Pagination from '../../../components/Pagination/Pagination'
-import { formatCompact } from '../../../utils/formatCompact'
 
 function RequestWalletMoneyManagement() {
 
@@ -68,8 +69,11 @@ function RequestWalletMoneyManagement() {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'COD' | 'WalletOrBanking' | 'Orther'>('all')
   const [selectedTransaction, setSelectedTransaction] = useState<WalletTransactionDTO | null>(null)
   const [isTransactionDetailModalOpen, setIsTransactionDetailModalOpen] = useState(false)
+  const [kpiData, setKpiData] = useState<AdminDashboardKpiDTO | null>(null)
+  const [loadingKpi, setLoadingKpi] = useState(false)
 
-  // Thống kê
+  // Thống kê (đang dùng trong phần code đã comment)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -162,6 +166,21 @@ function RequestWalletMoneyManagement() {
       setWalletData(data)
     } catch (err) {
       console.error('Error fetching wallet balance:', err)
+    }
+  }
+
+  const fetchKpiData = async () => {
+    try {
+      setLoadingKpi(true)
+      const response = await getAdminKpi()
+      if (response?.data) {
+        setKpiData(response.data)
+      }
+    } catch (err) {
+      console.error('Error fetching KPI data:', err)
+      toast.error('Lỗi', 'Không thể tải thống kê KPI')
+    } finally {
+      setLoadingKpi(false)
     }
   }
 
@@ -274,12 +293,14 @@ function RequestWalletMoneyManagement() {
 
     // Filter by search text
     if (searchText) {
+      const searchLower = searchText.toLowerCase()
       filtered = filtered.filter(
         (req) =>
-          req.id.toLowerCase().includes(searchText.toLowerCase()) ||
-          req.userEmail.toLowerCase().includes(searchText.toLowerCase()) ||
-          req.userPhoneNumber.toLowerCase().includes(searchText.toLowerCase()) ||
-          req.bankAccount.toLowerCase().includes(searchText.toLowerCase())
+          (req.id && req.id.toLowerCase().includes(searchLower)) ||
+          (req.userEmail && req.userEmail.toLowerCase().includes(searchLower)) ||
+          (req.userPhoneNumber && req.userPhoneNumber.toLowerCase().includes(searchLower)) ||
+          (req.bankAccount && req.bankAccount.toLowerCase().includes(searchLower)) ||
+          (req.accountHolderName && req.accountHolderName.toLowerCase().includes(searchLower))
       )
     }
 
@@ -306,6 +327,7 @@ function RequestWalletMoneyManagement() {
   useEffect(() => {
     fetchWalletInfo()
     fetchWalletTransactions()
+    fetchKpiData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -512,7 +534,8 @@ function RequestWalletMoneyManagement() {
     )
   }
 
-  // Check if transaction is debt-related
+  // Check if transaction is debt-related (có thể dùng sau)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isDebtTransaction = (type: string): boolean => {
     return ['OrderCodDebt', 'DebtPayment'].includes(type)
   }
@@ -742,7 +765,133 @@ function RequestWalletMoneyManagement() {
           </Button>
         </div>
       </motion.div>
-      {/* Summary Cards */}
+
+      {/* KPI Cards */}
+      {loadingKpi ? (
+        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-6'>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Card key={i} className='bg-white shadow-sm'>
+              <CardContent className='p-4 md:p-6'>
+                <Loading size='sm' />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : kpiData ? (
+        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-6'>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+          >
+            <Card className='bg-white shadow-sm'>
+              <CardContent className='p-4 md:p-6'>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <p className='text-xs md:text-sm text-gray-600 mb-1'>Tổng số dư khả dụng</p>
+                    <p className='text-xl md:text-2xl font-bold text-emerald-600'>
+                      {kpiData.totalAvailableBalance.toLocaleString('vi-VN')}
+                    </p>
+                  </div>
+                  <div className='w-10 h-10 md:w-12 md:h-12 bg-emerald-100 rounded-lg flex items-center justify-center'>
+                    <Wallet className='w-5 h-5 md:w-6 md:h-6 text-emerald-600' />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            <Card className='bg-white shadow-sm'>
+              <CardContent className='p-4 md:p-6'>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <p className='text-xs md:text-sm text-gray-600 mb-1'>Yêu cầu chờ duyệt</p>
+                    <p className='text-xl md:text-2xl font-bold text-orange-600'>
+                      {kpiData.pendingRequestCount.toLocaleString('vi-VN')}
+                    </p>
+                  </div>
+                  <div className='w-10 h-10 md:w-12 md:h-12 bg-orange-100 rounded-lg flex items-center justify-center'>
+                    <Clock className='w-5 h-5 md:w-6 md:h-6 text-orange-600' />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <Card className='bg-white shadow-sm'>
+              <CardContent className='p-4 md:p-6'>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <p className='text-xs md:text-sm text-gray-600 mb-1'>Đang xử lý ngân hàng</p>
+                    <p className='text-xl md:text-2xl font-bold text-blue-600'>
+                      {kpiData.processingBankAmount.toLocaleString('vi-VN')}
+                    </p>
+                  </div>
+                  <div className='w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-lg flex items-center justify-center'>
+                    <ArrowDownRight className='w-5 h-5 md:w-6 md:h-6 text-blue-600' />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          >
+            <Card className='bg-white shadow-sm'>
+              <CardContent className='p-4 md:p-6'>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <p className='text-xs md:text-sm text-gray-600 mb-1'>Tổng nợ phải thu</p>
+                    <p className='text-xl md:text-2xl font-bold text-red-600'>
+                      {kpiData.totalDebtReceivable.toLocaleString('vi-VN')}
+                    </p>
+                  </div>
+                  <div className='w-10 h-10 md:w-12 md:h-12 bg-red-100 rounded-lg flex items-center justify-center'>
+                    <ArrowDownLeft className='w-5 h-5 md:w-6 md:h-6 text-red-600' />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+          >
+            <Card className='bg-white shadow-sm'>
+              <CardContent className='p-4 md:p-6'>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <p className='text-xs md:text-sm text-gray-600 mb-1'>Đã giải ngân</p>
+                    <p className='text-xl md:text-2xl font-bold text-green-600'>
+                      {kpiData.totalDisbursed.toLocaleString('vi-VN')}
+                    </p>
+                  </div>
+                  <div className='w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center'>
+                    <CheckCircle className='w-5 h-5 md:w-6 md:h-6 text-green-600' />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      ) : null}
+
+      {/* Summary Cards - Commented out */}
       {/* <div className='grid grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-3 md:gap-6'>
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
@@ -755,7 +904,7 @@ function RequestWalletMoneyManagement() {
                 <div>
                   <p className='text-xs md:text-sm text-gray-600 mb-1'>Số dư khả dụng</p>
                   <p className='text-xl md:text-2xl font-bold text-emerald-600'>
-                    {walletData ? `${formatCompact(walletData.availableBalance)} đ` : '--'}
+                    {walletData ? `${walletData.availableBalance.toLocaleString('vi-VN')} đ` : '--'}
                   </p>
                 </div>
                 <div className='w-10 h-10 md:w-12 md:h-12 bg-emerald-100 rounded-lg flex items-center justify-center'>
@@ -862,7 +1011,7 @@ function RequestWalletMoneyManagement() {
                 <div>
                   <p className='text-xs md:text-sm text-gray-600 mb-1'>Tổng đã rút</p>
                   <p className='text-xl md:text-2xl font-bold text-indigo-600'>
-                    {walletData.TotalWithdrawn.toLocaleString('vi-VN')} đ
+                    {walletData.TotalWithdrawn.toLocaleString('vi-VN')}
                   </p>
                 </div>
                 <div className='w-10 h-10 md:w-12 md:h-12 bg-indigo-100 rounded-lg flex items-center justify-center'>
@@ -887,7 +1036,7 @@ function RequestWalletMoneyManagement() {
                 <div className='relative'>
                   <Search size={16} className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
                   <Input
-                    placeholder='Tìm kiếm theo ID, email, SĐT, số tài khoản...'
+                    placeholder='Tìm kiếm theo ID, email, SĐT, số tài khoản, tên chủ tài khoản...'
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     className='pl-10 h-10 border-gray-200 text-sm'
@@ -1045,6 +1194,13 @@ function RequestWalletMoneyManagement() {
                   <span className='font-mono text-sm text-gray-700'>{selectedRequest.orderId || 'Không có'}</span>
                 </div>
 
+                {selectedRequest.transactionId && (
+                  <div>
+                    <p className='text-sm font-semibold text-gray-900 mb-2'>ID Giao dịch</p>
+                    <span className='font-mono text-sm text-gray-700'>{selectedRequest.transactionId}</span>
+                  </div>
+                )}
+
                 {/* Thông tin trạng thái đơn hàng */}
                 {orderDetail && (
                   <div className='space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-100'>
@@ -1098,7 +1254,7 @@ function RequestWalletMoneyManagement() {
                     <div className='flex justify-between items-start'>
                       <span className='text-sm text-gray-600'>Số tiền:</span>
                       <span className='text-sm font-semibold text-gray-900'>
-                        {selectedRequest.amount.toLocaleString('vi-VN')} đ
+                        {selectedRequest.amount.toLocaleString('vi-VN')}
                       </span>
                     </div>
                     <div className='flex justify-between items-start'>
@@ -1186,7 +1342,7 @@ function RequestWalletMoneyManagement() {
               <p className='text-sm text-gray-600 mb-1'>
                 Số dư khả dụng:{' '}
                 <span className='font-semibold text-emerald-600'>
-                  {walletData ? `${formatCompact(walletData.availableBalance)} đ` : '--'}
+                  {walletData ? `${walletData.availableBalance.toLocaleString('vi-VN')} ` : '--'}
                 </span>
               </p>
               <Input
@@ -1244,7 +1400,7 @@ function RequestWalletMoneyManagement() {
               <p className='text-sm text-gray-600 mb-1'>
                 Số dư hiện tại:{' '}
                 <span className='font-semibold text-emerald-600'>
-                  {walletData ? `${formatCompact(walletData.availableBalance)} đ` : '--'}
+                  {walletData ? `${walletData.availableBalance.toLocaleString('vi-VN')} ` : '--'}
                 </span>
               </p>
               <Input
@@ -1267,7 +1423,7 @@ function RequestWalletMoneyManagement() {
                     <span className='text-sm text-gray-700'>Số dư sau khi nạp:</span>
                     <span className='text-lg font-bold text-blue-600'>
                       {walletData
-                        ? `${formatCompact(walletData.availableBalance + parseFloat(depositAmount))} đ`
+                        ? `${(walletData.availableBalance + parseFloat(depositAmount)).toLocaleString('vi-VN')} `
                         : '--'}
                     </span>
                   </div>
@@ -1322,7 +1478,7 @@ function RequestWalletMoneyManagement() {
                     Xử lý yêu cầu
                   </DialogTitle>
                   <p className='text-sm text-gray-500 mt-1'>
-                    {getTypeConfig(selectedRequest.type).text} - {selectedRequest.amount.toLocaleString('vi-VN')} đ
+                    {getTypeConfig(selectedRequest.type).text} - {selectedRequest.amount.toLocaleString('vi-VN')}
                   </p>
                 </DialogHeader>
 

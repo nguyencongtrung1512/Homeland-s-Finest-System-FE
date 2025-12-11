@@ -17,6 +17,15 @@ import ProductImageCarousel from '../../../../../components/ui/product-caroseu'
 import { Hash } from 'lucide-react'
 import { getHashtagById, type HashtagItem } from '../../../../../apis/hashtag.api'
 import { Badge } from '../../../../../components/ui/badge'
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from '../../../../../components/ui/breadcrumb'
+import type { ProductCategory } from '../../../../../types/productType'
 
 interface VariantOption {
   id: string
@@ -65,7 +74,7 @@ interface ProductWithVariants {
   status: string | null
   summaryPrice?: string
   variantGroups: VariantGroup[]
-  productCategories: unknown
+  productCategories: ProductCategory[]
   productCertificateDTOs: unknown[]
 }
 
@@ -499,13 +508,13 @@ function ProductGallery() {
   // Handle direct input for quantity - allow free typing
   const handleQuantityInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    
+
     // Allow empty string for better UX while typing
     if (value === '') {
       setQuantityInput('')
       return
     }
-    
+
     // Only allow numbers
     if (/^\d+$/.test(value)) {
       setQuantityInput(value)
@@ -519,7 +528,7 @@ function ProductGallery() {
       setQuantityInput('1')
       return
     }
-    
+
     const numValue = parseInt(value, 10)
     if (isNaN(numValue) || numValue < 1) {
       setQuantity(1)
@@ -577,19 +586,68 @@ function ProductGallery() {
     return group.options.find((opt) => opt.id === selectedId) || null
   }
 
-  if (!product) {
-    return null
-  }
-
   // ✅ Default image for fallback
   const defaultImageUrl = 'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
 
   const productData = getProductData()
 
+  // ✅ Get sorted categories by level (ascending: level 1 -> level 2 -> ...)
+  const sortedCategories = useMemo(() => {
+    if (!productData?.productCategories || !Array.isArray(productData.productCategories)) {
+      return []
+    }
+    return [...productData.productCategories].sort((a, b) => (a.level || 0) - (b.level || 0))
+  }, [productData?.productCategories])
+
+  if (!product) {
+    return null
+  }
+
   return (
     <>
       <div id='product-gallery' className='bg-white'>
         <div className='max-w-7xl mx-auto px-6 py-8'>
+          {/* Breadcrumb */}
+          {sortedCategories.length > 0 && (
+            <Breadcrumb className='mb-6'>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink
+                    href='/'
+                    onClick={(e) => {
+                      e.preventDefault()
+                      navigate('/')
+                    }}
+                    className='hover:text-green-600'
+                  >
+                    Trang chủ
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                {sortedCategories.map((category) => (
+                  <div key={category.id} className='flex items-center'>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbLink
+                        href={`/products?categoryId=${category.id}`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          navigate(`/products?categoryId=${category.id}`)
+                        }}
+                        className='hover:text-green-600'
+                      >
+                        {category.name}
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                  </div>
+                ))}
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage className='text-gray-900 font-medium'>{product?.name}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          )}
+
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 auto-rows-min'>
             {/* Media Gallery - Product Images and Video */}
             <div ref={productImageRef} className='space-y-3'>
