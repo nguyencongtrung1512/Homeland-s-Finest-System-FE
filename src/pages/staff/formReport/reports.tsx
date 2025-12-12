@@ -29,7 +29,6 @@ import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from 'react-toastify'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
 import Pagination from '../../../components/Pagination/Pagination'
-import { formatDate } from '../../../utils/formatDate'
 
 function ReportManagement() {
   const navigate = useNavigate()

@@ -21,11 +21,7 @@ import {
   Tag,
   Target,
   TrendingUp,
-  Edit,
-  X,
-  Plus,
-  Search,
-  Package
+  Edit
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -38,11 +34,8 @@ import {
   type PromotionSellerRequest,
   type DiscountType
 } from '../../../types/promotionType'
-import { storeApi } from '../../../apis/store.api'
-import { productApi } from '../../../apis/product.api'
-import { type Product } from '../../../types/productType'
-import Loading from '../../../components/Loading/loading'
-import EmptyState from '../../../components/EmptyState/emptyState'
+
+
 
 interface PromotionDetailModalProps {
   promotion: PromotionDetailDTO | PromotionSellerDTO | null
@@ -93,13 +86,9 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
   const [startTime, setStartTime] = useState('00:00')
   const [endTime, setEndTime] = useState('23:59')
-  const [productSearchTerm, setProductSearchTerm] = useState('')
   const [selectedProducts, setSelectedProducts] = useState<string[]>([])
 
   // Product selection states
-  const [products, setProducts] = useState<Product[]>([])
-  const [productsLoading, setProductsLoading] = useState(false)
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
 
   // Validation errors
   interface FormErrors {
@@ -234,9 +223,7 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
         setStartTime('00:00')
         setEndTime('23:59')
         setSelectedProducts([])
-        setProductSearchTerm('')
-        setProducts([])
-        setFilteredProducts([])
+        
       }
     }
   }, [isOpen, promotion, mode, user?.userId])
@@ -266,48 +253,48 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
   }, [mode])
 
   // Fetch store and products when modal opens
-  useEffect(() => {
-    const fetchStoreAndProducts = async () => {
-      if (!isOpen || !user?.userId) return
+  // useEffect(() => {
+  //   const fetchStoreAndProducts = async () => {
+  //     if (!isOpen || !user?.userId) return
 
-      try {
-        // Get store by seller ID
-        const storeResponse = await storeApi.getStoreBySellerId(user.userId)
-        if (storeResponse.data?.id) {
-          // Get products by store
-          setProductsLoading(true)
-          const productsResponse = await productApi.getByStore(storeResponse.data.id, {
-            pageSize: 100, // Get more products for selection
-            pageNumber: 1
-          })
-          if (productsResponse.data) {
-            setProducts(productsResponse.data)
-            setFilteredProducts(productsResponse.data)
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching store and products:', error)
-      } finally {
-        setProductsLoading(false)
-      }
-    }
+  //     try {
+  //       // Get store by seller ID
+  //       const storeResponse = await storeApi.getStoreBySellerId(user.userId)
+  //       if (storeResponse.data?.id) {
+  //         // Get products by store
+  //         setProductsLoading(true)
+  //         const productsResponse = await productApi.getByStore(storeResponse.data.id, {
+  //           pageSize: 100, // Get more products for selection
+  //           pageNumber: 1
+  //         })
+  //         if (productsResponse.data) {
+  //           setProducts(productsResponse.data)
+  //           setFilteredProducts(productsResponse.data)
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching store and products:', error)
+  //     } finally {
+  //       setProductsLoading(false)
+  //     }
+  //   }
 
-    fetchStoreAndProducts()
-  }, [isOpen, user?.userId])
+  //   fetchStoreAndProducts()
+  // }, [isOpen, user?.userId])
 
-  // Filter products based on search term
-  useEffect(() => {
-    if (!productSearchTerm.trim()) {
-      setFilteredProducts(products)
-    } else {
-      const filtered = products.filter(
-        (product) =>
-          product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-          product.id.toLowerCase().includes(productSearchTerm.toLowerCase())
-      )
-      setFilteredProducts(filtered)
-    }
-  }, [productSearchTerm, products])
+  // // Filter products based on search term
+  // useEffect(() => {
+  //   if (!productSearchTerm.trim()) {
+  //     setFilteredProducts(products)
+  //   } else {
+  //     const filtered = products.filter(
+  //       (product) =>
+  //         product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+  //         product.id.toLowerCase().includes(productSearchTerm.toLowerCase())
+  //     )
+  //     setFilteredProducts(filtered)
+  //   }
+  // }, [productSearchTerm, products])
 
   // Safety check
   if (!promotion && mode !== 'create') {
@@ -510,22 +497,22 @@ const PromotionDetailModal: React.FC<PromotionDetailModalProps> = ({
     }
   }
 
-  const addProduct = (productId: string) => {
-    if (!selectedProducts.includes(productId)) {
-      setSelectedProducts((prev) => [...prev, productId])
-    }
-  }
+  // const addProduct = (productId: string) => {
+  //   if (!selectedProducts.includes(productId)) {
+  //     setSelectedProducts((prev) => [...prev, productId])
+  //   }
+  // }
 
-  const removeProduct = (productId: string) => {
-    setSelectedProducts((prev) => prev.filter((id) => id !== productId))
-  }
+  // const removeProduct = (productId: string) => {
+  //   setSelectedProducts((prev) => prev.filter((id) => id !== productId))
+  // }
 
-  const getSelectedProductNames = () => {
-    return selectedProducts.map((productId) => {
-      const product = products.find((p) => p.id === productId)
-      return product ? product.name : productId
-    })
-  }
+  // const getSelectedProductNames = () => {
+  //   return selectedProducts.map((productId) => {
+  //     const product = products.find((p) => p.id === productId)
+  //     return product ? product.name : productId
+  //   })
+  // }
 
   const formatDate = (dateString: string) => {
     try {
