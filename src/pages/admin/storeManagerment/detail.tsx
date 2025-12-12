@@ -90,6 +90,7 @@ function StoreDetailAdmin() {
     if (error?.response?.data) {
       const backendError = error.response.data
 
+      // Ưu tiên hiển thị lỗi validation từ backend (errors object)
       if (backendError.errors && typeof backendError.errors === 'object') {
         const errorMessages: string[] = []
 
@@ -103,20 +104,22 @@ function StoreDetailAdmin() {
         })
 
         if (errorMessages.length > 0) {
-          return errorMessages.join(', ')
+          // Trả về message đầu tiên từ backend (thường là message quan trọng nhất)
+          return errorMessages[0]
         }
+      }
+
+      // Nếu không có errors object, thử các trường khác
+      if (backendError.message) {
+        return backendError.message
       }
 
       if (backendError.title) {
         return backendError.title
       }
 
-      if (backendError.message) {
-        return backendError.message
-      }
-
       if (backendError.errors && Array.isArray(backendError.errors)) {
-        return backendError.errors.join(', ')
+        return backendError.errors[0] || backendError.errors.join(', ')
       }
 
       if (typeof backendError.error === 'string') {
@@ -433,6 +436,11 @@ function StoreDetailAdmin() {
 
     if (!trimmedReason) {
       toast.error('Vui lòng nhập lý do')
+      return
+    }
+
+    if (trimmedReason.length < 10) {
+      toast.error('Lý do phải có ít nhất 10 ký tự')
       return
     }
 
@@ -1598,15 +1606,20 @@ function StoreDetailAdmin() {
                 </Label>
                 <Textarea
                   id='reason'
-                  placeholder={`Nhập lý do ${selectedAction === 'Approve' ? 'duyệt' : selectedAction === 'Reject' ? 'từ chối' : selectedAction === 'Ban' ? 'khóa' : 'mở khóa'} cửa hàng...`}
+                  placeholder={`Nhập lý do ${selectedAction === 'Approve' ? 'duyệt' : selectedAction === 'Reject' ? 'từ chối' : selectedAction === 'Ban' ? 'khóa' : 'mở khóa'} cửa hàng (tối thiểu 10 ký tự)...`}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   className='min-h-[100px] resize-none'
                   maxLength={200}
                 />
                 <div className='flex pt-3 justify-between items-center'>
-                  <p className='text-xs text-gray-500'>Lý do này sẽ được gửi đến chủ cửa hàng</p>
-                  <p className={`text-xs ${reason.length > 200 ? 'text-red-500' : 'text-gray-500'}`}>
+                  <div className='flex flex-col gap-1'>
+                    <p className='text-xs text-gray-500'>Lý do này sẽ được gửi đến chủ cửa hàng</p>
+                    {reason.trim().length > 0 && reason.trim().length < 10 && (
+                      <p className='text-xs text-red-500'>Lý do phải có ít nhất 10 ký tự</p>
+                    )}
+                  </div>
+                  <p className={`text-xs ${reason.length > 200 ? 'text-red-500' : reason.trim().length > 0 && reason.trim().length < 10 ? 'text-red-500' : 'text-gray-500'}`}>
                     {reason.length}/200 ký tự
                   </p>
                 </div>
@@ -1680,6 +1693,7 @@ function StoreDetailAdmin() {
                   onClick={handleSaveReason}
                   disabled={
                     !reason.trim() ||
+                    reason.trim().length < 10 ||
                     reason.trim().length > 200 ||
                     (selectedAction === 'Ban' && isTemporary && !banUntil)
                   }

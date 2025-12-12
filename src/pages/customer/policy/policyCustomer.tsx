@@ -38,9 +38,9 @@ function PolicyCustomer() {
           pageNumber: 1
         })
 
-        // Filter only documents with type = "Customer" and isPublished = true
+        // Filter only documents with type = "Seller" and isPublished = true
         const documentsArray: DocumentType[] = (response.data || []).filter(
-          (doc: DocumentType) => doc.type === 'Customer' && doc.isPublished === true
+          (doc: DocumentType) => doc.type === 'Seller' && doc.isPublished === true
         )
 
         setDocuments(documentsArray)

@@ -11,7 +11,7 @@ export interface ProductCardData extends Product {
 // Card hiển thị sản phẩm
 const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> = ({ product, onClick }) => {
   const navigate = useNavigate()
-  const defaultImage = 'https://toigingiuvedep.vn/wp-content/uploads/2023/03/anh-kha-banh-trai-tim-om-bo-hoa.jpg'
+  const defaultImage = 'https://tse1.mm.bing.net/th/id/OIP.SAKe7PaOdMq1jWY41hkCxAHaHa?cb=ucfimg2&ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3'
 
   // Lấy số lượt bán từ sale_count
   const saleCount = product.saleCount || 0

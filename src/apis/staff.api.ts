@@ -443,7 +443,7 @@ export const staffApi = {
   confirmComboAssignment: async (comboId: string, note: string): Promise<any> => {
     const response = await axiosInstance.put(`${API_URL}/combos/${comboId}/update-status`, {
       status: 'Confirmed',
-      note: note
+      Note: note
     })
     return response.data
   },
@@ -452,7 +452,7 @@ export const staffApi = {
   rejectComboAssignment: async (comboId: string, note: string): Promise<any> => {
     const response = await axiosInstance.put(`${API_URL}/combos/${comboId}/update-status`, {
       status: 'Rejected',
-      note: note
+      Note: note
     })
     return response.data
   },
@@ -461,7 +461,7 @@ export const staffApi = {
   approveCombo: async (comboId: string, note: string): Promise<any> => {
     const response = await axiosInstance.put(`${API_URL}/combos/${comboId}/update-status`, {
       status: 'Approved',
-      note: note
+      Note: note
     })
     return response.data
   },
@@ -470,7 +470,7 @@ export const staffApi = {
   denyCombo: async (comboId: string, note: string): Promise<any> => {
     const response = await axiosInstance.put(`${API_URL}/combos/${comboId}/update-status`, {
       status: 'Denied',
-      note: note
+      Note: note
     })
     return response.data
   },

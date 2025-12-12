@@ -12,19 +12,14 @@ import { getUsers } from '../../../apis/user.api'
 import type { Order, OrderStatus } from '../../../types/orderType'
 import type { User } from '../../../apis/user.api'
 import axiosInstance from '../../../service/axiosInstance'
-import { formatDate } from '../../../utils/formatDate'
+import { formatDateTime } from '../../../utils/formatDate'
 import Pagination from '../../../components/Pagination/Pagination'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from '../../../utils/toast'
 import path from '../../../constants/path'
 import { getPaymentMethodDistribution, type PaymentMethodDistributionResponse } from '../../../apis/walletDashboard.api'
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend
-} from 'chart.js'
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Pie } from 'react-chartjs-2'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
@@ -168,6 +163,27 @@ function OrderManagementStaff() {
         )
       }
 
+      // Sort by createdAt descending (newest first) to ensure latest orders appear first
+      // Parse format "HH:mm:ss dd/MM/yyyy" from backend correctly
+      const parseDate = (dateString: string): number => {
+        if (!dateString) return 0
+        // Match format "HH:mm:ss dd/MM/yyyy"
+        const match = dateString.match(/(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})/)
+        if (match) {
+          const [, hh, mm, ss, dd, MM, yyyy] = match
+          return new Date(+yyyy, +MM - 1, +dd, +hh, +mm, +ss).getTime()
+        }
+        // Fallback to standard Date parsing
+        const date = new Date(dateString)
+        return isNaN(date.getTime()) ? 0 : date.getTime()
+      }
+
+      ordersData.sort((a, b) => {
+        const dateA = parseDate(a.createdAt)
+        const dateB = parseDate(b.createdAt)
+        return dateB - dateA // Descending order (newest first)
+      })
+
       setOrders(ordersData)
       setTotalPages(response.pagination?.totalPages || 1)
     } catch (error: unknown) {
@@ -201,11 +217,7 @@ function OrderManagementStaff() {
     try {
       setPaymentStatsLoading(true)
       // Nếu không có startDate hoặc endDate thì gọi get all (không truyền params)
-      const response = await getPaymentMethodDistribution(
-        undefined,
-        startDate || undefined,
-        endDate || undefined
-      )
+      const response = await getPaymentMethodDistribution(undefined, startDate || undefined, endDate || undefined)
       if (response.status === 200 && response.data) {
         setPaymentStats(response.data)
       }
@@ -256,14 +268,10 @@ function OrderManagementStaff() {
           ],
           backgroundColor: [
             'rgba(59, 130, 246, 0.8)', // Banking - Blue
-            'rgba(34, 197, 94, 0.8)',  // COD - Green
-            'rgba(249, 115, 22, 0.8)'  // MyWallet - Orange
+            'rgba(34, 197, 94, 0.8)', // COD - Green
+            'rgba(249, 115, 22, 0.8)' // MyWallet - Orange
           ],
-          borderColor: [
-            'rgb(59, 130, 246)',
-            'rgb(34, 197, 94)',
-            'rgb(249, 115, 22)'
-          ],
+          borderColor: ['rgb(59, 130, 246)', 'rgb(34, 197, 94)', 'rgb(249, 115, 22)'],
           borderWidth: 2
         }
       ]
@@ -294,15 +302,8 @@ function OrderManagementStaff() {
       <div className='mb-6'>
         <div className='flex items-center justify-between mb-6'>
           <h1 className='text-2xl font-bold'>Quản lý Đơn hàng</h1>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Button
-              variant='outline'
-              onClick={() => setShowStats(!showStats)}
-              className='flex items-center gap-2'
-            >
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button variant='outline' onClick={() => setShowStats(!showStats)} className='flex items-center gap-2'>
               <PieChart className='w-4 h-4' />
               {showStats ? 'Ẩn thống kê' : 'Xem thống kê'}
             </Button>
@@ -330,7 +331,9 @@ function OrderManagementStaff() {
                       <PieChart className='w-5 h-5' />
                       Thống kê phương thức thanh toán
                     </CardTitle>
-                    <CardDescription>Phân bổ doanh thu và số lượng đơn hàng theo phương thức thanh toán</CardDescription>
+                    <CardDescription>
+                      Phân bổ doanh thu và số lượng đơn hàng theo phương thức thanh toán
+                    </CardDescription>
                   </motion.div>
                 </CardHeader>
                 <CardContent>
@@ -480,13 +483,19 @@ function OrderManagementStaff() {
                             <div className='flex justify-between items-center mb-2'>
                               <span className='text-sm font-medium text-gray-600'>Tổng doanh thu</span>
                               <span className='text-lg font-bold text-gray-900'>
-                                {formatCurrency((paymentStats as any).TotalRevenue || (paymentStats as any).totalRevenue || 0)}
+                                {formatCurrency(
+                                  (paymentStats as any).TotalRevenue || (paymentStats as any).totalRevenue || 0
+                                )}
                               </span>
                             </div>
                             <div className='flex justify-between items-center'>
                               <span className='text-sm font-medium text-gray-600'>Tổng số đơn hàng</span>
                               <span className='text-lg font-bold text-gray-900'>
-                                {((paymentStats as any).TotalOrders || (paymentStats as any).totalOrders || 0).toLocaleString('vi-VN')}
+                                {(
+                                  (paymentStats as any).TotalOrders ||
+                                  (paymentStats as any).totalOrders ||
+                                  0
+                                ).toLocaleString('vi-VN')}
                               </span>
                             </div>
                           </motion.div>
@@ -511,7 +520,9 @@ function OrderManagementStaff() {
                                 <div className='space-y-2'>
                                   <div className='flex justify-between text-sm'>
                                     <span className='text-gray-600'>Doanh thu:</span>
-                                    <span className='font-medium'>{formatCurrency(banking.Revenue || banking.revenue || 0)}</span>
+                                    <span className='font-medium'>
+                                      {formatCurrency(banking.Revenue || banking.revenue || 0)}
+                                    </span>
                                   </div>
                                   <div className='flex justify-between text-sm'>
                                     <span className='text-gray-600'>Số đơn:</span>
@@ -544,7 +555,9 @@ function OrderManagementStaff() {
                                 <div className='space-y-2'>
                                   <div className='flex justify-between text-sm'>
                                     <span className='text-gray-600'>Doanh thu:</span>
-                                    <span className='font-medium'>{formatCurrency(cod.Revenue || cod.revenue || 0)}</span>
+                                    <span className='font-medium'>
+                                      {formatCurrency(cod.Revenue || cod.revenue || 0)}
+                                    </span>
                                   </div>
                                   <div className='flex justify-between text-sm'>
                                     <span className='text-gray-600'>Số đơn:</span>
@@ -577,7 +590,9 @@ function OrderManagementStaff() {
                                 <div className='space-y-2'>
                                   <div className='flex justify-between text-sm'>
                                     <span className='text-gray-600'>Doanh thu:</span>
-                                    <span className='font-medium'>{formatCurrency(myWallet.Revenue || myWallet.revenue || 0)}</span>
+                                    <span className='font-medium'>
+                                      {formatCurrency(myWallet.Revenue || myWallet.revenue || 0)}
+                                    </span>
                                   </div>
                                   <div className='flex justify-between text-sm'>
                                     <span className='text-gray-600'>Số đơn:</span>
@@ -693,7 +708,7 @@ function OrderManagementStaff() {
                         <td className='py-4 px-6 text-gray-900 font-medium'>
                           {order.ghnorderCode || `#${order.id.slice(0, 8)}`}
                         </td>
-                        <td className='py-4 px-6 text-gray-700'>{formatDate(order.createdAt)}</td>
+                        <td className='py-4 px-6 text-gray-700'>{formatDateTime(order.createdAt)}</td>
                         <td className='py-4 px-6 text-gray-700'>{order.toName || 'Không có'}</td>
                         <td className='py-4 px-6 text-gray-900 font-medium'>
                           {order.finalPrice.toLocaleString('vi-VN')}₫

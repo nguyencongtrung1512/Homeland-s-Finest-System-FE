@@ -254,10 +254,17 @@ function ReportManagement() {
     return matchesSearch && matchesType && matchesStatus && matchesDateRange
   })
 
-  const totalPages = Math.ceil(filteredForms.length / pageSize)
+  // Sort by createdAt descending (newest first) to ensure latest forms appear first
+  const sortedForms = [...filteredForms].sort((a, b) => {
+    const dateA = normalizeDateValue(a.createdAt)?.getTime() || 0
+    const dateB = normalizeDateValue(b.createdAt)?.getTime() || 0
+    return dateB - dateA // Descending order (newest first)
+  })
+
+  const totalPages = Math.ceil(sortedForms.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
-  const currentForms = filteredForms.slice(startIndex, endIndex)
+  const currentForms = sortedForms.slice(startIndex, endIndex)
 
   const handleView = (form: StaffForm) => {
     navigate(`/staff/formReport/${form.id}`)
@@ -482,7 +489,7 @@ function ReportManagement() {
                           </div>
                         </td>
                         <td className='px-6 py-3'>
-                          <span className='text-sm text-gray-700'>{formatDate(form.createdAt || 'null')}</span>
+                          <span className='text-sm text-gray-700'>{form.createdAt || 'null'}</span>
                         </td>
                         <td className='px-6 py-3'>
                           <Button
@@ -516,8 +523,8 @@ function ReportManagement() {
           {/* Pagination */}
           <div className='flex flex-col gap-3 px-6 py-4 border-t border-gray-200'>
             <p className='text-sm text-gray-600'>
-              Hiển thị {filteredForms.length === 0 ? 0 : startIndex + 1}-
-              {Math.min(endIndex, filteredForms.length)} của {filteredForms.length} kết quả
+              Hiển thị {sortedForms.length === 0 ? 0 : startIndex + 1}-
+              {Math.min(endIndex, sortedForms.length)} của {sortedForms.length} kết quả
             </p>
             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           </div>

@@ -193,6 +193,11 @@ function TransactionManagement() {
     )
   }
 
+  // Calculate statistics from transactions
+  // const totalTransactions = transactions.length
+  // const disbursed = transactions.filter((tx) => tx.status === 'disbursed').length
+  // const refunded = transactions.filter((tx) => tx.status === 'refunded').length
+
   const handleView = (record: Transaction) => {
     setSelectedTransaction(record)
   }

@@ -174,7 +174,7 @@ const FileUploadFieldWithOCR = ({
   const processFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files)
     const validFiles: File[] = []
-    
+
     fileArray.forEach((file) => {
       if (validateFile(file)) {
         validFiles.push(file)
@@ -186,13 +186,13 @@ const FileUploadFieldWithOCR = ({
     // Kiểm tra số lượng file
     const currentCount = fileList.length
     const remainingSlots = maxCount - currentCount
-    
+
     if (remainingSlots <= 0) {
       message.warning(`Chỉ được upload tối đa ${maxCount} file`)
       return
     }
 
-    const filesToAdd = multiple 
+    const filesToAdd = multiple
       ? validFiles.slice(0, remainingSlots)
       : validFiles.slice(0, 1)
 
@@ -317,9 +317,8 @@ const FileUploadFieldWithOCR = ({
         className={`relative transition-all duration-200 ${isDragging ? 'ring-2 ring-green-500 ring-offset-2' : ''} ${isProcessingOCR ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <div
-          className={`absolute inset-0 z-10 bg-green-50 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center pointer-events-none transition-all duration-200 ${
-            isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-          }`}
+          className={`absolute inset-0 z-10 bg-green-50 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center pointer-events-none transition-all duration-200 ${isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+            }`}
         >
           <div className='text-center transform transition-transform duration-200'>
             <div className='text-green-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
@@ -437,7 +436,7 @@ const FileUploadFieldWithBackOCR = ({
   const processFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files)
     const validFiles: File[] = []
-    
+
     fileArray.forEach((file) => {
       if (validateFile(file)) {
         validFiles.push(file)
@@ -449,13 +448,13 @@ const FileUploadFieldWithBackOCR = ({
     // Kiểm tra số lượng file
     const currentCount = fileList.length
     const remainingSlots = maxCount - currentCount
-    
+
     if (remainingSlots <= 0) {
       message.warning(`Chỉ được upload tối đa ${maxCount} file`)
       return
     }
 
-    const filesToAdd = multiple 
+    const filesToAdd = multiple
       ? validFiles.slice(0, remainingSlots)
       : validFiles.slice(0, 1)
 
@@ -580,9 +579,8 @@ const FileUploadFieldWithBackOCR = ({
         className={`relative transition-all duration-200 ${isDragging ? 'ring-2 ring-green-500 ring-offset-2' : ''} ${isProcessingOCR ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <div
-          className={`absolute inset-0 z-10 bg-green-50 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center pointer-events-none transition-all duration-200 ${
-            isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-          }`}
+          className={`absolute inset-0 z-10 bg-green-50 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center pointer-events-none transition-all duration-200 ${isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+            }`}
         >
           <div className='text-center transform transition-transform duration-200'>
             <div className='text-green-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
@@ -689,7 +687,7 @@ const SimpleFileUploadField = ({
         return
       }
 
-      const filesToAdd = multiple 
+      const filesToAdd = multiple
         ? validFiles.slice(0, remainingSlots)
         : validFiles.slice(0, 1)
 
@@ -763,7 +761,7 @@ const SimpleFileUploadField = ({
         return
       }
 
-      const filesToAdd = multiple 
+      const filesToAdd = multiple
         ? validFiles.slice(0, remainingSlots)
         : validFiles.slice(0, 1)
 
@@ -806,20 +804,18 @@ const SimpleFileUploadField = ({
           ))}
           {previewUrls.length < maxCount && (
             <div
-              className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${
-                isDragging 
-                  ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg' 
+              className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${isDragging
+                  ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg'
                   : 'border-slate-300 hover:border-emerald-400'
-              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={handleClick}
               onDragEnter={handleDragEnter}
               onDragLeave={handleDragLeave}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
-              <div className={`absolute inset-0 bg-emerald-50/80 flex items-center justify-center transition-all duration-200 ${
-                isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}>
+              <div className={`absolute inset-0 bg-emerald-50/80 flex items-center justify-center transition-all duration-200 ${isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}>
                 <div className='text-center transform transition-transform duration-200'>
                   <div className='text-emerald-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
                   <div className='text-emerald-500 text-sm'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ 1 file'}</div>
@@ -835,20 +831,18 @@ const SimpleFileUploadField = ({
         </div>
       ) : (
         <div
-          className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${
-            isDragging 
-              ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg' 
+          className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${isDragging
+              ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg'
               : 'border-slate-300 hover:border-emerald-400'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={handleClick}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
-          <div className={`absolute inset-0 bg-emerald-50/80 flex items-center justify-center transition-all duration-200 ${
-            isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}>
+          <div className={`absolute inset-0 bg-emerald-50/80 flex items-center justify-center transition-all duration-200 ${isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}>
             <div className='text-center transform transition-transform duration-200'>
               <div className='text-emerald-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
               <div className='text-emerald-500 text-sm'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ 1 file'}</div>

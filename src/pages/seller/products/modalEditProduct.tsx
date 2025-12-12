@@ -74,7 +74,7 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
     // Find category with highest level
     return categories.reduce((highest, current) => {
       return (current.level || 0) > (highest.level || 0) ? current : highest
-    })
+    }, categories[0])
   }
 
   // Fetch categories when dialog opens

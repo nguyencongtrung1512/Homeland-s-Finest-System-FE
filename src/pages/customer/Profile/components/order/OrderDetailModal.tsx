@@ -341,6 +341,13 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                   <div>
                     <p className='text-xs text-gray-600'>Mã đơn hàng</p>
                     <p className='font-bold text-gray-900'>#{order.id.slice(-8)}</p>
+                    {/* GHN Order Code */}
+                    {order.ghnorderCode && (
+                      <div className='mt-1'>
+                        <p className='text-xs text-gray-600'>Mã giao hàng</p>
+                        <p className='font-medium text-gray-700 text-sm'>{order.ghnorderCode}</p>
+                      </div>
+                    )}
                     {/* Store Name */}
                     <div className='mt-2'>
                       <p className='text-xs text-gray-600'>Cửa hàng</p>

@@ -72,7 +72,7 @@ function RequestWalletMoneyManagement() {
   const [kpiData, setKpiData] = useState<AdminDashboardKpiDTO | null>(null)
   const [loadingKpi, setLoadingKpi] = useState(false)
 
-  // Thống kê (đang dùng trong phần code đã comment)
+  // Thống kê (tạm thời chưa dùng)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_stats, _setStats] = useState({
     total: 0,
@@ -1093,8 +1093,8 @@ function RequestWalletMoneyManagement() {
           <CardContent className='p-0'>
             {/* Table Header */}
             <div className='px-4 md:px-6 py-4 border-b border-gray-200'>
-              <h2 className='text-lg md:text-xl font-bold text-gray-900'>Danh sách tiền vào tiền ra</h2>
-              <p className='text-gray-600 text-sm mt-1'>Quản lý và xử lý các yêu cầu rút tiền, hoàn tiền từ người dùng</p>
+              <h2 className='text-lg md:text-xl font-bold text-gray-900'>Lịch sử dòng tiền</h2>
+              <p className='text-gray-600 text-sm mt-1'>Quản lý và xử lý các yêu cầu rút tiền, hoàn tiền, nạp tiền từ người dùng</p>
             </div>
 
             {error && (
@@ -1596,7 +1596,7 @@ function RequestWalletMoneyManagement() {
             <div className='flex flex-col gap-4 mb-4 md:mb-6'>
               <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
                 <div>
-                  <h2 className='text-lg md:text-xl font-bold text-gray-900'>Lịch sử giao dịch ví</h2>
+                  <h2 className='text-lg md:text-xl font-bold text-gray-900'>Lịch sử giao dịch ví </h2>
                   <p className='text-gray-600 text-sm mt-1'>Xem tất cả các giao dịch ví của hệ thống</p>
                 </div>
                 <Button

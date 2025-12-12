@@ -1,5 +1,5 @@
 import axiosInstance from '../service/axiosInstance'
-import type { Product } from '../types/productType'
+import type { Product, ProductCategory } from '../types/productType'
 
 const API_URL = `/Search`
 
@@ -76,7 +76,7 @@ function mapSearchResultToProduct(result: SearchResult): Product {
     staffNote: '', // Not available in search result
     variantGroups: [], // Not available in search result
     productCategories: result.category_names?.[0]
-      ? [
+      ? ([
         {
           id: '',
           name: result.category_names[0],
@@ -86,8 +86,8 @@ function mapSearchResultToProduct(result: SearchResult): Product {
           isActive: true,
           createdAt: '',
           updatedAt: ''
-        }
-      ]
+        } as ProductCategory
+      ])
       : [],
     productCertificateDTOs: [] // Not available in search result
   }

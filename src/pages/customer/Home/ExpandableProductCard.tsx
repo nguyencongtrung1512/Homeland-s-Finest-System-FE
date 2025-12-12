@@ -11,7 +11,7 @@ interface ExpandableProductCardProps {
 
 export default function ExpandableProductCard({ product, onClick }: ExpandableProductCardProps) {
   const navigate = useNavigate()
-  const defaultImage = 'https://toigingiuvedep.vn/wp-content/uploads/2023/03/anh-kha-banh-trai-tim-om-bo-hoa.jpg'
+  const defaultImage = 'https://afamilycdn.com/150157425591193600/2021/3/1/hai-san-kho-1614570286027617117145-30-0-655-1000-crop-16145702916331421560673.jpg'
 
   const handleClick = () => {
     if (onClick) {
@@ -25,9 +25,8 @@ export default function ExpandableProductCard({ product, onClick }: ExpandablePr
 
   return (
     <div
-      className={`group relative h-[280px] md:h-[320px] w-full rounded-2xl overflow-hidden cursor-pointer ${
-        product.soldOut ? 'opacity-75' : ''
-      }`}
+      className={`group relative h-[280px] md:h-[320px] w-full rounded-2xl overflow-hidden cursor-pointer ${product.soldOut ? 'opacity-75' : ''
+        }`}
       onClick={handleClick}
     >
       {/* Background Image */}
@@ -35,9 +34,8 @@ export default function ExpandableProductCard({ product, onClick }: ExpandablePr
         <img
           src={product.productImages?.[0] || defaultImage}
           alt={product.name}
-          className={`w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110 ${
-            product.soldOut ? 'grayscale' : ''
-          }`}
+          className={`w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110 ${product.soldOut ? 'grayscale' : ''
+            }`}
           onError={(e) => {
             const target = e.target as HTMLImageElement
             target.src = defaultImage

@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { ArrowLeft, Package, Calendar, Store, CheckCircle, XCircle, Clock, Image as ImageIcon } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { staffApi, type ComboDetail } from '../../../apis/staff.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
+import { useAuth } from '../../../contexts/auth.context'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
@@ -17,6 +18,7 @@ import Loading from '../../../components/Loading/loading'
 function DetailComboStaff() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const comboId = id
   const [combo, setCombo] = useState<ComboDetail | null>(null)
   const [loading, setLoading] = useState(false)
@@ -26,7 +28,6 @@ function DetailComboStaff() {
   const [showRejectDialog, setShowRejectDialog] = useState(false)
   const [showApproveDialog, setShowApproveDialog] = useState(false)
   const [showDenyDialog, setShowDenyDialog] = useState(false)
-  const [confirmNote, setConfirmNote] = useState('')
   const [rejectNote, setRejectNote] = useState('')
   const [approveNote, setApproveNote] = useState('')
   const [denyNote, setDenyNote] = useState('')
@@ -58,19 +59,18 @@ function DetailComboStaff() {
     fetchComboDetail()
   }, [fetchComboDetail])
 
-  // Handle confirm assignment (Processing → Confirmed)
+  // Handle confirm assignment (Processing → Confirmed) - No note required
   const handleConfirmAssignment = async () => {
-    if (!comboId || !confirmNote.trim()) {
-      toast.error('Vui lòng nhập ghi chú')
+    if (!comboId) {
+      toast.error('Không tìm thấy combo')
       return
     }
 
     setActionLoading(true)
     try {
-      await staffApi.confirmComboAssignment(comboId, confirmNote)
+      await staffApi.confirmComboAssignment(comboId, '') // Send empty note
       toast.success('Đã chấp nhận nhiệm vụ xử lý combo')
       setShowConfirmDialog(false)
-      setConfirmNote('')
       await fetchComboDetail() // Refresh data
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi chấp nhận nhiệm vụ'
@@ -504,182 +504,189 @@ function DetailComboStaff() {
                 </div>
               </div>
 
-              {combo.status === 'Processing' && (
+              {/* Kiểm tra quyền: chỉ hiển thị actions nếu user được gán cho combo này */}
+              {combo.assignedToId && user?.userId && combo.assignedToId !== user.userId ? (
+                <div className='p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg'>
+                  <div className='flex items-center gap-3'>
+                    <XCircle size={20} className='text-yellow-600' />
+                    <p className='text-yellow-800 font-medium'>Bạn không được gán cho nhiệm vụ này</p>
+                  </div>
+                </div>
+              ) : (
                 <>
-                  <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                    <ShimmerBorder color='#10b981' className='w-full' contentClassName='bg-transparent'>
-                      <DialogTrigger asChild>
-                        <Button className='w-full bg-green-600 hover:bg-green-700'>
-                          <CheckCircle size={16} className='mr-2' />
-                          Chấp nhận xử lý
-                        </Button>
-                      </DialogTrigger>
-                    </ShimmerBorder>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Chấp nhận nhiệm vụ</DialogTitle>
-                      </DialogHeader>
-                      <div className='space-y-4'>
-                        <div className='space-y-2'>
-                          <Label htmlFor='confirmNote'>Ghi chú *</Label>
-                          <Textarea
-                            id='confirmNote'
-                            value={confirmNote}
-                            onChange={(e) => setConfirmNote(e.target.value)}
-                            placeholder='Nhập ghi chú khi chấp nhận nhiệm vụ...'
-                            rows={4}
-                          />
-                        </div>
-                        <div className='flex gap-2'>
-                          <Button variant='outline' onClick={() => setShowConfirmDialog(false)} className='flex-1'>
-                            Hủy
-                          </Button>
-                          <Button
-                            variant='green'
-                            onClick={handleConfirmAssignment}
-                            disabled={actionLoading}
-                            className='flex-1'
-                          >
-                            {actionLoading ? 'Đang xử lý...' : 'Xác nhận chấp nhận'}
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  {combo.status === 'Processing' && (
+                    <>
+                      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                        <ShimmerBorder color='#10b981' className='w-full' contentClassName='bg-transparent'>
+                          <DialogTrigger asChild>
+                            <Button className='w-full bg-green-600 hover:bg-green-700'>
+                              <CheckCircle size={16} className='mr-2' />
+                              Chấp nhận xử lý
+                            </Button>
+                          </DialogTrigger>
+                        </ShimmerBorder>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Chấp nhận nhiệm vụ</DialogTitle>
+                          </DialogHeader>
+                          <div className='space-y-4'>
+                            <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
+                              <p className='text-sm text-blue-800'>
+                                Bạn có chắc chắn muốn chấp nhận nhiệm vụ xử lý combo này?
+                              </p>
+                            </div>
+                            <div className='flex gap-2'>
+                              <Button variant='outline' onClick={() => setShowConfirmDialog(false)} className='flex-1'>
+                                Hủy
+                              </Button>
+                              <Button
+                                variant='green'
+                                onClick={handleConfirmAssignment}
+                                disabled={actionLoading}
+                                className='flex-1'
+                              >
+                                {actionLoading ? 'Đang xử lý...' : 'Xác nhận chấp nhận'}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
 
-                  <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-                    <ShimmerBorder color='#ef4444' className='w-full' contentClassName='bg-transparent'>
-                      <DialogTrigger asChild>
-                        <Button variant='destructive' className='w-full'>
-                          <XCircle size={16} className='mr-2' />
-                          Từ chối
-                        </Button>
-                      </DialogTrigger>
-                    </ShimmerBorder>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Từ chối nhiệm vụ</DialogTitle>
-                      </DialogHeader>
-                      <div className='space-y-4'>
-                        <div className='space-y-2'>
-                          <Label htmlFor='rejectNote'>Lý do từ chối *</Label>
-                          <Textarea
-                            id='rejectNote'
-                            value={rejectNote}
-                            onChange={(e) => setRejectNote(e.target.value)}
-                            placeholder='Nhập lý do từ chối nhiệm vụ...'
-                            rows={4}
-                          />
-                        </div>
-                        <div className='flex gap-2'>
-                          <Button variant='outline' onClick={() => setShowRejectDialog(false)} className='flex-1'>
-                            Hủy
-                          </Button>
-                          <Button onClick={handleRejectAssignment} disabled={actionLoading} className='flex-1'>
-                            {actionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+                        <ShimmerBorder color='#ef4444' className='w-full' contentClassName='bg-transparent'>
+                          <DialogTrigger asChild>
+                            <Button variant='destructive' className='w-full'>
+                              <XCircle size={16} className='mr-2' />
+                              Từ chối
+                            </Button>
+                          </DialogTrigger>
+                        </ShimmerBorder>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Từ chối nhiệm vụ</DialogTitle>
+                          </DialogHeader>
+                          <div className='space-y-4'>
+                            <div className='space-y-2'>
+                              <Label htmlFor='rejectNote'>Lý do từ chối *</Label>
+                              <Textarea
+                                id='rejectNote'
+                                value={rejectNote}
+                                onChange={(e) => setRejectNote(e.target.value)}
+                                placeholder='Nhập lý do từ chối nhiệm vụ...'
+                                rows={4}
+                              />
+                            </div>
+                            <div className='flex gap-2'>
+                              <Button variant='outline' onClick={() => setShowRejectDialog(false)} className='flex-1'>
+                                Hủy
+                              </Button>
+                              <Button onClick={handleRejectAssignment} disabled={actionLoading} className='flex-1'>
+                                {actionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
 
-                  <Separator />
+                      <Separator />
+                    </>
+                  )}
+
+                  {/* Confirmed Status - Staff needs to Approve or Deny combo */}
+                  {combo.status === 'Confirmed' && (
+                    <>
+                      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+                        <ShimmerBorder color='#10b981' className='w-full' contentClassName='bg-transparent'>
+                          <DialogTrigger asChild>
+                            <Button className='w-full bg-green-600 hover:bg-green-700'>
+                              <CheckCircle size={16} className='mr-2' />
+                              Duyệt
+                            </Button>
+                          </DialogTrigger>
+                        </ShimmerBorder>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Phê duyệt combo</DialogTitle>
+                          </DialogHeader>
+                          <div className='space-y-4'>
+                            <div className='space-y-2'>
+                              <Label htmlFor='approveNote'>Ghi chú *</Label>
+                              <Textarea
+                                id='approveNote'
+                                value={approveNote}
+                                onChange={(e) => setApproveNote(e.target.value)}
+                                placeholder='Nhập ghi chú khi phê duyệt combo...'
+                                rows={4}
+                              />
+                            </div>
+                            <div className='flex gap-2'>
+                              <Button
+                                variant='outline'
+                                onClick={() => setShowApproveDialog(false)}
+                                className='flex-1 text-white'
+                              >
+                                Hủy
+                              </Button>
+                              <Button
+                                variant='green'
+                                onClick={handleApproveCombo}
+                                disabled={actionLoading}
+                                className='flex-1'
+                              >
+                                {actionLoading ? 'Đang xử lý...' : 'Xác nhận phê duyệt'}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Dialog open={showDenyDialog} onOpenChange={setShowDenyDialog}>
+                        <ShimmerBorder color='#ef4444' className='w-full' contentClassName='bg-transparent'>
+                          <DialogTrigger asChild>
+                            <Button variant='destructive' className='w-full'>
+                              <XCircle size={16} className='mr-2' />
+                              Từ chối
+                            </Button>
+                          </DialogTrigger>
+                        </ShimmerBorder>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Từ chối combo</DialogTitle>
+                          </DialogHeader>
+                          <div className='space-y-4'>
+                            <div className='space-y-2'>
+                              <Label htmlFor='denyNote'>Lý do từ chối *</Label>
+                              <Textarea
+                                id='denyNote'
+                                value={denyNote}
+                                onChange={(e) => setDenyNote(e.target.value)}
+                                placeholder='Nhập lý do từ chối combo...'
+                                rows={4}
+                              />
+                            </div>
+                            <div className='flex gap-2'>
+                              <Button variant='outline' onClick={() => setShowDenyDialog(false)} className='flex-1'>
+                                Hủy
+                              </Button>
+                              <Button onClick={handleDenyCombo} disabled={actionLoading} className='flex-1'>
+                                {actionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Separator />
+                    </>
+                  )}
+
+                  <ShimmerBorder color='#6366f1' className='w-full' contentClassName='bg-transparent'>
+                    <Button variant='outline' onClick={() => navigate('/staff/combo-management')} className='w-full'>
+                      Quay lại danh sách
+                    </Button>
+                  </ShimmerBorder>
                 </>
               )}
-
-              {/* Confirmed Status - Staff needs to Approve or Deny combo */}
-              {combo.status === 'Confirmed' && (
-                <>
-                  <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-                    <ShimmerBorder color='#10b981' className='w-full' contentClassName='bg-transparent'>
-                      <DialogTrigger asChild>
-                        <Button className='w-full bg-green-600 hover:bg-green-700'>
-                          <CheckCircle size={16} className='mr-2' />
-                          Duyệt
-                        </Button>
-                      </DialogTrigger>
-                    </ShimmerBorder>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Phê duyệt combo</DialogTitle>
-                      </DialogHeader>
-                      <div className='space-y-4'>
-                        <div className='space-y-2'>
-                          <Label htmlFor='approveNote'>Ghi chú *</Label>
-                          <Textarea
-                            id='approveNote'
-                            value={approveNote}
-                            onChange={(e) => setApproveNote(e.target.value)}
-                            placeholder='Nhập ghi chú khi phê duyệt combo...'
-                            rows={4}
-                          />
-                        </div>
-                        <div className='flex gap-2'>
-                          <Button
-                            variant='outline'
-                            onClick={() => setShowApproveDialog(false)}
-                            className='flex-1 text-white'
-                          >
-                            Hủy
-                          </Button>
-                          <Button
-                            variant='green'
-                            onClick={handleApproveCombo}
-                            disabled={actionLoading}
-                            className='flex-1'
-                          >
-                            {actionLoading ? 'Đang xử lý...' : 'Xác nhận phê duyệt'}
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-
-                  <Dialog open={showDenyDialog} onOpenChange={setShowDenyDialog}>
-                    <ShimmerBorder color='#ef4444' className='w-full' contentClassName='bg-transparent'>
-                      <DialogTrigger asChild>
-                        <Button variant='destructive' className='w-full'>
-                          <XCircle size={16} className='mr-2' />
-                          Từ chối
-                        </Button>
-                      </DialogTrigger>
-                    </ShimmerBorder>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Từ chối combo</DialogTitle>
-                      </DialogHeader>
-                      <div className='space-y-4'>
-                        <div className='space-y-2'>
-                          <Label htmlFor='denyNote'>Lý do từ chối *</Label>
-                          <Textarea
-                            id='denyNote'
-                            value={denyNote}
-                            onChange={(e) => setDenyNote(e.target.value)}
-                            placeholder='Nhập lý do từ chối combo...'
-                            rows={4}
-                          />
-                        </div>
-                        <div className='flex gap-2'>
-                          <Button variant='outline' onClick={() => setShowDenyDialog(false)} className='flex-1'>
-                            Hủy
-                          </Button>
-                          <Button onClick={handleDenyCombo} disabled={actionLoading} className='flex-1'>
-                            {actionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-
-                  <Separator />
-                </>
-              )}
-
-              <ShimmerBorder color='#6366f1' className='w-full' contentClassName='bg-transparent'>
-                <Button variant='outline' onClick={() => navigate('/staff/combo-management')} className='w-full'>
-                  Quay lại danh sách
-                </Button>
-              </ShimmerBorder>
             </CardContent>
           </Card>
 

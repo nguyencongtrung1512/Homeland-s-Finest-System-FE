@@ -54,10 +54,23 @@ function ComplainSeller() {
   const [isDragging, setIsDragging] = useState(false)
   // Ref to track current image count for immediate validation
   const imageCountRef = useRef(0)
+  // Ref to prevent duplicate processing
+  const isProcessingRef = useRef(false)
 
   // Sync ref with state whenever sellerImages changes
   useEffect(() => {
     imageCountRef.current = sellerImages.length
+    // Reset processing flag when images change
+    isProcessingRef.current = false
+  }, [sellerImages])
+
+  // Sync imagePreviews with sellerImages (similar to ComplaintModal)
+  useEffect(() => {
+    const urls = sellerImages.map((file) => URL.createObjectURL(file))
+    setImagePreviews(urls)
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url))
+    }
   }, [sellerImages])
 
   // Load forms by storeId (only ComplaintOrder and ReportSeller)
@@ -275,9 +288,24 @@ function ComplainSeller() {
     setShowReplyModal(true)
   }
 
+  // Helper function to check if two files are the same
+  const isSameFile = (file1: File, file2: File): boolean => {
+    return (
+      file1.name === file2.name &&
+      file1.size === file2.size &&
+      file1.lastModified === file2.lastModified &&
+      file1.type === file2.type
+    )
+  }
+
   // Process image files with validation (max 5 images)
   const processImageFiles = useCallback((files: File[]) => {
     if (files.length === 0) return
+
+    // Prevent duplicate processing
+    if (isProcessingRef.current) {
+      return
+    }
 
     // Filter only image files
     const imageFiles = files.filter((file) => file.type.startsWith('image/'))
@@ -287,15 +315,11 @@ function ComplainSeller() {
     }
 
     const maxImages = 5
-    const currentCount = imageCountRef.current
 
-    // Early validation using ref for immediate check
-    if (currentCount >= maxImages) {
-      toast.error(`Bạn chỉ có thể tải lên tối đa ${maxImages} ảnh`)
-      return
-    }
+    // Set processing flag
+    isProcessingRef.current = true
 
-    // Use functional update to get current state and validate again
+    // Use functional update to get current state and validate
     setSellerImages((currentImages) => {
       // Double check with actual state
       const actualCurrentCount = currentImages.length
@@ -304,33 +328,60 @@ function ComplainSeller() {
       if (actualRemainingSlots <= 0) {
         toast.error(`Bạn chỉ có thể tải lên tối đa ${maxImages} ảnh`)
         imageCountRef.current = actualCurrentCount
+        isProcessingRef.current = false
         return currentImages // Return unchanged state
       }
 
+      // Filter out duplicate files - check against existing images and within the batch
+      const uniqueFiles: File[] = []
+      const seenFiles = new Set<string>()
+
+      for (const file of imageFiles) {
+        // Create a unique key for the file
+        const fileKey = `${file.name}_${file.size}_${file.lastModified}_${file.type}`
+
+        // Skip if already seen in this batch
+        if (seenFiles.has(fileKey)) {
+          continue
+        }
+
+        // Check if file already exists in current images
+        const isDuplicate = currentImages.some((existingFile) => isSameFile(file, existingFile))
+        if (!isDuplicate) {
+          seenFiles.add(fileKey)
+          uniqueFiles.push(file)
+        }
+      }
+
+      // Show warning if duplicates were found
+      const duplicateCount = imageFiles.length - uniqueFiles.length
+      if (duplicateCount > 0) {
+        toast.warning(`${duplicateCount} ảnh đã tồn tại và đã được bỏ qua`)
+      }
+
       // Take only the files that fit within the limit
-      const filesToAdd = imageFiles.slice(0, actualRemainingSlots)
+      const filesToAdd = uniqueFiles.slice(0, actualRemainingSlots)
+
+      // If no new files to add after filtering duplicates, return current state
+      if (filesToAdd.length === 0) {
+        isProcessingRef.current = false
+        return currentImages
+      }
+
       const newFiles = [...currentImages, ...filesToAdd]
 
       // Update ref immediately
       imageCountRef.current = newFiles.length
 
-      // Update previews separately
-      const newPreviews = filesToAdd.map((file) => URL.createObjectURL(file))
-      setImagePreviews((prev) => {
-        // Ensure previews match the actual files count
-        const currentPreviewCount = prev.length
-        if (currentPreviewCount >= maxImages) {
-          return prev
-        }
-        const allowedPreviews = newPreviews.slice(0, maxImages - currentPreviewCount)
-        return [...prev, ...allowedPreviews]
-      })
-
-      // Show warning if some files were skipped
-      if (imageFiles.length > actualRemainingSlots) {
+      // Show warning if some files were skipped due to limit
+      if (uniqueFiles.length > actualRemainingSlots) {
         toast.warning(`Chỉ ${actualRemainingSlots} ảnh được thêm vào (tối đa ${maxImages} ảnh)`)
       }
 
+      // Reset processing flag
+      isProcessingRef.current = false
+
+      // Return new files - useEffect will handle previews
       return newFiles
     })
   }, [])
@@ -338,9 +389,16 @@ function ComplainSeller() {
   // Handle image selection from file input
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    processImageFiles(files)
+    if (files.length > 0) {
+      processImageFiles(files)
+    }
     // Reset input value to allow selecting same file again
-    e.target.value = ''
+    // Use setTimeout to ensure processImageFiles completes first
+    setTimeout(() => {
+      if (e.target) {
+        e.target.value = ''
+      }
+    }, 100)
   }
 
   // Handle drag and drop
@@ -375,13 +433,8 @@ function ComplainSeller() {
     setSellerImages((prev) => {
       const newFiles = prev.filter((_, i) => i !== index)
       imageCountRef.current = newFiles.length
+      // useEffect will handle previews cleanup automatically
       return newFiles
-    })
-    setImagePreviews((prev) => {
-      const newPreviews = prev.filter((_, i) => i !== index)
-      // Revoke object URLs
-      URL.revokeObjectURL(prev[index])
-      return newPreviews
     })
   }
 
@@ -1162,9 +1215,7 @@ function ComplainSeller() {
                       className='hidden'
                     />
                     <div className='flex flex-col items-center gap-2 sm:gap-3'>
-                      <Upload
-                        className={`w-8 h-8 sm:w-10 sm:h-10 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`}
-                      />
+                      <Upload className={`w-8 h-8 sm:w-10 sm:h-10 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
                       <div className='flex flex-col items-center gap-2'>
                         <p className='text-xs sm:text-sm font-medium text-gray-700'>
                           {isDragging ? 'Thả ảnh vào đây' : 'Kéo thả ảnh vào đây hoặc'}

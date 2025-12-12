@@ -47,7 +47,7 @@ export interface DocumentListResponse {
 
 // Get documents list
 export const getDocuments = async (params?: DocumentListParams): Promise<DocumentListResponse> => {
-  const response = await axiosInstance.get(API_URL, {
+  const response = await axiosInstance.get(`${API_URL}/type/Seller`, {
     params: {
       pageSize: params?.pageSize || 10,
       pageNumber: params?.pageNumber || 1

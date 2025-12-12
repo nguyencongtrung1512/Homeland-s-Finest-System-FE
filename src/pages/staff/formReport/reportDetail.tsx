@@ -512,7 +512,6 @@ function ReportDetail() {
                     <span className='font-medium'>{statusInfo.text}</span>
                   </div>
                 </Badge>
-
               </div>
               <CardTitle className='text-xl text-gray-900 font-bold'>{form.subject}</CardTitle>
             </CardHeader>
@@ -832,7 +831,8 @@ function ReportDetail() {
                           <div>
                             <p className='text-orange-800 font-medium'>Chờ người bán phản hồi</p>
                             <p className='text-orange-600 text-sm mt-1'>
-                              Đơn khiếu nại đã được tiếp nhận. Vui lòng đợi người bán phản hồi trước khi thực hiện các hành động tiếp theo.
+                              Đơn khiếu nại đã được tiếp nhận. Vui lòng đợi người bán phản hồi trước khi thực hiện các
+                              hành động tiếp theo.
                             </p>
                             {form.deadlineForSellerReply && (
                               <p className='text-orange-500 text-xs mt-2'>
@@ -892,41 +892,43 @@ function ReportDetail() {
               <p className='text-xs text-gray-500 mt-1'>#{form.id}</p>
             </div>
 
-            {/* Status Selection */}
-            <div>
-              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Trạng thái</Label>
-              <Select
-                value={selectedStatus}
-                onValueChange={(value: 'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected') =>
-                  setSelectedStatus(value)
-                }
-                disabled={updating}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {form.status === 'Processing' ? (
-                    <>
-                      <SelectItem value='Confirmed'>Tiếp nhận xử lí đơn</SelectItem>
-                      <SelectItem value='Rejected'>Từ chối xử lí đơn</SelectItem>
-                    </>
-                  ) : form.status === 'Confirmed' || form.status === 'Rejected' ? (
-                    <>
-                      <SelectItem value='ApprovedByStaff'>Chấp nhận</SelectItem>
-                      <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
-                    </>
-                  ) : (
-                    <>
-                      <SelectItem value='ApprovedByStaff'>Duyệt</SelectItem>
-                      <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
-                      <SelectItem value='Confirmed'>Chờ phản hồi người bán</SelectItem>
-                      <SelectItem value='Rejected'>Từ chối</SelectItem>
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Status Selection - Hide completely if status is set from button click (ApprovedByStaff/DeniedByStaff) */}
+            {selectedStatus !== 'ApprovedByStaff' && selectedStatus !== 'DeniedByStaff' && (
+              <div>
+                <Label className='text-sm font-medium text-gray-700 mb-2 block'>Trạng thái</Label>
+                <Select
+                  value={selectedStatus}
+                  onValueChange={(value: 'ApprovedByStaff' | 'DeniedByStaff' | 'Confirmed' | 'Rejected') =>
+                    setSelectedStatus(value)
+                  }
+                  disabled={updating}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {form.status === 'Processing' ? (
+                      <>
+                        <SelectItem value='Confirmed'>Tiếp nhận xử lí đơn</SelectItem>
+                        <SelectItem value='Rejected'>Từ chối xử lí đơn</SelectItem>
+                      </>
+                    ) : form.status === 'Confirmed' || form.status === 'Rejected' ? (
+                      <>
+                        <SelectItem value='ApprovedByStaff'>Chấp nhận</SelectItem>
+                        <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value='ApprovedByStaff'>Duyệt</SelectItem>
+                        <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
+                        <SelectItem value='Confirmed'>Chờ phản hồi người bán</SelectItem>
+                        <SelectItem value='Rejected'>Từ chối</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Reply */}
             <div>
@@ -952,28 +954,38 @@ function ReportDetail() {
               >
                 Hủy
               </Button>
-              <Button
-                onClick={handleStaffUpdate}
-                disabled={updating}
-                className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
-              >
-                {updating ? (
-                  <>
-                    <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
-                    Đang cập nhật...
-                  </>
-                ) : selectedStatus === 'ApprovedByStaff' ? (
-                  'Chấp nhận'
-                ) : selectedStatus === 'DeniedByStaff' ? (
-                  'Từ chối'
-                ) : selectedStatus === 'Confirmed' ? (
-                  'Tiếp nhận'
-                ) : selectedStatus === 'Rejected' ? (
-                  'Từ chối'
-                ) : (
-                  'Cập nhật'
-                )}
-              </Button>
+              {form.status === 'ApprovedByStaff' || form.status === 'DeniedByStaff' ? (
+                <Button
+                  onClick={() => setShowUpdateModal(false)}
+                  disabled={updating}
+                  className='flex-1 bg-gray-500 hover:bg-gray-600 text-white cursor-not-allowed'
+                >
+                  Đã xử lý
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleStaffUpdate}
+                  disabled={updating}
+                  className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
+                >
+                  {updating ? (
+                    <>
+                      <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                      Đang cập nhật...
+                    </>
+                  ) : selectedStatus === 'ApprovedByStaff' ? (
+                    'Chấp nhận'
+                  ) : selectedStatus === 'DeniedByStaff' ? (
+                    'Từ chối'
+                  ) : selectedStatus === 'Confirmed' ? (
+                    'Tiếp nhận'
+                  ) : selectedStatus === 'Rejected' ? (
+                    'Từ chối'
+                  ) : (
+                    'Cập nhật'
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>

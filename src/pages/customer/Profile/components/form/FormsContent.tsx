@@ -476,8 +476,8 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
                       {form.orderId && (
                         <div className='flex items-center gap-2'>
                           <CopyButton
-                            textToCopy={form.orderId}
-                            idleText={`${form.orderId}`}
+                            textToCopy={form.orderId.slice(-8)}
+                            idleText={`${form.orderId.slice(-8)}`}
                             copiedText='Đã copy'
                             className='h-7 px-3 text-xs bg-white text-green-700 border border-green-200 hover:bg-green-50'
                           />

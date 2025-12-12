@@ -17,7 +17,7 @@ import { vi } from 'date-fns/locale'
 import { staffApi } from '../../../apis/staff.api'
 import { getAllCombos } from '../../../apis/combo.api'
 import type { Combo } from '../../../types/combo.type'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
@@ -79,6 +79,7 @@ function ManagerComboStaff() {
   const [showActionDialog, setShowActionDialog] = useState(false)
   const [selectedCombo, setSelectedCombo] = useState<ComboData | null>(null)
   const [actionNote, setActionNote] = useState('')
+  const [selectedAction, setSelectedAction] = useState<'confirm' | 'reject' | 'approve' | 'deny' | null>(null)
   const [sortField, setSortField] = useState<SortField>('updatedAt')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const [staffMap, setStaffMap] = useState<Map<string, string>>(new Map())
@@ -326,22 +327,24 @@ function ManagerComboStaff() {
   const handleOpenActionDialog = (combo: ComboData) => {
     setSelectedCombo(combo)
     setActionNote('')
+    setSelectedAction(null)
     setShowActionDialog(true)
   }
 
   // Handle confirm assignment (Processing → Confirmed)
   const handleConfirmAssignment = async () => {
-    if (!selectedCombo || !actionNote.trim()) {
-      toast.error('Vui lòng nhập ghi chú')
+    if (!selectedCombo) {
+      toast.error('Không tìm thấy combo')
       return
     }
 
     setActionLoading(true)
     try {
-      await staffApi.confirmComboAssignment(selectedCombo.combo.id, actionNote)
+      await staffApi.confirmComboAssignment(selectedCombo.combo.id, '')
       toast.success('Đã chấp nhận nhiệm vụ xử lý combo')
       setShowActionDialog(false)
       setActionNote('')
+      setSelectedAction(null)
       await fetchCombos()
       await fetchStaffList()
     } catch (error) {
@@ -354,7 +357,12 @@ function ManagerComboStaff() {
 
   // Handle reject assignment (Processing → Rejected)
   const handleRejectAssignment = async () => {
-    if (!selectedCombo || !actionNote.trim()) {
+    if (!selectedCombo) {
+      toast.error('Không tìm thấy combo')
+      return
+    }
+
+    if (!actionNote.trim()) {
       toast.error('Vui lòng nhập lý do từ chối')
       return
     }
@@ -365,6 +373,7 @@ function ManagerComboStaff() {
       toast.success('Đã từ chối nhiệm vụ thành công')
       setShowActionDialog(false)
       setActionNote('')
+      setSelectedAction(null)
       await fetchCombos()
       await fetchStaffList()
     } catch (error) {
@@ -377,17 +386,18 @@ function ManagerComboStaff() {
 
   // Handle approve combo (Confirmed → Approved)
   const handleApproveCombo = async () => {
-    if (!selectedCombo || !actionNote.trim()) {
-      toast.error('Vui lòng nhập ghi chú')
+    if (!selectedCombo) {
+      toast.error('Không tìm thấy combo')
       return
     }
 
     setActionLoading(true)
     try {
-      await staffApi.approveCombo(selectedCombo.combo.id, actionNote)
+      await staffApi.approveCombo(selectedCombo.combo.id, actionNote || '')
       toast.success('Đã phê duyệt combo thành công')
       setShowActionDialog(false)
       setActionNote('')
+      setSelectedAction(null)
       await fetchCombos()
       await fetchStaffList()
     } catch (error) {
@@ -400,7 +410,12 @@ function ManagerComboStaff() {
 
   // Handle deny combo (Confirmed → Denied)
   const handleDenyCombo = async () => {
-    if (!selectedCombo || !actionNote.trim()) {
+    if (!selectedCombo) {
+      toast.error('Không tìm thấy combo')
+      return
+    }
+
+    if (!actionNote.trim()) {
       toast.error('Vui lòng nhập lý do từ chối')
       return
     }
@@ -411,6 +426,7 @@ function ManagerComboStaff() {
       toast.success('Đã từ chối combo thành công')
       setShowActionDialog(false)
       setActionNote('')
+      setSelectedAction(null)
       await fetchCombos()
       await fetchStaffList()
     } catch (error) {
@@ -714,8 +730,25 @@ function ManagerComboStaff() {
                     mode='single'
                     selected={fromDate}
                     onSelect={(date) => {
-                      setFromDate(date)
-                      setFromDateOpen(false)
+                      if (date) {
+                        const today = new Date()
+                        today.setHours(23, 59, 59, 999) // Set to end of today
+                        if (date > today) {
+                          toast.error('Không thể chọn ngày trong tương lai')
+                          return
+                        }
+                        setFromDate(date)
+                        // Reset toDate nếu fromDate mới lớn hơn toDate hiện tại
+                        if (toDate && date > toDate) {
+                          setToDate(undefined)
+                        }
+                        setFromDateOpen(false)
+                      }
+                    }}
+                    disabled={(date) => {
+                      const today = new Date()
+                      today.setHours(23, 59, 59, 999) // Set to end of today
+                      return date > today
                     }}
                     initialFocus
                   />
@@ -739,10 +772,25 @@ function ManagerComboStaff() {
                     mode='single'
                     selected={toDate}
                     onSelect={(date) => {
-                      setToDate(date)
-                      setToDateOpen(false)
+                      if (date) {
+                        const today = new Date()
+                        today.setHours(23, 59, 59, 999) // Set to end of today
+                        if (date > today) {
+                          toast.error('Không thể chọn ngày trong tương lai')
+                          return
+                        }
+                        setToDate(date)
+                        setToDateOpen(false)
+                      }
                     }}
-                    disabled={(date) => fromDate ? date < fromDate : false}
+                    disabled={(date) => {
+                      const today = new Date()
+                      today.setHours(23, 59, 59, 999) // Set to end of today
+                      // Disable if date is in the future OR if date is before fromDate (if fromDate exists)
+                      if (date > today) return true
+                      if (fromDate && date < fromDate) return true
+                      return false
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
@@ -854,70 +902,111 @@ function ManagerComboStaff() {
               </div>
             )}
 
-            <div className='space-y-2'>
-              <Label htmlFor='actionNote'>Ghi chú *</Label>
-              <Textarea
-                id='actionNote'
-                value={actionNote}
-                onChange={(e) => setActionNote(e.target.value)}
-                placeholder={
-                  selectedCombo?.status === 'Processing'
-                    ? 'Nhập ghi chú khi xử lý nhiệm vụ...'
-                    : 'Nhập ghi chú khi xét duyệt combo...'
-                }
-                rows={4}
-              />
-            </div>
+            {/* Chỉ hiển thị note khi từ chối (reject/deny) */}
+            {(selectedAction === 'reject' || selectedAction === 'deny') && (
+              <div className='space-y-2'>
+                <Label htmlFor='actionNote'>Lý do từ chối *</Label>
+                <Textarea
+                  id='actionNote'
+                  value={actionNote}
+                  onChange={(e) => setActionNote(e.target.value)}
+                  placeholder='Nhập lý do từ chối...'
+                  rows={4}
+                  required
+                />
+              </div>
+            )}
 
-            <div className='grid grid-cols-2 gap-3'>
-              {selectedCombo?.status === 'Processing' ? (
-                <>
-                  <Button
-                    onClick={handleConfirmAssignment}
-                    disabled={actionLoading}
-                    className='bg-green-600 hover:bg-green-700'
-                  >
-                    <CheckCircle size={16} className='mr-2' />
-                    {actionLoading ? 'Đang xử lý...' : 'Chấp nhận'}
-                  </Button>
-                  <Button
-                    onClick={handleRejectAssignment}
-                    disabled={actionLoading}
-                    variant='destructive'
-                  >
-                    <XCircle size={16} className='mr-2' />
-                    {actionLoading ? 'Đang xử lý...' : 'Từ chối'}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    onClick={handleApproveCombo}
-                    disabled={actionLoading}
-                    className='bg-green-600 hover:bg-green-700'
-                  >
-                    <CheckCircle size={16} className='mr-2' />
-                    {actionLoading ? 'Đang xử lý...' : 'Phê duyệt'}
-                  </Button>
-                  <Button
-                    onClick={handleDenyCombo}
-                    disabled={actionLoading}
-                    variant='destructive'
-                  >
-                    <XCircle size={16} className='mr-2' />
-                    {actionLoading ? 'Đang xử lý...' : 'Từ chối'}
-                  </Button>
-                </>
-              )}
-            </div>
+            {!selectedAction ? (
+              <div className='grid grid-cols-2 gap-3'>
+                {selectedCombo?.status === 'Processing' ? (
+                  <>
+                    <Button
+                      onClick={() => {
+                        setSelectedAction('confirm')
+                        handleConfirmAssignment()
+                      }}
+                      disabled={actionLoading}
+                      className='bg-green-600 hover:bg-green-700'
+                    >
+                      <CheckCircle size={16} className='mr-2' />
+                      {actionLoading ? 'Đang xử lý...' : 'Chấp nhận'}
+                    </Button>
+                    <Button
+                      onClick={() => setSelectedAction('reject')}
+                      disabled={actionLoading}
+                      variant='destructive'
+                    >
+                      <XCircle size={16} className='mr-2' />
+                      Từ chối
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      onClick={() => {
+                        setSelectedAction('approve')
+                        handleApproveCombo()
+                      }}
+                      disabled={actionLoading}
+                      className='bg-green-600 hover:bg-green-700'
+                    >
+                      <CheckCircle size={16} className='mr-2' />
+                      {actionLoading ? 'Đang xử lý...' : 'Phê duyệt'}
+                    </Button>
+                    <Button
+                      onClick={() => setSelectedAction('deny')}
+                      disabled={actionLoading}
+                      variant='destructive'
+                    >
+                      <XCircle size={16} className='mr-2' />
+                      Từ chối
+                    </Button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className='space-y-2'>
+                {(selectedAction === 'reject' || selectedAction === 'deny') && (
+                  <div className='flex gap-2'>
+                    <Button
+                      onClick={
+                        selectedAction === 'reject' ? handleRejectAssignment : handleDenyCombo
+                      }
+                      disabled={actionLoading || !actionNote.trim()}
+                      variant='destructive'
+                      className='flex-1'
+                    >
+                      {actionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setSelectedAction(null)
+                        setActionNote('')
+                      }}
+                      variant='outline'
+                      disabled={actionLoading}
+                    >
+                      Hủy
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
 
-            <Button
-              variant='outline'
-              onClick={() => setShowActionDialog(false)}
-              className='w-full'
-            >
-              Hủy
-            </Button>
+            {!selectedAction && (
+              <Button
+                variant='outline'
+                onClick={() => {
+                  setShowActionDialog(false)
+                  setSelectedAction(null)
+                  setActionNote('')
+                }}
+                className='w-full'
+              >
+                Hủy
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -12,10 +12,10 @@ const getCategoryName = (categories: ProductCategory[] | ProductCategory | null 
     // Get category with highest level, or first one
     const highestCategory = categories.reduce((highest, current) => {
       return (current.level || 0) > (highest.level || 0) ? current : highest
-    })
-    return highestCategory.name
+    }, categories[0])
+    return highestCategory?.name
   }
-  return categories.name
+  return (categories as ProductCategory).name
 }
 
 const HandicraftProducts: React.FC = () => {

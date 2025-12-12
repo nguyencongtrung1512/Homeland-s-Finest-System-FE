@@ -92,7 +92,8 @@ const NextJsHomepageIframe: React.FC<NextJsHomepageIframeProps> = ({
                 setError(null)
                 setIsLoading(true)
                 if (iframeRef.current) {
-                  iframeRef.current.src = iframeRef.current.src 
+                  // Reload the iframe with the same src to retry
+                  iframeRef.current.src = src
                 }
               }}
               className='mt-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600'
