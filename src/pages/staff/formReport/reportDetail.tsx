@@ -244,7 +244,7 @@ function ReportDetail() {
         return {
           icon: <XCircle className='w-5 h-5 text-red-500' />,
           badge: 'destructive',
-          text: 'Bị từ chối',
+          text: 'Từ chối nhiệm vụ',
           color: 'text-red-700',
           bgColor: 'bg-red-50'
         }
@@ -252,7 +252,7 @@ function ReportDetail() {
         return {
           icon: <Clock className='w-5 h-5 text-orange-500' />,
           badge: 'default',
-          text: 'Đang xử lí đơn',
+          text: 'Đang xử lý',
           color: 'text-orange-700',
           bgColor: 'bg-orange-50'
         }

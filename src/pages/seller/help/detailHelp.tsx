@@ -1,11 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
-import { ArrowLeft, CheckCircle, Paperclip, User, Clock, XCircle, Loader2, AlertCircle } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '../../../components/ui/dialog'
+import { ArrowLeft, CheckCircle, Paperclip, User, Clock, XCircle, Loader2, AlertCircle, X, Eye } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { formApi } from '../../../apis/form.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
+import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 
 function DetailHelp() {
   const navigate = useNavigate()
@@ -13,6 +22,11 @@ function DetailHelp() {
   const [formData, setFormData] = useState<FormDTO | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0)
 
   // Fetch form detail
   useEffect(() => {
@@ -27,7 +41,7 @@ function DetailHelp() {
         setIsLoading(true)
         const data = await formApi.getFormById(requestId)
         setFormData(data)
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error fetching form detail:', error)
         setError('Không thể tải thông tin yêu cầu hỗ trợ')
         toast.error('Không thể tải thông tin yêu cầu hỗ trợ')
@@ -46,6 +60,37 @@ function DetailHelp() {
   const handleCreateNew = () => {
     navigate('/helpSeller')
     // Có thể trigger mở modal tạo mới ở đây nếu cần
+  }
+
+  const handleCancelRequest = async () => {
+    if (!requestId || !formData) return
+
+    try {
+      setIsCancelling(true)
+      await formApi.cancelForm(requestId)
+      toast.success('Hủy yêu cầu hỗ trợ thành công!')
+      setShowCancelModal(false)
+      // Refresh form data to update status
+      const updatedData = await formApi.getFormById(requestId)
+      setFormData(updatedData)
+      // Navigate back after a short delay
+      setTimeout(() => {
+        navigate('/helpSeller')
+      }, 1500)
+    } catch (error: unknown) {
+      console.error('Error cancelling form:', error)
+      const errorMessage =
+        (error && typeof error === 'object' && 'response' in error
+          ? (error.response as { data?: { message?: string } })?.data?.message
+          : null) ||
+        (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+          ? error.message
+          : null) ||
+        'Có lỗi xảy ra khi hủy yêu cầu hỗ trợ'
+      toast.error(errorMessage)
+    } finally {
+      setIsCancelling(false)
+    }
   }
 
   // Map FormType to Vietnamese
@@ -232,20 +277,53 @@ function DetailHelp() {
               {/* Attachments */}
               {formData.imageUrl && formData.imageUrl.length > 0 && (
                 <div className='mt-4 pt-4 border-t border-gray-200'>
-                  <p className='text-sm font-medium text-gray-700 mb-2'>Tệp đính kèm:</p>
-                  <div className='space-y-2'>
-                    {formData.imageUrl.map((url, index) => (
-                      <a
-                        key={index}
-                        href={url}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        className='flex items-center gap-2 text-blue-600 hover:text-blue-700 hover:underline'
-                      >
-                        <Paperclip className='w-4 h-4' />
-                        <span className='text-sm'>{getFileNameFromUrl(url)}</span>
-                      </a>
-                    ))}
+                  <p className='text-sm font-medium text-gray-700 mb-3'>Tệp đính kèm:</p>
+                  <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
+                    {formData.imageUrl.map((url, index) => {
+                      // Check if file is an image
+                      const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.includes('image')
+                      const isPdf = /\.pdf$/i.test(url) || url.includes('pdf')
+
+                      return (
+                        <div
+                          key={index}
+                          className='relative group cursor-pointer overflow-hidden rounded-lg border border-gray-200 hover:border-green-400 transition-all'
+                          onClick={() => {
+                            if (isImage) {
+                              setPreviewImages(formData.imageUrl || [])
+                              setPreviewInitialIndex(index)
+                              setImagePreviewOpen(true)
+                            } else {
+                              window.open(url, '_blank')
+                            }
+                          }}
+                        >
+                          {isImage ? (
+                            <>
+                              <img
+                                src={url}
+                                alt={`Đính kèm ${index + 1}`}
+                                className='w-full h-32 object-cover group-hover:scale-105 transition-transform'
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.style.display = 'none'
+                                }}
+                              />
+                              <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
+                                <Eye className='w-6 h-6 text-white' />
+                              </div>
+                            </>
+                          ) : (
+                            <div className='w-full h-32 bg-gray-100 flex flex-col items-center justify-center p-2'>
+                              <Paperclip className='w-8 h-8 text-gray-400 mb-2' />
+                              <span className='text-xs text-gray-600 text-center truncate w-full'>
+                                {isPdf ? 'PDF' : getFileNameFromUrl(url)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
@@ -313,10 +391,93 @@ function DetailHelp() {
           <ArrowLeft className='w-4 h-4 mr-2' />
           Quay lại
         </Button>
+        {formData.status === 'Pending' && (
+          <Button
+            variant='outline'
+            onClick={() => setShowCancelModal(true)}
+            className='px-6 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700'
+          >
+            <X className='w-4 h-4 mr-2' />
+            Hủy đơn
+          </Button>
+        )}
         <Button onClick={handleCreateNew} className='bg-green-600 hover:bg-green-700 text-white px-6'>
           Tạo yêu cầu mới
         </Button>
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+        <DialogContent className='sm:max-w-[500px]'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-red-700'>
+              <AlertCircle className='w-6 h-6 text-red-600' />
+              Xác nhận hủy yêu cầu hỗ trợ
+            </DialogTitle>
+            <DialogDescription>Bạn có chắc chắn muốn hủy yêu cầu hỗ trợ này không?</DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4 py-4'>
+            <div className='rounded-2xl border-2 border-red-200 bg-red-50 p-6 space-y-3'>
+              <div className='flex items-start gap-3'>
+                <div className='flex-shrink-0 pt-0.5'>
+                  <AlertCircle className='w-5 h-5 text-red-600' />
+                </div>
+                <div className='flex-1'>
+                  <h3 className='font-semibold text-red-900 mb-2'>Lưu ý quan trọng</h3>
+                  <p className='text-sm text-red-800'>
+                    Sau khi hủy, yêu cầu hỗ trợ này sẽ không thể được khôi phục. Bạn sẽ cần tạo yêu cầu mới nếu cần hỗ trợ sau này.
+                  </p>
+                </div>
+              </div>
+            </div>
+            {formData && (
+              <div className='rounded-xl border border-gray-200 bg-gray-50 p-4'>
+                <p className='text-sm text-gray-600 mb-1'>Mã yêu cầu</p>
+                <p className='font-medium text-gray-900'>#{formData.id.substring(0, 8).toUpperCase()}</p>
+                <p className='text-sm text-gray-600 mt-2 mb-1'>Tiêu đề</p>
+                <p className='font-medium text-gray-900'>{formData.subject}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowCancelModal(false)}
+              variant='outline'
+              disabled={isCancelling}
+              className='px-6'
+            >
+              <X className='w-4 h-4 mr-2' />
+              Không hủy
+            </Button>
+            <Button
+              onClick={handleCancelRequest}
+              className='bg-red-600 hover:bg-red-700 text-white px-6'
+              disabled={isCancelling}
+            >
+              {isCancelling ? (
+                <>
+                  <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                  Đang hủy...
+                </>
+              ) : (
+                <>
+                  <XCircle className='w-4 h-4 mr-2' />
+                  Xác nhận hủy
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreviewOpen}
+        onClose={() => setImagePreviewOpen(false)}
+        images={previewImages}
+        initialIndex={previewInitialIndex}
+        alt='Xem chi tiết hình ảnh đính kèm'
+      />
     </div>
   )
 }

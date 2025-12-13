@@ -1351,7 +1351,13 @@ function RequestWalletMoneyManagement() {
                 step='1000'
                 placeholder='Nhập số tiền muốn rút'
                 value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  // Chỉ cho phép chuỗi rỗng hoặc số dương (>= 0)
+                  if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+                    setWithdrawAmount(value)
+                  }
+                }}
               />
               <p className='text-xs text-gray-500 mt-1'>Số tiền tối thiểu 1.000 đ và không vượt quá số dư khả dụng.</p>
             </div>
@@ -1367,7 +1373,7 @@ function RequestWalletMoneyManagement() {
             >
               Hủy
             </Button>
-            <Button onClick={handleCreateWithdrawal} disabled={!withdrawAmount || isSubmittingWithdraw}>
+            <Button variant='blue' onClick={handleCreateWithdrawal} disabled={!withdrawAmount || isSubmittingWithdraw}>
               {isSubmittingWithdraw ? (
                 <>
                   <Loader2 className='w-4 h-4 mr-2 animate-spin' />

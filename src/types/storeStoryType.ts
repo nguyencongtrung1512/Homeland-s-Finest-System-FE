@@ -16,6 +16,7 @@ export interface StoreStory {
   thumbnailUrl: string
   contents: StoreStoryContent[]
   createdAt: string
+  isActive?: boolean
 }
 
 export interface StoreStoryResponse {

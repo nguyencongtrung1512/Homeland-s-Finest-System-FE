@@ -12,7 +12,7 @@ import {
   DialogTitle
 } from '../../../components/ui/dialog'
 import { RefreshCw, Search, FileText, Eye } from 'lucide-react'
-import { getDocuments, type DocumentType } from '../../../apis/document.api'
+import { getDocumentsSeller, type DocumentType } from '../../../apis/document.api'
 import Pagination from '../../../components/Pagination/Pagination'
 import Loading from '../../../components/Loading/loading'
 
@@ -32,7 +32,7 @@ function DocumentSeller() {
       setLoading(true)
       setError(null)
 
-      const response = await getDocuments({
+      const response = await getDocumentsSeller({
         pageSize: 0, // Get all for client-side filtering
         pageNumber: 1
       })

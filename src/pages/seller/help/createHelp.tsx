@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-import { Headphones, Upload, Send, X } from 'lucide-react'
+import { Headphones, Upload, Send, X, Eye, Paperclip } from 'lucide-react'
 import { formApi } from '../../../apis/form.api'
 import type { FormType } from '../../../types/form.type'
 import { toast } from '../../../utils/toast'
 import { useAuth } from '../../../contexts/auth.context'
+import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 
 interface CreateHelpModalProps {
   isOpen: boolean
@@ -22,12 +23,14 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
     type: 'Orther' as FormType,
     subject: '',
     description: '',
-    orderId: '',
     attachments: [] as File[]
   })
 
   const [isDragOver, setIsDragOver] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0)
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -62,11 +65,34 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
   }
 
   const handleRemoveFile = (index: number) => {
+    const fileToRemove = formData.attachments[index]
+    // Revoke object URL if it's an image
+    if (fileToRemove && fileToRemove.type.startsWith('image/')) {
+      const url = URL.createObjectURL(fileToRemove)
+      URL.revokeObjectURL(url)
+    }
     setFormData((prev) => ({
       ...prev,
       attachments: prev.attachments.filter((_, i) => i !== index)
     }))
   }
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      formData.attachments.forEach((file) => {
+        if (file.type.startsWith('image/')) {
+          const url = URL.createObjectURL(file)
+          URL.revokeObjectURL(url)
+        }
+      })
+      previewImages.forEach((url) => {
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url)
+        }
+      })
+    }
+  }, [])
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -112,7 +138,6 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
         type: formData.type,
         subject: formData.subject,
         description: formData.description,
-        orderId: formData.orderId || undefined,
         imageFiles: formData.attachments.length > 0 ? formData.attachments : undefined
       }
 
@@ -125,7 +150,6 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
         type: 'Orther' as FormType,
         subject: '',
         description: '',
-        orderId: '',
         attachments: []
       })
 
@@ -152,7 +176,6 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
       type: 'Orther' as FormType,
       subject: '',
       description: '',
-      orderId: '',
       attachments: []
     })
     onClose()
@@ -183,24 +206,6 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
               onChange={(e) => handleInputChange('subject', e.target.value)}
             />
           </div>
-
-
-
-          {/* Order ID Field (Optional) */}
-          <div>
-            <Label htmlFor='orderId' className='text-green-700 font-medium mb-2 block'>
-              Mã đơn hàng (nếu có)
-            </Label>
-            <Input
-              id='orderId'
-              placeholder='VD: DH-2025-001234'
-              value={formData.orderId}
-              onChange={(e) => handleInputChange('orderId', e.target.value)}
-            />
-          </div>
-
-          {/* Subject Field */}
-
 
           {/* Description Field */}
           <div>
@@ -256,24 +261,83 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
 
             {/* Display uploaded files */}
             {formData.attachments.length > 0 && (
-              <div className='mt-4 space-y-2'>
-                {formData.attachments.map((file, index) => (
-                  <div key={index} className='flex items-center justify-between p-3 bg-gray-50 rounded border'>
-                    <div className='flex items-center gap-2 flex-1 min-w-0'>
-                      <span className='text-sm text-gray-700 truncate'>{file.name}</span>
-                      <span className='text-xs text-gray-500'>({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-                    </div>
-                    <Button
-                      type='button'
-                      variant='ghost'
-                      size='sm'
-                      onClick={() => handleRemoveFile(index)}
-                      className='text-red-500 hover:text-red-700 hover:bg-red-50'
-                    >
-                      <X className='w-4 h-4' />
-                    </Button>
-                  </div>
-                ))}
+              <div className='mt-4'>
+                <p className='text-sm font-medium text-gray-700 mb-3'>Tệp đã chọn:</p>
+                <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
+                  {formData.attachments.map((file, index) => {
+                    const isImage = file.type.startsWith('image/')
+                    const isPdf = file.type === 'application/pdf'
+                    const previewUrl = isImage ? URL.createObjectURL(file) : null
+
+                    return (
+                      <div
+                        key={index}
+                        className='relative group overflow-hidden rounded-lg border border-gray-200 hover:border-green-400 transition-all'
+                      >
+                        {isImage && previewUrl ? (
+                          <>
+                            <img
+                              src={previewUrl}
+                              alt={file.name}
+                              className='w-full h-32 object-cover group-hover:scale-105 transition-transform'
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                              }}
+                            />
+                            <div
+                              className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer'
+                              onClick={() => {
+                                const imageUrls = formData.attachments
+                                  .filter((f) => f.type.startsWith('image/'))
+                                  .map((f) => URL.createObjectURL(f))
+                                const imageIndex = formData.attachments
+                                  .slice(0, index)
+                                  .filter((f) => f.type.startsWith('image/')).length
+                                setPreviewImages(imageUrls)
+                                setPreviewInitialIndex(imageIndex)
+                                setImagePreviewOpen(true)
+                              }}
+                            >
+                              <Eye className='w-6 h-6 text-white' />
+                            </div>
+                            <button
+                              type='button'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemoveFile(index)
+                                if (previewUrl) URL.revokeObjectURL(previewUrl)
+                              }}
+                              className='absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600'
+                            >
+                              <X className='w-3 h-3' />
+                            </button>
+                            <div className='absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1 truncate'>
+                              {file.name}
+                            </div>
+                          </>
+                        ) : (
+                          <div className='w-full h-32 bg-gray-100 flex flex-col items-center justify-center p-2 relative'>
+                            <Paperclip className='w-8 h-8 text-gray-400 mb-2' />
+                            <span className='text-xs text-gray-600 text-center truncate w-full mb-1'>
+                              {isPdf ? 'PDF' : file.name}
+                            </span>
+                            <span className='text-xs text-gray-500'>
+                              {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
+                            <button
+                              type='button'
+                              onClick={() => handleRemoveFile(index)}
+                              className='absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600'
+                            >
+                              <X className='w-3 h-3' />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -304,6 +368,23 @@ function CreateHelpModal({ isOpen, onClose, onSuccess }: CreateHelpModalProps) {
           </Button>
         </div>
       </DialogContent>
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreviewOpen}
+        onClose={() => {
+          setImagePreviewOpen(false)
+          // Revoke object URLs when closing
+          previewImages.forEach((url) => {
+            if (url.startsWith('blob:')) {
+              URL.revokeObjectURL(url)
+            }
+          })
+        }}
+        images={previewImages}
+        initialIndex={previewInitialIndex}
+        alt='Xem trước hình ảnh đính kèm'
+      />
     </Dialog>
   )
 }

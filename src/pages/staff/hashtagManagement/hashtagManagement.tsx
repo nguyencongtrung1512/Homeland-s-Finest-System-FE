@@ -17,7 +17,7 @@ import {
 } from '../../../components/ui/alert-dialog'
 import { Trash2, RefreshCw, Search, Tag, Store } from 'lucide-react'
 import { toast } from '../../../utils/toast'
-import { getAllHashtags, softDeleteHashtag, type HashtagItem } from '../../../apis/hashtag.api'
+import { getAllHashtags, deleteHashtag, type HashtagItem } from '../../../apis/hashtag.api'
 import Pagination from '../../../components/Pagination/Pagination'
 import Loading from '../../../components/Loading/loading'
 
@@ -29,6 +29,17 @@ function HashtagManagementStaff() {
   const pageSize = 10
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [pagination, setPagination] = useState<{
+    totalItems: number
+    totalPages: number
+    pageNumber: number
+    pageSize: number
+  }>({
+    totalItems: 0,
+    totalPages: 1,
+    pageNumber: 1,
+    pageSize: 10
+  })
 
   // Modal states
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -41,10 +52,23 @@ function HashtagManagementStaff() {
       setLoading(true)
       setError(null)
 
-      const response = await getAllHashtags(pageSize, currentPage, searchTerm || undefined)
+      // Nếu có filter status, load tất cả dữ liệu để filter ở frontend
+      // Nếu không có filter status, sử dụng phân trang từ API
+      const apiPageSize = statusFilter === 'all' ? pageSize : 0
+      const apiPageNumber = statusFilter === 'all' ? currentPage : 1
+
+      const response = await getAllHashtags(apiPageSize, apiPageNumber, searchTerm || undefined)
 
       if (response.status === 200) {
-        setHashtags(response.data)
+        setHashtags(response.data || [])
+        if (response.pagination) {
+          setPagination({
+            totalItems: response.pagination.totalItems || 0,
+            totalPages: response.pagination.totalPages || 1,
+            pageNumber: response.pagination.pageNumber || 1,
+            pageSize: response.pagination.pageSize || pageSize
+          })
+        }
       } else {
         setError('Không thể tải danh sách nhãn dán')
       }
@@ -54,30 +78,56 @@ function HashtagManagementStaff() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, searchTerm, pageSize])
+  }, [currentPage, searchTerm, pageSize, statusFilter])
 
   useEffect(() => {
     fetchHashtags()
   }, [fetchHashtags])
 
-  // Filtered hashtags
+  // Filtered hashtags (chỉ filter status nếu cần, search đã được xử lý ở API)
   const filteredHashtags = useMemo(() => {
-    return hashtags.filter((hashtag) => {
-      const matchesSearch = !searchTerm.trim() || hashtag.name.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesStatus =
-        statusFilter === 'all' ||
-        (statusFilter === 'active' && hashtag.isActive) ||
-        (statusFilter === 'inactive' && !hashtag.isActive)
+    let filtered = hashtags
 
-      return matchesSearch && matchesStatus
-    })
+    // Filter by status (nếu không phải 'all')
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((hashtag) => {
+        if (statusFilter === 'active') return hashtag.isActive
+        if (statusFilter === 'inactive') return !hashtag.isActive
+        return true
+      })
+    }
+
+    // Filter by search term ở frontend (nếu API không hỗ trợ search theo name)
+    if (searchTerm.trim()) {
+      filtered = filtered.filter((hashtag) => hashtag.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    }
+
+    return filtered
   }, [hashtags, searchTerm, statusFilter])
 
+  // Paginated hashtags (chỉ khi có filter status, vì khi không có filter thì API đã phân trang)
   const paginatedHashtags = useMemo(() => {
-    return filteredHashtags.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-  }, [filteredHashtags, currentPage, pageSize])
+    if (statusFilter === 'all') {
+      // API đã phân trang, sử dụng trực tiếp
+      return hashtags
+    } else {
+      // Filter ở frontend, cần phân trang lại
+      const startIndex = (currentPage - 1) * pageSize
+      const endIndex = startIndex + pageSize
+      return filteredHashtags.slice(startIndex, endIndex)
+    }
+  }, [hashtags, filteredHashtags, currentPage, pageSize, statusFilter])
 
-  const totalPages = Math.max(1, Math.ceil(filteredHashtags.length / pageSize))
+  // Total pages
+  const totalPages = useMemo(() => {
+    if (statusFilter === 'all') {
+      // Sử dụng totalPages từ API
+      return pagination.totalPages
+    } else {
+      // Tính từ filteredHashtags
+      return Math.max(1, Math.ceil(filteredHashtags.length / pageSize))
+    }
+  }, [statusFilter, pagination.totalPages, filteredHashtags.length, pageSize])
 
   // Handle delete
   const handleDeleteClick = (hashtag: HashtagItem) => {
@@ -90,7 +140,7 @@ function HashtagManagementStaff() {
 
     try {
       setIsDeleting(true)
-      const response = await softDeleteHashtag(selectedHashtag.id)
+      const response = await deleteHashtag(selectedHashtag.id)
 
       if (response.status === 200 || response.status === 202) {
         toast.success('Xóa nhãn dán thành công')
@@ -100,9 +150,12 @@ function HashtagManagementStaff() {
       } else {
         toast.error(response.message || 'Không thể xóa nhãn dán')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting hashtag:', error)
-      toast.error(error?.response?.data?.message || 'Có lỗi xảy ra khi xóa nhãn dán')
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Có lỗi xảy ra khi xóa nhãn dán'
+      toast.error(errorMessage)
     } finally {
       setIsDeleting(false)
     }
@@ -145,6 +198,12 @@ function HashtagManagementStaff() {
                     setSearchTerm(e.target.value)
                     setCurrentPage(1)
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setCurrentPage(1)
+                      fetchHashtags()
+                    }
+                  }}
                   className='pl-10 h-9 border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full'
                 />
               </div>
@@ -155,7 +214,13 @@ function HashtagManagementStaff() {
               <Label htmlFor='status' className='text-sm font-semibold text-gray-700'>
                 Trạng thái
               </Label>
-              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value: 'all' | 'active' | 'inactive') => {
+                  setStatusFilter(value)
+                  setCurrentPage(1)
+                }}
+              >
                 <SelectTrigger
                   id='status'
                   className='h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full'
@@ -258,7 +323,15 @@ function HashtagManagementStaff() {
               </div>
               {totalPages > 1 && (
                 <div className='mt-4'>
-                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={(page) => {
+                      setCurrentPage(page)
+                      // Scroll to top when page changes
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                  />
                 </div>
               )}
             </>
@@ -272,7 +345,7 @@ function HashtagManagementStaff() {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa nhãn dán <strong>#{selectedHashtag?.name}</strong>? Hành động này có thể bị ảnh hưởng tới sản phẩm liên quan
+              Bạn có chắc chắn muốn xóa nhãn dán <strong>#{selectedHashtag?.name}</strong>? Hành động này có thể bị ảnh hưởng tới sản phẩm liên quan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -94,7 +94,7 @@ function SetupStore() {
     fetchStoreData()
   }, [fetchStoreData])
 
-  // Initialize existing vendor application URLs when store data is loaded
+  // Initialize existing   URLs when store data is loaded
   useEffect(() => {
     if (storeData?.vendorApplicationImageUrl && Array.isArray(storeData.vendorApplicationImageUrl)) {
       setExistingVendorAppUrls(storeData.vendorApplicationImageUrl)
@@ -130,7 +130,7 @@ function SetupStore() {
 
   const [originalData, setOriginalData] = useState<StoreResponse | null>(null)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [pendingChanges, setPendingChanges] = useState<{ score: number; fields: Array<{ name: string; points: number }> } | null>(null)
+  const [pendingChanges, setPendingChanges] = useState<{ fields: Array<{ name: string }> } | null>(null)
   const [pendingSaveAction, setPendingSaveAction] = useState<'save' | 'saveCover' | 'saveLogo' | null>(null)
 
   const formatDateTime = (value?: string | null) => {
@@ -329,18 +329,8 @@ function SetupStore() {
   const handleSaveCover = async () => {
     if (!user?.userId || !storeData || !coverFile) return
 
-    // Calculate change score for cover image update and any other field changes
-    const changeResult = calculateChangeScore({ cover: true, logo: !!logoFile, vendorApp: vendorAppFiles.length > 0 })
-
-    // If score >= 3, show confirmation modal
-    if (changeResult.score >= 3) {
-      setPendingChanges(changeResult)
-      setPendingSaveAction('saveCover')
-      setShowConfirmModal(true)
-    } else {
-      // Direct save for cold updates
-      await executeSaveCover()
-    }
+    // Cover image changes do NOT require approval warning - save directly
+    await executeSaveCover()
   }
 
   // Execute save logo (actual API call)
@@ -391,18 +381,8 @@ function SetupStore() {
   const handleSaveLogo = async () => {
     if (!user?.userId || !storeData || !logoFile) return
 
-    // Calculate change score for logo update and any other field changes
-    const changeResult = calculateChangeScore({ logo: true, cover: !!coverFile, vendorApp: vendorAppFiles.length > 0 })
-
-    // If score >= 3, show confirmation modal
-    if (changeResult.score >= 3) {
-      setPendingChanges(changeResult)
-      setPendingSaveAction('saveLogo')
-      setShowConfirmModal(true)
-    } else {
-      // Direct save for cold updates
-      await executeSaveLogo()
-    }
+    // Logo changes do NOT require approval warning - save directly
+    await executeSaveLogo()
   }
 
   // Execute save (actual API call)
@@ -500,20 +480,17 @@ function SetupStore() {
   const handleSave = async () => {
     if (!user?.userId || !storeData) return
 
-    // Calculate change score for all fields
-    const changeResult = calculateChangeScore({
-      logo: !!logoFile,
-      cover: !!coverFile,
-      vendorApp: vendorAppFiles.length > 0
-    })
+    // Check for changes that require approval (description, name, address, etc.)
+    // Note: Logo and cover image changes do NOT require approval warning
+    const changeResult = getChangesRequiringApproval()
 
-    // If score >= 3, show confirmation modal
-    if (changeResult.score >= 3) {
+    // If there are changes requiring approval, show confirmation modal
+    if (changeResult.fields.length > 0) {
       setPendingChanges(changeResult)
       setPendingSaveAction('save')
       setShowConfirmModal(true)
     } else {
-      // Direct save for cold updates
+      // Direct save for updates that don't require approval
       await executeSave()
     }
   }
@@ -529,81 +506,61 @@ function SetupStore() {
     setIsEditMode(false)
   }
 
-  // Calculate change score based on hot update fields
-  const calculateChangeScore = (includeFiles: {
-    logo?: boolean
-    cover?: boolean
-    vendorApp?: boolean
-  }): { score: number; fields: Array<{ name: string; points: number }> } => {
+  // Check for changes that require staff approval (description, name, address, vendor application images, etc.)
+  // Note: Logo and cover image changes do NOT require approval warning
+  const getChangesRequiringApproval = (): { fields: Array<{ name: string }> } => {
     if (!storeData || !originalData) {
-      return { score: 0, fields: [] }
+      return { fields: [] }
     }
 
-    let score = 0
-    const changedFields: Array<{ name: string; points: number }> = []
+    const changedFields: Array<{ name: string }> = []
 
-    // StoreName: +1 point
+    // Store Name: check if store name has changed
     if (storeData.storeName !== originalData.storeName) {
-      score += 1
-      changedFields.push({ name: 'Tên cửa hàng', points: 1 })
+      changedFields.push({ name: 'Tên cửa hàng' })
     }
 
-    // Address: +3 points
+    // Description: check if description has changed
+    if (storeData.description !== originalData.description) {
+      changedFields.push({ name: 'Mô tả cửa hàng' })
+    }
+
+    // Address: check if address has changed
     if (storeData.address !== originalData.address) {
-      score += 3
-      changedFields.push({ name: 'Địa chỉ', points: 3 })
+      changedFields.push({ name: 'Địa chỉ' })
     }
 
-    // Province/ProvinceId: +3 points
-    if (
-      storeData.province !== originalData.province ||
-      storeData.provinceId !== originalData.provinceId
-    ) {
-      score += 3
-      changedFields.push({ name: 'Tỉnh/Thành phố', points: 3 })
+    // Province: check if province has changed
+    if (storeData.province !== originalData.province || storeData.provinceId !== originalData.provinceId) {
+      changedFields.push({ name: 'Tỉnh/Thành phố' })
     }
 
-    // District/DistrictId: +3 points
-    if (
-      storeData.district !== originalData.district ||
-      storeData.districtId !== originalData.districtId
-    ) {
-      score += 3
-      changedFields.push({ name: 'Quận/Huyện', points: 3 })
+    // District: check if district has changed
+    if (storeData.district !== originalData.district || storeData.districtId !== originalData.districtId) {
+      changedFields.push({ name: 'Quận/Huyện' })
     }
 
-    // Ward/WardId: +3 points
-    if (
-      storeData.ward !== originalData.ward ||
-      storeData.wardId !== originalData.wardId
-    ) {
-      score += 3
-      changedFields.push({ name: 'Phường/Xã', points: 3 })
+    // Ward: check if ward has changed
+    if (storeData.ward !== originalData.ward || storeData.wardId !== originalData.wardId) {
+      changedFields.push({ name: 'Phường/Xã' })
     }
 
-    // Logo: +2 points
-    if (includeFiles.logo && logoFile) {
-      score += 2
-      changedFields.push({ name: 'Logo cửa hàng', points: 2 })
+    // Vendor Application Images: check if new files are added
+    if (vendorAppFiles.length > 0) {
+      changedFields.push({ name: 'Hình ảnh đơn đăng ký (thêm mới)' })
     }
 
-    // Cover Image: +2 points
-    if (includeFiles.cover && coverFile) {
-      score += 2
-      changedFields.push({ name: 'Ảnh bìa cửa hàng', points: 2 })
+    // Vendor Application Images: check if existing images are removed
+    const originalVendorAppUrls = originalData.vendorApplicationImageUrl || []
+    const currentUrlsSet = new Set(existingVendorAppUrls)
+
+    // Check if any original URLs were removed
+    const hasRemovedImages = originalVendorAppUrls.some((url) => !currentUrlsSet.has(url))
+    if (hasRemovedImages) {
+      changedFields.push({ name: 'Hình ảnh đơn đăng ký (xóa)' })
     }
 
-    // Vendor Application Images: +5 points per file
-    if (includeFiles.vendorApp && vendorAppFiles.length > 0) {
-      const vendorAppScore = vendorAppFiles.length * 5
-      score += vendorAppScore
-      changedFields.push({
-        name: `Ảnh giấy phép kinh doanh (${vendorAppFiles.length} file)`,
-        points: vendorAppScore
-      })
-    }
-
-    return { score, fields: changedFields }
+    return { fields: changedFields }
   }
 
   const handleLogoUpload = () => {
