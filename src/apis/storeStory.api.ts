@@ -18,6 +18,7 @@ export interface StoreStoryUpdateData {
   TextClosing: string
   ThumbnailImage?: File
   StoreId: string
+  IsActive?: boolean
 }
 
 export const storeStoryApi = {
@@ -119,6 +120,57 @@ export const storeStoryApi = {
     if (data.ThumbnailImage) {
       formData.append('ThumbnailImage', data.ThumbnailImage)
     }
+
+    // IsActive - append if provided
+    if (data.IsActive !== undefined) {
+      formData.append('IsActive', data.IsActive.toString())
+    }
+
+    const response = await axiosInstance.put<any>(`/Story/${storyId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response
+  },
+
+  // Deactivate story using update API with IsActive = false
+  deactivateUsingUpdate: async (
+    storyId: string,
+    currentStory: {
+      Title: string
+      TextIntro: string
+      VideoOpenerDescription: string
+      SingleImageDescription: string
+      GalleryDescription: string
+      VideoProcessDescription: string
+      TextExpanded: string
+      VideoTestimonialDescription: string
+      TextClosing: string
+      StoreId: string
+    }
+  ): Promise<any> => {
+    const formData = new FormData()
+
+    // Required text fields (use current story data)
+    formData.append('Title', currentStory.Title)
+    formData.append('TextIntro', currentStory.TextIntro)
+    formData.append('TextExpanded', currentStory.TextExpanded)
+    formData.append('TextClosing', currentStory.TextClosing)
+    formData.append('VideoOpenerDescription', currentStory.VideoOpenerDescription)
+    formData.append('SingleImageDescription', currentStory.SingleImageDescription)
+    formData.append('GalleryDescription', currentStory.GalleryDescription)
+    formData.append('VideoProcessDescription', currentStory.VideoProcessDescription)
+    formData.append('VideoTestimonialDescription', currentStory.VideoTestimonialDescription)
+
+    // File fields - append empty Blob to maintain form structure
+    formData.append('VideoOpener', new Blob(), '')
+    formData.append('SingleImage', new Blob(), '')
+    formData.append('VideoProcess', new Blob(), '')
+    formData.append('VideoTestimonial', new Blob(), '')
+
+    // Set IsActive = false to deactivate
+    formData.append('IsActive', 'false')
 
     const response = await axiosInstance.put<any>(`/Story/${storyId}`, formData, {
       headers: {

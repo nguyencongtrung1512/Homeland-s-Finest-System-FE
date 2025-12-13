@@ -1,11 +1,26 @@
 import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import { useNavigate } from 'react-router-dom'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
+import { Button } from '../../../components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../../../components/ui/alert-dialog'
 import Loading from '../../../components/Loading/loading'
 import { storeStoryApi } from '../../../apis/storeStory.api'
 import type { StoreStory } from '../../../types/storeStoryType'
 import { formatDate } from '../../../utils/formatDate'
 import { Stream } from '@cloudflare/stream-react'
 import { StoryContentCarousel } from '../../../components/ui/next-storyConten'
+import { Edit, Pause, Loader2 } from 'lucide-react'
+import { toast } from '../../../utils/toast'
+import path from '../../../constants/path'
 
 interface StoryDetailModalProps {
   open: boolean
@@ -14,10 +29,14 @@ interface StoryDetailModalProps {
   onRefresh?: () => void
 }
 
-function StoryDetailModal({ open, onOpenChange, storyId }: StoryDetailModalProps) {
+function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetailModalProps) {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [story, setStory] = useState<StoreStory | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isDeactivating, setIsDeactivating] = useState(false)
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false)
+  const [activeStoriesCount, setActiveStoriesCount] = useState<number | null>(null)
 
 
   const fetchStoryDetail = async () => {
@@ -28,12 +47,81 @@ function StoryDetailModal({ open, onOpenChange, storyId }: StoryDetailModalProps
       setError(null)
 
       const response = await storeStoryApi.getById(storyId)
-      setStory(response.data)
+      const storyData = response.data
+      setStory(storyData)
+
+      // Fetch active stories count for validation
+      if (storyData.storeId) {
+        try {
+          const storiesResponse = await storeStoryApi.getByStore(storyData.storeId)
+          const stories = Array.isArray(storiesResponse.data) ? storiesResponse.data : []
+          // Count stories where isActive is not false (includes true and null/undefined)
+          const activeCount = stories.filter((s: StoreStory) => s.isActive !== false).length
+          setActiveStoriesCount(activeCount)
+        } catch (err) {
+          console.error('Error fetching active stories count:', err)
+        }
+      }
     } catch (error) {
       console.error('Error fetching story detail:', error)
       setError('Không thể tải thông tin chi tiết câu chuyện')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleEdit = () => {
+    if (!storyId) return
+    // Navigate to create page with storyId for editing
+    // Note: This requires implementing edit mode in createMyStoryPage
+    navigate(`${path.BASE_SELLER}/${path.createMyStorySeller}?edit=${storyId}`)
+    onOpenChange(false)
+  }
+
+  const handleDeactivate = async () => {
+    if (!storyId || !story) return
+
+    // Validation: Check if this is the only active story
+    // activeStoriesCount includes current story, so if <= 1, it means only this story is active
+    if (activeStoriesCount !== null && activeStoriesCount <= 1 && story.isActive !== false) {
+      toast.error('Cửa hàng phải có ít nhất 1 câu chuyện đang hoạt động. Không thể tạm dừng câu chuyện này.')
+      setShowDeactivateDialog(false)
+      return
+    }
+
+    try {
+      setIsDeactivating(true)
+      // Use update API with IsActive = false
+      // Note: StoreStory doesn't have textIntro, textExpanded, textClosing as direct properties
+      // These might be in contents, but for deactivation we just need Title and StoreId
+      await storeStoryApi.deactivateUsingUpdate(storyId, {
+        Title: story.title || '',
+        TextIntro: '',
+        VideoOpenerDescription: '',
+        SingleImageDescription: '',
+        GalleryDescription: '',
+        VideoProcessDescription: '',
+        TextExpanded: '',
+        VideoTestimonialDescription: '',
+        TextClosing: '',
+        StoreId: story.storeId || ''
+      })
+      toast.success('Câu chuyện đã được tạm dừng thành công')
+      setShowDeactivateDialog(false)
+      onOpenChange(false)
+      if (onRefresh) {
+        onRefresh()
+      }
+    } catch (error: any) {
+      console.error('Error deactivating story:', error)
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Không thể tạm dừng câu chuyện. Vui lòng thử lại sau.'
+      toast.error('Lỗi', errorMessage)
+      setShowDeactivateDialog(false)
+    } finally {
+      setIsDeactivating(false)
     }
   }
 
@@ -305,8 +393,91 @@ function StoryDetailModal({ open, onOpenChange, storyId }: StoryDetailModalProps
             </div>
           ) : null}
         </div>
+
+        {/* Dialog Footer with Action Buttons */}
+        {story && !loading && !error && (
+          <DialogFooter className='px-6 pb-6 pt-4 border-t border-gray-200 flex-shrink-0 gap-2'>
+            <Button
+              variant='outline'
+              onClick={() => onOpenChange(false)}
+              disabled={isDeactivating}
+            >
+              Đóng
+            </Button>
+            {story.isActive !== false && (
+              <>
+                <Button
+                  variant='outline'
+                  onClick={handleEdit}
+                  disabled={isDeactivating}
+                  className='text-blue-600 border-blue-600 hover:bg-blue-50'
+                >
+                  <Edit className='w-4 h-4 mr-2' />
+                  Chỉnh sửa
+                </Button>
+                <Button
+                  variant='outline'
+                  onClick={() => setShowDeactivateDialog(true)}
+                  disabled={isDeactivating}
+                  className='text-orange-600 border-orange-600 hover:bg-orange-50'
+                >
+                  <Pause className='w-4 h-4 mr-2' />
+                  Tạm dừng
+                </Button>
+              </>
+            )}
+            {story.isActive === false && (
+              <Button
+                variant='outline'
+                onClick={handleEdit}
+                disabled={isDeactivating}
+                className='text-blue-600 border-blue-600 hover:bg-blue-50'
+              >
+                <Edit className='w-4 h-4 mr-2' />
+                Chỉnh sửa
+              </Button>
+            )}
+          </DialogFooter>
+        )}
       </DialogContent>
 
+      {/* Deactivate Confirmation Dialog */}
+      <AlertDialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận tạm dừng</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn tạm dừng câu chuyện <strong>"{story?.title}"</strong>?
+              <br />
+              <br />
+              {activeStoriesCount !== null && activeStoriesCount <= 1 && story?.isActive !== false && (
+                <span className='text-red-600 font-semibold'>
+                  Cảnh báo: Đây là câu chuyện đang hoạt động duy nhất. Cửa hàng phải có ít nhất 1 câu chuyện đang hoạt động.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeactivateDialog(false)} disabled={isDeactivating}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeactivate}
+              disabled={isDeactivating || (activeStoriesCount !== null && activeStoriesCount <= 1 && story?.isActive !== false)}
+              className='bg-orange-600 hover:bg-orange-700'
+            >
+              {isDeactivating ? (
+                <>
+                  <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                  Đang xử lý...
+                </>
+              ) : (
+                'Xác nhận tạm dừng'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

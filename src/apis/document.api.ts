@@ -45,8 +45,86 @@ export interface DocumentListResponse {
   }
 }
 
-// Get documents list
+// Get all documents (for admin)
 export const getDocuments = async (params?: DocumentListParams): Promise<DocumentListResponse> => {
+  const response = await axiosInstance.get(API_URL, {
+    params: {
+      pageSize: params?.pageSize || 10,
+      pageNumber: params?.pageNumber || 1
+    }
+  })
+
+  const responseData = response.data || response
+
+  // Handle ApiResponseWithPagination structure
+  let documents: DocumentType[] = []
+  let pagination: {
+    pageNumber: number
+    pageSize: number
+    totalItems: number
+  } | undefined
+
+  if (Array.isArray(responseData)) {
+    documents = responseData
+  } else if (responseData && typeof responseData === 'object') {
+    if (Array.isArray(responseData.data)) {
+      documents = responseData.data
+    } else if (Array.isArray(responseData)) {
+      documents = responseData
+    }
+
+    if (responseData.pagination) {
+      pagination = {
+        pageNumber: responseData.pagination.pageNumber || params?.pageNumber || 1,
+        pageSize: responseData.pagination.pageSize || params?.pageSize || 10,
+        totalItems: responseData.pagination.totalItems || 0
+      }
+    }
+  }
+
+  return { data: documents, pagination }
+}
+
+export const getDocumentsCustomer = async (params?: DocumentListParams): Promise<DocumentListResponse> => {
+  const response = await axiosInstance.get(`${API_URL}/type/Customer`, {
+    params: {
+      pageSize: params?.pageSize || 10,
+      pageNumber: params?.pageNumber || 1
+    }
+  })
+
+  const responseData = response.data || response
+
+  // Handle ApiResponseWithPagination structure
+  let documents: DocumentType[] = []
+  let pagination: {
+    pageNumber: number
+    pageSize: number
+    totalItems: number
+  } | undefined
+
+  if (Array.isArray(responseData)) {
+    documents = responseData
+  } else if (responseData && typeof responseData === 'object') {
+    if (Array.isArray(responseData.data)) {
+      documents = responseData.data
+    } else if (Array.isArray(responseData)) {
+      documents = responseData
+    }
+
+    if (responseData.pagination) {
+      pagination = {
+        pageNumber: responseData.pagination.pageNumber || params?.pageNumber || 1,
+        pageSize: responseData.pagination.pageSize || params?.pageSize || 10,
+        totalItems: responseData.pagination.totalItems || 0
+      }
+    }
+  }
+
+  return { data: documents, pagination }
+}
+// Get documents list
+export const getDocumentsSeller = async (params?: DocumentListParams): Promise<DocumentListResponse> => {
   const response = await axiosInstance.get(`${API_URL}/type/Seller`, {
     params: {
       pageSize: params?.pageSize || 10,

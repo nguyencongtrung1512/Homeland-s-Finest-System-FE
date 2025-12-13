@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '../../../components/ui/alert-dialog'
-import { Plus, Edit, Trash2, RefreshCw, Search, Tag } from 'lucide-react'
+import { Plus, Edit, RefreshCw, Search, Tag } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import { useStore } from '../../../contexts/store.context'
 import {
@@ -340,10 +340,7 @@ function HashtagManagement() {
   }
 
   // Handle delete
-  const handleDeleteClick = (hashtag: HashtagItem) => {
-    setSelectedHashtag(hashtag)
-    setShowDeleteDialog(true)
-  }
+ 
 
   const handleDeleteConfirm = async () => {
     if (!selectedHashtag) return
@@ -515,14 +512,6 @@ function HashtagManagement() {
                             >
                               <Edit className='w-4 h-4' />
                             </Button>
-                            <Button
-                              variant='outline'
-                              size='sm'
-                              onClick={() => handleDeleteClick(hashtag)}
-                              className='text-red-600 hover:text-red-700'
-                            >
-                              <Trash2 className='w-4 h-4' />
-                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -677,9 +666,9 @@ function HashtagManagement() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+            <AlertDialogTitle>Dừng hoạt động nhãn dán</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa nhãn dán <strong>#{selectedHashtag?.name}</strong>? Hành động này sẽ ảnh hưởng
+              Bạn có chắc chắn muốn dừng hoạt động nhãn dán <strong>#{selectedHashtag?.name}</strong>? Hành động này sẽ ảnh hưởng
               tới các sản phẩm liên quan
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -690,7 +679,7 @@ function HashtagManagement() {
               disabled={isDeleting}
               className='bg-red-600 hover:bg-red-700'
             >
-              {isDeleting ? 'Đang xóa...' : 'Xóa'}
+              {isDeleting ? 'Đang dừng...' : 'Dừng'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

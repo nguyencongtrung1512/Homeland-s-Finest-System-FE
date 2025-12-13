@@ -46,7 +46,7 @@ export const path = {
   chatWithCustomerSeller: 'chat',
   financeSeller: 'finance',
   transactionSeller: 'transaction',
-  setupStoreSeller: 'setup-store',
+  setupStoreSeller: 'My-store',
   helpSeller: 'help',
   detailHelpSeller: 'help/:requestId',
   productReviewsSeller: 'product-reviews',

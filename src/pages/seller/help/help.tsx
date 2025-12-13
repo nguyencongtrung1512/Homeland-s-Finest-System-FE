@@ -2,13 +2,16 @@ import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '../../../components/ui/dialog'
 import {
   FileText,
-  Star,
-  Truck,
-  RotateCcw,
-  Lock,
   Plus,
   Loader2,
   CheckCircle,
@@ -16,15 +19,18 @@ import {
   User,
   Clock,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react'
 import CreateHelpModal from './createHelp'
+import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 import { formApi } from '../../../apis/form.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
 import { toast } from '../../../utils/toast'
 import { useAuth } from '../../../contexts/auth.context'
 import { formatDate } from '../../../utils/formatDate'
 import Pagination from '../../../components/Pagination/Pagination'
+import { Eye } from 'lucide-react'
 
 function HelpCenter() {
   const { user } = useAuth()
@@ -35,48 +41,13 @@ function HelpCenter() {
   const [error, setError] = useState<string | null>(null)
   const [selectedRequest, setSelectedRequest] = useState<FormDTO | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
-
-  // Mock data for policies
-  const policies = [
-    {
-      id: 1,
-      title: 'Điều khoản dịch vụ',
-      description: 'Quy định chung về việc sử dụng nền tảng và dịch vụ của chúng tôi.',
-      icon: <FileText className='w-6 h-6 text-green-600' />
-    },
-    {
-      id: 2,
-      title: 'Chính sách chất lượng',
-      description: 'Tiêu chuẩn chất lượng sản phẩm và dịch vụ khách hàng.',
-      icon: <Star className='w-6 h-6 text-green-600' />
-    },
-    {
-      id: 3,
-      title: 'Chính sách thanh toán',
-      description: 'Hướng dẫn về phương thức thanh toán và quy trình rút tiền.',
-      icon: <span className='text-green-600 font-bold text-xl'>₫</span>
-    },
-    {
-      id: 4,
-      title: 'Chính sách vận chuyển',
-      description: 'Quy định về đóng gói, giao hàng và xử lý khiếu nại.',
-      icon: <Truck className='w-6 h-6 text-green-600' />
-    },
-    {
-      id: 5,
-      title: 'Chính sách đổi trả',
-      description: 'Quy trình xử lý đơn hàng đổi trả và hoàn tiền.',
-      icon: <RotateCcw className='w-6 h-6 text-green-600' />
-    },
-    {
-      id: 6,
-      title: 'Chính sách bảo mật',
-      description: 'Cam kết bảo vệ thông tin cá nhân và dữ liệu của người dùng.',
-      icon: <Lock className='w-6 h-6 text-green-600' />
-    }
-  ]
 
   // Fetch support requests
   useEffect(() => {
@@ -242,6 +213,33 @@ function HelpCenter() {
     setIsDetailOpen(true)
   }
 
+  const handleCancelRequest = async () => {
+    if (!selectedRequest) return
+
+    try {
+      setIsCancelling(true)
+      await formApi.cancelForm(selectedRequest.id)
+      toast.success('Hủy yêu cầu hỗ trợ thành công!')
+      setShowCancelModal(false)
+      setIsDetailOpen(false)
+      // Refresh data
+      await handleRefreshData()
+    } catch (error: unknown) {
+      console.error('Error cancelling form:', error)
+      const errorMessage =
+        (error && typeof error === 'object' && 'response' in error
+          ? (error.response as { data?: { message?: string } })?.data?.message
+          : null) ||
+        (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+          ? error.message
+          : null) ||
+        'Có lỗi xảy ra khi hủy yêu cầu hỗ trợ'
+      toast.error(errorMessage)
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
   const filteredRequests = useMemo(() => {
     return supportRequests.filter((request) => {
       if (activeTab === 'all') return true
@@ -277,35 +275,6 @@ function HelpCenter() {
       <div className='mb-8'>
         <h1 className='text-3xl font-bold text-green-700 mb-2'>Trung tâm trợ giúp</h1>
         <p className='text-gray-600'>Chúng tôi có thể giúp gì cho bạn?</p>
-      </div>
-
-      {/* Policies & Regulations Section */}
-      <div className='mb-12'>
-        <div className='flex items-center gap-2 mb-6'>
-          <div className='w-6 h-6 bg-green-100 rounded flex items-center justify-center'>
-            <Lock className='w-4 h-4 text-green-600' />
-          </div>
-          <h2 className='text-xl font-semibold text-green-700'>Chính sách & Quy định</h2>
-        </div>
-
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-          {policies.map((policy) => (
-            <Card key={policy.id} className='hover:shadow-md transition-shadow cursor-pointer'>
-              <CardContent className='p-6'>
-                <div className='flex flex-col items-center text-center space-y-4'>
-                  <div className='w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center'>{policy.icon}</div>
-                  <div>
-                    <h3 className='font-semibold text-green-700 mb-2'>{policy.title}</h3>
-                    <p className='text-sm text-gray-600 mb-4'>{policy.description}</p>
-                    <button className='text-yellow-600 text-sm font-medium hover:text-yellow-700'>
-                      Xem chi tiết →
-                    </button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       </div>
 
       {/* Support Requests Section */}
@@ -475,20 +444,53 @@ function HelpCenter() {
                       {/* Attachments */}
                       {selectedRequest.imageUrl && selectedRequest.imageUrl.length > 0 && (
                         <div className='mt-4 pt-4 border-t border-gray-200'>
-                          <p className='text-sm font-medium text-gray-700 mb-2'>Tệp đính kèm:</p>
-                          <div className='space-y-2'>
-                            {selectedRequest.imageUrl.map((url, index) => (
-                              <a
-                                key={index}
-                                href={url}
-                                target='_blank'
-                                rel='noopener noreferrer'
-                                className='flex items-center gap-2 text-blue-600 hover:text-blue-700 hover:underline'
-                              >
-                                <Paperclip className='w-4 h-4' />
-                                <span className='text-sm'>{getFileNameFromUrl(url)}</span>
-                              </a>
-                            ))}
+                          <p className='text-sm font-medium text-gray-700 mb-3'>Tệp đính kèm:</p>
+                          <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
+                            {selectedRequest.imageUrl.map((url, index) => {
+                              // Check if file is an image
+                              const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.includes('image')
+                              const isPdf = /\.pdf$/i.test(url) || url.includes('pdf')
+
+                              return (
+                                <div
+                                  key={index}
+                                  className='relative group cursor-pointer overflow-hidden rounded-lg border border-gray-200 hover:border-green-400 transition-all'
+                                  onClick={() => {
+                                    if (isImage) {
+                                      setPreviewImages(selectedRequest.imageUrl || [])
+                                      setPreviewInitialIndex(index)
+                                      setImagePreviewOpen(true)
+                                    } else {
+                                      window.open(url, '_blank')
+                                    }
+                                  }}
+                                >
+                                  {isImage ? (
+                                    <>
+                                      <img
+                                        src={url}
+                                        alt={`Đính kèm ${index + 1}`}
+                                        className='w-full h-32 object-cover group-hover:scale-105 transition-transform'
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement
+                                          target.style.display = 'none'
+                                        }}
+                                      />
+                                      <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
+                                        <Eye className='w-6 h-6 text-white' />
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className='w-full h-32 bg-gray-100 flex flex-col items-center justify-center p-2'>
+                                      <Paperclip className='w-8 h-8 text-gray-400 mb-2' />
+                                      <span className='text-xs text-gray-600 text-center truncate w-full'>
+                                        {isPdf ? 'PDF' : getFileNameFromUrl(url)}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
                       )}
@@ -549,10 +551,97 @@ function HelpCenter() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Action Buttons - Show Cancel button when status is Pending */}
+              {selectedRequest.status === 'Pending' && (
+                <div className='flex justify-end gap-3 pt-4 border-t border-gray-200'>
+                  <Button
+                    variant='outline'
+                    onClick={() => setShowCancelModal(true)}
+                    className='border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700'
+                  >
+                    <X className='w-4 h-4 mr-2' />
+                    Hủy đơn
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Cancel Confirmation Modal */}
+      <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+        <DialogContent className='sm:max-w-[500px]'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2 text-red-700'>
+              <AlertCircle className='w-6 h-6 text-red-600' />
+              Xác nhận hủy yêu cầu hỗ trợ
+            </DialogTitle>
+            <DialogDescription>Bạn có chắc chắn muốn hủy yêu cầu hỗ trợ này không?</DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4 py-4'>
+            <div className='rounded-2xl border-2 border-red-200 bg-red-50 p-6 space-y-3'>
+              <div className='flex items-start gap-3'>
+                <div className='flex-shrink-0 pt-0.5'>
+                  <AlertCircle className='w-5 h-5 text-red-600' />
+                </div>
+                <div className='flex-1'>
+                  <h3 className='font-semibold text-red-900 mb-2'>Lưu ý quan trọng</h3>
+                  <p className='text-sm text-red-800'>
+                    Sau khi hủy, yêu cầu hỗ trợ này sẽ không thể được khôi phục. Bạn sẽ cần tạo yêu cầu mới nếu cần hỗ trợ sau này.
+                  </p>
+                </div>
+              </div>
+            </div>
+            {selectedRequest && (
+              <div className='rounded-xl border border-gray-200 bg-gray-50 p-4'>
+                <p className='text-sm text-gray-600 mb-1'>Mã yêu cầu</p>
+                <p className='font-medium text-gray-900'>#{selectedRequest.id.substring(0, 8).toUpperCase()}</p>
+                <p className='text-sm text-gray-600 mt-2 mb-1'>Tiêu đề</p>
+                <p className='font-medium text-gray-900'>{selectedRequest.subject}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowCancelModal(false)}
+              variant='outline'
+              disabled={isCancelling}
+              className='px-6'
+            >
+              <X className='w-4 h-4 mr-2' />
+              Không hủy
+            </Button>
+            <Button
+              onClick={handleCancelRequest}
+              className='bg-red-600 hover:bg-red-700 text-white px-6'
+              disabled={isCancelling}
+            >
+              {isCancelling ? (
+                <>
+                  <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                  Đang hủy...
+                </>
+              ) : (
+                <>
+                  <XCircle className='w-4 h-4 mr-2' />
+                  Xác nhận hủy
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreviewOpen}
+        onClose={() => setImagePreviewOpen(false)}
+        images={previewImages}
+        initialIndex={previewInitialIndex}
+        alt='Xem chi tiết hình ảnh đính kèm'
+      />
     </div>
   )
 }

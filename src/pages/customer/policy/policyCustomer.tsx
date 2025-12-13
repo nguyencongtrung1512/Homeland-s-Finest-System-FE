@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, FileText } from 'lucide-react'
-import { getDocuments, type DocumentType } from '../../../apis/document.api'
+import { getDocumentsCustomer, type DocumentType } from '../../../apis/document.api'
 import Loading from '../../../components/Loading/loading'
 import { toast } from '../../../utils/toast'
 import { Link } from 'react-router-dom'
@@ -33,7 +33,7 @@ function PolicyCustomer() {
     const fetchDocuments = async () => {
       try {
         setLoading(true)
-        const response = await getDocuments({
+        const response = await getDocumentsCustomer({
           pageSize: 0,
           pageNumber: 1
         })

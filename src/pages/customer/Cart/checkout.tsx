@@ -427,6 +427,8 @@ export default function Checkout() {
           districtId: formData.districtId,
           wardId: formData.wardId,
           streetAddress: formData.streetAddress,
+          receiverName: formData.receiverName,
+          receiverPhoneNumber: formData.receiverPhoneNumber,
           isDefault: formData.isDefault
         }
         await addressApi.update(editingAddress.id, updateData)
