@@ -113,6 +113,8 @@ export interface OrderItem {
   orderId: string
   productId: string
   productVariantId: string
+  provinceId?: number
+  provinceName?: string
   length: number
   width: number
   height: number
@@ -133,6 +135,8 @@ export interface OrderItemWithCombo {
   orderId: string
   productId: string
   productVariantId: string
+  provinceId?: number
+  provinceName?: string
   comboId?: string
   comboItemId: string
   comboName: string
