@@ -49,15 +49,8 @@ export const confirmOrder = async (orderId: string): Promise<Order> => {
 }
 
 // PUT /api/Order/ready-to-pick/{orderId} - Xác nhận sẵn sàng lấy hàng (chuyển sang ReadyToPick)
-export const readyToPickOrder = async (orderId: string, ghnCode: string): Promise<Order> => {
-  const formData = new FormData()
-  formData.append('GHNcode', ghnCode)
-
-  const response: OrderResponse = await axiosInstance.put(`${API_URL}/ready-to-pick/${orderId}`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
+export const readyToPickOrder = async (orderId: string): Promise<Order> => {
+  const response: OrderResponse = await axiosInstance.put(`${API_URL}/ready-to-pick/${orderId}`)
   return response.data
 }
 
