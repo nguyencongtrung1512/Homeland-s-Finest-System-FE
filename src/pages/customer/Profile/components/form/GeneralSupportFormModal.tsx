@@ -142,22 +142,24 @@ const GeneralSupportFormModal = ({
           </DialogTitle>
         </DialogHeader>
         <div className='flex-1 overflow-y-auto px-6 py-4 space-y-6'>
-          <div>
-            <Label className='text-sm font-medium text-gray-700 mb-2 block'>Loại yêu cầu</Label>
-            <Select value={selectedType} onValueChange={(value: FormType) => setSelectedType(value)} disabled={isSubmitting}>
-              <SelectTrigger>
-                <SelectValue placeholder='Chọn loại yêu cầu' />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTypeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className='text-xs text-gray-500 mt-2'>{availableTypeOptions.find((o) => o.value === selectedType)?.description}</p>
-          </div>
+          {allowedTypes.length > 1 && (
+            <div>
+              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Loại yêu cầu</Label>
+              <Select value={selectedType} onValueChange={(value: FormType) => setSelectedType(value)} disabled={isSubmitting}>
+                <SelectTrigger>
+                  <SelectValue placeholder='Chọn loại yêu cầu' />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTypeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className='text-xs text-gray-500 mt-2'>{availableTypeOptions.find((o) => o.value === selectedType)?.description}</p>
+            </div>
+          )}
 
           <div>
             <Label className='text-sm font-medium text-gray-700 mb-2 block'>

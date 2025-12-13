@@ -48,6 +48,17 @@ function HashtagManagement() {
   const pageSize = 10
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [pagination, setPagination] = useState<{
+    totalItems: number
+    totalPages: number
+    pageNumber: number
+    pageSize: number
+  }>({
+    totalItems: 0,
+    totalPages: 1,
+    pageNumber: 1,
+    pageSize: 10
+  })
 
   // Validation constants
   const MAX_HASHTAG_LENGTH = 30
@@ -78,12 +89,24 @@ function HashtagManagement() {
       setLoading(true)
       setError(null)
 
+      // Nếu có filter status, load tất cả dữ liệu để filter ở frontend
+      // Nếu không có filter status, sử dụng phân trang từ API
+      const apiPageSize = statusFilter === 'all' ? pageSize : 0
+      const apiPageNumber = statusFilter === 'all' ? currentPage : 1
+
       // Lấy hashtag theo storeId từ API endpoint /store/{storeId}
-      const response = await getHashtagsByStoreId(store.id, pageSize, currentPage)
+      const response = await getHashtagsByStoreId(store.id, apiPageSize, apiPageNumber)
 
       if (response.status === 200) {
-        // API đã trả về hashtags của store, không cần filter lại
-        setHashtags(response.data)
+        setHashtags(response.data || [])
+        if (response.pagination) {
+          setPagination({
+            totalItems: response.pagination.totalItems || 0,
+            totalPages: response.pagination.totalPages || 1,
+            pageNumber: response.pagination.pageNumber || 1,
+            pageSize: response.pagination.pageSize || pageSize
+          })
+        }
       } else {
         setError('Không thể tải danh sách nhãn dán')
       }
@@ -99,26 +122,52 @@ function HashtagManagement() {
     if (store?.id) {
       fetchHashtags()
     }
-  }, [store?.id, currentPage, searchTerm])
+  }, [store?.id, currentPage, statusFilter])
 
-  // Filtered and sorted hashtags
+  // Filtered hashtags (chỉ filter status nếu cần, search đã được xử lý ở API nếu có)
   const filteredHashtags = useMemo(() => {
-    return hashtags.filter((hashtag) => {
-      const matchesSearch = !searchTerm.trim() || hashtag.name.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesStatus =
-        statusFilter === 'all' ||
-        (statusFilter === 'active' && hashtag.isActive) ||
-        (statusFilter === 'inactive' && !hashtag.isActive)
+    let filtered = hashtags
 
-      return matchesSearch && matchesStatus
-    })
+    // Filter by status (nếu không phải 'all')
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((hashtag) => {
+        if (statusFilter === 'active') return hashtag.isActive
+        if (statusFilter === 'inactive') return !hashtag.isActive
+        return true
+      })
+    }
+
+    // Filter by search term ở frontend (nếu API không hỗ trợ search theo name)
+    if (searchTerm.trim()) {
+      filtered = filtered.filter((hashtag) => hashtag.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    }
+
+    return filtered
   }, [hashtags, searchTerm, statusFilter])
 
+  // Paginated hashtags (chỉ khi có filter status, vì khi không có filter thì API đã phân trang)
   const paginatedHashtags = useMemo(() => {
-    return filteredHashtags.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-  }, [filteredHashtags, currentPage, pageSize])
+    if (statusFilter === 'all') {
+      // API đã phân trang, sử dụng trực tiếp
+      return hashtags
+    } else {
+      // Filter ở frontend, cần phân trang lại
+      const startIndex = (currentPage - 1) * pageSize
+      const endIndex = startIndex + pageSize
+      return filteredHashtags.slice(startIndex, endIndex)
+    }
+  }, [hashtags, filteredHashtags, currentPage, pageSize, statusFilter])
 
-  const totalPages = Math.max(1, Math.ceil(filteredHashtags.length / pageSize))
+  // Total pages
+  const totalPages = useMemo(() => {
+    if (statusFilter === 'all') {
+      // Sử dụng totalPages từ API
+      return pagination.totalPages
+    } else {
+      // Tính từ filteredHashtags
+      return Math.max(1, Math.ceil(filteredHashtags.length / pageSize))
+    }
+  }, [statusFilter, pagination.totalPages, filteredHashtags.length, pageSize])
 
   // Validate hashtag name - check rỗng và độ dài
   const validateHashtagName = (name: string): string => {
@@ -357,6 +406,12 @@ function HashtagManagement() {
                     setSearchTerm(e.target.value)
                     setCurrentPage(1)
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setCurrentPage(1)
+                      fetchHashtags()
+                    }
+                  }}
                   className='pl-10 h-9 border-gray-300 focus:border-green-500 focus:ring-green-500 w-full'
                 />
               </div>
@@ -367,7 +422,13 @@ function HashtagManagement() {
               <Label htmlFor='status' className='text-sm font-semibold text-gray-700'>
                 Trạng thái
               </Label>
-              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value: 'all' | 'active' | 'inactive') => {
+                  setStatusFilter(value)
+                  setCurrentPage(1)
+                }}
+              >
                 <SelectTrigger
                   id='status'
                   className='h-10 border-gray-300 focus:border-green-500 focus:ring-green-500 w-full'
@@ -471,7 +532,15 @@ function HashtagManagement() {
               </div>
               {totalPages > 1 && (
                 <div className='mt-4'>
-                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={(page) => {
+                      setCurrentPage(page)
+                      // Scroll to top when page changes
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                  />
                 </div>
               )}
             </>

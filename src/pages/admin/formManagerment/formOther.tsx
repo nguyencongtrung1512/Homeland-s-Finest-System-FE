@@ -468,7 +468,7 @@ export default function FormOtherManagement() {
                       >
                         Xem chi tiết
                       </Button>
-                      {(form.status === 'Pending' || form.status === 'Rejected' || form.status === 'DeniedByStaff') && (
+                      {(form.status === 'Pending' || form.status === 'Rejected') && (
                         <Button
                           variant='outline'
                           size='sm'

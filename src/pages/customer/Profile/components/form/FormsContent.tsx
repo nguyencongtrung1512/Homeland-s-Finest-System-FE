@@ -37,8 +37,6 @@ interface FormsContentProps {
   userId?: string
 }
 
-const SUPPORT_FORM_TYPES: FormType[] = ['ComplaintOrder', 'ReportSeller', 'Orther']
-
 const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) => {
   const [selectedStatus, setSelectedStatus] = useState<FormStatus | 'all'>('all')
   const [cancellingFormId, setCancellingFormId] = useState<string | null>(null)
@@ -115,12 +113,33 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
         description: payload.description,
         imageFiles: payload.images
       })
-      toast.success('Gửi khiếu nại thành công! Chúng tôi sẽ phản hồi sớm nhất.')
+      toast.success('Gửi khiếu nại thành công! Đơn hỗ trợ sẽ được xử lí trong vòng 24 giờ.')
       setShowCreateModal(false)
       onRefresh()
     } catch (error) {
       console.error('Error creating form:', error)
-      toast.error('Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.')
+
+      // Extract error message from backend response
+      let errorMessage = 'Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.'
+
+      if (error && typeof error === 'object') {
+        const apiError = error as { message?: string; response?: { data?: { message?: string } } }
+
+        // Priority 1: Check for direct message field (axios interceptor may return error.response.data directly)
+        if (apiError.message) {
+          errorMessage = apiError.message
+        }
+        // Priority 2: Check for response.data.message (fallback)
+        else if (apiError.response?.data?.message) {
+          errorMessage = apiError.response.data.message
+        }
+      }
+      // Priority 3: Check if error itself is a string
+      else if (typeof error === 'string') {
+        errorMessage = error
+      }
+
+      toast.error(errorMessage)
     } finally {
       setCreatingForm(false)
     }
@@ -197,7 +216,7 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
       case 'ApprovedByAdmin':
         return 'Đã xử lí'
       case 'Rejected':
-        return 'Đã từ chối'
+        return 'Đang xử lí'
       case 'Confirmed':
         return 'Đang xử lý'
       case 'Cancel':
@@ -671,7 +690,7 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateForm}
         isSubmitting={creatingForm}
-        allowedTypes={SUPPORT_FORM_TYPES}
+        allowedTypes={['Orther']}
       />
     </motion.div>
   )

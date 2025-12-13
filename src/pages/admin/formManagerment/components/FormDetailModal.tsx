@@ -216,10 +216,16 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
       return
     }
 
+    // Frontend validation: Phản hồi không được để trống
+    if (!adminText.trim()) {
+      toast.error('Phản hồi không được để trống')
+      return
+    }
+
     try {
       setUpdating(true)
       await formApi.adminUpdateForm(form.id, {
-        adminText: adminText.trim() || '', // Allow empty adminText
+        adminText: adminText.trim(),
         status: adminStatus
       })
 
@@ -228,7 +234,28 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
       handleClose()
     } catch (error) {
       console.error('Error updating form:', error)
-      toast.error('Có lỗi xảy ra khi cập nhật')
+
+      // Extract error message from backend response
+      let errorMessage = 'Có lỗi xảy ra khi cập nhật'
+
+      if (error && typeof error === 'object') {
+        const apiError = error as { message?: string; response?: { data?: { message?: string } } }
+
+        // Priority 1: Check for direct message field (axios interceptor may return error.response.data directly)
+        if (apiError.message) {
+          errorMessage = apiError.message
+        }
+        // Priority 2: Check for response.data.message (fallback)
+        else if (apiError.response?.data?.message) {
+          errorMessage = apiError.response.data.message
+        }
+      }
+      // Priority 3: Check if error itself is a string
+      else if (typeof error === 'string') {
+        errorMessage = error
+      }
+
+      toast.error(errorMessage)
     } finally {
       setUpdating(false)
     }

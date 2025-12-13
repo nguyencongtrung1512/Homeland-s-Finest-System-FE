@@ -1043,7 +1043,28 @@ export default function OrdersContent({
       onRefreshOrders()
     } catch (error) {
       console.error('Error submitting complaint:', error)
-      toast.error('Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.')
+
+      // Extract error message from backend response
+      let errorMessage = 'Có lỗi xảy ra khi gửi khiếu nại. Vui lòng thử lại sau.'
+
+      if (error && typeof error === 'object') {
+        const apiError = error as { message?: string; response?: { data?: { message?: string } } }
+
+        // Priority 1: Check for direct message field (axios interceptor may return error.response.data directly)
+        if (apiError.message) {
+          errorMessage = apiError.message
+        }
+        // Priority 2: Check for response.data.message (fallback)
+        else if (apiError.response?.data?.message) {
+          errorMessage = apiError.response.data.message
+        }
+      }
+      // Priority 3: Check if error itself is a string
+      else if (typeof error === 'string') {
+        errorMessage = error
+      }
+
+      toast.error(errorMessage)
     } finally {
       setSubmittingComplaintOrderId('')
     }

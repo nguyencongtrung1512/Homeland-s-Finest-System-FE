@@ -102,7 +102,7 @@ function Header() {
             Về chúng tôi
           </Link>
           <Link to={path.discover} className='hover:text-green-700 transition whitespace-nowrap'>
-            Khám phá cửa hàng
+            Khám phá đặc sản
           </Link>
           <Link to={path.blog} className='hover:text-green-700 transition whitespace-nowrap'>
             Blog
