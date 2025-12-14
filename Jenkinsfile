@@ -22,7 +22,7 @@ pipeline {
                             
                             # Xóa image FE
                             echo 'Removing FE image...'
-                            docker rmi homelandfinest-fe 2>/dev/null || true
+                            docker rmi homelandfinest-fe -f 2>/dev/null || true
                             
                             # Xóa source code FE cũ
                             echo 'Removing old FE source...'
@@ -105,18 +105,44 @@ EOF
             }
         }
 
-        // 🗑️ CLEAR DOCKER CACHE
+        // 🔧 FIX DOCKERFILE
+        stage('🔧 Fix Dockerfile') {
+            steps {
+                sshagent(['SSHKey']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                            set -e
+                            echo '🔧 Fixing Dockerfile...'
+                            
+                            cd ~/HomeLandFinest/HomelandFinestFE
+                            
+                            # Comment dòng COPY nginx.conf nếu chưa comment
+                            sed -i 's/^COPY nginx.conf/# COPY nginx.conf/' Dockerfile
+                            
+                            echo '✅ Dockerfile fixed!'
+                            echo '📋 Checking nginx.conf line:'
+                            grep 'nginx.conf' Dockerfile || echo 'No active COPY nginx.conf found'
+                        "
+                    """
+                }
+            }
+        }
+
+        // 🗑️ CLEAR DOCKER CACHE (AGGRESSIVE)
         stage('🗑️ Clear Docker Cache') {
             steps {
                 sshagent(['SSHKey']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
-                            echo '🗑️ Clearing Docker build cache for FE...'
+                            echo '🗑️ Clearing ALL Docker build cache...'
                             
-                            # Clear build cache
-                            docker builder prune -f
+                            # Clear tất cả build cache (aggressive)
+                            docker builder prune -a -f
                             
-                            echo '✅ Docker cache cleared!'
+                            # Clear dangling images
+                            docker image prune -f
+                            
+                            echo '✅ Docker cache cleared completely!'
                         "
                     """
                 }
@@ -134,8 +160,8 @@ EOF
                             
                             cd ~/HomeLandFinest/HomelandFinestFE
                             
-                            # Build image với --no-cache để force rebuild từ đầu
-                            docker build --no-cache -f Dockerfile -t homelandfinest-fe .
+                            # Build image với --no-cache và --pull để force rebuild hoàn toàn
+                            docker build --no-cache --pull -f Dockerfile -t homelandfinest-fe .
                             
                             echo '✅ Image built successfully!'
                             docker images | grep homelandfinest-fe
@@ -186,6 +212,7 @@ EOF
                             echo ''
                             echo '🌐 Services URLs:'
                             echo '- Frontend: http://154.26.130.248:8082'
+                            echo '- Frontend (Domain): https://tinhhoaquenha.online'
                             echo '- Backend: http://154.26.130.248:8080/swagger'
                             echo '- ChunkService: http://154.26.130.248:8077'
                             echo '- EmailService: http://154.26.130.248:8078'
@@ -196,8 +223,7 @@ EOF
                             
                             echo ''
                             echo '💡 Test FE:'
-                            echo 'curl -I http://154.26.130.248:8082'
-                            curl -I http://154.26.130.248:8082 || echo '⚠️ Health check failed, but container is running'
+                            curl -I http://localhost:8082 || echo '⚠️ Health check failed, but container is running'
                         "
                     """
                 }
@@ -215,6 +241,7 @@ EOF
             echo '✅ Deployment Summary:'
             echo '- Branch: ${params.BRANCH_NAME}'
             echo '- Frontend URL: http://154.26.130.248:8082'
+            echo '- Frontend Domain: https://tinhhoaquenha.online'
             echo '- Container: homelandfinest-fe'
             echo '- Port Mapping: 8082:80 (host:container)'
             echo ''
