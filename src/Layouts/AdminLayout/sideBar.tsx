@@ -12,7 +12,6 @@ import {
   Component,
   Package,
   Store,
-  Wallet,
   ChevronDown,
   ChevronRight,
   CircleQuestionMark,
