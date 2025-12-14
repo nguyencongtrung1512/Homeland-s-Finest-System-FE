@@ -32,6 +32,8 @@ interface OrderItemWithCombo {
   width?: number
   height?: number
   weight?: number
+  provinceId?: number
+  provinceName?: string
 }
 
 interface OrderItem {
@@ -45,6 +47,8 @@ interface OrderItem {
   width?: number
   height?: number
   weight?: number
+  provinceId?: number
+  provinceName?: string
 }
 
 interface OrderPromotion {
@@ -186,7 +190,9 @@ function OrderDetailStaff() {
         length: item?.length,
         width: item?.width,
         height: item?.height,
-        weight: item?.weight
+        weight: item?.weight,
+        provinceId: (item as any)?.provinceId,
+        provinceName: (item as any)?.provinceName
       })),
       orderItemsWithCombo: (apiOrder?.orderItemsWithCombo || []).map((item) => {
         const comboItem = item as Partial<OrderItemWithCombo>
@@ -203,7 +209,9 @@ function OrderDetailStaff() {
           length: comboItem?.length,
           width: comboItem?.width,
           height: comboItem?.height,
-          weight: comboItem?.weight
+          weight: comboItem?.weight,
+          provinceId: (item as any)?.provinceId,
+          provinceName: (item as any)?.provinceName
         }
       }),
       orderHistories: apiOrder?.orderHistories || [],

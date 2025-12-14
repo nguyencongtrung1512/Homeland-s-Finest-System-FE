@@ -337,9 +337,25 @@ function Transaction() {
 
   // Format date
   const formatDate = (dateString: string) => {
+    if (!dateString) return dateString
+    
     try {
+      // Handle format: "15:01:34 13/12/2025" (HH:mm:ss dd/MM/yyyy) - return as is
+      const timeDateMatch = dateString.match(/^(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})$/)
+      if (timeDateMatch) {
+        // Already in desired format, return as is
+        return dateString
+      }
+      
+      // Try standard Date parsing and format with time
       const date = new Date(dateString)
-      return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      if (!isNaN(date.getTime())) {
+        const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        return `${timeStr} ${dateStr}`
+      }
+      
+      return dateString
     } catch {
       return dateString
     }
@@ -2684,27 +2700,13 @@ function Transaction() {
                 <div>
                   <p className='text-sm font-medium text-gray-700 mb-1'>Ngày tạo</p>
                   <p className='text-sm text-gray-900'>
-                    {new Date(selectedTransaction.createdAt).toLocaleString('vi-VN', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {formatDate(selectedTransaction.createdAt)}
                   </p>
                 </div>
                 <div>
                   <p className='text-sm font-medium text-gray-700 mb-1'>Ngày cập nhật</p>
                   <p className='text-sm text-gray-900'>
-                    {selectedTransaction.updatedAt
-                      ? new Date(selectedTransaction.updatedAt).toLocaleString('vi-VN', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                      : 'Chưa cập nhật'}
+                    {selectedTransaction.updatedAt ? formatDate(selectedTransaction.updatedAt) : 'Chưa cập nhật'}
                   </p>
                 </div>
               </div>
