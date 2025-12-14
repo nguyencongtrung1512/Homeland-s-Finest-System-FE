@@ -97,8 +97,8 @@ VITE_NEXTJS_HOMEPAGE_URL=https://homeland-finest-homepage.vercel.app
 EOF
                             
                             echo '✅ .env file created successfully!'
-                            echo '📋 Content:'
-                            cat .env
+                            echo '📋 Content preview (first 3 lines):'
+                            head -n 3 .env
                         "
                     """
                 }
