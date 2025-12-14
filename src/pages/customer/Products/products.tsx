@@ -51,57 +51,31 @@ function Products() {
     totalPages?: number
   } | null>(null)
 
-  // Handler để nhận filters từ AsideFilter - áp dụng cho cả product và combo
+  // Handler để nhận filters từ AsideFilter - áp dụng filter cho tab hiện tại (product hoặc combo)
   const handleFilterChange = (filterState: {
     minPrice?: number
     maxPrice?: number
     provinceFilters?: string[]
   }) => {
-    // Nếu có provinceFilters, tự động chuyển sang tab combo
-    if (filterState.provinceFilters && filterState.provinceFilters.length > 0) {
-      if (activeTab === 'product') {
-        // Chuyển sang tab combo và apply filters
-        setActiveTab('combo')
-        setComboFilters((prev) => ({
-          ...prev,
-          minPrice: filterState.minPrice,
-          maxPrice: filterState.maxPrice,
-          provinceFilters: filterState.provinceFilters,
-          pageNumber: 1 // Reset về trang đầu khi filter thay đổi
-        }))
-        setCurrentPage(1)
-      } else if (activeTab === 'combo') {
-        // Đã ở tab combo, chỉ cần update filters
-        setComboFilters((prev) => ({
-          ...prev,
-          minPrice: filterState.minPrice,
-          maxPrice: filterState.maxPrice,
-          provinceFilters: filterState.provinceFilters,
-          pageNumber: 1 // Reset về trang đầu khi filter thay đổi
-        }))
-        setCurrentPage(1)
-      }
-    } else {
-      // Không có provinceFilters, apply filter cho tab hiện tại
-      if (activeTab === 'product') {
-        // Apply filters for products
-        setProductFilters({
-          minPrice: filterState.minPrice,
-          maxPrice: filterState.maxPrice,
-          provinceFilters: filterState.provinceFilters
-        })
-        setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
-      } else if (activeTab === 'combo') {
-        // Apply filters for combos
-        setComboFilters((prev) => ({
-          ...prev,
-          minPrice: filterState.minPrice,
-          maxPrice: filterState.maxPrice,
-          provinceFilters: filterState.provinceFilters,
-          pageNumber: 1 // Reset về trang đầu khi filter thay đổi
-        }))
-        setCurrentPage(1)
-      }
+    // Áp dụng filter cho tab hiện tại, không tự động chuyển tab
+    if (activeTab === 'product') {
+      // Apply filters for products
+      setProductFilters({
+        minPrice: filterState.minPrice,
+        maxPrice: filterState.maxPrice,
+        provinceFilters: filterState.provinceFilters
+      })
+      setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
+    } else if (activeTab === 'combo') {
+      // Apply filters for combos
+      setComboFilters((prev) => ({
+        ...prev,
+        minPrice: filterState.minPrice,
+        maxPrice: filterState.maxPrice,
+        provinceFilters: filterState.provinceFilters,
+        pageNumber: 1 // Reset về trang đầu khi filter thay đổi
+      }))
+      setCurrentPage(1)
     }
   }
 

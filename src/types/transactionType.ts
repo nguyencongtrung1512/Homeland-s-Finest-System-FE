@@ -3,7 +3,7 @@ export type TransactionStatus =
   | 'Pending' // Chờ thanh toán (Banking)
   | 'Completed' // Đã hoàn thành (COD)
   | 'Failed' // Thất bại
-  | 'Cancelled' // Đã hủy
+  | 'Cancel' // Đã hủy
 
 export type TransactionType =
   | 'Sale' // Khách mua hàng thông qua cổng thanh toán Payos
@@ -61,6 +61,7 @@ export interface TransactionQueryParams {
   toDate?: string
   sortBy?: 'createdAt' | 'amount' | 'status'
   sortOrder?: 'asc' | 'desc'
+  username?: string // Tìm kiếm theo tên người dùng (email/firstName/lastName)
 }
 
 // Transaction List Response interface

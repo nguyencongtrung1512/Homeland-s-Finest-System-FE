@@ -109,10 +109,10 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
       <h3 className='text-sm font-bold bg-green-600 border border-green-600 p-2 rounded-lg uppercase'>Khám phá đặc sản</h3>
 
       {/* Vietnam Map */}
-      <div className=''>
+      <div className='mt-2'>
         {/* Hiển thị tỉnh đang chọn */}
         {(selectedProvince || selectedProvinceName) && (
-          <div className='mt-4 p-3 bg-green-50 border border-green-200 rounded-lg'>
+          <div className='mt-2 p-3 bg-green-50 border border-green-200 rounded-lg'>
             <div className='flex items-center justify-between'>
               <div className='flex items-center gap-2'>
                 <span className='text-sm font-medium text-gray-700'>Đang chọn:</span>
