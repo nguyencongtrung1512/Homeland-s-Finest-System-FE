@@ -15,7 +15,6 @@ import {
   Plus,
   Loader2,
   CheckCircle,
-  Paperclip,
   User,
   Clock,
   XCircle,
@@ -23,14 +22,12 @@ import {
   X
 } from 'lucide-react'
 import CreateHelpModal from './createHelp'
-import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 import { formApi } from '../../../apis/form.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
 import { toast } from '../../../utils/toast'
 import { useAuth } from '../../../contexts/auth.context'
 import { formatDate } from '../../../utils/formatDate'
 import Pagination from '../../../components/Pagination/Pagination'
-import { Eye } from 'lucide-react'
 
 function HelpCenter() {
   const { user } = useAuth()
@@ -43,9 +40,6 @@ function HelpCenter() {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
-  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
-  const [previewImages, setPreviewImages] = useState<string[]>([])
-  const [previewInitialIndex, setPreviewInitialIndex] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
 
@@ -189,11 +183,6 @@ function HelpCenter() {
     )
   }
 
-  // Get file name from URL
-  const getFileNameFromUrl = (url: string) => {
-    const parts = url.split('/')
-    return parts[parts.length - 1]
-  }
 
   const handleCreateRequest = () => {
     setIsCreateModalOpen(true)
@@ -245,6 +234,7 @@ function HelpCenter() {
       if (activeTab === 'all') return true
       if (activeTab === 'pending') return !['ApprovedByAdmin', 'Confirmed', 'Cancel'].includes(request.status)
       if (activeTab === 'resolved') return ['ApprovedByAdmin', 'Confirmed'].includes(request.status)
+      if (activeTab === 'cancelled') return request.status === 'Cancel'
       return true
     })
   }, [supportRequests, activeTab])
@@ -274,7 +264,6 @@ function HelpCenter() {
       {/* Header */}
       <div className='mb-8'>
         <h1 className='text-3xl font-bold text-green-700 mb-2'>Trung tâm trợ giúp</h1>
-        <p className='text-gray-600'>Chúng tôi có thể giúp gì cho bạn?</p>
       </div>
 
       {/* Support Requests Section */}
@@ -292,7 +281,8 @@ function HelpCenter() {
           {[
             { key: 'all', label: 'Tất cả' },
             { key: 'pending', label: 'Đang chờ xử lý' },
-            { key: 'resolved', label: 'Đã giải quyết' }
+            { key: 'resolved', label: 'Đã giải quyết' },
+            { key: 'cancelled', label: 'Đã hủy' }
           ].map((tab) => (
             <button
               key={tab.key}
@@ -335,7 +325,6 @@ function HelpCenter() {
                 <table className='w-full'>
                   <thead>
                     <tr className='border-b border-gray-200'>
-                      <th className='text-left py-4 px-6 font-medium text-gray-700'>Mã yêu cầu</th>
                       <th className='text-left py-4 px-6 font-medium text-gray-700'>Tiêu đề</th>
                       <th className='text-left py-4 px-6 font-medium text-gray-700'>Ngày gửi</th>
                       <th className='text-left py-4 px-6 font-medium text-gray-700'>Trạng thái</th>
@@ -345,19 +334,30 @@ function HelpCenter() {
                   <tbody>
                     {paginatedRequests.map((request) => (
                       <tr key={request.id} className='border-b border-gray-100 hover:bg-gray-50'>
-                        <td className='py-4 px-6 text-gray-900 font-medium'>
-                          #{request.id.substring(0, 8).toUpperCase()}
-                        </td>
                         <td className='py-4 px-6 text-gray-700'>{request.subject}</td>
                         <td className='py-4 px-6 text-gray-700'>{formatDate(request.createdAt)}</td>
                         <td className='py-4 px-6'>{getStatusBadge(request.status)}</td>
                         <td className='py-4 px-6'>
-                          <button
-                            onClick={() => handleViewDetails(request)}
-                            className='text-yellow-600 text-sm font-medium hover:text-yellow-700'
-                          >
-                            Xem chi tiết →
-                          </button>
+                          <div className='flex items-center gap-3'>
+                            <button
+                              onClick={() => handleViewDetails(request)}
+                              className='text-yellow-600 text-sm font-medium hover:text-yellow-700'
+                            >
+                              Xem chi tiết →
+                            </button>
+                            {request.status === 'Pending' && (
+                              <button
+                                onClick={() => {
+                                  setSelectedRequest(request)
+                                  setShowCancelModal(true)
+                                }}
+                                className='text-red-600 text-sm font-medium hover:text-red-700 flex items-center gap-1'
+                              >
+                                <X className='w-4 h-4' />
+                                Hủy đơn
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -398,10 +398,7 @@ function HelpCenter() {
               <Card>
                 <CardContent className='p-6'>
                   <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-                    <div>
-                      <p className='text-sm text-gray-600 mb-1'>Mã yêu cầu</p>
-                      <p className='font-medium text-gray-900'>#{selectedRequest.id.substring(0, 8).toUpperCase()}</p>
-                    </div>
+
                     <div>
                       <p className='text-sm text-gray-600 mb-1'>Loại yêu cầu</p>
                       <p className='font-medium text-gray-900'>{getFormTypeLabel(selectedRequest.type)}</p>
@@ -441,7 +438,7 @@ function HelpCenter() {
                       {/* Description */}
                       <div className='whitespace-pre-line text-gray-700 mb-4'>{selectedRequest.description}</div>
 
-                      {/* Attachments */}
+                      {/* Attachments - Only images, no preview */}
                       {selectedRequest.imageUrl && selectedRequest.imageUrl.length > 0 && (
                         <div className='mt-4 pt-4 border-t border-gray-200'>
                           <p className='text-sm font-medium text-gray-700 mb-3'>Tệp đính kèm:</p>
@@ -449,43 +446,22 @@ function HelpCenter() {
                             {selectedRequest.imageUrl.map((url, index) => {
                               // Check if file is an image
                               const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.includes('image')
-                              const isPdf = /\.pdf$/i.test(url) || url.includes('pdf')
 
                               return (
-                                <div
-                                  key={index}
-                                  className='relative group cursor-pointer overflow-hidden rounded-lg border border-gray-200 hover:border-green-400 transition-all'
-                                  onClick={() => {
-                                    if (isImage) {
-                                      setPreviewImages(selectedRequest.imageUrl || [])
-                                      setPreviewInitialIndex(index)
-                                      setImagePreviewOpen(true)
-                                    } else {
-                                      window.open(url, '_blank')
-                                    }
-                                  }}
-                                >
+                                <div key={index} className='overflow-hidden rounded-lg border border-gray-200'>
                                   {isImage ? (
-                                    <>
-                                      <img
-                                        src={url}
-                                        alt={`Đính kèm ${index + 1}`}
-                                        className='w-full h-32 object-cover group-hover:scale-105 transition-transform'
-                                        onError={(e) => {
-                                          const target = e.target as HTMLImageElement
-                                          target.style.display = 'none'
-                                        }}
-                                      />
-                                      <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
-                                        <Eye className='w-6 h-6 text-white' />
-                                      </div>
-                                    </>
+                                    <img
+                                      src={url}
+                                      alt={`Đính kèm ${index + 1}`}
+                                      className='w-full h-32 object-cover'
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement
+                                        target.style.display = 'none'
+                                      }}
+                                    />
                                   ) : (
-                                    <div className='w-full h-32 bg-gray-100 flex flex-col items-center justify-center p-2'>
-                                      <Paperclip className='w-8 h-8 text-gray-400 mb-2' />
-                                      <span className='text-xs text-gray-600 text-center truncate w-full'>
-                                        {isPdf ? 'PDF' : getFileNameFromUrl(url)}
-                                      </span>
+                                    <div className='w-full h-32 bg-gray-100 flex items-center justify-center p-2'>
+                                      <FileText className='w-8 h-8 text-gray-400' />
                                     </div>
                                   )}
                                 </div>
@@ -551,20 +527,6 @@ function HelpCenter() {
                   </CardContent>
                 </Card>
               )}
-
-              {/* Action Buttons - Show Cancel button when status is Pending */}
-              {selectedRequest.status === 'Pending' && (
-                <div className='flex justify-end gap-3 pt-4 border-t border-gray-200'>
-                  <Button
-                    variant='outline'
-                    onClick={() => setShowCancelModal(true)}
-                    className='border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700'
-                  >
-                    <X className='w-4 h-4 mr-2' />
-                    Hủy đơn
-                  </Button>
-                </div>
-              )}
             </div>
           )}
         </DialogContent>
@@ -596,8 +558,6 @@ function HelpCenter() {
             </div>
             {selectedRequest && (
               <div className='rounded-xl border border-gray-200 bg-gray-50 p-4'>
-                <p className='text-sm text-gray-600 mb-1'>Mã yêu cầu</p>
-                <p className='font-medium text-gray-900'>#{selectedRequest.id.substring(0, 8).toUpperCase()}</p>
                 <p className='text-sm text-gray-600 mt-2 mb-1'>Tiêu đề</p>
                 <p className='font-medium text-gray-900'>{selectedRequest.subject}</p>
               </div>
@@ -633,15 +593,6 @@ function HelpCenter() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Image Preview Modal */}
-      <ImagePreviewModal
-        isOpen={imagePreviewOpen}
-        onClose={() => setImagePreviewOpen(false)}
-        images={previewImages}
-        initialIndex={previewInitialIndex}
-        alt='Xem chi tiết hình ảnh đính kèm'
-      />
     </div>
   )
 }

@@ -14,7 +14,9 @@ import {
   updateSelectedCartItems
 } from '../../../apis/cart.api'
 import { getComboById } from '../../../apis/combo.api'
+import productApi from '../../../apis/product.api'
 import { toast } from '../../../utils/toast'
+import { path } from '../../../constants/path'
 import type { CartData, CartItem as APICartItem } from '../../../types/cartType'
 import type { ComboItem as ComboDetailItem } from '../../../types/combo.type'
 
@@ -22,6 +24,8 @@ import type { ComboItem as ComboDetailItem } from '../../../types/combo.type'
 import { PromotionModal } from '../../../components/Promotion'
 import AppliedPromotionModal from '../../../components/Cart/AppliedPromotionModal'
 
+// Order validation constants
+const ORDER_BLOCK_THRESHOLD = 30_000_000 // 30 triệu
 
 interface ComboGroup {
   comboId: string
@@ -82,6 +86,7 @@ export default function Cart() {
   const isRemovingExpiredPromotions = useRef(false) // Track if we're removing expired promotions
   const [comboNames, setComboNames] = useState<Record<string, string>>({})
   const [comboChildItems, setComboChildItems] = useState<Record<string, Record<string, ComboChildRequirement>>>({})
+  const [quantityInputs, setQuantityInputs] = useState<Record<string, string>>({}) // Temporary input values
 
   // Checkbox styling (gray accent + click animation)
   const checkboxClass =
@@ -364,10 +369,115 @@ export default function Cart() {
         })
       }
     }
+
+    // Reset quantity inputs when cart data changes
+    setQuantityInputs({})
   }, [cartData])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN').format(price)
+  }
+
+  // Handle quantity input change
+  const handleQuantityInputChange = (itemId: string, value: string) => {
+    // Allow empty string for editing
+    if (value === '') {
+      setQuantityInputs((prev) => ({ ...prev, [itemId]: '' }))
+      return
+    }
+
+    // Only allow numbers
+    const numValue = parseInt(value, 10)
+    if (isNaN(numValue) || numValue < 1) {
+      return
+    }
+
+    setQuantityInputs((prev) => ({ ...prev, [itemId]: value }))
+  }
+
+  // Handle quantity input blur/enter - validate and update
+  const handleQuantityInputBlur = (itemId: string, value: string, isCombo: boolean = false, comboId?: string) => {
+    const numValue = parseInt(value, 10)
+
+    if (isNaN(numValue) || numValue < 1) {
+      // Reset to current quantity if invalid
+      const currentItem = cartData?.carts
+        .flatMap((store) => store.items)
+        .find((item) => item.id === itemId)
+
+      if (currentItem) {
+        let currentQuantity = currentItem.quantity
+        if (isCombo && comboId) {
+          // Calculate current combo quantity
+          const requirement = comboChildItems[comboId]?.[currentItem.productVariantId]?.requiredQuantity || 1
+          currentQuantity = Math.max(1, Math.round(currentItem.quantity / requirement))
+        }
+        setQuantityInputs((prev) => ({ ...prev, [itemId]: currentQuantity.toString() }))
+      } else {
+        setQuantityInputs((prev => {
+          const updated = { ...prev }
+          delete updated[itemId]
+          return updated
+        }))
+      }
+      return
+    }
+
+    // Find the item to check availableQuantity
+    let targetItem: APICartItem | null = null
+    let comboItems: APICartItem[] = []
+    if (cartData) {
+      for (const store of cartData.carts) {
+        for (const item of store.items) {
+          if (item.id === itemId) {
+            targetItem = item
+            if (isCombo && comboId) {
+              // Get all items in the combo
+              comboItems = store.items.filter((i) => i.comboId === comboId)
+            }
+            break
+          }
+        }
+        if (targetItem) break
+      }
+    }
+
+    let finalQuantity = numValue
+    let maxAvailable = 0
+
+    // Check availableQuantity limit and adjust if needed
+    if (isCombo && comboId && comboItems.length > 0) {
+      // For combo, find the minimum max combo quantity across all items
+      const maxComboQuantities = comboItems
+        .filter((item) => item.availableQuantity !== undefined)
+        .map((item) => {
+          const requirement = comboChildItems[comboId]?.[item.productVariantId]?.requiredQuantity || 1
+          return Math.floor((item.availableQuantity || 0) / requirement)
+        })
+
+      if (maxComboQuantities.length > 0) {
+        maxAvailable = Math.min(...maxComboQuantities)
+        if (numValue > maxAvailable) {
+          finalQuantity = maxAvailable
+        }
+      }
+    } else if (targetItem && typeof targetItem.availableQuantity === 'number') {
+      // For regular item
+      maxAvailable = targetItem.availableQuantity
+      if (numValue > maxAvailable) {
+        finalQuantity = maxAvailable
+      }
+    }
+
+    // Clear input state and update quantity
+    setQuantityInputs((prev => {
+      const updated = { ...prev }
+      delete updated[itemId]
+      return updated
+    }))
+
+    // Auto-adjust to max if exceeded, no toast needed
+    updateQuantity(itemId, finalQuantity)
   }
 
   const updateQuantity = (itemId: string, newQuantity: number) => {
@@ -394,9 +504,18 @@ export default function Cart() {
 
     // Check availableQuantity limit
     if (targetItem && typeof targetItem.availableQuantity === 'number') {
-      if (newQuantity > targetItem.availableQuantity) {
-        toast.error(`Số lượng tối đa có thể mua là ${targetItem.availableQuantity}`)
-        return
+      if (targetComboId) {
+        // For combo, check based on requirement
+        const requirement = comboChildItems[targetComboId]?.[targetItem.productVariantId]?.requiredQuantity || 1
+        const maxComboQuantity = Math.floor(targetItem.availableQuantity / requirement)
+        if (newQuantity > maxComboQuantity) {
+          return
+        }
+      } else {
+        // For regular item
+        if (newQuantity > targetItem.availableQuantity) {
+          return
+        }
       }
     }
 
@@ -774,6 +893,39 @@ export default function Cart() {
     }, 0)
   }
 
+  // Handle product image click - navigate to product detail or combo detail
+  const handleProductImageClick = async (productVariantId: string, isCombo: boolean, comboId?: string) => {
+    try {
+      if (isCombo && comboId) {
+        // Navigate directly to combo detail
+        navigate(path.detailCombo.replace(':id', comboId))
+        return
+      }
+
+      // Validate productVariantId
+      if (!productVariantId) {
+        toast.error('Không tìm thấy thông tin sản phẩm')
+        return
+      }
+
+      // For products, get productId from variantId
+      const response = await productApi.getDisplayRootByVariantId(productVariantId)
+
+      if (response?.data?.id) {
+        navigate(path.productDetail.replace(':id', response.data.id))
+      } else {
+        toast.error('Không thể tìm thấy thông tin sản phẩm')
+      }
+    } catch (error) {
+      console.error('Error getting product ID:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error as Error).message ||
+        'Có lỗi xảy ra khi tải thông tin sản phẩm. Vui lòng thử lại.'
+      toast.error(errorMessage)
+    }
+  }
+
   const groupComboItems = (items: APICartItem[]): GroupedItem[] => {
     const grouped: GroupedItem[] = []
     const comboMap = new Map<string, ComboGroup>()
@@ -913,6 +1065,7 @@ export default function Cart() {
   const subtotal = getSelectedTotal()
   const totalDiscount = getTotalDiscount()
   const finalTotal = Math.max(0, subtotal - totalDiscount)
+  const isOrderBlocked = finalTotal >= ORDER_BLOCK_THRESHOLD
   const selectedItemsList = cartData
     ? cartData.carts.flatMap((store) =>
       store.items
@@ -1061,7 +1214,12 @@ export default function Cart() {
                                   <span className='mb-3 inline-flex items-center text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full'>
                                     Sản phẩm combo
                                   </span>
-                                  <h3 className='text-base font-semibold text-gray-900 mt-3'>{comboTitle}</h3>
+                                  <h3
+                                    className='text-base font-semibold text-gray-900 mt-3 cursor-pointer hover:text-orange-600 transition-colors'
+                                    onClick={() => navigate(path.detailCombo.replace(':id', comboItem.comboId))}
+                                  >
+                                    {comboTitle}
+                                  </h3>
                                   {isComboOutOfStock && (
                                     <span className='bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-medium'>
                                       Hết hàng
@@ -1090,7 +1248,19 @@ export default function Cart() {
                                       >
                                         <Minus className='w-4 h-4' />
                                       </button>
-                                      <span className='w-12 text-center font-medium'>{comboItem.quantity}</span>
+                                      <input
+                                        type='text'
+                                        value={quantityInputs[comboItem.items[0].id] !== undefined ? quantityInputs[comboItem.items[0].id] : comboItem.quantity}
+                                        onChange={(e) => handleQuantityInputChange(comboItem.items[0].id, e.target.value)}
+                                        onBlur={(e) => handleQuantityInputBlur(comboItem.items[0].id, e.target.value, true, comboItem.comboId)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.currentTarget.blur()
+                                          }
+                                        }}
+                                        className='w-12 text-center font-medium border-0 focus:outline-none focus:ring-0'
+                                        disabled={isComboOutOfStock}
+                                      />
                                       <button
                                         onClick={() => updateQuantity(comboItem.items[0].id, comboItem.quantity + 1)}
                                         className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -1153,7 +1323,10 @@ export default function Cart() {
                                       key={childItem.id}
                                       className={`flex items-center gap-3 p-2 ${isChildOutOfStock ? 'opacity-60' : ''}`}
                                     >
-                                      <div className='w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm'>
+                                      <div
+                                        className='w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm cursor-pointer hover:opacity-80 transition-opacity'
+                                        onClick={() => handleProductImageClick(childItem.productVariantId, false)}
+                                      >
                                         <img
                                           src={childItem.imageUrl || childRequirement?.imageUrl || '/api/placeholder/48/48'}
                                           alt={childItem.name}
@@ -1202,7 +1375,10 @@ export default function Cart() {
                             style={checkboxStyle}
                           />
 
-                          <div className='w-20 h-20 bg-gray-100 rounded overflow-hidden flex-shrink-0'>
+                          <div
+                            className='w-20 h-20 bg-gray-100 rounded overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity'
+                            onClick={() => handleProductImageClick(regularItem.productVariantId, false)}
+                          >
                             <img
                               src={regularItem.imageUrl || '/api/placeholder/80/80'}
                               alt={regularItem.name}
@@ -1231,7 +1407,19 @@ export default function Cart() {
                                     >
                                       <Minus className='w-4 h-4' />
                                     </button>
-                                    <span className='w-12 text-center font-medium'>{regularItem.quantity}</span>
+                                    <input
+                                      type='text'
+                                      value={quantityInputs[regularItem.id] !== undefined ? quantityInputs[regularItem.id] : regularItem.quantity}
+                                      onChange={(e) => handleQuantityInputChange(regularItem.id, e.target.value)}
+                                      onBlur={(e) => handleQuantityInputBlur(regularItem.id, e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.currentTarget.blur()
+                                        }
+                                      }}
+                                      className='w-12 text-center font-medium border-0 focus:outline-none focus:ring-0'
+                                      disabled={isOutOfStock}
+                                    />
                                     <button
                                       onClick={() => updateQuantity(regularItem.id, regularItem.quantity + 1)}
                                       className='w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -1380,6 +1568,19 @@ export default function Cart() {
                   </div>
                 </div>
               )}
+              {/* Warning for order exceeding 30 million */}
+              {isOrderBlocked && (
+                <div className='mb-4 bg-red-50 border border-red-200 rounded-lg p-3'>
+                  <div className='flex items-start gap-2'>
+                    <div className='flex-1'>
+                      <p className='text-sm font-medium text-red-800'>
+                        Đơn hàng có giá trị từ {formatPrice(ORDER_BLOCK_THRESHOLD)}đ trở lên không thể đặt hàng.
+                      </p>
+                      <p className='text-sm text-red-600 mt-1'>Vui lòng tách đơn.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Warning for stores exceeding shipping limit */}
               {hasMaxShippingLimitStores() && (
                 <div className='mb-4 bg-red-50 border border-red-200 rounded-lg p-3'>
@@ -1408,6 +1609,12 @@ export default function Cart() {
                       toast.error(`Không thể đặt hàng. Các cửa hàng sau vượt quá số lượng vận chuyển: ${storeNames}`)
                       return
                     }
+                    if (isOrderBlocked) {
+                      toast.error(
+                        `Đơn hàng có giá trị từ ${formatPrice(ORDER_BLOCK_THRESHOLD)}đ trở lên không thể đặt hàng. Vui lòng tách đơn giúp tôi.`
+                      )
+                      return
+                    }
                     navigate('/cart/checkout', {
                       state: {
                         selectedItems: selectedItems,
@@ -1416,13 +1623,15 @@ export default function Cart() {
                     })
                   }}
                   className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                  disabled={getSelectedCount() === 0 || hasOutOfStockSelectedItems() || hasMaxShippingLimitStores()}
+                  disabled={getSelectedCount() === 0 || hasOutOfStockSelectedItems() || hasMaxShippingLimitStores() || isOrderBlocked}
                 >
                   {hasOutOfStockSelectedItems()
                     ? 'Có sản phẩm hết hàng'
                     : hasMaxShippingLimitStores()
                       ? 'Vượt quá số lượng vận chuyển'
-                      : 'Mua hàng'}
+                      : isOrderBlocked
+                        ? 'Đơn hàng quá 30 triệu'
+                        : 'Mua hàng'}
                 </button>
 
                 <button

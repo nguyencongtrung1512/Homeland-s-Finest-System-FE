@@ -471,7 +471,7 @@ function ManagerProduct() {
                                   </div>
                                 )}
                                 <div className='text-sm text-gray-500 truncate' title={record.material}>
-                                  Xuất xứ: {record.material}
+                                  Nguyên liệu: {record.material}
                                 </div>
                               </div>
                             </div>

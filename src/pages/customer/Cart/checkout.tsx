@@ -33,6 +33,10 @@ import {
 
 type PaymentMethod = 'COD' | 'Banking' | 'MyWallet'
 
+// Payment validation constants
+const COD_DISABLE_THRESHOLD = 5_000_000 // 5 triệu
+const ORDER_BLOCK_THRESHOLD = 30_000_000 // 30 triệu
+
 interface ComboGroup {
   comboId: string
   comboName: string
@@ -658,8 +662,16 @@ export default function Checkout() {
         return
       }
 
+      // Check if order is blocked due to total amount >= 30 triệu
+      if (isOrderBlocked) {
+        // UI already shows the message, no need for toast
+        return
+      }
+
       const selectedItemsList = cartData
-        ? cartData.carts.flatMap((store) => store.items.filter((item) => selectedItems[item.id] && item.isStock !== false))
+        ? cartData.carts.flatMap((store) =>
+          store.items.filter((item) => selectedItems[item.id] && item.isStock !== false)
+        )
         : []
 
       if (selectedItemsList.length === 0) {
@@ -678,6 +690,12 @@ export default function Checkout() {
 
       if (!selectedPaymentMethod) {
         toast.error('Vui lòng chọn phương thức thanh toán')
+        return
+      }
+
+      // Check if COD is selected but disabled
+      if (selectedPaymentMethod === 'COD' && isCODDisabled) {
+        // UI already shows the message, no need for toast
         return
       }
 
@@ -824,6 +842,20 @@ export default function Checkout() {
   // Check if wallet balance is sufficient
   const isWalletBalanceSufficient =
     selectedPaymentMethod === 'MyWallet' && walletBalance ? walletBalance.availableBalance >= finalTotal : false
+
+  // Check if COD should be disabled (>= 5 triệu)
+  const isCODDisabled = finalTotal >= COD_DISABLE_THRESHOLD
+
+  // Check if order should be blocked (>= 30 triệu)
+  const isOrderBlocked = finalTotal >= ORDER_BLOCK_THRESHOLD
+
+  // Auto unselect COD if it becomes disabled
+  useEffect(() => {
+    if (selectedPaymentMethod === 'COD' && isCODDisabled) {
+      setSelectedPaymentMethod(undefined)
+      // UI already shows the message, no need for toast
+    }
+  }, [isCODDisabled, selectedPaymentMethod])
 
   if (!cartData || cartData.carts.length === 0) {
     return (
@@ -1104,9 +1136,11 @@ export default function Checkout() {
               <h2 className='text-xl font-bold text-gray-800 mb-4'>Phương thức thanh toán</h2>
               <div className='space-y-3'>
                 <label
-                  className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-all ${selectedPaymentMethod === 'COD'
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                  className={`flex items-center gap-3 p-4 border rounded-lg transition-all ${isCODDisabled
+                    ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-60'
+                    : selectedPaymentMethod === 'COD'
+                      ? 'border-green-500 bg-green-50 cursor-pointer'
+                      : 'border-gray-200 hover:border-gray-300 cursor-pointer'
                     }`}
                 >
                   <input
@@ -1114,12 +1148,23 @@ export default function Checkout() {
                     name='paymentMethod'
                     value='COD'
                     checked={selectedPaymentMethod === 'COD'}
-                    onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
+                    onChange={(e) => {
+                      if (!isCODDisabled) {
+                        setSelectedPaymentMethod(e.target.value as PaymentMethod)
+                      }
+                    }}
+                    disabled={isCODDisabled}
                     className='w-4 h-4 text-green-600'
                   />
                   <div className='flex-1'>
                     <p className='font-medium text-gray-900'>💵 Thanh toán khi nhận hàng (COD)</p>
-                    <p className='text-sm text-gray-500'>Thanh toán bằng tiền mặt khi nhận hàng</p>
+                    {isCODDisabled ? (
+                      <p className='text-sm text-red-600'>
+                        Phương thức này không khả dụng cho đơn hàng từ {formatPrice(COD_DISABLE_THRESHOLD)}đ trở lên
+                      </p>
+                    ) : (
+                      <p className='text-sm text-gray-500'>Thanh toán bằng tiền mặt khi nhận hàng</p>
+                    )}
                   </div>
                 </label>
 
@@ -1298,13 +1343,23 @@ export default function Checkout() {
               )}
 
               <div className='flex flex-col gap-4'>
+                {isOrderBlocked ? (
+                  <div className='bg-red-50 border border-red-200 rounded-lg p-4 mb-3'>
+                    <p className='text-sm font-medium text-red-800 text-center'>
+                      ⚠️ Đơn hàng có giá trị từ {formatPrice(ORDER_BLOCK_THRESHOLD)}đ trở lên không thể đặt hàng.
+                    </p>
+                    <p className='text-sm text-red-600 text-center mt-2'>Vui lòng tách đơn để mua.</p>
+                  </div>
+                ) : null}
                 {selectedItemsList.length === 0 ||
                   !selectedPaymentMethod ||
                   !selectedAddress ||
                   isSubmitting ||
                   isLoadingWallet ||
+                  isOrderBlocked ||
                   (selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient) ||
-                  hasOutOfStockSelectedItems() ? (
+                  hasOutOfStockSelectedItems() ||
+                  (selectedPaymentMethod === 'COD' && isCODDisabled) ? (
                   <button
                     onClick={handleCreateOrder}
                     className='w-full bg-gray-400 hover:bg-gray-500 text-white font-semibold py-3 rounded-lg mb-3 transition-colors cursor-not-allowed'
@@ -1314,15 +1369,19 @@ export default function Checkout() {
                       ? 'Đang tạo đơn hàng...'
                       : isLoadingWallet
                         ? 'Đang kiểm tra số dư...'
-                        : hasOutOfStockSelectedItems()
-                          ? 'Có sản phẩm hết hàng'
-                          : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
-                            ? 'Số dư không đủ'
-                            : !selectedAddress
-                              ? 'Vui lòng chọn địa chỉ'
-                              : !selectedPaymentMethod
-                                ? 'Vui lòng chọn phương thức thanh toán'
-                                : 'Vui lòng chọn sản phẩm'}
+                        : isOrderBlocked
+                          ? `Đơn hàng từ ${formatPrice(ORDER_BLOCK_THRESHOLD)}đ không thể đặt`
+                          : hasOutOfStockSelectedItems()
+                            ? 'Có sản phẩm hết hàng'
+                            : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
+                              ? 'Số dư không đủ'
+                              : selectedPaymentMethod === 'COD' && isCODDisabled
+                                ? 'COD không khả dụng cho đơn hàng này'
+                                : !selectedAddress
+                                  ? 'Vui lòng chọn địa chỉ'
+                                  : !selectedPaymentMethod
+                                    ? 'Vui lòng chọn phương thức thanh toán'
+                                    : 'Vui lòng chọn sản phẩm'}
                   </button>
                 ) : (
                   <SwipeButton onConfirm={handleCreateOrder} />

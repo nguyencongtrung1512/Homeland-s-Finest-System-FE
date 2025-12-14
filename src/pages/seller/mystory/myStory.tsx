@@ -71,9 +71,17 @@ function MyStory() {
     }
   }
 
-  // Convert store stories to carousel items
+  // Giới hạn tối đa 8 câu chuyện
+  const MAX_STORIES = 8
+  const displayedStories = useMemo(() => {
+    return storeStories.slice(0, MAX_STORIES)
+  }, [storeStories])
+
+  const isMaxStoriesReached = storeStories.length >= MAX_STORIES
+
+  // Convert store stories to carousel items (chỉ hiển thị tối đa 8)
   const carouselItems: CarouselItem[] = useMemo(() => {
-    return storeStories.map((story) => ({
+    return displayedStories.map((story) => ({
       id: story.id,
       name: story.title,
       title: 'Câu chuyện cửa hàng',
@@ -83,7 +91,7 @@ function MyStory() {
         setShowDetailDialog(true)
       }
     }))
-  }, [storeStories])
+  }, [displayedStories])
 
   // Handle title click to show detail
   const handleTitleClick = (item: CarouselItem) => {
@@ -147,21 +155,38 @@ function MyStory() {
           <div>
             <h1 className='text-3xl font-bold text-green-700'>Câu chuyện của bạn</h1>
             <div className='flex items-center gap-4 mt-2'>
-              <span className='text-sm text-gray-500'>Số câu chuyện: {storeStories.length}</span>
+              <span className='text-sm text-gray-500'>
+                Số câu chuyện: {storeStories.length}
+                {isMaxStoriesReached && ` (Tối đa ${MAX_STORIES})`}
+              </span>
+              {isMaxStoriesReached && (
+                <span className='text-sm text-orange-600 font-medium'>
+                  Chỉ được tạo tối đa {MAX_STORIES} câu chuyện
+                </span>
+              )}
             </div>
           </div>
         </div>
-        <Button variant='yellow' onClick={handleCreateClick} type='button'>
-          <Plus className='w-4 h-4 mr-2' />
-          Tạo câu chuyện mới
-        </Button>
+        {!isMaxStoriesReached && (
+          <Button variant='yellow' onClick={handleCreateClick} type='button'>
+            <Plus className='w-4 h-4 mr-2' />
+            Tạo câu chuyện mới
+          </Button>
+        )}
       </div>
 
       <div className='max-w-7xl mx-auto'>
         {/* Stories Carousel */}
-        {storeStories.length > 0 ? (
+        {displayedStories.length > 0 ? (
           <div className='mb-8'>
             <ImageCarousel items={carouselItems} onItemClick={handleTitleClick} />
+            {storeStories.length > MAX_STORIES && (
+              <div className='mt-4 text-center'>
+                <p className='text-sm text-gray-500'>
+                  Đang hiển thị {MAX_STORIES} câu chuyện đầu tiên trong tổng số {storeStories.length} câu chuyện
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className='text-center py-12'>
@@ -170,10 +195,12 @@ function MyStory() {
             </div>
             <h3 className='text-xl font-semibold text-gray-900 mb-2'>Chưa có câu chuyện nào</h3>
             <p className='text-gray-600 mb-6'>Hãy tạo câu chuyện đầu tiên để chia sẻ về cửa hàng của bạn</p>
-            <Button variant='yellow' onClick={handleCreateClick} type='button'>
-              <Plus className='w-4 h-4 mr-2' />
-              Tạo câu chuyện đầu tiên
-            </Button>
+            {!isMaxStoriesReached && (
+              <Button variant='yellow' onClick={handleCreateClick} type='button'>
+                <Plus className='w-4 h-4 mr-2' />
+                Tạo câu chuyện đầu tiên
+              </Button>
+            )}
           </div>
         )}
       </div>

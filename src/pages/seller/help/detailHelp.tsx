@@ -9,12 +9,11 @@ import {
   DialogDescription,
   DialogFooter
 } from '../../../components/ui/dialog'
-import { ArrowLeft, CheckCircle, Paperclip, User, Clock, XCircle, Loader2, AlertCircle, X, Eye } from 'lucide-react'
+import { ArrowLeft, CheckCircle, User, Clock, XCircle, Loader2, AlertCircle, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { formApi } from '../../../apis/form.api'
 import type { FormDTO, FormStatus, FormType } from '../../../types/form.type'
 import { toast } from '../../../utils/toast'
-import ImagePreviewModal from '../../../components/ui/image-preview-modal'
 
 function DetailHelp() {
   const navigate = useNavigate()
@@ -24,9 +23,6 @@ function DetailHelp() {
   const [error, setError] = useState<string | null>(null)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
-  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
-  const [previewImages, setPreviewImages] = useState<string[]>([])
-  const [previewInitialIndex, setPreviewInitialIndex] = useState(0)
 
   // Fetch form detail
   useEffect(() => {
@@ -179,11 +175,6 @@ function DetailHelp() {
     })
   }
 
-  // Get file name from URL
-  const getFileNameFromUrl = (url: string) => {
-    const parts = url.split('/')
-    return parts[parts.length - 1]
-  }
 
   if (isLoading) {
     return (
@@ -223,17 +214,14 @@ function DetailHelp() {
       {/* Header */}
       <div className='mb-6'>
         <h1 className='text-2xl font-bold text-green-700 mb-4'>
-          Chi tiết yêu cầu #{formData.id.substring(0, 8).toUpperCase()}
+          Chi tiết yêu cầu
         </h1>
 
         {/* Request Info Card */}
         <Card className='mb-6'>
           <CardContent className='p-6'>
             <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-              <div>
-                <p className='text-sm text-gray-600 mb-1'>Mã yêu cầu</p>
-                <p className='font-medium text-gray-900'>#{formData.id.substring(0, 8).toUpperCase()}</p>
-              </div>
+
               <div>
                 <p className='text-sm text-gray-600 mb-1'>Loại yêu cầu</p>
                 <p className='font-medium text-gray-900'>{getFormTypeLabel(formData.type)}</p>
@@ -273,60 +261,6 @@ function DetailHelp() {
 
               {/* Description */}
               <div className='whitespace-pre-line text-gray-700 mb-4'>{formData.description}</div>
-
-              {/* Attachments */}
-              {formData.imageUrl && formData.imageUrl.length > 0 && (
-                <div className='mt-4 pt-4 border-t border-gray-200'>
-                  <p className='text-sm font-medium text-gray-700 mb-3'>Tệp đính kèm:</p>
-                  <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
-                    {formData.imageUrl.map((url, index) => {
-                      // Check if file is an image
-                      const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.includes('image')
-                      const isPdf = /\.pdf$/i.test(url) || url.includes('pdf')
-
-                      return (
-                        <div
-                          key={index}
-                          className='relative group cursor-pointer overflow-hidden rounded-lg border border-gray-200 hover:border-green-400 transition-all'
-                          onClick={() => {
-                            if (isImage) {
-                              setPreviewImages(formData.imageUrl || [])
-                              setPreviewInitialIndex(index)
-                              setImagePreviewOpen(true)
-                            } else {
-                              window.open(url, '_blank')
-                            }
-                          }}
-                        >
-                          {isImage ? (
-                            <>
-                              <img
-                                src={url}
-                                alt={`Đính kèm ${index + 1}`}
-                                className='w-full h-32 object-cover group-hover:scale-105 transition-transform'
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement
-                                  target.style.display = 'none'
-                                }}
-                              />
-                              <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
-                                <Eye className='w-6 h-6 text-white' />
-                              </div>
-                            </>
-                          ) : (
-                            <div className='w-full h-32 bg-gray-100 flex flex-col items-center justify-center p-2'>
-                              <Paperclip className='w-8 h-8 text-gray-400 mb-2' />
-                              <span className='text-xs text-gray-600 text-center truncate w-full'>
-                                {isPdf ? 'PDF' : getFileNameFromUrl(url)}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -432,8 +366,6 @@ function DetailHelp() {
             </div>
             {formData && (
               <div className='rounded-xl border border-gray-200 bg-gray-50 p-4'>
-                <p className='text-sm text-gray-600 mb-1'>Mã yêu cầu</p>
-                <p className='font-medium text-gray-900'>#{formData.id.substring(0, 8).toUpperCase()}</p>
                 <p className='text-sm text-gray-600 mt-2 mb-1'>Tiêu đề</p>
                 <p className='font-medium text-gray-900'>{formData.subject}</p>
               </div>
@@ -469,15 +401,6 @@ function DetailHelp() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Image Preview Modal */}
-      <ImagePreviewModal
-        isOpen={imagePreviewOpen}
-        onClose={() => setImagePreviewOpen(false)}
-        images={previewImages}
-        initialIndex={previewInitialIndex}
-        alt='Xem chi tiết hình ảnh đính kèm'
-      />
     </div>
   )
 }
