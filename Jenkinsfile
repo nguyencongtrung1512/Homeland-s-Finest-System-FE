@@ -105,6 +105,24 @@ EOF
             }
         }
 
+        // 🗑️ CLEAR DOCKER CACHE
+        stage('🗑️ Clear Docker Cache') {
+            steps {
+                sshagent(['SSHKey']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                            echo '🗑️ Clearing Docker build cache for FE...'
+                            
+                            # Clear build cache
+                            docker builder prune -f
+                            
+                            echo '✅ Docker cache cleared!'
+                        "
+                    """
+                }
+            }
+        }
+
         // 🏗️ BUILD DOCKER IMAGE
         stage('🏗️ Build FE Image') {
             steps {
@@ -116,8 +134,8 @@ EOF
                             
                             cd ~/HomeLandFinest/HomelandFinestFE
                             
-                            # Build image với Dockerfile có sẵn trong repo
-                            docker build -f Dockerfile -t homelandfinest-fe .
+                            # Build image với --no-cache để force rebuild từ đầu
+                            docker build --no-cache -f Dockerfile -t homelandfinest-fe .
                             
                             echo '✅ Image built successfully!'
                             docker images | grep homelandfinest-fe
