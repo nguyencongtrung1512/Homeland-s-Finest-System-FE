@@ -58,7 +58,7 @@ function mapSearchResultToProduct(result: SearchResult): Product {
     storeId: '', // Not available in search result
     storeName: '', // Not available in search result
     provinceId: 0, // Not available in search result
-    provinceName: '', // Not available in search result
+    provinceName: result.province_name || '', // Map from province_name (snake_case) to provinceName (camelCase)
     editedById: '', // Not available in search result
     summaryPrice: result.price || 0,
     price: result.price || 0,

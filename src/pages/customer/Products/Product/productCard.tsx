@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom'
-import { TrendingUp, ShoppingBag } from 'lucide-react'
+import { TrendingUp, ShoppingBag, MapPin } from 'lucide-react'
 import type { Product } from '../../../../types/productType'
 import path from '../../../../constants/path'
 
 export interface ProductCardData extends Product {
   price: number // Giá từ Product
   badge?: { text: string; color: string } // Badge cho hiển thị huy hiệu
+  province_name?: string // Support snake_case format from API
+  sale_count?: number // Support snake_case format from API
 }
 
 // Card hiển thị sản phẩm
@@ -13,16 +15,28 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
   const navigate = useNavigate()
   const defaultImage = 'https://tse1.mm.bing.net/th/id/OIP.SAKe7PaOdMq1jWY41hkCxAHaHa?cb=ucfimg2&ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3'
 
-  // Lấy số lượt bán từ sale_count
-  const saleCount = product.saleCount || 0
-  const isHotProduct = saleCount >= 100 // Sản phẩm bán chạy nếu >= 100 lượt bán
-
   // Format số lượt bán
   const formatSaleCount = (count: number): string => {
     if (count >= 1000) {
       return `${(count / 1000).toFixed(1)}k`
     }
     return count.toString()
+  }
+
+  // Lấy số lượt bán - hỗ trợ cả camelCase và snake_case
+  const getSaleCount = (): number => {
+    const productData = product as ProductCardData
+    return product.saleCount ?? productData.sale_count ?? 0
+  }
+
+  const saleCount = getSaleCount()
+  const isHotProduct = saleCount >= 100 // Sản phẩm bán chạy nếu >= 100 lượt bán
+
+  // Lấy province name - hỗ trợ cả camelCase và snake_case
+  const getProvinceName = (): string | undefined => {
+    const provinceName = product.provinceName || (product as ProductCardData).province_name
+    // Return undefined nếu là empty string
+    return provinceName && provinceName.trim() !== '' ? provinceName : undefined
   }
 
   const handleProductClick = () => {
@@ -88,7 +102,7 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
         >
           {product.name}
         </h3>
-        <p className='text-xs text-gray-500 mb-2 line-clamp-1'>{product.material}</p>
+
 
         {/* Rating và Giá - cùng hàng */}
         <div className='flex items-center justify-between mb-2'>
@@ -111,8 +125,13 @@ const ProductCard: React.FC<{ product: ProductCardData; onClick?: () => void }> 
           </span>
         </div>
 
-        {/* Lượt bán */}
-
+        {/* Vị trí tỉnh/thành phố */}
+        {getProvinceName() && (
+          <div className='flex items-center mb-2'>
+            <MapPin className='w-4 h-4 text-green-600 mr-1 mb-3' />
+            <p className='text-xs text-green-600 font-medium'>{getProvinceName()}</p>
+          </div>
+        )}
       </div>
     </div>
   )

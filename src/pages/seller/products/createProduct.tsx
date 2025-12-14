@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -12,6 +12,7 @@ import { useAuth } from '../../../contexts/auth.context'
 import {
   Upload,
   ChevronRight,
+  ChevronDown,
   Trash2,
   Video,
   Image as ImageIcon,
@@ -20,17 +21,26 @@ import {
   Loader2,
   X,
   Hash,
-  AtSign
+  AtSign,
+  Folder,
+  FolderOpen,
+  Search
 } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import ProductComboBox from '../../../components/ui/product-combo-box'
-import ComboBox from '../../../components/ui/combo-box'
 // Type for ProductComboBox (simplified Product interface)
 interface ProductForCombo {
   id: string
   name: string
   description: string
 }
+
+// Extended interface for tree structure
+interface CategoryTreeNode extends ProductCategoryItem {
+  children?: CategoryTreeNode[]
+  level?: number
+}
+
 import Loading from '../../../components/Loading/loading'
 import { createHashtag, getHashtagsByStoreId, type HashtagItem } from '../../../apis/hashtag.api'
 
@@ -41,8 +51,11 @@ function CreateProduct() {
   const [storeId, setStoreId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [categories, setCategories] = useState<ProductCategoryItem[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [categoryTree, setCategoryTree] = useState<CategoryTreeNode[]>([])
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
+  const [selectedCategoryPath, setSelectedCategoryPath] = useState<ProductCategoryItem[]>([])
+  const [categorySearchText, setCategorySearchText] = useState('')
   const [products, setProducts] = useState<ProductForCombo[]>([])
   const [productsLoading, setProductsLoading] = useState(false)
   const [selectedParentProduct, setSelectedParentProduct] = useState<{ id: string; name: string } | null>(null)
@@ -317,7 +330,7 @@ function CreateProduct() {
       } else if (field === 'material') {
         const wordCount = countWords(value)
         if (wordCount > MAX_MATERIAL_WORDS) {
-          setMaterialError(`Xuất xứ không được vượt quá ${MAX_MATERIAL_WORDS} từ (hiện tại: ${wordCount} từ)`)
+          setMaterialError(`Nguyên liệu không được vượt quá ${MAX_MATERIAL_WORDS} từ (hiện tại: ${wordCount} từ)`)
         } else {
           setMaterialError('')
         }
@@ -330,6 +343,169 @@ function CreateProduct() {
       ...prev,
       categoryId: categoryId
     }))
+
+    // Update selected category path
+    if (categoryId) {
+      const path = getCategoryPath(categoryId)
+      setSelectedCategoryPath(path)
+    } else {
+      setSelectedCategoryPath([])
+    }
+  }
+
+  // Build tree structure from flat array
+  const buildTree = useCallback((categories: ProductCategoryItem[]): CategoryTreeNode[] => {
+    const categoryMap = new Map<string, CategoryTreeNode>()
+    const rootNodes: CategoryTreeNode[] = []
+
+    // First pass: create all nodes
+    categories.forEach((category) => {
+      categoryMap.set(category.id, {
+        ...category,
+        children: [],
+        level: 0
+      })
+    })
+
+    // Second pass: build tree structure
+    categories.forEach((category) => {
+      const node = categoryMap.get(category.id)!
+      if (!category.parentId || category.parentId === '') {
+        // Root node
+        rootNodes.push(node)
+      } else {
+        // Child node
+        const parent = categoryMap.get(category.parentId)
+        if (parent) {
+          if (!parent.children) {
+            parent.children = []
+          }
+          node.level = (parent.level || 0) + 1
+          parent.children.push(node)
+        }
+      }
+    })
+
+    // Sort children alphabetically
+    const sortChildren = (nodes: CategoryTreeNode[]) => {
+      nodes.sort((a, b) => a.name.localeCompare(b.name))
+      nodes.forEach((node) => {
+        if (node.children && node.children.length > 0) {
+          sortChildren(node.children)
+        }
+      })
+    }
+
+    sortChildren(rootNodes)
+    return rootNodes
+  }, [])
+
+  // Get category path from root to selected category
+  const getCategoryPath = useCallback((categoryId: string): ProductCategoryItem[] => {
+    const path: ProductCategoryItem[] = []
+    const findPath = (nodes: CategoryTreeNode[], targetId: string, currentPath: ProductCategoryItem[]): boolean => {
+      for (const node of nodes) {
+        const newPath = [...currentPath, node]
+        if (node.id === targetId) {
+          path.push(...newPath)
+          return true
+        }
+        if (node.children && node.children.length > 0) {
+          if (findPath(node.children, targetId, newPath)) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+    findPath(categoryTree, categoryId, [])
+    return path
+  }, [categoryTree])
+
+  // Toggle expand/collapse node
+  const toggleNode = (nodeId: string) => {
+    setExpandedNodes((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId)
+      } else {
+        newSet.add(nodeId)
+      }
+      return newSet
+    })
+  }
+
+  // Filter tree based on search and auto-expand matching nodes
+  const filterTree = useCallback((nodes: CategoryTreeNode[], search: string): { filtered: CategoryTreeNode[]; nodesToExpand: Set<string> } => {
+    if (!search) return { filtered: nodes, nodesToExpand: new Set() }
+
+    const nodesToExpand = new Set<string>()
+    const searchLower = search.toLowerCase()
+
+    const filterRecursive = (nodeList: CategoryTreeNode[]): CategoryTreeNode[] => {
+      const result: CategoryTreeNode[] = []
+
+      nodeList.forEach((node) => {
+        const matchesSearch =
+          node.name.toLowerCase().includes(searchLower) ||
+          node.description?.toLowerCase().includes(searchLower)
+
+        const filteredChildren = node.children ? filterRecursive(node.children) : []
+
+        // If node matches or has matching children, include it
+        if (matchesSearch || filteredChildren.length > 0) {
+          // If children match, expand this node
+          if (filteredChildren.length > 0) {
+            nodesToExpand.add(node.id)
+          }
+
+          result.push({
+            ...node,
+            children: filteredChildren.length > 0 ? filteredChildren : node.children
+          })
+        }
+      })
+
+      return result
+    }
+
+    return {
+      filtered: filterRecursive(nodes),
+      nodesToExpand
+    }
+  }, [])
+
+  // Get filtered tree based on search
+  const filteredCategoryTree = useMemo(() => {
+    if (!categorySearchText.trim()) {
+      return categoryTree
+    }
+    const { filtered } = filterTree(categoryTree, categorySearchText)
+    return filtered
+  }, [categoryTree, categorySearchText, filterTree])
+
+  // Auto-expand nodes when searching (to show matching children)
+  useEffect(() => {
+    if (categorySearchText.trim()) {
+      const { nodesToExpand } = filterTree(categoryTree, categorySearchText)
+      if (nodesToExpand.size > 0) {
+        setExpandedNodes((prev) => {
+          const newSet = new Set(prev)
+          nodesToExpand.forEach((id) => newSet.add(id))
+          return newSet
+        })
+      }
+    }
+  }, [categorySearchText, categoryTree, filterTree])
+
+  // Check if a category matches search (for highlighting)
+  const categoryMatchesSearch = (category: CategoryTreeNode): boolean => {
+    if (!categorySearchText.trim()) return false
+    const searchLower = categorySearchText.toLowerCase()
+    return (
+      category.name.toLowerCase().includes(searchLower) ||
+      category.description?.toLowerCase().includes(searchLower)
+    )
   }
 
   // Helper function to add more images to existing array with validation
@@ -474,12 +650,18 @@ function CreateProduct() {
       if (response.status === 200 && response.data) {
         // Filter only active categories
         const activeCategories = response.data.filter((category: ProductCategoryItem) => category.isActive)
-        setCategories(activeCategories)
+
+        // Build tree structure
+        const tree = buildTree(activeCategories)
+        setCategoryTree(tree)
+
+        // Keep all folders closed on initial load
+        setExpandedNodes(new Set())
       } else {
-        setCategories([])
+        setCategoryTree([])
       }
     } catch {
-      setCategories([])
+      setCategoryTree([])
     } finally {
       setCategoriesLoading(false)
     }
@@ -577,15 +759,15 @@ function CreateProduct() {
 
     // Validate material
     if (!productData.material.trim()) {
-      setMaterialError('Xuất xứ không được để trống')
+      setMaterialError('Nguyên liệu không được để trống')
       hasError = true
     } else {
       const materialWordCount = countWords(productData.material)
       if (materialWordCount > MAX_MATERIAL_WORDS) {
-        setMaterialError(`Xuất xứ không được vượt quá ${MAX_MATERIAL_WORDS} từ (hiện tại: ${materialWordCount} từ)`)
+        setMaterialError(`Nguyên liệu không được vượt quá ${MAX_MATERIAL_WORDS} từ (hiện tại: ${materialWordCount} từ)`)
         hasError = true
       } else if (materialWordCount < 1) {
-        setMaterialError('Xuất xứ phải có ít nhất 1 từ')
+        setMaterialError('Nguyên liệu phải có ít nhất 1 từ')
         hasError = true
       }
     }
@@ -615,7 +797,7 @@ function CreateProduct() {
       }
 
       if (!productData.material.trim()) {
-        toast.error('Vui lòng nhập xuất xứ / material')
+        toast.error('Vui lòng nhập Nguyên liệu / material')
         return
       }
 
@@ -763,6 +945,113 @@ function CreateProduct() {
       setIsSubmitting(false)
     }
   }
+
+  // Render category tree node recursively
+  const renderCategoryNode = (node: CategoryTreeNode) => {
+    const hasChildren = node.children && node.children.length > 0
+    const isExpanded = expandedNodes.has(node.id)
+    const level = node.level || 0
+    const isSelected = productData.categoryId === node.id
+    const matchesSearch = categoryMatchesSearch(node)
+
+    return (
+      <div key={node.id} className='select-none'>
+        <div
+          className={`flex items-center gap-2 p-2.5 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer group ${isSelected
+              ? 'bg-green-50 border border-green-200 shadow-sm'
+              : matchesSearch
+                ? 'bg-yellow-50 border border-yellow-200'
+                : 'border border-transparent'
+            }`}
+          style={{ paddingLeft: `${level * 24 + 12}px` }}
+          onClick={() => {
+            handleCategorySelect(node.id)
+            // Auto-expand when selecting a parent node
+            if (hasChildren && !isExpanded) {
+              toggleNode(node.id)
+            }
+          }}
+        >
+          {/* Expand/Collapse Button */}
+          {hasChildren ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleNode(node.id)
+              }}
+              className='p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0 group-hover:bg-gray-100'
+              title={isExpanded ? 'Thu gọn' : 'Mở rộng'}
+            >
+              {isExpanded ? (
+                <ChevronDown className='w-4 h-4 text-gray-600' />
+              ) : (
+                <ChevronRight className='w-4 h-4 text-gray-600' />
+              )}
+            </button>
+          ) : (
+            <div className='w-6' /> // Spacer for alignment
+          )}
+
+          {/* Folder Icon */}
+          {hasChildren ? (
+            isExpanded ? (
+              <FolderOpen className='w-4 h-4 text-blue-500 flex-shrink-0' />
+            ) : (
+              <Folder className='w-4 h-4 text-blue-400 flex-shrink-0' />
+            )
+          ) : (
+            <div className='w-4 h-4 rounded-full bg-gray-300 ml-1 flex-shrink-0' />
+          )}
+
+          {/* Radio Button */}
+          <input
+            type='radio'
+            name='category'
+            checked={isSelected}
+            onChange={() => handleCategorySelect(node.id)}
+            onClick={(e) => e.stopPropagation()}
+            className='w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500 focus:ring-2 flex-shrink-0 cursor-pointer'
+          />
+
+          {/* Category Info */}
+          <div className='flex-1 min-w-0'>
+            <div className='flex items-center gap-2'>
+              <span
+                className={`font-medium text-sm ${isSelected
+                    ? 'text-green-900'
+                    : matchesSearch
+                      ? 'text-yellow-900 font-semibold'
+                      : 'text-gray-900'
+                  }`}
+              >
+                {node.name}
+              </span>
+              {hasChildren && (
+                <span className='text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded'>
+                  {node.children?.length} con
+                </span>
+              )}
+            </div>
+            {node.description && (
+              <p
+                className={`text-xs mt-0.5 truncate ${matchesSearch ? 'text-yellow-700' : 'text-gray-500'
+                  }`}
+                title={node.description}
+              >
+                {node.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Render Children */}
+        {hasChildren && isExpanded && (
+          <div className='border-l-2 border-gray-200 ml-3 mt-1'>{node.children!.map((child) => renderCategoryNode(child))}</div>
+        )}
+      </div>
+    )
+  }
+
   if (loading) {
     return <Loading fullScreen={true} text='Đang tải thông tin cửa hàng...' size='lg' />
   }
@@ -999,11 +1288,11 @@ function CreateProduct() {
 
               <div>
                 <Label htmlFor='material' className='text-sm font-medium'>
-                  Xuất xứ <span className='text-red-500'>*</span>
+                  Nguyên liệu <span className='text-red-500'>*</span>
                 </Label>
                 <Input
                   id='material'
-                  placeholder='Nhập xuất xứ hoặc nguyên liệu sản phẩm...'
+                  placeholder='Nhập Nguyên liệu hoặc nguyên liệu sản phẩm...'
                   value={productData.material}
                   onChange={(e) => handleInputChange('material', e.target.value)}
                   className={`mt-1 transition-all duration-200 ${materialError ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500 focus:border-green-500'}`}
@@ -1378,43 +1667,81 @@ function CreateProduct() {
                   <div className='py-4 mt-1 border rounded-md'>
                     <Loading size='sm' text='Đang tải danh mục...' />
                   </div>
-                ) : categories.length === 0 ? (
+                ) : categoryTree.length === 0 ? (
                   <div className='flex items-center justify-center py-4 mt-1 border rounded-md'>
                     <span className='text-sm text-gray-500'>Không có danh mục nào</span>
                   </div>
                 ) : (
                   <div className='mt-1'>
-                    <ComboBox<ProductCategoryItem>
-                      options={categories}
-                      placeholder='Chọn danh mục sản phẩm...'
-                      value={productData.categoryId || ''}
-                      disabled={categoriesLoading}
-                      getOptionLabel={(category) => category.name}
-                      getOptionValue={(category) => category.id}
-                      onSelect={(category) => {
-                        if (category) {
-                          handleCategorySelect(category.id)
-                        } else {
-                          handleCategorySelect(null)
-                        }
-                      }}
-                      filterFunction={(category, searchValue) => {
-                        const search = searchValue.toLowerCase()
-                        return (
-                          category.name.toLowerCase().includes(search) ||
-                          category.description?.toLowerCase().includes(search) ||
-                          false
-                        )
-                      }}
-                      renderOption={(category) => (
-                        <div className='flex flex-col'>
-                          <span className='text-sm font-medium text-gray-900'>{category.name}</span>
-                          {category.description && (
-                            <span className='text-xs text-gray-500 mt-0.5'>{category.description}</span>
-                          )}
+                    {/* Search Input */}
+                    <div className='mb-3 relative'>
+                      <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
+                      <Input
+                        type='text'
+                        placeholder='Tìm kiếm danh mục...'
+                        value={categorySearchText}
+                        onChange={(e) => setCategorySearchText(e.target.value)}
+                        className='pl-10 pr-4 border-gray-300 focus:ring-green-500 focus:border-green-500'
+                      />
+                      {categorySearchText && (
+                        <button
+                          type='button'
+                          onClick={() => setCategorySearchText('')}
+                          className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600'
+                        >
+                          <X className='w-4 h-4' />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Breadcrumb Path */}
+                    {selectedCategoryPath.length > 0 && (
+                      <div className='mb-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg shadow-sm'>
+                        <div className='flex items-center gap-1.5 flex-wrap'>
+                          <span className='text-xs font-semibold text-gray-700'>Đã chọn:</span>
+                          {selectedCategoryPath.map((cat, index) => (
+                            <div key={cat.id} className='flex items-center gap-1.5'>
+                              <span className='text-xs font-medium text-green-800 bg-white px-2 py-0.5 rounded border border-green-200'>
+                                {cat.name}
+                              </span>
+                              {index < selectedCategoryPath.length - 1 && (
+                                <ChevronRight className='w-3 h-3 text-gray-400' />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Category Tree */}
+                    <div className='border border-gray-200 rounded-lg p-3 max-h-96 overflow-y-auto bg-white shadow-inner'>
+                      {filteredCategoryTree.length === 0 ? (
+                        <div className='text-center py-8 text-gray-500'>
+                          <Search className='w-8 h-8 mx-auto mb-2 text-gray-400' />
+                          <p className='text-sm'>Không tìm thấy danh mục nào phù hợp với "{categorySearchText}"</p>
+                        </div>
+                      ) : (
+                        <div className='space-y-0.5'>
+                          {filteredCategoryTree.map((node) => renderCategoryNode(node))}
                         </div>
                       )}
-                    />
+                    </div>
+
+                    {/* Clear Selection Button */}
+                    {productData.categoryId && (
+                      <div className='mt-2'>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={() => handleCategorySelect(null)}
+                          className='w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300'
+                        >
+                          <X className='w-4 h-4 mr-1' />
+                          Xóa lựa chọn
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

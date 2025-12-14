@@ -200,8 +200,15 @@ export const filterCombos = async (filterRequest: ComboFilterRequest): Promise<{
     }
 
     // Add optional filters only if they have values
-    if (filterRequest.minPrice !== undefined) requestBody.MinPrice = filterRequest.minPrice
-    if (filterRequest.maxPrice !== undefined) requestBody.MaxPrice = filterRequest.maxPrice
+    // Price Filters (Backend: decimal?)
+    if (filterRequest.minPrice !== undefined && filterRequest.minPrice !== null) {
+      requestBody.MinPrice = filterRequest.minPrice
+    }
+    if (filterRequest.maxPrice !== undefined && filterRequest.maxPrice !== null) {
+      requestBody.MaxPrice = filterRequest.maxPrice
+    }
+
+    // Location Filters (Backend: List<string>?)
     if (filterRequest.provinceFilters && filterRequest.provinceFilters.length > 0) {
       requestBody.ProvinceFilters = filterRequest.provinceFilters
     }
@@ -211,37 +218,91 @@ export const filterCombos = async (filterRequest: ComboFilterRequest): Promise<{
     if (filterRequest.subRegionFilters && filterRequest.subRegionFilters.length > 0) {
       requestBody.SubRegionFilters = filterRequest.subRegionFilters
     }
+
+    // Category Filters (Backend: List<Guid>? - frontend sends as string[])
     if (filterRequest.categoryFilterIds && filterRequest.categoryFilterIds.length > 0) {
       requestBody.CategoryFilterIds = filterRequest.categoryFilterIds
     }
+
+    // Store Filters (Backend: List<Guid>? for StoreFilters, List<string>? for StoreNameFilters)
     if (filterRequest.storeFilters && filterRequest.storeFilters.length > 0) {
       requestBody.StoreFilters = filterRequest.storeFilters
     }
     if (filterRequest.storeNameFilters && filterRequest.storeNameFilters.length > 0) {
       requestBody.StoreNameFilters = filterRequest.storeNameFilters
     }
+
+    // Status Filters (Backend: List<string>?, bool?)
     if (filterRequest.statusFilters && filterRequest.statusFilters.length > 0) {
       requestBody.StatusFilters = filterRequest.statusFilters
     }
-    if (filterRequest.isActiveFilter !== undefined) {
+    if (filterRequest.isActiveFilter !== undefined && filterRequest.isActiveFilter !== null) {
       requestBody.IsActiveFilter = filterRequest.isActiveFilter
     }
-    if (filterRequest.fromDate) requestBody.FromDate = filterRequest.fromDate
-    if (filterRequest.toDate) requestBody.ToDate = filterRequest.toDate
-    if (filterRequest.minSaleCount !== undefined) requestBody.MinSaleCount = filterRequest.minSaleCount
-    if (filterRequest.maxSaleCount !== undefined) requestBody.MaxSaleCount = filterRequest.maxSaleCount
-    if (filterRequest.minRating !== undefined) requestBody.MinRating = filterRequest.minRating
-    if (filterRequest.maxRating !== undefined) requestBody.MaxRating = filterRequest.maxRating
-    if (filterRequest.hasRating !== undefined) requestBody.HasRating = filterRequest.hasRating
-    if (filterRequest.minSavings !== undefined) requestBody.MinSavings = filterRequest.minSavings
-    if (filterRequest.maxSavings !== undefined) requestBody.MaxSavings = filterRequest.maxSavings
-    if (filterRequest.minAvailableQuantity !== undefined) requestBody.MinAvailableQuantity = filterRequest.minAvailableQuantity
-    if (filterRequest.maxAvailableQuantity !== undefined) requestBody.MaxAvailableQuantity = filterRequest.maxAvailableQuantity
-    if (filterRequest.inStock !== undefined) requestBody.InStock = filterRequest.inStock
-    if (filterRequest.minItemCount !== undefined) requestBody.MinItemCount = filterRequest.minItemCount
-    if (filterRequest.maxItemCount !== undefined) requestBody.MaxItemCount = filterRequest.maxItemCount
-    if (filterRequest.sortBy) requestBody.SortBy = filterRequest.sortBy
-    if (filterRequest.queryText) requestBody.QueryText = filterRequest.queryText
+
+    // Date Filters (Backend: DateTime?)
+    if (filterRequest.fromDate) {
+      requestBody.FromDate = filterRequest.fromDate
+    }
+    if (filterRequest.toDate) {
+      requestBody.ToDate = filterRequest.toDate
+    }
+
+    // Sales Filters (Backend: int?)
+    if (filterRequest.minSaleCount !== undefined && filterRequest.minSaleCount !== null) {
+      requestBody.MinSaleCount = filterRequest.minSaleCount
+    }
+    if (filterRequest.maxSaleCount !== undefined && filterRequest.maxSaleCount !== null) {
+      requestBody.MaxSaleCount = filterRequest.maxSaleCount
+    }
+
+    // Rating Filters (Backend: double?, bool?)
+    if (filterRequest.minRating !== undefined && filterRequest.minRating !== null) {
+      requestBody.MinRating = filterRequest.minRating
+    }
+    if (filterRequest.maxRating !== undefined && filterRequest.maxRating !== null) {
+      requestBody.MaxRating = filterRequest.maxRating
+    }
+    if (filterRequest.hasRating !== undefined && filterRequest.hasRating !== null) {
+      requestBody.HasRating = filterRequest.hasRating
+    }
+
+    // Savings Filters (Backend: decimal?)
+    if (filterRequest.minSavings !== undefined && filterRequest.minSavings !== null) {
+      requestBody.MinSavings = filterRequest.minSavings
+    }
+    if (filterRequest.maxSavings !== undefined && filterRequest.maxSavings !== null) {
+      requestBody.MaxSavings = filterRequest.maxSavings
+    }
+
+    // Stock Filters (Backend: int?, bool?)
+    if (filterRequest.minAvailableQuantity !== undefined && filterRequest.minAvailableQuantity !== null) {
+      requestBody.MinAvailableQuantity = filterRequest.minAvailableQuantity
+    }
+    if (filterRequest.maxAvailableQuantity !== undefined && filterRequest.maxAvailableQuantity !== null) {
+      requestBody.MaxAvailableQuantity = filterRequest.maxAvailableQuantity
+    }
+    if (filterRequest.inStock !== undefined && filterRequest.inStock !== null) {
+      requestBody.InStock = filterRequest.inStock
+    }
+
+    // Item Count Filters (Backend: int?)
+    if (filterRequest.minItemCount !== undefined && filterRequest.minItemCount !== null) {
+      requestBody.MinItemCount = filterRequest.minItemCount
+    }
+    if (filterRequest.maxItemCount !== undefined && filterRequest.maxItemCount !== null) {
+      requestBody.MaxItemCount = filterRequest.maxItemCount
+    }
+
+    // Sorting and Search (Backend: string?)
+    if (filterRequest.sortBy) {
+      requestBody.SortBy = filterRequest.sortBy
+    }
+    if (filterRequest.queryText) {
+      requestBody.QueryText = filterRequest.queryText
+    }
+
+    // Staff Filters (Backend: List<Guid>? - frontend sends as string[])
     if (filterRequest.assignedToFilters && filterRequest.assignedToFilters.length > 0) {
       requestBody.AssignedToFilters = filterRequest.assignedToFilters
     }

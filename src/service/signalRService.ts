@@ -26,7 +26,7 @@ class SignalRService {
       const token = localStorage.getItem('token')
 
       // URL SignalR Hub
-      const chatHubUrl = 'http://154.26.130.248:8080/chatHub'
+      const chatHubUrl = import.meta.env.VITE_CHAT_API_URL
 
       // Cấu hình connection options
       const connectionOptions: signalR.IHttpConnectionOptions = {}

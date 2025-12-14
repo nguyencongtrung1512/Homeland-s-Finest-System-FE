@@ -1070,7 +1070,7 @@ function DetailProductSeller() {
                         },
                         {
                           key: 'productMaterial',
-                          label: 'Xuất xứ (Material)',
+                          label: 'Nguyên liệu ',
                           completed: checklist.productMaterial
                         },
                         {
@@ -1318,7 +1318,7 @@ function DetailProductSeller() {
                           <div className='flex items-center gap-2'>
                             <MapPin size={16} className='text-green-600 flex-shrink-0' />
                             <div>
-                              <span className='text-sm text-gray-600 block'>Xuất xứ</span>
+                              <span className='text-sm text-gray-600 block'>Nguyên liệu</span>
                               <span className='text-sm font-medium text-gray-900'>{product?.material}</span>
                             </div>
                           </div>

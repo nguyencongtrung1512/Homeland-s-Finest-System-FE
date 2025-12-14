@@ -31,10 +31,7 @@ function Products() {
   const [productFilters, setProductFilters] = useState<{
     minPrice?: number
     maxPrice?: number
-    categoryFilterIds?: string[]
     provinceFilters?: string[]
-    regionFilters?: string[]
-    subRegionFilters?: string[]
   }>({})
 
   // Combo state
@@ -58,31 +55,53 @@ function Products() {
   const handleFilterChange = (filterState: {
     minPrice?: number
     maxPrice?: number
-    categoryFilterIds?: string[]
-    regionFilters?: string[]
-    subRegionFilters?: string[]
+    provinceFilters?: string[]
   }) => {
-    if (activeTab === 'product') {
-      // Apply filters for products
-      setProductFilters({
-        minPrice: filterState.minPrice,
-        maxPrice: filterState.maxPrice,
-        categoryFilterIds: filterState.categoryFilterIds,
-        subRegionFilters: filterState.subRegionFilters,
-        regionFilters: filterState.regionFilters
-      })
-      setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
-    } else if (activeTab === 'combo') {
-      // Apply filters for combos
-      setComboFilters((prev) => ({
-        ...prev,
-        minPrice: filterState.minPrice,
-        maxPrice: filterState.maxPrice,
-        categoryFilterIds: filterState.categoryFilterIds,
-        subRegionFilters: filterState.subRegionFilters,
-        regionFilters: filterState.regionFilters,
-        pageNumber: 1 // Reset về trang đầu khi filter thay đổi
-      }))
+    // Nếu có provinceFilters, tự động chuyển sang tab combo
+    if (filterState.provinceFilters && filterState.provinceFilters.length > 0) {
+      if (activeTab === 'product') {
+        // Chuyển sang tab combo và apply filters
+        setActiveTab('combo')
+        setComboFilters((prev) => ({
+          ...prev,
+          minPrice: filterState.minPrice,
+          maxPrice: filterState.maxPrice,
+          provinceFilters: filterState.provinceFilters,
+          pageNumber: 1 // Reset về trang đầu khi filter thay đổi
+        }))
+        setCurrentPage(1)
+      } else if (activeTab === 'combo') {
+        // Đã ở tab combo, chỉ cần update filters
+        setComboFilters((prev) => ({
+          ...prev,
+          minPrice: filterState.minPrice,
+          maxPrice: filterState.maxPrice,
+          provinceFilters: filterState.provinceFilters,
+          pageNumber: 1 // Reset về trang đầu khi filter thay đổi
+        }))
+        setCurrentPage(1)
+      }
+    } else {
+      // Không có provinceFilters, apply filter cho tab hiện tại
+      if (activeTab === 'product') {
+        // Apply filters for products
+        setProductFilters({
+          minPrice: filterState.minPrice,
+          maxPrice: filterState.maxPrice,
+          provinceFilters: filterState.provinceFilters
+        })
+        setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
+      } else if (activeTab === 'combo') {
+        // Apply filters for combos
+        setComboFilters((prev) => ({
+          ...prev,
+          minPrice: filterState.minPrice,
+          maxPrice: filterState.maxPrice,
+          provinceFilters: filterState.provinceFilters,
+          pageNumber: 1 // Reset về trang đầu khi filter thay đổi
+        }))
+        setCurrentPage(1)
+      }
     }
   }
 
@@ -105,10 +124,7 @@ function Products() {
           sortBy: sortBy || null,
           minPrice: productFilters.minPrice || null,
           maxPrice: productFilters.maxPrice || null,
-          categoryFilterIds: productFilters.categoryFilterIds || null,
-          provinceFilters: productFilters.provinceFilters || null,
-          regionFilters: productFilters.regionFilters || null,
-          subRegionFilters: productFilters.subRegionFilters || null
+          provinceFilters: productFilters.provinceFilters || null
         }
 
         const results = await searchApi.search(searchRequest)
@@ -195,10 +211,17 @@ function Products() {
     return Math.ceil(products.length / pageSize) + (products.length === limit ? 1 : 0)
   }, [products.length, currentPage, pageSize])
 
-  const productCardData: ProductCardData[] = paginatedProducts.map((product) => ({
-    ...product,
-    price: product.price
-  }))
+  const productCardData: ProductCardData[] = paginatedProducts.map((product) => {
+    const productWithExtraFields = product as ProductCardData
+    return {
+      ...product,
+      price: product.price,
+      // Giữ lại province_name nếu có (từ API response)
+      province_name: productWithExtraFields.province_name || undefined,
+      // Giữ lại sale_count nếu có (từ API response)
+      sale_count: productWithExtraFields.sale_count || undefined
+    }
+  })
 
   const handleAddCombo = async (comboId: string) => {
     try {
@@ -291,14 +314,12 @@ function Products() {
                 ? {
                   minPrice: comboFilters.minPrice,
                   maxPrice: comboFilters.maxPrice,
-                  categoryFilterIds: comboFilters.categoryFilterIds,
-                  regionFilters: comboFilters.regionFilters
+                  provinceFilters: comboFilters.provinceFilters
                 }
                 : {
                   minPrice: productFilters.minPrice,
                   maxPrice: productFilters.maxPrice,
-                  categoryFilterIds: productFilters.categoryFilterIds,
-                  regionFilters: productFilters.regionFilters
+                  provinceFilters: productFilters.provinceFilters
                 }
             }
           />
@@ -465,7 +486,7 @@ function Products() {
                     totalPages={totalPages}
                     onPageChange={handlePageChange}
                     maxVisiblePages={5}
-                  />  
+                  />
                 </>
               )}
             </>
