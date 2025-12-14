@@ -786,8 +786,11 @@ export default function Checkout() {
   const calculatedShippingFee = shippingFeeData ? shippingFeeData.reduce((sum, store) => sum + store.shipPrice, 0) : 0
   const shippingFee = hasFreeShip ? 0 : calculatedShippingFee
 
-  // Final total includes shipping fee if not free ship
-  const finalTotal = Math.max(0, subtotal - totalDiscount + shippingFee)
+  // Calculate insurance fee from API
+  const insuranceFee = shippingFeeData ? shippingFeeData.reduce((sum, store) => sum + (store.insuranceFee || 0), 0) : 0
+
+  // Final total includes shipping fee and insurance fee if not free ship
+  const finalTotal = Math.max(0, subtotal - totalDiscount + shippingFee + insuranceFee)
   const selectedItemsList = cartData
     ? cartData.carts.flatMap((store) =>
       store.items
@@ -980,152 +983,154 @@ export default function Checkout() {
             <div className='bg-white rounded-lg shadow-sm p-6'>
               <h2 className='text-xl font-bold text-gray-800 mb-4'>Sản phẩm đã chọn</h2>
               <div className='space-y-4'>
-                {cartData.carts.map((store) => (
-                  <div key={store.cartId} className='border-b border-gray-200 pb-4 last:border-b-0 last:pb-0'>
-                    <div className='bg-green-50 px-4 py-3 rounded-lg mb-3 border border-green-200'>
-                      <div className='flex items-center justify-between mb-2'>
-                        <div className='flex items-center gap-2'>
-                          <Store className='w-5 h-5 text-green-600' />
-                          <span className='font-semibold text-gray-800'>{store.storeName}</span>
-                          {store.hasFreeship && (
-                            <span className='bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium'>
-                              Miễn phí vận chuyển
-                            </span>
-                          )}
-                        </div>
-                        <div className='flex items-center gap-2'>
-                          <Button
-                            variant='outline'
-                            size='sm'
-                            onClick={() => handleOpenPromotionModal(store.storeId)}
-                            className='text-xs'
-                          >
-                            <Tag className='h-3 w-3 mr-1' />
-                            Mã khuyến mãi
-                          </Button>
-                          {store.appliedPromotions && store.appliedPromotions.length > 0 && (
+                {cartData.carts
+                  .filter((store) => store.items.some((item) => selectedItems[item.id]))
+                  .map((store) => (
+                    <div key={store.cartId} className='border-b border-gray-200 pb-4 last:border-b-0 last:pb-0'>
+                      <div className='bg-green-50 px-4 py-3 rounded-lg mb-3 border border-green-200'>
+                        <div className='flex items-center justify-between mb-2'>
+                          <div className='flex items-center gap-2'>
+                            <Store className='w-5 h-5 text-green-600' />
+                            <span className='font-semibold text-gray-800'>{store.storeName}</span>
+                            {store.hasFreeship && (
+                              <span className='bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium'>
+                                Miễn phí vận chuyển
+                              </span>
+                            )}
+                          </div>
+                          <div className='flex items-center gap-2'>
                             <Button
                               variant='outline'
                               size='sm'
-                              onClick={() => handleOpenAppliedPromotionsModal(store.storeId)}
-                              className='text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                              onClick={() => handleOpenPromotionModal(store.storeId)}
+                              className='text-xs'
                             >
-                              <Gift className='h-3 w-3 mr-1' />
-                              Đã áp dụng ({store.appliedPromotions.length})
+                              <Tag className='h-3 w-3 mr-1' />
+                              Mã khuyến mãi
                             </Button>
-                          )}
+                            {store.appliedPromotions && store.appliedPromotions.length > 0 && (
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                onClick={() => handleOpenAppliedPromotionsModal(store.storeId)}
+                                className='text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                              >
+                                <Gift className='h-3 w-3 mr-1' />
+                                Đã áp dụng ({store.appliedPromotions.length})
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className='space-y-3'>
-                      {groupComboItems(
-                        store.items.filter((item) => selectedItems[item.id])
-                      ).map((item) => {
-                        // Check if it's a combo group
-                        if ('comboId' in item && 'items' in item) {
-                          const comboItem = item as ComboGroup
-                          const comboTitle =
-                            (comboItem.comboId && comboNames[comboItem.comboId]) ||
-                            comboItem.comboName ||
-                            'Combo'
-                          return (
-                            <div
-                              key={comboItem.comboId}
-                              className='p-4 bg-orange-50 rounded-xl border border-orange-100 shadow-sm'
-                            >
-                              <div className='flex items-center gap-2 mb-3'>
-                                <span className='inline-flex items-center text-xs font-semibold text-orange-600 bg-orange-100 px-2 py-1 rounded-full'>
-                                  Sản phẩm combo
-                                </span>
-                                <h3 className='text-base font-semibold text-gray-900'>{comboTitle}</h3>
-                              </div>
+                      <div className='space-y-3'>
+                        {groupComboItems(
+                          store.items.filter((item) => selectedItems[item.id])
+                        ).map((item) => {
+                          // Check if it's a combo group
+                          if ('comboId' in item && 'items' in item) {
+                            const comboItem = item as ComboGroup
+                            const comboTitle =
+                              (comboItem.comboId && comboNames[comboItem.comboId]) ||
+                              comboItem.comboName ||
+                              'Combo'
+                            return (
+                              <div
+                                key={comboItem.comboId}
+                                className='p-4 bg-orange-50 rounded-xl border border-orange-100 shadow-sm'
+                              >
+                                <div className='flex items-center gap-2 mb-3'>
+                                  <span className='inline-flex items-center text-xs font-semibold text-orange-600 bg-orange-100 px-2 py-1 rounded-full'>
+                                    Sản phẩm combo
+                                  </span>
+                                  <h3 className='text-base font-semibold text-gray-900'>{comboTitle}</h3>
+                                </div>
 
-                              <div className='flex items-center justify-between mb-3'>
-                                <div className='flex items-center gap-3'>
-                                  <span className='text-sm text-gray-500'>Số lượng: {comboItem.quantity}</span>
-                                  <span className='text-xs text-gray-500'>x</span>
-                                  <span className='text-xs text-gray-500'>
-                                    {formatPrice(
-                                      comboItem.quantity > 0 ? comboItem.totalPrice / comboItem.quantity : 0
-                                    )}đ
+                                <div className='flex items-center justify-between mb-3'>
+                                  <div className='flex items-center gap-3'>
+                                    <span className='text-sm text-gray-500'>Số lượng: {comboItem.quantity}</span>
+                                    <span className='text-xs text-gray-500'>x</span>
+                                    <span className='text-xs text-gray-500'>
+                                      {formatPrice(
+                                        comboItem.quantity > 0 ? comboItem.totalPrice / comboItem.quantity : 0
+                                      )}đ
+                                    </span>
+                                  </div>
+                                  <span className='text-lg font-bold text-orange-600'>
+                                    {formatPrice(comboItem.totalPrice)}đ
                                   </span>
                                 </div>
-                                <span className='text-lg font-bold text-orange-600'>
-                                  {formatPrice(comboItem.totalPrice)}đ
-                                </span>
-                              </div>
 
-                              <div className='space-y-2 bg-white rounded-lg p-2 border border-orange-100'>
-                                {comboItem.items.map((childItem: APICartItem) => {
-                                  const comboId = childItem.comboId || comboItem.comboId
-                                  const childRequirement =
-                                    (comboId && comboChildItems[comboId]?.[childItem.productVariantId]) || null
-                                  const requiredQuantity = childRequirement?.requiredQuantity
-                                  return (
-                                    <div
-                                      key={childItem.id}
-                                      className='flex items-center gap-3 p-2 bg-gray-50 rounded-lg'
-                                    >
-                                      <div className='w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm'>
-                                        <img
-                                          src={
-                                            childItem.imageUrl ||
-                                            childRequirement?.imageUrl ||
-                                            '/api/placeholder/48/48'
-                                          }
-                                          alt={childItem.name}
-                                          className='w-10 h-10 object-cover rounded'
-                                        />
+                                <div className='space-y-2 bg-white rounded-lg p-2 border border-orange-100'>
+                                  {comboItem.items.map((childItem: APICartItem) => {
+                                    const comboId = childItem.comboId || comboItem.comboId
+                                    const childRequirement =
+                                      (comboId && comboChildItems[comboId]?.[childItem.productVariantId]) || null
+                                    const requiredQuantity = childRequirement?.requiredQuantity
+                                    return (
+                                      <div
+                                        key={childItem.id}
+                                        className='flex items-center gap-3 p-2 bg-gray-50 rounded-lg'
+                                      >
+                                        <div className='w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm'>
+                                          <img
+                                            src={
+                                              childItem.imageUrl ||
+                                              childRequirement?.imageUrl ||
+                                              '/api/placeholder/48/48'
+                                            }
+                                            alt={childItem.name}
+                                            className='w-10 h-10 object-cover rounded'
+                                          />
+                                        </div>
+                                        <div className='flex-1'>
+                                          <p className='text-sm font-medium text-gray-800'>
+                                            {childRequirement?.productName || childItem.name}
+                                          </p>
+                                          <p className='text-xs text-gray-500'>
+                                            {typeof requiredQuantity === 'number'
+                                              ? `Số lượng định mức: ${requiredQuantity}`
+                                              : `Số lượng: ${childItem.quantity}`}
+                                          </p>
+                                        </div>
                                       </div>
-                                      <div className='flex-1'>
-                                        <p className='text-sm font-medium text-gray-800'>
-                                          {childRequirement?.productName || childItem.name}
-                                        </p>
-                                        <p className='text-xs text-gray-500'>
-                                          {typeof requiredQuantity === 'number'
-                                            ? `Số lượng định mức: ${requiredQuantity}`
-                                            : `Số lượng: ${childItem.quantity}`}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )
-                                })}
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          }
+
+                          // Regular item
+                          const regularItem = item as APICartItem
+                          return (
+                            <div key={regularItem.id} className='flex items-start gap-4 p-3 bg-gray-50 rounded-lg'>
+                              <div className='w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0'>
+                                <img
+                                  src={regularItem.imageUrl || '/api/placeholder/64/64'}
+                                  alt={regularItem.name}
+                                  className='w-full h-full object-cover'
+                                />
+                              </div>
+                              <div className='flex-1 min-w-0'>
+                                <h3 className='font-semibold text-gray-800 mb-1'>{regularItem.name}</h3>
+                                <div className='flex items-center justify-between'>
+                                  <div className='flex flex-col'>
+                                    <span className='text-sm text-gray-500'>Số lượng: {regularItem.quantity}</span>
+                                    <span className='text-xs text-gray-400'>
+                                      {formatPrice(regularItem.unitPrice)}đ/sản phẩm
+                                    </span>
+                                  </div>
+                                  <span className='text-lg font-bold text-orange-600'>
+                                    {formatPrice(regularItem.totalPrice)}đ
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           )
-                        }
-
-                        // Regular item
-                        const regularItem = item as APICartItem
-                        return (
-                          <div key={regularItem.id} className='flex items-start gap-4 p-3 bg-gray-50 rounded-lg'>
-                            <div className='w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0'>
-                              <img
-                                src={regularItem.imageUrl || '/api/placeholder/64/64'}
-                                alt={regularItem.name}
-                                className='w-full h-full object-cover'
-                              />
-                            </div>
-                            <div className='flex-1 min-w-0'>
-                              <h3 className='font-semibold text-gray-800 mb-1'>{regularItem.name}</h3>
-                              <div className='flex items-center justify-between'>
-                                <div className='flex flex-col'>
-                                  <span className='text-sm text-gray-500'>Số lượng: {regularItem.quantity}</span>
-                                  <span className='text-xs text-gray-400'>
-                                    {formatPrice(regularItem.unitPrice)}đ/sản phẩm
-                                  </span>
-                                </div>
-                                <span className='text-lg font-bold text-orange-600'>
-                                  {formatPrice(regularItem.totalPrice)}đ
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
 
@@ -1320,6 +1325,19 @@ export default function Checkout() {
                     <span className='text-gray-400'>Chưa tính</span>
                   )}
                 </div>
+                {insuranceFee > 0 && (
+                  <div className='flex justify-between text-sm text-gray-700'>
+                    <span>Phí bảo hiểm:</span>
+                    {isLoadingShippingFee ? (
+                      <div className='flex items-center gap-1'>
+                        <Loader2 className='w-3 h-3 animate-spin' />
+                        <span>Đang tính...</span>
+                      </div>
+                    ) : (
+                      <span>{formatPrice(insuranceFee)}đ</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className='flex justify-between items-center mb-6'>

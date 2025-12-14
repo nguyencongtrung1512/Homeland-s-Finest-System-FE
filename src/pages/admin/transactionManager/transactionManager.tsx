@@ -19,6 +19,7 @@ import { storeApi } from '../../../apis/store.api'
 
 interface Transaction {
   id: string
+  payosOrderCode: string
   customer: string
   shop: string
   type: string
@@ -78,6 +79,7 @@ function TransactionManagementAdmin() {
 
     return {
       id: apiTransaction.id,
+      payosOrderCode: apiTransaction.payosOrderCode,
       customer: apiTransaction.userFullName || 'Khách hàng',
       shop: shopName,
       type: apiTransaction.type || 'Sale',
@@ -194,10 +196,10 @@ function TransactionManagementAdmin() {
   }
 
   const renderTransactionRow = (transaction: Transaction) => (
-    <tr key={transaction.id} className='border-b border-gray-100 hover:bg-gray-50'>
+    <tr key={transaction.payosOrderCode} className='border-b border-gray-100 hover:bg-gray-50'>
       {/* Mã giao dịch */}
       <td className='px-6 py-4'>
-        <span className='font-mono text-gray-900 font-medium text-sm'>#{transaction.id}</span>
+        <span className='font-mono text-gray-900 font-medium text-sm'>#{transaction.payosOrderCode}</span>
       </td>
 
       {/* Khách hàng */}
@@ -250,8 +252,7 @@ function TransactionManagementAdmin() {
     <div className='space-y-6 p-6 bg-gray-50 min-h-screen'>
       {/* Header */}
       <div>
-        <h1 className='text-2xl font-bold text-gray-900'>Quản lý giao dịch</h1>
-        <p className='text-gray-600 mt-1'>Theo dõi và quản lý tất cả giao dịch đi vào và đi ra hệ thống</p>
+        <h3 className='text-gray-600 mt-1'>Theo dõi các khoản tiền đi vào hoặc rút ra khỏi hệ thống(khách thanh toán, nạp , rút tiền về ngân hàng)</h3>
       </div>
 
       {/* Filters */}
@@ -283,7 +284,7 @@ function TransactionManagementAdmin() {
             </Select>
 
             <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-              <SelectTrigger className='w-48 h-10 border-gray-200'>
+              <SelectTrigger className='w-70 h-10 border-gray-200'>
                 <SelectValue placeholder='Phương thức thanh toán' />
               </SelectTrigger>
               <SelectContent>
@@ -380,11 +381,10 @@ function TransactionManagementAdmin() {
                       size='sm'
                       onClick={() => setCurrentPage(page)}
                       disabled={loading}
-                      className={`h-8 w-8 p-0 ${
-                        currentPage === page
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
-                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                      }`}
+                      className={`h-8 w-8 p-0 ${currentPage === page
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                        }`}
                     >
                       {page}
                     </Button>

@@ -8,7 +8,7 @@ import { Checkbox } from '../../../components/ui/checkbox'
 import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-import { ChevronDownIcon, Eye, EyeOff, Loader2, MapPinIcon, Image as ImageIcon, X } from 'lucide-react'
+import { ChevronDownIcon, Eye, EyeOff, Loader2, MapPinIcon, Image as ImageIcon, X, ChevronsUpDown, Check } from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { Upload as AntUpload, message } from 'antd'
@@ -23,6 +23,14 @@ import { extractCCCDInfo, extractCCCDBackInfo, type ExtractedCCCDInfo, type Extr
 import { getBanks, verifyBankAccount, type Bank } from '../../../apis/user.api'
 import ComboBox from '../../../components/ui/combo-box'
 import { validateCertificate } from '../../../apis/n8n.api'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '../../../components/ui/command'
 
 const checkboxStyles = `
   .custom-checkbox {
@@ -805,8 +813,8 @@ const SimpleFileUploadField = ({
           {previewUrls.length < maxCount && (
             <div
               className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${isDragging
-                  ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg'
-                  : 'border-slate-300 hover:border-emerald-400'
+                ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg'
+                : 'border-slate-300 hover:border-emerald-400'
                 } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={handleClick}
               onDragEnter={handleDragEnter}
@@ -832,8 +840,8 @@ const SimpleFileUploadField = ({
       ) : (
         <div
           className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${isDragging
-              ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg'
-              : 'border-slate-300 hover:border-emerald-400'
+            ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg'
+            : 'border-slate-300 hover:border-emerald-400'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={handleClick}
           onDragEnter={handleDragEnter}
@@ -943,6 +951,13 @@ function SellerRegistrationForm() {
   // State cho ngày cấp từ mặt sau CCCD
   const [issueDate, setIssueDate] = useState<string>('')
   const [issueLocation, setIssueLocation] = useState<string>('')
+
+  // States cho tỉnh định hướng
+  const [orientationProvinces, setOrientationProvinces] = useState<Province[]>([])
+  const [selectedOrientationProvince, setSelectedOrientationProvince] = useState<Province | null>(null)
+  const [isLoadingOrientationProvinces, setIsLoadingOrientationProvinces] = useState(false)
+  const [orientationProvinceOpen, setOrientationProvinceOpen] = useState(false)
+  const [orientationProvinceSearchValue, setOrientationProvinceSearchValue] = useState('')
 
   // States cho validation giấy tờ - lưu theo index của file
   const [businessLicenseValidation, setBusinessLicenseValidation] = useState<{
@@ -1496,10 +1511,40 @@ function SellerRegistrationForm() {
     }
   }
 
+  // Load orientation provinces
+  const loadOrientationProvinces = async () => {
+    setIsLoadingOrientationProvinces(true)
+    try {
+      const data = await getProvinces()
+      setOrientationProvinces(data)
+    } catch (error) {
+      console.error('Error loading orientation provinces:', error)
+    } finally {
+      setIsLoadingOrientationProvinces(false)
+    }
+  }
+
+  // Filter orientation provinces based on search
+  const filteredOrientationProvinces = orientationProvinces.filter(
+    (province) =>
+      province.name.toLowerCase().includes(orientationProvinceSearchValue.toLowerCase()) ||
+      province.region.toLowerCase().includes(orientationProvinceSearchValue.toLowerCase())
+  )
+
+  // Handle orientation province change
+  const handleOrientationProvinceChange = (provinceId: number) => {
+    const province = orientationProvinces.find((p) => p.id === provinceId)
+    if (province) {
+      setSelectedOrientationProvince(province)
+    }
+    setOrientationProvinceOpen(false)
+  }
+
   React.useEffect(() => {
     loadProvinces()
     loadUserProvinces()
     loadBanks()
+    loadOrientationProvinces()
   }, [])
 
   const validateForm = (): boolean => {
@@ -1904,6 +1949,8 @@ function SellerRegistrationForm() {
                 {errors.userAddress && <p className='text-sm text-red-500'>{errors.userAddress}</p>}
               </div>
             </div>
+
+
 
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
               <div className='space-y-2'>
@@ -2369,7 +2416,60 @@ function SellerRegistrationForm() {
 
               {errors.address && <p className='text-sm text-red-500'>{errors.address}</p>}
             </div>
-
+            {/* Tỉnh định hướng */}
+            <div className='space-y-2'>
+              <Label>
+                Bạn đang bán sản phẩm vùng nào
+              </Label>
+              <Popover open={orientationProvinceOpen} onOpenChange={setOrientationProvinceOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    role='combobox'
+                    aria-expanded={orientationProvinceOpen}
+                    className='w-full justify-between bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 font-normal focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none border-b-gray-300 focus-visible:border-b-green-600'
+                    disabled={isLoadingOrientationProvinces}
+                    type='button'
+                  >
+                    <span className='flex-1 truncate mr-2 text-left'>
+                      {isLoadingOrientationProvinces
+                        ? 'Đang tải...'
+                        : selectedOrientationProvince
+                          ? `${selectedOrientationProvince.name} - ${selectedOrientationProvince.region}`
+                          : 'Chọn tỉnh/thành phố'}
+                    </span>
+                    <ChevronsUpDown className='h-4 w-4 shrink-0 opacity-50' />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-full p-0' align='start'>
+                  <Command>
+                    <CommandInput
+                      placeholder='Tìm kiếm tỉnh/thành phố...'
+                      value={orientationProvinceSearchValue}
+                      onValueChange={setOrientationProvinceSearchValue}
+                    />
+                    <CommandList>
+                      <CommandEmpty>Không tìm thấy tỉnh/thành phố nào.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredOrientationProvinces.map((province) => (
+                          <CommandItem
+                            key={province.id}
+                            value={`${province.name} - ${province.region}`}
+                            onSelect={() => handleOrientationProvinceChange(province.id)}
+                          >
+                            <Check
+                              className={`mr-2 h-4 w-4 ${selectedOrientationProvince?.id === province.id ? 'opacity-100' : 'opacity-0'
+                                }`}
+                            />
+                            {province.name} - {province.region}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
             <div className='space-y-2'>
               <Label htmlFor='description' className='text-sm text-gray-600'>
                 Mô tả cửa hàng <span className='text-red-500'>*</span>

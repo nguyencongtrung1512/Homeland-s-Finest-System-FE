@@ -6,7 +6,7 @@ export interface RequestWalletMoneyQueryParams {
   pageNumber?: number
   userId?: string
   orderId?: string
-  type?: 'Withdrawal' | 'Refund' | 'Deposit' | string
+  type?: 'Withdrawal' | 'Refund' | string
   status?: 'Pending' | 'Completed' | 'Cancel' | string
 }
 
@@ -21,7 +21,7 @@ export interface RequestWalletMoney {
   userId: string
   userEmail: string
   userPhoneNumber: string
-  type: string // 'Withdrawal' | 'Deposit' | 'Refund' | etc.
+  type: string // 'Withdrawal' | 'Refund' | etc.
   amount: number
   bankAccount: string
   bankName: string
@@ -85,8 +85,7 @@ export interface UpdateRequestWalletMoneyResponse {
 export const getRequestWalletMoneyTypeLabel = (type: string): string => {
   const typeMap: Record<string, string> = {
     Withdrawal: 'Rút tiền',
-    Refund: 'Hoàn tiền',
-    Deposit: 'Nạp tiền'
+    Refund: 'Hoàn tiền'
   }
   return typeMap[type] || type
 }
@@ -102,3 +101,4 @@ export const getRequestWalletMoneyStatusLabel = (status: string): string => {
   }
   return statusMap[status] || status
 }
+

@@ -6,7 +6,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { productApi, type ProductCreateFormData } from '../../../apis/product.api'
-import { storeApi } from '../../../apis/store.api'
+import { storeApi, type StoreResponse } from '../../../apis/store.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { useAuth } from '../../../contexts/auth.context'
 import {
@@ -24,7 +24,8 @@ import {
   AtSign,
   Folder,
   FolderOpen,
-  Search
+  Search,
+  MapPinIcon
 } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import ProductComboBox from '../../../components/ui/product-combo-box'
@@ -49,6 +50,7 @@ function CreateProduct() {
   const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [storeId, setStoreId] = useState<string | null>(null)
+  const [storeData, setStoreData] = useState<StoreResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [categoriesLoading, setCategoriesLoading] = useState(false)
@@ -629,6 +631,7 @@ function CreateProduct() {
       console.log('response getStoreBySellerId', response)
       if (response.status === 200 && response.data) {
         setStoreId(response.data.id)
+        setStoreData(response.data)
         return response.data.id
       } else {
         setError('Không tìm thấy thông tin cửa hàng')
@@ -958,10 +961,10 @@ function CreateProduct() {
       <div key={node.id} className='select-none'>
         <div
           className={`flex items-center gap-2 p-2.5 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer group ${isSelected
-              ? 'bg-green-50 border border-green-200 shadow-sm'
-              : matchesSearch
-                ? 'bg-yellow-50 border border-yellow-200'
-                : 'border border-transparent'
+            ? 'bg-green-50 border border-green-200 shadow-sm'
+            : matchesSearch
+              ? 'bg-yellow-50 border border-yellow-200'
+              : 'border border-transparent'
             }`}
           style={{ paddingLeft: `${level * 24 + 12}px` }}
           onClick={() => {
@@ -1018,10 +1021,10 @@ function CreateProduct() {
             <div className='flex items-center gap-2'>
               <span
                 className={`font-medium text-sm ${isSelected
-                    ? 'text-green-900'
-                    : matchesSearch
-                      ? 'text-yellow-900 font-semibold'
-                      : 'text-gray-900'
+                  ? 'text-green-900'
+                  : matchesSearch
+                    ? 'text-yellow-900 font-semibold'
+                    : 'text-gray-900'
                   }`}
               >
                 {node.name}
@@ -1306,6 +1309,22 @@ function CreateProduct() {
                   </p>
                 </div>
               </div>
+
+              {/* Tỉnh xuất xứ */}
+              {storeData?.province && (
+                <div>
+                  <Label className='text-sm font-medium'>
+                    Tỉnh xuất xứ
+                  </Label>
+                  <div className='mt-1 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg'>
+                    <div className='flex items-center gap-2'>
+                      <MapPinIcon className='w-4 h-4 text-green-600' />
+                      <span className='text-sm font-medium text-gray-900'>{storeData.province}</span>
+                    </div>
+                    <p className='text-xs text-gray-500 mt-1'>Tỉnh xuất xứ được lấy từ thông tin cửa hàng của bạn</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
