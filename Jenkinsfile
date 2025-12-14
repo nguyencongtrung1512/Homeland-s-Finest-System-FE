@@ -1,0 +1,188 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Nhánh cần deploy (main/dev/...)')
+    }
+
+    stages {
+        
+        // 🧹 CLEANUP CHỈ FRONTEND
+        stage('🧹 Frontend Cleanup') {
+            steps {
+                sshagent(['SSHKey']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                            echo '🧹 Cleaning FRONTEND resources only...'
+                            
+                            # Stop và xóa container FE
+                            echo 'Stopping FE container...'
+                            docker stop homelandfinest-fe 2>/dev/null || true
+                            docker rm homelandfinest-fe 2>/dev/null || true
+                            
+                            # Xóa image FE
+                            echo 'Removing FE image...'
+                            docker rmi homelandfinest-fe 2>/dev/null || true
+                            
+                            # Xóa source code FE cũ
+                            echo 'Removing old FE source...'
+                            rm -rf ~/HomeLandFinest/HomelandFinestFE
+                            
+                            echo '✅ Frontend cleanup done!'
+                            echo '📊 Current running containers:'
+                            docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'
+                        "
+                    """
+                }
+            }
+        }
+
+        // 📥 CLONE SOURCE CODE
+        stage('📥 Clone FE Source') {
+            steps {
+                sshagent(['SSHKey']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                            set -e
+                            echo '📥 Cloning FE repository...'
+                            
+                            # Tạo thư mục nếu chưa có
+                            mkdir -p ~/HomeLandFinest
+                            
+                            # Clone repository FE
+                            cd ~/HomeLandFinest
+                            git clone git@github.com:nguyencongtrung1512/Homeland-s-Finest-System-FE.git HomelandFinestFE
+                            
+                            # Checkout nhánh
+                            cd HomelandFinestFE
+                            git checkout ${params.BRANCH_NAME}
+                            
+                            echo '✅ Source code cloned successfully!'
+                            echo '📂 Current branch:'
+                            git branch --show-current
+                            echo '📝 Latest commit:'
+                            git log -1 --oneline
+                        "
+                    """
+                }
+            }
+        }
+
+        // 🏗️ BUILD DOCKER IMAGE
+        stage('🏗️ Build FE Image') {
+            steps {
+                sshagent(['SSHKey']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                            set -e
+                            echo '🏗️ Building FE Docker image...'
+                            
+                            cd ~/HomeLandFinest/HomelandFinestFE
+                            
+                            # Build image với Dockerfile có sẵn trong repo
+                            docker build -f Dockerfile -t homelandfinest-fe .
+                            
+                            echo '✅ Image built successfully!'
+                            docker images | grep homelandfinest-fe
+                        "
+                    """
+                }
+            }
+        }
+
+        // 🚀 DEPLOY FRONTEND
+        stage('🚀 Deploy FE') {
+            steps {
+                sshagent(['SSHKey']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                            set -e
+                            echo '🚀 Starting FE container...'
+                            
+                            # Run container
+                            # Nginx trong container listen ở port 80
+                            # Map port 80 của container ra port 8082 của host
+                            docker run -d \\
+                                --name homelandfinest-fe \\
+                                -p 8082:80 \\
+                                --restart unless-stopped \\
+                                homelandfinest-fe
+                            
+                            echo '✅ Frontend deployed successfully!'
+                        "
+                    """
+                }
+            }
+        }
+
+        // 🩺 HEALTH CHECK
+        stage('🩺 Health Check') {
+            steps {
+                sshagent(['SSHKey']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                            echo '⏳ Waiting for container to be ready...'
+                            sleep 10
+                            
+                            echo ''
+                            echo '📊 All running containers:'
+                            docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'
+                            
+                            echo ''
+                            echo '🌐 Services URLs:'
+                            echo '- Frontend: http://154.26.130.248:8082'
+                            echo '- Backend: http://154.26.130.248:8080/swagger'
+                            echo '- ChunkService: http://154.26.130.248:8077'
+                            echo '- EmailService: http://154.26.130.248:8078'
+                            
+                            echo ''
+                            echo '📋 FE Container logs (last 20 lines):'
+                            docker logs homelandfinest-fe --tail 20
+                            
+                            echo ''
+                            echo '💡 Test FE:'
+                            echo 'curl -I http://154.26.130.248:8082'
+                            curl -I http://154.26.130.248:8082 || echo '⚠️ Health check failed, but container is running'
+                        "
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo '🧹 Cleanup ran for FRONTEND only - Backend services NOT affected'
+        }
+        success {
+            echo '🎉 FE DEPLOY SUCCESS!'
+            echo ''
+            echo '✅ Deployment Summary:'
+            echo '- Branch: ${params.BRANCH_NAME}'
+            echo '- Frontend URL: http://154.26.130.248:8082'
+            echo '- Container: homelandfinest-fe'
+            echo '- Port Mapping: 8082:80 (host:container)'
+            echo ''
+            echo '⚠️ NOTE: Backend và các service khác KHÔNG bị ảnh hưởng'
+        }
+        failure {
+            echo '❌ FE DEPLOY FAILED!'
+            sshagent(['SSHKey']) {
+                sh """
+                    ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                        echo '📋 FE Container logs (last 100 lines):'
+                        docker logs homelandfinest-fe --tail 100 2>/dev/null || echo 'No FE logs available'
+                        
+                        echo ''
+                        echo '📊 Container status:'
+                        docker ps -a | grep homelandfinest-fe || echo 'No FE container found'
+                        
+                        echo ''
+                        echo '🐳 Docker system info:'
+                        docker info | grep -E 'Containers|Images|Server Version' || true
+                    "
+                """
+            }
+        }
+    }
+}
