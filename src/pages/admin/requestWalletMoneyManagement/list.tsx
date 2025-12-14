@@ -13,7 +13,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ArrowDownLeft,
-  EllipsisVertical
+  EllipsisVertical,
+  Info
 } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
@@ -23,8 +24,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
 import { Badge } from '../../../components/ui/badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../../components/ui/tooltip'
 import { getRequestWalletMoney, updateRequestWalletMoney } from '../../../apis/requestWalletMoney.api'
-import { getWalletBalance, withdrawal, getWalletTransactions, depositMoney } from '../../../apis/wallet.api'
+import { getWalletBalance, withdrawal, getWalletTransactions } from '../../../apis/wallet.api'
 import { getOrderDetail } from '../../../apis/order.api'
 import { getAdminKpi } from '../../../apis/walletDashboard.api'
 import type { AdminDashboardKpiDTO } from '../../../apis/walletDashboard.api'
@@ -39,7 +41,7 @@ import Pagination from '../../../components/Pagination/Pagination'
 function RequestWalletMoneyManagement() {
 
   const [searchText, setSearchText] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'Withdrawal' | 'Refund' | 'Deposit'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'Withdrawal' | 'Refund'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'Pending' | 'Completed' | 'Cancel'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedRequest, setSelectedRequest] = useState<RequestWalletMoney | null>(null)
@@ -59,9 +61,6 @@ function RequestWalletMoneyManagement() {
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false)
-  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
-  const [depositAmount, setDepositAmount] = useState('')
-  const [isSubmittingDeposit, setIsSubmittingDeposit] = useState(false)
   const [walletTransactions, setWalletTransactions] = useState<WalletTransactionDTO[]>([])
   const [loadingTransactions, setLoadingTransactions] = useState(false)
   const [transactionPage, setTransactionPage] = useState(1)
@@ -71,6 +70,7 @@ function RequestWalletMoneyManagement() {
   const [isTransactionDetailModalOpen, setIsTransactionDetailModalOpen] = useState(false)
   const [kpiData, setKpiData] = useState<AdminDashboardKpiDTO | null>(null)
   const [loadingKpi, setLoadingKpi] = useState(false)
+  const [hoveredIcon, setHoveredIcon] = useState<string | null>(null)
 
   // Thống kê (tạm thời chưa dùng)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -252,40 +252,6 @@ function RequestWalletMoneyManagement() {
     }
   }
 
-  const handleCreateDeposit = async () => {
-    if (!depositAmount) return
-
-    const amountNumber = Number(depositAmount)
-    if (Number.isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Lỗi', 'Số tiền không hợp lệ')
-      return
-    }
-
-    const minAmount = 10000
-    if (amountNumber < minAmount) {
-      toast.error('Lỗi', `Số tiền nạp tối thiểu là ${minAmount.toLocaleString('vi-VN')} đ`)
-      return
-    }
-
-    try {
-      setIsSubmittingDeposit(true)
-      const response = await depositMoney(amountNumber)
-      toast.success('Thành công', response.message || `Đã nạp tiền thành công ${amountNumber.toLocaleString('vi-VN')} đ`)
-      setIsDepositModalOpen(false)
-      setDepositAmount('')
-      fetchWalletInfo()
-      fetchWalletTransactions()
-    } catch (err: unknown) {
-      console.error('Error depositing money:', err)
-      const errorMessage =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        (err as { message?: string })?.message ||
-        'Không thể nạp tiền'
-      toast.error('Lỗi', errorMessage)
-    } finally {
-      setIsSubmittingDeposit(false)
-    }
-  }
 
   // Filter và search requests ở frontend
   useEffect(() => {
@@ -501,14 +467,6 @@ function RequestWalletMoneyManagement() {
         bgColor: 'bg-blue-50'
       }
     }
-    if (type === 'Deposit') {
-      return {
-        text: 'Nạp tiền',
-        icon: ArrowDownLeft,
-        color: 'text-green-600',
-        bgColor: 'bg-green-50'
-      }
-    }
     return {
       text: 'Hoàn tiền',
       icon: ArrowDownRight,
@@ -559,7 +517,6 @@ function RequestWalletMoneyManagement() {
     // BALANCE TRANSACTIONS - MONEY IN (Green)
     // ─────────────────────────────────────────────────────
     const moneyInTypes = [
-      'Deposit',                          // Nạp tiền
       'Refund',                           // Hoàn tiền (customer)
       'RefundToCustomer',                 // Hoàn tiền cho khách (system)
       'CommissionReceived',               // Nhận trả nợ (system)
@@ -743,19 +700,11 @@ function RequestWalletMoneyManagement() {
         className='flex flex-col md:flex-row md:items-center md:justify-between gap-3'
       >
         <div>
-          <h1 className='text-xl md:text-2xl font-bold text-gray-900'>Quản lý tiền vào tiền ra</h1>
-          <p className='text-gray-600 mt-1 text-sm md:text-base'>Theo dõi và xử lý các yêu cầu rút tiền, hoàn tiền</p>
+          <h1 className='text-xl md:text-2xl font-bold text-gray-900'>Duyệt yêu cầu rút tiền, hoàn tiền</h1>
+          <p className='text-gray-600 mt-1 text-sm md:text-base'>Các giao dịch cần được xác nhận trước khi tiền được chuyển</p>
         </div>
 
         <div className='flex-shrink-0 flex gap-2'>
-          <Button
-            size='sm'
-            className='mt-0 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded shadow-sm'
-            onClick={() => setIsDepositModalOpen(true)}
-            aria-label='Nạp tiền'
-          >
-            Nạp tiền
-          </Button>
           <Button
             size='sm'
             className='mt-0 md:mt-0 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded shadow-sm'
@@ -790,14 +739,29 @@ function RequestWalletMoneyManagement() {
               <CardContent className='p-4 md:p-6'>
                 <div className='flex items-center justify-between'>
                   <div>
-                    <p className='text-xs md:text-sm text-gray-600 mb-1'>Tổng số dư khả dụng</p>
+                    <p className='text-xs md:text-sm text-gray-600 mb-1'>Số dư khả dụng</p>
                     <p className='text-xl md:text-2xl font-bold text-emerald-600'>
                       {kpiData.totalAvailableBalance.toLocaleString('vi-VN')}
                     </p>
                   </div>
-                  <div className='w-10 h-10 md:w-12 md:h-12 bg-emerald-100 rounded-lg flex items-center justify-center'>
-                    <Wallet className='w-5 h-5 md:w-6 md:h-6 text-emerald-600' />
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className='w-10 h-10 md:w-12 md:h-12 bg-emerald-100 rounded-lg flex items-center justify-center cursor-help transition-all'
+                        onMouseEnter={() => setHoveredIcon('wallet')}
+                        onMouseLeave={() => setHoveredIcon(null)}
+                      >
+                        {hoveredIcon === 'wallet' ? (
+                          <Info className='w-5 h-5 md:w-6 md:h-6 text-emerald-600' />
+                        ) : (
+                          <Wallet className='w-5 h-5 md:w-6 md:h-6 text-emerald-600' />
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className='max-w-xs'>Tiền khả dụng hiện tại của hệ thống</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </CardContent>
             </Card>
@@ -817,9 +781,24 @@ function RequestWalletMoneyManagement() {
                       {kpiData.pendingRequestCount.toLocaleString('vi-VN')}
                     </p>
                   </div>
-                  <div className='w-10 h-10 md:w-12 md:h-12 bg-orange-100 rounded-lg flex items-center justify-center'>
-                    <Clock className='w-5 h-5 md:w-6 md:h-6 text-orange-600' />
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className='w-10 h-10 md:w-12 md:h-12 bg-orange-100 rounded-lg flex items-center justify-center cursor-help transition-all'
+                        onMouseEnter={() => setHoveredIcon('clock')}
+                        onMouseLeave={() => setHoveredIcon(null)}
+                      >
+                        {hoveredIcon === 'clock' ? (
+                          <Info className='w-5 h-5 md:w-6 md:h-6 text-orange-600' />
+                        ) : (
+                          <Clock className='w-5 h-5 md:w-6 md:h-6 text-orange-600' />
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className='max-w-xs'>Số yêu cầu đang chờ được duyệt rút tiền của các người bán</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </CardContent>
             </Card>
@@ -834,14 +813,29 @@ function RequestWalletMoneyManagement() {
               <CardContent className='p-4 md:p-6'>
                 <div className='flex items-center justify-between'>
                   <div>
-                    <p className='text-xs md:text-sm text-gray-600 mb-1'>Đang xử lý ngân hàng</p>
+                    <p className='text-xs md:text-sm text-gray-600 mb-1'>Đang xử lý</p>
                     <p className='text-xl md:text-2xl font-bold text-blue-600'>
                       {kpiData.processingBankAmount.toLocaleString('vi-VN')}
                     </p>
                   </div>
-                  <div className='w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-lg flex items-center justify-center'>
-                    <ArrowDownRight className='w-5 h-5 md:w-6 md:h-6 text-blue-600' />
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className='w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-lg flex items-center justify-center cursor-help transition-all'
+                        onMouseEnter={() => setHoveredIcon('arrowDownRight')}
+                        onMouseLeave={() => setHoveredIcon(null)}
+                      >
+                        {hoveredIcon === 'arrowDownRight' ? (
+                          <Info className='w-5 h-5 md:w-6 md:h-6 text-blue-600' />
+                        ) : (
+                          <ArrowDownRight className='w-5 h-5 md:w-6 md:h-6 text-blue-600' />
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className='max-w-xs'>Số tiền đang chờ trả cho người bán</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </CardContent>
             </Card>
@@ -861,9 +855,24 @@ function RequestWalletMoneyManagement() {
                       {kpiData.totalDebtReceivable.toLocaleString('vi-VN')}
                     </p>
                   </div>
-                  <div className='w-10 h-10 md:w-12 md:h-12 bg-red-100 rounded-lg flex items-center justify-center'>
-                    <ArrowDownLeft className='w-5 h-5 md:w-6 md:h-6 text-red-600' />
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className='w-10 h-10 md:w-12 md:h-12 bg-red-100 rounded-lg flex items-center justify-center cursor-help transition-all'
+                        onMouseEnter={() => setHoveredIcon('arrowDownLeft')}
+                        onMouseLeave={() => setHoveredIcon(null)}
+                      >
+                        {hoveredIcon === 'arrowDownLeft' ? (
+                          <Info className='w-5 h-5 md:w-6 md:h-6 text-red-600' />
+                        ) : (
+                          <ArrowDownLeft className='w-5 h-5 md:w-6 md:h-6 text-red-600' />
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className='max-w-xs'>Số tổng tiền nợ của các người bán trên hệ thống</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </CardContent>
             </Card>
@@ -883,9 +892,24 @@ function RequestWalletMoneyManagement() {
                       {kpiData.totalDisbursed.toLocaleString('vi-VN')}
                     </p>
                   </div>
-                  <div className='w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center'>
-                    <CheckCircle className='w-5 h-5 md:w-6 md:h-6 text-green-600' />
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className='w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center cursor-help transition-all'
+                        onMouseEnter={() => setHoveredIcon('checkCircle')}
+                        onMouseLeave={() => setHoveredIcon(null)}
+                      >
+                        {hoveredIcon === 'checkCircle' ? (
+                          <Info className='w-5 h-5 md:w-6 md:h-6 text-green-600' />
+                        ) : (
+                          <CheckCircle className='w-5 h-5 md:w-6 md:h-6 text-green-600' />
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className='max-w-xs'>Số tiền đã trả cho người bán</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </CardContent>
             </Card>
@@ -1048,7 +1072,7 @@ function RequestWalletMoneyManagement() {
 
               <Select
                 value={typeFilter}
-                onValueChange={(value: 'all' | 'Withdrawal' | 'Refund' | 'Deposit') => setTypeFilter(value)}
+                onValueChange={(value: 'all' | 'Withdrawal' | 'Refund') => setTypeFilter(value)}
               >
                 <SelectTrigger className='w-full md:w-48 h-10 border-gray-200 text-sm'>
                   <SelectValue placeholder='Loại yêu cầu' />
@@ -1056,7 +1080,6 @@ function RequestWalletMoneyManagement() {
                 <SelectContent>
                   <SelectItem value='all'>Tất cả loại</SelectItem>
                   <SelectItem value='Withdrawal'>Rút tiền</SelectItem>
-                  <SelectItem value='Deposit'>Nạp tiền</SelectItem>
                   <SelectItem value='Refund'>Hoàn tiền</SelectItem>
                 </SelectContent>
               </Select>
@@ -1096,7 +1119,7 @@ function RequestWalletMoneyManagement() {
             {/* Table Header */}
             <div className='px-4 md:px-6 py-4 border-b border-gray-200'>
               <h2 className='text-lg md:text-xl font-bold text-gray-900'>Lịch sử dòng tiền</h2>
-              <p className='text-gray-600 text-sm mt-1'>Quản lý và xử lý các yêu cầu rút tiền, hoàn tiền, nạp tiền từ người dùng</p>
+              <p className='text-gray-600 text-sm mt-1'>Quản lý và xử lý các yêu cầu rút tiền, hoàn tiền từ người dùng</p>
             </div>
 
             {error && (
@@ -1383,85 +1406,6 @@ function RequestWalletMoneyManagement() {
                 </>
               ) : (
                 'Xác nhận tạo yêu cầu'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Deposit Modal */}
-      <Dialog
-        open={isDepositModalOpen}
-        onOpenChange={(open) => {
-          setIsDepositModalOpen(open)
-          if (!open) {
-            setDepositAmount('')
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nạp tiền vào ví</DialogTitle>
-          </DialogHeader>
-          <div className='space-y-4 mt-2'>
-            <div>
-              <p className='text-sm text-gray-600 mb-1'>
-                Số dư hiện tại:{' '}
-                <span className='font-semibold text-emerald-600'>
-                  {walletData ? `${walletData.availableBalance.toLocaleString('vi-VN')} ` : '--'}
-                </span>
-              </p>
-              <Input
-                type='number'
-                min={10000}
-                step='1000'
-                placeholder='Nhập số tiền muốn nạp'
-                value={depositAmount}
-                onChange={(e) => {
-                  const value = e.target.value
-                  if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
-                    setDepositAmount(value)
-                  }
-                }}
-              />
-              <p className='text-xs text-gray-500 mt-1'>Số tiền tối thiểu 10.000 đ</p>
-              {depositAmount && parseFloat(depositAmount) > 0 && (
-                <div className='mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200'>
-                  <div className='flex justify-between items-center'>
-                    <span className='text-sm text-gray-700'>Số dư sau khi nạp:</span>
-                    <span className='text-lg font-bold text-blue-600'>
-                      {walletData
-                        ? `${(walletData.availableBalance + parseFloat(depositAmount)).toLocaleString('vi-VN')} `
-                        : '--'}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant='outline'
-              onClick={() => {
-                setIsDepositModalOpen(false)
-                setDepositAmount('')
-              }}
-              disabled={isSubmittingDeposit}
-            >
-              Hủy
-            </Button>
-            <Button
-              onClick={handleCreateDeposit}
-              disabled={!depositAmount || isSubmittingDeposit || parseFloat(depositAmount) < 10000}
-              className='bg-blue-600 hover:bg-blue-700'
-            >
-              {isSubmittingDeposit ? (
-                <>
-                  <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                  Đang nạp...
-                </>
-              ) : (
-                'Xác nhận nạp tiền'
               )}
             </Button>
           </DialogFooter>

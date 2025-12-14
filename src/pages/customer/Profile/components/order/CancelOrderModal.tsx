@@ -131,7 +131,7 @@ export default function CancelOrderModal({
                       value={reason}
                       checked={selectedReason === reason}
                       onChange={(e) => setSelectedReason(e.target.value)}
-                      className='mt-1 h-4 w-4 text-red-600 border-gray-300 focus:ring-red-500 focus:ring-2'
+                      className='mt-1 h-4 w-4 border-gray-300 focus:ring-red-500 focus:ring-2'
                       disabled={isLoading}
                     />
                     <Label htmlFor={`reason-${index}`} className='text-sm mb-1 leading-5 cursor-pointer font-normal'>

@@ -96,8 +96,9 @@ export const path = {
   SELLER_MANAGEMENT_ADMIN: 'sellerManagement', //đang phát triển
   STAFF_MANAGEMENT_ADMIN: 'staffManagement', //đang phát triển
   TERMS_MANAGEMENT_ADMIN: 'termsManagement',
-  TRANSACTION_MANAGEMENT_ADMIN: 'transactionManagement',
+  TRANSACTION_MANAGEMENT_ADMIN: 'ManagementTransaction',
   REQUEST_WALLET_MONEY_MANAGEMENT_ADMIN: 'requestWalletMoneyManagement',
+  GIAO_DICH_ADMIN: 'transactionManagement',
   BLOG_MANAGEMENT_ADMIN: 'blogManagement',
   BLOG_CATEGORY_DETAIL: '/admin/blogManagement/detail/:id',
   SYSTEM_STORAGE_ADMIN: 'systemStorage',

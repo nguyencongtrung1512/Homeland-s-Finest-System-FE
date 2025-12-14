@@ -851,10 +851,10 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
       <div key={node.id} className='select-none'>
         <div
           className={`flex items-center gap-2 p-2.5 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer group ${isSelected
-              ? 'bg-green-50 border border-green-200 shadow-sm'
-              : matchesSearch
-                ? 'bg-yellow-50 border border-yellow-200'
-                : 'border border-transparent'
+            ? 'bg-green-50 border border-green-200 shadow-sm'
+            : matchesSearch
+              ? 'bg-yellow-50 border border-yellow-200'
+              : 'border border-transparent'
             }`}
           style={{ paddingLeft: `${level * 24 + 12}px` }}
           onClick={() => {
@@ -911,10 +911,10 @@ export default function ModalEditProduct({ open, onOpenChange, product, onSucces
             <div className='flex items-center gap-2'>
               <span
                 className={`font-medium text-sm ${isSelected
-                    ? 'text-green-900'
-                    : matchesSearch
-                      ? 'text-yellow-900 font-semibold'
-                      : 'text-gray-900'
+                  ? 'text-green-900'
+                  : matchesSearch
+                    ? 'text-yellow-900 font-semibold'
+                    : 'text-gray-900'
                   }`}
               >
                 {node.name}

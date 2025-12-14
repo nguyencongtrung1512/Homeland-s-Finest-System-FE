@@ -42,7 +42,7 @@ import StoreManagement from './pages/admin/storeManagerment/list'
 import CustomerManagement from './pages/admin/accountManagerment/list'
 import TermsManagement from './pages/admin/terms/list'
 import TransactionManagementAdmin from './pages/admin/transactionManager/transactionManager'
-import RequestWalletMoneyManagement from './pages/admin/requestWalletMoneyManagement/list'
+import GiaoDich from './pages/admin/giaoDich/giaoDich'
 import { AdminPromotionList, AdminPromotionStats } from './pages/admin/promotionManagerment'
 import OrderManagementStaff from './pages/staff/orderManager/list'
 import OrderDetailStaff from './pages/staff/orderManager/detail'
@@ -463,8 +463,8 @@ export default function useRouteElements() {
               element: <TransactionManagementAdmin />
             },
             {
-              path: path.REQUEST_WALLET_MONEY_MANAGEMENT_ADMIN,
-              element: <RequestWalletMoneyManagement />
+              path: path.GIAO_DICH_ADMIN,
+              element: <GiaoDich />
             },
             {
               path: path.BLOG_MANAGEMENT_ADMIN,

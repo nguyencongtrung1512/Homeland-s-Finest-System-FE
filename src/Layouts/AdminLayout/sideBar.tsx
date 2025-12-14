@@ -54,14 +54,9 @@ function SideBar({ isCollapsed }: SideBarProps) {
       icon: <Package size={18} />
     },
     {
-      key: path.TRANSACTION_MANAGEMENT_ADMIN,
-      label: 'Quản lý giao dịch',
+      key: path.GIAO_DICH_ADMIN,
+      label: 'Giao dịch',
       icon: <CreditCard size={18} />
-    },
-    {
-      key: path.REQUEST_WALLET_MONEY_MANAGEMENT_ADMIN,
-      label: 'Yêu cầu rút tiền & hoàn tiền',
-      icon: <Wallet size={18} />
     },
     {
       key: path.PROMOTION_MANAGEMENT_ADMIN,
