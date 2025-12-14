@@ -68,6 +68,43 @@ pipeline {
             }
         }
 
+        // 📝 CREATE .ENV FILE
+        stage('📝 Create .env File') {
+            steps {
+                sshagent(['SSHKey']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                            set -e
+                            echo '📝 Creating .env file...'
+                            
+                            cd ~/HomeLandFinest/HomelandFinestFE
+                            
+                            # Xóa .env cũ (nếu là thư mục hoặc file)
+                            rm -rf .env
+                            
+                            # Tạo file .env với environment variables
+                            cat > .env << 'EOF'
+VITE_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoidHJ1bmd0cnVuIiwiYSI6ImNtZXY0d2x3aTBlejcycW9uYWpnd29oOGEifQ.jlLw7gq49Xel1U7_jyD7WQ
+VITE_GHN_API_URL=https://online-gateway.ghn.vn/shiip/public-api
+VITE_GHN_TOKEN=7c94ceb5-9f5b-11f0-b747-8e1cf228f24a
+VITE_FPT_AI_API_KEY=4xBGv6jKlB6O4zhKsDViOHCdUWN7hTRe
+VITE_FPT_AI_OCR_URL=https://api.fpt.ai/vision/idr/vnm
+VITE_API_URL=http://154.26.130.248:8080/api
+VITE_CHAT_API_URL=http://154.26.130.248:8080
+VITE_API_SERVER=http://localhost:5219/api
+VITE_API_VIETQR=https://api.vietqr.io/v2/banks
+VITE_NEXTJS_HOMEPAGE_URL=https://homeland-finest-homepage.vercel.app
+EOF
+                            
+                            echo '✅ .env file created successfully!'
+                            echo '📋 Content:'
+                            cat .env
+                        "
+                    """
+                }
+            }
+        }
+
         // 🏗️ BUILD DOCKER IMAGE
         stage('🏗️ Build FE Image') {
             steps {
