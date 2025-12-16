@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MessageCircle,
@@ -155,7 +155,6 @@ const getDateKey = (timestamp: string | Date): string => {
   return `${year}-${month}-${day}`
 }
 
-
 const ChatSystem: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -195,50 +194,50 @@ const ChatSystem: React.FC = () => {
   const MESSAGES_PER_PAGE = 20
 
   // Load chat rooms từ API
-  useEffect(() => {
-    const loadChatRooms = async () => {
-      if (!user?.userId || !isOpen || activeTab !== 'seller') return
+  const loadChatRooms = useCallback(async () => {
+    if (!user?.userId || !isOpen || activeTab !== 'seller') return
 
-      try {
-        setLoadingRooms(true)
-        const response = await getAllChatRoomsByUserId(user.userId)
+    try {
+      setLoadingRooms(true)
+      const response = await getAllChatRoomsByUserId(user.userId)
 
-        const mappedConversations: Conversation[] = response.data.map((room: ChatRoomData) => {
-          // Xác định tên và avatar dựa trên role của user hiện tại
-          const isCustomer = user.userId === room.customerId
-          
-          // Ưu tiên storeName nếu có, nếu không thì dùng sellerName hoặc customername
-          let otherName: string
-          if (isCustomer) {
-            // Nếu là customer, hiển thị storeName hoặc sellerName
-            otherName = room.storeName || room.sellerName || 'Cửa hàng'
-          } else {
-            // Nếu là seller, hiển thị customername
-            otherName = room.customername || 'Khách hàng'
-          }
+      const mappedConversations: Conversation[] = response.data.map((room: ChatRoomData) => {
+        // Xác định tên và avatar dựa trên role của user hiện tại
+        const isCustomer = user.userId === room.customerId
 
-          return {
-            id: room.id,
-            name: otherName,
-            avatar: '🏪',
-            lastMessage: '',
-            online: false,
-            sellerId: room.sellerId,
-            customerId: room.customerId,
-            storeId: room.sellerId // Dùng sellerId làm storeId
-          }
-        })
+        // Ưu tiên storeName nếu có, nếu không thì dùng sellerName hoặc customername
+        let otherName: string
+        if (isCustomer) {
+          // Nếu là customer, hiển thị storeName hoặc sellerName
+          otherName = room.storeName || room.sellerName || 'Cửa hàng'
+        } else {
+          // Nếu là seller, hiển thị customername
+          otherName = room.customername || 'Khách hàng'
+        }
 
-        setConversations(mappedConversations)
-      } catch (error) {
-        console.error('Error loading chat rooms:', error)
-      } finally {
-        setLoadingRooms(false)
-      }
+        return {
+          id: room.id,
+          name: otherName,
+          avatar: '🏪',
+          lastMessage: '',
+          online: false,
+          sellerId: room.sellerId,
+          customerId: room.customerId,
+          storeId: room.sellerId // Dùng sellerId làm storeId
+        }
+      })
+
+      setConversations(mappedConversations)
+    } catch (error) {
+      console.error('Error loading chat rooms:', error)
+    } finally {
+      setLoadingRooms(false)
     }
-
-    loadChatRooms()
   }, [user?.userId, isOpen, activeTab])
+
+  useEffect(() => {
+    loadChatRooms()
+  }, [loadChatRooms])
 
   // Kết nối SignalR khi mở chat
   useEffect(() => {
@@ -260,13 +259,11 @@ const ChatSystem: React.FC = () => {
 
       try {
         // Lấy sellerId từ storeId
-        console.log('[chatSystem] Getting sellerId from storeId:', selectedStoreId)
         const storeResponse = await storeApi.getStoreById(selectedStoreId)
 
         let sellerId: string | null = null
         if (storeResponse?.data?.sellerId) {
           sellerId = storeResponse.data.sellerId
-          console.log('[chatSystem] Found sellerId:', sellerId)
         } else {
           console.error('[chatSystem] Could not find sellerId in store response:', storeResponse)
           // Nếu không tìm thấy sellerId, thử dùng selectedStoreId như sellerId (fallback)
@@ -279,39 +276,30 @@ const ChatSystem: React.FC = () => {
           return
         }
 
-        // Tìm conversation đã tồn tại
-        const existingConv = conversations.find((conv) => conv.sellerId === sellerId)
+        // ✅ FIX: Kiểm tra conversation đã tồn tại bằng cách đọc state hiện tại
+        // Sử dụng functional update để đảm bảo đọc state mới nhất
+        let existingConv: Conversation | undefined
+        setConversations((prevConversations) => {
+          existingConv = prevConversations.find((conv) => conv.sellerId === sellerId)
+          return prevConversations // Không thay đổi state ở đây
+        })
 
         if (existingConv) {
+          // Conversation đã tồn tại, chỉ cần select nó
           setSelectedConversation(existingConv.id)
           setActiveTab('seller')
         } else {
-          // Tạo chat room mới với sellerId đúng
-          console.log('[chatSystem] Creating new chat room:', {
-            sellerId: sellerId,
-            customerId: user.userId,
-            storeId: selectedStoreId
-          })
-
+          // Conversation chưa tồn tại, tạo mới
           const response = await createOrGetChatRoom({
             sellerId: sellerId,
             customerId: user.userId
           })
 
-          console.log('[chatSystem] Chat room created successfully:', response)
+          // ✅ FIX: Sau khi tạo room thành công, reload lại danh sách từ API để tránh duplicate
+          // Điều này đảm bảo sync với server và tránh race condition
+          await loadChatRooms()
 
-          const newConversation: Conversation = {
-            id: response.data.id,
-            name: selectedStoreName || response.data.storeName || response.data.sellerName || 'Cửa hàng',
-            avatar: '🏪',
-            lastMessage: 'Bắt đầu cuộc trò chuyện',
-            online: false,
-            sellerId: response.data.sellerId,
-            customerId: response.data.customerId,
-            storeId: selectedStoreId // Lưu storeId gốc
-          }
-
-          setConversations((prev) => [...prev, newConversation])
+          // Sau khi reload, select conversation vừa tạo bằng roomId từ response
           setSelectedConversation(response.data.id)
           setActiveTab('seller')
         }
@@ -334,15 +322,13 @@ const ChatSystem: React.FC = () => {
           const errorWithMessage = error as { message: string }
           console.error('[chatSystem] Error message:', errorWithMessage.message)
         }
-
-        // Hiển thị thông báo lỗi cho user nếu cần
-        // Có thể thêm toast notification ở đây
       }
     }
 
     handleStoreSelection()
+    // ✅ FIX: Loại bỏ conversations khỏi dependency array để tránh infinite loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId, isOpen, user?.userId, selectedStoreName, conversations])
+  }, [selectedStoreId, isOpen, user?.userId, selectedStoreName, loadChatRooms])
 
   // Load messages khi chọn conversation
   useEffect(() => {
@@ -431,13 +417,13 @@ const ChatSystem: React.FC = () => {
         })
 
         // Chuyển Map thành Array và sort theo timestamp (oldest first)
-        const mappedMessages: Message[] = Array.from(messageMap.values()).sort(
-          (a, b) => {
-            const timeA = typeof a.timestamp === 'string' ? parseVietnameseTimestamp(a.timestamp).getTime() : a.timestamp.getTime()
-            const timeB = typeof b.timestamp === 'string' ? parseVietnameseTimestamp(b.timestamp).getTime() : b.timestamp.getTime()
-            return timeA - timeB
-          }
-        )
+        const mappedMessages: Message[] = Array.from(messageMap.values()).sort((a, b) => {
+          const timeA =
+            typeof a.timestamp === 'string' ? parseVietnameseTimestamp(a.timestamp).getTime() : a.timestamp.getTime()
+          const timeB =
+            typeof b.timestamp === 'string' ? parseVietnameseTimestamp(b.timestamp).getTime() : b.timestamp.getTime()
+          return timeA - timeB
+        })
 
         // Store all messages
         setAllMessages((prev) => ({
@@ -598,8 +584,14 @@ const ChatSystem: React.FC = () => {
             if (!existsInAll) {
               // Insert in sorted order (by timestamp)
               const sorted = [...allMsgs, newMessage].sort((a, b) => {
-                const timeA = typeof a.timestamp === 'string' ? parseVietnameseTimestamp(a.timestamp).getTime() : a.timestamp.getTime()
-                const timeB = typeof b.timestamp === 'string' ? parseVietnameseTimestamp(b.timestamp).getTime() : b.timestamp.getTime()
+                const timeA =
+                  typeof a.timestamp === 'string'
+                    ? parseVietnameseTimestamp(a.timestamp).getTime()
+                    : a.timestamp.getTime()
+                const timeB =
+                  typeof b.timestamp === 'string'
+                    ? parseVietnameseTimestamp(b.timestamp).getTime()
+                    : b.timestamp.getTime()
                 return timeA - timeB
               })
               return {
@@ -644,7 +636,7 @@ const ChatSystem: React.FC = () => {
     }
   }, [currentRoomId, user?.userId])
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (messagesContainerRef.current && selectedConversation) {
       // Scroll to bottom (newest messages)
       setTimeout(() => {
@@ -656,11 +648,11 @@ const ChatSystem: React.FC = () => {
       // For AI chat tab, use scrollIntoView
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }
+  }, [selectedConversation])
 
   useEffect(() => {
     scrollToBottom()
-  }, [aiMessages, sellerMessages, selectedConversation])
+  }, [aiMessages, sellerMessages, selectedConversation, scrollToBottom])
 
   const handleSendAIMessage = async () => {
     if (!inputValue.trim()) return
@@ -844,8 +836,14 @@ const ChatSystem: React.FC = () => {
                 })
 
                 const mappedMessages: Message[] = Array.from(messageMap.values()).sort((a, b) => {
-                  const timeA = typeof a.timestamp === 'string' ? parseVietnameseTimestamp(a.timestamp).getTime() : a.timestamp.getTime()
-                  const timeB = typeof b.timestamp === 'string' ? parseVietnameseTimestamp(b.timestamp).getTime() : b.timestamp.getTime()
+                  const timeA =
+                    typeof a.timestamp === 'string'
+                      ? parseVietnameseTimestamp(a.timestamp).getTime()
+                      : a.timestamp.getTime()
+                  const timeB =
+                    typeof b.timestamp === 'string'
+                      ? parseVietnameseTimestamp(b.timestamp).getTime()
+                      : b.timestamp.getTime()
                   return timeA - timeB
                 })
 
@@ -901,9 +899,17 @@ const ChatSystem: React.FC = () => {
     }
   }
 
-  const handleBackToList = () => {
+  const handleBackToList = async () => {
     setSelectedConversation(null)
     setSelectedStoreId(null)
+    // ✅ FIX: Reload danh sách rooms khi back về để đảm bảo sync với server
+    // Điều này giúp loại bỏ duplicate nếu có
+    await loadChatRooms()
+  }
+
+  // Reload chat rooms khi click vào header
+  const handleReloadRooms = async () => {
+    await loadChatRooms()
   }
 
   // Load more messages when scrolling up
@@ -981,15 +987,18 @@ const ChatSystem: React.FC = () => {
   const currentSellerMessages = selectedConversation ? sellerMessages[selectedConversation] || [] : []
 
   // Group messages by date for date headers
-  const messagesByDate = currentSellerMessages.reduce((acc, msg) => {
-    const timestamp = typeof msg.timestamp === 'string' ? msg.timestamp : msg.timestamp.toISOString()
-    const dateKey = getDateKey(timestamp)
-    if (!acc[dateKey]) {
-      acc[dateKey] = []
-    }
-    acc[dateKey].push(msg)
-    return acc
-  }, {} as Record<string, Message[]>)
+  const messagesByDate = currentSellerMessages.reduce(
+    (acc, msg) => {
+      const timestamp = typeof msg.timestamp === 'string' ? msg.timestamp : msg.timestamp.toISOString()
+      const dateKey = getDateKey(timestamp)
+      if (!acc[dateKey]) {
+        acc[dateKey] = []
+      }
+      acc[dateKey].push(msg)
+      return acc
+    },
+    {} as Record<string, Message[]>
+  )
   const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unread || 0), 0)
 
   return (
@@ -1210,7 +1219,10 @@ const ChatSystem: React.FC = () => {
                           }
 
                           return (
-                            <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
+                            <div
+                              key={message.id}
+                              className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+                            >
                               <div
                                 className={`max-w-[95%] sm:max-w-[90%] md:max-w-[80%] rounded-lg px-4 py-3 ${message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
                                   }`}
@@ -1228,48 +1240,53 @@ const ChatSystem: React.FC = () => {
                                   </div>
 
                                   {/* Hiển thị recommended products dạng list */}
-                                  {!message.isUser && message.recommendedProducts && message.recommendedProducts.length > 0 && (
-                                    <div className='mt-2 bg-white rounded-lg border border-gray-200 overflow-hidden'>
-                                      <div className='max-h-[300px] overflow-y-auto'>
-                                        <div className='divide-y divide-gray-100'>
-                                          {message.recommendedProducts.map((product, index) => (
-                                            <motion.div
-                                              key={product.productId}
-                                              initial={{ opacity: 0, x: -10 }}
-                                              animate={{ opacity: 1, x: 0 }}
-                                              transition={{ duration: 0.3, delay: index * 0.1 }}
-                                              className='p-3 hover:bg-gray-50 transition-colors cursor-pointer'
-                                              onClick={() => {
-                                                const productId = product.productId
-                                                navigate(path.productDetail.replace(':id', productId))
-                                              }}
-                                            >
-                                              <div className='flex gap-3 items-center'>
-                                                {product.imageUrl && (
-                                                  <img
-                                                    src={resolveImageUrl(product.imageUrl) || product.imageUrl}
-                                                    alt={product.productName}
-                                                    className='w-12 h-12 rounded-lg object-cover flex-shrink-0'
-                                                    onError={(e) => {
-                                                      const target = e.target as HTMLImageElement
-                                                      target.src = 'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
-                                                    }}
-                                                  />
-                                                )}
-                                                <div className='flex-1 min-w-0'>
-                                                  <h4 className='font-semibold text-sm text-gray-900 truncate'>{product.productName}</h4>
-                                                  <p className='text-green-600 font-bold text-xs mt-0.5'>
-                                                    {product.price.toLocaleString('vi-VN')}₫
-                                                  </p>
+                                  {!message.isUser &&
+                                    message.recommendedProducts &&
+                                    message.recommendedProducts.length > 0 && (
+                                      <div className='mt-2 bg-white rounded-lg border border-gray-200 overflow-hidden'>
+                                        <div className='max-h-[300px] overflow-y-auto'>
+                                          <div className='divide-y divide-gray-100'>
+                                            {message.recommendedProducts.map((product, index) => (
+                                              <motion.div
+                                                key={product.productId}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ duration: 0.3, delay: index * 0.1 }}
+                                                className='p-3 hover:bg-gray-50 transition-colors cursor-pointer'
+                                                onClick={() => {
+                                                  const productId = product.productId
+                                                  navigate(path.productDetail.replace(':id', productId))
+                                                }}
+                                              >
+                                                <div className='flex gap-3 items-center'>
+                                                  {product.imageUrl && (
+                                                    <img
+                                                      src={resolveImageUrl(product.imageUrl) || product.imageUrl}
+                                                      alt={product.productName}
+                                                      className='w-12 h-12 rounded-lg object-cover flex-shrink-0'
+                                                      onError={(e) => {
+                                                        const target = e.target as HTMLImageElement
+                                                        target.src =
+                                                          'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
+                                                      }}
+                                                    />
+                                                  )}
+                                                  <div className='flex-1 min-w-0'>
+                                                    <h4 className='font-semibold text-sm text-gray-900 truncate'>
+                                                      {product.productName}
+                                                    </h4>
+                                                    <p className='text-green-600 font-bold text-xs mt-0.5'>
+                                                      {product.price.toLocaleString('vi-VN')}₫
+                                                    </p>
+                                                  </div>
+                                                  <ExternalLink className='h-4 w-4 text-gray-400 flex-shrink-0' />
                                                 </div>
-                                                <ExternalLink className='h-4 w-4 text-gray-400 flex-shrink-0' />
-                                              </div>
-                                            </motion.div>
-                                          ))}
+                                              </motion.div>
+                                            ))}
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
-                                  )}
+                                    )}
                                 </div>
                               </div>
                             </div>
@@ -1388,10 +1405,18 @@ const ChatSystem: React.FC = () => {
                         >
                           <ArrowLeft className='h-5 w-5' />
                         </Button>
-                        <div className='h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-xl flex-shrink-0'>
+                        <div
+                          className='h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-xl flex-shrink-0 cursor-pointer hover:bg-green-200 transition-colors'
+                          onClick={handleReloadRooms}
+                          title='Tải lại danh sách phòng chat'
+                        >
                           {selectedConv?.avatar}
                         </div>
-                        <div className='flex-1 min-w-0'>
+                        <div
+                          className='flex-1 min-w-0 cursor-pointer hover:bg-gray-50 rounded px-2 py-1 -mx-2 transition-colors'
+                          onClick={handleReloadRooms}
+                          title='Tải lại danh sách phòng chat'
+                        >
                           <h3 className='font-semibold text-sm truncate'>{selectedConv?.name}</h3>
                           {selectedConv?.online && (
                             <p className='text-xs text-green-600 flex items-center gap-1'>
@@ -1482,7 +1507,8 @@ const ChatSystem: React.FC = () => {
 
                                   {/* Messages for this date */}
                                   {dateMessages.map((msg, msgIndex) => {
-                                    const msgTimestamp = typeof msg.timestamp === 'string' ? msg.timestamp : msg.timestamp.toISOString()
+                                    const msgTimestamp =
+                                      typeof msg.timestamp === 'string' ? msg.timestamp : msg.timestamp.toISOString()
                                     const isHovered = hoveredMessageId === msg.id
                                     const isOldMessage = loadingMore
 
@@ -1515,7 +1541,9 @@ const ChatSystem: React.FC = () => {
                                               <motion.div
                                                 key={`img-${msg.id}-${idx}`}
                                                 layout
-                                                initial={isOldMessage ? { opacity: 0 } : { opacity: 0, scale: 0.8, y: 10 }}
+                                                initial={
+                                                  isOldMessage ? { opacity: 0 } : { opacity: 0, scale: 0.8, y: 10 }
+                                                }
                                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                                 transition={
                                                   isOldMessage
@@ -1634,7 +1662,11 @@ const ChatSystem: React.FC = () => {
                                                   initial={{ opacity: 0, y: -5 }}
                                                   animate={{ opacity: 1, y: 0 }}
                                                   className={`absolute bottom-0 ${msg.isUser ? 'right-0' : 'left-0'} text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-sm border border-gray-200 whitespace-nowrap`}
-                                                  style={{ fontSize: '10px', lineHeight: '1', transform: 'translateY(100%)' }}
+                                                  style={{
+                                                    fontSize: '10px',
+                                                    lineHeight: '1',
+                                                    transform: 'translateY(100%)'
+                                                  }}
                                                 >
                                                   {formatTime(msgTimestamp)}
                                                 </motion.div>
