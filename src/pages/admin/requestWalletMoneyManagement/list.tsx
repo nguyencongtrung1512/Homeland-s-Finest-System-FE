@@ -959,7 +959,7 @@ function RequestWalletMoneyManagement() {
                 </SelectContent>
               </Select>
 
-              <Button className='h-10 px-4 md:px-6 bg-blue-600 hover:bg-blue-700' onClick={handleFilter}>
+              <Button variant='blue' className='h-10 px-4 md:px-6' onClick={handleFilter}>
                 <Filter size={16} className='mr-2' />
                 <span className='hidden md:inline'>Lọc</span>
               </Button>

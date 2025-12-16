@@ -238,7 +238,8 @@ const AssignStaffModal = ({ isOpen, onClose, formId, formSubject, onSuccess }: A
             <Button
               onClick={handleAssign}
               disabled={isAssigning || !selectedStaffId || loadingStaff}
-              className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
+              variant='blue'
+              className='flex-1'
             >
               {isAssigning ? (
                 <>

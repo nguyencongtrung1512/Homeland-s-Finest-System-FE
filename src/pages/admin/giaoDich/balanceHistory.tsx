@@ -141,10 +141,11 @@ function BalanceHistory() {
                       setPaymentMethodFilter(option.value as 'all' | 'COD' | 'WalletOrBanking' | 'Orther')
                       setTransactionPage(1)
                     }}
-                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${paymentMethodFilter === option.value
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-white text-gray-700 hover:bg-gray-100'
-                      }`}
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${
+                      paymentMethodFilter === option.value
+                        ? 'bg-[#38bdf8] text-white shadow-sm hover:bg-[#0ea5e9]'
+                        : 'bg-white text-gray-700 hover:bg-gray-100'
+                    }`}
                   >
                     {option.label}
                   </button>

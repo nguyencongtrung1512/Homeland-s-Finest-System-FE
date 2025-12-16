@@ -42,11 +42,30 @@ function StoreManagement() {
   const [error, setError] = useState<string | null>(null)
   const pageSize = 10
 
-  const convertStoreResponse = (apiStore: StoreResponse): Store => {
-    const formatDate = (dateString: string) => {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('vi-VN')
+  // Helper function to parse Vietnamese date format "HH:mm:ss DD/MM/YYYY" to Date object
+  const parseVietnameseDate = (dateString: string): Date => {
+    if (!dateString) return new Date()
+    
+    // Try to parse format "HH:mm:ss DD/MM/YYYY"
+    const match = dateString.match(/(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})/)
+    if (match) {
+      const [, hours, minutes, seconds, day, month, year] = match
+      return new Date(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1, // Month is 0-indexed
+        parseInt(day, 10),
+        parseInt(hours, 10),
+        parseInt(minutes, 10),
+        parseInt(seconds, 10)
+      )
     }
+    // Fallback to standard Date parsing
+    return new Date(dateString)
+  }
+
+  const convertStoreResponse = (apiStore: StoreResponse): Store => {
+    // Use submittedDate instead of createdAt
+    const submittedDateObj = parseVietnameseDate(apiStore.submittedDate || apiStore.createdAt)
 
     return {
       id: apiStore.id,
@@ -54,8 +73,8 @@ function StoreManagement() {
       ownerName: 'Chủ cửa hàng',
       ownerEmail: 'N/A',
       logoUrl: apiStore.logoUrl || '',
-      createDate: formatDate(apiStore.createdAt),
-      createDateTimestamp: new Date(apiStore.createdAt).getTime(),
+      createDate: apiStore.submittedDate || apiStore.createdAt,
+      createDateTimestamp: submittedDateObj.getTime(),
       productCount: 0,
       status: apiStore.status as Store['status']
     }

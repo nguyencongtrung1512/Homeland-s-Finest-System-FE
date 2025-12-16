@@ -562,7 +562,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                     <Button
                       onClick={handleAdminUpdate}
                       disabled={updating}
-                      className='w-full bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
+                      variant='blue'
                     >
                       {updating ? (
                         <>

@@ -450,18 +450,18 @@ function ManagerProductAdmin() {
           </div>
 
           {/* Filter Button */}
-          <Button onClick={handleFilter} className='bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2'>
+          <Button onClick={handleFilter} variant='blue' className='flex items-center gap-2'>
             <Filter className='w-4 h-4' />
             Lọc
           </Button>
 
           {/* Clear Filters */}
-          <button
+          <Button
             onClick={handleClearFilters}
-            className='px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50'
+            variant='outline'
           >
             Xóa bộ lọc
-          </button>
+          </Button>
         </div>
 
         {/* Table */}
