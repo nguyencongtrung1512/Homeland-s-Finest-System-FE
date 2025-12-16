@@ -2493,11 +2493,6 @@ function SellerRegistrationForm() {
                   </div>
                 </div>
               )}
-              {storeCoordinates && !isGeocodingStoreAddress && (
-                <div className='p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800'>
-                  ✓ Đã lấy tọa độ: {storeCoordinates.lat.toFixed(6)}, {storeCoordinates.lng.toFixed(6)}
-                </div>
-              )}
               {!storeCoordinates &&
                 !isGeocodingStoreAddress &&
                 selectedProvince &&
@@ -2505,7 +2500,7 @@ function SellerRegistrationForm() {
                 selectedWard &&
                 specificAddress.trim() && (
                   <div className='p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800'>
-                    ⚠️ Không lấy được tọa độ. Vẫn có thể gửi, nhưng bản đồ có thể không chính xác.
+                     Không lấy được tọa độ. Vẫn có thể gửi, nhưng bản đồ có thể không chính xác.
                   </div>
                 )}
 
