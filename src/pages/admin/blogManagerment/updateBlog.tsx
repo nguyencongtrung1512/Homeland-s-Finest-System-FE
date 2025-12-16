@@ -369,7 +369,7 @@ function UpdateBlogByCategory() {
                 <Button 
                   type='submit' 
                   disabled={loading}
-                  variant='greenLight'
+                  variant='blue'
                 >
                   {loading ? (
                     <span className='flex items-center gap-2'>

@@ -506,7 +506,7 @@ const AdminPromotionList: React.FC = () => {
           <h1 className='text-3xl font-bold text-gray-900'>Quản lý Mã khuyến mãi </h1>
           <p className='text-gray-600 mt-1'>Quản lý và theo dõi các Mã khuyến mãi trong hệ thống</p>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)} className='bg-blue-600 hover:bg-blue-700'>
+        <Button onClick={() => setIsCreateModalOpen(true)} variant='blue'>
           <Plus className='h-4 w-4 mr-2' />
           Tạo Mã khuyến mãi
         </Button>
@@ -784,10 +784,9 @@ const AdminPromotionList: React.FC = () => {
                     ) : (
                       <Button
                         key={page}
-                        variant={currentPage === page ? 'default' : 'outline'}
+                        variant={currentPage === page ? 'blue' : 'outline'}
                         size='sm'
                         onClick={() => handlePageChange(page as number)}
-                        className={currentPage === page ? 'bg-blue-600 text-white' : ''}
                       >
                         {page}
                       </Button>

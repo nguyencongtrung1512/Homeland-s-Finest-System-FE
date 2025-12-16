@@ -616,7 +616,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
     >
       {/* Header */}
       <motion.div
-        className='bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3 flex items-center justify-between flex-shrink-0'
+        className='bg-[#38bdf8] px-4 py-3 flex items-center justify-between flex-shrink-0'
         variants={headerVariants}
       >
         <div className='flex items-center gap-2 text-white'>
@@ -1128,7 +1128,7 @@ const PromotionForm: React.FC<PromotionFormProps> = ({
                 Hủy
               </Button>
 
-              <Button type='submit' disabled={loading} className='bg-blue-500  hover:bg-blue-600 text-white'>
+              <Button type='submit' disabled={loading} variant='blue'>
                 {loading ? <Loader2 className='h-4 w-4 mr-2 animate-spin' /> : <Save className='h-4 w-4 mr-2' />}
                 {isEdit ? 'Cập nhật' : 'Tạo mới'}
               </Button>

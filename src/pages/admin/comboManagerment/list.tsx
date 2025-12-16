@@ -611,7 +611,7 @@ function ManagerComboAdmin() {
             <Button
               onClick={handleAssignStaff}
               disabled={assigning || !selectedStaffId || loadingStaff}
-              className='bg-green-500 hover:bg-green-600 text-white'
+              variant='blue'
             >
               {assigning ? (
                 <>

@@ -375,7 +375,7 @@ function TransactionManagementAdmin() {
                   {Array.from({ length: Math.min(pagination.totalPages || 1, 5) }, (_, i) => i + 1).map((page) => (
                     <Button
                       key={page}
-                      variant={currentPage === page ? 'default' : 'ghost'}
+                      variant={currentPage === page ? 'blue' : 'ghost'}
                       size='sm'
                       onClick={() => setCurrentPage(page)}
                       disabled={loading}

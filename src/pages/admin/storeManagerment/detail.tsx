@@ -1283,6 +1283,21 @@ function StoreDetailAdmin() {
                     .map((combo) => (
                       <Card key={combo.id} className='hover:shadow-lg transition-shadow duration-200'>
                         <CardContent className='p-4'>
+                          {/* Combo Thumbnail Image */}
+                          {combo.thumbnailUrl && (
+                            <div className='aspect-square mb-3 bg-gray-100 rounded-lg overflow-hidden'>
+                              <img
+                                src={combo.thumbnailUrl}
+                                alt={combo.name}
+                                className='w-full h-full object-cover'
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.src = DEFAULT_STORE_LOGO
+                                }}
+                              />
+                            </div>
+                          )}
+
                           {/* Combo Header */}
                           <div className='flex items-start justify-between mb-3'>
                             <div className='flex-1'>
