@@ -15,7 +15,7 @@ import Pagination from '../../../components/Pagination/Pagination'
 import { productApi, type ProductListResponse } from '../../../apis/product.api'
 import type { Product } from '../../../types'
 import { toast } from '../../../utils/toast'
-import { formatDate } from '../../../utils/formatDate'
+import { formatDate, formatDateTime } from '../../../utils/formatDate'
 import path from '../../../constants/path'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
 import Loading from '../../../components/Loading/loading'
@@ -43,18 +43,20 @@ function ManagerProduct() {
       const params: {
         pageNumber: number
         pageSize: number
-        search?: string
+        name?: string
         productStatus?: string
         productType?: string
         isActive?: boolean
+        fromDate?: string
+        toDate?: string
       } = {
         pageNumber: page,
         pageSize: pageSize
       }
 
-      // Add search if provided
-      if (searchText) {
-        params.search = searchText
+      // Add name search if provided (BE uses 'name' not 'search')
+      if (searchText && searchText.trim()) {
+        params.name = searchText.trim()
       }
 
       // Add productStatus filter
@@ -65,6 +67,16 @@ function ManagerProduct() {
       // Add isActive filter
       if (isActiveFilter !== 'all') {
         params.isActive = isActiveFilter === 'true'
+      }
+
+      // Add date filter (BE uses fromDate and toDate)
+      // BE trả về createdAt format "HH:mm:ss dd/MM/yyyy", cần filter đúng ngày
+      if (dateFilter) {
+        // Format date to yyyy-MM-dd for BE DateTime parameter
+        // fromDate: start of day (00:00:00), toDate: end of day (23:59:59)
+        const dateStr = format(dateFilter, 'yyyy-MM-dd')
+        params.fromDate = `${dateStr}T00:00:00` // Start of day
+        params.toDate = `${dateStr}T23:59:59` // End of day
       }
 
       const response: ProductListResponse = await productApi.getAll(params)
@@ -100,10 +112,11 @@ function ManagerProduct() {
   useEffect(() => {
     fetchProducts(currentPage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, productStatusFilter, isActiveFilter])
+  }, [currentPage, productStatusFilter, isActiveFilter, dateFilter])
 
-  // Apply client-side filters (date, exclude Draft)
+  // Apply client-side filters (exclude Draft only)
   // Always filter out Draft status products - they should never appear in UI
+  // Date filtering is now handled by BE via fromDate/toDate params
   const filteredProducts = useMemo(() => {
     let filtered = [...allProducts]
 
@@ -113,41 +126,8 @@ function ManagerProduct() {
       return status !== 'draft'
     })
 
-    // Filter by date (client-side)
-    if (dateFilter) {
-      const filterDate = format(dateFilter, 'yyyy-MM-dd')
-      filtered = filtered.filter((p) => {
-        try {
-          // Handle different date formats from API
-          // Product might not have createdAt directly, check the structure
-          const createdAt = (p as Product & { createdAt?: string }).createdAt
-          if (!createdAt) return false
-
-          const dateStr = createdAt.split(' ')[0] // Get date part before space
-          // If format is dd-MM-yyyy, convert to yyyy-MM-dd
-          if (dateStr.includes('-')) {
-            const parts = dateStr.split('-')
-            if (parts.length === 3) {
-              // Check if it's dd-MM-yyyy or yyyy-MM-dd
-              if (parts[0].length === 4) {
-                // Already yyyy-MM-dd
-                return dateStr === filterDate
-              } else {
-                // dd-MM-yyyy, convert to yyyy-MM-dd
-                const [day, month, year] = parts
-                return `${year}-${month}-${day}` === filterDate
-              }
-            }
-          }
-          return dateStr === filterDate
-        } catch {
-          return false
-        }
-      })
-    }
-
     return filtered
-  }, [allProducts, dateFilter])
+  }, [allProducts])
 
   const getStatusTag = (status: string) => {
     switch (status.toLowerCase()) {
@@ -181,12 +161,8 @@ function ManagerProduct() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
-    // Nếu có client-side filter (date), không cần fetch lại từ server
-    // Pagination sẽ được tính từ filteredProducts
-    // Nếu không có client-side filter, fetch từ server với page mới
-    if (!dateFilter) {
-      fetchProducts(page)
-    }
+    // Always fetch from server with new page (all filters are server-side now)
+    fetchProducts(page)
     // Scroll to top when page changes
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -240,55 +216,33 @@ function ManagerProduct() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText])
 
-  // Calculate pagination
-  // Strategy:
-  // - If no date filter: Use server-side pagination (totalPages, totalItems from API)
-  //   Note: API might include Draft in totalItems, but we filter Draft client-side
-  // - If has date filter: Use client-side pagination (calculate from filteredProducts)
+  // Calculate pagination - all filters are now server-side
+  // Use server-side pagination from API
   const effectiveTotalPages = useMemo(() => {
-    if (dateFilter) {
-      // Client-side pagination: calculate from filtered products
-      return Math.ceil(filteredProducts.length / pageSize)
-    } else {
-      // Server-side pagination: use totalPages from API
-      // If totalPages is available and > 0, use it
-      // Otherwise, calculate from current filtered products
-      if (totalPages > 0) {
-        return totalPages
-      }
-      // Fallback: calculate from filtered products
-      return Math.ceil(filteredProducts.length / pageSize)
+    if (totalPages > 0) {
+      return totalPages
     }
-  }, [filteredProducts.length, pageSize, dateFilter, totalPages])
+    // Fallback: calculate from filtered products
+    return Math.ceil(filteredProducts.length / pageSize)
+  }, [filteredProducts.length, pageSize, totalPages])
 
   const effectiveTotalItems = useMemo(() => {
-    if (dateFilter) {
-      // Client-side: use filtered products count
-      return filteredProducts.length
-    } else {
-      // Server-side: use totalItems from API
-      // Note: This might include Draft products, but it's the best estimate we have
-      // The actual displayed count will be less due to Draft filtering
-      if (totalItems > 0) {
-        return totalItems
-      }
-      // Fallback: use filtered products count
-      return filteredProducts.length
+    // Server-side: use totalItems from API
+    // Note: This might include Draft products, but it's the best estimate we have
+    // The actual displayed count will be less due to Draft filtering
+    if (totalItems > 0) {
+      return totalItems
     }
-  }, [filteredProducts.length, dateFilter, totalItems])
+    // Fallback: use filtered products count
+    return filteredProducts.length
+  }, [filteredProducts.length, totalItems])
 
-  // Paginate products
+  // Paginate products - all pagination is server-side now
   const paginatedProducts = useMemo(() => {
-    if (dateFilter) {
-      // Client-side pagination: slice from filteredProducts
-      const startIndex = (currentPage - 1) * pageSize
-      return filteredProducts.slice(startIndex, startIndex + pageSize)
-    } else {
-      // Server-side pagination: use filteredProducts directly
-      // filteredProducts already contains only the current page's data (after Draft filter)
-      return filteredProducts
-    }
-  }, [filteredProducts, currentPage, pageSize, dateFilter])
+    // Server-side pagination: use filteredProducts directly
+    // filteredProducts already contains only the current page's data (after Draft filter)
+    return filteredProducts
+  }, [filteredProducts])
 
   return (
     <div className='space-y-6 p-6'>
@@ -481,7 +435,7 @@ function ManagerProduct() {
                             <span className='text-gray-700 whitespace-nowrap'>
                               {(() => {
                                 const productWithDate = record as Product & { createdAt?: string }
-                                return productWithDate.createdAt ? formatDate(productWithDate.createdAt) : 'N/A'
+                                return productWithDate.createdAt ? formatDateTime(productWithDate.createdAt) : 'N/A'
                               })()}
                             </span>
                           </TableCell>

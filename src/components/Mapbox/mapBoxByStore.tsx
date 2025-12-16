@@ -385,13 +385,25 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       })
 
       // Thêm sự kiện click cho marker
-      el.addEventListener('click', () => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation()
         setSelectedStoreId(store.ID)
         if (onStoreIdChange) {
           onStoreIdChange(store.ID)
         }
         if (onStoreSelect) {
           onStoreSelect(store)
+        }
+        // Đảm bảo popup mở ngay khi click marker và chỉ có 1 popup được mở
+        Object.values(markersRef.current).forEach((m) => {
+          const p = m.getPopup()
+          if (p) {
+            p.remove()
+          }
+        })
+        const popup = marker.getPopup()
+        if (popup && !popup.isOpen()) {
+          popup.addTo(map.current!)
         }
       })
 
@@ -406,7 +418,7 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
         maxZoom: 15
       })
     }
-  }, [storesWithCoordinates, selectedStoreId, onStoreSelect, onStoreIdChange, isPanelOpen, navigate])
+  }, [storesWithCoordinates, isPanelOpen, navigate])
 
   // Cập nhật marker khi chọn cửa hàng
   useEffect(() => {
@@ -427,7 +439,14 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       if (marker) {
         const popup = marker.getPopup()
         if (popup && !popup.isOpen()) {
-          marker.togglePopup()
+          // Đóng mọi popup khác trước khi mở popup mới
+          Object.values(markersRef.current).forEach((m) => {
+            const p = m.getPopup()
+            if (p && p !== popup) {
+              p.remove()
+            }
+          })
+          popup.addTo(map.current!)
         }
       }
     }

@@ -314,7 +314,8 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
 
           if (response.status === 200 && response.data) {
             setFetchedProduct(response.data)
-            const categoryId = response.data.productCategories?.id || null
+            // productCategories is an array, get first item's id
+            const categoryId = response.data.productCategories?.[0]?.id || null
             // Load product data from fetched detail
             setProductData({
               name: response.data.name || '',
@@ -355,14 +356,19 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
     const fetchHashtags = async () => {
       if (!open || !fetchedProduct) return
 
-      const productWithHashtags = fetchedProduct as Product & { hashtagIds?: string[] }
-      if (!productWithHashtags?.hashtagIds || productWithHashtags.hashtagIds.length === 0) {
+      // Check if hashtags array exists in response
+      const productWithHashtags = fetchedProduct as Product & { hashtags?: Array<{ id: string; name: string }> }
+
+      if (!productWithHashtags?.hashtags || productWithHashtags.hashtags.length === 0) {
         setSelectedHashtags([])
         return
       }
 
       try {
-        const hashtagPromises = productWithHashtags.hashtagIds.map((hashtagId) => getHashtagById(hashtagId))
+        // Map hashtags from response to HashtagItem format
+        // If we need full details, fetch each hashtag by ID
+        // Otherwise, map directly with available data
+        const hashtagPromises = productWithHashtags.hashtags.map((hashtag) => getHashtagById(hashtag.id))
         const responses = await Promise.all(hashtagPromises)
 
         const fetchedHashtags: HashtagItem[] = []
@@ -375,7 +381,20 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
         setSelectedHashtags(fetchedHashtags)
       } catch (error) {
         console.error('Error fetching hashtags:', error)
-        setSelectedHashtags([])
+        // Fallback: map directly from hashtags array if fetch fails
+        const productWithHashtags = fetchedProduct as Product & { hashtags?: Array<{ id: string; name: string }> }
+        if (productWithHashtags?.hashtags) {
+          const mappedHashtags: HashtagItem[] = productWithHashtags.hashtags.map((tag) => ({
+            id: tag.id,
+            name: tag.name,
+            description: '',
+            usageCount: 0,
+            isActive: true
+          }))
+          setSelectedHashtags(mappedHashtags)
+        } else {
+          setSelectedHashtags([])
+        }
       }
     }
 
@@ -402,6 +421,61 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
   // Helper functions
   const createPreviewUrl = (file: File): string => {
     return URL.createObjectURL(file)
+  }
+
+  // Helper: build video sources similar to detail view
+  const getProductVideoData = () => {
+    if (!fetchedProduct) return null
+
+    const productWithVideo = fetchedProduct as Product & {
+      videoPreviewUrl?: string
+      videoPlayBackUrl?: string
+      videoFallBackUrl?: string
+      productVideo?: string
+    }
+
+    let video = ''
+    let videoSources: { hls?: string; dash?: string; preview?: string; fallback?: string } | undefined = undefined
+
+    // Priority: videoPlayBackUrl (may contain multiple URLs), then preview, fallback, legacy productVideo
+    if (productWithVideo.videoPlayBackUrl) {
+      const playbackUrls = productWithVideo.videoPlayBackUrl.split(',').map((url) => url.trim())
+      const hlsUrl = playbackUrls.find((url) => url.includes('.m3u8'))
+      const dashUrl = playbackUrls.find((url) => url.includes('.mpd'))
+
+      videoSources = {}
+      if (hlsUrl) videoSources.hls = hlsUrl
+      if (dashUrl) videoSources.dash = dashUrl
+      if (productWithVideo.videoPreviewUrl?.trim()) {
+        videoSources.preview = productWithVideo.videoPreviewUrl.trim()
+      }
+      if (productWithVideo.videoFallBackUrl?.trim()) {
+        videoSources.fallback = productWithVideo.videoFallBackUrl.trim()
+      }
+
+      video =
+        productWithVideo.videoPreviewUrl?.trim() ||
+        hlsUrl ||
+        dashUrl ||
+        productWithVideo.videoFallBackUrl?.trim() ||
+        playbackUrls[0] ||
+        ''
+    } else if (productWithVideo.videoPreviewUrl) {
+      video = productWithVideo.videoPreviewUrl.trim()
+      videoSources = {
+        preview: productWithVideo.videoPreviewUrl.trim(),
+        fallback: productWithVideo.videoFallBackUrl?.trim() || undefined
+      }
+    } else if (productWithVideo.videoFallBackUrl) {
+      video = productWithVideo.videoFallBackUrl.trim()
+      videoSources = {
+        fallback: productWithVideo.videoFallBackUrl.trim()
+      }
+    } else if (productWithVideo.productVideo) {
+      video = productWithVideo.productVideo
+    }
+
+    return video ? { video, videoSources } : null
   }
 
   const removeExistingImage = (indexToRemove: number) => {
@@ -975,7 +1049,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='w-full max-w-[95vw] sm:max-w-6xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>Cập nhật sản phẩm</DialogTitle>
         </DialogHeader>
@@ -1445,89 +1519,115 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
               <div className='flex items-center justify-between mb-1'>
                 <Label className='text-sm font-medium'>Video sản phẩm</Label>
                 <span className='text-xs text-gray-500'>
-                  {(fetchedProduct?.productVideo && !mediaData.removeExistingVideo) || mediaData.newProductVideo
-                    ? '1 / 1 video'
-                    : '0 / 1 video'}
+                  {(() => {
+                    const videoData = getProductVideoData()
+                    const existingVideoUrl = videoData?.video
+                    return (existingVideoUrl && !mediaData.removeExistingVideo) || mediaData.newProductVideo
+                      ? '1 / 1 video'
+                      : '0 / 1 video'
+                  })()}
                 </span>
               </div>
               <div className='mt-2 space-y-2'>
-                {fetchedProduct?.productVideo && !mediaData.removeExistingVideo && (
-                  <div className='space-y-2'>
-                    <div className='relative group'>
-                      <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200'>
-                        <video
-                          src={fetchedProduct.productVideo}
-                          controls
-                          className='w-full h-full'
-                          onError={(e) => {
-                            console.error('Error loading video:', e)
-                          }}
+                {(() => {
+                  const videoData = getProductVideoData()
+                  const existingVideoUrl = videoData?.video
+
+                  return existingVideoUrl && !mediaData.removeExistingVideo ? (
+                    <div className='space-y-2'>
+                      <div className='relative group'>
+                        <div className='aspect-video rounded-lg overflow-hidden border-2 border-gray-200'>
+                          <video
+                            controls
+                            className='w-full h-full'
+                            onError={(e) => {
+                              console.error('Error loading video:', e)
+                            }}
+                          >
+                            {videoData?.videoSources?.hls && (
+                              <source src={videoData.videoSources.hls} type='application/x-mpegURL' />
+                            )}
+                            {videoData?.videoSources?.dash && (
+                              <source src={videoData.videoSources.dash} type='application/dash+xml' />
+                            )}
+                            {videoData?.videoSources?.preview && !videoData.videoSources.hls && !videoData.videoSources.dash && (
+                              <source src={videoData.videoSources.preview} type='video/mp4' />
+                            )}
+                            {videoData?.videoSources?.fallback && (
+                              <source src={videoData.videoSources.fallback} type='video/mp4' />
+                            )}
+                            <source src={existingVideoUrl} type='video/mp4' />
+                            Trình duyệt của bạn không hỗ trợ video.
+                          </video>
+                        </div>
+                        <button
+                          type='button'
+                          onClick={() => setMediaData((prev) => ({ ...prev, removeExistingVideo: true }))}
+                          className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all'
                         >
-                          Trình duyệt của bạn không hỗ trợ video.
-                        </video>
+                          <X className='w-3 h-3' />
+                        </button>
                       </div>
-                      <button
-                        type='button'
-                        onClick={() => setMediaData((prev) => ({ ...prev, removeExistingVideo: true }))}
-                        className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all'
-                      >
-                        <X className='w-3 h-3' />
-                      </button>
+                      <div className='flex items-center justify-between p-2 bg-gray-50 rounded-lg border'>
+                        <div className='flex items-center gap-2'>
+                          <Video className='w-4 h-4 text-gray-500' />
+                          <span className='text-xs text-gray-600 truncate max-w-md'>{existingVideoUrl}</span>
+                        </div>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={() => setMediaData((prev) => ({ ...prev, removeExistingVideo: true }))}
+                        >
+                          Xóa video
+                        </Button>
+                      </div>
                     </div>
-                    <div className='flex items-center justify-between p-2 bg-gray-50 rounded-lg border'>
-                      <div className='flex items-center gap-2'>
-                        <Video className='w-4 h-4 text-gray-500' />
-                        <span className='text-xs text-gray-600 truncate max-w-md'>{fetchedProduct.productVideo}</span>
-                      </div>
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        onClick={() => setMediaData((prev) => ({ ...prev, removeExistingVideo: true }))}
-                      >
-                        Xóa video
+                  ) : null
+                })()}
+
+                {(() => {
+                  const videoData = getProductVideoData()
+                  const existingVideoUrl = videoData?.video
+
+                  return !existingVideoUrl || mediaData.removeExistingVideo ? (
+                    <div
+                      className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                      onClick={() => document.getElementById('product-video')?.click()}
+                    >
+                      <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                      <p className='text-gray-600 mb-2'>
+                        {mediaData.newProductVideo ? 'Thay đổi video' : 'Kéo thả hoặc click để tải video lên'}
+                      </p>
+                      <input
+                        type='file'
+                        accept='video/*'
+                        className='hidden'
+                        id='product-video'
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            // Validate video file size (50MB max)
+                            if (file.size > 50 * 1024 * 1024) {
+                              toast.error('Video quá lớn. Tối đa 50MB.')
+                              return
+                            }
+                            setMediaData((prev) => ({
+                              ...prev,
+                              newProductVideo: file,
+                              removeExistingVideo: false
+                            }))
+                          }
+                          e.target.value = ''
+                        }}
+                      />
+                      <Button type='button' variant='outline' size='sm' className='mt-3'>
+                        <Upload className='w-4 h-4 mr-2' />
+                        {mediaData.newProductVideo ? 'Thay đổi video' : 'Chọn video'}
                       </Button>
                     </div>
-                  </div>
-                )}
-
-                {(!fetchedProduct?.productVideo || mediaData.removeExistingVideo) && (
-                  <div
-                    className='border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
-                    onClick={() => document.getElementById('product-video')?.click()}
-                  >
-                    <Video className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                    <p className='text-gray-600 mb-2'>
-                      {mediaData.newProductVideo ? 'Thay đổi video' : 'Kéo thả hoặc click để tải video lên'}
-                    </p>
-                    <input
-                      type='file'
-                      accept='video/*'
-                      className='hidden'
-                      id='product-video'
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          // Validate video file size (50MB max)
-                          if (file.size > 50 * 1024 * 1024) {
-                            toast.error('Video quá lớn. Tối đa 50MB.')
-                            return
-                          }
-                          setMediaData((prev) => ({
-                            ...prev,
-                            newProductVideo: file,
-                            removeExistingVideo: false
-                          }))
-                        }
-                        e.target.value = ''
-                      }}
-                    />
-                    <Button type='button' variant='outline' size='sm' className='mt-3'>
-                      <Upload className='w-4 h-4 mr-2' />
-                      {mediaData.newProductVideo ? 'Thay đổi video' : 'Chọn video'}
-                    </Button>
-                  </div>
-                )}
+                  ) : null
+                })()}
 
                 {mediaData.newProductVideo && (
                   <div className='relative group'>

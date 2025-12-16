@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Gamepad2, TreePine, Tag, Lightbulb, CheckCircle2, Box, Layers } from 'lucide-react'
+import { Gamepad2, Tag, Lightbulb, CheckCircle2, Box, Layers } from 'lucide-react'
 import ReactFlow, {
   Background,
   Controls,

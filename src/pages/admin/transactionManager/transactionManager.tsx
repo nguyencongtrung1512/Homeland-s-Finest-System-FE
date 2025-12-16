@@ -96,7 +96,6 @@ function TransactionManagementAdmin() {
       setError(null)
 
       // Build query params
-      // Note: username parameter được API hỗ trợ nhưng chưa có trong TransactionQueryParams type
       const params: TransactionQueryParams = {
         pageSize: pagination.pageSize,
         pageNumber: currentPage
@@ -106,7 +105,7 @@ function TransactionManagementAdmin() {
       if (statusFilter !== 'all') {
         if (statusFilter === 'waiting') params.status = 'Pending'
         if (statusFilter === 'disbursed') params.status = 'Completed'
-        if (statusFilter === 'refunded') params.status = 'Cancelled'
+        if (statusFilter === 'refunded') params.status = 'Cancel'
       }
 
       // Filter by payment method
@@ -117,12 +116,11 @@ function TransactionManagementAdmin() {
       // Search by username (API hỗ trợ search theo email/firstName/lastName)
       // Nếu searchText là transaction ID thì sẽ filter ở client-side sau
       const isTransactionId = searchText && /^[a-f0-9-]{36}$/i.test(searchText.trim())
-      const apiParams = params as TransactionQueryParams & { username?: string }
       if (searchText && !isTransactionId) {
-        apiParams.username = searchText
+        params.username = searchText.trim()
       }
 
-      const response = await getAllTransactions(apiParams)
+      const response = await getAllTransactions(params)
 
       // Map transactions
       const mappedTransactions = await Promise.all(response.data.map((tx: APITransaction) => mapTransactionToUI(tx)))
@@ -263,7 +261,7 @@ function TransactionManagementAdmin() {
               <div className='relative'>
                 <Search size={16} className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
                 <Input
-                  placeholder='ID giao dịch hoặc tên khách hàng'
+                  placeholder='Tên khách hàng'
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   className='pl-10 h-10 border-gray-200'

@@ -959,6 +959,10 @@ function SellerRegistrationForm() {
   const [orientationProvinceOpen, setOrientationProvinceOpen] = useState(false)
   const [orientationProvinceSearchValue, setOrientationProvinceSearchValue] = useState('')
 
+  // Tọa độ store (geocode)
+  const [storeCoordinates, setStoreCoordinates] = useState<{ lat: number; lng: number } | null>(null)
+  const [isGeocodingStoreAddress, setIsGeocodingStoreAddress] = useState(false)
+
   // States cho validation giấy tờ - lưu theo index của file
   const [businessLicenseValidation, setBusinessLicenseValidation] = useState<{
     isValid: boolean | null
@@ -1337,6 +1341,50 @@ function SellerRegistrationForm() {
     }
   }
 
+  // Geocode địa chỉ cửa hàng để lấy tọa độ
+  const geocodeStoreAddress = async (
+    provinceName: string,
+    districtName: string,
+    wardName: string,
+    specific: string
+  ) => {
+    if (!provinceName || !districtName || !wardName || !specific.trim()) {
+      setStoreCoordinates(null)
+      return
+    }
+
+    const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
+    if (!mapboxToken) {
+      console.error('Mapbox access token is missing')
+      setStoreCoordinates(null)
+      return
+    }
+
+    setIsGeocodingStoreAddress(true)
+    try {
+      const fullAddress = `${specific}, ${wardName}, ${districtName}, ${provinceName}, Việt Nam`
+      const resp = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          fullAddress
+        )}.json?access_token=${mapboxToken}&country=vn&limit=1`
+      )
+      const data = await resp.json()
+
+      if (data.features && data.features.length > 0) {
+        const coordinates = data.features[0].geometry.coordinates as [number, number]
+        setStoreCoordinates({ lng: coordinates[0], lat: coordinates[1] })
+      } else {
+        console.warn('Geocode not found for address:', fullAddress)
+        setStoreCoordinates(null)
+      }
+    } catch (error) {
+      console.error('Geocode error:', error)
+      setStoreCoordinates(null)
+    } finally {
+      setIsGeocodingStoreAddress(false)
+    }
+  }
+
   const handleProvinceChange = (provinceId: string) => {
     const province = provinces.find((p) => p.id.toString() === provinceId)
     if (province) {
@@ -1435,6 +1483,23 @@ function SellerRegistrationForm() {
       setFullAddressDisplay(fullAddress)
     } else {
       setFullAddressDisplay('')
+    }
+  }, [selectedProvince, selectedDistrict, selectedWard, specificAddress])
+
+  // Tự động geocode khi địa chỉ cửa hàng đầy đủ (debounce 1s)
+  React.useEffect(() => {
+    if (selectedProvince && selectedDistrict && selectedWard && specificAddress.trim()) {
+      const timer = setTimeout(() => {
+        geocodeStoreAddress(
+          selectedProvince.name,
+          selectedDistrict.name,
+          selectedWard.name,
+          specificAddress
+        )
+      }, 1000)
+      return () => clearTimeout(timer)
+    } else {
+      setStoreCoordinates(null)
     }
   }, [selectedProvince, selectedDistrict, selectedWard, specificAddress])
 
@@ -1733,7 +1798,12 @@ function SellerRegistrationForm() {
           districtID: selectedDistrict?.id || 0,
           wardID: selectedWard?.id || 0,
           description: formData.description.trim(),
-          vendorApplicationImageUrl: formData.vendorApplicationImageUrl
+          vendorApplicationImageUrl: formData.vendorApplicationImageUrl,
+          // Thêm tọa độ nếu có
+          lat: storeCoordinates ? storeCoordinates.lat.toString() : '',
+          lng: storeCoordinates ? storeCoordinates.lng.toString() : '',
+          // Tỉnh định hướng (targetProvinceId)
+          targetProvinceId: selectedOrientationProvince?.id ?? 0
         }
       }
 
@@ -2413,6 +2483,31 @@ function SellerRegistrationForm() {
                   <p className='text-sm text-gray-800 mt-1'>{fullAddressDisplay}</p>
                 </div>
               )}
+
+              {/* Trạng thái geocode tọa độ */}
+              {isGeocodingStoreAddress && (
+                <div className='p-3 bg-blue-50 border border-blue-200 rounded-lg'>
+                  <div className='flex items-center gap-2 text-blue-800 text-sm'>
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                    <span>Đang xác định tọa độ cửa hàng...</span>
+                  </div>
+                </div>
+              )}
+              {storeCoordinates && !isGeocodingStoreAddress && (
+                <div className='p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800'>
+                  ✓ Đã lấy tọa độ: {storeCoordinates.lat.toFixed(6)}, {storeCoordinates.lng.toFixed(6)}
+                </div>
+              )}
+              {!storeCoordinates &&
+                !isGeocodingStoreAddress &&
+                selectedProvince &&
+                selectedDistrict &&
+                selectedWard &&
+                specificAddress.trim() && (
+                  <div className='p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800'>
+                    ⚠️ Không lấy được tọa độ. Vẫn có thể gửi, nhưng bản đồ có thể không chính xác.
+                  </div>
+                )}
 
               {errors.address && <p className='text-sm text-red-500'>{errors.address}</p>}
             </div>

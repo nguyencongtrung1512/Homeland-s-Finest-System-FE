@@ -25,7 +25,14 @@ const ProductDetailContext = createContext<ProductDetailContextType | undefined>
 export const useProductDetailContext = () => {
   const context = useContext(ProductDetailContext)
   if (context === undefined) {
-    throw new Error('useProductDetailContext must be used within a ProductDetailProvider')
+    // Fallback an toàn để tránh crash nếu component bị dùng sai ngữ cảnh.
+    console.warn('useProductDetailContext used outside ProductDetailProvider – returning fallback context.')
+    return {
+      product: null,
+      loading: false,
+      error: 'Context unavailable',
+      refetch: () => {}
+    }
   }
   return context
 }

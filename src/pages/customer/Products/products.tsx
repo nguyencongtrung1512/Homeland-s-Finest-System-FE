@@ -51,57 +51,31 @@ function Products() {
     totalPages?: number
   } | null>(null)
 
-  // Handler để nhận filters từ AsideFilter - áp dụng cho cả product và combo
+  // Handler để nhận filters từ AsideFilter - áp dụng filter cho tab hiện tại (product hoặc combo)
   const handleFilterChange = (filterState: {
     minPrice?: number
     maxPrice?: number
     provinceFilters?: string[]
   }) => {
-    // Nếu có provinceFilters, tự động chuyển sang tab combo
-    if (filterState.provinceFilters && filterState.provinceFilters.length > 0) {
-      if (activeTab === 'product') {
-        // Chuyển sang tab combo và apply filters
-        setActiveTab('combo')
-        setComboFilters((prev) => ({
-          ...prev,
-          minPrice: filterState.minPrice,
-          maxPrice: filterState.maxPrice,
-          provinceFilters: filterState.provinceFilters,
-          pageNumber: 1 // Reset về trang đầu khi filter thay đổi
-        }))
-        setCurrentPage(1)
-      } else if (activeTab === 'combo') {
-        // Đã ở tab combo, chỉ cần update filters
-        setComboFilters((prev) => ({
-          ...prev,
-          minPrice: filterState.minPrice,
-          maxPrice: filterState.maxPrice,
-          provinceFilters: filterState.provinceFilters,
-          pageNumber: 1 // Reset về trang đầu khi filter thay đổi
-        }))
-        setCurrentPage(1)
-      }
-    } else {
-      // Không có provinceFilters, apply filter cho tab hiện tại
-      if (activeTab === 'product') {
-        // Apply filters for products
-        setProductFilters({
-          minPrice: filterState.minPrice,
-          maxPrice: filterState.maxPrice,
-          provinceFilters: filterState.provinceFilters
-        })
-        setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
-      } else if (activeTab === 'combo') {
-        // Apply filters for combos
-        setComboFilters((prev) => ({
-          ...prev,
-          minPrice: filterState.minPrice,
-          maxPrice: filterState.maxPrice,
-          provinceFilters: filterState.provinceFilters,
-          pageNumber: 1 // Reset về trang đầu khi filter thay đổi
-        }))
-        setCurrentPage(1)
-      }
+    // Áp dụng filter cho tab hiện tại, không tự động chuyển tab
+    if (activeTab === 'product') {
+      // Apply filters for products
+      setProductFilters({
+        minPrice: filterState.minPrice,
+        maxPrice: filterState.maxPrice,
+        provinceFilters: filterState.provinceFilters
+      })
+      setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
+    } else if (activeTab === 'combo') {
+      // Apply filters for combos
+      setComboFilters((prev) => ({
+        ...prev,
+        minPrice: filterState.minPrice,
+        maxPrice: filterState.maxPrice,
+        provinceFilters: filterState.provinceFilters,
+        pageNumber: 1 // Reset về trang đầu khi filter thay đổi
+      }))
+      setCurrentPage(1)
     }
   }
 
@@ -329,15 +303,21 @@ function Products() {
         <div className='flex-1'>
           {/* Switch tabs */}
           <div className='flex items-center justify-between mb-4'>
-            <div className='flex gap-2'>
+            <div className='flex items-center gap-2 bg-gray-50 p-1 rounded-full'>
               <button
-                className={`px-3 py-1.5 rounded-full text-sm ${activeTab === 'product' ? 'bg-green-600 text-white' : 'border bg-white hover:border-green-400'}`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === 'product'
+                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
+                    : 'text-gray-600 hover:text-emerald-600 hover:bg-white'
+                  }`}
                 onClick={() => handleTabChange('product')}
               >
                 Sản phẩm
               </button>
               <button
-                className={`px-3 py-1.5 rounded-full text-sm ${activeTab === 'combo' ? 'bg-green-600 text-white' : 'border bg-white hover:border-green-400'}`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === 'combo'
+                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
+                    : 'text-gray-600 hover:text-emerald-600 hover:bg-white'
+                  }`}
                 onClick={() => handleTabChange('combo')}
               >
                 Combo
