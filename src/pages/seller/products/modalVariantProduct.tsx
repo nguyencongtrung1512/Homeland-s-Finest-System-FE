@@ -57,7 +57,7 @@ export default function ModalVariantProduct({
   // Constants for validation
   const MAX_IMAGES = 1
   const MAX_ATTRIBUTE_TYPE_LENGTH = 20
-  const MAX_ATTRIBUTE_NAME_LENGTH = 50
+  const MAX_ATTRIBUTE_NAME_LENGTH = 20
   const MIN_ATTRIBUTE_TYPE_LENGTH = 1
   const MIN_ATTRIBUTE_NAME_LENGTH = 1
   const MAX_DIMENSION = 200 // cm

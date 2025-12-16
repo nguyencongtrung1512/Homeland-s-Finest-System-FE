@@ -303,15 +303,21 @@ function Products() {
         <div className='flex-1'>
           {/* Switch tabs */}
           <div className='flex items-center justify-between mb-4'>
-            <div className='flex gap-2'>
+            <div className='flex items-center gap-2 bg-gray-50 p-1 rounded-full'>
               <button
-                className={`px-3 py-1.5 rounded-full text-sm ${activeTab === 'product' ? 'bg-green-600 text-white' : 'border bg-white hover:border-green-400'}`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === 'product'
+                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
+                    : 'text-gray-600 hover:text-emerald-600 hover:bg-white'
+                  }`}
                 onClick={() => handleTabChange('product')}
               >
                 Sản phẩm
               </button>
               <button
-                className={`px-3 py-1.5 rounded-full text-sm ${activeTab === 'combo' ? 'bg-green-600 text-white' : 'border bg-white hover:border-green-400'}`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === 'combo'
+                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
+                    : 'text-gray-600 hover:text-emerald-600 hover:bg-white'
+                  }`}
                 onClick={() => handleTabChange('combo')}
               >
                 Combo

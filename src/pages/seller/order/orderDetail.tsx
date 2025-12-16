@@ -4,14 +4,7 @@ import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Dialog, DialogContent } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
-import { Input } from '../../../components/ui/input'
-import {
-  getOrderDetail,
-  confirmOrder,
-  readyToPickOrder,
-  cancelOrder,
-  uploadVerificationImages
-} from '../../../apis/order.api'
+import { getOrderDetail, confirmOrder, cancelOrder, uploadVerificationImages } from '../../../apis/order.api'
 import type { Order as APIOrder } from '../../../types/orderType'
 import {
   Loader2,
@@ -253,8 +246,6 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
   const [existingVerificationImages, setExistingVerificationImages] = useState<string[]>([])
   const [uploadVerificationLoading, setUploadVerificationLoading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const [showGHNCodeDialog, setShowGHNCodeDialog] = useState(false)
-  const [ghnCode, setGhnCode] = useState('')
 
   // Transform API order to UI order format
   const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
@@ -361,8 +352,6 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
       setVerificationImages([])
       setVerificationImagePreviews([])
       setExistingVerificationImages([])
-      setShowGHNCodeDialog(false)
-      setGhnCode('')
     }
   }, [isOpen])
 
@@ -378,37 +367,6 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
       await fetchOrderDetail()
     } catch (error) {
       const errorMessage = getErrorMessage(error, 'Không thể xác nhận đơn hàng')
-      toast.error(errorMessage)
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  // Handle ship order - mở dialog nhập GHN code
-  const handleShipOrder = () => {
-    setShowGHNCodeDialog(true)
-    setGhnCode(order?.ghnorderCode || '')
-  }
-
-  // Xác nhận đơn hàng sẵn sàng lấy hàng với GHN code
-  const handleConfirmShipOrder = async () => {
-    if (!order?.id) return
-
-    if (!ghnCode.trim()) {
-      toast.error('Vui lòng nhập mã GHN')
-      return
-    }
-
-    setActionLoading(true)
-    try {
-      await readyToPickOrder(order.id, ghnCode.trim())
-      toast.success('Đơn hàng đã được xác nhận sẵn sàng lấy hàng!')
-      setShowGHNCodeDialog(false)
-      setGhnCode('')
-      // Refresh order data
-      await fetchOrderDetail()
-    } catch (error) {
-      const errorMessage = getErrorMessage(error, 'Không thể xác nhận đơn hàng sẵn sàng lấy hàng')
       toast.error(errorMessage)
     } finally {
       setActionLoading(false)
@@ -1302,25 +1260,6 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                     </Button>
                   </>
                 )}
-                {order.status === 'Confirmed' && (
-                  <Button
-                    onClick={handleShipOrder}
-                    disabled={actionLoading}
-                    className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
-                  >
-                    {actionLoading ? (
-                      <>
-                        <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                        Đang xử lý...
-                      </>
-                    ) : (
-                      <>
-                        <Package className='w-4 h-4 mr-2' />
-                        Đã chuẩn bị hàng
-                      </>
-                    )}
-                  </Button>
-                )}
                 {(order.status === 'Shipping' || order.status === 'Delivered') && (
                   <Button className='flex-1 bg-gray-600 hover:bg-gray-700 text-white' disabled>
                     Đơn hàng đã được xử lý
@@ -1383,63 +1322,6 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                   <>
                     <XCircle className='w-4 h-4 mr-2' />
                     Xác nhận hủy
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* GHN Code Dialog */}
-      <Dialog open={showGHNCodeDialog} onOpenChange={setShowGHNCodeDialog}>
-        <DialogContent className='max-w-md'>
-          <div className='flex items-center gap-2 mb-4'>
-            <Package className='h-5 w-5 text-blue-600' />
-            <h3 className='font-semibold text-gray-900'>Nhập mã GHN</h3>
-          </div>
-
-          <div className='space-y-4'>
-            <div>
-              <label className='text-sm font-medium text-gray-700 mb-2 block'>
-                Mã giao hàng nhanh (GHN) <span className='text-red-500'>*</span>
-              </label>
-              <Input
-                value={ghnCode}
-                onChange={(e) => setGhnCode(e.target.value)}
-                placeholder='Nhập mã GHN...'
-                className='w-full'
-                maxLength={50}
-              />
-              <p className='text-xs text-gray-500 mt-1'>Vui lòng nhập mã đơn hàng từ GHN</p>
-            </div>
-
-            <div className='flex gap-3 pt-2'>
-              <Button
-                onClick={() => {
-                  setShowGHNCodeDialog(false)
-                  setGhnCode('')
-                }}
-                variant='outline'
-                className='flex-1'
-                disabled={actionLoading}
-              >
-                Hủy
-              </Button>
-              <Button
-                onClick={handleConfirmShipOrder}
-                disabled={actionLoading || !ghnCode.trim()}
-                className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
-              >
-                {actionLoading ? (
-                  <>
-                    <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className='w-4 h-4 mr-2' />
-                    Xác nhận
                   </>
                 )}
               </Button>
