@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import { productCertificateApi } from '../../../apis/productCertificate.api'
-import { n8nApi } from '../../../apis/n8n.api'
+import { n8nApi, type ValidateCertificateResponse } from '../../../apis/n8n.api'
 import Loading from '../../../components/Loading/loading'
 import type { ProductCertificateType } from '../../../types/productCertificateType'
 
@@ -44,6 +44,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [validationResult, setValidationResult] = useState<ValidateCertificateResponse | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchCertificates = async () => {
@@ -131,6 +132,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
     setSelectedFile(null)
     setPreviewUrl(null)
     setValidationError(null)
+    setValidationResult(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -157,11 +159,20 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
       setValidationError(null)
 
       try {
-        const validationResult = await n8nApi.validateCertificate(selectedFile)
+        const result = await n8nApi.validateCertificate(selectedFile)
+        setValidationResult(result)
 
-        if (!validationResult.isValid) {
+        // Kiểm tra category: phải là "Product" hoặc không có category (backward compatibility)
+        const categoryCheck = !result.category || result.category.toLowerCase() === 'product'
+        const levelValid = result.level.toLowerCase() === 'good'
+        const isValid = categoryCheck && levelValid
+
+        if (!isValid) {
           // Nếu không hợp lệ, hiển thị lý do và không upload (không hiển thị toast)
-          setValidationError(validationResult.reason)
+          const errorMessage = categoryCheck
+            ? result.reason || 'Chứng chỉ không hợp lệ'
+            : 'Vui lòng upload ảnh giấy chứng nhận sản phẩm. Ảnh này là chứng nhận cửa hàng.'
+          setValidationError(errorMessage)
           setValidating(false)
           return
         }
@@ -170,6 +181,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
         // Nếu n8n API bị lỗi (network error, server error, invalid response, etc.)
         // Bỏ qua validation và vẫn cho phép upload
         console.warn('n8n validation API error, skipping validation:', validationError)
+        setValidationResult(null)
       }
 
       // Nếu validation bị skip hoặc hợp lệ, tiếp tục upload
