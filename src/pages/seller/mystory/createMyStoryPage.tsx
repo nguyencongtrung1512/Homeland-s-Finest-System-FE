@@ -16,6 +16,7 @@ import { formatDate } from '../../../utils/formatDate'
 import path from '../../../constants/path'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Dialog, DialogContent, DialogTrigger } from '../../../components/ui/dialog'
+import { StoreStoryContentType } from '../../../constants/storeStoryContentType'
 
 function CreateMyStoryPage() {
   const navigate = useNavigate()
@@ -40,6 +41,17 @@ function CreateMyStoryPage() {
   const [isDraggingVideoTestimonial, setIsDraggingVideoTestimonial] = useState(false)
   const dragCounterVideoTestimonial = React.useRef(0)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+
+  // State để track các flag RemoveExisting khi chỉnh sửa
+  const [removeFlags, setRemoveFlags] = useState({
+    RemoveExistingThumbnail: false,
+    RemoveExistingVideoOpener: false,
+    RemoveExistingSingleImage: false,
+    RemoveExistingTextExpanded: false,
+    RemoveExistingVideoProcess: false,
+    RemoveExistingGalleryImages: false,
+    RemoveExistingVideoTestimonial: false
+  })
 
   // Hàm kiểm tra phần bắt buộc đã hoàn thành chưa
   // const isRequiredFieldCompleted = (field: 'title' | 'thumbnail' | 'videoOpener' | 'textIntro' | 'textClosing'): boolean => {
@@ -129,9 +141,21 @@ function CreateMyStoryPage() {
     if (storyData.VideoOpener) {
       return URL.createObjectURL(storyData.VideoOpener)
     }
-    // Use backend URL if no new file uploaded
-    return storyData.VideoOpenerUrl || null
-  }, [storyData.VideoOpener, storyData.VideoOpenerUrl])
+    // Use backend URL if no new file uploaded - check all URL fields
+    return (
+      storyData.VideoOpenerUrl ||
+      storyData.VideoOpenerPlayBackUrl ||
+      storyData.VideoOpenerPreviewUrl ||
+      storyData.VideoOpenerFallBackUrl ||
+      null
+    )
+  }, [
+    storyData.VideoOpener,
+    storyData.VideoOpenerUrl,
+    storyData.VideoOpenerPlayBackUrl,
+    storyData.VideoOpenerPreviewUrl,
+    storyData.VideoOpenerFallBackUrl
+  ])
 
   const singleImageUrl = useMemo(() => {
     return storyData.SingleImage ? URL.createObjectURL(storyData.SingleImage) : null
@@ -141,19 +165,50 @@ function CreateMyStoryPage() {
     if (storyData.VideoProcess) {
       return URL.createObjectURL(storyData.VideoProcess)
     }
-    return storyData.VideoProcessUrl || null
-  }, [storyData.VideoProcess, storyData.VideoProcessUrl])
+    // Use backend URL if no new file uploaded - check all URL fields
+    return (
+      storyData.VideoProcessUrl ||
+      storyData.VideoProcessPlayBackUrl ||
+      storyData.VideoProcessPreviewUrl ||
+      storyData.VideoProcessFallBackUrl ||
+      null
+    )
+  }, [
+    storyData.VideoProcess,
+    storyData.VideoProcessUrl,
+    storyData.VideoProcessPlayBackUrl,
+    storyData.VideoProcessPreviewUrl,
+    storyData.VideoProcessFallBackUrl
+  ])
 
   const videoTestimonialUrl = useMemo(() => {
     if (storyData.VideoTestimonial) {
       return URL.createObjectURL(storyData.VideoTestimonial)
     }
-    return storyData.VideoTestimonialUrl || null
-  }, [storyData.VideoTestimonial, storyData.VideoTestimonialUrl])
+    // Use backend URL if no new file uploaded - check all URL fields
+    return (
+      storyData.VideoTestimonialUrl ||
+      storyData.VideoTestimonialPlayBackUrl ||
+      storyData.VideoTestimonialPreviewUrl ||
+      storyData.VideoTestimonialFallBackUrl ||
+      null
+    )
+  }, [
+    storyData.VideoTestimonial,
+    storyData.VideoTestimonialUrl,
+    storyData.VideoTestimonialPlayBackUrl,
+    storyData.VideoTestimonialPreviewUrl,
+    storyData.VideoTestimonialFallBackUrl
+  ])
 
   const thumbnailUrl = useMemo(() => {
-    return storyData.ThumbnailImage ? URL.createObjectURL(storyData.ThumbnailImage) : null
-  }, [storyData.ThumbnailImage])
+    // Priority: New file > Existing URL from backend
+    if (storyData.ThumbnailImage) {
+      return URL.createObjectURL(storyData.ThumbnailImage)
+    }
+    // Use backend URL if no new file uploaded
+    return storyData.ThumbnailUrl || null
+  }, [storyData.ThumbnailImage, storyData.ThumbnailUrl])
 
   // Memoize gallery image URLs - chỉ tạo lại khi mảng thay đổi
   const galleryImageUrls = useMemo(() => {
@@ -202,6 +257,75 @@ function CreateMyStoryPage() {
           toast.error(`File ${file.name} quá lớn. Tối đa 50MB (hiện tại: ${(file.size / 1024 / 1024).toFixed(2)}MB)`)
           return
         }
+      }
+    }
+
+    // Khi xóa file (file = null) trong chế độ chỉnh sửa, cần set flag RemoveExisting và clear URL
+    if (!file && isEditMode) {
+      if (field === 'ThumbnailImage') {
+        setRemoveFlags((prev) => ({ ...prev, RemoveExistingThumbnail: true }))
+        setStoryData((prev) => ({
+          ...prev,
+          ThumbnailImage: null,
+          ThumbnailUrl: null
+        }))
+        return
+      } else if (field === 'VideoOpener') {
+        setRemoveFlags((prev) => ({ ...prev, RemoveExistingVideoOpener: true }))
+        setStoryData((prev) => ({
+          ...prev,
+          VideoOpener: null,
+          VideoOpenerUrl: null,
+          VideoOpenerPreviewUrl: null,
+          VideoOpenerPlayBackUrl: null,
+          VideoOpenerFallBackUrl: null
+        }))
+        return
+      } else if (field === 'SingleImage') {
+        setRemoveFlags((prev) => ({ ...prev, RemoveExistingSingleImage: true }))
+        setStoryData((prev) => ({
+          ...prev,
+          SingleImage: null,
+          SingleImageUrl: null
+        }))
+        return
+      } else if (field === 'VideoProcess') {
+        setRemoveFlags((prev) => ({ ...prev, RemoveExistingVideoProcess: true }))
+        setStoryData((prev) => ({
+          ...prev,
+          VideoProcess: null,
+          VideoProcessUrl: null,
+          VideoProcessPreviewUrl: null,
+          VideoProcessPlayBackUrl: null,
+          VideoProcessFallBackUrl: null
+        }))
+        return
+      } else if (field === 'VideoTestimonial') {
+        setRemoveFlags((prev) => ({ ...prev, RemoveExistingVideoTestimonial: true }))
+        setStoryData((prev) => ({
+          ...prev,
+          VideoTestimonial: null,
+          VideoTestimonialUrl: null,
+          VideoTestimonialPreviewUrl: null,
+          VideoTestimonialPlayBackUrl: null,
+          VideoTestimonialFallBackUrl: null
+        }))
+        return
+      }
+    }
+
+    // Khi upload file mới, clear flag RemoveExisting (vì sẽ upload file mới thay thế)
+    if (file && isEditMode) {
+      if (field === 'ThumbnailImage') {
+        setRemoveFlags((prev) => ({ ...prev, RemoveExistingThumbnail: false }))
+      } else if (field === 'VideoOpener') {
+        setRemoveFlags((prev) => ({ ...prev, RemoveExistingVideoOpener: false }))
+      } else if (field === 'SingleImage') {
+        setRemoveFlags((prev) => ({ ...prev, RemoveExistingSingleImage: false }))
+      } else if (field === 'VideoProcess') {
+        setRemoveFlags((prev) => ({ ...prev, RemoveExistingVideoProcess: false }))
+      } else if (field === 'VideoTestimonial') {
+        setRemoveFlags((prev) => ({ ...prev, RemoveExistingVideoTestimonial: false }))
       }
     }
 
@@ -368,8 +492,10 @@ function CreateMyStoryPage() {
         const story = response.data
 
         // Extract and map story data to form state
-        const sortedContents = [...(story.contents || [])].sort((a: any, b: any) => a.order - b.order)
-        
+        const sortedContents = [...(story.contents || [])].sort(
+          (a: { order: number }, b: { order: number }) => a.order - b.order
+        )
+
         // Initialize form data
         const initialData: typeof storyData = {
           Title: story.title || '',
@@ -379,6 +505,9 @@ function CreateMyStoryPage() {
           VideoOpener: null,
           VideoOpenerDescription: '',
           VideoOpenerUrl: null,
+          VideoOpenerPreviewUrl: null,
+          VideoOpenerPlayBackUrl: null,
+          VideoOpenerFallBackUrl: null,
           SingleImage: null,
           SingleImageDescription: '',
           SingleImageUrl: null,
@@ -388,64 +517,127 @@ function CreateMyStoryPage() {
           VideoProcess: null,
           VideoProcessDescription: '',
           VideoProcessUrl: null,
+          VideoProcessPreviewUrl: null,
+          VideoProcessPlayBackUrl: null,
+          VideoProcessFallBackUrl: null,
           VideoTestimonial: null,
           VideoTestimonialDescription: '',
           VideoTestimonialUrl: null,
+          VideoTestimonialPreviewUrl: null,
+          VideoTestimonialPlayBackUrl: null,
+          VideoTestimonialFallBackUrl: null,
           ThumbnailImage: null,
           ThumbnailUrl: story.thumbnailUrl || null
         }
 
-        // Process contents to extract data
-        sortedContents.forEach((content: any) => {
-          const contentType = content.contentType?.toLowerCase()
-          
-          if (contentType === 'text') {
-            // Text content: order 1 = TextIntro, order 2 = TextExpanded, order 5 = TextClosing
-            if (content.order === 1) {
-              initialData.TextIntro = content.contentData || ''
-            } else if (content.order === 2) {
-              initialData.TextExpanded = content.contentData || ''
-            } else if (content.order === 5) {
-              initialData.TextClosing = content.contentData || ''
-            }
-          } else if (contentType === 'video') {
-            // Video content: order 1 = VideoOpener, order 5 = VideoProcess, order 7 = VideoTestimonial
-            // Note: Backend uses order 1, 5, 7 for videos (not 1, 3, 4)
-            if (content.order === 1) {
-              initialData.VideoOpenerDescription = content.contentData || ''
-              // Store all video URLs for proper playback
-              initialData.VideoOpenerPreviewUrl = content.videoPreviewUrl || null
-              initialData.VideoOpenerPlayBackUrl = content.videoPlayBackUrl || null
-              initialData.VideoOpenerFallBackUrl = content.videoFallBackUrl || null
-              // Use playback URL as primary (contains HLS/DASH), fallback to preview, then fallback URL
-              initialData.VideoOpenerUrl = content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
-            } else if (content.order === 5) {
-              initialData.VideoProcessDescription = content.contentData || ''
-              initialData.VideoProcessPreviewUrl = content.videoPreviewUrl || null
-              initialData.VideoProcessPlayBackUrl = content.videoPlayBackUrl || null
-              initialData.VideoProcessFallBackUrl = content.videoFallBackUrl || null
-              initialData.VideoProcessUrl = content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
-            } else if (content.order === 7) {
-              initialData.VideoTestimonialDescription = content.contentData || ''
-              initialData.VideoTestimonialPreviewUrl = content.videoPreviewUrl || null
-              initialData.VideoTestimonialPlayBackUrl = content.videoPlayBackUrl || null
-              initialData.VideoTestimonialFallBackUrl = content.videoFallBackUrl || null
-              initialData.VideoTestimonialUrl = content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
-            }
-          } else if (contentType === 'image') {
-            // Image content: single image (order 2, 1 image) or gallery (multiple images)
+        // Process contents to extract data - Use new contentType values directly
+        sortedContents.forEach((content: {
+          contentType?: string
+          contentData?: string
+          order: number
+          videoPreviewUrl?: string | null
+          videoPlayBackUrl?: string | null
+          videoFallBackUrl?: string | null
+          imageUrls?: string[]
+        }) => {
+          const contentType = content.contentType || ''
+
+          // Use new contentType values: VideoOpener, TextIntro, SingleImage, TextExpanded, VideoProcess, ImageGallery, VideoTestimonial, TextClosing
+          // Support both new format (specific contentType) and old format (generic contentType + order) for backward compatibility
+
+          if (
+            contentType === StoreStoryContentType.VideoOpener ||
+            (contentType.toLowerCase() === 'video' && content.order === 1)
+          ) {
+            initialData.VideoOpenerDescription = content.contentData || ''
+            // Store all video URLs for proper playback
+            initialData.VideoOpenerPreviewUrl = content.videoPreviewUrl || null
+            initialData.VideoOpenerPlayBackUrl = content.videoPlayBackUrl || null
+            initialData.VideoOpenerFallBackUrl = content.videoFallBackUrl || null
+            // Use playback URL as primary (contains HLS/DASH), fallback to preview, then fallback URL
+            initialData.VideoOpenerUrl =
+              content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
+            console.log('Loaded VideoOpener:', {
+              order: content.order,
+              contentType,
+              videoPlayBackUrl: content.videoPlayBackUrl,
+              videoPreviewUrl: content.videoPreviewUrl,
+              VideoOpenerUrl: initialData.VideoOpenerUrl
+            })
+          } else if (contentType === StoreStoryContentType.TextIntro || (contentType.toLowerCase() === 'text' && content.order === 2)) {
+            initialData.TextIntro = content.contentData || ''
+          } else if (contentType === StoreStoryContentType.SingleImage || (contentType.toLowerCase() === 'image' && Array.isArray(content.imageUrls) && content.imageUrls.length === 1)) {
             const imageUrls = content.imageUrls || []
-            if (Array.isArray(imageUrls) && imageUrls.length === 1 && content.order === 2) {
+            if (Array.isArray(imageUrls) && imageUrls.length === 1) {
               initialData.SingleImageUrl = imageUrls[0]
               initialData.SingleImageDescription = content.contentData || ''
-            } else if (Array.isArray(imageUrls) && imageUrls.length > 1) {
+            }
+          } else if (contentType === StoreStoryContentType.TextExpanded || (contentType.toLowerCase() === 'text' && content.order === 4)) {
+            initialData.TextExpanded = content.contentData || ''
+          } else if (
+            contentType === StoreStoryContentType.VideoProcess ||
+            (contentType.toLowerCase() === 'video' && content.order === 5)
+          ) {
+            initialData.VideoProcessDescription = content.contentData || ''
+            initialData.VideoProcessPreviewUrl = content.videoPreviewUrl || null
+            initialData.VideoProcessPlayBackUrl = content.videoPlayBackUrl || null
+            initialData.VideoProcessFallBackUrl = content.videoFallBackUrl || null
+            initialData.VideoProcessUrl =
+              content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
+            console.log('Loaded VideoProcess:', {
+              order: content.order,
+              contentType,
+              videoPlayBackUrl: content.videoPlayBackUrl,
+              videoPreviewUrl: content.videoPreviewUrl,
+              VideoProcessUrl: initialData.VideoProcessUrl
+            })
+          } else if (contentType === StoreStoryContentType.ImageGallery || (contentType.toLowerCase() === 'image' && Array.isArray(content.imageUrls) && content.imageUrls.length > 1)) {
+            const imageUrls = content.imageUrls || []
+            if (Array.isArray(imageUrls) && imageUrls.length > 1) {
               initialData.GalleryImageUrls = imageUrls
               initialData.GalleryDescription = content.contentData || ''
             }
+          } else if (
+            contentType === StoreStoryContentType.VideoTestimonial ||
+            (contentType.toLowerCase() === 'video' && content.order === 7)
+          ) {
+            initialData.VideoTestimonialDescription = content.contentData || ''
+            initialData.VideoTestimonialPreviewUrl = content.videoPreviewUrl || null
+            initialData.VideoTestimonialPlayBackUrl = content.videoPlayBackUrl || null
+            initialData.VideoTestimonialFallBackUrl = content.videoFallBackUrl || null
+            initialData.VideoTestimonialUrl =
+              content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
+            console.log('Loaded VideoTestimonial:', {
+              order: content.order,
+              contentType,
+              videoPlayBackUrl: content.videoPlayBackUrl,
+              videoPreviewUrl: content.videoPreviewUrl,
+              VideoTestimonialUrl: initialData.VideoTestimonialUrl
+            })
+          } else if (contentType === StoreStoryContentType.TextClosing || (contentType.toLowerCase() === 'text' && content.order === 8)) {
+            initialData.TextClosing = content.contentData || ''
           }
         })
 
+        console.log('Final initialData:', {
+          VideoOpenerUrl: initialData.VideoOpenerUrl,
+          VideoOpenerPreviewUrl: initialData.VideoOpenerPreviewUrl,
+          VideoOpenerPlayBackUrl: initialData.VideoOpenerPlayBackUrl,
+          VideoProcessUrl: initialData.VideoProcessUrl,
+          VideoTestimonialUrl: initialData.VideoTestimonialUrl
+        })
+
         setStoryData(initialData)
+        // Reset remove flags when loading story data
+        setRemoveFlags({
+          RemoveExistingThumbnail: false,
+          RemoveExistingVideoOpener: false,
+          RemoveExistingSingleImage: false,
+          RemoveExistingTextExpanded: false,
+          RemoveExistingVideoProcess: false,
+          RemoveExistingGalleryImages: false,
+          RemoveExistingVideoTestimonial: false
+        })
       } catch (error) {
         console.error('Error loading story data:', error)
         toast.error('Không thể tải dữ liệu câu chuyện')
@@ -570,11 +762,17 @@ function CreateMyStoryPage() {
         if (storyData.ThumbnailImage) {
           storyPayload.ThumbnailImage = storyData.ThumbnailImage
           storyPayload.RemoveExistingThumbnail = true // Upload new file, remove old one
+        } else if (removeFlags.RemoveExistingThumbnail) {
+          // User deleted thumbnail, set flag to remove existing
+          storyPayload.RemoveExistingThumbnail = true
         }
 
         // Video Opener
         if (storyData.VideoOpener) {
           storyPayload.VideoOpener = storyData.VideoOpener
+          storyPayload.RemoveExistingVideoOpener = true
+        } else if (removeFlags.RemoveExistingVideoOpener) {
+          // User deleted video opener, set flag to remove existing
           storyPayload.RemoveExistingVideoOpener = true
         }
 
@@ -582,10 +780,16 @@ function CreateMyStoryPage() {
         if (storyData.SingleImage) {
           storyPayload.SingleImage = storyData.SingleImage
           storyPayload.RemoveExistingSingleImage = true
+        } else if (removeFlags.RemoveExistingSingleImage) {
+          // User deleted single image, set flag to remove existing
+          storyPayload.RemoveExistingSingleImage = true
         }
 
         // Text Expanded - if empty and was previously set, remove it
         if (!storyData.TextExpanded.trim() && storyData.TextExpanded !== '') {
+          storyPayload.RemoveExistingTextExpanded = true
+        } else if (removeFlags.RemoveExistingTextExpanded) {
+          // User deleted text expanded, set flag to remove existing
           storyPayload.RemoveExistingTextExpanded = true
         }
 
@@ -593,17 +797,26 @@ function CreateMyStoryPage() {
         if (storyData.VideoProcess) {
           storyPayload.VideoProcess = storyData.VideoProcess
           storyPayload.RemoveExistingVideoProcess = true
+        } else if (removeFlags.RemoveExistingVideoProcess) {
+          // User deleted video process, set flag to remove existing
+          storyPayload.RemoveExistingVideoProcess = true
         }
 
         // Gallery Images
         if (storyData.GalleryImages.length > 0) {
           storyPayload.GalleryImages = storyData.GalleryImages
           storyPayload.RemoveExistingGalleryImages = true
+        } else if (removeFlags.RemoveExistingGalleryImages) {
+          // User deleted gallery images, set flag to remove existing
+          storyPayload.RemoveExistingGalleryImages = true
         }
 
         // Video Testimonial
         if (storyData.VideoTestimonial) {
           storyPayload.VideoTestimonial = storyData.VideoTestimonial
+          storyPayload.RemoveExistingVideoTestimonial = true
+        } else if (removeFlags.RemoveExistingVideoTestimonial) {
+          // User deleted video testimonial, set flag to remove existing
           storyPayload.RemoveExistingVideoTestimonial = true
         }
       } else {
@@ -630,7 +843,7 @@ function CreateMyStoryPage() {
 
       let response
       let successMessage
-      
+
       if (isEditMode && editStoryId) {
         // Update existing story
         response = await storeStoryApi.update(editStoryId, storyPayload)
@@ -650,7 +863,7 @@ function CreateMyStoryPage() {
           successMessage = response.message
         }
       }
-      
+
       toast.success(successMessage)
       navigate(`../${path.myStorySeller}`)
     } catch (error: unknown) {
@@ -1028,10 +1241,7 @@ function CreateMyStoryPage() {
                     content.contentType,
                     content.contentData,
                     content.imageUrls,
-                    content.videoUrl,
-                    content.videoPreviewUrl,
-                    content.videoPlayBackUrl,
-                    content.videoFallBackUrl
+                    content.videoUrl
                   )}
                 </div>
               ))}
@@ -1182,7 +1392,7 @@ function CreateMyStoryPage() {
                     </div>
                   )}
 
-                  {storyData.ThumbnailImage && thumbnailUrl ? (
+                  {thumbnailUrl ? (
                     <div className={`space-y-2 transition-all duration-200 ${isDraggingThumbnail ? 'opacity-30' : 'opacity-100'}`}>
                       <div className='flex justify-center items-center'>
                         <img
@@ -1191,11 +1401,23 @@ function CreateMyStoryPage() {
                           className='max-w-full max-h-96 object-contain rounded'
                         />
                       </div>
-                      <p className='text-sm text-gray-500'>{storyData.ThumbnailImage.name}</p>
-                      <Button variant='outline' size='sm' onClick={() => handleFileChange('ThumbnailImage', null)}>
-                        <X className='w-4 h-4 mr-1' />
-                        Xóa ảnh
-                      </Button>
+                      {storyData.ThumbnailImage && (
+                        <p className='text-sm text-gray-500'>{storyData.ThumbnailImage.name}</p>
+                      )}
+                      <div className='flex flex-col items-center gap-2 mt-2'>
+                        {!storyData.ThumbnailImage && storyData.ThumbnailUrl && (
+                          <p className='text-sm text-gray-500'>Ảnh đại diện hiện tại từ câu chuyện</p>
+                        )}
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => handleFileChange('ThumbnailImage', null)}
+                          className='border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400'
+                        >
+                          <X className='w-4 h-4 mr-1' />
+                          {storyData.ThumbnailImage ? 'Xóa ảnh mới' : 'Xóa ảnh'}
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className={`transition-all duration-200 ${isDraggingThumbnail ? 'opacity-0 scale-95' : 'opacity-100'}`}>
@@ -1324,16 +1546,59 @@ function CreateMyStoryPage() {
                       </div>
                     )}
 
-                    {storyData.VideoOpener && videoOpenerUrl ? (
-                      <div className={`space-y-2 transition-all duration-200 ${isDraggingVideoOpener ? 'opacity-30' : 'opacity-100'}`}>
-                        <div className='flex justify-center items-center'>
-                          <video src={videoOpenerUrl} controls className='max-w-full max-h-96 object-contain rounded' />
+                    {videoOpenerUrl ? (
+                      <div className={`transition-all duration-200 ${isDraggingVideoOpener ? 'opacity-30' : 'opacity-100'}`}>
+                        <div className='flex justify-center items-center mb-4'>
+                          {/* Extract Cloudflare Stream video ID if available */}
+                          {(() => {
+                            const extractVideoId = (url: string): string | undefined => {
+                              try {
+                                const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
+                                return match ? match[1] : undefined
+                              } catch {
+                                return undefined
+                              }
+                            }
+                            const videoId = extractVideoId(videoOpenerUrl)
+
+                            if (videoId) {
+                              // Use Cloudflare Stream component for Cloudflare URLs
+                              return (
+                                <div className='w-full max-w-2xl aspect-video'>
+                                  <Stream src={videoId} controls responsive className='w-full h-full rounded' preload='metadata' />
+                                </div>
+                              )
+                            } else {
+                              // Use regular video tag for other URLs
+                              return (
+                                <video
+                                  src={videoOpenerUrl}
+                                  controls
+                                  className='max-w-full max-h-96 object-contain rounded'
+                                  preload='metadata'
+                                />
+                              )
+                            }
+                          })()}
                         </div>
-                        <p className='text-sm text-gray-500'>{storyData.VideoOpener.name}</p>
-                        <Button variant='outline' size='sm' onClick={() => handleFileChange('VideoOpener', null)}>
-                          <X className='w-4 h-4 mr-1' />
-                          Xóa video
-                        </Button>
+                        {/* Info and delete button - always visible below video */}
+                        <div className='flex flex-col items-center gap-2 py-3 border-t border-gray-100'>
+                          {storyData.VideoOpener && (
+                            <p className='text-sm text-gray-500'>{storyData.VideoOpener.name}</p>
+                          )}
+                          {!storyData.VideoOpener && (storyData.VideoOpenerUrl || storyData.VideoOpenerPlayBackUrl || storyData.VideoOpenerPreviewUrl) && (
+                            <p className='text-sm text-gray-500'>Video hiện tại từ câu chuyện</p>
+                          )}
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={() => handleFileChange('VideoOpener', null)}
+                            className='border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400'
+                          >
+                            <X className='w-4 h-4 mr-1' />
+                            {storyData.VideoOpener ? 'Xóa video mới' : 'Xóa video'}
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <div className={`text-center transition-all duration-200 ${isDraggingVideoOpener ? 'opacity-0 scale-95' : 'opacity-100'}`}>
@@ -1997,16 +2262,59 @@ function CreateMyStoryPage() {
                                 </div>
                               )}
 
-                              {storyData.VideoProcess && videoProcessUrl ? (
-                                <div className={`space-y-2 transition-all duration-200 ${isDraggingVideoProcess ? 'opacity-30' : 'opacity-100'}`}>
-                                  <div className='flex justify-center items-center'>
-                                    <video src={videoProcessUrl} controls className='max-w-full max-h-96 object-contain rounded' />
+                              {videoProcessUrl ? (
+                                <div className={`transition-all duration-200 ${isDraggingVideoProcess ? 'opacity-30' : 'opacity-100'}`}>
+                                  <div className='flex justify-center items-center mb-4'>
+                                    {/* Extract Cloudflare Stream video ID if available */}
+                                    {(() => {
+                                      const extractVideoId = (url: string): string | undefined => {
+                                        try {
+                                          const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
+                                          return match ? match[1] : undefined
+                                        } catch {
+                                          return undefined
+                                        }
+                                      }
+                                      const videoId = extractVideoId(videoProcessUrl)
+
+                                      if (videoId) {
+                                        // Use Cloudflare Stream component for Cloudflare URLs
+                                        return (
+                                          <div className='w-full max-w-2xl aspect-video'>
+                                            <Stream src={videoId} controls responsive className='w-full h-full rounded' preload='metadata' />
+                                          </div>
+                                        )
+                                      } else {
+                                        // Use regular video tag for other URLs
+                                        return (
+                                          <video
+                                            src={videoProcessUrl}
+                                            controls
+                                            className='max-w-full max-h-96 object-contain rounded'
+                                            preload='metadata'
+                                          />
+                                        )
+                                      }
+                                    })()}
                                   </div>
-                                  <p className='text-sm text-gray-500'>{storyData.VideoProcess.name}</p>
-                                  <Button variant='outline' size='sm' onClick={() => handleFileChange('VideoProcess', null)}>
-                                    <X className='w-4 h-4 mr-1' />
-                                    Xóa video
-                                  </Button>
+                                  {/* Info and delete button - always visible below video */}
+                                  <div className='flex flex-col items-center gap-2 py-3 border-t border-gray-100'>
+                                    {storyData.VideoProcess && (
+                                      <p className='text-sm text-gray-500'>{storyData.VideoProcess.name}</p>
+                                    )}
+                                    {!storyData.VideoProcess && (storyData.VideoProcessUrl || storyData.VideoProcessPlayBackUrl || storyData.VideoProcessPreviewUrl) && (
+                                      <p className='text-sm text-gray-500'>Video hiện tại từ câu chuyện</p>
+                                    )}
+                                    <Button
+                                      variant='outline'
+                                      size='sm'
+                                      onClick={() => handleFileChange('VideoProcess', null)}
+                                      className='border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400'
+                                    >
+                                      <X className='w-4 h-4 mr-1' />
+                                      {storyData.VideoProcess ? 'Xóa video mới' : 'Xóa video'}
+                                    </Button>
+                                  </div>
                                 </div>
                               ) : (
                                 <div className={`text-center transition-all duration-200 ${isDraggingVideoProcess ? 'opacity-0 scale-95' : 'opacity-100'}`}>
@@ -2174,16 +2482,59 @@ function CreateMyStoryPage() {
                                 </div>
                               )}
 
-                              {storyData.VideoTestimonial && videoTestimonialUrl ? (
-                                <div className={`space-y-2 transition-all duration-200 ${isDraggingVideoTestimonial ? 'opacity-30' : 'opacity-100'}`}>
-                                  <div className='flex justify-center items-center'>
-                                    <video src={videoTestimonialUrl} controls className='max-w-full max-h-96 object-contain rounded' />
+                              {videoTestimonialUrl ? (
+                                <div className={`transition-all duration-200 ${isDraggingVideoTestimonial ? 'opacity-30' : 'opacity-100'}`}>
+                                  <div className='flex justify-center items-center mb-4'>
+                                    {/* Extract Cloudflare Stream video ID if available */}
+                                    {(() => {
+                                      const extractVideoId = (url: string): string | undefined => {
+                                        try {
+                                          const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
+                                          return match ? match[1] : undefined
+                                        } catch {
+                                          return undefined
+                                        }
+                                      }
+                                      const videoId = extractVideoId(videoTestimonialUrl)
+
+                                      if (videoId) {
+                                        // Use Cloudflare Stream component for Cloudflare URLs
+                                        return (
+                                          <div className='w-full max-w-2xl aspect-video'>
+                                            <Stream src={videoId} controls responsive className='w-full h-full rounded' preload='metadata' />
+                                          </div>
+                                        )
+                                      } else {
+                                        // Use regular video tag for other URLs
+                                        return (
+                                          <video
+                                            src={videoTestimonialUrl}
+                                            controls
+                                            className='max-w-full max-h-96 object-contain rounded'
+                                            preload='metadata'
+                                          />
+                                        )
+                                      }
+                                    })()}
                                   </div>
-                                  <p className='text-sm text-gray-500'>{storyData.VideoTestimonial.name}</p>
-                                  <Button variant='outline' size='sm' onClick={() => handleFileChange('VideoTestimonial', null)}>
-                                    <X className='w-4 h-4 mr-1' />
-                                    Xóa video
-                                  </Button>
+                                  {/* Info and delete button - always visible below video */}
+                                  <div className='flex flex-col items-center gap-2 py-3 border-t border-gray-100'>
+                                    {storyData.VideoTestimonial && (
+                                      <p className='text-sm text-gray-500'>{storyData.VideoTestimonial.name}</p>
+                                    )}
+                                    {!storyData.VideoTestimonial && (storyData.VideoTestimonialUrl || storyData.VideoTestimonialPlayBackUrl || storyData.VideoTestimonialPreviewUrl) && (
+                                      <p className='text-sm text-gray-500'>Video hiện tại từ câu chuyện</p>
+                                    )}
+                                    <Button
+                                      variant='outline'
+                                      size='sm'
+                                      onClick={() => handleFileChange('VideoTestimonial', null)}
+                                      className='border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400'
+                                    >
+                                      <X className='w-4 h-4 mr-1' />
+                                      {storyData.VideoTestimonial ? 'Xóa video mới' : 'Xóa video'}
+                                    </Button>
+                                  </div>
                                 </div>
                               ) : (
                                 <div className={`text-center transition-all duration-200 ${isDraggingVideoTestimonial ? 'opacity-0 scale-95' : 'opacity-100'}`}>
