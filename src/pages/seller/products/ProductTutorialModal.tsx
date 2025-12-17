@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Gamepad2, TreePine, Tag, Lightbulb, CheckCircle2, Box, Layers } from 'lucide-react'
+import { Gamepad2, Tag, Lightbulb, CheckCircle2, Box, Layers } from 'lucide-react'
 import ReactFlow, {
   Background,
   Controls,
@@ -109,11 +109,11 @@ function ProductTutorialModal({ open, onOpenChange }: ProductTutorialModalProps)
               </div>
             )}
             <DialogTitle className='text-2xl font-bold text-gray-900 flex-1'>
-              {currentStep === 1 && 'Chào mừng Seller mới!'}
-              {currentStep === 2 && 'Tạo mô hình cây của bạn'}
-              {currentStep === 3 && 'Đặt tên cho Sản phẩm chính'}
-              {currentStep === 4 && 'Chọn danh mục sản phẩm'}
-              {currentStep === 5 && 'Sẵn sàng tạo tùy chọn!'}
+              {currentStep === 1 && 'Chào mừng Người bán mới!'}
+              {currentStep === 2 && 'Chọn cách bán sản phẩm'}
+              {currentStep === 3 && 'Nhập thông tin sản phẩm'}
+              {currentStep === 4 && 'Chọn danh mục bán hàng'}
+              {currentStep === 5 && 'Xong! Tiếp theo tạo quy cách bán'}
             </DialogTitle>
             <div className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>
               {currentStep}/{totalSteps}
@@ -166,9 +166,8 @@ function Step1Welcome() {
   return (
     <div className='space-y-4'>
       <p className='text-gray-700 leading-relaxed'>
-        Hệ thống sản phẩm được thiết kế như việc <strong className='text-green-600'>trồng cây</strong>
-        <TreePine className='w-5 h-5 inline-block ml-1 text-green-600' />. Để bán hàng hiệu quả, bạn cần hiểu cấu trúc
-        cây.
+        Sản phẩm được chia thành 2 phần: <strong className='text-green-600'>Thông tin sản phẩm</strong> và{' '}
+        <strong className='text-green-600'>Quy cách / đóng gói</strong>. Hiểu đúng 2 phần này sẽ giúp bạn tạo sản phẩm nhanh và bán hàng hiệu quả hơn.
       </p>
 
       <div className='bg-white border border-gray-200 rounded-lg p-6 shadow-sm mt-6'>
@@ -178,8 +177,8 @@ function Step1Welcome() {
               <Box className='w-6 h-6 text-blue-600' />
             </div>
             <div className='flex-1'>
-              <h4 className='font-semibold text-gray-900 mb-1'>Gốc (SP Chính):</h4>
-              <p className='text-gray-600 text-sm'>Cái khách thấy (Vd: Mật ong)</p>
+              <h4 className='font-semibold text-gray-900 mb-1'>Thông tin sản phẩm:</h4>
+              <p className='text-gray-600 text-sm'>(Ví dụ: Mật ong, Áo thun, Gốm sứ Bát Tràng...)</p>
             </div>
           </div>
 
@@ -188,8 +187,8 @@ function Step1Welcome() {
               <Tag className='w-6 h-6 text-green-600' />
             </div>
             <div className='flex-1'>
-              <h4 className='font-semibold text-gray-900 mb-1'>Quả (SKU):</h4>
-              <p className='text-gray-600 text-sm'>Cái khách mua (Vd: Chai 1 lít)</p>
+              <h4 className='font-semibold text-gray-900 mb-1'>Quy cách / Đóng gói:</h4>
+              <p className='text-gray-600 text-sm'>(Ví dụ: Chai 1 lít, Hộp 100g, Bộ 3 sản phẩm...)</p>
             </div>
           </div>
         </div>
@@ -230,7 +229,7 @@ function Step2ChooseModel({ selectedModel, onSelectModel }: Step2Props) {
   return (
     <div className='space-y-6'>
       <p className='text-gray-700 leading-relaxed'>
-        Trước khi bắt đầu, hãy xem sản phẩm của bạn thuộc mô hình nào nhé:
+        Trước khi bắt đầu, hãy xem bạn muốn bán sản phẩm theo cách nào nhé:
       </p>
 
       <div className='flex gap-3 mb-6'>
@@ -241,7 +240,7 @@ function Step2ChooseModel({ selectedModel, onSelectModel }: Step2Props) {
             : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
             }`}
         >
-          Đơn giản (1 Cấp)
+         Bán cố định
         </button>
         <button
           onClick={() => onSelectModel('medium')}
@@ -250,7 +249,7 @@ function Step2ChooseModel({ selectedModel, onSelectModel }: Step2Props) {
             : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
             }`}
         >
-          Trung bình (2 Cấp)
+          Bán theo quy cách / đóng gói
         </button>
         <button
           onClick={() => onSelectModel('complex')}
@@ -259,7 +258,7 @@ function Step2ChooseModel({ selectedModel, onSelectModel }: Step2Props) {
             : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
             }`}
         >
-          Phức tạp (Master)
+          Bán nhiều loại
         </button>
       </div>
 
@@ -289,9 +288,9 @@ function Step2ChooseModel({ selectedModel, onSelectModel }: Step2Props) {
 
             <div className='mt-6 bg-gray-50 rounded-lg p-4'>
               <p className='text-sm text-gray-600'>
-                {selectedModel === 'simple' && 'Thích hợp khi sản phẩm chỉ có 1 cấp tùy chọn (Size hoặc Dung tích...)'}
-                {selectedModel === 'medium' && 'Phổ biến nhất: 2 cấp tùy chọn (VD: Chất liệu → Dung tích)'}
-                {selectedModel === 'complex' && 'Dùng khi có nhiều sản phẩm con khác tên/ảnh (VD: Rừng vs Nhà)'}
+                {selectedModel === 'simple' && 'Khách chỉ mua, không cần chọn gì thêm'}
+                {selectedModel === 'medium' && 'Khách chọn 1 trong các quy cách đóng gói sản phẩm'}
+                {selectedModel === 'complex' && 'Khách phải chọn từ 2 bước trở lên'}
               </p>
             </div>
           </div>
@@ -306,36 +305,36 @@ function Step3NameRoot() {
   return (
     <div className='space-y-4'>
       <p className='text-gray-700 leading-relaxed mb-4'>
-        Bắt đầu tạo <strong className='text-blue-600'>Sản phẩm chính</strong> - đây là sản phẩm độc lập mà khách hàng
-        sẽ thấy trên trang danh mục.
+        Đây là thông tin cơ bản mà khách hàng sẽ thấy khi tìm kiếm sản phẩm của bạn.
       </p>
 
-      <div className='space-y-3'>
-        <div className='flex items-start gap-2'>
-          <span className='text-green-600 font-bold'>•</span>
+      <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
+        <h4 className='font-semibold text-gray-900 mb-3'> Cần điền gì?</h4>
+        
+        <div className='space-y-3'>
+          <div>
+            <p className='text-gray-700 text-sm'>
+              <strong>• Tên sản phẩm:</strong> Rõ ràng, dễ tìm
+            </p>
+            <p className='text-gray-600 text-sm ml-4 mt-1'>
+              Ví dụ: "Mật ong rừng", "Áo thun trơn", "Gốm sứ Bát Tràng"
+            </p>
+          </div>
+
           <p className='text-gray-700 text-sm'>
-            <strong>Tên sản phẩm:</strong> Đặt tên rõ ràng, cụ thể - đây là tên khách hàng sẽ thấy trên danh mục tìm
-            kiếm.
+            <strong>• Mô tả:</strong> Viết chi tiết về sản phẩm
+          </p>
+
+          <p className='text-gray-700 text-sm'>
+            <strong>• Hình ảnh:</strong> Chọn ảnh đại diện đẹp nhất
           </p>
         </div>
-        <div className='flex items-start gap-2'>
-          <span className='text-green-600 font-bold'>•</span>
-          <p className='text-gray-700 text-sm'>
-            <strong>Ví dụ tên tốt:</strong> "Mật ong rừng", "Mật ong nhà", "Áo thun trơn", "Gốm sứ Bát Tràng"
-          </p>
-        </div>
-        <div className='flex items-start gap-2'>
-          <span className='text-green-600 font-bold'>•</span>
-          <p className='text-gray-700 text-sm'>
-            <strong>Mô tả & Hình ảnh:</strong> Thêm mô tả chi tiết và hình ảnh đại diện cho sản phẩm.
-          </p>
-        </div>
-        <div className='flex items-start gap-2'>
-          <span className='text-green-600 font-bold'>•</span>
-          <p className='text-gray-700 text-sm'>
-            <strong>Lưu ý:</strong> Chưa cần nhập giá ở đây. Giá sẽ được đặt ở bước tạo <strong className='text-green-600'>Phiên bản bán được (SKU)</strong>.
-          </p>
-        </div>
+      </div>
+
+      <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4'>
+        <p className='text-sm text-gray-700'>
+          <strong> Lưu ý:</strong> Chưa cần nhập giá! Bạn sẽ đặt giá ở bước sau khi tạo quy cách bán.
+        </p>
       </div>
     </div>
   )
@@ -346,30 +345,22 @@ function Step4Category() {
   return (
     <div className='space-y-4'>
       <p className='text-gray-700 leading-relaxed mb-4'>
-        Chọn <strong className='text-blue-600'>danh mục sản phẩm</strong> phù hợp để khách hàng dễ dàng tìm thấy sản
-        phẩm của bạn.
+        Chọn danh mục phù hợp để khách hàng dễ tìm thấy sản phẩm của bạn.
       </p>
 
-      <div className='space-y-3'>
-        <div className='flex items-start gap-2'>
-          <span className='text-green-600 font-bold'>•</span>
-          <p className='text-gray-700 text-sm'>
-            <strong>Chọn danh mục chính xác:</strong> Đặt sản phẩm vào đúng danh mục giúp khách hàng tìm thấy dễ dàng
-            hơn.
-          </p>
-        </div>
-        <div className='flex items-start gap-2'>
-          <span className='text-green-600 font-bold'>•</span>
-          <p className='text-gray-700 text-sm'>
-            <strong>Ví dụ:</strong> "Mật ong" → Danh mục "Thực phẩm" → "Đồ uống & Thực phẩm tự nhiên"
-          </p>
-        </div>
-        <div className='flex items-start gap-2'>
-          <span className='text-green-600 font-bold'>•</span>
-          <p className='text-gray-700 text-sm'>
-            <strong>Lưu ý:</strong> Nếu không tìm thấy danh mục phù hợp, hãy chọn danh mục gần nhất.
-          </p>
-        </div>
+      <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
+        <p className='text-gray-700 text-sm mb-2'>
+          <strong> Ví dụ:</strong>
+        </p>
+        <p className='text-gray-600 text-sm ml-4'>
+          "Mật ong" → Thực phẩm → Đồ uống & Thực phẩm tự nhiên
+        </p>
+      </div>
+
+      <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3'>
+        <p className='text-sm text-gray-700'>
+          <strong> Mẹo:</strong> Nếu không chắc chắn, hãy chọn danh mục gần nhất.
+        </p>
       </div>
     </div>
   )
@@ -386,24 +377,31 @@ function Step5Complete() {
       </div>
 
       <div className='text-center space-y-3'>
-        <p className='text-gray-700 leading-relaxed mb-4'>
-          Bạn đã hoàn thành bước tạo <strong className='text-blue-600'>Sản phẩm chính</strong>!
+        <p className='text-gray-700 leading-relaxed text-lg font-medium'>
+          🎉 Bạn đã hoàn thành bước đầu tiên!
         </p>
+        
         <p className='text-gray-700 leading-relaxed'>
-          Hãy bấm <strong className='text-green-600'>Lưu sản phẩm</strong> để sang bước tiếp theo: Tạo các{' '}
-          <strong className='text-yellow-600'>Nhóm tùy chọn</strong> và{' '}
-          <strong className='text-green-600'>Phiên bản bán được (SKU)</strong>
-          .
+          Bấm <strong className='text-green-600'>Lưu sản phẩm</strong> để tiếp tục.
         </p>
-        <div className='mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 text-left'>
-          <p className='text-sm text-gray-700'>
-            <strong>Bước tiếp theo:</strong> Sau khi lưu, bạn sẽ tạo các tùy chọn sản phẩm (ví dụ: Loại hũ, Dung tích)
-            và đặt giá cho từng phiên bản bán được.
-          </p>
+      </div>
+
+      <div className='bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-200 rounded-lg p-5 shadow-sm'>
+        <div className='flex items-start gap-3'>
+          <div className='w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0'>
+            <Box className='w-6 h-6 text-blue-600' />
+          </div>
+          <div>
+            <h4 className='font-semibold text-gray-900 mb-2'>
+               Bước tiếp theo:
+            </h4>
+            <p className='text-sm text-gray-700 leading-relaxed'>
+              Sau khi lưu, bạn sẽ tạo các <strong>quy cách bán</strong> (ví dụ: 500ml, 1 lít, 5 lít) và <strong>đặt giá</strong> cho từng quy cách.
+            </p>
+          </div>
         </div>
       </div>
     </div>
   )
 }
-
 export default ProductTutorialModal

@@ -19,7 +19,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
       // Root node
       nodeData.push({
         type: 'Detail',
-        label: 'Sản phẩm chính',
+        label: 'Thông tin sản phẩm',
         description: 'Ví dụ: Mật ong',
         x: 400,
         y: 80
@@ -28,7 +28,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
       // SKU nodes
       nodeData.push({
         type: 'SKU',
-        label: 'SKU 1',
+        label: 'Quy cách / Đóng gói',
         description: '1 Lít',
         x: 200,
         y: 300
@@ -36,7 +36,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
 
       nodeData.push({
         type: 'SKU',
-        label: 'SKU 2',
+        label: 'Quy cách / Đóng gói',
         description: '5 Lít',
         x: 600,
         y: 300
@@ -52,7 +52,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
       // Root node
       nodeData.push({
         type: 'Detail',
-        label: 'Sản phẩm chính',
+        label: 'Thông tin sản phẩm',
         description: 'Mật ong',
         x: 400,
         y: 80
@@ -76,7 +76,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
       // SKU nodes under Group 1
       nodeData.push({
         type: 'SKU',
-        label: 'SKU',
+        label: 'Quy cách / Đóng gói',
         description: '100ml',
         x: 200,
         y: 480
@@ -85,7 +85,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
       // SKU nodes under Group 2
       nodeData.push({
         type: 'SKU',
-        label: 'SKU',
+        label: 'Quy cách / Đóng gói',
         description: '100ml',
         x: 600,
         y: 480
@@ -103,7 +103,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
       // Level 1: Master node (Gốc) - ở giữa trên cùng
       nodeData.push({
         type: 'Master',
-        label: 'Dòng SP',
+        label: 'Dòng Sản phẩm',
         description: 'Dòng Mật Ong',
         x: 400,
         y: 80
@@ -147,7 +147,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
       // SKU dưới Group 1 (Nhánh Trái) - SKU 1
       nodeData.push({
         type: 'SKU',
-        label: 'SKU 1',
+        label: 'Quy cách / Đóng gói',
         description: '100ml',
         x: 50,
         y: 550
@@ -156,7 +156,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
       // SKU dưới Group 1 (Nhánh Trái) - SKU 2
       nodeData.push({
         type: 'SKU',
-        label: 'SKU 2',
+        label: 'Quy cách / Đóng gói',
         description: '500ml',
         x: 250,
         y: 550
@@ -165,7 +165,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
       // SKU dưới Group 2 (Nhánh Phải) - SKU 3
       nodeData.push({
         type: 'SKU',
-        label: 'SKU 3',
+        label: 'Quy cách / Đóng gói',
         description: '100ml',
         x: 550,
         y: 550
@@ -174,7 +174,7 @@ const calculateTreeLayout = (pattern: TreePattern): { nodes: Omit<Node, 'id'>[];
       // SKU dưới Group 2 (Nhánh Phải) - SKU 4
       nodeData.push({
         type: 'SKU',
-        label: 'SKU 4',
+        label: 'Quy cách / Đóng gói',
         description: '500ml',
         x: 750,
         y: 550
