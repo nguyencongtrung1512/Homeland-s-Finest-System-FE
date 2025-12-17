@@ -5,18 +5,25 @@ export interface StoreStoryUpdateData {
   Title: string
   TextIntro: string
   VideoOpener?: File
+  RemoveExistingVideoOpener?: boolean
   VideoOpenerDescription: string
   SingleImage?: File
+  RemoveExistingSingleImage?: boolean
   SingleImageDescription: string
   GalleryImages?: File[]
+  RemoveExistingGalleryImages?: boolean
   GalleryDescription: string
   VideoProcess?: File
+  RemoveExistingVideoProcess?: boolean
   VideoProcessDescription: string
   TextExpanded: string
+  RemoveExistingTextExpanded?: boolean
   VideoTestimonial?: File
+  RemoveExistingVideoTestimonial?: boolean
   VideoTestimonialDescription: string
   TextClosing: string
   ThumbnailImage?: File
+  RemoveExistingThumbnail?: boolean
   StoreId: string
   IsActive?: boolean
 }
@@ -75,50 +82,72 @@ export const storeStoryApi = {
 
     // Required text fields
     formData.append('Title', data.Title)
-    formData.append('TextIntro', data.TextIntro)
-    formData.append('TextExpanded', data.TextExpanded)
-    formData.append('TextClosing', data.TextClosing)
-    formData.append('VideoOpenerDescription', data.VideoOpenerDescription)
-    formData.append('SingleImageDescription', data.SingleImageDescription)
-    formData.append('GalleryDescription', data.GalleryDescription)
-    formData.append('VideoProcessDescription', data.VideoProcessDescription)
-    formData.append('VideoTestimonialDescription', data.VideoTestimonialDescription)
+    formData.append('TextIntro', data.TextIntro || '')
+    formData.append('TextClosing', data.TextClosing || '')
+    
+    // Optional text fields
+    if (data.TextExpanded) {
+      formData.append('TextExpanded', data.TextExpanded)
+    }
+    formData.append('VideoOpenerDescription', data.VideoOpenerDescription || '')
+    formData.append('SingleImageDescription', data.SingleImageDescription || '')
+    formData.append('GalleryDescription', data.GalleryDescription || '')
+    formData.append('VideoProcessDescription', data.VideoProcessDescription || '')
+    formData.append('VideoTestimonialDescription', data.VideoTestimonialDescription || '')
 
-    // File fields - append file if exists, otherwise append empty Blob to match curl format
+    // Thumbnail - Backend expects NewThumbnail and RemoveExistingThumbnail
+    if (data.ThumbnailImage) {
+      formData.append('NewThumbnail', data.ThumbnailImage)
+    }
+    if (data.RemoveExistingThumbnail !== undefined) {
+      formData.append('RemoveExistingThumbnail', data.RemoveExistingThumbnail.toString())
+    }
+
+    // Video Opener - Backend expects NewVideoOpener and RemoveExistingVideoOpener
     if (data.VideoOpener) {
-      formData.append('VideoOpener', data.VideoOpener)
-    } else {
-      formData.append('VideoOpener', new Blob(), '')
+      formData.append('NewVideoOpener', data.VideoOpener)
+    }
+    if (data.RemoveExistingVideoOpener !== undefined) {
+      formData.append('RemoveExistingVideoOpener', data.RemoveExistingVideoOpener.toString())
     }
 
+    // Single Image - Backend expects NewSingleImage and RemoveExistingSingleImage
     if (data.SingleImage) {
-      formData.append('SingleImage', data.SingleImage)
-    } else {
-      formData.append('SingleImage', new Blob(), '')
+      formData.append('NewSingleImage', data.SingleImage)
+    }
+    if (data.RemoveExistingSingleImage !== undefined) {
+      formData.append('RemoveExistingSingleImage', data.RemoveExistingSingleImage.toString())
     }
 
+    // Text Expanded - Backend expects RemoveExistingTextExpanded
+    if (data.RemoveExistingTextExpanded !== undefined) {
+      formData.append('RemoveExistingTextExpanded', data.RemoveExistingTextExpanded.toString())
+    }
+
+    // Video Process - Backend expects NewVideoProcess and RemoveExistingVideoProcess
     if (data.VideoProcess) {
-      formData.append('VideoProcess', data.VideoProcess)
-    } else {
-      formData.append('VideoProcess', new Blob(), '')
+      formData.append('NewVideoProcess', data.VideoProcess)
+    }
+    if (data.RemoveExistingVideoProcess !== undefined) {
+      formData.append('RemoveExistingVideoProcess', data.RemoveExistingVideoProcess.toString())
     }
 
-    if (data.VideoTestimonial) {
-      formData.append('VideoTestimonial', data.VideoTestimonial)
-    } else {
-      formData.append('VideoTestimonial', new Blob(), '')
-    }
-
-    // GalleryImages - can have multiple files
+    // Gallery Images - Backend expects NewGalleryImages and RemoveExistingGalleryImages
     if (data.GalleryImages && data.GalleryImages.length > 0) {
       data.GalleryImages.forEach((image) => {
-        formData.append('GalleryImages', image)
+        formData.append('NewGalleryImages', image)
       })
     }
+    if (data.RemoveExistingGalleryImages !== undefined) {
+      formData.append('RemoveExistingGalleryImages', data.RemoveExistingGalleryImages.toString())
+    }
 
-    // ThumbnailImage - append if exists
-    if (data.ThumbnailImage) {
-      formData.append('ThumbnailImage', data.ThumbnailImage)
+    // Video Testimonial - Backend expects NewVideoTestimonial and RemoveExistingVideoTestimonial
+    if (data.VideoTestimonial) {
+      formData.append('NewVideoTestimonial', data.VideoTestimonial)
+    }
+    if (data.RemoveExistingVideoTestimonial !== undefined) {
+      formData.append('RemoveExistingVideoTestimonial', data.RemoveExistingVideoTestimonial.toString())
     }
 
     // IsActive - append if provided

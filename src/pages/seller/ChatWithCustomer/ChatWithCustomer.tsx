@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Badge } from '../../../components/ui/badge'
-import { Search, Paperclip, Image as ImageIcon, Send } from 'lucide-react'
+import { Search, Image as ImageIcon, Send } from 'lucide-react'
 import { useAuth } from '../../../contexts/auth.context'
 import { getAllChatRoomsByUserId, getChatRoomMessages, sendChatRoomMessage } from '../../../apis/chat.api'
 import { signalRService } from '../../../service/signalRService'
@@ -1194,9 +1194,6 @@ function ChatWithCustomer() {
             )}
 
             <div className='flex items-center gap-3'>
-              <Button variant='ghost' size='sm' className='text-gray-600 hover:text-gray-900'>
-                <Paperclip className='w-4 h-4' />
-              </Button>
               <input
                 type='file'
                 ref={fileInputRef}

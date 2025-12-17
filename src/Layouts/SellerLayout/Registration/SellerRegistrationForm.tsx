@@ -8,7 +8,17 @@ import { Checkbox } from '../../../components/ui/checkbox'
 import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-import { ChevronDownIcon, Eye, EyeOff, Loader2, MapPinIcon, Image as ImageIcon, X, ChevronsUpDown, Check } from 'lucide-react'
+import {
+  ChevronDownIcon,
+  Eye,
+  EyeOff,
+  Loader2,
+  MapPinIcon,
+  Image as ImageIcon,
+  X,
+  ChevronsUpDown,
+  Check
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { Upload as AntUpload, message } from 'antd'
@@ -19,7 +29,12 @@ import { path } from '../../../constants/path'
 import { registerSeller } from '../../../apis/auth.api'
 import { getProvinces, getDistricts, getWards, type Province, type District, type Ward } from '../../../apis/province'
 import Loading from '../../../components/Loading/loading'
-import { extractCCCDInfo, extractCCCDBackInfo, type ExtractedCCCDInfo, type ExtractedCCCDBackInfo } from '../../../apis/fptai.api'
+import {
+  extractCCCDInfo,
+  extractCCCDBackInfo,
+  type ExtractedCCCDInfo,
+  type ExtractedCCCDBackInfo
+} from '../../../apis/fptai.api'
 import { getBanks, verifyBankAccount, type Bank } from '../../../apis/user.api'
 import ComboBox from '../../../components/ui/combo-box'
 import { validateCertificate } from '../../../apis/n8n.api'
@@ -200,9 +215,7 @@ const FileUploadFieldWithOCR = ({
       return
     }
 
-    const filesToAdd = multiple
-      ? validFiles.slice(0, remainingSlots)
-      : validFiles.slice(0, 1)
+    const filesToAdd = multiple ? validFiles.slice(0, remainingSlots) : validFiles.slice(0, 1)
 
     if (validFiles.length > filesToAdd.length) {
       message.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
@@ -325,8 +338,9 @@ const FileUploadFieldWithOCR = ({
         className={`relative transition-all duration-200 ${isDragging ? 'ring-2 ring-green-500 ring-offset-2' : ''} ${isProcessingOCR ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <div
-          className={`absolute inset-0 z-10 bg-green-50 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center pointer-events-none transition-all duration-200 ${isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-            }`}
+          className={`absolute inset-0 z-10 bg-green-50 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center pointer-events-none transition-all duration-200 ${
+            isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          }`}
         >
           <div className='text-center transform transition-transform duration-200'>
             <div className='text-green-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
@@ -462,9 +476,7 @@ const FileUploadFieldWithBackOCR = ({
       return
     }
 
-    const filesToAdd = multiple
-      ? validFiles.slice(0, remainingSlots)
-      : validFiles.slice(0, 1)
+    const filesToAdd = multiple ? validFiles.slice(0, remainingSlots) : validFiles.slice(0, 1)
 
     if (validFiles.length > filesToAdd.length) {
       message.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
@@ -587,8 +599,9 @@ const FileUploadFieldWithBackOCR = ({
         className={`relative transition-all duration-200 ${isDragging ? 'ring-2 ring-green-500 ring-offset-2' : ''} ${isProcessingOCR ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <div
-          className={`absolute inset-0 z-10 bg-green-50 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center pointer-events-none transition-all duration-200 ${isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-            }`}
+          className={`absolute inset-0 z-10 bg-green-50 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center pointer-events-none transition-all duration-200 ${
+            isDragging ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          }`}
         >
           <div className='text-center transform transition-transform duration-200'>
             <div className='text-green-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
@@ -695,9 +708,7 @@ const SimpleFileUploadField = ({
         return
       }
 
-      const filesToAdd = multiple
-        ? validFiles.slice(0, remainingSlots)
-        : validFiles.slice(0, 1)
+      const filesToAdd = multiple ? validFiles.slice(0, remainingSlots) : validFiles.slice(0, 1)
 
       if (validFiles.length > filesToAdd.length) {
         toast.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
@@ -769,9 +780,7 @@ const SimpleFileUploadField = ({
         return
       }
 
-      const filesToAdd = multiple
-        ? validFiles.slice(0, remainingSlots)
-        : validFiles.slice(0, 1)
+      const filesToAdd = multiple ? validFiles.slice(0, remainingSlots) : validFiles.slice(0, 1)
 
       if (validFiles.length > filesToAdd.length) {
         toast.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
@@ -812,18 +821,22 @@ const SimpleFileUploadField = ({
           ))}
           {previewUrls.length < maxCount && (
             <div
-              className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${isDragging
-                ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg'
-                : 'border-slate-300 hover:border-emerald-400'
-                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${
+                isDragging
+                  ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg'
+                  : 'border-slate-300 hover:border-emerald-400'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={handleClick}
               onDragEnter={handleDragEnter}
               onDragLeave={handleDragLeave}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
-              <div className={`absolute inset-0 bg-emerald-50/80 flex items-center justify-center transition-all duration-200 ${isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                }`}>
+              <div
+                className={`absolute inset-0 bg-emerald-50/80 flex items-center justify-center transition-all duration-200 ${
+                  isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
+              >
                 <div className='text-center transform transition-transform duration-200'>
                   <div className='text-emerald-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
                   <div className='text-emerald-500 text-sm'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ 1 file'}</div>
@@ -839,18 +852,22 @@ const SimpleFileUploadField = ({
         </div>
       ) : (
         <div
-          className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${isDragging
-            ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg'
-            : 'border-slate-300 hover:border-emerald-400'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 cursor-pointer bg-slate-50/50 overflow-hidden ${
+            isDragging
+              ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02] shadow-lg'
+              : 'border-slate-300 hover:border-emerald-400'
+          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={handleClick}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
-          <div className={`absolute inset-0 bg-emerald-50/80 flex items-center justify-center transition-all duration-200 ${isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}>
+          <div
+            className={`absolute inset-0 bg-emerald-50/80 flex items-center justify-center transition-all duration-200 ${
+              isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+          >
             <div className='text-center transform transition-transform duration-200'>
               <div className='text-emerald-600 font-semibold text-lg mb-2'>Thả file vào đây</div>
               <div className='text-emerald-500 text-sm'>{multiple ? `Tối đa ${maxCount} file` : 'Chỉ 1 file'}</div>
@@ -969,11 +986,16 @@ function SellerRegistrationForm() {
     reason: string
     isValidating: boolean
   }>({ isValid: null, reason: '', isValidating: false })
-  const [vendorApplicationValidations, setVendorApplicationValidations] = useState<Map<number, {
-    isValid: boolean | null
-    reason: string
-    isValidating: boolean
-  }>>(new Map())
+  const [vendorApplicationValidations, setVendorApplicationValidations] = useState<
+    Map<
+      number,
+      {
+        isValid: boolean | null
+        reason: string
+        isValidating: boolean
+      }
+    >
+  >(new Map())
 
   // States cho preview URLs
   const [businessLicensePreviewUrl, setBusinessLicensePreviewUrl] = useState<string | null>(null)
@@ -1215,9 +1237,8 @@ function SellerRegistrationForm() {
 
       files.forEach((newFile, newIndex) => {
         // Tìm file tương ứng trong danh sách cũ dựa trên name và size
-        const matchingOldIndex = oldFiles?.findIndex(
-          (oldFile) => oldFile.name === newFile.name && oldFile.size === oldFile.size
-        ) ?? -1
+        const matchingOldIndex =
+          oldFiles?.findIndex((oldFile) => oldFile.name === newFile.name && oldFile.size === oldFile.size) ?? -1
 
         if (matchingOldIndex !== -1 && vendorApplicationValidations.has(matchingOldIndex)) {
           // Giữ nguyên validation nếu file vẫn còn và match
@@ -1249,10 +1270,7 @@ function SellerRegistrationForm() {
     if (field === 'businessLicense') {
       setBusinessLicenseValidation((prev) => ({ ...prev, isValidating: true }))
       try {
-        const result = await Promise.race([
-          validateCertificate(file),
-          timeoutPromise
-        ])
+        const result = await Promise.race([validateCertificate(file), timeoutPromise])
         setBusinessLicenseValidation({
           isValid: result.isValid,
           reason: result.reason,
@@ -1268,10 +1286,7 @@ function SellerRegistrationForm() {
       }
     } else if (field === 'vendorApplicationImageUrl' && fileIndex !== undefined) {
       try {
-        const result = await Promise.race([
-          validateCertificate(file),
-          timeoutPromise
-        ])
+        const result = await Promise.race([validateCertificate(file), timeoutPromise])
         setVendorApplicationValidations((prev) => {
           const newValidations = new Map(prev)
           newValidations.set(fileIndex, {
@@ -1490,12 +1505,7 @@ function SellerRegistrationForm() {
   React.useEffect(() => {
     if (selectedProvince && selectedDistrict && selectedWard && specificAddress.trim()) {
       const timer = setTimeout(() => {
-        geocodeStoreAddress(
-          selectedProvince.name,
-          selectedDistrict.name,
-          selectedWard.name,
-          specificAddress
-        )
+        geocodeStoreAddress(selectedProvince.name, selectedDistrict.name, selectedWard.name, specificAddress)
       }, 1000)
       return () => clearTimeout(timer)
     } else {
@@ -1999,7 +2009,9 @@ function SellerRegistrationForm() {
                       }}
                       getOptionLabel={(ward) => ward.name}
                       getOptionValue={(ward) => ward.id.toString()}
-                      filterFunction={(ward, searchValue) => ward.name.toLowerCase().includes(searchValue.toLowerCase())}
+                      filterFunction={(ward, searchValue) =>
+                        ward.name.toLowerCase().includes(searchValue.toLowerCase())
+                      }
                     />
                   </div>
                 </div>
@@ -2019,8 +2031,6 @@ function SellerRegistrationForm() {
                 {errors.userAddress && <p className='text-sm text-red-500'>{errors.userAddress}</p>}
               </div>
             </div>
-
-
 
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
               <div className='space-y-2'>
@@ -2338,7 +2348,8 @@ function SellerRegistrationForm() {
                     <p className='text-sm font-medium text-green-900'>Đã đọc từ mặt sau CCCD</p>
                   </div>
                   <p className='text-sm text-gray-700'>
-                    Ngày cấp: <span className='font-semibold'>{format(new Date(issueDate), 'dd/MM/yyyy', { locale: vi })}</span>
+                    Ngày cấp:{' '}
+                    <span className='font-semibold'>{format(new Date(issueDate), 'dd/MM/yyyy', { locale: vi })}</span>
                   </p>
                   {issueLocation && (
                     <p className='text-sm text-gray-700 mt-1'>
@@ -2442,11 +2453,7 @@ function SellerRegistrationForm() {
                   <ComboBox
                     options={wards}
                     placeholder={
-                      !selectedDistrict
-                        ? 'Chọn quận/huyện trước'
-                        : isLoadingWards
-                          ? 'Đang tải...'
-                          : 'Chọn phường/xã'
+                      !selectedDistrict ? 'Chọn quận/huyện trước' : isLoadingWards ? 'Đang tải...' : 'Chọn phường/xã'
                     }
                     disabled={!selectedDistrict || isLoadingWards}
                     value={selectedWard?.id?.toString() || ''}
@@ -2513,9 +2520,7 @@ function SellerRegistrationForm() {
             </div>
             {/* Tỉnh định hướng */}
             <div className='space-y-2'>
-              <Label>
-                Bạn đang bán sản phẩm vùng nào
-              </Label>
+              <Label>Bạn đang bán sản phẩm vùng nào</Label>
               <Popover open={orientationProvinceOpen} onOpenChange={setOrientationProvinceOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -2553,8 +2558,9 @@ function SellerRegistrationForm() {
                             onSelect={() => handleOrientationProvinceChange(province.id)}
                           >
                             <Check
-                              className={`mr-2 h-4 w-4 ${selectedOrientationProvince?.id === province.id ? 'opacity-100' : 'opacity-0'
-                                }`}
+                              className={`mr-2 h-4 w-4 ${
+                                selectedOrientationProvince?.id === province.id ? 'opacity-100' : 'opacity-0'
+                              }`}
                             />
                             {province.name} - {province.region}
                           </CommandItem>
@@ -2590,8 +2596,6 @@ function SellerRegistrationForm() {
               {errors.description && <p className='text-sm text-red-500'>{errors.description}</p>}
             </div>
           </div>
-
-
 
           {/* Giấy tờ và chứng nhận */}
           <div className='space-y-6'>
@@ -2656,10 +2660,11 @@ function SellerRegistrationForm() {
                     )}
                     {!businessLicenseValidation.isValidating && businessLicenseValidation.isValid !== null && (
                       <div
-                        className={`mt-3 p-4 rounded-xl border-2 transition-all duration-300 animate-in fade-in slide-in-from-top-2 ${businessLicenseValidation.isValid
-                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 shadow-green-100 shadow-sm'
-                          : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-300 shadow-red-100 shadow-sm'
-                          }`}
+                        className={`mt-3 p-4 rounded-xl border-2 transition-all duration-300 animate-in fade-in slide-in-from-top-2 ${
+                          businessLicenseValidation.isValid
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 shadow-green-100 shadow-sm'
+                            : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-300 shadow-red-100 shadow-sm'
+                        }`}
                       >
                         <div className='flex items-start gap-3'>
                           {businessLicenseValidation.isValid ? (
@@ -2685,8 +2690,9 @@ function SellerRegistrationForm() {
                           )}
                           <div className='flex-1'>
                             <p
-                              className={`text-sm font-semibold ${businessLicenseValidation.isValid ? 'text-green-900' : 'text-red-900'
-                                }`}
+                              className={`text-sm font-semibold ${
+                                businessLicenseValidation.isValid ? 'text-green-900' : 'text-red-900'
+                              }`}
                             >
                               {businessLicenseValidation.isValid
                                 ? '✓ Giấy phép kinh doanh hợp lệ'
@@ -2694,8 +2700,9 @@ function SellerRegistrationForm() {
                             </p>
                             {businessLicenseValidation.reason && (
                               <p
-                                className={`text-xs mt-2 leading-relaxed ${businessLicenseValidation.isValid ? 'text-green-800' : 'text-red-800'
-                                  }`}
+                                className={`text-xs mt-2 leading-relaxed ${
+                                  businessLicenseValidation.isValid ? 'text-green-800' : 'text-red-800'
+                                }`}
                               >
                                 {businessLicenseValidation.reason}
                               </p>
@@ -2745,21 +2752,21 @@ function SellerRegistrationForm() {
                           return (
                             <div
                               key={index}
-                              className={`p-4 border-2 rounded-xl transition-all duration-300 ${validation.isValidating
-                                ? 'border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm animate-pulse'
-                                : validation.isValid === true
-                                  ? 'border-green-300 bg-gradient-to-r from-green-50 to-emerald-50 shadow-green-100 shadow-sm'
-                                  : validation.isValid === false
-                                    ? 'border-red-300 bg-gradient-to-r from-red-50 to-rose-50 shadow-red-100 shadow-sm'
-                                    : 'border-gray-200 bg-gray-50'
-                                }`}
+                              className={`p-4 border-2 rounded-xl transition-all duration-300 ${
+                                validation.isValidating
+                                  ? 'border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm animate-pulse'
+                                  : validation.isValid === true
+                                    ? 'border-green-300 bg-gradient-to-r from-green-50 to-emerald-50 shadow-green-100 shadow-sm'
+                                    : validation.isValid === false
+                                      ? 'border-red-300 bg-gradient-to-r from-red-50 to-rose-50 shadow-red-100 shadow-sm'
+                                      : 'border-gray-200 bg-gray-50'
+                              }`}
                             >
                               <div className='flex items-center gap-3 mb-3'>
                                 <div className='flex-1 min-w-0'>
                                   <p className='text-sm font-semibold text-gray-900 truncate'>
                                     File {index + 1}: {file.name}
                                   </p>
-
                                 </div>
                                 {validation.isValidating && (
                                   <div className='flex-shrink-0'>
@@ -2804,15 +2811,17 @@ function SellerRegistrationForm() {
                               {!validation.isValidating && validation.isValid !== null && (
                                 <div className='mt-2 animate-in fade-in slide-in-from-top-2'>
                                   <p
-                                    className={`text-sm font-semibold ${validation.isValid ? 'text-green-900' : 'text-red-900'
-                                      }`}
+                                    className={`text-sm font-semibold ${
+                                      validation.isValid ? 'text-green-900' : 'text-red-900'
+                                    }`}
                                   >
                                     {validation.isValid ? '✓ File hợp lệ' : '✗ File không hợp lệ'}
                                   </p>
                                   {validation.reason && (
                                     <p
-                                      className={`text-xs mt-2 leading-relaxed ${validation.isValid ? 'text-green-800' : 'text-red-800'
-                                        }`}
+                                      className={`text-xs mt-2 leading-relaxed ${
+                                        validation.isValid ? 'text-green-800' : 'text-red-800'
+                                      }`}
                                     >
                                       {validation.reason}
                                     </p>
@@ -2840,7 +2849,8 @@ function SellerRegistrationForm() {
                                   ⚠️ Cảnh báo: Có file không hợp lệ
                                 </p>
                                 <p className='text-xs text-orange-800 mt-2 leading-relaxed'>
-                                  Nếu gửi ảnh không hợp lệ, tỷ lệ không được duyệt sẽ thấp. Vui lòng kiểm tra và thay thế các file không hợp lệ bằng file hợp lệ.
+                                  Nếu gửi ảnh không hợp lệ, tỷ lệ không được duyệt sẽ thấp. Vui lòng kiểm tra và thay
+                                  thế các file không hợp lệ bằng file hợp lệ.
                                 </p>
                               </div>
                             </div>
@@ -2900,7 +2910,9 @@ function SellerRegistrationForm() {
                     Điều khoản dịch vụ
                   </button>
                   {!hasOpenedTermsPage && (
-                    <span className='ml-2 text-orange-600 text-xs'>* Vui lòng mở và đọc điều khoản trước khi đồng ý</span>
+                    <span className='ml-2 text-orange-600 text-xs'>
+                      * Vui lòng mở và đọc điều khoản trước khi đồng ý
+                    </span>
                   )}
                 </p>
               </div>

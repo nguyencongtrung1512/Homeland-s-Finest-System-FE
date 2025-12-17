@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Chart as ChartJS,
@@ -32,22 +33,12 @@ import type {
   SalesReport,
   OrderCountResponse
 } from '../../../apis/seller.api'
-import {
-  TrendingUp,
-  Package,
-  CheckCircle,
-  Wallet,
-  Bell,
-  ArrowRight,
-  Plus,
-  ShoppingCart,
-  Gift,
-  FileText,
-  RefreshCw
-} from 'lucide-react'
+import { TrendingUp, Package, CheckCircle, Wallet, Bell, ArrowRight, RefreshCw } from 'lucide-react'
+import path from '../../../constants/path'
 
 function Dashboard() {
   const { store, isStoreApproved } = useStore()
+  const navigate = useNavigate()
 
   // State for API data
   const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null)
@@ -336,20 +327,20 @@ function Dashboard() {
               <div
                 key={index}
                 className={`p-3 rounded-lg border ${alert.priority === 'high'
-                  ? 'bg-red-50 border-red-200'
-                  : alert.priority === 'medium'
-                    ? 'bg-yellow-50 border-yellow-200'
-                    : 'bg-blue-50 border-blue-200'
+                    ? 'bg-red-50 border-red-200'
+                    : alert.priority === 'medium'
+                      ? 'bg-yellow-50 border-yellow-200'
+                      : 'bg-blue-50 border-blue-200'
                   }`}
               >
                 <div className='flex items-center justify-between'>
                   <span className='text-sm text-gray-700'>{alert.message}</span>
                   <Badge
                     className={`ml-2 ${alert.priority === 'high'
-                      ? 'bg-red-100 text-red-800'
-                      : alert.priority === 'medium'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-blue-100 text-blue-800'
+                        ? 'bg-red-100 text-red-800'
+                        : alert.priority === 'medium'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-blue-100 text-blue-800'
                       }`}
                   >
                     {alert.count}
@@ -458,12 +449,12 @@ function Dashboard() {
                       <div className='w-32 h-3 bg-gray-200 rounded-full overflow-hidden'>
                         <div
                           className={`h-full rounded-full ${status.status === 'Delivered'
-                            ? 'bg-green-500'
-                            : status.status === 'Processing' || status.status === 'Confirmed'
-                              ? 'bg-yellow-500'
-                              : status.status === 'Cancelled'
-                                ? 'bg-red-500'
-                                : 'bg-blue-500'
+                              ? 'bg-green-500'
+                              : status.status === 'Processing' || status.status === 'Confirmed'
+                                ? 'bg-yellow-500'
+                                : status.status === 'Cancelled'
+                                  ? 'bg-red-500'
+                                  : 'bg-blue-500'
                             }`}
                           style={{ width: `${totalOrders > 0 ? (status.count / totalOrders) * 100 : 0}%` }}
                         ></div>
@@ -481,7 +472,12 @@ function Dashboard() {
         <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
           <div className='flex items-center justify-between mb-4'>
             <h3 className='text-lg font-semibold text-gray-900'>Đơn hàng cần xử lý</h3>
-            <Button variant='outline' size='sm' className='text-xs'>
+            <Button
+              variant='outline'
+              size='sm'
+              className='text-xs'
+              onClick={() => navigate(`${path.BASE_SELLER}/${path.ordersSeller}`)}
+            >
               Xem tất cả <ArrowRight className='w-3 h-3 ml-1' />
             </Button>
           </div>
@@ -729,7 +725,12 @@ function Dashboard() {
         <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
           <div className='flex items-center justify-between mb-4'>
             <h3 className='text-lg font-semibold text-gray-900'>Top Sản phẩm Bán chạy</h3>
-            <Button variant='outline' size='sm' className='text-xs'>
+            <Button
+              variant='outline'
+              size='sm'
+              className='text-xs'
+              onClick={() => navigate(`${path.BASE_SELLER}/${path.productsSeller}`)}
+            >
               Xem tất cả <ArrowRight className='w-3 h-3 ml-1' />
             </Button>
           </div>
@@ -764,7 +765,12 @@ function Dashboard() {
         <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
           <div className='flex items-center justify-between mb-4'>
             <h3 className='text-lg font-semibold text-gray-900'>Sản phẩm tồn kho sắp hết</h3>
-            <Button variant='outline' size='sm' className='text-xs'>
+            <Button
+              variant='outline'
+              size='sm'
+              className='text-xs'
+              onClick={() => navigate(`${path.BASE_SELLER}/${path.productsSeller}`)}
+            >
               Xem tất cả <ArrowRight className='w-3 h-3 ml-1' />
             </Button>
           </div>
@@ -797,7 +803,12 @@ function Dashboard() {
         <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
           <div className='flex items-center justify-between mb-4'>
             <h3 className='text-lg font-semibold text-gray-900'>Thống kê Khuyến mãi</h3>
-            <Button variant='outline' size='sm' className='text-xs'>
+            <Button
+              variant='outline'
+              size='sm'
+              className='text-xs'
+              onClick={() => navigate(`${path.BASE_SELLER}/${path.promotionSeller}`)}
+            >
               Quản lý <ArrowRight className='w-3 h-3 ml-1' />
             </Button>
           </div>
@@ -820,8 +831,6 @@ function Dashboard() {
             <p className='text-sm text-gray-500 text-center py-4'>Chưa có dữ liệu</p>
           )}
         </div>
-
-
       </div>
     </div>
   )

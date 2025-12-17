@@ -42,6 +42,7 @@ export const path = {
   ordersSeller: 'order-management',
   myStorySeller: 'my-story',
   createMyStorySeller: 'my-story/create',
+  editMyStorySeller: 'my-story/edit/:storyId',
   detailMyStorySeller: 'detailMyStory/:storyId',
   chatWithCustomerSeller: 'chat',
   financeSeller: 'finance',

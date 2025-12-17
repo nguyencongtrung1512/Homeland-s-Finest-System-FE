@@ -240,6 +240,10 @@ export default function useRouteElements() {
               element: <CreateMyStoryPage />
             },
             {
+              path: path.editMyStorySeller,
+              element: <CreateMyStoryPage />
+            },
+            {
               path: path.chatWithCustomerSeller,
               element: <ChatWithCustomer />
             },

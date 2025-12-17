@@ -1,21 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  MessageCircle,
-  Send,
-  X,
-  Bot,
-  User,
-  Phone,
-  Video,
-  MoreVertical,
-  Paperclip,
-  Image,
-  ArrowLeft,
-  Store,
-  ShoppingBag,
-  ExternalLink
-} from 'lucide-react'
+import { MessageCircle, Send, X, Bot, User, Image, ArrowLeft, Store, ShoppingBag, ExternalLink } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Card, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -1224,8 +1209,9 @@ const ChatSystem: React.FC = () => {
                               className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
                             >
                               <div
-                                className={`max-w-[95%] sm:max-w-[90%] md:max-w-[80%] rounded-lg px-4 py-3 ${message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
-                                  }`}
+                                className={`max-w-[95%] sm:max-w-[90%] md:max-w-[80%] rounded-lg px-4 py-3 ${
+                                  message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
+                                }`}
                               >
                                 <div className='flex flex-col gap-3'>
                                   {/* Avatar và Text */}
@@ -1418,23 +1404,6 @@ const ChatSystem: React.FC = () => {
                           title='Tải lại danh sách phòng chat'
                         >
                           <h3 className='font-semibold text-sm truncate'>{selectedConv?.name}</h3>
-                          {selectedConv?.online && (
-                            <p className='text-xs text-green-600 flex items-center gap-1'>
-                              <span className='w-2 h-2 bg-green-600 rounded-full'></span>
-                              Đang hoạt động
-                            </p>
-                          )}
-                        </div>
-                        <div className='flex items-center gap-1 flex-shrink-0'>
-                          <Button variant='ghost' size='icon' className='h-8 w-8'>
-                            <Phone className='h-4 w-4' />
-                          </Button>
-                          <Button variant='ghost' size='icon' className='h-8 w-8'>
-                            <Video className='h-4 w-4' />
-                          </Button>
-                          <Button variant='ghost' size='icon' className='h-8 w-8'>
-                            <MoreVertical className='h-4 w-4' />
-                          </Button>
                         </div>
                       </div>
 
@@ -1516,9 +1485,9 @@ const ChatSystem: React.FC = () => {
                                     const handleImageClick = (idx: number) => {
                                       const allImages = msg.images
                                         ? msg.images.map((img) => {
-                                          const url = resolveImageUrl(img)
-                                          return url || img
-                                        })
+                                            const url = resolveImageUrl(img)
+                                            return url || img
+                                          })
                                         : []
                                       setPreviewImages(allImages)
                                       setPreviewIndex(idx)
@@ -1549,10 +1518,10 @@ const ChatSystem: React.FC = () => {
                                                   isOldMessage
                                                     ? { duration: 0.2 }
                                                     : {
-                                                      duration: 0.3,
-                                                      delay: msgIndex * 0.05 + idx * 0.05,
-                                                      ease: 'easeOut'
-                                                    }
+                                                        duration: 0.3,
+                                                        delay: msgIndex * 0.05 + idx * 0.05,
+                                                        ease: 'easeOut'
+                                                      }
                                                 }
                                                 className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'} mb-2 group items-end gap-2`}
                                                 onMouseEnter={() => setHoveredMessageId(msg.id)}
@@ -1625,10 +1594,10 @@ const ChatSystem: React.FC = () => {
                                               isOldMessage
                                                 ? { duration: 0.2 }
                                                 : {
-                                                  type: 'spring',
-                                                  stiffness: 300,
-                                                  damping: 20
-                                                }
+                                                    type: 'spring',
+                                                    stiffness: 300,
+                                                    damping: 20
+                                                  }
                                             }
                                             className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'} mb-2 group items-end gap-2`}
                                             onMouseEnter={() => setHoveredMessageId(msg.id)}
@@ -1648,10 +1617,11 @@ const ChatSystem: React.FC = () => {
                                               <motion.div
                                                 layout
                                                 whileHover={{ scale: 1.02 }}
-                                                className={`w-fit max-w-full relative ${msg.isUser
-                                                  ? 'bg-green-600 text-white rounded-2xl rounded-br-sm'
-                                                  : 'bg-white text-gray-800 rounded-2xl rounded-bl-sm'
-                                                  } px-4 py-2.5 shadow-sm break-words`}
+                                                className={`w-fit max-w-full relative ${
+                                                  msg.isUser
+                                                    ? 'bg-green-600 text-white rounded-2xl rounded-br-sm'
+                                                    : 'bg-white text-gray-800 rounded-2xl rounded-bl-sm'
+                                                } px-4 py-2.5 shadow-sm break-words`}
                                               >
                                                 <p className='text-sm break-words whitespace-normal'>{msg.text}</p>
                                               </motion.div>
@@ -1709,9 +1679,6 @@ const ChatSystem: React.FC = () => {
                         )}
 
                         <div className='flex items-center gap-2'>
-                          <Button variant='ghost' size='icon' className='h-9 w-9 flex-shrink-0'>
-                            <Paperclip className='h-4 w-4 text-gray-500' />
-                          </Button>
                           <input
                             type='file'
                             ref={fileInputRef}

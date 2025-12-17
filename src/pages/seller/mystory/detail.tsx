@@ -72,9 +72,8 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
 
   const handleEdit = () => {
     if (!storyId) return
-    // Navigate to create page with storyId for editing
-    // Note: This requires implementing edit mode in createMyStoryPage
-    navigate(`${path.BASE_SELLER}/${path.createMyStorySeller}?edit=${storyId}`)
+    // Navigate to edit page
+    navigate(`${path.BASE_SELLER}/${path.editMyStorySeller.replace(':storyId', storyId)}`)
     onOpenChange(false)
   }
 

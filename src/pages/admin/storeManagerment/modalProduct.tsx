@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Package, Star, Calendar, ShoppingCart, Loader2 } from 'lucide-react'
+import { X, Package, Calendar, ShoppingCart, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
@@ -38,26 +38,26 @@ const ProductModal: React.FC<ProductModalProps> = ({
     navigate(`/admin/productManagement/detail-product/${productId}`)
   }
 
-  const renderStars = (rating: number | null | undefined) => {
-    if (rating === null || rating === undefined) {
-      return Array.from({ length: 5 }, (_, i) => <Star key={i} className='w-4 h-4 text-gray-300' />)
-    }
+  // const renderStars = (rating: number | null | undefined) => {
+  //   if (rating === null || rating === undefined) {
+  //     return Array.from({ length: 5 }, (_, i) => <Star key={i} className='w-4 h-4 text-gray-300' />)
+  //   }
 
-    const stars = []
-    const fullStars = Math.floor(rating)
-    const hasHalfStar = rating % 1 !== 0
+  //   const stars = []
+  //   const fullStars = Math.floor(rating)
+  //   const hasHalfStar = rating % 1 !== 0
 
-    for (let i = 0; i < 5; i++) {
-      if (i < fullStars) {
-        stars.push(<Star key={i} className='w-4 h-4 fill-yellow-400 text-yellow-400' />)
-      } else if (i === fullStars && hasHalfStar) {
-        stars.push(<Star key={i} className='w-4 h-4 fill-yellow-400/50 text-yellow-400' />)
-      } else {
-        stars.push(<Star key={i} className='w-4 h-4 text-gray-300' />)
-      }
-    }
-    return stars
-  }
+  //   for (let i = 0; i < 5; i++) {
+  //     if (i < fullStars) {
+  //       stars.push(<Star key={i} className='w-4 h-4 fill-yellow-400 text-yellow-400' />)
+  //     } else if (i === fullStars && hasHalfStar) {
+  //       stars.push(<Star key={i} className='w-4 h-4 fill-yellow-400/50 text-yellow-400' />)
+  //     } else {
+  //       stars.push(<Star key={i} className='w-4 h-4 text-gray-300' />)
+  //     }
+  //   }
+  //   return stars
+  // }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

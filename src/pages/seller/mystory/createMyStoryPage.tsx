@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -20,7 +20,12 @@ import { Dialog, DialogContent, DialogTrigger } from '../../../components/ui/dia
 function CreateMyStoryPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const params = useParams<{ storyId?: string }>()
+  const [searchParams] = useSearchParams()
+  const editStoryId = params.storyId || searchParams.get('edit')
+  const isEditMode = !!editStoryId
   const [loading, setLoading] = useState(false)
+  const [loadingStory, setLoadingStory] = useState(false)
   const [storeId, setStoreId] = useState<string | null>(null)
   const [isDraggingThumbnail, setIsDraggingThumbnail] = useState(false)
   const dragCounterThumbnail = React.useRef(0)
@@ -64,6 +69,9 @@ function CreateMyStoryPage() {
     VideoOpener: null as File | null,
     VideoOpenerDescription: '',
     VideoOpenerUrl: null as string | null,
+    VideoOpenerPreviewUrl: null as string | null,
+    VideoOpenerPlayBackUrl: null as string | null,
+    VideoOpenerFallBackUrl: null as string | null,
     SingleImage: null as File | null,
     SingleImageDescription: '',
     SingleImageUrl: null as string | null,
@@ -73,9 +81,15 @@ function CreateMyStoryPage() {
     VideoProcess: null as File | null,
     VideoProcessDescription: '',
     VideoProcessUrl: null as string | null,
+    VideoProcessPreviewUrl: null as string | null,
+    VideoProcessPlayBackUrl: null as string | null,
+    VideoProcessFallBackUrl: null as string | null,
     VideoTestimonial: null as File | null,
     VideoTestimonialDescription: '',
     VideoTestimonialUrl: null as string | null,
+    VideoTestimonialPreviewUrl: null as string | null,
+    VideoTestimonialPlayBackUrl: null as string | null,
+    VideoTestimonialFallBackUrl: null as string | null,
     ThumbnailImage: null as File | null,
     ThumbnailUrl: null as string | null
   })
@@ -110,21 +124,32 @@ function CreateMyStoryPage() {
   ])
 
   // Memoize URLs để tránh tạo lại mỗi lần render
+  // Priority: New file > Existing URL from backend
   const videoOpenerUrl = useMemo(() => {
-    return storyData.VideoOpener ? URL.createObjectURL(storyData.VideoOpener) : null
-  }, [storyData.VideoOpener])
+    if (storyData.VideoOpener) {
+      return URL.createObjectURL(storyData.VideoOpener)
+    }
+    // Use backend URL if no new file uploaded
+    return storyData.VideoOpenerUrl || null
+  }, [storyData.VideoOpener, storyData.VideoOpenerUrl])
 
   const singleImageUrl = useMemo(() => {
     return storyData.SingleImage ? URL.createObjectURL(storyData.SingleImage) : null
   }, [storyData.SingleImage])
 
   const videoProcessUrl = useMemo(() => {
-    return storyData.VideoProcess ? URL.createObjectURL(storyData.VideoProcess) : null
-  }, [storyData.VideoProcess])
+    if (storyData.VideoProcess) {
+      return URL.createObjectURL(storyData.VideoProcess)
+    }
+    return storyData.VideoProcessUrl || null
+  }, [storyData.VideoProcess, storyData.VideoProcessUrl])
 
   const videoTestimonialUrl = useMemo(() => {
-    return storyData.VideoTestimonial ? URL.createObjectURL(storyData.VideoTestimonial) : null
-  }, [storyData.VideoTestimonial])
+    if (storyData.VideoTestimonial) {
+      return URL.createObjectURL(storyData.VideoTestimonial)
+    }
+    return storyData.VideoTestimonialUrl || null
+  }, [storyData.VideoTestimonial, storyData.VideoTestimonialUrl])
 
   const thumbnailUrl = useMemo(() => {
     return storyData.ThumbnailImage ? URL.createObjectURL(storyData.ThumbnailImage) : null
@@ -332,6 +357,108 @@ function CreateMyStoryPage() {
     return null
   }
 
+  // Load story data when in edit mode
+  useEffect(() => {
+    const loadStoryData = async () => {
+      if (!isEditMode || !editStoryId) return
+
+      try {
+        setLoadingStory(true)
+        const response = await storeStoryApi.getById(editStoryId)
+        const story = response.data
+
+        // Extract and map story data to form state
+        const sortedContents = [...(story.contents || [])].sort((a: any, b: any) => a.order - b.order)
+        
+        // Initialize form data
+        const initialData: typeof storyData = {
+          Title: story.title || '',
+          TextIntro: '',
+          TextExpanded: '',
+          TextClosing: '',
+          VideoOpener: null,
+          VideoOpenerDescription: '',
+          VideoOpenerUrl: null,
+          SingleImage: null,
+          SingleImageDescription: '',
+          SingleImageUrl: null,
+          GalleryImages: [],
+          GalleryImageUrls: [],
+          GalleryDescription: '',
+          VideoProcess: null,
+          VideoProcessDescription: '',
+          VideoProcessUrl: null,
+          VideoTestimonial: null,
+          VideoTestimonialDescription: '',
+          VideoTestimonialUrl: null,
+          ThumbnailImage: null,
+          ThumbnailUrl: story.thumbnailUrl || null
+        }
+
+        // Process contents to extract data
+        sortedContents.forEach((content: any) => {
+          const contentType = content.contentType?.toLowerCase()
+          
+          if (contentType === 'text') {
+            // Text content: order 1 = TextIntro, order 2 = TextExpanded, order 5 = TextClosing
+            if (content.order === 1) {
+              initialData.TextIntro = content.contentData || ''
+            } else if (content.order === 2) {
+              initialData.TextExpanded = content.contentData || ''
+            } else if (content.order === 5) {
+              initialData.TextClosing = content.contentData || ''
+            }
+          } else if (contentType === 'video') {
+            // Video content: order 1 = VideoOpener, order 5 = VideoProcess, order 7 = VideoTestimonial
+            // Note: Backend uses order 1, 5, 7 for videos (not 1, 3, 4)
+            if (content.order === 1) {
+              initialData.VideoOpenerDescription = content.contentData || ''
+              // Store all video URLs for proper playback
+              initialData.VideoOpenerPreviewUrl = content.videoPreviewUrl || null
+              initialData.VideoOpenerPlayBackUrl = content.videoPlayBackUrl || null
+              initialData.VideoOpenerFallBackUrl = content.videoFallBackUrl || null
+              // Use playback URL as primary (contains HLS/DASH), fallback to preview, then fallback URL
+              initialData.VideoOpenerUrl = content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
+            } else if (content.order === 5) {
+              initialData.VideoProcessDescription = content.contentData || ''
+              initialData.VideoProcessPreviewUrl = content.videoPreviewUrl || null
+              initialData.VideoProcessPlayBackUrl = content.videoPlayBackUrl || null
+              initialData.VideoProcessFallBackUrl = content.videoFallBackUrl || null
+              initialData.VideoProcessUrl = content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
+            } else if (content.order === 7) {
+              initialData.VideoTestimonialDescription = content.contentData || ''
+              initialData.VideoTestimonialPreviewUrl = content.videoPreviewUrl || null
+              initialData.VideoTestimonialPlayBackUrl = content.videoPlayBackUrl || null
+              initialData.VideoTestimonialFallBackUrl = content.videoFallBackUrl || null
+              initialData.VideoTestimonialUrl = content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
+            }
+          } else if (contentType === 'image') {
+            // Image content: single image (order 2, 1 image) or gallery (multiple images)
+            const imageUrls = content.imageUrls || []
+            if (Array.isArray(imageUrls) && imageUrls.length === 1 && content.order === 2) {
+              initialData.SingleImageUrl = imageUrls[0]
+              initialData.SingleImageDescription = content.contentData || ''
+            } else if (Array.isArray(imageUrls) && imageUrls.length > 1) {
+              initialData.GalleryImageUrls = imageUrls
+              initialData.GalleryDescription = content.contentData || ''
+            }
+          }
+        })
+
+        setStoryData(initialData)
+      } catch (error) {
+        console.error('Error loading story data:', error)
+        toast.error('Không thể tải dữ liệu câu chuyện')
+        navigate(`../${path.myStorySeller}`)
+      } finally {
+        setLoadingStory(false)
+      }
+    }
+
+    loadStoryData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, editStoryId])
+
   useEffect(() => {
     const fetchStoreId = async () => {
       if (!user?.userId) {
@@ -437,38 +564,98 @@ function CreateMyStoryPage() {
         StoreId: storeId
       }
 
-      if (storyData.VideoOpener) {
-        storyPayload.VideoOpener = storyData.VideoOpener
-      }
-      if (storyData.SingleImage) {
-        storyPayload.SingleImage = storyData.SingleImage
-      }
-      if (storyData.GalleryImages.length > 0) {
-        storyPayload.GalleryImages = storyData.GalleryImages
-      }
-      if (storyData.VideoProcess) {
-        storyPayload.VideoProcess = storyData.VideoProcess
-      }
-      if (storyData.VideoTestimonial) {
-        storyPayload.VideoTestimonial = storyData.VideoTestimonial
-      }
-      if (storyData.ThumbnailImage) {
-        storyPayload.ThumbnailImage = storyData.ThumbnailImage
+      // In edit mode, handle file updates with RemoveExisting flags
+      if (isEditMode) {
+        // Thumbnail
+        if (storyData.ThumbnailImage) {
+          storyPayload.ThumbnailImage = storyData.ThumbnailImage
+          storyPayload.RemoveExistingThumbnail = true // Upload new file, remove old one
+        }
+
+        // Video Opener
+        if (storyData.VideoOpener) {
+          storyPayload.VideoOpener = storyData.VideoOpener
+          storyPayload.RemoveExistingVideoOpener = true
+        }
+
+        // Single Image
+        if (storyData.SingleImage) {
+          storyPayload.SingleImage = storyData.SingleImage
+          storyPayload.RemoveExistingSingleImage = true
+        }
+
+        // Text Expanded - if empty and was previously set, remove it
+        if (!storyData.TextExpanded.trim() && storyData.TextExpanded !== '') {
+          storyPayload.RemoveExistingTextExpanded = true
+        }
+
+        // Video Process
+        if (storyData.VideoProcess) {
+          storyPayload.VideoProcess = storyData.VideoProcess
+          storyPayload.RemoveExistingVideoProcess = true
+        }
+
+        // Gallery Images
+        if (storyData.GalleryImages.length > 0) {
+          storyPayload.GalleryImages = storyData.GalleryImages
+          storyPayload.RemoveExistingGalleryImages = true
+        }
+
+        // Video Testimonial
+        if (storyData.VideoTestimonial) {
+          storyPayload.VideoTestimonial = storyData.VideoTestimonial
+          storyPayload.RemoveExistingVideoTestimonial = true
+        }
+      } else {
+        // Create mode - just add files if they exist
+        if (storyData.VideoOpener) {
+          storyPayload.VideoOpener = storyData.VideoOpener
+        }
+        if (storyData.SingleImage) {
+          storyPayload.SingleImage = storyData.SingleImage
+        }
+        if (storyData.GalleryImages.length > 0) {
+          storyPayload.GalleryImages = storyData.GalleryImages
+        }
+        if (storyData.VideoProcess) {
+          storyPayload.VideoProcess = storyData.VideoProcess
+        }
+        if (storyData.VideoTestimonial) {
+          storyPayload.VideoTestimonial = storyData.VideoTestimonial
+        }
+        if (storyData.ThumbnailImage) {
+          storyPayload.ThumbnailImage = storyData.ThumbnailImage
+        }
       }
 
-      const response = await storeStoryApi.create(storyPayload)
-      let successMessage = 'Câu chuyện của hàng đã được tạo thành công.'
-      if (response?.data?.message) {
-        successMessage = response.data.message
-      } else if (response?.message) {
-        successMessage = response.message
+      let response
+      let successMessage
+      
+      if (isEditMode && editStoryId) {
+        // Update existing story
+        response = await storeStoryApi.update(editStoryId, storyPayload)
+        successMessage = 'Câu chuyện đã được cập nhật thành công.'
+        if (response?.data?.message) {
+          successMessage = response.data.message
+        } else if (response?.message) {
+          successMessage = response.message
+        }
+      } else {
+        // Create new story
+        response = await storeStoryApi.create(storyPayload)
+        successMessage = 'Câu chuyện của hàng đã được tạo thành công.'
+        if (response?.data?.message) {
+          successMessage = response.data.message
+        } else if (response?.message) {
+          successMessage = response.message
+        }
       }
+      
       toast.success(successMessage)
-
       navigate(`../${path.myStorySeller}`)
     } catch (error: unknown) {
-      console.error('Error creating story:', error)
-      let errorMessage = 'Có lỗi xảy ra khi tạo câu chuyện. Vui lòng thử lại.'
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} story:`, error)
+      let errorMessage = `Có lỗi xảy ra khi ${isEditMode ? 'cập nhật' : 'tạo'} câu chuyện. Vui lòng thử lại.`
 
       if (error && typeof error === 'object') {
         const err = error as any
@@ -698,6 +885,9 @@ function CreateMyStoryPage() {
         contentData: string
         imageUrls?: string[]
         videoUrl?: string | null
+        videoPreviewUrl?: string | null
+        videoPlayBackUrl?: string | null
+        videoFallBackUrl?: string | null
         order: number
       }> = []
 
@@ -712,15 +902,18 @@ function CreateMyStoryPage() {
       }
 
       // VideoOpener (order 2)
-      const videoOpenerUrl = storyData.VideoOpener
+      const videoOpenerUrlForPreview = storyData.VideoOpener
         ? URL.createObjectURL(storyData.VideoOpener)
         : storyData.VideoOpenerUrl
-      if (videoOpenerUrl) {
+      if (videoOpenerUrlForPreview) {
         contents.push({
           id: 'video-opener',
           contentType: 'video',
           contentData: storyData.VideoOpenerDescription || '',
-          videoUrl: videoOpenerUrl,
+          videoUrl: videoOpenerUrlForPreview,
+          videoPreviewUrl: storyData.VideoOpenerPreviewUrl,
+          videoPlayBackUrl: storyData.VideoOpenerPlayBackUrl,
+          videoFallBackUrl: storyData.VideoOpenerFallBackUrl,
           order: 2
         })
       }
@@ -773,6 +966,9 @@ function CreateMyStoryPage() {
           contentType: 'video',
           contentData: storyData.VideoProcessDescription || '',
           videoUrl: videoProcessUrl,
+          videoPreviewUrl: storyData.VideoProcessPreviewUrl,
+          videoPlayBackUrl: storyData.VideoProcessPlayBackUrl,
+          videoFallBackUrl: storyData.VideoProcessFallBackUrl,
           order: 4
         })
       }
@@ -787,6 +983,9 @@ function CreateMyStoryPage() {
           contentType: 'video',
           contentData: storyData.VideoTestimonialDescription || '',
           videoUrl: videoTestimonialUrl,
+          videoPreviewUrl: storyData.VideoTestimonialPreviewUrl,
+          videoPlayBackUrl: storyData.VideoTestimonialPlayBackUrl,
+          videoFallBackUrl: storyData.VideoTestimonialFallBackUrl,
           order: 5
         })
       }
@@ -825,7 +1024,15 @@ function CreateMyStoryPage() {
             <div className='space-y-6'>
               {contents.map((content) => (
                 <div key={content.id} className='space-y-2'>
-                  {renderContent(content.contentType, content.contentData, content.imageUrls, content.videoUrl)}
+                  {renderContent(
+                    content.contentType,
+                    content.contentData,
+                    content.imageUrls,
+                    content.videoUrl,
+                    content.videoPreviewUrl,
+                    content.videoPlayBackUrl,
+                    content.videoFallBackUrl
+                  )}
                 </div>
               ))}
             </div>
@@ -850,14 +1057,14 @@ function CreateMyStoryPage() {
           Câu chuyện của bạn
         </span>
         <ChevronRight className='w-4 h-4' />
-        <span className='text-gray-900 font-medium'>Tạo câu chuyện mới</span>
+        <span className='text-gray-900 font-medium'>{isEditMode ? 'Chỉnh sửa câu chuyện' : 'Tạo câu chuyện mới'}</span>
       </div>
 
       {/* Header */}
       <div className='mb-6 flex items-center justify-between'>
         <div>
-          <h1 className='text-2xl font-semibold text-gray-900'>Tạo câu chuyện mới</h1>
-          <p className='text-gray-600 mt-1'>Thêm câu chuyện mới cho cửa hàng của bạn</p>
+          <h1 className='text-2xl font-semibold text-gray-900'>{isEditMode ? 'Chỉnh sửa câu chuyện' : 'Tạo câu chuyện mới'}</h1>
+          <p className='text-gray-600 mt-1'>{isEditMode ? 'Chỉnh sửa thông tin câu chuyện của bạn' : 'Thêm câu chuyện mới cho cửa hàng của bạn'}</p>
         </div>
         <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
           <DialogTrigger asChild>
@@ -2090,15 +2297,15 @@ function CreateMyStoryPage() {
             <Button
               className='bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105'
               onClick={handleCreateStory}
-              disabled={loading}
+              disabled={loading || loadingStory}
             >
               {loading ? (
                 <>
                   <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                  Đang tạo...
+                  {isEditMode ? 'Đang cập nhật...' : 'Đang tạo...'}
                 </>
               ) : (
-                'Tạo câu chuyện'
+                isEditMode ? 'Cập nhật câu chuyện' : 'Tạo câu chuyện'
               )}
             </Button>
           </div>
