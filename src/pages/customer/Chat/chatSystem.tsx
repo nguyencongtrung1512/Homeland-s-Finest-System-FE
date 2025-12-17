@@ -12,7 +12,8 @@ import {
   createOrGetChatRoom,
   sendChatRoomMessage,
   getChatRoomMessages,
-  getAllChatRoomsByUserId
+  getAllChatRoomsByUserId,
+  getAIChatRoomByUserId
 } from '../../../apis/chat.api'
 import { storeApi } from '../../../apis/store.api'
 import { useAuth } from '../../../contexts/auth.context'
@@ -147,14 +148,8 @@ const ChatSystem: React.FC = () => {
     useChat()
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
-  const [aiMessages, setAiMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: 'Xin chào! Tôi là trợ lý ảo của Tinh Hoa Quê Nhà. Tôi có thể giúp bạn tìm hiểu về sản phẩm, câu chuyện người nông dân, hoặc hỗ trợ mua sắm. Bạn cần tôi giúp gì?',
-      isUser: false,
-      timestamp: new Date()
-    }
-  ])
+  const [aiMessages, setAiMessages] = useState<Message[]>([])
+  const [loadingAIChat, setLoadingAIChat] = useState(false)
   const [sellerMessages, setSellerMessages] = useState<{ [roomId: string]: Message[] }>({})
   const [inputValue, setInputValue] = useState('')
   const [sellerMessage, setSellerMessage] = useState('')
@@ -223,6 +218,85 @@ const ChatSystem: React.FC = () => {
   useEffect(() => {
     loadChatRooms()
   }, [loadChatRooms])
+
+  // Load AI chat history từ API
+  const loadAIChatHistory = useCallback(async () => {
+    if (!user?.userId || !isOpen || activeTab !== 'ai') return
+
+    try {
+      setLoadingAIChat(true)
+
+      // Lấy phòng chat với AI
+      const aiRoomResponse = await getAIChatRoomByUserId(user.userId)
+
+      if (aiRoomResponse?.data?.id) {
+        const roomId = aiRoomResponse.data.id
+
+        // Lấy messages từ phòng chat
+        const messagesResponse = await getChatRoomMessages(roomId)
+
+        if (messagesResponse?.data && Array.isArray(messagesResponse.data) && messagesResponse.data.length > 0) {
+          // Map messages từ API sang format Message
+          const mappedMessages: Message[] = messagesResponse.data.map((msg: ChatRoomMessageData) => ({
+            id: msg.id,
+            text: msg.messageText,
+            isUser: msg.senderId === user.userId,
+            timestamp: msg.sentAt,
+            images: Array.isArray(msg.images) ? msg.images : []
+          }))
+
+          // Sort messages theo timestamp (oldest first)
+          mappedMessages.sort((a, b) => {
+            const timeA = typeof a.timestamp === 'string' ? parseVietnameseTimestamp(a.timestamp).getTime() : a.timestamp.getTime()
+            const timeB = typeof b.timestamp === 'string' ? parseVietnameseTimestamp(b.timestamp).getTime() : b.timestamp.getTime()
+            return timeA - timeB
+          })
+
+          setAiMessages(mappedMessages)
+        } else {
+          // Nếu chưa có messages, hiển thị welcome message
+          setAiMessages([
+            {
+              id: '1',
+              text: 'Xin chào! Tôi là trợ lý ảo của Tinh Hoa Quê Nhà. Tôi có thể giúp bạn tìm hiểu về sản phẩm, câu chuyện người nông dân, hoặc hỗ trợ mua sắm. Bạn cần tôi giúp gì?',
+              isUser: false,
+              timestamp: new Date()
+            }
+          ])
+        }
+      } else {
+        // Nếu chưa có room, hiển thị welcome message
+        setAiMessages([
+          {
+            id: '1',
+            text: 'Xin chào! Tôi là trợ lý ảo của Tinh Hoa Quê Nhà. Tôi có thể giúp bạn tìm hiểu về sản phẩm, câu chuyện người nông dân, hoặc hỗ trợ mua sắm. Bạn cần tôi giúp gì?',
+            isUser: false,
+            timestamp: new Date()
+          }
+        ])
+      }
+    } catch (error) {
+      console.error('Error loading AI chat history:', error)
+      // Hiển thị welcome message nếu có lỗi
+      setAiMessages([
+        {
+          id: '1',
+          text: 'Xin chào! Tôi là trợ lý ảo của Tinh Hoa Quê Nhà. Tôi có thể giúp bạn tìm hiểu về sản phẩm, câu chuyện người nông dân, hoặc hỗ trợ mua sắm. Bạn cần tôi giúp gì?',
+          isUser: false,
+          timestamp: new Date()
+        }
+      ])
+    } finally {
+      setLoadingAIChat(false)
+    }
+  }, [user?.userId, isOpen, activeTab])
+
+  // Load AI chat history khi mở chat hoặc chuyển sang tab AI
+  useEffect(() => {
+    if (isOpen && activeTab === 'ai' && user?.userId) {
+      loadAIChatHistory()
+    }
+  }, [isOpen, activeTab, user?.userId, loadAIChatHistory])
 
   // Kết nối SignalR khi mở chat
   useEffect(() => {
@@ -640,6 +714,11 @@ const ChatSystem: React.FC = () => {
   }, [aiMessages, sellerMessages, selectedConversation, scrollToBottom])
 
   const handleSendAIMessage = async () => {
+    // Chặn spam: không cho gửi khi đang chờ AI trả lời
+    if (isTyping) {
+      return
+    }
+
     if (!inputValue.trim()) return
 
     // Kiểm tra user đã đăng nhập chưa
@@ -864,7 +943,10 @@ const ChatSystem: React.FC = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (activeTab === 'ai') {
-        handleSendAIMessage()
+        // Chặn spam: không cho gửi khi đang chờ AI trả lời
+        if (!isTyping) {
+          handleSendAIMessage()
+        }
       } else if (activeTab === 'seller') {
         handleSendSellerMessage()
       }
@@ -879,8 +961,12 @@ const ChatSystem: React.FC = () => {
         setSelectedConversation(null)
       }
     } else {
+      // Khi chuyển sang tab AI, load lại chat history
       setSelectedConversation(null)
       setSelectedStoreId(null)
+      if (user?.userId) {
+        loadAIChatHistory()
+      }
     }
   }
 
@@ -1100,184 +1186,201 @@ const ChatSystem: React.FC = () => {
                   <div className='flex-1 min-h-0 bg-white/95'>
                     <ScrollArea className='h-full px-5 py-3'>
                       <div className='flex flex-col gap-3 pb-2'>
-                        {aiMessages.map((message) => {
-                          // Parse markdown (bold với **text**)
-                          const parseMarkdown = (text: string, baseKey: number): (string | React.JSX.Element)[] => {
-                            const parts: (string | React.JSX.Element)[] = []
-                            const boldRegex = /\*\*(.+?)\*\*/g
-                            let lastIndex = 0
-                            let match
-                            let keyIndex = 0
-
-                            while ((match = boldRegex.exec(text)) !== null) {
-                              // Thêm text trước bold
-                              if (match.index > lastIndex) {
-                                parts.push(text.substring(lastIndex, match.index))
-                              }
-
-                              // Thêm bold text
-                              parts.push(
-                                <strong key={`bold-${baseKey}-${keyIndex++}`} className='font-semibold'>
-                                  {match[1]}
-                                </strong>
-                              )
-
-                              lastIndex = match.index + match[0].length
-                            }
-
-                            // Thêm phần text còn lại
-                            if (lastIndex < text.length) {
-                              parts.push(text.substring(lastIndex))
-                            }
-
-                            return parts.length > 0 ? parts : [text]
-                          }
-
-                          // Parse text để format markdown, links và line breaks
-                          const parseTextWithFormatting = (text: string) => {
-                            // Tách text thành các dòng để xử lý line breaks
-                            const lines = text.split('\n')
-                            const result: (string | React.JSX.Element)[][] = []
-
-                            lines.forEach((line, lineIndex) => {
-                              const lineParts: (string | React.JSX.Element)[] = []
-
-                              // Tìm pattern: /products/{productId} hoặc /product/{productId}
-                              const productLinkRegex = /\/product[s]?\/([a-f0-9-]+)/gi
+                        {loadingAIChat ? (
+                          <div className='flex items-center justify-center py-8'>
+                            <div className='flex flex-col items-center gap-3'>
+                              <div className='flex space-x-1'>
+                                <div className='w-2 h-2 bg-green-600 rounded-full animate-bounce'></div>
+                                <div
+                                  className='w-2 h-2 bg-green-600 rounded-full animate-bounce'
+                                  style={{ animationDelay: '0.1s' }}
+                                ></div>
+                                <div
+                                  className='w-2 h-2 bg-green-600 rounded-full animate-bounce'
+                                  style={{ animationDelay: '0.2s' }}
+                                ></div>
+                              </div>
+                              <p className='text-sm text-gray-500'>Đang tải lịch sử chat...</p>
+                            </div>
+                          </div>
+                        ) : (
+                          aiMessages.map((message) => {
+                            // Parse markdown (bold với **text**)
+                            const parseMarkdown = (text: string, baseKey: number): (string | React.JSX.Element)[] => {
+                              const parts: (string | React.JSX.Element)[] = []
+                              const boldRegex = /\*\*(.+?)\*\*/g
                               let lastIndex = 0
                               let match
-                              let linkIndex = 0
+                              let keyIndex = 0
 
-                              while ((match = productLinkRegex.exec(line)) !== null) {
-                                // Thêm text trước link
+                              while ((match = boldRegex.exec(text)) !== null) {
+                                // Thêm text trước bold
                                 if (match.index > lastIndex) {
-                                  const beforeLink = line.substring(lastIndex, match.index)
-                                  // Parse markdown trong phần text trước link
-                                  lineParts.push(...parseMarkdown(beforeLink, linkIndex++))
+                                  parts.push(text.substring(lastIndex, match.index))
                                 }
 
-                                // Thêm link
-                                const productId = match[1]
-                                const fullMatch = match[0]
-                                lineParts.push(
-                                  <a
-                                    key={`link-${linkIndex++}`}
-                                    href={`${window.location.origin}${path.productDetail.replace(':id', productId)}`}
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      navigate(path.productDetail.replace(':id', productId))
-                                    }}
-                                    className='text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1'
-                                  >
-                                    {fullMatch}
-                                    <ExternalLink className='h-3 w-3' />
-                                  </a>
+                                // Thêm bold text
+                                parts.push(
+                                  <strong key={`bold-${baseKey}-${keyIndex++}`} className='font-semibold'>
+                                    {match[1]}
+                                  </strong>
                                 )
 
-                                lastIndex = match.index + fullMatch.length
+                                lastIndex = match.index + match[0].length
                               }
 
                               // Thêm phần text còn lại
-                              if (lastIndex < line.length) {
-                                const remainingText = line.substring(lastIndex)
-                                lineParts.push(...parseMarkdown(remainingText, linkIndex++))
+                              if (lastIndex < text.length) {
+                                parts.push(text.substring(lastIndex))
                               }
 
-                              // Nếu line rỗng, thêm space để tạo khoảng cách
-                              if (lineParts.length === 0 && line.trim() === '') {
-                                result.push([<br key={`br-${lineIndex}`} />])
-                              } else {
-                                result.push(lineParts)
-                              }
-                            })
+                              return parts.length > 0 ? parts : [text]
+                            }
 
-                            // Flatten và thêm line breaks giữa các dòng
-                            const flattened: (string | React.JSX.Element)[] = []
-                            result.forEach((lineParts, index) => {
-                              flattened.push(...lineParts)
-                              if (index < result.length - 1) {
-                                flattened.push(<br key={`line-break-${index}`} />)
-                              }
-                            })
+                            // Parse text để format markdown, links và line breaks
+                            const parseTextWithFormatting = (text: string) => {
+                              // Tách text thành các dòng để xử lý line breaks
+                              const lines = text.split('\n')
+                              const result: (string | React.JSX.Element)[][] = []
 
-                            return flattened.length > 0 ? flattened : [text]
-                          }
+                              lines.forEach((line, lineIndex) => {
+                                const lineParts: (string | React.JSX.Element)[] = []
 
-                          return (
-                            <div
-                              key={message.id}
-                              className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-                            >
+                                // Tìm pattern: /products/{productId} hoặc /product/{productId}
+                                const productLinkRegex = /\/product[s]?\/([a-f0-9-]+)/gi
+                                let lastIndex = 0
+                                let match
+                                let linkIndex = 0
+
+                                while ((match = productLinkRegex.exec(line)) !== null) {
+                                  // Thêm text trước link
+                                  if (match.index > lastIndex) {
+                                    const beforeLink = line.substring(lastIndex, match.index)
+                                    // Parse markdown trong phần text trước link
+                                    lineParts.push(...parseMarkdown(beforeLink, linkIndex++))
+                                  }
+
+                                  // Thêm link
+                                  const productId = match[1]
+                                  const fullMatch = match[0]
+                                  lineParts.push(
+                                    <a
+                                      key={`link-${linkIndex++}`}
+                                      href={`${window.location.origin}${path.productDetail.replace(':id', productId)}`}
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        navigate(path.productDetail.replace(':id', productId))
+                                      }}
+                                      className='text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1'
+                                    >
+                                      {fullMatch}
+                                      <ExternalLink className='h-3 w-3' />
+                                    </a>
+                                  )
+
+                                  lastIndex = match.index + fullMatch.length
+                                }
+
+                                // Thêm phần text còn lại
+                                if (lastIndex < line.length) {
+                                  const remainingText = line.substring(lastIndex)
+                                  lineParts.push(...parseMarkdown(remainingText, linkIndex++))
+                                }
+
+                                // Nếu line rỗng, thêm space để tạo khoảng cách
+                                if (lineParts.length === 0 && line.trim() === '') {
+                                  result.push([<br key={`br-${lineIndex}`} />])
+                                } else {
+                                  result.push(lineParts)
+                                }
+                              })
+
+                              // Flatten và thêm line breaks giữa các dòng
+                              const flattened: (string | React.JSX.Element)[] = []
+                              result.forEach((lineParts, index) => {
+                                flattened.push(...lineParts)
+                                if (index < result.length - 1) {
+                                  flattened.push(<br key={`line-break-${index}`} />)
+                                }
+                              })
+
+                              return flattened.length > 0 ? flattened : [text]
+                            }
+
+                            return (
                               <div
-                                className={`max-w-[95%] sm:max-w-[90%] md:max-w-[80%] rounded-lg px-4 py-3 ${
-                                  message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
-                                }`}
+                                key={message.id}
+                                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
                               >
-                                <div className='flex flex-col gap-3'>
-                                  {/* Avatar và Text */}
-                                  <div className='flex items-start gap-2'>
-                                    {!message.isUser && <Bot className='h-4 w-4 mt-0.5 text-green-600 flex-shrink-0' />}
-                                    {message.isUser && <User className='h-4 w-4 mt-0.5 text-white flex-shrink-0' />}
-                                    <div className='flex-1'>
-                                      <div className='text-sm leading-relaxed break-words whitespace-pre-wrap'>
-                                        {!message.isUser ? parseTextWithFormatting(message.text) : message.text}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Hiển thị recommended products dạng list */}
-                                  {!message.isUser &&
-                                    message.recommendedProducts &&
-                                    message.recommendedProducts.length > 0 && (
-                                      <div className='mt-2 bg-white rounded-lg border border-gray-200 overflow-hidden'>
-                                        <div className='max-h-[300px] overflow-y-auto'>
-                                          <div className='divide-y divide-gray-100'>
-                                            {message.recommendedProducts.map((product, index) => (
-                                              <motion.div
-                                                key={product.productId}
-                                                initial={{ opacity: 0, x: -10 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ duration: 0.3, delay: index * 0.1 }}
-                                                className='p-3 hover:bg-gray-50 transition-colors cursor-pointer'
-                                                onClick={() => {
-                                                  const productId = product.productId
-                                                  navigate(path.productDetail.replace(':id', productId))
-                                                }}
-                                              >
-                                                <div className='flex gap-3 items-center'>
-                                                  {product.imageUrl && (
-                                                    <img
-                                                      src={resolveImageUrl(product.imageUrl) || product.imageUrl}
-                                                      alt={product.productName}
-                                                      className='w-12 h-12 rounded-lg object-cover flex-shrink-0'
-                                                      onError={(e) => {
-                                                        const target = e.target as HTMLImageElement
-                                                        target.src =
-                                                          'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
-                                                      }}
-                                                    />
-                                                  )}
-                                                  <div className='flex-1 min-w-0'>
-                                                    <h4 className='font-semibold text-sm text-gray-900 truncate'>
-                                                      {product.productName}
-                                                    </h4>
-                                                    <p className='text-green-600 font-bold text-xs mt-0.5'>
-                                                      {product.price.toLocaleString('vi-VN')}₫
-                                                    </p>
-                                                  </div>
-                                                  <ExternalLink className='h-4 w-4 text-gray-400 flex-shrink-0' />
-                                                </div>
-                                              </motion.div>
-                                            ))}
-                                          </div>
+                                <div
+                                  className={`max-w-[95%] sm:max-w-[90%] md:max-w-[80%] rounded-lg px-4 py-3 ${message.isUser ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-900'
+                                    }`}
+                                >
+                                  <div className='flex flex-col gap-3'>
+                                    {/* Avatar và Text */}
+                                    <div className='flex items-start gap-2'>
+                                      {!message.isUser && <Bot className='h-4 w-4 mt-0.5 text-green-600 flex-shrink-0' />}
+                                      {message.isUser && <User className='h-4 w-4 mt-0.5 text-white flex-shrink-0' />}
+                                      <div className='flex-1'>
+                                        <div className='text-sm leading-relaxed break-words whitespace-pre-wrap'>
+                                          {!message.isUser ? parseTextWithFormatting(message.text) : message.text}
                                         </div>
                                       </div>
-                                    )}
+                                    </div>
+
+                                    {/* Hiển thị recommended products dạng list */}
+                                    {!message.isUser &&
+                                      message.recommendedProducts &&
+                                      message.recommendedProducts.length > 0 && (
+                                        <div className='mt-2 bg-white rounded-lg border border-gray-200 overflow-hidden'>
+                                          <div className='max-h-[300px] overflow-y-auto'>
+                                            <div className='divide-y divide-gray-100'>
+                                              {message.recommendedProducts.map((product, index) => (
+                                                <motion.div
+                                                  key={product.productId}
+                                                  initial={{ opacity: 0, x: -10 }}
+                                                  animate={{ opacity: 1, x: 0 }}
+                                                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                                                  className='p-3 hover:bg-gray-50 transition-colors cursor-pointer'
+                                                  onClick={() => {
+                                                    const productId = product.productId
+                                                    navigate(path.productDetail.replace(':id', productId))
+                                                  }}
+                                                >
+                                                  <div className='flex gap-3 items-center'>
+                                                    {product.imageUrl && (
+                                                      <img
+                                                        src={resolveImageUrl(product.imageUrl) || product.imageUrl}
+                                                        alt={product.productName}
+                                                        className='w-12 h-12 rounded-lg object-cover flex-shrink-0'
+                                                        onError={(e) => {
+                                                          const target = e.target as HTMLImageElement
+                                                          target.src =
+                                                            'https://i.pinimg.com/736x/91/7a/51/917a51df0d444def3cade8d626305a67.jpg'
+                                                        }}
+                                                      />
+                                                    )}
+                                                    <div className='flex-1 min-w-0'>
+                                                      <h4 className='font-semibold text-sm text-gray-900 truncate'>
+                                                        {product.productName}
+                                                      </h4>
+                                                      <p className='text-green-600 font-bold text-xs mt-0.5'>
+                                                        {product.price.toLocaleString('vi-VN')}₫
+                                                      </p>
+                                                    </div>
+                                                    <ExternalLink className='h-4 w-4 text-gray-400 flex-shrink-0' />
+                                                  </div>
+                                                </motion.div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          )
-                        })}
+                            )
+                          }))}
 
                         {isTyping && (
                           <div className='flex justify-start'>
@@ -1311,14 +1414,15 @@ const ChatSystem: React.FC = () => {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyPress={handleKeyPress}
-                        placeholder='Nhập tin nhắn...'
+                        placeholder={isTyping ? 'Đang chờ AI trả lời...' : 'Nhập tin nhắn...'}
                         className='flex-1'
+                        disabled={isTyping}
                       />
                       <Button
                         onClick={handleSendAIMessage}
-                        disabled={!inputValue.trim()}
+                        disabled={!inputValue.trim() || isTyping}
                         size='icon'
-                        className='bg-green-600 hover:bg-green-700 flex-shrink-0'
+                        className='bg-green-600 hover:bg-green-700 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed'
                       >
                         <Send className='h-5 w-5' />
                       </Button>
@@ -1485,9 +1589,9 @@ const ChatSystem: React.FC = () => {
                                     const handleImageClick = (idx: number) => {
                                       const allImages = msg.images
                                         ? msg.images.map((img) => {
-                                            const url = resolveImageUrl(img)
-                                            return url || img
-                                          })
+                                          const url = resolveImageUrl(img)
+                                          return url || img
+                                        })
                                         : []
                                       setPreviewImages(allImages)
                                       setPreviewIndex(idx)
@@ -1518,10 +1622,10 @@ const ChatSystem: React.FC = () => {
                                                   isOldMessage
                                                     ? { duration: 0.2 }
                                                     : {
-                                                        duration: 0.3,
-                                                        delay: msgIndex * 0.05 + idx * 0.05,
-                                                        ease: 'easeOut'
-                                                      }
+                                                      duration: 0.3,
+                                                      delay: msgIndex * 0.05 + idx * 0.05,
+                                                      ease: 'easeOut'
+                                                    }
                                                 }
                                                 className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'} mb-2 group items-end gap-2`}
                                                 onMouseEnter={() => setHoveredMessageId(msg.id)}
@@ -1594,10 +1698,10 @@ const ChatSystem: React.FC = () => {
                                               isOldMessage
                                                 ? { duration: 0.2 }
                                                 : {
-                                                    type: 'spring',
-                                                    stiffness: 300,
-                                                    damping: 20
-                                                  }
+                                                  type: 'spring',
+                                                  stiffness: 300,
+                                                  damping: 20
+                                                }
                                             }
                                             className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'} mb-2 group items-end gap-2`}
                                             onMouseEnter={() => setHoveredMessageId(msg.id)}
@@ -1617,11 +1721,10 @@ const ChatSystem: React.FC = () => {
                                               <motion.div
                                                 layout
                                                 whileHover={{ scale: 1.02 }}
-                                                className={`w-fit max-w-full relative ${
-                                                  msg.isUser
-                                                    ? 'bg-green-600 text-white rounded-2xl rounded-br-sm'
-                                                    : 'bg-white text-gray-800 rounded-2xl rounded-bl-sm'
-                                                } px-4 py-2.5 shadow-sm break-words`}
+                                                className={`w-fit max-w-full relative ${msg.isUser
+                                                  ? 'bg-green-600 text-white rounded-2xl rounded-br-sm'
+                                                  : 'bg-white text-gray-800 rounded-2xl rounded-bl-sm'
+                                                  } px-4 py-2.5 shadow-sm break-words`}
                                               >
                                                 <p className='text-sm break-words whitespace-normal'>{msg.text}</p>
                                               </motion.div>

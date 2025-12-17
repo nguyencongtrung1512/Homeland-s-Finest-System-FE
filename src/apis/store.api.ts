@@ -13,16 +13,11 @@ export interface StoreResponse {
   districtId: number | null
   wardId: number | null
   address: string
+  targetProvinceName: string | null
+  targetProvinceId: number | null
   logoUrl: string | null
   coverImageUrl: string | null
-  status:
-  | 'Approved'
-  | 'Pending'
-  | 'Rejected'
-  | 'Inactive'
-  | 'Processing'
-  | 'ApprovedByStaff'
-  | 'RejectedByStaff'
+  status: 'Approved' | 'Pending' | 'Rejected' | 'Inactive' | 'Processing' | 'ApprovedByStaff' | 'RejectedByStaff'
   adminNote: string | null
   reviewedBy: string | null
   approvedBy: string | null

@@ -1319,7 +1319,7 @@ function CreateProduct() {
                   <div className='mt-1 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg'>
                     <div className='flex items-center gap-2'>
                       <MapPinIcon className='w-4 h-4 text-green-600' />
-                      <span className='text-sm font-medium text-gray-900'>{storeData.province}</span>
+                      <span className='text-sm font-medium text-gray-900'>{storeData.targetProvinceName}</span>
                     </div>
                     <p className='text-xs text-gray-500 mt-1'>Tỉnh xuất xứ được lấy từ thông tin cửa hàng của bạn</p>
                   </div>
