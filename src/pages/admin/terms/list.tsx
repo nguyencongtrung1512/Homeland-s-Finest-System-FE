@@ -372,7 +372,7 @@ function TermsManagement() {
           <h1 className='text-2xl font-bold text-gray-900'>Điều khoản & Dịch vụ</h1>
           <p className='text-sm text-gray-600 mt-1'>Quản lý các điều khoản và chính sách dịch vụ</p>
         </div>
-        <Button onClick={handleAdd} className='bg-blue-600 hover:bg-blue-700 text-white'>
+        <Button onClick={handleAdd} variant='blue'>
           <Plus className='w-4 h-4 mr-2' />
           Thêm điều khoản
         </Button>
@@ -431,7 +431,8 @@ function TermsManagement() {
               <Button
                 onClick={fetchDocuments}
                 disabled={loading}
-                className='bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 rounded-lg shadow-sm'
+                variant='blue'
+                className='h-10 px-4 rounded-lg shadow-sm'
               >
                 {loading ? 'Đang tải...' : 'Làm mới'}
               </Button>
@@ -649,7 +650,7 @@ function TermsManagement() {
             <Button variant='outline' onClick={handleCancel}>
               Hủy
             </Button>
-            <Button onClick={handleSave} className='bg-blue-600 hover:bg-blue-700 text-white'>
+            <Button onClick={handleSave} variant='blue'>
               Tạo tài liệu
             </Button>
           </DialogFooter>
@@ -772,7 +773,7 @@ function TermsManagement() {
             <Button variant='outline' onClick={handleCancel}>
               Hủy
             </Button>
-            <Button onClick={handleUpdate} className='bg-blue-600 hover:bg-blue-700 text-white'>
+            <Button onClick={handleUpdate} variant='blue'>
               Cập nhật
             </Button>
           </DialogFooter>

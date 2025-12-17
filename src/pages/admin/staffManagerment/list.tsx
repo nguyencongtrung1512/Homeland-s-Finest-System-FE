@@ -837,7 +837,8 @@ function StaffManagement() {
         <div className='flex items-center space-x-2'>
           <Button
             onClick={handleCreateStaff}
-            className='bg-green-600 hover:bg-green-700 text-white flex items-center gap-2'
+            variant='blue'
+            className='flex items-center gap-2'
           >
             <UserPlus className='w-4 h-4' />
             Tạo nhân viên
@@ -1221,7 +1222,7 @@ function StaffManagement() {
                     </Button>
                     <Button
                       onClick={handleSaveEdit}
-                      className='bg-blue-600 hover:bg-blue-700 text-white'
+                      variant='blue'
                       disabled={editFormLoading}
                     >
                       {editFormLoading ? (
@@ -1574,7 +1575,7 @@ function StaffManagement() {
             </Button>
             <Button
               onClick={handleStaffFormSubmit}
-              className='bg-green-600 hover:bg-green-700 text-white'
+              variant='blue'
               disabled={staffFormLoading}
             >
               {staffFormLoading ? 'Đang tạo...' : 'Tạo nhân viên'}

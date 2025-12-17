@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../compo
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
 import type { Product } from '../../../types/productType'
+import { formatDate } from '../../../utils/formatDate'
 
 // Extended Product type với createdAt (có thể có trong một số API response)
 export interface ProductWithCreatedAt extends Product {
@@ -35,20 +36,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const handleProductClick = (productId: string) => {
     onClose() // Đóng modal trước khi navigate
     navigate(`/admin/productManagement/detail-product/${productId}`)
-  }
-
-  const formatDate = (dateString: string): string => {
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('vi-VN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      })
-    } catch (error) {
-      console.error('Error formatting date:', error)
-      return 'Ngày không hợp lệ'
-    }
   }
 
   const renderStars = (rating: number | null | undefined) => {
@@ -137,15 +124,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                         <p className='text-xs text-gray-600 line-clamp-2'>{product.description}</p>
                       )}
 
-                      {/* Rating and Reviews */}
-                      <div className='flex items-center gap-2'>
-                        <div className='flex items-center gap-1'>{renderStars(product.rating)}</div>
-                        <span className='text-xs text-gray-500'>
-                          {product.rating !== null && product.rating !== undefined ? product.rating.toFixed(1) : '0.0'}{' '}
-                          ({product.reviewCount || 0} đánh giá)
-                        </span>
-                      </div>
-
                       {/* Sales and Date */}
                       <div className='flex items-center justify-between text-xs text-gray-500'>
                         <div className='flex items-center gap-1'>
@@ -158,11 +136,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                             <span>{formatDate(product.createdAt)}</span>
                           </div>
                         )}
-                      </div>
-
-                      {/* Product ID */}
-                      <div className='pt-2 border-t'>
-                        <p className='text-xs text-gray-400 font-mono'>ID: {product.id}</p>
                       </div>
                     </div>
                   </CardContent>

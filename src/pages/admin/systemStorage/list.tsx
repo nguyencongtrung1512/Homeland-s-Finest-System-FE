@@ -383,26 +383,26 @@ function SystemStorage() {
 
       {/* Create/Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className='sm:max-w-[500px] bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200'>
+        <DialogContent className='sm:max-w-[500px] bg-white border-gray-200'>
           <DialogHeader className='space-y-3'>
             <div className='flex items-center gap-3'>
-              <div className='p-2 bg-blue-100 rounded-lg'>
-                {editingItem ? <Edit className='w-5 h-5 text-blue-600' /> : <Plus className='w-5 h-5 text-blue-600' />}
+              <div className='p-2 bg-gray-100 rounded-lg'>
+                {editingItem ? <Edit className='w-5 h-5 text-gray-700' /> : <Plus className='w-5 h-5 text-gray-700' />}
               </div>
-              <DialogTitle className='text-xl font-bold text-blue-800'>
+              <DialogTitle className='text-xl font-bold text-gray-900'>
                 {editingItem ? 'Chỉnh sửa SystemStorage' : 'Tạo SystemStorage mới'}
               </DialogTitle>
             </div>
-            <DialogDescription className='text-blue-600'>
+            <DialogDescription className='text-gray-600'>
               {editingItem ? 'Cập nhật thông tin SystemStorage.' : 'Điền thông tin để tạo SystemStorage mới.'}
             </DialogDescription>
           </DialogHeader>
           <div className='space-y-6 py-4'>
             {/* Tên */}
-            <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-blue-200'>
+            <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
               <div className='flex items-center gap-2 mb-3'>
-                <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                <Label htmlFor='name' className='text-sm font-semibold text-blue-700'>
+                <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                <Label htmlFor='name' className='text-sm font-semibold text-gray-900'>
                   Tên *
                 </Label>
               </div>
@@ -415,7 +415,7 @@ function SystemStorage() {
                     setFormErrors({ ...formErrors, name: '' })
                   }
                 }}
-                className={`border-blue-300 focus:border-blue-500 focus:ring-blue-500 ${
+                className={`border-gray-300 focus:border-gray-500 focus:ring-gray-500 ${
                   formErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
                 }`}
                 placeholder='Nhập tên (tối thiểu 20 ký tự)...'
@@ -429,10 +429,10 @@ function SystemStorage() {
             </div>
 
             {/* Mô tả */}
-            <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-blue-200'>
+            <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
               <div className='flex items-center gap-2 mb-3'>
-                <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                <Label htmlFor='description' className='text-sm font-semibold text-blue-700'>
+                <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                <Label htmlFor='description' className='text-sm font-semibold text-gray-900'>
                   Mô tả *
                 </Label>
               </div>
@@ -445,7 +445,7 @@ function SystemStorage() {
                     setFormErrors({ ...formErrors, description: '' })
                   }
                 }}
-                className={`border-blue-300 focus:border-blue-500 focus:ring-blue-500 ${
+                className={`border-gray-300 focus:border-gray-500 focus:ring-gray-500 ${
                   formErrors.description ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
                 }`}
                 placeholder='Nhập mô tả (tối thiểu 20 ký tự)...'
@@ -460,10 +460,10 @@ function SystemStorage() {
             </div>
 
             {/* Giá trị */}
-            <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-blue-200'>
+            <div className='bg-gray-50 rounded-lg p-4 border border-gray-200'>
               <div className='flex items-center gap-2 mb-3'>
-                <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                <Label htmlFor='value' className='text-sm font-semibold text-blue-700'>
+                <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                <Label htmlFor='value' className='text-sm font-semibold text-gray-900'>
                   Giá trị *
                 </Label>
               </div>
@@ -477,7 +477,7 @@ function SystemStorage() {
                     setFormErrors({ ...formErrors, value: '' })
                   }
                 }}
-                className={`border-blue-300 focus:border-blue-500 focus:ring-blue-500 ${
+                className={`border-gray-300 focus:border-gray-500 focus:ring-gray-500 ${
                   formErrors.value ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
                 }`}
                 placeholder='Nhập giá trị (>= 0)...'
@@ -491,20 +491,21 @@ function SystemStorage() {
               )}
             </div>
           </div>
-          <DialogFooter className='bg-blue-50/50 rounded-lg p-4 border-t border-blue-200'>
+          <DialogFooter className='bg-gray-50 rounded-lg p-4 border-t border-gray-200'>
             <div className='flex gap-3 w-full'>
               <Button
                 variant='outline'
                 onClick={handleModalClose}
                 disabled={formLoading}
-                className='flex-1 border-blue-300 text-blue-700 hover:bg-blue-50'
+                className='flex-1 border-gray-300 text-gray-700 hover:bg-gray-50'
               >
                 Hủy
               </Button>
               <Button
                 onClick={handleFormSubmit}
                 disabled={formLoading}
-                className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
+                variant='blue'
+                className='flex-1'
               >
                 {formLoading ? (
                   <>
@@ -530,56 +531,56 @@ function SystemStorage() {
 
       {/* Detail View Modal */}
       <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-        <DialogContent className='sm:max-w-[500px] bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200'>
+        <DialogContent className='sm:max-w-[500px] bg-white border-gray-200'>
           <DialogHeader className='space-y-3'>
             <div className='flex items-center gap-3'>
-              <div className='p-2 bg-blue-100 rounded-lg'>
-                <Eye className='w-5 h-5 text-blue-600' />
+              <div className='p-2 bg-gray-100 rounded-lg'>
+                <Eye className='w-5 h-5 text-gray-600' />
               </div>
-              <DialogTitle className='text-xl font-bold text-blue-800'>Chi tiết SystemStorage</DialogTitle>
+              <DialogTitle className='text-xl font-bold text-gray-800'>Chi tiết SystemStorage</DialogTitle>
             </div>
-            <DialogDescription className='text-blue-600'>Thông tin chi tiết về SystemStorage</DialogDescription>
+            <DialogDescription className='text-gray-600'>Thông tin chi tiết về SystemStorage</DialogDescription>
           </DialogHeader>
 
           {viewingItem && (
             <div className='space-y-6 py-4'>
               {/* Tên */}
-              <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-blue-200'>
+              <div className='bg-gray-50 border-gray-200'>
                 <div className='flex items-center gap-2 mb-2'>
-                  <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                  <Label className='text-sm font-semibold text-blue-700'>Tên</Label>
+                  <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                  <Label className='text-sm font-semibold text-gray-700'>Tên</Label>
                 </div>
                 <p className='text-gray-800 font-medium text-lg'>{viewingItem.name}</p>
               </div>
 
               {/* Mô tả */}
-              <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-blue-200'>
+              <div className='bg-gray-50 border-gray-200'>
                 <div className='flex items-center gap-2 mb-2'>
-                  <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                  <Label className='text-sm font-semibold text-blue-700'>Mô tả</Label>
+                  <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                  <Label className='text-sm font-semibold text-gray-700'>Mô tả</Label>
                 </div>
                 <p className='text-gray-700 leading-relaxed'>{viewingItem.description}</p>
               </div>
 
               {/* Giá trị */}
-              <div className='bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-blue-200'>
+              <div className='bg-gray-50 border-gray-200'>
                 <div className='flex items-center gap-2 mb-2'>
-                  <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                  <Label className='text-sm font-semibold text-blue-700'>Giá trị</Label>
+                  <div className='w-2 h-2 bg-gray-500 rounded-full'></div>
+                  <Label className='text-sm font-semibold text-gray-700'>Giá trị</Label>
                 </div>
-                <Badge variant='outline' className='bg-blue-100 text-blue-800 border-blue-300 px-3 py-1'>
+                <Badge variant='outline' className='bg-gray-100 text-gray-800 border-gray-300 px-3 py-1'>
                   {viewingItem.value}
                 </Badge>
               </div>
             </div>
           )}
 
-          <DialogFooter className='bg-blue-50/50 rounded-lg p-4 border-t border-blue-200'>
+          <DialogFooter className='bg-gray-50 border-gray-200'>
             <div className='flex gap-3 w-full'>
               <Button
                 variant='outline'
                 onClick={handleDetailModalClose}
-                className='flex-1 border-blue-300 text-blue-700 hover:bg-blue-50'
+                className='flex-1 border-gray-300 text-gray-700 hover:bg-gray-50'
               >
                 Đóng
               </Button>
@@ -588,7 +589,8 @@ function SystemStorage() {
                   handleDetailModalClose()
                   handleEdit(viewingItem!)
                 }}
-                className='flex-1 bg-blue-600 hover:bg-blue-700 text-white'
+                variant='blue'
+                className='flex-1'
               >
                 <Edit className='w-4 h-4 mr-2' />
                 Chỉnh sửa

@@ -364,7 +364,7 @@ function BlogCategoryList() {
 
               <Dialog open={isCreateDialogOpen} onOpenChange={handleCreateDialogClose}>
                 <DialogTrigger asChild>
-                  <Button variant='greenLight'>
+                  <Button variant='blue'>
                     <Plus className='h-4 w-4 mr-2' />
                     Thêm danh mục
                   </Button>
@@ -411,7 +411,7 @@ function BlogCategoryList() {
                     <Button
                       onClick={handleCreate}
                       disabled={!isFormValid()}
-                      className='bg-primary hover:bg-primary/90'
+                      variant='blue'
                     >
                       Tạo
                     </Button>
@@ -559,7 +559,7 @@ function BlogCategoryList() {
               <Button variant='outline' onClick={() => setIsEditDialogOpen(false)} className='border-border'>
                 Hủy
               </Button>
-              <Button onClick={handleUpdate} disabled={!isFormValid()} variant='greenLight'>
+              <Button onClick={handleUpdate} disabled={!isFormValid()} variant='blue'>
                 Cập nhật
               </Button>
             </DialogFooter>

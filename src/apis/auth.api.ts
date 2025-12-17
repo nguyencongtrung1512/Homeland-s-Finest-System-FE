@@ -158,6 +158,9 @@ export interface SellerRegistrationData {
     wardID: number
     description: string
     vendorApplicationImageUrl: File[]
+    lat?: string
+    lng?: string
+    targetProvinceId?: number
   }
 }
 
@@ -215,6 +218,15 @@ export const registerSeller = async (data: SellerRegistrationData) => {
   formData.append('StoreInfo.StoreDistrictID', data.storeInfo.districtID.toString())
   formData.append('StoreInfo.StoreWardID', data.storeInfo.wardID.toString())
   formData.append('StoreInfo.Description', data.storeInfo.description)
+  if (data.storeInfo.lat) {
+    formData.append('StoreInfo.Lat', data.storeInfo.lat)
+  }
+  if (data.storeInfo.lng) {
+    formData.append('StoreInfo.Lng', data.storeInfo.lng)
+  }
+  if (data.storeInfo.targetProvinceId !== undefined) {
+    formData.append('StoreInfo.TargetProvinceId', data.storeInfo.targetProvinceId.toString())
+  }
 
   // Add vendor application images
   data.storeInfo.vendorApplicationImageUrl.forEach((file) => {

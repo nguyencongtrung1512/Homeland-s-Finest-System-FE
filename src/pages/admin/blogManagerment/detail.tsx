@@ -179,7 +179,7 @@ function BlogByCategory() {
               </div>
               <Button
                 onClick={() => navigate(path.CREATE_BLOG.replace(':id', categoryDetail?.categoryId || ''))}
-                variant='greenLight'
+                variant='blue'
                 className='shadow-md hover:shadow-lg transition-all duration-200'
               >
                 <Database className='h-4 w-4 mr-2' />
@@ -410,7 +410,7 @@ function BlogByCategory() {
                 <Button variant='outline' onClick={() => setIsDialogOpen(false)}>
                   Đóng
                 </Button>
-                <Button onClick={() => handleEditBlog(selectedBlog.blogId)}>Chỉnh sửa</Button>
+                <Button variant='blue' onClick={() => handleEditBlog(selectedBlog.blogId)}>Chỉnh sửa</Button>
               </DialogFooter>
             </div>
           )}

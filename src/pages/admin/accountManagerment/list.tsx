@@ -90,27 +90,15 @@ function CustomerManagement() {
     setError('')
 
     try {
-      // Prepare API parameters - chỉ lấy role customer
+      // Prepare API parameters - chỉ lấy role customer, lấy tất cả để filter ở frontend
       const apiParams: {
         pageSize: number
         pageNumber: number
-        searchTerm?: string
         role?: string
-        isActive?: boolean
       } = {
-        pageSize: 100,
+        pageSize: 0, // Lấy tất cả để filter ở frontend
         pageNumber: 1,
         role: 'customer' // Chỉ lấy customer
-      }
-
-      // Add search term if provided
-      if (searchText.trim()) {
-        apiParams.searchTerm = searchText.trim()
-      }
-
-      // Add status filter if not 'all'
-      if (statusFilter !== 'all') {
-        apiParams.isActive = statusFilter === 'active'
       }
 
       console.log('API params:', apiParams)
@@ -135,10 +123,11 @@ function CustomerManagement() {
     }
   }
 
-  // Fetch data khi component mount và khi có thay đổi filter
+  // Fetch data khi component mount (chỉ fetch một lần, filter ở frontend)
   useEffect(() => {
     fetchUsers()
-  }, [searchText, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Chỉ fetch khi mount, không fetch lại khi filter thay đổi
 
   const getStatusBadge = (isActive: boolean) => {
     if (isActive) {
@@ -158,35 +147,85 @@ function CustomerManagement() {
     }
   }
 
-  // Filter customers by date range
-  const filterByDateRange = (customers: Customer[]) => {
-    if (!dateFrom && !dateTo) return customers
+  // Filter customers ở frontend
+  const filterCustomers = (customers: Customer[]): Customer[] => {
+    let filtered = [...customers]
 
-    return customers.filter((customer) => {
-      const customerDate = new Date(customer.createdAt)
-      customerDate.setHours(0, 0, 0, 0)
+    // Filter by search text (tên, email, số điện thoại)
+    if (searchText.trim()) {
+      const searchLower = searchText.toLowerCase().trim()
+      filtered = filtered.filter((customer) => {
+        const name = customer.name?.toLowerCase() || ''
+        const email = customer.email?.toLowerCase() || ''
+        const phone = customer.phone?.toLowerCase() || ''
+        return name.includes(searchLower) || email.includes(searchLower) || phone.includes(searchLower)
+      })
+    }
 
-      if (dateFrom && dateTo) {
-        const from = new Date(dateFrom)
-        from.setHours(0, 0, 0, 0)
-        const to = new Date(dateTo)
-        to.setHours(23, 59, 59, 999)
-        return customerDate >= from && customerDate <= to
-      } else if (dateFrom) {
-        const from = new Date(dateFrom)
-        from.setHours(0, 0, 0, 0)
-        return customerDate >= from
-      } else if (dateTo) {
-        const to = new Date(dateTo)
-        to.setHours(23, 59, 59, 999)
-        return customerDate <= to
-      }
-      return true
-    })
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((customer) => {
+        if (statusFilter === 'active') {
+          return customer.isActive === true
+        } else if (statusFilter === 'inactive') {
+          return customer.isActive === false
+        }
+        return true
+      })
+    }
+
+    // Filter by date range
+    if (dateFrom || dateTo) {
+      filtered = filtered.filter((customer) => {
+        if (!customer.createdAt) return false
+
+        // Parse date từ format "HH:mm:ss dd/MM/yyyy" hoặc ISO format
+        const parseDate = (dateString: string): Date | null => {
+          if (!dateString) return null
+          
+          // Thử parse format "HH:mm:ss dd/MM/yyyy"
+          const timeDateMatch = dateString.match(/(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})/)
+          if (timeDateMatch) {
+            const [, hh, mm, ss, dd, MM, yyyy] = timeDateMatch
+            return new Date(parseInt(yyyy), parseInt(MM) - 1, parseInt(dd), parseInt(hh), parseInt(mm), parseInt(ss))
+          }
+          
+          // Fallback: parse ISO format
+          const date = new Date(dateString)
+          return isNaN(date.getTime()) ? null : date
+        }
+
+        const customerDate = parseDate(customer.createdAt)
+        if (!customerDate) return false
+
+        // Reset time để so sánh chỉ theo ngày
+        customerDate.setHours(0, 0, 0, 0)
+
+        if (dateFrom && dateTo) {
+          const from = new Date(dateFrom)
+          from.setHours(0, 0, 0, 0)
+          const to = new Date(dateTo)
+          to.setHours(23, 59, 59, 999)
+          return customerDate >= from && customerDate <= to
+        } else if (dateFrom) {
+          const from = new Date(dateFrom)
+          from.setHours(0, 0, 0, 0)
+          return customerDate >= from
+        } else if (dateTo) {
+          const to = new Date(dateTo)
+          to.setHours(23, 59, 59, 999)
+          return customerDate <= to
+        }
+
+        return true
+      })
+    }
+
+    return filtered
   }
 
   // Calculate summary statistics
-  const filteredCustomers = filterByDateRange(customers)
+  const filteredCustomers = filterCustomers(customers)
   const totalPages = Math.ceil(filteredCustomers.length / pageSize)
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
@@ -406,15 +445,23 @@ function CustomerManagement() {
                 <Input
                   placeholder='Tìm kiếm theo tên, email, số điện thoại...'
                   value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && fetchUsers()}
+                  onChange={(e) => {
+                    setSearchText(e.target.value)
+                    setCurrentPage(1) // Reset về trang 1 khi search thay đổi
+                  }}
                   className='w-full'
                 />
               </div>
             </div>
             <div className='w-full sm:w-48 py-5'>
               <Label className='text-sm font-medium text-gray-700 mb-2'>Trạng thái</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value)
+                  setCurrentPage(1) // Reset về trang 1 khi filter thay đổi
+                }}
+              >
                 <SelectTrigger className='w-full'>
                   <SelectValue placeholder='Trạng thái' />
                 </SelectTrigger>
@@ -441,6 +488,7 @@ function CustomerManagement() {
                     onSelect={(date) => {
                       setDateFrom(date)
                       setDateFromOpen(false)
+                      setCurrentPage(1) // Reset về trang 1 khi filter ngày thay đổi
                     }}
                     disabled={(date) => {
                       const today = new Date()
@@ -468,6 +516,7 @@ function CustomerManagement() {
                     onSelect={(date) => {
                       setDateTo(date)
                       setDateToOpen(false)
+                      setCurrentPage(1) // Reset về trang 1 khi filter ngày thay đổi
                     }}
                     disabled={(date) => {
                       const today = new Date()
@@ -494,6 +543,7 @@ function CustomerManagement() {
                   onClick={() => {
                     setDateFrom(undefined)
                     setDateTo(undefined)
+                    setCurrentPage(1) // Reset về trang 1 khi xóa filter
                   }}
                 >
                   Xóa lọc ngày
@@ -522,6 +572,7 @@ function CustomerManagement() {
                     <TableHead>Khách hàng</TableHead>
                     <TableHead>Email / Số điện thoại</TableHead>
                     <TableHead>Vi phạm</TableHead>
+                    <TableHead>Ngày tạo</TableHead>
                     <TableHead>Trạng thái</TableHead>
                     <TableHead>Hành động</TableHead>
                   </TableRow>
@@ -529,7 +580,7 @@ function CustomerManagement() {
                 <TableBody>
                   {currentCustomers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className='text-center py-12 text-gray-500'>
+                      <TableCell colSpan={6} className='text-center py-12 text-gray-500'>
                         Không có dữ liệu
                       </TableCell>
                     </TableRow>
@@ -566,6 +617,9 @@ function CustomerManagement() {
                         </TableCell>
                         <TableCell>
                           <div className='text-sm text-center'>{customer.violationCount}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className='text-sm text-gray-600'>{formatDate(customer.createdAt)}</div>
                         </TableCell>
                         <TableCell>{getStatusBadge(customer.isActive)}</TableCell>
                         <TableCell>

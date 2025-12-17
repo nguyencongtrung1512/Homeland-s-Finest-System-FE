@@ -1,8 +1,9 @@
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { MapPin, Flag } from 'lucide-react'
+import { MapPin, Flag, MessageCircle } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import { Button } from '../../../components/ui/button'
 import StorySection from './components/StorySection'
 import MapComponent from '../../../components/Mapbox/mapBox'
 import { useStore } from '../../../hooks/useStore'
@@ -20,12 +21,15 @@ import { formatDate } from '../../../utils/formatDate'
 import AsideFilter from './components/asideFilter'
 import SortBar, { type SortOption } from './components/SortBar'
 import ProductsGrid from './components/ProductsGrid'
+import ChatSystem from '../Chat/chatSystem'
+import { useChat } from '../../../contexts/chat.context'
 
 const StorePage = () => {
   const { storeId } = useParams<{ storeId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
+  const { openChatWithStore } = useChat()
 
   // Filter state - mặc định là "Tất cả" (empty string = không filter theo type)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
@@ -68,6 +72,12 @@ const StorePage = () => {
 
   const handleRetry = () => {
     refetch()
+  }
+
+  const handleOpenChat = () => {
+    if (store?.id) {
+      openChatWithStore(store.id, store.storeName)
+    }
   }
 
   // Memoize callbacks để tránh re-render không cần thiết
@@ -289,14 +299,27 @@ const StorePage = () => {
                       </div>
                     </div>
 
-                    {/* Report Button */}
-                    <button
-                      onClick={() => setIsReportModalOpen(true)}
-                      className='p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors'
-                      title='Báo cáo cửa hàng'
-                    >
-                      <Flag className='w-5 h-5' />
-                    </button>
+                    {/* Action Buttons */}
+                    <div className='flex items-center gap-2'>
+                      {/* Chat Button */}
+                      <Button
+                        onClick={handleOpenChat}
+                        className='bg-green-600 hover:bg-green-700 text-white flex items-center gap-2'
+                        title='Nhắn tin với cửa hàng'
+                      >
+                        <MessageCircle className='w-4 h-4' />
+                        <span>Nhắn tin</span>
+                      </Button>
+
+                      {/* Report Button */}
+                      <button
+                        onClick={() => setIsReportModalOpen(true)}
+                        className='p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors'
+                        title='Báo cáo cửa hàng'
+                      >
+                        <Flag className='w-5 h-5' />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -387,6 +410,7 @@ const StorePage = () => {
           </div>
         </DialogContent>
       </Dialog>
+      <ChatSystem />
       <PromotionBubble />
     </div>
   )

@@ -116,11 +116,17 @@ function ManagerComboAdmin() {
       }
 
       if (dateFrom) {
-        params.fromDate = dateFrom
+        // Convert to ISO 8601 format with UTC timezone: YYYY-MM-DDT00:00:00Z
+        const date = new Date(dateFrom)
+        date.setUTCHours(0, 0, 0, 0)
+        params.fromDate = date.toISOString()
       }
 
       if (dateTo) {
-        params.toDate = dateTo
+        // Convert to ISO 8601 format with UTC timezone: YYYY-MM-DDT23:59:59Z
+        const date = new Date(dateTo)
+        date.setUTCHours(23, 59, 59, 999)
+        params.toDate = date.toISOString()
       }
 
       const response = await comboApi.getAllCombos(params)
@@ -611,7 +617,7 @@ function ManagerComboAdmin() {
             <Button
               onClick={handleAssignStaff}
               disabled={assigning || !selectedStaffId || loadingStaff}
-              className='bg-green-500 hover:bg-green-600 text-white'
+              variant='blue'
             >
               {assigning ? (
                 <>

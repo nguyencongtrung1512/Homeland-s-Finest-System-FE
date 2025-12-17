@@ -21,7 +21,7 @@ const buttonVariants = cva(
         ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
         link: 'text-primary underline-offset-4 hover:underline',
         green: 'bg-[#50c303]/90 text-white hover:bg-[#65de15]',
-        blue: 'bg-[#3e84c5]/90 text-white hover:bg-[#4c72f1]',
+        blue: 'bg-[#38bdf8] text-white hover:bg-[#0ea5e9]',
         success: 'bg-success text-success-foreground hover:bg-success/90 shadow-sm transition-all active:scale-95',
         greenLight:
           'px-8 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold shadow-lg shadow-green-200 hover:shadow-green-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'

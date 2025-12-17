@@ -772,7 +772,7 @@ function AdminDashboard() {
                       </div>
                       <Button
                         size='sm'
-                        className='bg-blue-600 hover:bg-blue-700 text-white'
+                        variant='blue'
                         onClick={() => {
                           navigate(`/admin/storeManagement/store-detail/${store.id}`)
                         }}
