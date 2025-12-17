@@ -29,7 +29,8 @@ function ManagerProduct() {
   const [searchText, setSearchText] = useState('')
   const [productStatusFilter, setProductStatusFilter] = useState<string>('all')
   const [isActiveFilter, setIsActiveFilter] = useState<string>('all')
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
+  const [fromDateFilter, setFromDateFilter] = useState<Date | undefined>(undefined)
+  const [toDateFilter, setToDateFilter] = useState<Date | undefined>(undefined)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(10)
   const [totalPages, setTotalPages] = useState(1)
@@ -69,14 +70,17 @@ function ManagerProduct() {
         params.isActive = isActiveFilter === 'true'
       }
 
-      // Add date filter (BE uses fromDate and toDate)
-      // BE trả về createdAt format "HH:mm:ss dd/MM/yyyy", cần filter đúng ngày
-      if (dateFilter) {
-        // Format date to yyyy-MM-dd for BE DateTime parameter
-        // fromDate: start of day (00:00:00), toDate: end of day (23:59:59)
-        const dateStr = format(dateFilter, 'yyyy-MM-dd')
-        params.fromDate = `${dateStr}T00:00:00` // Start of day
-        params.toDate = `${dateStr}T23:59:59` // End of day
+      // ✅ Add date filter - gửi ISO string với timezone
+      if (fromDateFilter) {
+        const fromDateTime = new Date(fromDateFilter)
+        fromDateTime.setHours(0, 0, 0, 0)
+        params.fromDate = fromDateTime.toISOString()
+      }
+      
+      if (toDateFilter) {
+        const toDateTime = new Date(toDateFilter)
+        toDateTime.setHours(23, 59, 59, 999)
+        params.toDate = toDateTime.toISOString()
       }
 
       const response: ProductListResponse = await productApi.getAll(params)
@@ -87,7 +91,6 @@ function ManagerProduct() {
           setTotalPages(response.pagination.totalPages || 1)
           setTotalItems(response.pagination.totalItems || 0)
         } else {
-          // Fallback nếu không có pagination từ API
           setTotalPages(1)
           setTotalItems(response.data?.length || 0)
         }
@@ -112,20 +115,15 @@ function ManagerProduct() {
   useEffect(() => {
     fetchProducts(currentPage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, productStatusFilter, isActiveFilter, dateFilter])
+  }, [currentPage, productStatusFilter, isActiveFilter, fromDateFilter, toDateFilter])
 
   // Apply client-side filters (exclude Draft only)
-  // Always filter out Draft status products - they should never appear in UI
-  // Date filtering is now handled by BE via fromDate/toDate params
   const filteredProducts = useMemo(() => {
     let filtered = [...allProducts]
-
-    // Filter out Draft status products - always exclude them from UI
     filtered = filtered.filter((p) => {
       const status = p.status?.toLowerCase() || ''
       return status !== 'draft'
     })
-
     return filtered
   }, [allProducts])
 
@@ -154,16 +152,13 @@ function ManagerProduct() {
     return text.substring(0, maxLength).trim() + '...'
   }
 
-  // Reset to page 1 when date filter changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [dateFilter])
+  }, [fromDateFilter, toDateFilter])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
-    // Always fetch from server with new page (all filters are server-side now)
     fetchProducts(page)
-    // Scroll to top when page changes
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -171,9 +166,9 @@ function ManagerProduct() {
     setSearchText('')
     setProductStatusFilter('all')
     setIsActiveFilter('all')
-    setDateFilter(undefined)
+    setFromDateFilter(undefined)
+    setToDateFilter(undefined)
     setCurrentPage(1)
-    // Fetch with default filters (all filters set to 'all')
     try {
       const params = {
         pageNumber: 1,
@@ -199,10 +194,8 @@ function ManagerProduct() {
   const handleSearch = (value: string) => {
     setSearchText(value)
     setCurrentPage(1)
-    // Search will trigger fetchProducts through useEffect when searchText changes
   }
 
-  // Fetch products when search text changes (with debounce effect)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (currentPage === 1) {
@@ -210,37 +203,27 @@ function ManagerProduct() {
       } else {
         setCurrentPage(1)
       }
-    }, 500) // Debounce 500ms
+    }, 500)
 
     return () => clearTimeout(timeoutId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText])
 
-  // Calculate pagination - all filters are now server-side
-  // Use server-side pagination from API
   const effectiveTotalPages = useMemo(() => {
     if (totalPages > 0) {
       return totalPages
     }
-    // Fallback: calculate from filtered products
     return Math.ceil(filteredProducts.length / pageSize)
   }, [filteredProducts.length, pageSize, totalPages])
 
   const effectiveTotalItems = useMemo(() => {
-    // Server-side: use totalItems from API
-    // Note: This might include Draft products, but it's the best estimate we have
-    // The actual displayed count will be less due to Draft filtering
     if (totalItems > 0) {
       return totalItems
     }
-    // Fallback: use filtered products count
     return filteredProducts.length
   }, [filteredProducts.length, totalItems])
 
-  // Paginate products - all pagination is server-side now
   const paginatedProducts = useMemo(() => {
-    // Server-side pagination: use filteredProducts directly
-    // filteredProducts already contains only the current page's data (after Draft filter)
     return filteredProducts
   }, [filteredProducts])
 
@@ -332,18 +315,56 @@ function ManagerProduct() {
               </Select>
             </div>
 
-            {/* Ngày */}
+            {/* Từ ngày */}
             <div className='flex-1 min-w-[180px]'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày tạo</label>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Từ ngày</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant='outline' className='w-full justify-start text-left font-normal'>
                     <CalendarIcon className='mr-2 h-4 w-4' />
-                    {dateFilter ? format(dateFilter, 'dd/MM/yyyy', { locale: vi }) : 'mm/dd/yyyy'}
+                    {fromDateFilter ? format(fromDateFilter, 'dd/MM/yyyy', { locale: vi }) : 'dd/MM/yyyy'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className='w-auto p-0' align='start'>
-                  <Calendar mode='single' selected={dateFilter} onSelect={setDateFilter} initialFocus locale={vi} />
+                  <Calendar 
+                    mode='single' 
+                    selected={fromDateFilter} 
+                    onSelect={setFromDateFilter} 
+                    initialFocus 
+                    locale={vi}
+                    disabled={(date) => {
+                      const today = new Date()
+                      today.setHours(23, 59, 59, 999)
+                      return date > today
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Đến ngày */}
+            <div className='flex-1 min-w-[180px]'>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>Đến ngày</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                    <CalendarIcon className='mr-2 h-4 w-4' />
+                    {toDateFilter ? format(toDateFilter, 'dd/MM/yyyy', { locale: vi }) : 'dd/MM/yyyy'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <Calendar 
+                    mode='single' 
+                    selected={toDateFilter} 
+                    onSelect={setToDateFilter} 
+                    initialFocus 
+                    locale={vi}
+                    disabled={(date) => {
+                      const today = new Date()
+                      today.setHours(23, 59, 59, 999)
+                      return date > today
+                    }}
+                  />
                 </PopoverContent>
               </Popover>
             </div>
@@ -362,7 +383,7 @@ function ManagerProduct() {
         </CardContent>
       </Card>
 
-      {/* Table */}
+      {/* Table - Giữ nguyên phần này */}
       <Card>
         <CardContent className='pt-6'>
           {loading && allProducts.length === 0 ? (
@@ -388,7 +409,7 @@ function ManagerProduct() {
                             <Package className='w-12 h-12 text-gray-400' />
                             <p className='text-base font-medium'>Không có dữ liệu</p>
                             <p className='text-sm text-gray-400'>
-                              {dateFilter || searchText || productStatusFilter !== 'all' || isActiveFilter !== 'all'
+                              {fromDateFilter || toDateFilter || searchText || productStatusFilter !== 'all' || isActiveFilter !== 'all'
                                 ? 'Thử điều chỉnh bộ lọc của bạn'
                                 : 'Chưa có sản phẩm nào được phân công'}
                             </p>
