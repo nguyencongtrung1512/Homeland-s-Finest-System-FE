@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
+import { Switch } from '../../../components/ui/switch'
 import { Upload, Image as ImageIcon, X, Loader2 } from 'lucide-react'
 import { productVariantApi, type CreateVariantRequest } from '../../../apis/productVariant.api'
 import { getSystemStorageByName } from '../../../apis/systemStorage.api'
@@ -53,11 +54,12 @@ export default function ModalVariantProduct({
   const [heightError, setHeightError] = useState<string>('')
   const [weightError, setWeightError] = useState<string>('')
   const [showWarning, setShowWarning] = useState(true)
+  const [isGroupNode, setIsGroupNode] = useState(false)
 
   // Constants for validation
   const MAX_IMAGES = 1
-  const MAX_ATTRIBUTE_TYPE_LENGTH = 20
-  const MAX_ATTRIBUTE_NAME_LENGTH = 20
+  const MAX_ATTRIBUTE_TYPE_LENGTH = 25
+  const MAX_ATTRIBUTE_NAME_LENGTH = 25
   const MIN_ATTRIBUTE_TYPE_LENGTH = 1
   const MIN_ATTRIBUTE_NAME_LENGTH = 1
   const MAX_DIMENSION = 200 // cm
@@ -125,6 +127,9 @@ export default function ModalVariantProduct({
         ...prev,
         attributeName: ''
       }))
+      
+      // Reset isGroupNode when dialog opens
+      setIsGroupNode(false)
     }
   }, [open, product, selectedParentVariant])
 
@@ -429,20 +434,22 @@ export default function ModalVariantProduct({
         return
       }
 
-      // Kiểm tra giá và số lượng cho cả nhóm tùy chọn và phiên bản bán được
-      if (variantData.price < 0) {
-        toast.error('Giá gốc không được là số âm')
-        return
-      }
+      // Kiểm tra giá và số lượng chỉ khi không phải nút nhóm
+      if (!isGroupNode) {
+        if (variantData.price < 0) {
+          toast.error('Giá gốc không được là số âm')
+          return
+        }
 
-      if (variantData.price === 0) {
-        toast.error('Vui lòng nhập giá gốc hợp lệ (lớn hơn 0)')
-        return
-      }
+        if (variantData.price === 0) {
+          toast.error('Vui lòng nhập giá gốc hợp lệ (lớn hơn 0)')
+          return
+        }
 
-      if (variantData.quantity < 0) {
-        toast.error('Số lượng tồn kho không được là số âm')
-        return
+        if (variantData.quantity < 0) {
+          toast.error('Số lượng tồn kho không được là số âm')
+          return
+        }
       }
 
       // Validate description word count
@@ -452,36 +459,38 @@ export default function ModalVariantProduct({
       //   return
       // }
 
-      // Validate dimensions
-      if (variantData.length > MAX_DIMENSION) {
-        toast.error(`Chiều dài không được vượt quá ${MAX_DIMENSION} cm`)
-        setLengthError(`Chiều dài không được vượt quá ${MAX_DIMENSION} cm`)
-        return
-      }
+      // Validate dimensions chỉ khi không phải nút nhóm
+      if (!isGroupNode) {
+        if (variantData.length > MAX_DIMENSION) {
+          toast.error(`Chiều dài không được vượt quá ${MAX_DIMENSION} cm`)
+          setLengthError(`Chiều dài không được vượt quá ${MAX_DIMENSION} cm`)
+          return
+        }
 
-      if (variantData.width > MAX_DIMENSION) {
-        toast.error(`Chiều rộng không được vượt quá ${MAX_DIMENSION} cm`)
-        setWidthError(`Chiều rộng không được vượt quá ${MAX_DIMENSION} cm`)
-        return
-      }
+        if (variantData.width > MAX_DIMENSION) {
+          toast.error(`Chiều rộng không được vượt quá ${MAX_DIMENSION} cm`)
+          setWidthError(`Chiều rộng không được vượt quá ${MAX_DIMENSION} cm`)
+          return
+        }
 
-      if (variantData.height > MAX_DIMENSION) {
-        toast.error(`Chiều cao không được vượt quá ${MAX_DIMENSION} cm`)
-        setHeightError(`Chiều cao không được vượt quá ${MAX_DIMENSION} cm`)
-        return
-      }
+        if (variantData.height > MAX_DIMENSION) {
+          toast.error(`Chiều cao không được vượt quá ${MAX_DIMENSION} cm`)
+          setHeightError(`Chiều cao không được vượt quá ${MAX_DIMENSION} cm`)
+          return
+        }
 
-      // Validate weight
-      if (variantData.weight > MAX_WEIGHT) {
-        toast.error(`Trọng lượng không được vượt quá ${MAX_WEIGHT} gram (50kg)`)
-        setWeightError(`Trọng lượng không được vượt quá ${MAX_WEIGHT} gram (50kg)`)
-        return
-      }
+        // Validate weight
+        if (variantData.weight > MAX_WEIGHT) {
+          toast.error(`Trọng lượng không được vượt quá ${MAX_WEIGHT} gram (50kg)`)
+          setWeightError(`Trọng lượng không được vượt quá ${MAX_WEIGHT} gram (50kg)`)
+          return
+        }
 
-      // Validate images count
-      if (variantImages.length > MAX_IMAGES) {
-        toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
-        return
+        // Validate images count
+        if (variantImages.length > MAX_IMAGES) {
+          toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+          return
+        }
       }
 
       // Prepare form data theo cấu trúc API yêu cầu
@@ -491,9 +500,12 @@ export default function ModalVariantProduct({
         AttributeName: variantData.attributeName,
         AttributeType: variantData.attributeType,
         Description: variantData.description || undefined,
-        ProductImages: variantImages.length > 0 ? variantImages : undefined,
-        // Gửi đầy đủ thông tin SKU cho cả nhóm tùy chọn và phiên bản bán được
-        SkuDetails: {
+        ProductImages: variantImages.length > 0 ? variantImages : undefined
+      }
+
+      // Chỉ gửi SkuDetails nếu không phải nút nhóm
+      if (!isGroupNode) {
+        formData.SkuDetails = {
           Weight: variantData.weight > 0 ? variantData.weight : undefined,
           BasePrice: variantData.price,
           Length: variantData.length > 0 ? variantData.length : undefined,
@@ -585,6 +597,7 @@ export default function ModalVariantProduct({
       setHeightError('')
       setWeightError('')
       setShowWarning(true) // Reset warning when dialog closes
+      setIsGroupNode(false) // Reset isGroupNode when dialog closes
     }
   }
 
@@ -685,6 +698,41 @@ export default function ModalVariantProduct({
         <div className='space-y-6 mt-4'>
           {/* Basic Information */}
           <div className='space-y-4'>
+            {/* Group Node Toggle Switch */}
+            <div className='flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg'>
+              <Label htmlFor='is-group-node' className='text-sm font-medium text-blue-900 cursor-pointer'>
+                Đây có phải là nút nhóm?
+              </Label>
+              <Switch
+                id='is-group-node'
+                checked={isGroupNode}
+                onCheckedChange={(checked) => {
+                  setIsGroupNode(checked)
+                  // Reset SKU fields when toggling to group node
+                  if (checked) {
+                    setVariantData((prev) => ({
+                      ...prev,
+                      price: 0,
+                      quantity: 0,
+                      length: 0,
+                      width: 0,
+                      height: 0,
+                      weight: 0
+                    }))
+                    setVariantImages([])
+                  }
+                }}
+              />
+            </div>
+            {isGroupNode && (
+              <div className='p-3 bg-amber-50 border-l-4 border-amber-400 rounded-r-lg'>
+                <p className='text-sm text-amber-800'>
+                  <strong>Lưu ý:</strong> Nút nhóm chỉ chứa thông tin phân loại (Loại thuộc tính và Tên thuộc tính), 
+                  không có thông tin SKU (giá, số lượng, kích thước, trọng lượng, hình ảnh).
+                </p>
+              </div>
+            )}
+
             {/* Attribute Type */}
             {hasAutoAttributeType ? (
               <div>
@@ -787,11 +835,12 @@ export default function ModalVariantProduct({
               {attributeNameError && <p className='mt-1 text-sm text-red-500'>{attributeNameError}</p>}
             </div>
 
-            {/* Giá - Hiển thị cho cả nhóm tùy chọn và phiên bản bán được */}
-            <div>
-              <Label htmlFor='variant-price' className='text-sm font-medium'>
-                Giá cửa hàng thu về (đ) <span className='text-red-500'>*</span>
-              </Label>
+            {/* Giá - Chỉ hiển thị khi không phải nút nhóm */}
+            {!isGroupNode && (
+              <div>
+                <Label htmlFor='variant-price' className='text-sm font-medium'>
+                  Giá cửa hàng thu về (đ) <span className='text-red-500'>*</span>
+                </Label>
               <Input
                 id='variant-price'
                 type='number'
@@ -807,11 +856,13 @@ export default function ModalVariantProduct({
                 }}
                 className='mt-1'
               />
-              {variantData.price < 0 && <p className='mt-1 text-sm text-red-500'>Giá không được là số âm</p>}
-            </div>
+                {variantData.price < 0 && <p className='mt-1 text-sm text-red-500'>Giá không được là số âm</p>}
+              </div>
+            )}
 
-            {/* Sale Price */}
-            <div>
+            {/* Sale Price - Chỉ hiển thị khi không phải nút nhóm */}
+            {!isGroupNode && (
+              <div>
               <Label className='text-sm font-medium'>Giá bán trên sàn dự kiến (đ)</Label>
               <div className='relative mt-1'>
                 <Input
@@ -831,11 +882,13 @@ export default function ModalVariantProduct({
                 )}
               </div>
 
-              {commissionError && <p className='mt-1 text-sm text-amber-600'>{commissionError}</p>}
-            </div>
+                {commissionError && <p className='mt-1 text-sm text-amber-600'>{commissionError}</p>}
+              </div>
+            )}
 
-            {/* Số lượng - Hiển thị cho cả nhóm tùy chọn và phiên bản bán được */}
-            <div>
+            {/* Số lượng - Chỉ hiển thị khi không phải nút nhóm */}
+            {!isGroupNode && (
+              <div>
               <Label htmlFor='variant-quantity' className='text-sm font-medium'>
                 Số lượng tồn kho <span className='text-red-500'>*</span>
               </Label>
@@ -853,10 +906,11 @@ export default function ModalVariantProduct({
                 }}
                 className='mt-1'
               />
-              {variantData.quantity < 0 && (
-                <p className='mt-1 text-sm text-red-500'>Số lượng tồn kho không được là số âm</p>
-              )}
-            </div>
+                {variantData.quantity < 0 && (
+                  <p className='mt-1 text-sm text-red-500'>Số lượng tồn kho không được là số âm</p>
+                )}
+              </div>
+            )}
 
             {/* Description */}
             {/* <div>
@@ -882,8 +936,9 @@ export default function ModalVariantProduct({
             </div> */}
           </div>
 
-          {/* Kích thước - Hiển thị cho cả nhóm tùy chọn và phiên bản bán được */}
-          <div className='space-y-4'>
+          {/* Kích thước - Chỉ hiển thị khi không phải nút nhóm */}
+          {!isGroupNode && (
+            <div className='space-y-4'>
             <div className='flex items-center justify-between mb-2'>
               <Label className='text-sm font-medium'>Kích thước (cm)</Label>
               <span className='text-xs text-gray-500'>Tùy chọn</span>
@@ -982,9 +1037,11 @@ export default function ModalVariantProduct({
               {weightError && <p className='mt-2 text-sm text-red-500'>{weightError}</p>}
             </div>
           </div>
+          )}
 
-          {/* Variant Images */}
-          <div>
+          {/* Variant Images - Chỉ hiển thị khi không phải nút nhóm */}
+          {!isGroupNode && (
+            <div>
             <div className='flex items-center justify-between mb-1'>
               <Label className='text-sm font-medium'>Hình ảnh biến thể sản phẩm</Label>
               <span className={`text-xs ${variantImages.length > MAX_IMAGES ? 'text-red-500' : 'text-gray-500'}`}>
@@ -1064,6 +1121,7 @@ export default function ModalVariantProduct({
               </div>
             )}
           </div>
+          )}
         </div>
 
         <DialogFooter>

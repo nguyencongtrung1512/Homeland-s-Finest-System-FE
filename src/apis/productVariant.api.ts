@@ -11,8 +11,8 @@ export interface CreateVariantRequest {
   ProductImages?: File[]
   AttributeName?: string
   AttributeType?: string
-  // SKU Details
-  SkuDetails: {
+  // SKU Details - optional, if not provided, creates a group node
+  SkuDetails?: {
     Weight?: number
     BasePrice: number
     Length?: number
@@ -47,21 +47,23 @@ export const productVariantApi = {
     formData.append('StoreId', data.StoreId)
     formData.append('ParentId', data.ParentId)
 
-    // SKU Details
-    formData.append('SkuDetails.BasePrice', data.SkuDetails.BasePrice.toString())
-    formData.append('SkuDetails.Quantity', data.SkuDetails.Quantity.toString())
+    // SKU Details - only append if provided (if not provided, creates a group node)
+    if (data.SkuDetails) {
+      formData.append('SkuDetails.BasePrice', data.SkuDetails.BasePrice.toString())
+      formData.append('SkuDetails.Quantity', data.SkuDetails.Quantity.toString())
 
-    if (data.SkuDetails.Weight !== undefined) {
-      formData.append('SkuDetails.Weight', data.SkuDetails.Weight.toString())
-    }
-    if (data.SkuDetails.Length !== undefined) {
-      formData.append('SkuDetails.Length', data.SkuDetails.Length.toString())
-    }
-    if (data.SkuDetails.Height !== undefined) {
-      formData.append('SkuDetails.Height', data.SkuDetails.Height.toString())
-    }
-    if (data.SkuDetails.Width !== undefined) {
-      formData.append('SkuDetails.Width', data.SkuDetails.Width.toString())
+      if (data.SkuDetails.Weight !== undefined) {
+        formData.append('SkuDetails.Weight', data.SkuDetails.Weight.toString())
+      }
+      if (data.SkuDetails.Length !== undefined) {
+        formData.append('SkuDetails.Length', data.SkuDetails.Length.toString())
+      }
+      if (data.SkuDetails.Height !== undefined) {
+        formData.append('SkuDetails.Height', data.SkuDetails.Height.toString())
+      }
+      if (data.SkuDetails.Width !== undefined) {
+        formData.append('SkuDetails.Width', data.SkuDetails.Width.toString())
+      }
     }
 
     // Optional fields

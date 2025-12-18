@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -135,6 +135,11 @@ function DetailProductSeller() {
   // State for active tab
   const [activeTab, setActiveTab] = useState<string>('info')
   const [showPopover, setShowPopover] = useState<{ [key: string]: boolean }>({})
+  
+  // State for description expand/collapse
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+  const [shouldShowExpandButton, setShouldShowExpandButton] = useState(false)
+  const descriptionRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchProductDetail = async () => {
@@ -308,6 +313,42 @@ function DetailProductSeller() {
       fetchHashtags()
     }
   }, [product])
+
+  // Reset description expanded state when product changes
+  useEffect(() => {
+    setIsDescriptionExpanded(false)
+  }, [product?.id])
+
+  // Check if description needs expand button
+  useEffect(() => {
+    const checkDescriptionHeight = () => {
+      if (descriptionRef.current && product?.description) {
+        const element = descriptionRef.current
+        // Tạm thời bỏ maxHeight để đo chiều cao thực tế
+        const originalMaxHeight = element.style.maxHeight
+        const originalOverflow = element.style.overflow
+        element.style.maxHeight = 'none'
+        element.style.overflow = 'visible'
+        
+        const scrollHeight = element.scrollHeight
+        const maxHeightPx = 144 // 9rem = 144px
+        
+        // Khôi phục lại style
+        element.style.maxHeight = originalMaxHeight
+        element.style.overflow = originalOverflow
+        
+        // Nếu chiều cao thực tế > 9rem thì hiển thị nút
+        setShouldShowExpandButton(scrollHeight > maxHeightPx)
+      } else {
+        setShouldShowExpandButton(false)
+      }
+    }
+
+    // Delay một chút để đảm bảo DOM đã render xong
+    const timeoutId = setTimeout(checkDescriptionHeight, 100)
+    
+    return () => clearTimeout(timeoutId)
+  }, [product?.description, isDescriptionExpanded])
 
   const handleBack = () => {
     navigate(-1)
@@ -1397,7 +1438,43 @@ function DetailProductSeller() {
                       <div className='space-y-4'>
                         <div>
                           <h3 className='text-lg font-semibold text-gray-900 mb-2'>Mô tả sản phẩm</h3>
-                          <p className='text-gray-700 leading-relaxed'>{product?.description}</p>
+                          {product?.description && (
+                            <div>
+                              <div
+                                ref={descriptionRef}
+                                className='text-gray-700 leading-relaxed whitespace-pre-line overflow-hidden transition-all duration-300'
+                                style={{
+                                  maxHeight: isDescriptionExpanded ? 'none' : '9rem',
+                                  maskImage: !isDescriptionExpanded && shouldShowExpandButton
+                                    ? 'linear-gradient(to bottom, black 0%, black 80%, transparent 100%)'
+                                    : 'none',
+                                  WebkitMaskImage: !isDescriptionExpanded && shouldShowExpandButton
+                                    ? 'linear-gradient(to bottom, black 0%, black 80%, transparent 100%)'
+                                    : 'none'
+                                }}
+                              >
+                                {product.description}
+                              </div>
+                              {shouldShowExpandButton && (
+                                <button
+                                  onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                                  className='mt-2 text-sm font-medium text-green-600 hover:text-green-700 transition-colors flex items-center gap-1'
+                                >
+                                  {isDescriptionExpanded ? (
+                                    <>
+                                      <ChevronDown className='w-4 h-4 rotate-180 transition-transform duration-200' />
+                                      Thu gọn
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronDown className='w-4 h-4 transition-transform duration-200' />
+                                      Xem thêm
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {product?.staffNote && (
