@@ -21,6 +21,7 @@ import { StoryContentCarousel } from '../../../components/ui/next-storyConten'
 import { Edit, Pause, Loader2 } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import path from '../../../constants/path'
+import { StoreStoryContentType, isVideoContent, isTextContent, isImageContent } from '../../../constants/storeStoryContentType'
 
 interface StoryDetailModalProps {
   open: boolean
@@ -204,140 +205,245 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
   }
 
   const renderContent = (content: StoreStory['contents'][0]) => {
-    // Normalize contentType to handle both lowercase and capitalized versions
-    const contentType = content.contentType?.toLowerCase() || ''
+    const contentType = content.contentType || ''
 
-    switch (contentType) {
-      case 'text': {
-        return (
-          <div className='bg-gray-50 p-4 rounded-lg'>
-            <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>
-              {content.contentData || 'Không có nội dung'}
-            </p>
-          </div>
-        )
-      }
+    // Use new contentType values: VideoOpener, TextIntro, SingleImage, TextExpanded, VideoProcess, ImageGallery, VideoTestimonial, TextClosing
+    // Check by specific contentType first, then fallback to helper functions for backward compatibility
+    
+    // Handle video content types
+    if (isVideoContent(contentType)) {
+      const { video, videoId, videoSources } = processVideo(content)
 
-      case 'video': {
-        const { video, videoId, videoSources } = processVideo(content)
-
-        if (!video && !videoId) {
-          // If no video URL but has contentData, show as text
-          if (content.contentData && content.contentData !== 'string') {
-            return (
-              <div className='bg-yellow-50 border border-yellow-200 p-4 rounded-lg'>
-                <p className='text-yellow-800 text-sm'>
-                  <strong>Video:</strong> {content.contentData}
-                </p>
-                <p className='text-yellow-600 text-xs mt-1'>Video URL không khả dụng</p>
-              </div>
-            )
-          }
-          return null
-        }
-
-        return (
-          <div className='space-y-2'>
-            <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200'>
-              {/* Use Cloudflare Stream component if video ID is available */}
-              {videoId ? (
-                <div className='w-full aspect-video'>
-                  <Stream
-                    src={videoId}
-                    controls
-                    responsive
-                    className='w-full h-full'
-                    preload='metadata'
-                  />
-                </div>
-              ) : (
-                /* Fallback to regular video tag if no video ID */
-                <video
-                  controls
-                  className='w-full aspect-video'
-                  preload='metadata'
-                  playsInline
-                >
-                  {/* Priority: Preview (for compatibility) > HLS > DASH > Fallback > Direct URL */}
-                  {/* Preview URL first - works on all browsers, including those without HLS/DASH support */}
-                  {videoSources?.preview && (
-                    <source src={videoSources.preview} type='video/mp4' />
-                  )}
-                  {/* HLS - supported by Safari, iOS, and some Android browsers */}
-                  {videoSources?.hls && (
-                    <source src={videoSources.hls} type='application/vnd.apple.mpegurl' />
-                  )}
-                  {/* DASH - supported by Chrome, Firefox, Edge (with proper codec support) */}
-                  {videoSources?.dash && (
-                    <source src={videoSources.dash} type='application/dash+xml' />
-                  )}
-                  {/* Fallback URL */}
-                  {videoSources?.fallback && (
-                    <source src={videoSources.fallback} type='video/mp4' />
-                  )}
-                  {/* Fallback to direct video URL if no sources or if videoSources is empty */}
-                  {(!videoSources ||
-                    (!videoSources.hls &&
-                      !videoSources.dash &&
-                      !videoSources.preview &&
-                      !videoSources.fallback)) && (
-                      <source src={video} type='video/mp4' />
-                    )}
-                  Trình duyệt của bạn không hỗ trợ video.
-                </video>
-              )}
-            </div>
-            {content.contentData && content.contentData !== 'string' && (
-              <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
-            )}
-          </div>
-        )
-      }
-
-      case 'image': {
-        // Handle image URLs - can be null or array
-        const imageUrls =
-          content.imageUrls && Array.isArray(content.imageUrls) && content.imageUrls.length > 0 ? content.imageUrls : []
-
-        if (imageUrls.length > 0) {
-          return (
-            <div className='space-y-2'>
-              <StoryContentCarousel imageUrls={imageUrls} showBadge={false} />
-              {content.contentData && content.contentData !== 'string' && (
-                <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
-              )}
-            </div>
-          )
-        }
-        // If no images but has contentData, show as text
+      if (!video && !videoId) {
+        // If no video URL but has contentData, show as text
         if (content.contentData && content.contentData !== 'string') {
           return (
-            <div className='bg-gray-50 p-4 rounded-lg'>
-              <p className='text-gray-700'>{content.contentData}</p>
+            <div className='bg-yellow-50 border border-yellow-200 p-4 rounded-lg'>
+              <p className='text-yellow-800 text-sm'>
+                <strong>Video:</strong> {content.contentData}
+              </p>
+              <p className='text-yellow-600 text-xs mt-1'>Video URL không khả dụng</p>
             </div>
           )
         }
         return null
       }
 
-      default:
-        // Fallback for unknown content types
-        return (
-          <div className='bg-gray-50 p-4 rounded-lg'>
-            <p className='text-xs text-gray-500 mb-2'>Loại: {content.contentType || 'Không xác định'}</p>
-            {content.contentData && content.contentData !== 'string' && (
-              <p className='text-gray-700'>{content.contentData}</p>
-            )}
-            {content.imageUrls && content.imageUrls.length > 0 && (
-              <div className='grid grid-cols-2 gap-2 mt-2'>
-                {content.imageUrls.map((url, idx) => (
-                  <img key={idx} src={url} alt={`Hình ảnh ${idx + 1}`} className='w-full rounded' />
-                ))}
+      return (
+        <div className='space-y-2'>
+          <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200'>
+            {/* Use Cloudflare Stream component if video ID is available */}
+            {videoId ? (
+              <div className='w-full aspect-video'>
+                <Stream
+                  src={videoId}
+                  controls
+                  responsive
+                  className='w-full h-full'
+                  preload='metadata'
+                />
               </div>
+            ) : (
+              /* Fallback to regular video tag if no video ID */
+              <video
+                controls
+                className='w-full aspect-video'
+                preload='metadata'
+                playsInline
+              >
+                {/* Priority: Preview (for compatibility) > HLS > DASH > Fallback > Direct URL */}
+                {/* Preview URL first - works on all browsers, including those without HLS/DASH support */}
+                {videoSources?.preview && (
+                  <source src={videoSources.preview} type='video/mp4' />
+                )}
+                {/* HLS - supported by Safari, iOS, and some Android browsers */}
+                {videoSources?.hls && (
+                  <source src={videoSources.hls} type='application/vnd.apple.mpegurl' />
+                )}
+                {/* DASH - supported by Chrome, Firefox, Edge (with proper codec support) */}
+                {videoSources?.dash && (
+                  <source src={videoSources.dash} type='application/dash+xml' />
+                )}
+                {/* Fallback URL */}
+                {videoSources?.fallback && (
+                  <source src={videoSources.fallback} type='video/mp4' />
+                )}
+                {/* Fallback to direct video URL if no sources or if videoSources is empty */}
+                {(!videoSources ||
+                  (!videoSources.hls &&
+                    !videoSources.dash &&
+                    !videoSources.preview &&
+                    !videoSources.fallback)) && (
+                    <source src={video} type='video/mp4' />
+                  )}
+                Trình duyệt của bạn không hỗ trợ video.
+              </video>
+            )}
+          </div>
+          {content.contentData && content.contentData !== 'string' && (
+            <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
+          )}
+        </div>
+      )
+    }
+
+    // Handle text content types
+    if (isTextContent(contentType)) {
+      return (
+        <div className='bg-gray-50 p-4 rounded-lg'>
+          <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>
+            {content.contentData || 'Không có nội dung'}
+          </p>
+        </div>
+      )
+    }
+
+    // Handle image content types
+    if (isImageContent(contentType)) {
+      // Handle image URLs - can be null or array
+      const imageUrls =
+        content.imageUrls && Array.isArray(content.imageUrls) && content.imageUrls.length > 0 ? content.imageUrls : []
+
+      if (imageUrls.length > 0) {
+        return (
+          <div className='space-y-2'>
+            <StoryContentCarousel imageUrls={imageUrls} showBadge={false} />
+            {content.contentData && content.contentData !== 'string' && (
+              <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
             )}
           </div>
         )
+      }
+      // If no images but has contentData, show as text
+      if (content.contentData && content.contentData !== 'string') {
+        return (
+          <div className='bg-gray-50 p-4 rounded-lg'>
+            <p className='text-gray-700'>{content.contentData}</p>
+          </div>
+        )
+      }
+      return null
     }
+
+    // Backward compatibility: handle old contentType format (lowercase)
+    const contentTypeLower = contentType?.toLowerCase()
+    if (contentTypeLower === 'text') {
+      return (
+        <div className='bg-gray-50 p-4 rounded-lg'>
+          <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>
+            {content.contentData || 'Không có nội dung'}
+          </p>
+        </div>
+      )
+    }
+
+    if (contentTypeLower === 'video') {
+      const { video, videoId, videoSources } = processVideo(content)
+
+      if (!video && !videoId) {
+        if (content.contentData && content.contentData !== 'string') {
+          return (
+            <div className='bg-yellow-50 border border-yellow-200 p-4 rounded-lg'>
+              <p className='text-yellow-800 text-sm'>
+                <strong>Video:</strong> {content.contentData}
+              </p>
+              <p className='text-yellow-600 text-xs mt-1'>Video URL không khả dụng</p>
+            </div>
+          )
+        }
+        return null
+      }
+
+      return (
+        <div className='space-y-2'>
+          <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200'>
+            {videoId ? (
+              <div className='w-full aspect-video'>
+                <Stream
+                  src={videoId}
+                  controls
+                  responsive
+                  className='w-full h-full'
+                  preload='metadata'
+                />
+              </div>
+            ) : (
+              <video
+                controls
+                className='w-full aspect-video'
+                preload='metadata'
+                playsInline
+              >
+                {videoSources?.preview && (
+                  <source src={videoSources.preview} type='video/mp4' />
+                )}
+                {videoSources?.hls && (
+                  <source src={videoSources.hls} type='application/vnd.apple.mpegurl' />
+                )}
+                {videoSources?.dash && (
+                  <source src={videoSources.dash} type='application/dash+xml' />
+                )}
+                {videoSources?.fallback && (
+                  <source src={videoSources.fallback} type='video/mp4' />
+                )}
+                {(!videoSources ||
+                  (!videoSources.hls &&
+                    !videoSources.dash &&
+                    !videoSources.preview &&
+                    !videoSources.fallback)) && (
+                    <source src={video} type='video/mp4' />
+                  )}
+                Trình duyệt của bạn không hỗ trợ video.
+              </video>
+            )}
+          </div>
+          {content.contentData && content.contentData !== 'string' && (
+            <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
+          )}
+        </div>
+      )
+    }
+
+    if (contentTypeLower === 'image') {
+      const imageUrls =
+        content.imageUrls && Array.isArray(content.imageUrls) && content.imageUrls.length > 0 ? content.imageUrls : []
+
+      if (imageUrls.length > 0) {
+        return (
+          <div className='space-y-2'>
+            <StoryContentCarousel imageUrls={imageUrls} showBadge={false} />
+            {content.contentData && content.contentData !== 'string' && (
+              <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
+            )}
+          </div>
+        )
+      }
+      if (content.contentData && content.contentData !== 'string') {
+        return (
+          <div className='bg-gray-50 p-4 rounded-lg'>
+            <p className='text-gray-700'>{content.contentData}</p>
+          </div>
+        )
+      }
+      return null
+    }
+
+    // Fallback for unknown content types
+    return (
+      <div className='bg-gray-50 p-4 rounded-lg'>
+        <p className='text-xs text-gray-500 mb-2'>Loại: {content.contentType || 'Không xác định'}</p>
+        {content.contentData && content.contentData !== 'string' && (
+          <p className='text-gray-700'>{content.contentData}</p>
+        )}
+        {content.imageUrls && content.imageUrls.length > 0 && (
+          <div className='grid grid-cols-2 gap-2 mt-2'>
+            {content.imageUrls.map((url, idx) => (
+              <img key={idx} src={url} alt={`Hình ảnh ${idx + 1}`} className='w-full rounded' />
+            ))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (

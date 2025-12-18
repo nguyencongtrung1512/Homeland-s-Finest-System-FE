@@ -26,6 +26,11 @@ interface MapBoxByStoreProps {
   selectedStoreId?: string | null
   onStoreIdChange?: (storeId: string | null) => void
   hidePanel?: boolean
+  userLocation?: { lng: number; lat: number } | null // 用户位置
+  radiusKm?: number // 半径（km），默认100km
+  zoomToUserLocation?: boolean // 是否缩放到用户位置
+  onStoresWithCoordinatesLoaded?: (stores: Store[]) => void // Callback khi đã geocode xong stores
+  limitToRadius?: boolean // Nếu true, chỉ hiển thị marker trong bán kính radiusKm quanh userLocation
 }
 
 const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
@@ -33,11 +38,17 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
   onStoreSelect,
   selectedStoreId: externalSelectedStoreId,
   onStoreIdChange,
-  hidePanel = false
+  hidePanel = false,
+  userLocation = null,
+  radiusKm = 100,
+  zoomToUserLocation = false,
+  onStoresWithCoordinatesLoaded,
+  limitToRadius = false
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({})
+  const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const [isMapLoaded, setIsMapLoaded] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null)
@@ -209,6 +220,10 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
         })
 
         setStoresWithCoordinates(validStores)
+        // Gọi callback để trả về stores đã có coordinates
+        if (onStoresWithCoordinatesLoaded) {
+          onStoresWithCoordinatesLoaded(validStores)
+        }
       } catch (error) {
         console.error('❌ [GEOCODE ALL] Lỗi khi geocoding các cửa hàng:', error)
       } finally {
@@ -217,7 +232,7 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
     }
 
     geocodeAllStores()
-  }, [isMapLoaded, stores, geocodeStoreAddress])
+  }, [isMapLoaded, stores, geocodeStoreAddress, onStoresWithCoordinatesLoaded])
 
   // Tạo custom marker element với thiết kế đẹp hơn
   const createMarkerElement = (store: Store, isSelected: boolean) => {
@@ -264,9 +279,38 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
     return el
   }
 
+  // Hàm tính khoảng cách giữa 2 điểm (Haversine) để filter theo bán kính
+  const calculateDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
   // Thêm markers lên map
   useEffect(() => {
     if (!map.current || !storesWithCoordinates.length) return
+
+    // Nếu limitToRadius = true và có userLocation + radiusKm thì chỉ lấy store trong bán kính
+    let storesToRender = storesWithCoordinates
+    if (limitToRadius && userLocation && radiusKm) {
+      storesToRender = storesWithCoordinates.filter((store) => {
+        if (!store.lat || !store.lng) return false
+        const distance = calculateDistanceKm(userLocation.lat, userLocation.lng, store.lat, store.lng)
+        return distance <= radiusKm
+      })
+    }
+
+    if (!storesToRender.length) {
+      // Không có store nào thỏa điều kiện thì xóa hết marker và thoát
+      Object.values(markersRef.current).forEach((marker) => marker.remove())
+      markersRef.current = {}
+      return
+    }
 
     // Xóa tất cả markers hiện tại
     Object.values(markersRef.current).forEach((marker) => marker.remove())
@@ -276,9 +320,9 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
     const bounds = new mapboxgl.LngLatBounds()
 
     // Thêm markers mới
-    console.log('🗺️ [MARKERS] Bắt đầu thêm markers, tổng số:', storesWithCoordinates.length)
+    console.log('🗺️ [MARKERS] Bắt đầu thêm markers, tổng số:', storesToRender.length)
 
-    storesWithCoordinates.forEach((store) => {
+    storesToRender.forEach((store) => {
       if (!store.lng || !store.lat) {
         console.warn('⚠️ [MARKERS] Store không có tọa độ:', {
           storeId: store.ID,
@@ -418,7 +462,7 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
         maxZoom: 15
       })
     }
-  }, [storesWithCoordinates, isPanelOpen, navigate])
+  }, [storesWithCoordinates, isPanelOpen, navigate, limitToRadius, userLocation, radiusKm])
 
   // Cập nhật marker khi chọn cửa hàng
   useEffect(() => {
@@ -451,6 +495,150 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       }
     }
   }, [selectedStoreId, storesWithCoordinates, isPanelOpen])
+
+  // Helper function để tạo circle geometry
+  const createCircle = useCallback((center: [number, number], radiusMeters: number, points: number): [number, number][] => {
+    const circle: [number, number][] = []
+    for (let i = 0; i <= points; i++) {
+      const angle = (i * 360) / points
+      const dx = radiusMeters * Math.cos((angle * Math.PI) / 180)
+      const dy = radiusMeters * Math.sin((angle * Math.PI) / 180)
+
+      // Chuyển đổi mét sang độ (xấp xỉ)
+      const latOffset = dy / 111320 // 1 độ lat ≈ 111320 mét
+      const lngOffset = dx / (111320 * Math.cos((center[1] * Math.PI) / 180))
+
+      circle.push([center[0] + lngOffset, center[1] + latOffset])
+    }
+    return circle
+  }, [])
+
+  // Helper function để tính zoom level phù hợp với bán kính
+  const calculateZoomForRadius = useCallback((radiusKm: number): number => {
+    // Công thức xấp xỉ để tính zoom level dựa trên bán kính
+    if (radiusKm >= 500) return 5
+    if (radiusKm >= 200) return 6
+    if (radiusKm >= 100) return 7
+    if (radiusKm >= 50) return 8
+    if (radiusKm >= 20) return 9
+    if (radiusKm >= 10) return 10
+    if (radiusKm >= 5) return 11
+    return 12
+  }, [])
+
+  // Hiển thị vị trí người dùng và vòng tròn bán kính
+  useEffect(() => {
+    if (!map.current || !isMapLoaded) return
+
+    // Xóa marker cũ nếu có
+    if (userLocationMarkerRef.current) {
+      userLocationMarkerRef.current.remove()
+      userLocationMarkerRef.current = null
+    }
+
+    // Xóa layer và source cũ nếu có
+    if (map.current.getLayer('radius-circle-border')) {
+      map.current.removeLayer('radius-circle-border')
+    }
+    if (map.current.getLayer('radius-circle')) {
+      map.current.removeLayer('radius-circle')
+    }
+    if (map.current.getSource('radius-circle')) {
+      map.current.removeSource('radius-circle')
+    }
+
+    if (!userLocation) return
+
+    // Tạo marker cho vị trí người dùng
+    const userMarkerEl = document.createElement('div')
+    userMarkerEl.className = 'user-location-marker'
+    userMarkerEl.innerHTML = `
+      <div style="position: relative; width: 30px; height: 30px;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 10;"></div>
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 30px; height: 30px; background: rgba(59, 130, 246, 0.2); border-radius: 50%; animation: pulse 2s infinite;"></div>
+      </div>
+      <style>
+        @keyframes pulse {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.5; }
+        }
+      </style>
+    `
+
+    userLocationMarkerRef.current = new mapboxgl.Marker(userMarkerEl)
+      .setLngLat([userLocation.lng, userLocation.lat])
+      .addTo(map.current)
+
+    // Tính toán bán kính theo mét (Mapbox sử dụng mét)
+    const radiusMeters = radiusKm * 1000
+
+    // Tạo circle geometry
+    const circle = createCircle([userLocation.lng, userLocation.lat], radiusMeters, 64)
+
+    // Thêm source và layer cho vòng tròn
+    map.current.addSource('radius-circle', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'Polygon',
+          coordinates: [circle]
+        }
+      }
+    })
+
+    map.current.addLayer({
+      id: 'radius-circle',
+      type: 'fill',
+      source: 'radius-circle',
+      paint: {
+        'fill-color': '#3b82f6',
+        'fill-opacity': 0.1
+      }
+    })
+
+    map.current.addLayer({
+      id: 'radius-circle-border',
+      type: 'line',
+      source: 'radius-circle',
+      paint: {
+        'line-color': '#3b82f6',
+        'line-width': 2,
+        'line-opacity': 0.5,
+        'line-dasharray': [2, 2]
+      }
+    })
+
+    // Nếu cần zoom đến vị trí người dùng
+    if (zoomToUserLocation) {
+      // Tính zoom level phù hợp với bán kính
+      const zoomLevel = calculateZoomForRadius(radiusKm)
+      map.current.easeTo({
+        center: [userLocation.lng, userLocation.lat],
+        zoom: zoomLevel,
+        duration: 1500
+      })
+    }
+
+    return () => {
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove()
+        userLocationMarkerRef.current = null
+      }
+      if (map.current) {
+        if (map.current.getLayer('radius-circle-border')) {
+          map.current.removeLayer('radius-circle-border')
+        }
+        if (map.current.getLayer('radius-circle')) {
+          map.current.removeLayer('radius-circle')
+        }
+        if (map.current.getSource('radius-circle')) {
+          map.current.removeSource('radius-circle')
+        }
+      }
+    }
+  }, [userLocation, radiusKm, zoomToUserLocation, isMapLoaded, createCircle, calculateZoomForRadius])
 
   // Filter stores dựa trên search query
   const filteredStores = storesWithCoordinates.filter(

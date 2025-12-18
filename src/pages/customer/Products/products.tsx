@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import AsideFilter from './AsideFilter/asideFilter'
 import ProductCard, { type ProductCardData } from './Product/productCard'
 import Discover from './discover'
@@ -14,9 +15,13 @@ import ChatSystem from '../Chat/chatSystem'
 import { useAuth } from '../../../contexts/auth.context'
 import searchApi, { type SearchRequest } from '../../../apis/search.api'
 import type { Product } from '../../../types/productType'
+import LiquidSegmentedControl from '../../../components/ui/tab'
+import { getProductCategoryById } from '../../../apis/productCategory.api'
 
 function Products() {
   const { isAuthenticated, user } = useAuth()
+  const [searchParams] = useSearchParams()
+  const categoryId = searchParams.get('categoryId')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1) // 1-based for UI
   const [pageSize] = useState(24) // Items per page
@@ -50,6 +55,38 @@ function Products() {
     totalItems: number
     totalPages?: number
   } | null>(null)
+
+  // Category state
+  const [currentCategory, setCurrentCategory] = useState<{ id: string; name: string } | null>(null)
+  const [loadingCategory, setLoadingCategory] = useState(false)
+
+  // Fetch category information when categoryId is present in URL
+  useEffect(() => {
+    const fetchCategory = async () => {
+      if (!categoryId) {
+        setCurrentCategory(null)
+        return
+      }
+
+      try {
+        setLoadingCategory(true)
+        const response = await getProductCategoryById(categoryId)
+        if (response.status === 200 && response.data) {
+          setCurrentCategory({
+            id: response.data.id,
+            name: response.data.name
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching category:', error)
+        setCurrentCategory(null)
+      } finally {
+        setLoadingCategory(false)
+      }
+    }
+
+    fetchCategory()
+  }, [categoryId])
 
   // Handler để nhận filters từ AsideFilter - áp dụng filter cho tab hiện tại (product hoặc combo)
   const handleFilterChange = (filterState: {
@@ -301,28 +338,14 @@ function Products() {
 
         {/* Main content */}
         <div className='flex-1'>
-          {/* Switch tabs */}
-          <div className='flex items-center justify-between mb-4'>
-            <div className='flex items-center gap-2 bg-gray-50 p-1 rounded-full'>
-              <button
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === 'product'
-                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
-                    : 'text-gray-600 hover:text-emerald-600 hover:bg-white'
-                  }`}
-                onClick={() => handleTabChange('product')}
-              >
-                Sản phẩm
-              </button>
-              <button
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === 'combo'
-                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
-                    : 'text-gray-600 hover:text-emerald-600 hover:bg-white'
-                  }`}
-                onClick={() => handleTabChange('combo')}
-              >
-                Combo
-              </button>
-            </div>
+          {/* Switch tabs and category */}
+          <div className='flex items-center justify-between mb-6'>
+            <LiquidSegmentedControl activeTab={activeTab} onTabChange={handleTabChange} className='flex-1' />
+            {currentCategory && (
+              <div className='flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full ml-4'>
+                <span className='text-sm text-green-700 font-medium'>{currentCategory.name}</span>
+              </div>
+            )}
           </div>
 
           {/* Search and filter section */}
