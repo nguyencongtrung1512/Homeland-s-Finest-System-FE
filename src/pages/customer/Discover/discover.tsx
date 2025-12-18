@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MapBoxByStore from '../../../components/Mapbox/mapBoxByStore'
 import { storeApi } from '../../../apis/store.api'
-import type { StoreLocationDTO } from '../../../apis/store.api'
+import type { StoreFilterByLocationParams, StoreLocationDTO } from '../../../apis/store.api'
 import { storeStoryApi } from '../../../apis/storeStory.api'
 import type { StoreStory } from '../../../types/storeStoryType'
 import { path } from '../../../constants/path'
 import Loading from '../../../components/Loading/loading'
+import { getProvinces, getProvincesDetail, type Province } from '../../../apis/province'
 
 const DEFAULT_IMAGE_URL = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'
 
@@ -22,6 +23,47 @@ interface Store {
   Description: string
   lng?: number
   lat?: number
+  provinceId?: number | null
+  targetProvinceId?: number | null
+}
+
+interface UserLocation {
+  lng: number
+  lat: number
+}
+
+const normalizeProvinceName = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/thanh pho/gi, '')
+    .replace(/tp\./gi, '')
+    .replace(/city/gi, '')
+    .replace(/tinh/gi, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+
+// Hàm normalize tên tỉnh/thành từ Mapbox để chuẩn hóa (bỏ City, Thành phố, etc.) nhưng GIỮ NGUYÊN DẤU
+const normalizeProvinceNameForAPI = (name: string): string => {
+  return name
+    .replace(/\s+City\s*$/i, '') // Bỏ "City" ở cuối (case-insensitive)
+    .replace(/^Thành phố\s+/i, '') // Bỏ "Thành phố" ở đầu
+    .replace(/^TP\.?\s*/i, '') // Bỏ "TP" hoặc "TP." ở đầu
+    .replace(/^Tỉnh\s+/i, '') // Bỏ "Tỉnh" ở đầu
+    .replace(/\s+/g, ' ') // Chuẩn hóa khoảng trắng (nhiều space thành 1 space)
+    .trim()
+}
+
+const findProvinceIdByName = (provinceName: string, provinces: Province[]): number | null => {
+  const normalizedTarget = normalizeProvinceName(provinceName)
+  const exact = provinces.find((p) => normalizeProvinceName(p.name) === normalizedTarget)
+  if (exact) return exact.id
+
+  const contains = provinces.find((p) => normalizedTarget.includes(normalizeProvinceName(p.name)))
+  if (contains) return contains.id
+
+  return null
 }
 
 function Discover() {
@@ -33,6 +75,22 @@ function Discover() {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const [provinceSearch, setProvinceSearch] = useState('')
   const [selectedFilterType, setSelectedFilterType] = useState<string | null>(null) // 'near-me' | 'local' | 'origin' | 'browse'
+  const [isNearMeLoading, setIsNearMeLoading] = useState(false)
+  const [nearMeError, setNearMeError] = useState<string | null>(null)
+  const [provinces, setProvinces] = useState<Province[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [userProvinceId, setUserProvinceId] = useState<number | null>(null)
+  const [userProvinceName, setUserProvinceName] = useState<string | null>(null)
+  // States cho filter "Cửa hàng gần tôi" với các option phụ
+  const [isNearMeEnabled, setIsNearMeEnabled] = useState(false) // Cửa hàng gần tôi
+  const [localSpecialtyEnabled, setLocalSpecialtyEnabled] = useState(false) // Đặc sản địa phương
+  const [otherSpecialtyEnabled, setOtherSpecialtyEnabled] = useState(false) // Đặc sản khác vùng
+
+  // States cho hiển thị cửa hàng gần
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
+  const [nearbyStores, setNearbyStores] = useState<Store[]>([])
+  const [zoomToUserLocation, setZoomToUserLocation] = useState(false)
+  const [storesWithCoords, setStoresWithCoords] = useState<Store[]>([]) // Stores đã có lng/lat từ geocode
 
   // Dropdown states for filters
   const [openFilterDropdown, setOpenFilterDropdown] = useState<string | null>(null) // 'near-me' | 'local' | 'origin' | null
@@ -54,6 +112,18 @@ function Discover() {
   const touchEndX = useRef<number>(0)
   const isDragging = useRef<boolean>(false)
 
+  // Hàm tính khoảng cách giữa hai điểm (Haversine formula)
+  const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371 // Bán kính Trái Đất (km)
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c // Khoảng cách (km)
+  }, [])
+
   // Map StoreLocationDTO to Store format
   const mapStoreResponseToStore = (storeResponse: StoreLocationDTO): Store => {
     return {
@@ -65,7 +135,9 @@ function Discover() {
       Address: storeResponse.address,
       LogoURL: storeResponse.logo || DEFAULT_IMAGE_URL,
       CoverImageURL: storeResponse.coverImage || DEFAULT_IMAGE_URL,
-      Description: storeResponse.description || ''
+      Description: storeResponse.description || '',
+      provinceId: storeResponse.provinceId,
+      targetProvinceId: storeResponse.targetProvinceId
     }
   }
 
@@ -179,22 +251,23 @@ function Discover() {
     const loadStores = async () => {
       setIsLoading(true)
       try {
-        const params: {
-          region?: string
-          provinceName?: string
-          pageSize?: number
-          pageNumber?: number
-        } = {
+        const params: StoreFilterByLocationParams = {
           pageSize: 0, // Get all stores
           pageNumber: 1
         }
 
-        if (selectedRegion) {
-          params.region = selectedRegion
-        }
-
-        if (provinceSearch.trim()) {
-          params.provinceName = provinceSearch.trim()
+        // Cửa hàng gần tôi: Get ALL stores, filter ở frontend theo bán kính 200km
+        if (isNearMeEnabled) {
+          // Không thêm filter params - get all stores để filter ở frontend
+          // Frontend sẽ filter theo bán kính 200km và provinceId/targetProvinceId
+        } else if (selectedFilterType === 'origin') {
+          // Filter "Đặc sản theo vùng" - sử dụng filter của backend
+          if (selectedRegion) {
+            params.region = selectedRegion
+          }
+        } else if (provinceSearch.trim()) {
+          // Chỉ dùng search box khi không có filter nào được chọn
+          params.termName = provinceSearch.trim()
         }
 
         const response = await storeApi.filterStoresByLocation(params)
@@ -214,7 +287,75 @@ function Discover() {
     }
 
     loadStores()
-  }, [selectedRegion, provinceSearch])
+  }, [selectedRegion, provinceSearch, selectedFilterType, isNearMeEnabled])
+
+  // Load danh sách tỉnh để map tên từ Mapbox -> provinceId
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      try {
+        const res = await getProvinces()
+        setProvinces(res)
+      } catch (error) {
+        console.error('Error loading provinces:', error)
+      }
+    }
+
+    fetchProvinces()
+  }, [])
+
+  // Lọc cửa hàng gần vị trí người dùng (trong bán kính 200km)
+  // - Cửa hàng gần tôi: Hiển thị tất cả trong bán kính 200km
+  // - Đặc sản địa phương: provinceId = targetProvinceId (cửa hàng bán đặc sản tại địa phương của mình)
+  // - Đặc sản khác vùng: provinceId ≠ targetProvinceId (cửa hàng bán đặc sản từ vùng khác)
+  useEffect(() => {
+    if (!userLocation || !storesWithCoords.length || !isNearMeEnabled) {
+      setNearbyStores([])
+      return
+    }
+
+    // Lọc cửa hàng trong bán kính 200km
+    let filteredStores = storesWithCoords
+      .map((store) => {
+        if (!store.lng || !store.lat) return null
+        const distance = calculateDistance(userLocation.lat, userLocation.lng, store.lat, store.lng)
+        return { store, distance }
+      })
+      .filter((item): item is { store: Store; distance: number } => item !== null && item.distance <= 200)
+
+    // Áp dụng filter Đặc sản địa phương: provinceId = targetProvinceId
+    if (localSpecialtyEnabled) {
+      filteredStores = filteredStores.filter(
+        (item) => item.store.provinceId != null &&
+          item.store.targetProvinceId != null &&
+          item.store.provinceId === item.store.targetProvinceId
+      )
+    }
+    // Áp dụng filter Đặc sản khác vùng: provinceId ≠ targetProvinceId
+    else if (otherSpecialtyEnabled) {
+      filteredStores = filteredStores.filter(
+        (item) => item.store.provinceId != null &&
+          item.store.targetProvinceId != null &&
+          item.store.provinceId !== item.store.targetProvinceId
+      )
+    }
+
+    // Sắp xếp theo khoảng cách và lấy kết quả
+    const result = filteredStores
+      .sort((a, b) => a.distance - b.distance)
+      .map((item) => item.store)
+
+    setNearbyStores(result)
+  }, [userLocation, storesWithCoords, calculateDistance, isNearMeEnabled, localSpecialtyEnabled, otherSpecialtyEnabled])
+
+  // Reset zoomToUserLocation sau khi zoom xong (tránh re-zoom khi re-render)
+  useEffect(() => {
+    if (zoomToUserLocation) {
+      const timer = setTimeout(() => {
+        setZoomToUserLocation(false)
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [zoomToUserLocation])
 
   // Load all stories when dropdown opens and stores change
   useEffect(() => {
@@ -385,8 +526,15 @@ function Discover() {
       // Chọn filter mới
       setSelectedFilterType(filterType)
 
-      // Nếu chọn filter khác "Đặc sản theo vùng", reset filter miền
-      if (filterType !== 'origin') {
+      // Nếu chọn "Đặc sản theo vùng", reset filter "Cửa hàng gần tôi"
+      if (filterType === 'origin') {
+        setIsNearMeEnabled(false)
+        setUserProvinceId(null)
+        setUserProvinceName(null)
+        setLocalSpecialtyEnabled(false)
+        setOtherSpecialtyEnabled(false)
+      } else {
+        // Nếu chọn filter khác "Đặc sản theo vùng", reset filter miền
         setSelectedRegion(null)
       }
     }
@@ -406,6 +554,194 @@ function Discover() {
     //     // Call API to get stores by origin (sẽ dùng selectedRegion)
     //     break
     // }
+  }
+
+  // Lấy vị trí hiện tại, reverse geocode qua Mapbox để lấy provinceId
+  const resolveNearMeProvince = async () => {
+    setIsNearMeLoading(true)
+    setNearMeError(null)
+
+    try {
+      if (!navigator.geolocation) {
+        setNearMeError('Trình duyệt không hỗ trợ lấy vị trí hiện tại.')
+        setIsNearMeLoading(false)
+        return
+      }
+
+      const getPosition = () =>
+        new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000
+          })
+        })
+
+      const position = await getPosition()
+      const { latitude, longitude } = position.coords
+
+      // Lưu vị trí người dùng
+      setUserLocation({ lng: longitude, lat: latitude })
+      setZoomToUserLocation(true)
+
+      const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
+      if (!mapboxToken) {
+        setNearMeError('Thiếu cấu hình Mapbox access token.')
+        setIsNearMeLoading(false)
+        return
+      }
+
+      const resp = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxToken}&country=vn&limit=1`
+      )
+      const data = await resp.json()
+
+      const feature = data?.features?.[0]
+      if (!feature) {
+        setNearMeError('Không xác định được địa chỉ từ vị trí hiện tại.')
+        setIsNearMeLoading(false)
+        return
+      }
+
+      // Ưu tiên lấy TỈNH/THÀNH từ context (place/region/locality), KHÔNG dùng tên đường (feature.text)
+      const contextEntries: Array<{ id: string; text: string }> = feature.context || []
+
+      const provinceFromPlace =
+        contextEntries.find((c) => c.id?.startsWith('place')) ||
+        contextEntries.find((c) => c.id?.startsWith('region')) ||
+        contextEntries.find((c) => c.id?.startsWith('locality'))
+
+      const contextProvince = provinceFromPlace?.text
+
+      if (!contextProvince) {
+        setNearMeError('Không đọc được tỉnh/thành từ địa chỉ.')
+        setIsNearMeLoading(false)
+        return
+      }
+
+      // Normalize tên tỉnh/thành từ Mapbox (bỏ City, Thành phố, etc.) nhưng giữ nguyên dấu
+      const normalizedProvinceName = normalizeProvinceNameForAPI(contextProvince)
+
+      // Ưu tiên gọi API backend để map tên Mapbox -> Province trong hệ thống
+      let matchedProvinceId: number | null = null
+      let matchedProvinceName: string | null = null
+
+      try {
+        // Thử với tên đã normalize trước (ví dụ: "Ho Chi Minh City" -> "Ho Chi Minh")
+        const provinceDetail = await getProvincesDetail(normalizedProvinceName)
+        matchedProvinceId = provinceDetail.data.id
+        matchedProvinceName = provinceDetail.data.name
+      } catch {
+        // Nếu fail với tên normalize, thử với tên gốc từ Mapbox
+        try {
+          const provinceDetail = await getProvincesDetail(contextProvince)
+          matchedProvinceId = provinceDetail.data.id
+          matchedProvinceName = provinceDetail.data.name
+        } catch {
+          // Fallback: dùng danh sách provinces đã load sẵn trên FE
+          // Thử với tên normalize trước
+          matchedProvinceId = findProvinceIdByName(normalizedProvinceName, provinces)
+          if (matchedProvinceId) {
+            // Tìm tên chính xác từ danh sách provinces
+            const foundProvince = provinces.find((p) => {
+              const normalizedP = normalizeProvinceName(p.name)
+              const normalizedTarget = normalizeProvinceName(normalizedProvinceName)
+              return normalizedP === normalizedTarget || normalizedTarget.includes(normalizedP)
+            })
+            matchedProvinceName = foundProvince?.name || normalizedProvinceName
+          } else {
+            // Nếu không tìm thấy với tên normalize, thử với tên gốc
+            matchedProvinceId = findProvinceIdByName(contextProvince, provinces)
+            if (matchedProvinceId) {
+              const foundProvince = provinces.find((p) => {
+                const normalizedP = normalizeProvinceName(p.name)
+                const normalizedTarget = normalizeProvinceName(contextProvince)
+                return normalizedP === normalizedTarget || normalizedTarget.includes(normalizedP)
+              })
+              matchedProvinceName = foundProvince?.name || contextProvince
+            } else {
+              matchedProvinceName = normalizedProvinceName
+            }
+          }
+        }
+      }
+
+      if (!matchedProvinceId) {
+        setNearMeError(`Không map được tỉnh/thành "${normalizedProvinceName}" với danh sách hệ thống.`)
+        setIsNearMeLoading(false)
+        return
+      }
+
+      setUserProvinceId(matchedProvinceId)
+      setUserProvinceName(matchedProvinceName)
+      setIsNearMeEnabled(true)
+      setSelectedFilterType('near-me')
+      // Reset filter "Đặc sản theo vùng" khi chọn "Cửa hàng gần tôi"
+      setSelectedRegion(null)
+      setProvinceSearch('')
+    } catch (error) {
+      console.error('Error resolving near-me province:', error)
+      setNearMeError('Đã xảy ra lỗi khi lấy vị trí. Vui lòng thử lại.')
+    } finally {
+      setIsNearMeLoading(false)
+    }
+  }
+
+  // Toggle "Cửa hàng gần tôi"
+  const handleToggleNearMe = async () => {
+    if (isNearMeEnabled) {
+      // Tắt filter "gần tôi" -> reset tất cả
+      setIsNearMeEnabled(false)
+      setUserProvinceId(null)
+      setUserProvinceName(null)
+      setLocalSpecialtyEnabled(false)
+      setOtherSpecialtyEnabled(false)
+      setSelectedFilterType(null)
+      // Reset vị trí người dùng và trạng thái hiển thị cửa hàng gần
+      setUserLocation(null)
+      setNearbyStores([])
+      setZoomToUserLocation(false)
+    } else {
+      // Bật filter "gần tôi" -> lấy vị trí
+      await resolveNearMeProvince()
+    }
+  }
+
+  // Toggle "Đặc sản địa phương"
+  const handleToggleLocalSpecialty = () => {
+    if (!isNearMeEnabled) return // Chỉ toggle được khi đã bật "Cửa hàng gần tôi"
+    const newValue = !localSpecialtyEnabled
+    setLocalSpecialtyEnabled(newValue)
+    // Nếu bật "Đặc sản địa phương" thì tắt "Đặc sản khác vùng" (chỉ chọn 1 trong 2)
+    if (newValue) {
+      setOtherSpecialtyEnabled(false)
+    }
+  }
+
+  // Toggle "Đặc sản khác vùng"
+  const handleToggleOtherSpecialty = () => {
+    if (!isNearMeEnabled) return // Chỉ toggle được khi đã bật "Cửa hàng gần tôi"
+    const newValue = !otherSpecialtyEnabled
+    setOtherSpecialtyEnabled(newValue)
+    // Nếu bật "Đặc sản khác vùng" thì tắt "Đặc sản địa phương" (chỉ chọn 1 trong 2)
+    if (newValue) {
+      setLocalSpecialtyEnabled(false)
+    }
+  }
+
+  // Handle search box change - reset các filter khi user nhập
+  const handleProvinceSearchChange = (value: string) => {
+    setProvinceSearch(value)
+    // Khi user nhập vào search box, reset các filter
+    if (value.trim()) {
+      setIsNearMeEnabled(false)
+      setUserProvinceId(null)
+      setUserProvinceName(null)
+      setLocalSpecialtyEnabled(false)
+      setOtherSpecialtyEnabled(false)
+      setSelectedFilterType(null)
+      setSelectedRegion(null)
+    }
   }
 
   // Toggle filter dropdown
@@ -456,6 +792,11 @@ function Discover() {
         selectedStoreId={selectedStoreId}
         onStoreIdChange={setSelectedStoreId}
         hidePanel={true}
+        userLocation={userLocation}
+        radiusKm={200}
+        zoomToUserLocation={zoomToUserLocation}
+        onStoresWithCoordinatesLoaded={setStoresWithCoords}
+        limitToRadius={isNearMeEnabled}
       />
 
       {/* Left Panel - Store List with Search */}
@@ -466,127 +807,242 @@ function Discover() {
         </div>
 
         {/* Filter Type Buttons with Dropdowns */}
-        <div className='px-6 py-4 border-b border-gray-200'>
-          <div className='flex flex-col gap-2'>
-            {/* Gần tôi Filter */}
-            <div ref={nearMeDropdownRef} className='relative'>
+        <div className='px-6 py-4 border-b border-gray-200 space-y-3'>
+          {/* Gần tôi Filter - Card Design */}
+          <div ref={nearMeDropdownRef} className='relative'>
+            <div
+              className={`rounded-xl border-2 transition-all duration-300 overflow-hidden ${isNearMeEnabled
+                ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg'
+                : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
+                }`}
+            >
+              {/* Header Button */}
               <button
-                onClick={() => handleToggleFilterDropdown('near-me')}
-                className={`w-full px-4 py-3 rounded-lg font-semibold text-sm transition-all duration-200 flex items-center justify-between gap-3 ${selectedFilterType === 'near-me'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-2 border-blue-200'
-                  }`}
+                onClick={handleToggleNearMe}
+                className='w-full px-4 py-3.5 flex items-center justify-between group'
               >
                 <div className='flex items-center gap-3'>
-                  <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
-                    />
-                  </svg>
-                  <span>Cửa hàng</span>
+                  <div
+                    className={`p-2 rounded-lg transition-colors ${isNearMeEnabled ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-200'
+                      }`}
+                  >
+                    <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z'
+                      />
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 11a3 3 0 11-6 0 3 3 0 016 0z' />
+                    </svg>
+                  </div>
+                  <div className='text-left'>
+                    <p className={`font-semibold text-sm ${isNearMeEnabled ? 'text-blue-900' : 'text-gray-900'}`}>
+                      Cửa hàng gần tôi
+                    </p>
+                    {userProvinceName && !nearMeError && (
+                      <p className='text-xs text-gray-500 mt-0.5'>{userProvinceName}</p>
+                    )}
+                  </div>
                 </div>
-                <svg
-                  className={`w-4 h-4 transition-transform duration-200 ${openFilterDropdown === 'near-me' ? 'rotate-180' : ''
-                    }`}
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 9l-7 7-7-7' />
-                </svg>
+                <div className='flex items-center gap-2'>
+                  {isNearMeLoading && (
+                    <div className='animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent'></div>
+                  )}
+                  {isNearMeEnabled && !isNearMeLoading && (
+                    <div className='w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center'>
+                      <svg className='w-4 h-4 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={3} d='M5 13l4 4L19 7' />
+                      </svg>
+                    </div>
+                  )}
+                  {!isNearMeEnabled && !isNearMeLoading && (
+                    <div className='w-6 h-6 rounded-full border-2 border-gray-300 group-hover:border-blue-400'></div>
+                  )}
+                </div>
               </button>
-              {openFilterDropdown === 'near-me' && (
-                <div className='absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border-2 border-blue-200 overflow-hidden z-50'>
-                  <button
-                    onClick={() => {
-                      handleFilterTypeClick('near-me')
-                      setOpenFilterDropdown(null)
-                    }}
-                    className={`w-full px-4 py-2 text-left text-sm transition-colors ${selectedFilterType === 'near-me'
-                      ? 'bg-blue-100 text-blue-700 font-semibold'
-                      : 'hover:bg-gray-50 text-gray-700'
-                      }`}
-                  >
-                    Cửa hàng gần tôi
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleFilterTypeClick('near-me')
-                      setOpenFilterDropdown(null)
-                    }}
-                    className={`w-full px-4 py-2 text-left text-sm transition-colors ${selectedFilterType === 'near-me'
-                      ? 'bg-blue-100 text-blue-700 font-semibold'
-                      : 'hover:bg-gray-50 text-gray-700'
-                      }`}
-                  >
-                    Đặc sản địa phương
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleFilterTypeClick('near-me')
-                      setOpenFilterDropdown(null)
-                    }}
-                    className={`w-full px-4 py-2 text-left text-sm transition-colors ${selectedFilterType === 'near-me'
-                      ? 'bg-blue-100 text-blue-700 font-semibold'
-                      : 'hover:bg-gray-50 text-gray-700'
-                      }`}
-                  >
-                    Đặc sản khác vùng
-                  </button>
 
+              {/* Status Message */}
+              {(isNearMeLoading || nearMeError) && (
+                <div className='px-4 pb-3'>
+                  {isNearMeLoading && (
+                    <div className='flex items-center gap-2 text-xs text-blue-600'>
+                      <div className='animate-spin rounded-full h-3 w-3 border-2 border-blue-600 border-t-transparent'></div>
+                      <span>Đang xác định vị trí của bạn...</span>
+                    </div>
+                  )}
+                  {nearMeError && (
+                    <div className='flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg'>
+                      <svg className='w-4 h-4 flex-shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={2}
+                          d='M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                        />
+                      </svg>
+                      <span>{nearMeError}</span>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
 
-            {/* Đặc sản địa phương Filter */}
-
-
-            {/* Đặc sản theo vùng Filter */}
-            <div ref={originDropdownRef} className='relative'>
-              <button
-                onClick={() => handleToggleFilterDropdown('origin')}
-                className={`w-full px-4 py-3 rounded-lg font-semibold text-sm transition-all duration-200 flex items-center justify-between gap-3 ${selectedFilterType === 'origin'
-                  ? 'bg-green-600 text-white shadow-md'
-                  : 'bg-green-50 text-green-700 hover:bg-green-100 border-2 border-green-200'
+              {/* Sub-options với animation */}
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${isNearMeEnabled ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
                   }`}
               >
-                <div className='flex items-center gap-3'>
-                  <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253'
-                    />
-                  </svg>
-                  <span>Đặc sản theo vùng</span>
+                <div className='px-4 pb-3 space-y-2 pt-1'>
+                  <button
+                    onClick={handleToggleLocalSpecialty}
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-between group ${localSpecialtyEnabled
+                      ? 'bg-emerald-500 text-white shadow-md transform scale-[1.02]'
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                      }`}
+                  >
+                    <div className='flex items-center gap-2.5'>
+                      <div
+                        className={`p-1.5 rounded-md transition-colors ${localSpecialtyEnabled ? 'bg-white/20' : 'bg-emerald-100 text-emerald-600'
+                          }`}
+                      >
+                        <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth={2}
+                            d='M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                          />
+                        </svg>
+                      </div>
+                      <span>Đặc sản địa phương</span>
+                    </div>
+                    {localSpecialtyEnabled && (
+                      <div className='w-5 h-5 rounded-full bg-white flex items-center justify-center'>
+                        <svg className='w-3 h-3 text-emerald-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={3} d='M5 13l4 4L19 7' />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleToggleOtherSpecialty}
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-between group ${otherSpecialtyEnabled
+                      ? 'bg-amber-500 text-white shadow-md transform scale-[1.02]'
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                      }`}
+                  >
+                    <div className='flex items-center gap-2.5'>
+                      <div
+                        className={`p-1.5 rounded-md transition-colors ${otherSpecialtyEnabled ? 'bg-white/20' : 'bg-amber-100 text-amber-600'
+                          }`}
+                      >
+                        <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth={2}
+                            d='M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9'
+                          />
+                        </svg>
+                      </div>
+                      <span>Đặc sản khác vùng</span>
+                    </div>
+                    {otherSpecialtyEnabled && (
+                      <div className='w-5 h-5 rounded-full bg-white flex items-center justify-center'>
+                        <svg className='w-3 h-3 text-amber-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={3} d='M5 13l4 4L19 7' />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
                 </div>
-                <svg
-                  className={`w-4 h-4 transition-transform duration-200 ${openFilterDropdown === 'origin' ? 'rotate-180' : ''
-                    }`}
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 9l-7 7-7-7' />
-                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Đặc sản theo vùng Filter - Card Design */}
+          <div ref={originDropdownRef} className='relative'>
+            <div
+              className={`rounded-xl border-2 transition-all duration-300 overflow-hidden ${selectedFilterType === 'origin'
+                ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg'
+                : 'border-gray-200 bg-white hover:border-green-300 hover:shadow-md'
+                }`}
+            >
+              <button
+                onClick={() => handleToggleFilterDropdown('origin')}
+                className='w-full px-4 py-3.5 flex items-center justify-between group'
+              >
+                <div className='flex items-center gap-3'>
+                  <div
+                    className={`p-2 rounded-lg transition-colors ${selectedFilterType === 'origin'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-green-100 text-green-600 group-hover:bg-green-200'
+                      }`}
+                  >
+                    <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                      />
+                    </svg>
+                  </div>
+                  <div className='text-left'>
+                    <p className={`font-semibold text-sm ${selectedFilterType === 'origin' ? 'text-green-900' : 'text-gray-900'}`}>
+                      Đặc sản theo vùng
+                    </p>
+                    {selectedRegion && (
+                      <p className='text-xs text-gray-500 mt-0.5'>{selectedRegion}</p>
+                    )}
+                  </div>
+                </div>
+                <div className='flex items-center gap-2'>
+                  {selectedFilterType === 'origin' && (
+                    <div className='w-6 h-6 rounded-full bg-green-600 flex items-center justify-center'>
+                      <svg className='w-4 h-4 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={3} d='M5 13l4 4L19 7' />
+                      </svg>
+                    </div>
+                  )}
+                  <svg
+                    className={`w-5 h-5 transition-transform duration-300 text-gray-400 ${openFilterDropdown === 'origin' ? 'rotate-180' : ''
+                      }`}
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 9l-7 7-7-7' />
+                  </svg>
+                </div>
               </button>
-              {openFilterDropdown === 'origin' && (
-                <div className='absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border-2 border-green-200 overflow-hidden z-50'>
+
+              {/* Dropdown với animation */}
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${openFilterDropdown === 'origin' ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+              >
+                <div className='px-4 pb-3 space-y-1.5 pt-1'>
                   <button
                     onClick={() => {
                       handleFilterTypeClick('origin')
                       setOpenFilterDropdown(null)
                     }}
-                    className={`w-full px-4 py-2 text-left text-sm transition-colors ${selectedFilterType === 'origin'
-                      ? 'bg-green-100 text-green-700 font-semibold'
-                      : 'hover:bg-gray-50 text-gray-700'
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${selectedFilterType === 'origin' && !selectedRegion
+                      ? 'bg-green-500 text-white shadow-md'
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                       }`}
                   >
-                    Tất cả các vùng miền
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z'
+                      />
+                    </svg>
+                    <span>Tất cả các vùng miền</span>
                   </button>
                   <button
                     onClick={() => {
@@ -594,12 +1050,20 @@ function Discover() {
                       handleRegionClick('Miền bắc')
                       setOpenFilterDropdown(null)
                     }}
-                    className={`w-full px-4 py-2 text-left text-sm transition-colors ${selectedRegion === 'Miền bắc'
-                      ? 'bg-green-100 text-green-700 font-semibold'
-                      : 'hover:bg-gray-50 text-gray-700'
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${selectedRegion === 'Miền bắc'
+                      ? 'bg-blue-500 text-white shadow-md'
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                       }`}
                   >
-                    Miền Bắc
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7'
+                      />
+                    </svg>
+                    <span>Miền Bắc</span>
                   </button>
                   <button
                     onClick={() => {
@@ -607,12 +1071,20 @@ function Discover() {
                       handleRegionClick('Miền trung')
                       setOpenFilterDropdown(null)
                     }}
-                    className={`w-full px-4 py-2 text-left text-sm transition-colors ${selectedRegion === 'Miền trung'
-                      ? 'bg-green-100 text-green-700 font-semibold'
-                      : 'hover:bg-gray-50 text-gray-700'
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${selectedRegion === 'Miền trung'
+                      ? 'bg-orange-500 text-white shadow-md'
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                       }`}
                   >
-                    Miền Trung
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z'
+                      />
+                    </svg>
+                    <span>Miền Trung</span>
                   </button>
                   <button
                     onClick={() => {
@@ -620,46 +1092,51 @@ function Discover() {
                       handleRegionClick('Miền nam')
                       setOpenFilterDropdown(null)
                     }}
-                    className={`w-full px-4 py-2 text-left text-sm transition-colors ${selectedRegion === 'Miền nam'
-                      ? 'bg-green-100 text-green-700 font-semibold'
-                      : 'hover:bg-gray-50 text-gray-700'
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${selectedRegion === 'Miền nam'
+                      ? 'bg-red-500 text-white shadow-md'
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                       }`}
                   >
-                    Miền Nam
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                      />
+                    </svg>
+                    <span>Miền Nam</span>
                   </button>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Search Box */}
         <div className='px-6 py-4 border-b border-gray-200'>
-          <div className='relative'>
+          <div className='relative group'>
+            <div className='absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none'>
+              <svg className='w-5 h-5 text-gray-400 group-focus-within:text-green-500 transition-colors' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
+                />
+              </svg>
+            </div>
             <input
               type='text'
               placeholder='Nhập tên tỉnh/thành phố - Cửa hàng'
               value={provinceSearch}
-              onChange={(e) => setProvinceSearch(e.target.value)}
-              className='w-full px-4 py-2.5 pl-11 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-green-500 text-sm'
+              onChange={(e) => handleProvinceSearchChange(e.target.value)}
+              className='w-full px-4 py-3 pl-11 pr-10 rounded-xl border-2 border-gray-200 bg-gray-50 focus:outline-none focus:border-green-500 focus:bg-white focus:ring-2 focus:ring-green-200 transition-all duration-200 text-sm placeholder:text-gray-400'
             />
-            <svg
-              className='absolute left-3.5 top-3.5 w-5 h-5 text-gray-400'
-              fill='none'
-              stroke='currentColor'
-              viewBox='0 0 24 24'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
-              />
-            </svg>
             {provinceSearch && (
               <button
                 onClick={() => setProvinceSearch('')}
-                className='absolute right-3 top-3.5 text-gray-400 hover:text-gray-600'
+                className='absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors'
               >
                 <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                   <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
@@ -671,7 +1148,7 @@ function Discover() {
 
         {/* Store List */}
         <div className='flex-1 overflow-y-auto px-6 py-4'>
-          {stores.length === 0 ? (
+          {(isNearMeEnabled ? nearbyStores : stores).length === 0 ? (
             <div className='text-center py-12 text-gray-500'>
               <svg
                 className='w-16 h-16 mx-auto mb-4 text-gray-300'
@@ -690,7 +1167,7 @@ function Discover() {
             </div>
           ) : (
             <div className='space-y-4'>
-              {stores.map((store) => (
+              {(isNearMeEnabled ? nearbyStores : stores).map((store) => (
                 <div
                   key={store.ID}
                   onClick={() => handleStoreSelect(store)}
@@ -1004,13 +1481,10 @@ function Discover() {
                   <p className='text-xs text-gray-400'>Hãy thử chọn một cửa hàng khác</p>
                 </div>
               )}
-
-
             </div>
           </div>
         )}
       </div>
-
     </div>
   )
 }

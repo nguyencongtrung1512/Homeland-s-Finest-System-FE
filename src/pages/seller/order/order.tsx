@@ -126,11 +126,12 @@ function OrderManagement() {
 
   // Filter orders by search term
   const filteredOrders = orders.filter((order) => {
+    const trimmedSearchTerm = searchTerm.trim()
     const matchesSearch =
-      searchTerm === '' ||
-      order.ghnorderCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.toName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase())
+      trimmedSearchTerm === '' ||
+      order.ghnorderCode?.toLowerCase().includes(trimmedSearchTerm.toLowerCase()) ||
+      order.toName?.toLowerCase().includes(trimmedSearchTerm.toLowerCase()) ||
+      order.id.toLowerCase().includes(trimmedSearchTerm.toLowerCase())
     return matchesSearch
   })
 

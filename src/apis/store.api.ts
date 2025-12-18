@@ -81,8 +81,11 @@ export interface StoreListParams {
 
 // Interface cho filter stores by location params
 export interface StoreFilterByLocationParams {
+  provinceId?: number
   region?: string
   provinceName?: string
+  locationFilter?: 'Local' | 'Other'
+  termName?: string
   pageSize?: number
   pageNumber?: number
 }
@@ -98,6 +101,8 @@ export interface StoreLocationDTO {
   ward: string
   address: string
   description: string
+  provinceId?: number | null
+  targetProvinceId?: number | null
 }
 
 // Interface cho StoreLocationListResponse (response từ filter-by-location API)
@@ -228,11 +233,20 @@ export const storeApi = {
   filterStoresByLocation: async (params: StoreFilterByLocationParams): Promise<StoreLocationListResponse> => {
     const queryParams = new URLSearchParams()
 
+    if (params.provinceId !== undefined && params.provinceId !== null) {
+      queryParams.append('provinceId', params.provinceId.toString())
+    }
+    if (params.locationFilter) {
+      queryParams.append('locationFilter', params.locationFilter)
+    }
     if (params.region) {
       queryParams.append('region', params.region)
     }
     if (params.provinceName) {
       queryParams.append('provinceName', params.provinceName)
+    }
+    if (params.termName) {
+      queryParams.append('termName', params.termName)
     }
     if (params.pageSize !== undefined) {
       queryParams.append('pageSize', params.pageSize.toString())

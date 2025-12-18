@@ -89,10 +89,12 @@ function HashtagManagement() {
       setLoading(true)
       setError(null)
 
-      // Nếu có filter status, load tất cả dữ liệu để filter ở frontend
-      // Nếu không có filter status, sử dụng phân trang từ API
-      const apiPageSize = statusFilter === 'all' ? pageSize : 0
-      const apiPageNumber = statusFilter === 'all' ? currentPage : 1
+      // Nếu có search term hoặc filter status, load tất cả dữ liệu để filter ở frontend
+      // Nếu không có search và filter status === 'all', sử dụng phân trang từ API
+      const hasSearchTerm = searchTerm.trim().length > 0
+      const hasStatusFilter = statusFilter !== 'all'
+      const apiPageSize = hasSearchTerm || hasStatusFilter ? 0 : pageSize
+      const apiPageNumber = hasSearchTerm || hasStatusFilter ? 1 : currentPage
 
       // Lấy hashtag theo storeId từ API endpoint /store/{storeId}
       const response = await getHashtagsByStoreId(store.id, apiPageSize, apiPageNumber)
@@ -122,7 +124,8 @@ function HashtagManagement() {
     if (store?.id) {
       fetchHashtags()
     }
-  }, [store?.id, currentPage, statusFilter])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store?.id, currentPage, statusFilter, searchTerm])
 
   // Filtered hashtags (chỉ filter status nếu cần, search đã được xử lý ở API nếu có)
   const filteredHashtags = useMemo(() => {
@@ -137,37 +140,46 @@ function HashtagManagement() {
       })
     }
 
-    // Filter by search term ở frontend (nếu API không hỗ trợ search theo name)
-    if (searchTerm.trim()) {
-      filtered = filtered.filter((hashtag) => hashtag.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    // Filter by search term ở frontend với xử lý khoảng trắng
+    const trimmedSearchTerm = searchTerm.trim()
+    if (trimmedSearchTerm) {
+      const searchLower = trimmedSearchTerm.toLowerCase()
+      filtered = filtered.filter((hashtag) => hashtag.name.toLowerCase().includes(searchLower))
     }
 
     return filtered
   }, [hashtags, searchTerm, statusFilter])
 
-  // Paginated hashtags (chỉ khi có filter status, vì khi không có filter thì API đã phân trang)
+  // Paginated hashtags
+  // Nếu có search term hoặc filter status, cần phân trang ở frontend
   const paginatedHashtags = useMemo(() => {
-    if (statusFilter === 'all') {
-      // API đã phân trang, sử dụng trực tiếp
-      return hashtags
-    } else {
-      // Filter ở frontend, cần phân trang lại
+    const hasSearchTerm = searchTerm.trim().length > 0
+    const hasStatusFilter = statusFilter !== 'all'
+
+    // Nếu có search hoặc filter status, phân trang ở frontend
+    if (hasSearchTerm || hasStatusFilter) {
       const startIndex = (currentPage - 1) * pageSize
       const endIndex = startIndex + pageSize
       return filteredHashtags.slice(startIndex, endIndex)
+    } else {
+      // Không có search và filter, sử dụng phân trang từ API
+      return hashtags
     }
-  }, [hashtags, filteredHashtags, currentPage, pageSize, statusFilter])
+  }, [hashtags, filteredHashtags, currentPage, pageSize, statusFilter, searchTerm])
 
   // Total pages
   const totalPages = useMemo(() => {
-    if (statusFilter === 'all') {
-      // Sử dụng totalPages từ API
-      return pagination.totalPages
-    } else {
-      // Tính từ filteredHashtags
+    const hasSearchTerm = searchTerm.trim().length > 0
+    const hasStatusFilter = statusFilter !== 'all'
+
+    // Nếu có search hoặc filter status, tính từ filteredHashtags
+    if (hasSearchTerm || hasStatusFilter) {
       return Math.max(1, Math.ceil(filteredHashtags.length / pageSize))
+    } else {
+      // Không có search và filter, sử dụng totalPages từ API
+      return pagination.totalPages
     }
-  }, [statusFilter, pagination.totalPages, filteredHashtags.length, pageSize])
+  }, [statusFilter, pagination.totalPages, filteredHashtags.length, pageSize, searchTerm])
 
   // Validate hashtag name - check rỗng và độ dài
   const validateHashtagName = (name: string): string => {

@@ -4,7 +4,7 @@ import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Dialog, DialogContent } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
-import { getOrderDetail, confirmOrder, cancelOrder, uploadVerificationImages } from '../../../apis/order.api'
+import { getOrderDetail, confirmOrder, cancelOrder, uploadVerificationImages, readyToPickOrder } from '../../../apis/order.api'
 import type { Order as APIOrder } from '../../../types/orderType'
 import {
   Loader2,
@@ -367,6 +367,23 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
       await fetchOrderDetail()
     } catch (error) {
       const errorMessage = getErrorMessage(error, 'Không thể xác nhận đơn hàng')
+      toast.error(errorMessage)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Handle mark order as ready to pick (seller đã giao cho shipper lấy hàng)
+  const handleReadyToPickOrder = async () => {
+    if (!order?.id) return
+
+    setActionLoading(true)
+    try {
+      await readyToPickOrder(order.id)
+      toast.success('Đã cập nhật trạng thái đơn hàng sang Đang chuẩn bị hàng thành công!')
+      await fetchOrderDetail()
+    } catch (error) {
+      const errorMessage = getErrorMessage(error, 'Không thể cập nhật trạng thái đơn hàng sang Đang chuẩn bị hàng')
       toast.error(errorMessage)
     } finally {
       setActionLoading(false)
@@ -1229,9 +1246,9 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
               )}
 
               {/* Seller Action Buttons */}
-              <div className='flex gap-3 pt-2'>
+              <div className='flex flex-col gap-3 pt-2'>
                 {order.status === 'Processing' && (
-                  <>
+                  <div className='flex gap-3'>
                     <Button
                       onClick={handleAcceptOrder}
                       disabled={actionLoading}
@@ -1258,8 +1275,29 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                       <XCircle className='w-4 h-4 mr-2' />
                       Từ chối đơn hàng
                     </Button>
-                  </>
+                  </div>
                 )}
+
+                {order.status === 'Confirmed' && (
+                  <Button
+                    onClick={handleReadyToPickOrder}
+                    disabled={actionLoading}
+                    className='w-full bg-blue-600 hover:bg-blue-700 text-white'
+                  >
+                    {actionLoading ? (
+                      <>
+                        <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                        Đang cập nhật...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className='w-4 h-4 mr-2' />
+                        Đơn hàng chuẩn bị giao
+                      </>
+                    )}
+                  </Button>
+                )}
+
                 {(order.status === 'Shipping' || order.status === 'Delivered') && (
                   <Button className='flex-1 bg-gray-600 hover:bg-gray-700 text-white' disabled>
                     Đơn hàng đã được xử lý
