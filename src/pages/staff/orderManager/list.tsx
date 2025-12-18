@@ -632,27 +632,13 @@ function OrderManagementStaff() {
         {/* Filters */}
         <div className='flex flex-wrap items-center gap-4 mb-6'>
           {/* User Filter */}
-          <div className='w-full md:w-64'>
-            <Select value={selectedUserId} onValueChange={setSelectedUserId} disabled={usersLoading}>
-              <SelectTrigger className='w-full'>
-                <SelectValue placeholder={usersLoading ? 'Đang tải...' : 'Chọn khách hàng'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>Tất cả khách hàng</SelectItem>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.firstName} {user.lastName} ({user.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+     
 
           {/* Search Bar */}
           <div className='flex-1 min-w-[150px] relative'>
             <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
             <Input
-              placeholder='Tìm theo Mã đơn hàng hoặc Tên khách hàng...'
+              placeholder='Tìm theo Mã đơn hàng '
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className='pl-10 rounded-lg border-gray-300'
