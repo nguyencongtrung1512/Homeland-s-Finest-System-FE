@@ -5,7 +5,8 @@ import type {
   TransactionListResponse,
   TransactionQueryParams,
   PurchaseInput,
-  Transaction
+  Transaction,
+  TransactionStatus
 } from '../types/transactionType'
 
 const API_URL = `/Transaction`
@@ -82,7 +83,7 @@ export const getTransactionsByStatus = async (
   status: string,
   params?: Omit<TransactionQueryParams, 'status'>
 ): Promise<{ data: Transaction[]; pagination?: TransactionListResponse['pagination'] }> => {
-  return getAllTransactions({ ...params, status: status as 'Pending' | 'Completed' | 'Failed' | 'Cancelled' })
+  return getAllTransactions({ ...params, status: status as TransactionStatus })
 }
 
 // Utility function để lấy transactions theo payment method

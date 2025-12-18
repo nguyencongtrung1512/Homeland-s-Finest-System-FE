@@ -42,6 +42,7 @@ export interface DocumentListResponse {
     pageNumber: number
     pageSize: number
     totalItems: number
+    totalPages?: number
   }
 }
 
@@ -54,7 +55,9 @@ export const getDocuments = async (params?: DocumentListParams): Promise<Documen
     }
   })
 
-  const responseData = response.data || response
+  // axiosInstance interceptor đã return response.data, nên response đã là data object
+  // Response structure: { data: [...], pagination: {...} }
+  const responseData = response as any
 
   // Handle ApiResponseWithPagination structure
   let documents: DocumentType[] = []
@@ -62,22 +65,30 @@ export const getDocuments = async (params?: DocumentListParams): Promise<Documen
     pageNumber: number
     pageSize: number
     totalItems: number
+    totalPages?: number
   } | undefined
 
   if (Array.isArray(responseData)) {
+    // Nếu response là array trực tiếp
     documents = responseData
   } else if (responseData && typeof responseData === 'object') {
+    // Lấy data từ response
     if (Array.isArray(responseData.data)) {
       documents = responseData.data
-    } else if (Array.isArray(responseData)) {
-      documents = responseData
     }
 
-    if (responseData.pagination) {
+    // Lấy pagination từ response
+    if ((responseData as any).pagination) {
+      const paginationData = (responseData as any).pagination
+      const apiPageSize = Number(paginationData.pageSize) || params?.pageSize || 10
+      const apiTotalItems = Number(paginationData.totalItems) || 0
+      const apiTotalPages = Number(paginationData.totalPages) || Math.ceil(apiTotalItems / apiPageSize)
+      
       pagination = {
-        pageNumber: responseData.pagination.pageNumber || params?.pageNumber || 1,
-        pageSize: responseData.pagination.pageSize || params?.pageSize || 10,
-        totalItems: responseData.pagination.totalItems || 0
+        pageNumber: Number(paginationData.pageNumber) || params?.pageNumber || 1,
+        pageSize: apiPageSize,
+        totalItems: apiTotalItems,
+        totalPages: apiTotalPages
       }
     }
   }
@@ -101,6 +112,7 @@ export const getDocumentsCustomer = async (params?: DocumentListParams): Promise
     pageNumber: number
     pageSize: number
     totalItems: number
+    totalPages?: number
   } | undefined
 
   if (Array.isArray(responseData)) {
@@ -116,7 +128,8 @@ export const getDocumentsCustomer = async (params?: DocumentListParams): Promise
       pagination = {
         pageNumber: responseData.pagination.pageNumber || params?.pageNumber || 1,
         pageSize: responseData.pagination.pageSize || params?.pageSize || 10,
-        totalItems: responseData.pagination.totalItems || 0
+        totalItems: responseData.pagination.totalItems || 0,
+        totalPages: responseData.pagination.totalPages || Math.ceil((responseData.pagination.totalItems || 0) / (params?.pageSize || 10))
       }
     }
   }
@@ -140,6 +153,7 @@ export const getDocumentsSeller = async (params?: DocumentListParams): Promise<D
     pageNumber: number
     pageSize: number
     totalItems: number
+    totalPages?: number
   } | undefined
 
   if (Array.isArray(responseData)) {
@@ -155,7 +169,8 @@ export const getDocumentsSeller = async (params?: DocumentListParams): Promise<D
       pagination = {
         pageNumber: responseData.pagination.pageNumber || params?.pageNumber || 1,
         pageSize: responseData.pagination.pageSize || params?.pageSize || 10,
-        totalItems: responseData.pagination.totalItems || 0
+        totalItems: responseData.pagination.totalItems || 0,
+        totalPages: responseData.pagination.totalPages || Math.ceil((responseData.pagination.totalItems || 0) / (params?.pageSize || 10))
       }
     }
   }

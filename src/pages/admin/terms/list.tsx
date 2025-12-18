@@ -50,6 +50,8 @@ function TermsManagement() {
   const [error, setError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
   const [formData, setFormData] = useState<CreateDocumentData>({
     slug: '',
     title: '',
@@ -59,21 +61,39 @@ function TermsManagement() {
     type: 'Customer'
   })
 
-  // Fetch documents from API - Get all with pageSize = 0
+  // Fetch documents from API với pagination
   const fetchDocuments = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const response = await getDocuments({
-        pageSize: 0,
-        pageNumber: 1
+        pageSize: pageSize,
+        pageNumber: currentPage
       })
 
       if (response.data) {
         setDocuments(response.data)
+        
+        // Cập nhật pagination từ API response
+        if (response.pagination) {
+          const apiTotalItems = Number(response.pagination.totalItems) || 0
+          const apiTotalPages = Number(response.pagination.totalPages) || Math.ceil(apiTotalItems / pageSize)
+          
+          // Đảm bảo totalPages là số nguyên dương
+          const finalTotalPages = Math.max(1, Math.ceil(apiTotalPages))
+          
+          setTotalPages(finalTotalPages)
+          setTotalItems(apiTotalItems)
+        } else {
+          // Fallback nếu không có pagination từ API
+          setTotalPages(Math.ceil(response.data.length / pageSize))
+          setTotalItems(response.data.length)
+        }
       } else {
         setError('Không thể tải danh sách tài liệu')
         setDocuments([])
+        setTotalPages(1)
+        setTotalItems(0)
       }
     } catch (err: unknown) {
       const error = err as { message?: string }
@@ -84,12 +104,14 @@ function TermsManagement() {
         autoClose: 5000
       })
       setDocuments([])
+      setTotalPages(1)
+      setTotalItems(0)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentPage, pageSize])
 
-  // Load data on component mount
+  // Load data on component mount and when page/filters change
   useEffect(() => {
     fetchDocuments()
   }, [fetchDocuments])
@@ -128,6 +150,7 @@ function TermsManagement() {
   }
 
   // Filter documents based on search text and other filters (Frontend filtering)
+  // Lưu ý: Nếu muốn filter ở backend, cần thêm params vào API call
   const filteredDocuments = useMemo(() => {
     return documents.filter((document) => {
       // Search filter
@@ -150,13 +173,8 @@ function TermsManagement() {
     })
   }, [documents, searchText, typeFilter, statusFilter])
 
-  // Paginated documents
-  const paginatedDocuments = useMemo(() => {
-    return filteredDocuments.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-  }, [filteredDocuments, currentPage, pageSize])
-
-  // Calculate pagination
-  const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / pageSize))
+  // Sử dụng filteredDocuments trực tiếp (không cần paginate ở frontend vì đã có từ API)
+  const paginatedDocuments = filteredDocuments
 
   // Handle page change
   const handlePageChange = (page: number) => {
@@ -526,11 +544,20 @@ function TermsManagement() {
                   })}
                 </TableBody>
               </Table>
-              {totalPages > 1 && (
-                <div className='px-6 pb-6 pt-4'>
-                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+              {/* Pagination */}
+              <div className='flex items-center justify-between px-6 pb-6 pt-4 border-t border-gray-200'>
+                <div className='text-sm text-gray-600'>
+                  Hiển thị {paginatedDocuments.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} đến{' '}
+                  {Math.min(currentPage * pageSize, totalItems)} trong {totalItems} kết quả
                 </div>
-              )}
+                {totalPages > 1 ? (
+                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+                ) : (
+                  <div className='text-xs text-gray-500'>
+                    Trang {currentPage}/{totalPages}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </CardContent>

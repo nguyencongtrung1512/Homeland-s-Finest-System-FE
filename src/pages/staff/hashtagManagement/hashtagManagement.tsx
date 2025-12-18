@@ -20,6 +20,7 @@ import { toast } from '../../../utils/toast'
 import { getAllHashtags, deleteHashtag, type HashtagItem } from '../../../apis/hashtag.api'
 import Pagination from '../../../components/Pagination/Pagination'
 import Loading from '../../../components/Loading/loading'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 
 function HashtagManagementStaff() {
   const [hashtags, setHashtags] = useState<HashtagItem[]>([])
@@ -168,16 +169,38 @@ function HashtagManagementStaff() {
 
   return (
     <div className='container mx-auto p-6 space-y-6'>
-      {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div>
-          <h1 className='text-3xl font-bold text-blue-700 flex items-center gap-2'>
-            <Tag className='w-8 h-8' />
-            Quản lý nhãn dán
-          </h1>
-          <p className='text-gray-600 mt-2'>Quản lý tất cả nhãn dán của hệ thống</p>
-        </div>
-      </div>
+      {/* Header - style giống trang ReportManagement */}
+      <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent className='py-4'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <h2 className='text-3xl font-bold text-white m-0 flex items-center gap-2'>
+                <Tag className='w-8 h-8' />
+                Quản lý nhãn dán
+              </h2>
+            </div>
+            <ShimmerBorder
+              className='cursor-pointer'
+              color='#ffffff'
+              animationDuration='3s'
+              contentClassName='bg-white/10 rounded-lg'
+            >
+              <Button
+                variant='outline'
+                onClick={fetchHashtags}
+                disabled={loading}
+                className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </ShimmerBorder>
+          </div>
+          <p className='text-white/90 mt-2'>
+            Quản lý tất cả nhãn dán của hệ thống ({filteredHashtags.length} nhãn dán)
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <Card className='shadow-sm'>
@@ -192,7 +215,7 @@ function HashtagManagementStaff() {
                 <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10' />
                 <Input
                   id='search'
-                  placeholder='Tìm kiếm theo tên...'
+                  placeholder='Tìm kiếm theo tên nhãn hoặc cửa hàng'
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value)
@@ -251,14 +274,20 @@ function HashtagManagementStaff() {
         </CardContent>
       </Card>
 
-      {/* Hashtags Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className='text-blue-700 py-2'>Danh sách nhãn dán ({filteredHashtags.length})</CardTitle>
+      {/* Hashtags Table - style giống danh sách khiếu nại */}
+      <Card className='bg-white shadow-sm'>
+        <CardHeader className='flex flex-row items-center justify-between p-6 border-b border-gray-200'>
+          <div>
+            <CardTitle className='text-lg font-semibold text-gray-900'>
+              Danh sách nhãn dán ({filteredHashtags.length})
+            </CardTitle>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className='p-0'>
           {loading && hashtags.length === 0 ? (
-            <Loading size='md' text='Đang tải dữ liệu...' />
+            <div className='py-10 flex justify-center'>
+              <Loading size='md' text='Đang tải dữ liệu...' />
+            </div>
           ) : error ? (
             <div className='text-center py-12'>
               <p className='text-red-500'>{error}</p>
@@ -276,35 +305,35 @@ function HashtagManagementStaff() {
               <div className='overflow-x-auto'>
                 <table className='w-full'>
                   <thead>
-                    <tr className='border-b'>
-                      <th className='text-left py-3 px-4 font-medium text-gray-700'>Tên nhãn dán</th>
-                      <th className='text-left py-3 px-4 font-medium text-gray-700'>Cửa hàng</th>
-                      <th className='text-left py-3 px-4 font-medium text-gray-700'>Số lần sử dụng</th>
-                      <th className='text-left py-3 px-4 font-medium text-gray-700'>Trạng thái</th>
-                      <th className='text-left py-3 px-4 font-medium text-gray-700'>Hành động</th>
+                    <tr className='border-b border-gray-200 bg-gray-50'>
+                      <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Tên nhãn dán</th>
+                      <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Cửa hàng</th>
+                      <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Số lần sử dụng</th>
+                      <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Trạng thái</th>
+                      <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Hành động</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className='bg-white'>
                     {paginatedHashtags.map((hashtag) => (
-                      <tr key={hashtag.id} className='border-b hover:bg-gray-50'>
-                        <td className='py-3 px-4'>
+                      <tr key={hashtag.id} className='border-b border-gray-100 hover:bg-gray-50'>
+                        <td className='px-6 py-3'>
                           <div className='font-medium text-gray-900'>#{hashtag.name}</div>
                         </td>
-                        <td className='py-3 px-4'>
+                        <td className='px-6 py-3'>
                           <div className='flex items-center gap-2 text-gray-600'>
                             <Store className='w-4 h-4' />
                             {hashtag.description || '-'}
                           </div>
                         </td>
-                        <td className='py-3 px-4 text-gray-600'>{hashtag.usageCount || 0}</td>
-                        <td className='py-3 px-4'>
+                        <td className='px-6 py-3 text-gray-600'>{hashtag.usageCount || 0}</td>
+                        <td className='px-6 py-3'>
                           <Badge
                             className={hashtag.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
                           >
                             {hashtag.isActive ? 'Đang hoạt động' : 'Tạm dừng'}
                           </Badge>
                         </td>
-                        <td className='py-3 px-4'>
+                        <td className='px-6 py-3'>
                           <div className='flex items-center gap-2'>
                             <Button
                               variant='outline'
@@ -321,14 +350,30 @@ function HashtagManagementStaff() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination */}
               {totalPages > 1 && (
-                <div className='mt-4'>
+                <div className='flex flex-col gap-3 px-6 py-4 border-t border-gray-200'>
+                  <p className='text-sm text-gray-600'>
+                    Hiển thị{' '}
+                    {statusFilter === 'all'
+                      ? hashtags.length === 0
+                        ? 0
+                        : (currentPage - 1) * pageSize + 1
+                      : filteredHashtags.length === 0
+                        ? 0
+                        : (currentPage - 1) * pageSize + 1}
+                    -
+                    {statusFilter === 'all'
+                      ? Math.min(currentPage * pageSize, pagination.totalItems)
+                      : Math.min(currentPage * pageSize, filteredHashtags.length)}{' '}
+                    của {statusFilter === 'all' ? pagination.totalItems : filteredHashtags.length} kết quả
+                  </p>
                   <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
                     onPageChange={(page) => {
                       setCurrentPage(page)
-                      // Scroll to top when page changes
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                   />

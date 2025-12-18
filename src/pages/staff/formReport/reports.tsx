@@ -368,73 +368,7 @@ function ReportManagement() {
               </div>
             </div>
 
-            {/* Date Filter Row */}
-            <div className='flex items-end gap-6'>
-              <div className='flex-1'>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>Ngày báo cáo</label>
-                <div className='flex items-center gap-3'>
-                  {/* Start date */}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant='outline'
-                        className='h-10 flex-1 justify-start text-left font-normal rounded-lg border-gray-300 shadow-sm hover:border-blue-400'
-                      >
-                        <Calendar className='mr-2 h-4 w-4 text-blue-500' />
-                        {startDate ? format(startDate, 'dd/MM/yyyy') : 'Chọn ngày bắt đầu'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className='w-auto p-2 bg-white rounded-lg shadow-lg border' align='start'>
-                      <CalendarComponent
-                        mode='single'
-                        selected={startDate}
-                        onSelect={handleStartDateChange}
-                        disabled={(date) => isFutureDate(date)}
-                        initialFocus
-                        showOutsideDays={false}
-                      />
-                    </PopoverContent>
-                  </Popover>
-
-                  <span className='text-gray-500 text-sm'>đến</span>
-
-                  {/* End date */}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant='outline'
-                        className='h-10 flex-1 justify-start text-left font-normal rounded-lg border-gray-300 shadow-sm hover:border-blue-400'
-                      >
-                        <Calendar className='mr-2 h-4 w-4 text-blue-500' />
-                        {endDate ? format(endDate, 'dd/MM/yyyy') : 'Chọn ngày kết thúc'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className='w-auto p-2 bg-white rounded-lg shadow-lg border' align='start'>
-                      <CalendarComponent
-                        mode='single'
-                        selected={endDate}
-                        onSelect={handleEndDateChange}
-                        disabled={(date) => isFutureDate(date)}
-                        initialFocus
-                        showOutsideDays={false}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className='flex items-end gap-2'>
-                <Button
-                  variant='outline'
-                  onClick={handleReset}
-                  className='h-10 px-4 rounded-lg shadow-sm hover:border-red-400'
-                >
-                  <RotateCcw className='w-4 h-4 mr-2' />
-                  Đặt lại
-                </Button>
-              </div>
-            </div>
+         
           </div>
         </CardContent>
       </Card>

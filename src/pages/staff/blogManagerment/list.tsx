@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Edit, Database, Users, Activity, MoreHorizontal, Eye } from 'lucide-react'
+import { Plus, Search, Edit, Database, Users, Activity, MoreHorizontal, Eye, RefreshCw } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
+import { Card, CardContent } from '../../../components/ui/card'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
 import {
   Dialog,
@@ -265,9 +267,16 @@ function BlogCategoryListStaff() {
   }
 
   // Filter categories by search term
-  const filteredCategories = categories.filter((category) =>
-    category.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Normalize search term: trim and replace multiple spaces with single space
+  const normalizeSearchTerm = (term: string) => {
+    return term.trim().replace(/\s+/g, ' ').toLowerCase()
+  }
+
+  const filteredCategories = categories.filter((category) => {
+    const normalizedSearch = normalizeSearchTerm(searchTerm)
+    const normalizedCategoryName = normalizeSearchTerm(category.name)
+    return normalizedCategoryName.includes(normalizedSearch)
+  })
 
   // Calculate pagination for filtered data
   const totalFilteredItems = filteredCategories.length
@@ -295,10 +304,37 @@ function BlogCategoryListStaff() {
     <div className='min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 p-6'>
       <div className='max-w-7xl mx-auto space-y-8'>
         {/* Header Section */}
-        <div className='space-y-2'>
-          <h1 className='text-3xl font-bold text-foreground'>Quản lý Danh mục Blog</h1>
-          <p className='text-muted-foreground'>Quản lý các danh mục blog trong hệ thống</p>
-        </div>
+        <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+          <CardContent className='py-4'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-3'>
+                <h2 className='text-3xl font-bold text-white m-0 flex items-center gap-2'>
+                  <Database className='w-8 h-8' />
+                  Quản lý Danh mục Blog
+                </h2>
+              </div>
+              <ShimmerBorder
+                className='cursor-pointer'
+                color='#ffffff'
+                animationDuration='3s'
+                contentClassName='bg-white/10 rounded-lg'
+              >
+                <Button
+                  variant='outline'
+                  onClick={loadAllCategories}
+                  disabled={loading}
+                  className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  {loading ? 'Đang tải...' : 'Làm mới'}
+                </Button>
+              </ShimmerBorder>
+            </div>
+            <p className='text-white/90 mt-2'>
+              Quản lý các danh mục blog trong hệ thống ({categories.length} danh mục)
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Stats Cards */}
         <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
@@ -412,7 +448,7 @@ function BlogCategoryListStaff() {
                     <Button
                       onClick={handleCreate}
                       disabled={!isFormValid()}
-                      className='bg-primary hover:bg-primary/90'
+                      variant='greenLight'
                     >
                       Tạo
                     </Button>

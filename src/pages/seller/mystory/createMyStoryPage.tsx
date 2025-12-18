@@ -1241,7 +1241,7 @@ function CreateMyStoryPage() {
                     content.contentType,
                     content.contentData,
                     content.imageUrls,
-                    content.videoUrl
+                    content.videoUrl || content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
                   )}
                 </div>
               ))}
