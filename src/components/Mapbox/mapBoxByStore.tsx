@@ -679,6 +679,24 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
             })
           }
 
+          // Gắn click cho từng item sản phẩm / combo
+          const previewItems = popupContent.querySelectorAll('.store-popup-preview-item')
+          previewItems.forEach((item) => {
+            item.addEventListener('click', (e) => {
+              e.stopPropagation()
+              const element = e.currentTarget as HTMLElement
+              const id = element.getAttribute('data-product-id')
+              const type = element.getAttribute('data-product-type')
+              if (!id || !type) return
+
+              if (type === 'Product') {
+                navigate(path.productDetail.replace(':id', id))
+              } else if (type === 'Combo') {
+                navigate(path.detailCombo.replace(':id', id))
+              }
+            })
+          })
+
           // Load preview products/combo khi popup mở
           loadStorePreviewProducts(store.ID)
         }
@@ -797,6 +815,24 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
                 navigate(storePath)
               })
             }
+
+            // Gắn lại click cho từng item sản phẩm / combo
+            const previewItems = popupContent.querySelectorAll('.store-popup-preview-item')
+            previewItems.forEach((item) => {
+              item.addEventListener('click', (e) => {
+                e.stopPropagation()
+                const element = e.currentTarget as HTMLElement
+                const id = element.getAttribute('data-product-id')
+                const type = element.getAttribute('data-product-type')
+                if (!id || !type) return
+
+                if (type === 'Product') {
+                  navigate(path.productDetail.replace(':id', id))
+                } else if (type === 'Combo') {
+                  navigate(path.detailCombo.replace(':id', id))
+                }
+              })
+            })
           }
         }
       }

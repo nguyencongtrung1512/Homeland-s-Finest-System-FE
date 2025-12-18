@@ -781,22 +781,6 @@ function Discover() {
     if (isNearMeEnabled) {
       return
     }
-
-    // Khi KHÔNG ở chế độ "gần tôi" và user nhập vào search box,
-    // reset các filter khác (tỉnh/vùng) để dùng search theo tỉnh/cửa hàng.
-    if (value.trim()) {
-      setIsNearMeEnabled(false)
-      setUserProvinceId(null)
-      setUserProvinceName(null)
-      setLocalSpecialtyEnabled(false)
-      setOtherSpecialtyEnabled(false)
-      setSelectedFilterType(null)
-      setSelectedRegion(null)
-      // Đồng thời reset vị trí người dùng và dữ liệu gần tôi (xoá vòng tròn radius)
-      setUserLocation(null)
-      setNearbyStores([])
-      setZoomToUserLocation(false)
-    }
   }
 
   // Toggle filter dropdown
