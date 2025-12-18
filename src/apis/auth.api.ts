@@ -251,6 +251,7 @@ export interface StaffRegistrationData {
   phoneNumber: string
   dateOfBirth: string
   hireDate: string
+  provinceId?: number
 }
 
 export const registerStaff = async (data: StaffRegistrationData) => {
@@ -264,6 +265,10 @@ export const registerStaff = async (data: StaffRegistrationData) => {
   formData.append('PhoneNumber', data.phoneNumber)
   formData.append('DateOfBirth', data.dateOfBirth)
   formData.append('HireDate', data.hireDate)
+  // Add PronviceId if provided (backend field name has typo - PronviceId instead of ProvinceId)
+  if (data.provinceId !== undefined && data.provinceId !== null) {
+    formData.append('PronviceId', data.provinceId.toString())
+  }
 
   const response = await axiosInstance.post(`${API_URL_STAFF}/Register`, formData, {
     headers: {
