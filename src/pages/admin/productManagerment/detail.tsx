@@ -32,7 +32,7 @@ import { productApi } from '../../../apis/product.api'
 import { adminApi, type Staff } from '../../../apis/admin.api'
 import { staffApi, type StaffInfo } from '../../../apis/staff.api'
 import { storeApi, type StoreResponse } from '../../../apis/store.api'
-import { getHashtagById, type HashtagItem } from '../../../apis/hashtag.api'
+import { type HashtagItem } from '../../../apis/hashtag.api'
 import StaffComboBox from '../../../components/ui/staff-combo-box'
 import { Button as UIButton } from '../../../components/ui/button'
 import { toast } from '../../../utils/toast'
@@ -209,42 +209,32 @@ function DetailProductAdmin() {
     }
   }
 
-  // Fetch hashtags if product has hashtagIds
+  // Fetch / map hashtags từ product (BE trả về trực tiếp mảng hashtags)
   useEffect(() => {
-    const fetchHashtags = async () => {
-      // Check if product has hashtagIds (it might be in the response but not in the type)
-      const productWithHashtags = product as Product & { hashtagIds?: string[] }
-      if (!productWithHashtags?.hashtagIds || productWithHashtags.hashtagIds.length === 0) {
-        setHashtags([])
-        return
-      }
+    // API mới trả trực tiếp field "hashtags" trong product:
+    // "hashtags": [{ id, name }]
+    type ProductWithHashtags = Product & { hashtags?: Array<{ id: string; name: string }> }
 
-      try {
-        setLoadingHashtags(true)
-        // Fetch all hashtags in parallel
-        const hashtagPromises = productWithHashtags.hashtagIds.map((hashtagId) => getHashtagById(hashtagId))
-        const responses = await Promise.all(hashtagPromises)
+    const productWithHashtags = product as ProductWithHashtags | null
 
-        // Extract hashtag data from responses
-        const fetchedHashtags: HashtagItem[] = []
-        responses.forEach((response) => {
-          if (response.status === 200 && response.data) {
-            fetchedHashtags.push(response.data)
-          }
-        })
-
-        setHashtags(fetchedHashtags)
-      } catch (error) {
-        console.error('Error fetching hashtags:', error)
-        setHashtags([])
-      } finally {
-        setLoadingHashtags(false)
-      }
+    if (!productWithHashtags?.hashtags || productWithHashtags.hashtags.length === 0) {
+      setHashtags([])
+      return
     }
 
-    if (product) {
-      fetchHashtags()
-    }
+    setLoadingHashtags(true)
+
+    // Map dữ liệu đơn giản từ BE sang HashtagItem để tái sử dụng UI hiện tại
+    const mappedHashtags: HashtagItem[] = productWithHashtags.hashtags.map((h) => ({
+      id: h.id,
+      name: h.name,
+      description: '',
+      usageCount: 0,
+      isActive: true
+    }))
+
+    setHashtags(mappedHashtags)
+    setLoadingHashtags(false)
   }, [product])
 
   // Load staff list for assign modal
@@ -1055,7 +1045,7 @@ function DetailProductAdmin() {
                           <div className='pt-4 border-t'>
                             <div className='flex items-center gap-2 mb-2'>
                               <Hash size={16} className='text-green-600 flex-shrink-0' />
-                              <span className='text-sm text-gray-600 font-medium'>Hashtags</span>
+                              <span className='text-sm text-gray-600 font-medium'>Nhãn dán</span>
                             </div>
                             <div className='flex flex-wrap gap-2'>
                               {loadingHashtags ? (
@@ -1072,7 +1062,7 @@ function DetailProductAdmin() {
                                   >
                                     <Hash size={12} className='mr-1' />
                                     {hashtag.name}
-                                    {hashtag.usageCount !== undefined && (
+                                    {hashtag.usageCount !== undefined && hashtag.usageCount > 0 && (
                                       <span className='ml-1 text-gray-500'>
                                         ({hashtag.usageCount >= 1000
                                           ? `${(hashtag.usageCount / 1000).toFixed(1)}K`

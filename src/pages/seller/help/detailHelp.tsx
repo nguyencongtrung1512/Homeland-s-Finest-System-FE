@@ -113,7 +113,7 @@ function DetailHelp() {
         className: 'text-blue-600'
       },
       ApprovedByStaff: {
-        text: 'Staff đã phê duyệt',
+        text: 'Nhân viên đã phê duyệt',
         icon: <CheckCircle className='w-4 h-4' />,
         className: 'text-cyan-600'
       },

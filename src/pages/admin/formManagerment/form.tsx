@@ -115,7 +115,7 @@ export default function AdminFormManagement() {
         return {
           icon: <CheckCircle className='w-4 h-4 text-green-500' />,
           badge: 'default',
-          text: 'Đã duyệt bởi admin',
+          text: 'Đã duyệt bởi quản trị viên',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }
@@ -259,7 +259,7 @@ export default function AdminFormManagement() {
                   <SelectItem value='Processing'>Đang xử lý</SelectItem>
                   <SelectItem value='ApprovedByStaff'>Đã duyệt bởi nhân viên</SelectItem>
                   <SelectItem value='DeniedByStaff'>Từ chối bởi nhân viên</SelectItem>
-                  <SelectItem value='ApprovedByAdmin'>Đã duyệt bởi admin</SelectItem>
+                  <SelectItem value='ApprovedByAdmin'>Đã duyệt bởi quản trị viên</SelectItem>
                   <SelectItem value='DeniedByAdmin'>Từ chối bởi admin</SelectItem>
                   <SelectItem value='Rejected'>Bị từ chối</SelectItem>
                   <SelectItem value='Confirmed'>Đã xác nhận bởi nhân viên</SelectItem>

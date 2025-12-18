@@ -89,7 +89,7 @@ function HelpCenter() {
       case 'Processing':
         return <Badge className='bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200'>Đang xử lý</Badge>
       case 'ApprovedByStaff':
-        return <Badge className='bg-cyan-100 text-cyan-800 hover:bg-cyan-100 border-cyan-200'>Staff đã phê duyệt</Badge>
+        return <Badge className='bg-cyan-100 text-cyan-800 hover:bg-cyan-100 border-cyan-200'>Nhân viên đã phê duyệt</Badge>
       case 'DeniedByStaff':
         return <Badge className='bg-red-100 text-red-800 hover:bg-red-100 border-red-200'>Staff từ chối</Badge>
       case 'ApprovedByAdmin':
@@ -133,7 +133,7 @@ function HelpCenter() {
         className: 'text-blue-600'
       },
       ApprovedByStaff: {
-        text: 'Staff đã phê duyệt',
+        text: 'Nhân viên đã phê duyệt',
         icon: <CheckCircle className='w-4 h-4' />,
         className: 'text-cyan-600'
       },

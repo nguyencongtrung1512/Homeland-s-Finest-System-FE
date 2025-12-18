@@ -149,7 +149,7 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
         return {
           icon: <CheckCircle className='w-5 h-5 text-green-500' />,
           badge: 'default',
-          text: 'Đã duyệt bởi admin',
+          text: 'Đã duyệt bởi quản trị viên',
           color: 'text-green-700',
           bgColor: 'bg-green-50'
         }

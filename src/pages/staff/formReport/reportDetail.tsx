@@ -794,10 +794,18 @@ function ReportDetail() {
                       </div>
                     </div>
                   ) : form.status === 'Confirmed' ? (
-                    // Check if seller has replied
-                    form.sellerReply || form.isSellerReplied ? (
-                      // Seller has replied - show action buttons
+                    // Nếu type là "Orther" (Các đơn khác), cho phép staff xử lý luôn không cần đợi seller
+                    // Hoặc nếu seller đã phản hồi thì cũng cho phép xử lý
+                    form.type === 'Orther' || form.sellerReply || form.isSellerReplied ? (
+                      // Type là "Orther" hoặc seller đã phản hồi - show action buttons
                       <div className='space-y-3'>
+                        {form.type === 'Orther' && !form.sellerReply && !form.isSellerReplied && (
+                          <div className='bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3'>
+                            <p className='text-blue-800 text-sm font-medium'>
+                              Đơn loại "Các đơn khác" - Bạn có thể xử lý ngay.
+                            </p>
+                          </div>
+                        )}
                         <div className='grid grid-cols-2 gap-3'>
                           <Button
                             onClick={() => {
@@ -824,7 +832,7 @@ function ReportDetail() {
                         </div>
                       </div>
                     ) : (
-                      // Seller hasn't replied yet - show waiting message
+                      // Seller chưa phản hồi và type không phải "Orther" - show waiting message
                       <div className='bg-orange-50 border border-orange-200 rounded-lg p-4'>
                         <div className='flex items-center gap-3'>
                           <Clock className='w-5 h-5 text-orange-600' />
@@ -889,7 +897,6 @@ function ReportDetail() {
               <p className='text-sm text-gray-600'>
                 <span className='font-medium'>Khiếu nại:</span> {form.subject}
               </p>
-              <p className='text-xs text-gray-500 mt-1'>#{form.id}</p>
             </div>
 
             {/* Status Selection - Hide completely if status is set from button click (ApprovedByStaff/DeniedByStaff) */}
@@ -919,8 +926,8 @@ function ReportDetail() {
                       </>
                     ) : (
                       <>
-                        <SelectItem value='ApprovedByStaff'>Duyệt</SelectItem>
-                        <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
+                        <SelectItem value='ApprovedByStaff'>Đề xuất duyệ</SelectItem>
+                        <SelectItem value='DeniedByStaff'>Đề xuất từ chối</SelectItem>
                         <SelectItem value='Confirmed'>Chờ phản hồi người bán</SelectItem>
                         <SelectItem value='Rejected'>Từ chối</SelectItem>
                       </>

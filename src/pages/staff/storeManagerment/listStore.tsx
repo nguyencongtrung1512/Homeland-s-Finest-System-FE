@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Filter, RefreshCw, Store, Package, ExternalLink, Calendar, User } from 'lucide-react'
+import { Search, RefreshCw, Store, Package, ExternalLink, Calendar, User } from 'lucide-react'
 import { storeApi } from '../../../apis/store.api'
 
 // Interface cho Store response thực tế từ API
@@ -21,12 +21,10 @@ interface ActualStoreResponse {
   decisionDate: string | null
   createdAt: string
 }
-import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { toast } from '../../../utils/toast'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Badge } from '../../../components/ui/badge'
 import { useNavigate } from 'react-router-dom'
 import { ShimmerBorder } from '../../../components/ui/shimmer'
@@ -54,15 +52,11 @@ const DEFAULT_STORE_LOGO = 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b8
 function ListStore() {
   const navigate = useNavigate()
   const [searchText, setSearchText] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('all')
-  const [dateFilter, setDateFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [storeData, setStoreData] = useState<StoreData[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [totalStores, setTotalStores] = useState(0)
-  const [productCategories, setProductCategories] = useState<ProductCategoryItem[]>([])
-  const [categoriesLoading, setCategoriesLoading] = useState(false)
   const pageSize = 12
 
   const convertStoreResponse = (apiStore: ActualStoreResponse): StoreData => {
@@ -96,31 +90,6 @@ function ListStore() {
     }
   }
 
-  // Function để fetch product categories
-  const fetchProductCategories = useCallback(async () => {
-    try {
-      setCategoriesLoading(true)
-      const response = await getAllProductCategory({
-        pageSize: 0,
-        pageNumber: 1
-      })
-
-      if (response && Array.isArray(response)) {
-        const activeCategories = response.filter((category: ProductCategoryItem) => category.isActive)
-        setProductCategories(activeCategories)
-      } else if (response && response.data && Array.isArray(response.data)) {
-        const activeCategories = response.data.filter((category: ProductCategoryItem) => category.isActive)
-        setProductCategories(activeCategories)
-      } else {
-        console.warn('Không thể tải danh sách ngành hàng')
-      }
-    } catch (err: unknown) {
-      console.error('Lỗi khi tải danh sách ngành hàng:', err)
-    } finally {
-      setCategoriesLoading(false)
-    }
-  }, [])
-
   // Function để fetch all stores
   const fetchAllStores = useCallback(async () => {
     try {
@@ -152,8 +121,7 @@ function ListStore() {
 
   useEffect(() => {
     fetchAllStores()
-    fetchProductCategories()
-  }, [fetchAllStores, fetchProductCategories])
+  }, [fetchAllStores])
 
   useEffect(() => {
     setCurrentPage(1)
@@ -173,11 +141,6 @@ function ListStore() {
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
   const paginatedStores = filteredStores.slice(startIndex, endIndex)
-
-  const handleFilter = () => {
-    // Reset về trang 1 khi filter
-    setCurrentPage(1)
-  }
 
   // Render store card component
   const renderStoreCard = (store: StoreData) => {
@@ -353,33 +316,6 @@ function ListStore() {
                 className='pl-10'
               />
             </div>
-
-            <Select value={categoryFilter} onValueChange={setCategoryFilter} disabled={categoriesLoading}>
-              <SelectTrigger className='w-40'>
-                <SelectValue placeholder={categoriesLoading ? 'Đang tải...' : 'Tất cả ngành hàng'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>Tất cả thể loại</SelectItem>
-                {productCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Input
-              type='date'
-              placeholder='mm/dd/yyyy'
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className='w-40'
-            />
-
-            <Button onClick={handleFilter} className='bg-green-600 hover:bg-green-700'>
-              <Filter size={16} className='mr-2' />
-              Lọc
-            </Button>
           </div>
         </CardContent>
       </Card>
