@@ -117,12 +117,7 @@ function AdminLayout() {
                                 </div>
 
 
-                                <div className='flex justify-between items-center py-2'>
-                                  <span className='text-sm font-medium text-gray-600'>Token hết hạn:</span>
-                                  <span className='text-sm text-gray-900'>
-                                    {user?.expiresAt ? new Date(user.expiresAt).toLocaleDateString('vi-VN') : 'N/A'}
-                                  </span>
-                                </div>
+                            
                               </div>
                             </div>
                           </DialogContent>

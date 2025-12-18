@@ -87,6 +87,13 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
       setForm(response)
       setAdminText(response.adminText || '')
 
+      // If status is Pending, set adminStatus to DeniedByAdmin (since ApprovedByAdmin is not available)
+      if (response.status === 'Pending') {
+        setAdminStatus('DeniedByAdmin')
+      } else {
+        setAdminStatus('ApprovedByAdmin')
+      }
+
       // Load user info
       if (response.userId) {
         await loadUserInfo(response.userId)
@@ -524,8 +531,12 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                 </Card>
               )}
 
-              {/* Admin Actions - Only show if status is not Cancel, not DeniedByStaff, and not Rejected */}
-              {form.status !== 'Cancel' && form.status !== 'DeniedByStaff' && form.status !== 'Rejected' && (
+              {/* Admin Actions - Only show if status is not Cancel, not DeniedByStaff, not Rejected, not DeniedByAdmin, and not ApprovedByAdmin */}
+              {form.status !== 'Cancel' && 
+               form.status !== 'DeniedByStaff' && 
+               form.status !== 'Rejected' && 
+               form.status !== 'DeniedByAdmin' && 
+               form.status !== 'ApprovedByAdmin' && (
                 <Card className='border-green-200 shadow-sm'>
                   <CardHeader className='bg-green-50/50'>
                     <CardTitle className='text-lg text-green-700'>Phản hồi quản trị viên</CardTitle>
@@ -541,7 +552,9 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value='ApprovedByAdmin'>Duyệt</SelectItem>
+                          {form.status !== 'Pending' && (
+                            <SelectItem value='ApprovedByAdmin'>Duyệt</SelectItem>
+                          )}
                           <SelectItem value='DeniedByAdmin'>Từ chối</SelectItem>
                         </SelectContent>
                       </Select>
@@ -648,8 +661,11 @@ export default function FormDetailModal({ isOpen, onClose, formId, onSuccess }: 
                 </CardContent>
               </Card>
 
-              {/* Admin Reply (if exists) */}
-              {form.adminText && (
+              {/* Admin Reply (if exists) - Hide if status is DeniedByAdmin, ApprovedByAdmin, or Cancel */}
+              {form.adminText && 
+               form.status !== 'DeniedByAdmin' && 
+               form.status !== 'ApprovedByAdmin' && 
+               form.status !== 'Cancel' && (
                 <Card className='border-green-200 shadow-sm'>
                   <CardHeader className='bg-green-50/50'>
                     <CardTitle className='text-lg text-green-700'>Phản hồi quản trị viên</CardTitle>

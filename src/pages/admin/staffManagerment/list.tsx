@@ -116,6 +116,7 @@ function StaffManagement() {
   const [showBanModal, setShowBanModal] = useState(false)
   const [staffToBan, setStaffToBan] = useState<StaffInfo | null>(null)
   const [banReason, setBanReason] = useState('')
+  const [banReasonError, setBanReasonError] = useState('')
   const [banType, setBanType] = useState<'permanent' | 'temporary'>('permanent')
   const [banDateOption, setBanDateOption] = useState<'7days' | '30days' | 'custom'>('7days')
   const [banUntilDate, setBanUntilDate] = useState<Date | undefined>(undefined)
@@ -771,13 +772,29 @@ function StaffManagement() {
   }
 
   const confirmBan = async () => {
-    if (!staffToBan || !banReason.trim()) {
+    if (!staffToBan) return
+
+    // Validate ban reason - must be at least 10 characters
+    const trimmedReason = banReason.trim()
+    if (!trimmedReason) {
+      setBanReasonError('Vui lòng nhập lý do khóa')
       toast.error('Vui lòng nhập lý do khóa', {
         position: 'top-right',
         autoClose: 3000
       })
       return
     }
+
+    if (trimmedReason.length < 10) {
+      setBanReasonError(`Lý do phải có ít nhất 10 ký tự (hiện tại: ${trimmedReason.length} ký tự)`)
+      toast.error(`Lý do phải có ít nhất 10 ký tự (hiện tại: ${trimmedReason.length} ký tự)`, {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    setBanReasonError('')
 
     if (banType === 'temporary' && banDateOption === 'custom' && !banUntilDate) {
       toast.error('Vui lòng chọn ngày hết hạn khóa', {
@@ -837,12 +854,51 @@ function StaffManagement() {
       setBanDateOption('7days')
       setBanUntilDate(undefined)
     } catch (err: unknown) {
-      const error = err as { message?: string }
-      const errorMessage = error.message || 'Có lỗi xảy ra khi khóa nhân viên'
-      toast.error(errorMessage, {
-        position: 'top-right',
-        autoClose: 5000
-      })
+      console.error('Ban staff error:', err)
+
+      // Handle different types of errors
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+
+        if (axiosError.response?.data?.errors) {
+          // Handle validation errors from backend
+          const errors = axiosError.response.data.errors
+          const errorMessages = Object.values(errors).flat()
+          const firstError = errorMessages[0] || 'Có lỗi xảy ra khi khóa nhân viên'
+          
+          // Set error state for display
+          if (errors.Reason && errors.Reason.length > 0) {
+            setBanReasonError(errors.Reason[0])
+          }
+          
+          toast.error(firstError, {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        } else if (axiosError.response?.data?.message) {
+          // Handle backend error message
+          toast.error(axiosError.response.data.message, {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        } else {
+          toast.error('Có lỗi xảy ra khi khóa nhân viên', {
+            position: 'top-right',
+            autoClose: 5000
+          })
+        }
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        const errorWithMessage = err as { message: string }
+        toast.error(errorWithMessage.message, {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      } else {
+        toast.error('Có lỗi xảy ra khi khóa nhân viên', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      }
     } finally {
       setActionLoading(false)
     }
@@ -897,6 +953,7 @@ function StaffManagement() {
     setShowBanModal(false)
     setStaffToBan(null)
     setBanReason('')
+    setBanReasonError('')
     setBanType('permanent')
     setBanDateOption('7days')
     setBanUntilDate(undefined)
@@ -1823,11 +1880,28 @@ function StaffManagement() {
                 <Label>Lý do khóa *</Label>
                 <Textarea
                   value={banReason}
-                  onChange={(e) => setBanReason(e.target.value)}
-                  placeholder='Nhập lý do khóa nhân viên...'
+                  onChange={(e) => {
+                    setBanReason(e.target.value)
+                    // Clear error when user starts typing
+                    if (banReasonError) {
+                      setBanReasonError('')
+                    }
+                  }}
+                  placeholder='Nhập lý do khóa nhân viên (tối thiểu 10 ký tự)...'
                   rows={4}
-                  className='resize-none'
+                  className={`resize-none ${banReasonError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
+                {banReasonError && (
+                  <p className='text-red-600 text-sm flex items-center gap-1'>
+                    <span className='text-red-500'>•</span>
+                    {banReasonError}
+                  </p>
+                )}
+                {banReason.trim() && banReason.trim().length < 10 && !banReasonError && (
+                  <p className='text-gray-500 text-sm'>
+                    Còn {10 - banReason.trim().length} ký tự nữa (tối thiểu 10 ký tự)
+                  </p>
+                )}
               </div>
 
               <div className='space-y-3'>

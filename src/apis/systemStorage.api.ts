@@ -10,11 +10,20 @@ export interface SystemStorageItem {
   value: string
 }
 
+// Interface cho pagination
+export interface PaginationInfo {
+  pageSize: number
+  pageNumber: number
+  totalItems: number
+  totalPages: number
+}
+
 // Interface cho response từ API
 export interface SystemStorageResponse {
   status: number
   message: string
   data: SystemStorageItem[]
+  pagination?: PaginationInfo
 }
 
 // Interface cho PagedResult từ BE
