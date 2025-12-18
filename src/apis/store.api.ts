@@ -103,6 +103,9 @@ export interface StoreLocationDTO {
   description: string
   provinceId?: number | null
   targetProvinceId?: number | null
+  // Toạ độ cửa hàng từ backend (ưu tiên dùng cho Mapbox)
+  lat?: string | null
+  lng?: string | null
 }
 
 // Interface cho StoreLocationListResponse (response từ filter-by-location API)

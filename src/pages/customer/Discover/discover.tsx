@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MapBoxByStore from '../../../components/Mapbox/mapBoxByStore'
 import { storeApi } from '../../../apis/store.api'
@@ -85,12 +85,16 @@ function Discover() {
   const [isNearMeEnabled, setIsNearMeEnabled] = useState(false) // Cửa hàng gần tôi
   const [localSpecialtyEnabled, setLocalSpecialtyEnabled] = useState(false) // Đặc sản địa phương
   const [otherSpecialtyEnabled, setOtherSpecialtyEnabled] = useState(false) // Đặc sản khác vùng
+  const [isNearMeDetailsOpen, setIsNearMeDetailsOpen] = useState(false) // Thu gọn / mở rộng tuỳ chọn nâng cao
 
   // States cho hiển thị cửa hàng gần
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
   const [nearbyStores, setNearbyStores] = useState<Store[]>([])
   const [zoomToUserLocation, setZoomToUserLocation] = useState(false)
   const [storesWithCoords, setStoresWithCoords] = useState<Store[]>([]) // Stores đã có lng/lat từ geocode
+
+  // Từ khóa search được áp dụng (Enter hoặc bấm nút search)
+  const [appliedSearch, setAppliedSearch] = useState('')
 
   // Dropdown states for filters
   const [openFilterDropdown, setOpenFilterDropdown] = useState<string | null>(null) // 'near-me' | 'local' | 'origin' | null
@@ -102,6 +106,7 @@ function Discover() {
   const [isStoryDropdownOpen, setIsStoryDropdownOpen] = useState(false)
   const [currentStory, setCurrentStory] = useState<StoreStory | null>(null)
   const [currentStoryStore, setCurrentStoryStore] = useState<Store | null>(null)
+  const [isStoryButtonHidden, setIsStoryButtonHidden] = useState(false) // Ẩn nút khi scroll
 
   // Swipeable story viewer states
   const [allStories, setAllStories] = useState<Array<{ story: StoreStory; store: Store }>>([])
@@ -111,6 +116,9 @@ function Discover() {
   const touchStartX = useRef<number>(0)
   const touchEndX = useRef<number>(0)
   const isDragging = useRef<boolean>(false)
+  // #region agent log note
+  // Instrumentation logs: see debug instructions. Do not remove until post-fix verification.
+  // #endregion
 
   // Hàm tính khoảng cách giữa hai điểm (Haversine formula)
   const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -126,6 +134,12 @@ function Discover() {
 
   // Map StoreLocationDTO to Store format
   const mapStoreResponseToStore = (storeResponse: StoreLocationDTO): Store => {
+    // Parse lat/lng từ backend (string) sang number nếu có
+    const parsedLat =
+      storeResponse.lat !== undefined && storeResponse.lat !== null ? Number.parseFloat(storeResponse.lat) : undefined
+    const parsedLng =
+      storeResponse.lng !== undefined && storeResponse.lng !== null ? Number.parseFloat(storeResponse.lng) : undefined
+
     return {
       ID: storeResponse.id,
       StoreName: storeResponse.storeName,
@@ -137,7 +151,10 @@ function Discover() {
       CoverImageURL: storeResponse.coverImage || DEFAULT_IMAGE_URL,
       Description: storeResponse.description || '',
       provinceId: storeResponse.provinceId,
-      targetProvinceId: storeResponse.targetProvinceId
+      targetProvinceId: storeResponse.targetProvinceId,
+      // Ưu tiên dùng toạ độ từ backend nếu có
+      lat: Number.isFinite(parsedLat || NaN) ? parsedLat : undefined,
+      lng: Number.isFinite(parsedLng || NaN) ? parsedLng : undefined
     }
   }
 
@@ -246,7 +263,7 @@ function Discover() {
     }
   }
 
-  // Load stores from API
+  // Load stores từ API (không phụ thuộc vào \"Cửa hàng gần tôi\" để tránh giật khi toggle)
   useEffect(() => {
     const loadStores = async () => {
       setIsLoading(true)
@@ -256,18 +273,9 @@ function Discover() {
           pageNumber: 1
         }
 
-        // Cửa hàng gần tôi: Get ALL stores, filter ở frontend theo bán kính 200km
-        if (isNearMeEnabled) {
-          // Không thêm filter params - get all stores để filter ở frontend
-          // Frontend sẽ filter theo bán kính 200km và provinceId/targetProvinceId
-        } else if (selectedFilterType === 'origin') {
-          // Filter "Đặc sản theo vùng" - sử dụng filter của backend
-          if (selectedRegion) {
-            params.region = selectedRegion
-          }
-        } else if (provinceSearch.trim()) {
-          // Chỉ dùng search box khi không có filter nào được chọn
-          params.termName = provinceSearch.trim()
+        if (selectedFilterType === 'origin' && selectedRegion) {
+          // Filter \"Đặc sản theo vùng\" - sử dụng filter của backend
+          params.region = selectedRegion
         }
 
         const response = await storeApi.filterStoresByLocation(params)
@@ -287,7 +295,7 @@ function Discover() {
     }
 
     loadStores()
-  }, [selectedRegion, provinceSearch, selectedFilterType, isNearMeEnabled])
+  }, [selectedRegion, selectedFilterType])
 
   // Load danh sách tỉnh để map tên từ Mapbox -> provinceId
   useEffect(() => {
@@ -308,6 +316,28 @@ function Discover() {
   // - Đặc sản địa phương: provinceId = targetProvinceId (cửa hàng bán đặc sản tại địa phương của mình)
   // - Đặc sản khác vùng: provinceId ≠ targetProvinceId (cửa hàng bán đặc sản từ vùng khác)
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7dd65070-5a76-435b-8591-8105b696a5a2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'debug-session',
+        runId: 'pre-fix',
+        hypothesisId: 'H2',
+        location: 'discover.tsx:useEffect filterNearby',
+        message: 'filter nearby triggered',
+        data: {
+          userLocation: !!userLocation,
+          stores: stores.length,
+          storesWithCoords: storesWithCoords.length,
+          isNearMeEnabled,
+          localSpecialtyEnabled,
+          otherSpecialtyEnabled
+        },
+        timestamp: Date.now()
+      })
+    }).catch(() => { })
+    // #endregion
     if (!userLocation || !storesWithCoords.length || !isNearMeEnabled) {
       setNearbyStores([])
       return
@@ -325,7 +355,8 @@ function Discover() {
     // Áp dụng filter Đặc sản địa phương: provinceId = targetProvinceId
     if (localSpecialtyEnabled) {
       filteredStores = filteredStores.filter(
-        (item) => item.store.provinceId != null &&
+        (item) =>
+          item.store.provinceId != null &&
           item.store.targetProvinceId != null &&
           item.store.provinceId === item.store.targetProvinceId
       )
@@ -333,16 +364,15 @@ function Discover() {
     // Áp dụng filter Đặc sản khác vùng: provinceId ≠ targetProvinceId
     else if (otherSpecialtyEnabled) {
       filteredStores = filteredStores.filter(
-        (item) => item.store.provinceId != null &&
+        (item) =>
+          item.store.provinceId != null &&
           item.store.targetProvinceId != null &&
           item.store.provinceId !== item.store.targetProvinceId
       )
     }
 
     // Sắp xếp theo khoảng cách và lấy kết quả
-    const result = filteredStores
-      .sort((a, b) => a.distance - b.distance)
-      .map((item) => item.store)
+    const result = filteredStores.sort((a, b) => a.distance - b.distance).map((item) => item.store)
 
     setNearbyStores(result)
   }, [userLocation, storesWithCoords, calculateDistance, isNearMeEnabled, localSpecialtyEnabled, otherSpecialtyEnabled])
@@ -515,6 +545,11 @@ function Discover() {
 
   // Handle filter type selection
   const handleFilterTypeClick = (filterType: string) => {
+    // Nếu đang bật "Cửa hàng gần tôi" thì KHÔNG cho chọn "Đặc sản theo vùng"
+    if (isNearMeEnabled && filterType === 'origin') {
+      return
+    }
+
     if (selectedFilterType === filterType) {
       // Nếu bỏ chọn filter
       setSelectedFilterType(null)
@@ -533,6 +568,10 @@ function Discover() {
         setUserProvinceName(null)
         setLocalSpecialtyEnabled(false)
         setOtherSpecialtyEnabled(false)
+        // Đồng thời reset vị trí & dữ liệu gần tôi để xoá vòng tròn radius trên map
+        setUserLocation(null)
+        setNearbyStores([])
+        setZoomToUserLocation(false)
       } else {
         // Nếu chọn filter khác "Đặc sản theo vùng", reset filter miền
         setSelectedRegion(null)
@@ -689,6 +728,21 @@ function Discover() {
 
   // Toggle "Cửa hàng gần tôi"
   const handleToggleNearMe = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7dd65070-5a76-435b-8591-8105b696a5a2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'debug-session',
+        runId: 'pre-fix',
+        hypothesisId: 'H1',
+        location: 'discover.tsx:handleToggleNearMe',
+        message: 'toggle near-me clicked',
+        data: { isNearMeEnabled },
+        timestamp: Date.now()
+      })
+    }).catch(() => { })
+    // #endregion
     if (isNearMeEnabled) {
       // Tắt filter "gần tôi" -> reset tất cả
       setIsNearMeEnabled(false)
@@ -729,10 +783,18 @@ function Discover() {
     }
   }
 
-  // Handle search box change - reset các filter khi user nhập
+  // Handle search box change
   const handleProvinceSearchChange = (value: string) => {
     setProvinceSearch(value)
-    // Khi user nhập vào search box, reset các filter
+
+    // Nếu đang bật "Cửa hàng gần tôi" thì chỉ cập nhật từ khoá,
+    // không được reset filter hay tắt chế độ gần tôi.
+    if (isNearMeEnabled) {
+      return
+    }
+
+    // Khi KHÔNG ở chế độ "gần tôi" và user nhập vào search box,
+    // reset các filter khác (tỉnh/vùng) để dùng search theo tỉnh/cửa hàng.
     if (value.trim()) {
       setIsNearMeEnabled(false)
       setUserProvinceId(null)
@@ -741,6 +803,10 @@ function Discover() {
       setOtherSpecialtyEnabled(false)
       setSelectedFilterType(null)
       setSelectedRegion(null)
+      // Đồng thời reset vị trí người dùng và dữ liệu gần tôi (xoá vòng tròn radius)
+      setUserLocation(null)
+      setNearbyStores([])
+      setZoomToUserLocation(false)
     }
   }
 
@@ -776,6 +842,56 @@ function Discover() {
     }
   }, [openFilterDropdown])
 
+  // Ẩn nút "Có thể bạn chưa biết?" khi scroll (tránh che header)
+  useEffect(() => {
+    let ticking = false
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY
+          // Nếu scroll xuống > 50px thì ẩn nút
+          if (currentScrollY > 50) {
+            setIsStoryButtonHidden(true)
+          } else {
+            setIsStoryButtonHidden(false)
+          }
+          ticking = false
+        })
+        ticking = true
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+
+  // Hàm filter cửa hàng theo từ khoá search (frontend only)
+  const filterStoresBySearch = (inputStores: Store[]): Store[] => {
+    const term = appliedSearch.trim().toLowerCase()
+    if (!term) return inputStores
+
+    return inputStores.filter((store) => {
+      const name = store.StoreName?.toLowerCase() || ''
+      // Nếu đang bật "Cửa hàng gần tôi" -> chỉ cho search theo tên cửa hàng (không search theo tỉnh)
+      if (isNearMeEnabled) {
+        return name.includes(term)
+      }
+
+      const province = store.Province?.toLowerCase() || ''
+      const address = store.Address?.toLowerCase() || ''
+      return name.includes(term) || province.includes(term) || address.includes(term)
+    })
+  }
+
+  const baseVisibleStores = isNearMeEnabled ? nearbyStores : stores
+  const visibleStores = filterStoresBySearch(baseVisibleStores)
+  // Memo hoá danh sách ID để tránh tạo mảng mới mỗi lần render (gây re-render marker liên tục)
+  const visibleStoreIds = useMemo(() => visibleStores.map((s) => s.ID), [visibleStores])
+
   return (
     <div className='w-full h-screen relative'>
       {/* Loading overlay */}
@@ -797,6 +913,7 @@ function Discover() {
         zoomToUserLocation={zoomToUserLocation}
         onStoresWithCoordinatesLoaded={setStoresWithCoords}
         limitToRadius={isNearMeEnabled}
+        visibleStoreIds={visibleStoreIds}
       />
 
       {/* Left Panel - Store List with Search */}
@@ -833,7 +950,12 @@ function Discover() {
                         strokeWidth={2}
                         d='M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z'
                       />
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 11a3 3 0 11-6 0 3 3 0 016 0z' />
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M15 11a3 3 0 11-6 0 3 3 0 016 0z'
+                      />
                     </svg>
                   </div>
                   <div className='text-left'>
@@ -845,7 +967,7 @@ function Discover() {
                     )}
                   </div>
                 </div>
-                <div className='flex items-center gap-2'>
+                <div className='flex items-center gap-1.5'>
                   {isNearMeLoading && (
                     <div className='animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent'></div>
                   )}
@@ -859,6 +981,26 @@ function Discover() {
                   {!isNearMeEnabled && !isNearMeLoading && (
                     <div className='w-6 h-6 rounded-full border-2 border-gray-300 group-hover:border-blue-400'></div>
                   )}
+                  {/* Nút thu gọn / mở rộng tuỳ chọn nâng cao */}
+                  <button
+                    type='button'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsNearMeDetailsOpen((prev) => !prev)
+                    }}
+                    className='p-1 rounded-full hover:bg-blue-50 transition-colors'
+                    aria-label={isNearMeDetailsOpen ? 'Thu gọn tuỳ chọn gần tôi' : 'Mở rộng tuỳ chọn gần tôi'}
+                  >
+                    <svg
+                      className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isNearMeDetailsOpen ? 'rotate-180' : ''
+                        }`}
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 9l-7 7-7-7' />
+                    </svg>
+                  </button>
                 </div>
               </button>
 
@@ -887,9 +1029,9 @@ function Discover() {
                 </div>
               )}
 
-              {/* Sub-options với animation */}
+              {/* Sub-options với animation (thu gọn khi isNearMeDetailsOpen = false) */}
               <div
-                className={`overflow-hidden transition-all duration-300 ease-in-out ${isNearMeEnabled ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${isNearMeEnabled && isNearMeDetailsOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
                   }`}
               >
                 <div className='px-4 pb-3 space-y-2 pt-1'>
@@ -946,7 +1088,7 @@ function Discover() {
                           />
                         </svg>
                       </div>
-                      <span>Đặc sản khác vùng</span>
+                      <span>Đặc sản phương xa</span>
                     </div>
                     {otherSpecialtyEnabled && (
                       <div className='w-5 h-5 rounded-full bg-white flex items-center justify-center'>
@@ -990,12 +1132,12 @@ function Discover() {
                     </svg>
                   </div>
                   <div className='text-left'>
-                    <p className={`font-semibold text-sm ${selectedFilterType === 'origin' ? 'text-green-900' : 'text-gray-900'}`}>
+                    <p
+                      className={`font-semibold text-sm ${selectedFilterType === 'origin' ? 'text-green-900' : 'text-gray-900'}`}
+                    >
                       Đặc sản theo vùng
                     </p>
-                    {selectedRegion && (
-                      <p className='text-xs text-gray-500 mt-0.5'>{selectedRegion}</p>
-                    )}
+                    {selectedRegion && <p className='text-xs text-gray-500 mt-0.5'>{selectedRegion}</p>}
                   </div>
                 </div>
                 <div className='flex items-center gap-2'>
@@ -1117,7 +1259,12 @@ function Discover() {
         <div className='px-6 py-4 border-b border-gray-200'>
           <div className='relative group'>
             <div className='absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none'>
-              <svg className='w-5 h-5 text-gray-400 group-focus-within:text-green-500 transition-colors' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <svg
+                className='w-5 h-5 text-gray-400 group-focus-within:text-green-500 transition-colors'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
                 <path
                   strokeLinecap='round'
                   strokeLinejoin='round'
@@ -1128,14 +1275,23 @@ function Discover() {
             </div>
             <input
               type='text'
-              placeholder='Nhập tên tỉnh/thành phố - Cửa hàng'
+              placeholder={isNearMeEnabled ? 'Nhập tên cửa hàng' : 'Nhập tên tỉnh - Cửa hàng'}
               value={provinceSearch}
               onChange={(e) => handleProvinceSearchChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  setAppliedSearch(provinceSearch.trim())
+                }
+              }}
               className='w-full px-4 py-3 pl-11 pr-10 rounded-xl border-2 border-gray-200 bg-gray-50 focus:outline-none focus:border-green-500 focus:bg-white focus:ring-2 focus:ring-green-200 transition-all duration-200 text-sm placeholder:text-gray-400'
             />
             {provinceSearch && (
               <button
-                onClick={() => setProvinceSearch('')}
+                onClick={() => {
+                  setProvinceSearch('')
+                  setAppliedSearch('')
+                }}
                 className='absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors'
               >
                 <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -1143,12 +1299,27 @@ function Discover() {
                 </svg>
               </button>
             )}
+            {/* Nút search để chủ động áp dụng, tránh filter mỗi ký tự */}
+            <button
+              onClick={() => setAppliedSearch(provinceSearch.trim())}
+              className='absolute inset-y-0 right-0 pr-4 flex items-center text-green-600 hover:text-green-700 transition-colors'
+              aria-label='Search'
+            >
+              <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
+                />
+              </svg>
+            </button>
           </div>
         </div>
 
         {/* Store List */}
         <div className='flex-1 overflow-y-auto px-6 py-4'>
-          {(isNearMeEnabled ? nearbyStores : stores).length === 0 ? (
+          {visibleStores.length === 0 ? (
             <div className='text-center py-12 text-gray-500'>
               <svg
                 className='w-16 h-16 mx-auto mb-4 text-gray-300'
@@ -1167,7 +1338,7 @@ function Discover() {
             </div>
           ) : (
             <div className='space-y-4'>
-              {(isNearMeEnabled ? nearbyStores : stores).map((store) => (
+              {visibleStores.map((store) => (
                 <div
                   key={store.ID}
                   onClick={() => handleStoreSelect(store)}
@@ -1205,8 +1376,14 @@ function Discover() {
         </div>
       </div>
 
-      {/* Story Dropdown - Góc trên bên phải */}
-      <div ref={dropdownRef} className='absolute top-4 right-4 z-50'>
+      {/* Story Dropdown - Góc trên bên phải, ẩn khi scroll để không che header */}
+      <div
+        ref={dropdownRef}
+        className={`absolute top-4 right-4 z-50 transition-all duration-300 ${isStoryButtonHidden && !isStoryDropdownOpen
+          ? 'opacity-0 pointer-events-none -translate-y-4'
+          : 'opacity-100 translate-y-0'
+          }`}
+      >
         {/* Toggle Button */}
         <button
           onClick={handleToggleDropdown}

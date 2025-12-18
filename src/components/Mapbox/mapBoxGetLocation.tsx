@@ -17,6 +17,31 @@ interface MapBoxGetLocationProps {
   }) => void
 }
 
+// Helper chuẩn hóa chuỗi tiếng Việt để so khớp tên địa lý ổn định hơn
+const normalizeVietnamese = (str: string) =>
+  str
+    ? str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[.,]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    : ''
+
+// Chuẩn hóa thêm cho tên tỉnh/thành, quận/huyện, phường/xã
+const normalizeLocationString = (str: string) => {
+  let s = normalizeVietnamese(str)
+
+  // Đồng nhất các tiền tố "thành phố" / "tp", "quận" / "q", "huyện" / "h"
+  s = s
+    .replace(/\b(tp|thanh pho)\b/g, 'thanhpho')
+    .replace(/\b(q|quan)\b/g, 'quan')
+    .replace(/\b(h|huyen)\b/g, 'huyen')
+
+  return s
+}
+
 const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const map = useRef<mapboxgl.Map | null>(null)
@@ -564,10 +589,17 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
           const provincesResponse = await addressApi.getProvinces()
           const provinces = Array.isArray(provincesResponse) ? provincesResponse : provincesResponse.data
 
-          // Tìm provinceId dựa trên tên tỉnh/thành phố đã được mapping
-          const province = provinces.find(
-            (p) => mappedProvinceName.includes(p.ProvinceName) || p.ProvinceName.includes(mappedProvinceName)
-          )
+          const normalizedMappedProvince = normalizeLocationString(mappedProvinceName)
+
+          // Tìm provinceId dựa trên tên tỉnh/thành phố đã được mapping (không phân biệt dấu, cách viết)
+          const province = provinces.find((p) => {
+            const normProvince = normalizeLocationString(p.ProvinceName)
+            return (
+              normProvince === normalizedMappedProvince ||
+              normProvince.includes(normalizedMappedProvince) ||
+              normalizedMappedProvince.includes(normProvince)
+            )
+          })
 
           if (province) {
             console.log('✅ Tìm thấy tỉnh/thành phố:', province.ProvinceName)
@@ -577,10 +609,17 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
             const districtsResponse = await addressApi.getDistricts(provinceId)
             const districts = Array.isArray(districtsResponse) ? districtsResponse : districtsResponse.data
 
-            // Tìm districtId dựa trên tên quận/huyện đã được mapping
-            const district = districts.find(
-              (d) => mappedDistrictName.includes(d.DistrictName) || d.DistrictName.includes(mappedDistrictName)
-            )
+            const normalizedMappedDistrict = normalizeLocationString(mappedDistrictName)
+
+            // Tìm districtId dựa trên tên quận/huyện đã được mapping (không phân biệt dấu, cách viết)
+            const district = districts.find((d) => {
+              const normDistrict = normalizeLocationString(d.DistrictName)
+              return (
+                normDistrict === normalizedMappedDistrict ||
+                normDistrict.includes(normalizedMappedDistrict) ||
+                normalizedMappedDistrict.includes(normDistrict)
+              )
+            })
 
             if (district) {
               console.log('✅ Tìm thấy quận/huyện:', district.DistrictName)
@@ -590,8 +629,17 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
               const wardsResponse = await addressApi.getWards(districtId)
               const wards = Array.isArray(wardsResponse) ? wardsResponse : wardsResponse.data
 
-              // Tìm wardId dựa trên tên phường/xã đã được mapping
-              const ward = wards.find((w) => mappedWardName.includes(w.WardName) || w.WardName.includes(mappedWardName))
+              const normalizedMappedWard = normalizeLocationString(mappedWardName)
+
+              // Tìm wardId dựa trên tên phường/xã đã được mapping (không phân biệt dấu, cách viết)
+              const ward = wards.find((w) => {
+                const normWard = normalizeLocationString(w.WardName)
+                return (
+                  normWard === normalizedMappedWard ||
+                  normWard.includes(normalizedMappedWard) ||
+                  normalizedMappedWard.includes(normWard)
+                )
+              })
 
               if (ward) {
                 console.log('✅ Tìm thấy phường/xã:', ward.WardName)
@@ -612,136 +660,23 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
                 console.log('✅ Đã cập nhật thông tin địa chỉ:', locationData)
               } else {
                 console.warn('⚠️ Không tìm thấy phường/xã phù hợp:', mappedWardName)
-                // Thử tìm ward gần nhất hoặc ward đầu tiên trong district
-                const fallbackWard = wards.length > 0 ? wards[0] : null
-
-                if (fallbackWard) {
-                  console.log('🔄 Sử dụng ward fallback:', fallbackWard.WardName)
-                  setLocationInfo({
-                    province: province.ProvinceName,
-                    provinceId: provinceId,
-                    district: district.DistrictName,
-                    districtId: districtId,
-                    ward: fallbackWard.WardName,
-                    wardId: parseInt(fallbackWard.WardCode),
-                    streetAddress: streetAddress
-                  })
-                } else {
-                  // Vẫn set thông tin với wardId = 0
-                  setLocationInfo({
-                    province: province.ProvinceName,
-                    provinceId: provinceId,
-                    district: district.DistrictName,
-                    districtId: districtId,
-                    ward: mappedWardName || 'Không xác định',
-                    wardId: 0,
-                    streetAddress: streetAddress
-                  })
-                }
-              }
-            } else {
-              console.warn('⚠️ Không tìm thấy quận/huyện phù hợp:', mappedDistrictName)
-              // Thử tìm district gần nhất hoặc district đầu tiên trong province
-              const fallbackDistrict = districts.length > 0 ? districts[0] : null
-
-              if (fallbackDistrict) {
-                console.log('🔄 Sử dụng district fallback:', fallbackDistrict.DistrictName)
-                // Load wards cho district fallback
-                try {
-                  const wardsResponse = await addressApi.getWards(fallbackDistrict.DistrictID)
-                  const wards = Array.isArray(wardsResponse) ? wardsResponse : wardsResponse.data
-                  const fallbackWard = wards.length > 0 ? wards[0] : null
-
-                  setLocationInfo({
-                    province: province.ProvinceName,
-                    provinceId: provinceId,
-                    district: fallbackDistrict.DistrictName,
-                    districtId: fallbackDistrict.DistrictID,
-                    ward: fallbackWard ? fallbackWard.WardName : mappedWardName || 'Không xác định',
-                    wardId: fallbackWard ? parseInt(fallbackWard.WardCode) : 0,
-                    streetAddress: streetAddress
-                  })
-                } catch (error) {
-                  console.error('❌ Lỗi khi load wards cho district fallback:', error)
-                  setLocationInfo({
-                    province: province.ProvinceName,
-                    provinceId: provinceId,
-                    district: fallbackDistrict.DistrictName,
-                    districtId: fallbackDistrict.DistrictID,
-                    ward: mappedWardName || 'Không xác định',
-                    wardId: 0,
-                    streetAddress: streetAddress
-                  })
-                }
-              } else {
-                // Vẫn set thông tin với districtId = 0
+                // Không tự chọn phường fallback để tránh sai lệch – giữ wardId = 0
                 setLocationInfo({
                   province: province.ProvinceName,
                   provinceId: provinceId,
-                  district: mappedDistrictName || 'Không xác định',
-                  districtId: 0,
-                  ward: mappedWardName || 'Không xác định',
-                  wardId: 0,
-                  streetAddress: streetAddress
-                })
-              }
-            }
-          } else {
-            console.warn('⚠️ Không tìm thấy tỉnh/thành phố phù hợp:', mappedProvinceName)
-            // Thử tìm province gần nhất hoặc province đầu tiên
-            const fallbackProvince = provinces.length > 0 ? provinces[0] : null
-
-            if (fallbackProvince) {
-              console.log('🔄 Sử dụng province fallback:', fallbackProvince.ProvinceName)
-              // Load districts cho province fallback
-              try {
-                const districtsResponse = await addressApi.getDistricts(fallbackProvince.ProvinceID)
-                const districts = Array.isArray(districtsResponse) ? districtsResponse : districtsResponse.data
-                const fallbackDistrict = districts.length > 0 ? districts[0] : null
-
-                if (fallbackDistrict) {
-                  // Load wards cho district fallback
-                  const wardsResponse = await addressApi.getWards(fallbackDistrict.DistrictID)
-                  const wards = Array.isArray(wardsResponse) ? wardsResponse : wardsResponse.data
-                  const fallbackWard = wards.length > 0 ? wards[0] : null
-
-                  setLocationInfo({
-                    province: fallbackProvince.ProvinceName,
-                    provinceId: fallbackProvince.ProvinceID,
-                    district: fallbackDistrict.DistrictName,
-                    districtId: fallbackDistrict.DistrictID,
-                    ward: fallbackWard ? fallbackWard.WardName : mappedWardName || 'Không xác định',
-                    wardId: fallbackWard ? parseInt(fallbackWard.WardCode) : 0,
-                    streetAddress: streetAddress
-                  })
-                } else {
-                  setLocationInfo({
-                    province: fallbackProvince.ProvinceName,
-                    provinceId: fallbackProvince.ProvinceID,
-                    district: mappedDistrictName || 'Không xác định',
-                    districtId: 0,
-                    ward: mappedWardName || 'Không xác định',
-                    wardId: 0,
-                    streetAddress: streetAddress
-                  })
-                }
-              } catch (error) {
-                console.error('❌ Lỗi khi load districts/wards cho province fallback:', error)
-                setLocationInfo({
-                  province: fallbackProvince.ProvinceName,
-                  provinceId: fallbackProvince.ProvinceID,
-                  district: mappedDistrictName || 'Không xác định',
-                  districtId: 0,
+                  district: district.DistrictName,
+                  districtId: districtId,
                   ward: mappedWardName || 'Không xác định',
                   wardId: 0,
                   streetAddress: streetAddress
                 })
               }
             } else {
-              // Vẫn set thông tin với provinceId = 0
+              console.warn('⚠️ Không tìm thấy quận/huyện phù hợp:', mappedDistrictName)
+              // Không tự chọn quận/huyện fallback – giữ districtId = 0
               setLocationInfo({
-                province: mappedProvinceName || 'Không xác định',
-                provinceId: 0,
+                province: province.ProvinceName,
+                provinceId: provinceId,
                 district: mappedDistrictName || 'Không xác định',
                 districtId: 0,
                 ward: mappedWardName || 'Không xác định',
@@ -749,6 +684,18 @@ const MapBoxGetLocation: React.FC<MapBoxGetLocationProps> = ({ onLocationConfirm
                 streetAddress: streetAddress
               })
             }
+          } else {
+            console.warn('⚠️ Không tìm thấy tỉnh/thành phố phù hợp:', mappedProvinceName)
+            // Không tự chọn province fallback – giữ provinceId = 0
+            setLocationInfo({
+              province: mappedProvinceName || 'Không xác định',
+              provinceId: 0,
+              district: mappedDistrictName || 'Không xác định',
+              districtId: 0,
+              ward: mappedWardName || 'Không xác định',
+              wardId: 0,
+              streetAddress: streetAddress
+            })
           }
         } catch (error) {
           console.error('❌ Lỗi khi lấy thông tin địa chỉ từ GHN API:', error)

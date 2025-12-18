@@ -4,6 +4,7 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import Loading from '../Loading/loading'
 import path from '../../constants/path'
+import { storeApi, type StoreProductItemDTO } from '../../apis/store.api'
 
 // Định nghĩa kiểu dữ liệu cho cửa hàng
 interface Store {
@@ -18,6 +19,8 @@ interface Store {
   CoverImageURL: string | null
   lng?: number
   lat?: number
+  provinceId?: number | null
+  targetProvinceId?: number | null
 }
 
 interface MapBoxByStoreProps {
@@ -26,11 +29,12 @@ interface MapBoxByStoreProps {
   selectedStoreId?: string | null
   onStoreIdChange?: (storeId: string | null) => void
   hidePanel?: boolean
-  userLocation?: { lng: number; lat: number } | null // 用户位置
-  radiusKm?: number // 半径（km），默认100km
-  zoomToUserLocation?: boolean // 是否缩放到用户位置
+  userLocation?: { lng: number; lat: number } | null
+  radiusKm?: number
+  zoomToUserLocation?: boolean
   onStoresWithCoordinatesLoaded?: (stores: Store[]) => void // Callback khi đã geocode xong stores
   limitToRadius?: boolean // Nếu true, chỉ hiển thị marker trong bán kính radiusKm quanh userLocation
+  visibleStoreIds?: string[] // Danh sách storeId cần hiển thị (sync với list bên trái)
 }
 
 const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
@@ -43,7 +47,8 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
   radiusKm = 100,
   zoomToUserLocation = false,
   onStoresWithCoordinatesLoaded,
-  limitToRadius = false
+  limitToRadius = false,
+  visibleStoreIds
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const map = useRef<mapboxgl.Map | null>(null)
@@ -56,6 +61,14 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
   const [isPanelOpen, setIsPanelOpen] = useState(!hidePanel)
   const [searchQuery, setSearchQuery] = useState('')
   const navigate = useNavigate()
+
+  // State để cache preview sản phẩm/combo theo storeId
+  const [storePreviewCache, setStorePreviewCache] = useState<{
+    [storeId: string]: { products: StoreProductItemDTO[]; combos: StoreProductItemDTO[] }
+  }>({})
+  const [storePreviewLoading, setStorePreviewLoading] = useState<{ [storeId: string]: boolean }>({})
+  const cacheRef = useRef<{ [storeId: string]: { products: StoreProductItemDTO[]; combos: StoreProductItemDTO[] } }>({})
+  const loadingRef = useRef<{ [storeId: string]: boolean }>({})
 
   // Sync với external state nếu có
   useEffect(() => {
@@ -113,6 +126,17 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
 
   // Geocoding function
   const geocodeStoreAddress = useCallback(async (store: Store): Promise<Store> => {
+    // Nếu đã có toạ độ từ backend thì dùng luôn, không gọi Mapbox Geocoding nữa
+    if (store.lat != null && store.lng != null) {
+      console.log('📍 [GEOCODE] Skip, dùng toạ độ từ backend:', {
+        storeId: store.ID,
+        storeName: store.StoreName,
+        lat: store.lat,
+        lng: store.lng
+      })
+      return store
+    }
+
     try {
       const fullAddress = `${store.Address}, ${store.Ward}, ${store.District}, ${store.Province}, Việt Nam`
 
@@ -185,6 +209,21 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
     setIsLoading(true)
 
     const geocodeAllStores = async () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7dd65070-5a76-435b-8591-8105b696a5a2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'pre-fix',
+          hypothesisId: 'H3',
+          location: 'mapBoxByStore.tsx:geocodeAllStores',
+          message: 'geocode all start',
+          data: { stores: stores.length },
+          timestamp: Date.now()
+        })
+      }).catch(() => { })
+      // #endregion
       try {
         console.log('🔄 [GEOCODE ALL] Bắt đầu geocode tất cả stores, tổng số:', stores.length)
         console.log('🔄 [GEOCODE ALL] Danh sách stores:', stores.map(s => ({
@@ -228,6 +267,21 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
         console.error('❌ [GEOCODE ALL] Lỗi khi geocoding các cửa hàng:', error)
       } finally {
         setIsLoading(false)
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7dd65070-5a76-435b-8591-8105b696a5a2', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H3',
+            location: 'mapBoxByStore.tsx:geocodeAllStores',
+            message: 'geocode all end',
+            data: { valid: storesWithCoordinates.length },
+            timestamp: Date.now()
+          })
+        }).catch(() => { })
+        // #endregion
       }
     }
 
@@ -235,7 +289,7 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
   }, [isMapLoaded, stores, geocodeStoreAddress, onStoresWithCoordinatesLoaded])
 
   // Tạo custom marker element với thiết kế đẹp hơn
-  const createMarkerElement = (store: Store, isSelected: boolean) => {
+  const createMarkerElement = (store: Store, isSelected: boolean, markerColor: 'blue' | 'green') => {
     const el = document.createElement('div')
     el.className = 'store-marker-container'
 
@@ -245,8 +299,10 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
         <svg width="35" height="45" viewBox="0 0 40 50" style="filter: drop-shadow(0 3px 5px rgba(0,0,0,0.3));">
           <defs>
             <linearGradient id="gradient-${store.ID}" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:${isSelected ? '#f59e0b' : '#3b82f6'};stop-opacity:1" />
-              <stop offset="100%" style="stop-color:${isSelected ? '#d97706' : '#1e40af'};stop-opacity:1" />
+              <stop offset="0%" style="stop-color:${markerColor === 'green' ? (isSelected ? '#16a34a' : '#22c55e') : isSelected ? '#2563eb' : '#3b82f6'
+      };stop-opacity:1" />
+              <stop offset="100%" style="stop-color:${markerColor === 'green' ? (isSelected ? '#15803d' : '#16a34a') : isSelected ? '#1d4ed8' : '#1e40af'
+      };stop-opacity:1" />
             </linearGradient>
           </defs>
           <!-- Pin shape -->
@@ -259,7 +315,7 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
           <!-- Store icon -->
           <g transform="translate(20, 18)">
             <path d="M -3.5 -1.5 L -3.5 3.5 L 3.5 3.5 L 3.5 -1.5 Z M -2.5 -3.5 L 2.5 -3.5 L 2.5 -1.5 L -2.5 -1.5 Z" 
-                  fill="${isSelected ? '#f59e0b' : '#3b82f6'}" 
+                  fill="${markerColor === 'green' ? (isSelected ? '#16a34a' : '#22c55e') : isSelected ? '#2563eb' : '#3b82f6'}" 
                   stroke="none"/>
           </g>
         </svg>
@@ -291,9 +347,214 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
     return R * c
   }
 
+  // Hàm helper để format giá tiền
+  const formatPrice = useCallback((price: number): string => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(price)
+  }, [])
+
+  // Hàm helper để render popup HTML với preview products/combos
+  const renderPopupHTML = useCallback((
+    store: Store,
+    previewData?: { products: StoreProductItemDTO[]; combos: StoreProductItemDTO[] },
+    isLoading?: boolean
+  ): string => {
+    const preview = previewData || { products: [], combos: [] }
+    const hasPreview = preview.products.length > 0 || preview.combos.length > 0
+    const displayProducts = preview.products.slice(0, 2)
+    const displayCombos = preview.combos.slice(0, 1)
+
+    return `
+        <div class="store-popup-card">
+          <!-- Cover Image -->
+          <div class="store-popup-cover">
+            <img src="${store.CoverImageURL || ''}" 
+                 alt="${store.StoreName}" 
+                 class="store-popup-cover-img" 
+                 onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
+          </div>
+          
+          <!-- Content -->
+          <div class="store-popup-content">
+            <!-- Header with Avatar and Title -->
+            <div class="store-popup-header">
+              <div class="store-popup-avatar-wrapper">
+                <img src="${store.LogoURL || ''}" 
+                     alt="${store.StoreName}" 
+                     class="store-popup-avatar"
+                     onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
+              </div>
+              <div class="store-popup-title-wrapper">
+                <h3 class="store-name-link store-popup-title" data-store-id="${store.ID}">
+                  ${store.StoreName}
+                </h3>
+              </div>
+            </div>
+            
+            <!-- Description -->
+            ${store.Description
+        ? `
+              <p class="store-popup-description">
+                ${store.Description}
+              </p>
+            `
+        : ''
+      }
+            
+            <!-- Location Info -->
+            <div class="store-popup-location">
+              <div class="store-popup-location-item">
+                <svg class="store-popup-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span class="store-popup-location-text">${store.Address}</span>
+              </div>
+            </div>
+
+            <!-- Preview Products/Combos Section -->
+            ${isLoading
+        ? `
+              <div class="store-popup-preview-loading">
+                <p class="store-popup-preview-loading-text">Đang tải sản phẩm...</p>
+              </div>
+            `
+        : hasPreview
+          ? `
+              <div class="store-popup-preview">
+                <h4 class="store-popup-preview-title">Sản phẩm nổi bật</h4>
+                <div class="store-popup-preview-grid">
+                  ${displayProducts
+            .map(
+              (product) => `
+                    <div class="store-popup-preview-item" data-product-id="${product.id}" data-product-type="Product">
+                      <div class="store-popup-preview-item-image-wrapper">
+                        <img src="${product.imageUrl || 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'}" 
+                             alt="${product.name}" 
+                             class="store-popup-preview-item-image"
+                             onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
+                      </div>
+                      <div class="store-popup-preview-item-info">
+                        <p class="store-popup-preview-item-name" title="${product.name}">${product.name}</p>
+                        <p class="store-popup-preview-item-price">${formatPrice(product.price)}</p>
+                      </div>
+                    </div>
+                  `
+            )
+            .join('')}
+                  ${displayCombos
+            .map(
+              (combo) => `
+                    <div class="store-popup-preview-item store-popup-preview-item-combo" data-product-id="${combo.id}" data-product-type="Combo">
+                      <div class="store-popup-preview-item-badge">Combo</div>
+                      <div class="store-popup-preview-item-image-wrapper">
+                        <img src="${combo.imageUrl || 'https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'}" 
+                             alt="${combo.name}" 
+                             class="store-popup-preview-item-image"
+                             onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
+                      </div>
+                      <div class="store-popup-preview-item-info">
+                        <p class="store-popup-preview-item-name" title="${combo.name}">${combo.name}</p>
+                        <p class="store-popup-preview-item-price">${formatPrice(combo.price)}</p>
+                      </div>
+                    </div>
+                  `
+            )
+            .join('')}
+                </div>
+              </div>
+            `
+          : ''
+      }
+          </div>
+        </div>
+      `
+  }, [formatPrice])
+
+  // Hàm load preview sản phẩm/combo cho một cửa hàng
+  const loadStorePreviewProducts = useCallback(async (storeId: string) => {
+    // Nếu đã có cache hoặc đang loading thì không load lại
+    if (cacheRef.current[storeId] || loadingRef.current[storeId]) {
+      return
+    }
+
+    // Set loading state
+    loadingRef.current[storeId] = true
+    setStorePreviewLoading((prev) => ({ ...prev, [storeId]: true }))
+
+    try {
+      // Load 2 sản phẩm và 1 combo song song
+      const [productsResponse, combosResponse] = await Promise.all([
+        storeApi.getStoreProducts(storeId, {
+          productType: 'Product',
+          pageSize: 2,
+          pageNumber: 1
+        }),
+        storeApi.getStoreProducts(storeId, {
+          productType: 'Combo',
+          pageSize: 1,
+          pageNumber: 1
+        })
+      ])
+
+      // Cache kết quả vào ref và state
+      const previewData = {
+        products: productsResponse.data || [],
+        combos: combosResponse.data || []
+      }
+      cacheRef.current[storeId] = previewData
+      setStorePreviewCache((prev) => ({
+        ...prev,
+        [storeId]: previewData
+      }))
+    } catch (error) {
+      console.error(`Error loading preview products for store ${storeId}:`, error)
+      // Cache empty array nếu lỗi
+      const emptyData = { products: [], combos: [] }
+      cacheRef.current[storeId] = emptyData
+      setStorePreviewCache((prev) => ({
+        ...prev,
+        [storeId]: emptyData
+      }))
+    } finally {
+      // Remove loading state
+      loadingRef.current[storeId] = false
+      setStorePreviewLoading((prev) => {
+        const newState = { ...prev }
+        delete newState[storeId]
+        return newState
+      })
+    }
+  }, [])
+
   // Thêm markers lên map
   useEffect(() => {
     if (!map.current || !storesWithCoordinates.length) return
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7dd65070-5a76-435b-8591-8105b696a5a2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'debug-session',
+        runId: 'pre-fix',
+        hypothesisId: 'H4',
+        location: 'mapBoxByStore.tsx:useEffect markers',
+        message: 'render markers',
+        data: {
+          storesWithCoordinates: storesWithCoordinates.length,
+          limitToRadius: limitToRadius,
+          userLocation: !!userLocation,
+          visibleStoreIds: visibleStoreIds ? visibleStoreIds.length : null
+        },
+        timestamp: Date.now()
+      })
+    }).catch(() => { })
+    // #endregion
 
     // Nếu limitToRadius = true và có userLocation + radiusKm thì chỉ lấy store trong bán kính
     let storesToRender = storesWithCoordinates
@@ -303,6 +564,12 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
         const distance = calculateDistanceKm(userLocation.lat, userLocation.lng, store.lat, store.lng)
         return distance <= radiusKm
       })
+    }
+
+    // Nếu có visibleStoreIds thì chỉ hiển thị những storeId nằm trong danh sách này
+    if (visibleStoreIds && visibleStoreIds.length > 0) {
+      const idSet = new Set(visibleStoreIds)
+      storesToRender = storesToRender.filter((store) => idSet.has(store.ID))
     }
 
     if (!storesToRender.length) {
@@ -344,7 +611,15 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       })
 
       const isSelected = selectedStoreId === store.ID
-      const el = createMarkerElement(store, isSelected)
+      // Xác định màu marker theo logic đặc sản địa phương / khác vùng
+      // provinceId === targetProvinceId → màu xanh lá (đặc sản địa phương)
+      // provinceId !== targetProvinceId → màu xanh dương (đặc sản khác vùng)
+      const markerColor: 'blue' | 'green' =
+        store.provinceId != null && store.targetProvinceId != null && store.provinceId === store.targetProvinceId
+          ? 'green'
+          : 'blue'
+
+      const el = createMarkerElement(store, isSelected, markerColor)
 
       // Tạo popup với thiết kế đẹp hơn, giống card thông tin
       const popup = new mapboxgl.Popup({
@@ -353,59 +628,7 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
         closeOnClick: false,
         className: 'custom-popup',
         maxWidth: '320px'
-      }).setHTML(`
-        <div class="store-popup-card">
-          <!-- Cover Image -->
-          <div class="store-popup-cover">
-            <img src="${store.CoverImageURL || ''}" 
-                 alt="${store.StoreName}" 
-                 class="store-popup-cover-img" 
-                 onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
-          </div>
-          
-          <!-- Content -->
-          <div class="store-popup-content">
-            <!-- Header with Avatar and Title -->
-            <div class="store-popup-header">
-              <div class="store-popup-avatar-wrapper">
-                <img src="${store.LogoURL || ''}" 
-                     alt="${store.StoreName}" 
-                     class="store-popup-avatar"
-                     onerror="this.src='https://i.pinimg.com/736x/c6/1c/ae/c61cae893723278b817cd64ffc966bf8.jpg'" />
-              </div>
-              <div class="store-popup-title-wrapper">
-                <h3 class="store-name-link store-popup-title" data-store-id="${store.ID}">
-                  ${store.StoreName}
-                </h3>
-              </div>
-            </div>
-            
-            <!-- Description -->
-            ${store.Description
-          ? `
-              <p class="store-popup-description">
-                ${store.Description}
-              </p>
-            `
-          : ''
-        }
-            
-            <!-- Location Info -->
-            <div class="store-popup-location">
-              <div class="store-popup-location-item">
-                <svg class="store-popup-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-                <span class="store-popup-location-text">${store.Address}</span>
-              </div>
-              
-            </div>
-          </div>
-        </div>
-      `)
+      }).setHTML(renderPopupHTML(store))
 
       // Thêm marker vào map
       const marker = new mapboxgl.Marker(el).setLngLat([store.lng, store.lat]).setPopup(popup).addTo(map.current!)
@@ -413,8 +636,40 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       // Lưu marker vào ref
       markersRef.current[store.ID] = marker
 
-      // Thêm event listener cho store name trong popup sau khi popup được mở
+      // Sự kiện khi popup được mở
       popup.on('open', () => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7dd65070-5a76-435b-8591-8105b696a5a2', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H6',
+            location: 'mapBoxByStore.tsx:popup open',
+            message: 'popup open',
+            data: { storeId: store.ID },
+            timestamp: Date.now()
+          })
+        }).catch(() => { })
+        // #endregion
+        // Set selected store để sync với panel bên trái
+        setSelectedStoreId(store.ID)
+        if (onStoreIdChange) {
+          onStoreIdChange(store.ID)
+        }
+        if (onStoreSelect) {
+          onStoreSelect(store)
+        }
+
+        // Đảm bảo chỉ có 1 popup mở: đóng các popup khác
+        Object.values(markersRef.current).forEach((m) => {
+          const p = m.getPopup()
+          if (p && p !== popup) {
+            p.remove()
+          }
+        })
+
         const popupContent = popup.getElement()
         if (popupContent) {
           const storeNameElement = popupContent.querySelector('.store-name-link')
@@ -425,30 +680,29 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
               navigate(storePath)
             })
           }
+
+          // Load preview products/combo khi popup mở
+          loadStorePreviewProducts(store.ID)
         }
       })
 
-      // Thêm sự kiện click cho marker
-      el.addEventListener('click', (e) => {
-        e.stopPropagation()
-        setSelectedStoreId(store.ID)
-        if (onStoreIdChange) {
-          onStoreIdChange(store.ID)
-        }
-        if (onStoreSelect) {
-          onStoreSelect(store)
-        }
-        // Đảm bảo popup mở ngay khi click marker và chỉ có 1 popup được mở
-        Object.values(markersRef.current).forEach((m) => {
-          const p = m.getPopup()
-          if (p) {
-            p.remove()
-          }
-        })
-        const popup = marker.getPopup()
-        if (popup && !popup.isOpen()) {
-          popup.addTo(map.current!)
-        }
+      // Sự kiện khi popup bị đóng
+      popup.on('close', () => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7dd65070-5a76-435b-8591-8105b696a5a2', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H7',
+            location: 'mapBoxByStore.tsx:popup close',
+            message: 'popup close',
+            data: { storeId: store.ID },
+            timestamp: Date.now()
+          })
+        }).catch(() => { })
+        // #endregion
       })
 
       // Mở rộng bounds
@@ -462,7 +716,17 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
         maxZoom: 15
       })
     }
-  }, [storesWithCoordinates, isPanelOpen, navigate, limitToRadius, userLocation, radiusKm])
+  }, [
+    storesWithCoordinates,
+    isPanelOpen,
+    navigate,
+    limitToRadius,
+    userLocation,
+    radiusKm,
+    loadStorePreviewProducts,
+    renderPopupHTML,
+    visibleStoreIds
+  ])
 
   // Cập nhật marker khi chọn cửa hàng
   useEffect(() => {
@@ -495,6 +759,38 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
       }
     }
   }, [selectedStoreId, storesWithCoordinates, isPanelOpen])
+
+  // Cập nhật popup HTML khi cache preview thay đổi
+  useEffect(() => {
+    if (!map.current) return
+
+    // Update popup HTML cho tất cả markers đang mở
+    Object.keys(markersRef.current).forEach((storeId) => {
+      const marker = markersRef.current[storeId]
+      const popup = marker?.getPopup()
+      if (popup && popup.isOpen()) {
+        const store = storesWithCoordinates.find((s) => s.ID === storeId)
+        if (store) {
+          const previewData = storePreviewCache[storeId]
+          const isLoading = storePreviewLoading[storeId]
+          popup.setHTML(renderPopupHTML(store, previewData, isLoading))
+
+          // Re-attach event listeners sau khi update HTML
+          const popupContent = popup.getElement()
+          if (popupContent) {
+            const storeNameElement = popupContent.querySelector('.store-name-link')
+            if (storeNameElement) {
+              storeNameElement.addEventListener('click', (e) => {
+                e.stopPropagation()
+                const storePath = path.store.replace(':storeId', storeId)
+                navigate(storePath)
+              })
+            }
+          }
+        }
+      }
+    })
+  }, [storePreviewCache, storePreviewLoading, storesWithCoordinates, navigate, renderPopupHTML])
 
   // Helper function để tạo circle geometry
   const createCircle = useCallback((center: [number, number], radiusMeters: number, points: number): [number, number][] => {
@@ -529,6 +825,22 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
   // Hiển thị vị trí người dùng và vòng tròn bán kính
   useEffect(() => {
     if (!map.current || !isMapLoaded) return
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7dd65070-5a76-435b-8591-8105b696a5a2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'debug-session',
+        runId: 'pre-fix',
+        hypothesisId: 'H5',
+        location: 'mapBoxByStore.tsx:userLocation effect',
+        message: 'user location effect',
+        data: { hasUserLocation: !!userLocation, radiusKm },
+        timestamp: Date.now()
+      })
+    }).catch(() => { })
+    // #endregion
 
     // Xóa marker cũ nếu có
     if (userLocationMarkerRef.current) {
@@ -985,6 +1297,119 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
           color: #9ca3af;
           margin-left: 24px;
           line-height: 1.4;
+        }
+
+        /* Preview Products/Combos Section */
+        .store-popup-preview {
+          margin-top: 16px;
+          padding-top: 16px;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        .store-popup-preview-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: #1f2937;
+          margin: 0 0 12px 0;
+        }
+
+        .store-popup-preview-loading {
+          margin-top: 16px;
+          padding-top: 16px;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+        }
+
+        .store-popup-preview-loading-text {
+          font-size: 12px;
+          color: #6b7280;
+          margin: 0;
+        }
+
+        .store-popup-preview-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+        }
+
+        .store-popup-preview-item {
+          position: relative;
+          background: #f9fafb;
+          border-radius: 8px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: 1px solid #e5e7eb;
+        }
+
+        .store-popup-preview-item:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          border-color: #3b82f6;
+        }
+
+        .store-popup-preview-item-combo {
+          border-color: #f97316;
+        }
+
+        .store-popup-preview-item-combo:hover {
+          border-color: #ea580c;
+        }
+
+        .store-popup-preview-item-badge {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          background: #f97316;
+          color: white;
+          font-size: 10px;
+          font-weight: 600;
+          padding: 2px 6px;
+          border-radius: 4px;
+          z-index: 1;
+          text-transform: uppercase;
+        }
+
+        .store-popup-preview-item-image-wrapper {
+          width: 100%;
+          height: 70px;
+          overflow: hidden;
+          background: #e5e7eb;
+        }
+
+        .store-popup-preview-item-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .store-popup-preview-item-info {
+          padding: 6px 8px;
+        }
+
+        .store-popup-preview-item-name {
+          font-size: 11px;
+          font-weight: 500;
+          color: #1f2937;
+          margin: 0 0 4px 0;
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          min-height: 26px;
+        }
+
+        .store-popup-preview-item-price {
+          font-size: 12px;
+          font-weight: 600;
+          color: #3b82f6;
+          margin: 0;
+        }
+
+        .store-popup-preview-item-combo .store-popup-preview-item-price {
+          color: #f97316;
         }
         
         /* Responsive */

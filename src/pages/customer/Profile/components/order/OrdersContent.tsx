@@ -1528,7 +1528,13 @@ export default function OrdersContent({
         </div>
       )}
 
-      <div className='space-y-4'>
+      <motion.div
+        key={selectedFilter}
+        className='space-y-4'
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+      >
         {currentOrders.length > 0 ? (
           currentOrders.map((order) => (
             <div key={order.id} className='bg-white border rounded-lg p-6'>
@@ -1807,7 +1813,7 @@ export default function OrdersContent({
             </p>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {totalPages > 1 && (
         <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} maxVisiblePages={2} />
