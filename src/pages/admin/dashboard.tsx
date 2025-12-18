@@ -22,6 +22,8 @@ import {
   getTopStores,
   getProcessingStores
 } from '../../apis/walletDashboard.api'
+import { getProvinces, type Province } from '../../apis/province'
+import type { ProvinceProperties } from '../../components/Province/VietnamMap'
 
 // Promotion Stats Interface
 interface PromotionStats {
@@ -71,6 +73,39 @@ function AdminDashboard() {
   const [mapZoom, setMapZoom] = useState<number>(1)
   const [revenueLoading, setRevenueLoading] = useState<boolean>(false)
   const [storesLoading, setStoresLoading] = useState<boolean>(false)
+  const [selectedProvinceId, setSelectedProvinceId] = useState<number | undefined>(undefined)
+  const [provinces, setProvinces] = useState<Province[]>([])
+
+  // Fetch provinces list to map name to ID
+  const fetchProvinces = async () => {
+    try {
+      const provincesList = await getProvinces()
+      setProvinces(provincesList)
+    } catch (err) {
+      console.error('Error fetching provinces:', err)
+    }
+  }
+
+  // Handle province selection from map
+  const handleProvinceSelect = (province: ProvinceProperties | null) => {
+    if (!province) {
+      setSelectedProvinceId(undefined)
+      return
+    }
+
+    // Find province ID by name (normalize name for comparison)
+    const normalizedName = province.Name.trim()
+    const foundProvince = provinces.find(
+      (p) => p.name.trim().toLowerCase() === normalizedName.toLowerCase()
+    )
+
+    if (foundProvince) {
+      setSelectedProvinceId(foundProvince.id)
+    } else {
+      console.warn(`Province not found: ${normalizedName}`)
+      setSelectedProvinceId(undefined)
+    }
+  }
 
   // Fetch available years
   const fetchAvailableYears = async () => {
@@ -117,10 +152,10 @@ function AdminDashboard() {
   }
 
   // Fetch revenue data only (for chart)
-  const fetchRevenueData = async (year: number) => {
+  const fetchRevenueData = async (year: number, provinceId?: number) => {
     try {
       setRevenueLoading(true)
-      const revenueResponse = await getMonthlyRevenue(year)
+      const revenueResponse = await getMonthlyRevenue(year, provinceId)
       const revenueData = revenueResponse.data
 
       // Update only revenue data in dashboardData
@@ -197,11 +232,11 @@ function AdminDashboard() {
       setError(null)
 
       // Fetch admin dashboard overview
-      const adminDashboardResponse = await getAdminDashboard()
+      const adminDashboardResponse = await getAdminDashboard(selectedProvinceId)
       const adminData = adminDashboardResponse.data
 
-      // Fetch monthly revenue - HỖ TRỢ filter theo năm
-      const revenueResponse = await getMonthlyRevenue(year)
+      // Fetch monthly revenue - HỖ TRỢ filter theo năm và provinceId
+      const revenueResponse = await getMonthlyRevenue(year, selectedProvinceId)
       const revenueData = revenueResponse.data
 
       // Fetch top stores - HỖ TRỢ filter theo năm
@@ -292,6 +327,7 @@ function AdminDashboard() {
 
   useEffect(() => {
     fetchAvailableYears()
+    fetchProvinces()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -299,7 +335,7 @@ function AdminDashboard() {
       fetchDashboardData(selectedYear)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYear])
+  }, [selectedYear, selectedProvinceId])
 
   // Transform data for charts
   const revenueData = dashboardData?.summary?.revenueByMonth
@@ -313,7 +349,7 @@ function AdminDashboard() {
     setSelectedYear(year)
     // Only fetch data for the specific component
     if (component === 'revenue') {
-      fetchRevenueData(year)
+      fetchRevenueData(year, selectedProvinceId)
     } else if (component === 'stores') {
       fetchTopStoresData(year)
     }
@@ -560,8 +596,28 @@ function AdminDashboard() {
 
           {/* Vietnam Region Map */}
           <Card className='bg-white shadow-sm'>
-            <CardHeader>
-              <CardTitle className='text-lg font-semibold text-gray-900'>Bản đồ tỉnh</CardTitle>
+            <CardHeader className='flex flex-row items-center justify-between'>
+              <CardTitle className='text-lg font-semibold text-gray-900'>
+                Bản đồ tỉnh
+                {selectedProvinceId && (
+                  <span className='ml-2 text-sm font-normal text-gray-500'>
+                    ({provinces.find((p) => p.id === selectedProvinceId)?.name})
+                  </span>
+                )}
+              </CardTitle>
+              {selectedProvinceId && (
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => {
+                    setSelectedProvinceId(undefined)
+                    handleProvinceSelect(null)
+                  }}
+                  className='text-xs'
+                >
+                  Xóa lọc
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className='relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200  overflow-hidden'>
@@ -573,7 +629,7 @@ function AdminDashboard() {
                       transformOrigin: 'center center'
                     }}
                   >
-                    <VietnamMap setSelectedProvince={() => { }} />
+                    <VietnamMap setSelectedProvince={handleProvinceSelect} />
                   </div>
                 </div>
                 {/* Zoom Controls */}

@@ -347,9 +347,15 @@ export interface ApiResponse<T> {
  * Lấy thông tin tổng quan dashboard cho Admin
  * GET /api/wallet-dashboard/Admin
  */
-export const getAdminDashboard = async (): Promise<ApiResponse<AdminDashboardResponse>> => {
+export const getAdminDashboard = async (provinceId?: number): Promise<ApiResponse<AdminDashboardResponse>> => {
+  const params: Record<string, string> = {}
+  if (provinceId !== undefined) {
+    params.provinceId = provinceId.toString()
+  }
+  
+  const queryString = Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : ''
   const response = await axiosInstance.get<ApiResponse<AdminDashboardResponse>>(
-    `${API_URL}/Admin`
+    `${API_URL}/Admin${queryString}`
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
   return response as any
@@ -360,14 +366,20 @@ export const getAdminDashboard = async (): Promise<ApiResponse<AdminDashboardRes
  * GET /api/wallet-dashboard/Admin/revenue-monthly?year=2025
  */
 export const getMonthlyRevenue = async (
-  year?: number
+  year?: number,
+  provinceId?: number
 ): Promise<ApiResponse<RevenueChartResponse>> => {
+  const params: Record<string, string> = {
+    year: (year || new Date().getFullYear()).toString()
+  }
+  if (provinceId !== undefined) {
+    params.provinceId = provinceId.toString()
+  }
+  
   const response = await axiosInstance.get<ApiResponse<RevenueChartResponse>>(
     `${API_URL}/Admin/revenue-monthly`,
     {
-      params: {
-        year: year || new Date().getFullYear()
-      }
+      params
     }
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
