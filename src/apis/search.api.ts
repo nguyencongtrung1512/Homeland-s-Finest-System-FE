@@ -159,9 +159,9 @@ export const searchApi = {
   /**
    * Get search suggestions based on prefix
    * @param request - Suggest request parameters
-   * @returns Array of suggested search terms or products
+   * @returns Array of suggested search terms (string[])
    */
-  suggest: async (request: SearchSuggestRequest): Promise<string[] | Product[]> => {
+  suggest: async (request: SearchSuggestRequest): Promise<string[]> => {
     const params: Record<string, string | number | undefined> = {
       Prefix: request.prefix
     }
@@ -177,7 +177,8 @@ export const searchApi = {
     }
 
     const response = await axiosInstance.get(`${API_URL}/suggest`, { params })
-    return response as unknown as string[] | Product[]
+    // API trả về string[] (mảng các từ khóa gợi ý)
+    return (response as unknown as string[]) || []
   }
 }
 
