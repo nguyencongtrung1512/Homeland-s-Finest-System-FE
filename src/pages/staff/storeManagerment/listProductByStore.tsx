@@ -28,18 +28,23 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui
 import { ShimmerBorder } from '../../../components/ui/shimmer'
 import path from '../../../constants/path'
 
-// Interface for product from store API
-interface StoreProduct {
+// Interface cho item trả về từ /Store/{storeId}/products
+interface StoreProductItemDTO {
   id: string
+  type: 'Product' | 'Combo'
   name: string
-  description: string | null
-  productImages: string[] | null
-  saleCount: number | null
-  rating: number | null
-  reviewCount: number | null
-  isActive: boolean
-  status: string
+  description?: string
+  price: number
+  imageUrl?: string
+  saleCount: number
+  rating: number
+  reviewCount: number
+  soldOut: boolean
+  hashtagIds?: string[]
   createdAt: string
+  // Backend có thể trả thêm status/isActive; để an toàn giữ optional
+  status?: string
+  isActive?: boolean
 }
 
 interface ProductData {
@@ -136,7 +141,7 @@ function ListProductByStoreStaff() {
   const [comboCurrentPage, setComboCurrentPage] = useState(1)
 
   // Convert Store Product to ProductData
-  const convertProduct = (storeProduct: StoreProduct): ProductData => {
+  const convertProduct = useCallback((storeProduct: StoreProductItemDTO): ProductData => {
     const formatDate = (dateString: string) => {
       if (dateString.includes(' ')) {
         return dateString.split(' ')[1] || dateString
@@ -152,19 +157,21 @@ function ListProductByStoreStaff() {
     return {
       key: storeProduct.id,
       product: {
-        image: storeProduct.productImages && storeProduct.productImages.length > 0 ? storeProduct.productImages[0] : '',
+        image: storeProduct.imageUrl || '',
         name: storeProduct.name,
         id: storeProduct.id
       },
       description: storeProduct.description || '',
       category: 'N/A',
       createdDate: formatDate(storeProduct.createdAt),
-      status: storeProduct.status as 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Confirmed' | 'Denied',
-      rating: storeProduct.rating,
-      saleCount: storeProduct.saleCount,
-      isActive: storeProduct.isActive
+      status:
+        (storeProduct.status as 'Pending' | 'Approved' | 'Rejected' | 'Processing' | 'Confirmed' | 'Denied' | undefined) ||
+        'Approved',
+      rating: storeProduct.rating ?? 0,
+      saleCount: storeProduct.saleCount ?? 0,
+      isActive: storeProduct.isActive ?? !storeProduct.soldOut
     }
-  }
+  }, [])
 
   // Fetch store info
   const fetchStoreInfo = useCallback(async () => {
@@ -182,7 +189,7 @@ function ListProductByStoreStaff() {
   }, [storeId])
 
   // Fetch product categories
-  const fetchProductCategories = async () => {
+  const fetchProductCategories = useCallback(async () => {
     try {
       setCategoriesLoading(true)
       const response = await getAllProductCategory({
@@ -202,48 +209,49 @@ function ListProductByStoreStaff() {
     } finally {
       setCategoriesLoading(false)
     }
-  }
+  }, [])
 
-  // Fetch products by store
-  const fetchProductsByStore = async () => {
+  // Fetch products by store (server pagination)
+  const fetchProductsByStore = useCallback(async () => {
     if (!storeId) return
 
     try {
       setLoading(true)
       setError(null)
 
-      const response = await storeApi.getStoreById(storeId)
-      const storeData: StoreResponse = response.data?.data || response.data || (response as unknown as StoreResponse)
+      const response = await storeApi.getStoreProducts(storeId, {
+        pageSize,
+        pageNumber: currentPage,
+        name: searchText.trim() || undefined
+      })
 
-      if (storeData) {
-        setStoreName(storeData.storeName || '')
+      // axiosInstance đã unwrap -> response là { status, message, data, pagination }
+      // nhưng vẫn phòng trường hợp chưa unwrap để tránh lỗi
+      const apiData = (response as { data?: any; pagination?: any })
+      const productsSource =
+        Array.isArray(apiData?.data) || apiData?.data === null ? apiData.data : (apiData as unknown as any[])
+      const products = (Array.isArray(productsSource) ? productsSource : []) as StoreProductItemDTO[]
+      const pagination = apiData?.pagination
 
-        let products: StoreProduct[] = []
-        if (Array.isArray(storeData.products)) {
-          products = storeData.products as StoreProduct[]
-        }
-
-        let filteredProducts = products
-
-        if (searchText.trim()) {
-          const searchLower = searchText.trim().toLowerCase()
-          filteredProducts = filteredProducts.filter(
-            (p) =>
-              p.name.toLowerCase().includes(searchLower) ||
-              (p.description && p.description.toLowerCase().includes(searchLower))
-          )
-        }
-
-        if (statusFilter !== 'all') {
-          filteredProducts = filteredProducts.filter((p) => p.status.toLowerCase() === statusFilter.toLowerCase())
-        }
-
-        const convertedProducts = filteredProducts.map(convertProduct)
-        setProductData(convertedProducts)
-        setTotalProducts(convertedProducts.length)
+      // Dùng server total nếu có, fallback theo length
+      if (pagination?.totalItems !== undefined) {
+        setTotalProducts(pagination.totalItems)
       } else {
-        setError('Không thể tải thông tin cửa hàng')
+        setTotalProducts(products.length)
       }
+
+      // Filter trạng thái phía client (API chưa hỗ trợ)
+      let filteredProducts = products
+      if (statusFilter !== 'all') {
+        filteredProducts = filteredProducts.filter(
+          (p) =>
+            (p.status || '').toLowerCase() === statusFilter.toLowerCase() ||
+            ((p as any).status || '').toLowerCase() === statusFilter.toLowerCase()
+        )
+      }
+
+      const convertedProducts = filteredProducts.map(convertProduct)
+      setProductData(convertedProducts)
     } catch (err: unknown) {
       console.error('Error fetching store products:', err)
       const errorMessage =
@@ -255,7 +263,7 @@ function ListProductByStoreStaff() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [storeId, pageSize, currentPage, searchText, statusFilter, convertProduct])
 
   // Fetch combos by store
   const fetchCombos = useCallback(async () => {
@@ -269,7 +277,7 @@ function ListProductByStoreStaff() {
         storeId: storeId
       }
 
-      const combos = await getAllCombos(params)
+      const { data: combos } = await getAllCombos(params)
       setComboData(Array.isArray(combos) ? combos : [])
     } catch (error) {
       console.error('Error fetching combos:', error)
@@ -282,7 +290,7 @@ function ListProductByStoreStaff() {
   useEffect(() => {
     fetchStoreInfo()
     fetchProductCategories()
-  }, [fetchStoreInfo])
+  }, [fetchStoreInfo, fetchProductCategories])
 
   useEffect(() => {
     if (activeTab === 'products') {
@@ -290,12 +298,11 @@ function ListProductByStoreStaff() {
     } else {
       fetchCombos()
     }
-  }, [storeId, activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [storeId, activeTab, currentPage, searchText, statusFilter, fetchProductsByStore, fetchCombos])
 
   useEffect(() => {
     setCurrentPage(1)
-    fetchProductsByStore()
-  }, [searchText, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchText, statusFilter])
 
   // Filter combo data
   const filteredComboData = useMemo(() => {
@@ -320,8 +327,8 @@ function ListProductByStoreStaff() {
   // Pagination
   const totalFilteredProducts = totalProducts
   const startIndex = (currentPage - 1) * pageSize
-  const endIndex = Math.min(startIndex + pageSize, totalFilteredProducts)
-  const paginatedProducts = productData.slice(startIndex, endIndex)
+  const endIndex = Math.min(startIndex + productData.length, totalFilteredProducts)
+  const paginatedProducts = productData
 
   const comboTotalPages = Math.ceil(filteredComboData.length / pageSize)
   const comboStartIndex = (comboCurrentPage - 1) * pageSize

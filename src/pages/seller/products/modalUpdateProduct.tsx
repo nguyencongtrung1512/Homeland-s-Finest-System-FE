@@ -16,7 +16,9 @@ import {
   FolderOpen,
   Search,
   Hash,
-  AtSign
+  AtSign,
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react'
 import { productApi } from '../../../apis/product.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
@@ -62,6 +64,22 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
   const [mentionSearchLoading, setMentionSearchLoading] = useState(false)
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false)
   const mentionRef = useRef<HTMLDivElement>(null)
+
+  // States để track loại cập nhật
+  const [hasColdUpdateChanges, setHasColdUpdateChanges] = useState(false)
+  const [hasFlexibleUpdateChanges, setHasFlexibleUpdateChanges] = useState(false)
+  const [showColdUpdateWarning, setShowColdUpdateWarning] = useState(false)
+
+  // States để lưu giá trị ban đầu
+  const [initialProductData, setInitialProductData] = useState({
+    name: '',
+    description: '',
+    material: '',
+    categoryId: null as string | null,
+    hashtagIds: [] as string[]
+  })
+  const [initialImages, setInitialImages] = useState<string[]>([])
+  const [initialVideo, setInitialVideo] = useState<string | null>(null)
 
   const [productData, setProductData] = useState({
     name: '',
@@ -304,7 +322,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
     }
   }, [open, buildTree])
 
-  // Lấy thông tin sản phẩm khi dialog mở
+  // Lấy thông tin sản phẩm khi dialog mở - chỉ fetch một lần
   useEffect(() => {
     const fetchProductDetail = async () => {
       if (open && product?.id) {
@@ -316,12 +334,38 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             setFetchedProduct(response.data)
             // productCategories is an array, get first item's id
             const categoryId = response.data.productCategories?.[0]?.id || null
-            // Load product data from fetched detail
-            setProductData({
+            
+            // Lưu giá trị ban đầu để so sánh - CHỈ SET MỘT LẦN khi dialog mở
+            const initialData = {
               name: response.data.name || '',
               description: response.data.description || '',
               categoryId: categoryId,
               material: response.data.material || '',
+              hashtagIds: [] as string[]
+            }
+            // Luôn set initial data khi fetch (chỉ chạy khi dialog mở)
+            setInitialProductData(initialData)
+            setInitialImages(response.data.productImages || [])
+
+            // Lưu video URL ban đầu
+            const productWithVideo = response.data as Product & {
+              videoPreviewUrl?: string
+              videoPlayBackUrl?: string
+              videoFallBackUrl?: string
+              productVideo?: string
+            }
+            const videoUrl = productWithVideo.videoPreviewUrl ||
+                            productWithVideo.videoFallBackUrl ||
+                            productWithVideo.productVideo ||
+                            null
+            setInitialVideo(videoUrl)
+
+            // Load product data from fetched detail
+            setProductData({
+              name: initialData.name,
+              description: initialData.description,
+              categoryId: initialData.categoryId,
+              material: initialData.material,
               isActive: response.data.isActive
             })
             setExistingImageUrls(response.data.productImages || [])
@@ -329,7 +373,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             setMentionSearchKeyword('')
             setShowMentionSuggestions(false)
 
-            // Update category path if category is selected
+            // Update category path if category is selected - chỉ khi categoryTree đã sẵn sàng
             if (categoryId && categoryTree.length > 0) {
               const path = getCategoryPath(categoryId)
               setSelectedCategoryPath(path)
@@ -349,7 +393,16 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
     }
 
     fetchProductDetail()
-  }, [open, product?.id, categoryTree, getCategoryPath])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, product?.id]) // Bỏ categoryTree và getCategoryPath khỏi dependencies
+
+  // Update category path riêng khi categoryTree đã sẵn sàng
+  useEffect(() => {
+    if (open && fetchedProduct && categoryTree.length > 0 && productData.categoryId) {
+      const path = getCategoryPath(productData.categoryId)
+      setSelectedCategoryPath(path)
+    }
+  }, [open, fetchedProduct, categoryTree, productData.categoryId, getCategoryPath])
 
   // Fetch hashtags when dialog opens
   useEffect(() => {
@@ -379,6 +432,13 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
         })
 
         setSelectedHashtags(fetchedHashtags)
+        
+        // Lưu hashtag IDs ban đầu
+        const initialHashtagIds = fetchedHashtags.map(tag => tag.id)
+        setInitialProductData(prev => ({
+          ...prev,
+          hashtagIds: initialHashtagIds
+        }))
       } catch (error) {
         console.error('Error fetching hashtags:', error)
         // Fallback: map directly from hashtags array if fetch fails
@@ -392,6 +452,13 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             isActive: true
           }))
           setSelectedHashtags(mappedHashtags)
+          
+          // Lưu hashtag IDs ban đầu
+          const initialHashtagIds = mappedHashtags.map(tag => tag.id)
+          setInitialProductData(prev => ({
+            ...prev,
+            hashtagIds: initialHashtagIds
+          }))
         } else {
           setSelectedHashtags([])
         }
@@ -717,8 +784,115 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
     }
   }
 
+  // Memoize các giá trị so sánh để tránh tính toán lại không cần thiết
+  const existingImagesKey = useMemo(() => {
+    return existingImageUrls.length > 0 ? existingImageUrls.join('|') : ''
+  }, [existingImageUrls])
+  
+  const initialImagesKey = useMemo(() => {
+    return initialImages.length > 0 ? initialImages.join('|') : ''
+  }, [initialImages])
+  
+  const currentHashtagIdsKey = useMemo(() => {
+    if (selectedHashtags.length === 0) return ''
+    return selectedHashtags.map(tag => tag.id).sort().join(',')
+  }, [selectedHashtags])
+  
+  const initialHashtagIdsKey = useMemo(() => {
+    if (!initialProductData.hashtagIds || initialProductData.hashtagIds.length === 0) return ''
+    return [...initialProductData.hashtagIds].sort().join(',')
+  }, [initialProductData.hashtagIds])
+
+  // Function để detect loại cập nhật - dùng useMemo để tránh re-render không cần thiết
+  const updateType = useMemo(() => {
+    if (!fetchedProduct) return { cold: false, flexible: false }
+
+    // Check Cold Updates (trên DR - Display Root)
+    const nameChanged = productData.name !== initialProductData.name
+    const descriptionChanged = productData.description !== initialProductData.description
+    const materialChanged = productData.material !== initialProductData.material
+
+    // Check images changed - so sánh bằng string key để tối ưu
+    const imagesChanged =
+      existingImagesKey !== initialImagesKey ||
+      mediaData.newProductImages.length > 0
+
+    // Check video changed
+    const videoChanged =
+      mediaData.newProductVideo !== null ||
+      mediaData.removeExistingVideo ||
+      (initialVideo && !mediaData.removeExistingVideo && !mediaData.newProductVideo &&
+       !existingImageUrls.some(url => url === initialVideo))
+
+    const hasColdUpdate = nameChanged || descriptionChanged || materialChanged || imagesChanged || videoChanged
+
+    // Check Flexible Updates
+    const categoryChanged = productData.categoryId !== initialProductData.categoryId
+    const hashtagsChanged = currentHashtagIdsKey !== initialHashtagIdsKey
+
+    const hasFlexibleUpdate = categoryChanged || hashtagsChanged
+
+    return { cold: hasColdUpdate, flexible: hasFlexibleUpdate }
+  }, [
+    fetchedProduct,
+    productData.name,
+    productData.description,
+    productData.material,
+    productData.categoryId,
+    initialProductData.name,
+    initialProductData.description,
+    initialProductData.material,
+    initialProductData.categoryId,
+    existingImagesKey,
+    initialImagesKey,
+    mediaData.newProductImages.length,
+    mediaData.newProductVideo,
+    mediaData.removeExistingVideo,
+    initialVideo,
+    existingImageUrls,
+    currentHashtagIdsKey,
+    initialHashtagIdsKey
+  ])
+
+  // Update detection khi có thay đổi - chỉ hiển thị khi thực sự có thay đổi
+  useEffect(() => {
+    // Chỉ update khi đã có fetchedProduct và initial data đã được set
+    if (!fetchedProduct || !initialProductData.name) {
+      setHasColdUpdateChanges(false)
+      setHasFlexibleUpdateChanges(false)
+      return
+    }
+
+    // Debounce để tránh update quá nhanh khi user đang gõ
+    const timeoutId = setTimeout(() => {
+      const hasCold = !!updateType.cold
+      const hasFlexible = !!updateType.flexible
+
+      setHasColdUpdateChanges(prev => {
+        // Chỉ update nếu giá trị thực sự thay đổi
+        return prev !== hasCold ? hasCold : prev
+      })
+      setHasFlexibleUpdateChanges(prev => {
+        // Chỉ update nếu giá trị thực sự thay đổi
+        return prev !== hasFlexible ? hasFlexible : prev
+      })
+    }, 200) // Debounce 200ms để mượt mà hơn và tránh flicker
+
+    return () => clearTimeout(timeoutId)
+  }, [updateType.cold, updateType.flexible, fetchedProduct, initialProductData.name])
+
   const handleUpdateProduct = async () => {
     if (!product?.id) return
+
+    // Check nếu có Cold Update và product đang Approved
+    const { cold, flexible } = updateType
+    const isApproved = fetchedProduct?.status === 'Approved'
+
+    if (cold && isApproved && !showColdUpdateWarning) {
+      // Hiển thị warning dialog
+      setShowColdUpdateWarning(true)
+      return
+    }
 
     try {
       setIsSubmitting(true)
@@ -914,6 +1088,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
   const handleDialogClose = (open: boolean) => {
     onOpenChange(open)
     if (!open) {
+      // Reset tất cả state khi dialog đóng
       setProductData({
         name: '',
         description: '',
@@ -938,6 +1113,21 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
       setCategorySearchText('')
       setSelectedCategoryPath([])
       setExpandedNodes(new Set())
+      // Reset update detection states - QUAN TRỌNG: Reset ngay lập tức
+      setHasColdUpdateChanges(false)
+      setHasFlexibleUpdateChanges(false)
+      setShowColdUpdateWarning(false)
+      // Reset initial data để đảm bảo lần mở tiếp theo sẽ set lại đúng
+      setInitialProductData({
+        name: '',
+        description: '',
+        material: '',
+        categoryId: null,
+        hashtagIds: []
+      })
+      setInitialImages([])
+      setInitialVideo(null)
+      setFetchedProduct(null) // Reset để trigger fetch lại khi mở lại
     }
   }
 
@@ -1048,8 +1238,35 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className='w-full max-w-[95vw] sm:max-w-6xl max-h-[90vh] overflow-y-auto'>
+    <>
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-4px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          will-change: opacity, transform;
+        }
+        .notification-enter {
+          opacity: 0;
+          transform: translateY(-4px) scale(0.98);
+        }
+        .notification-enter-active {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                      transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+      `}</style>
+      <Dialog open={open} onOpenChange={handleDialogClose}>
+        <DialogContent className='w-full max-w-[95vw] sm:max-w-6xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>Cập nhật sản phẩm</DialogTitle>
         </DialogHeader>
@@ -1061,12 +1278,75 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
           </div>
         ) : (
           <div className='space-y-6 mt-4'>
+            {/* Thông báo loại cập nhật - chỉ hiển thị khi thực sự có thay đổi */}
+            {!loadingProductDetail && fetchedProduct && initialProductData.name && (
+              <div className='mb-4 space-y-2'>
+                {hasColdUpdateChanges && (
+                  <div 
+                    key='cold-update-notification'
+                    className='bg-amber-50 border-l-4 border-amber-400 p-4 rounded transition-all duration-300 ease-out'
+                    style={{ 
+                      animation: 'fadeIn 0.3s ease-out forwards'
+                    }}
+                  >
+                    <div className='flex items-start'>
+                      <div className='w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center mr-3 flex-shrink-0 mt-0.5'>
+                        <span className='text-white text-xs font-bold'>!</span>
+                      </div>
+                      <div className='flex-1'>
+                        <p className='text-sm font-semibold text-amber-900 mb-1'>
+                          Cập nhật cần duyệt
+                        </p>
+                        <p className='text-xs text-amber-800'>
+                          "Những thay đổi quan trọng sẽ được kiểm tra để đảm bảo thông tin chính xác trước khi hiển thị."
+                        </p>
+                        <p className='text-xs text-amber-700 mt-2 font-medium'>
+                          ⚠️ Lưu ý: Sau khi cập nhật, sản phẩm sẽ tạm thời bị ẩn khỏi cửa hàng và cần được duyệt lại trước khi hiển thị.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {hasFlexibleUpdateChanges && !hasColdUpdateChanges && (
+                  <div 
+                    key='flexible-update-notification'
+                    className='bg-green-50 border-l-4 border-green-400 p-4 rounded transition-all duration-300 ease-out'
+                    style={{ 
+                      animation: 'fadeIn 0.3s ease-out forwards'
+                    }}
+                  >
+                    <div className='flex items-start'>
+                      <div className='w-5 h-5 rounded-full bg-green-500 flex items-center justify-center mr-3 flex-shrink-0 mt-0.5'>
+                        <CheckCircle className='w-3.5 h-3.5 text-white' />
+                      </div>
+                      <div className='flex-1'>
+                        <p className='text-sm font-semibold text-green-900 mb-1'>
+                          Cần cập nhật ngay
+                        </p>
+                        <p className='text-xs text-green-800'>
+                          "Những thay đổi nhỏ, không ảnh hưởng đến nội dung quan trọng, sẽ được cập nhật và hiển thị ngay."
+                        </p>
+                        <p className='text-xs text-green-700 mt-2 font-medium'>
+                          ✓ Các thay đổi sẽ được áp dụng ngay lập tức và không ảnh hưởng đến trạng thái sản phẩm.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {/* Product Name */}
             <div>
               <div className='flex items-center justify-between mb-1'>
-                <Label htmlFor='update-name' className='text-sm font-medium'>
-                  Tên sản phẩm <span className='text-red-500'>*</span>
-                </Label>
+                <div className='flex items-center gap-2'>
+                  <Label htmlFor='update-name' className='text-sm font-medium'>
+                    Tên sản phẩm <span className='text-red-500'>*</span>
+                  </Label>
+                  <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200'>
+                    <AlertTriangle className='w-3 h-3' />
+                    Cần duyệt
+                  </span>
+                </div>
                 <span
                   className={`text-xs ${countWords(productData.name) > MAX_NAME_WORDS ? 'text-red-500' : 'text-gray-500'}`}
                 >
@@ -1086,9 +1366,15 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             {/* Material */}
             <div>
               <div className='flex items-center justify-between mb-1'>
-                <Label htmlFor='update-material' className='text-sm font-medium'>
-                  Nguyên liệu  <span className='text-red-500'>*</span>
-                </Label>
+                <div className='flex items-center gap-2'>
+                  <Label htmlFor='update-material' className='text-sm font-medium'>
+                    Nguyên liệu  <span className='text-red-500'>*</span>
+                  </Label>
+                  <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200'>
+                    <AlertTriangle className='w-3 h-3' />
+                    Cần duyệt
+                  </span>
+                </div>
                 <span
                   className={`text-xs ${countWords(productData.material) > MAX_MATERIAL_WORDS ? 'text-red-500' : 'text-gray-500'}`}
                 >
@@ -1107,9 +1393,15 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
 
             {/* Category Selection */}
             <div>
-              <Label className='text-sm font-medium'>
-                Loại sản phẩm <span className='text-red-500'>*</span>
-              </Label>
+              <div className='flex items-center gap-2 mb-1'>
+                <Label className='text-sm font-medium'>
+                  Loại sản phẩm <span className='text-red-500'>*</span>
+                </Label>
+                <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200'>
+                  <CheckCircle className='w-3 h-3' />
+                  Cần cập nhật ngay
+                </span>
+              </div>
               {categoryError && <p className='mt-1 text-sm text-red-500'>{categoryError}</p>}
               <div className={`mt-2 ${categoryError ? 'border border-red-500 rounded-lg p-2' : ''}`}>
                 {categoriesLoading ? (
@@ -1194,7 +1486,13 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
 
             {/* Hashtag Section */}
             <div>
-              <Label className='text-sm font-medium'>Nhãn dán</Label>
+              <div className='flex items-center gap-2 mb-1'>
+                <Label className='text-sm font-medium'>Nhãn dán</Label>
+                <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200'>
+                  <CheckCircle className='w-3 h-3' />
+                  Cần cập nhật ngay
+                </span>
+              </div>
               <div className='mt-2 space-y-3'>
                 {/* Thêm Hashtag */}
                 <div className='p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg'>
@@ -1342,9 +1640,15 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             {/* Description */}
             <div>
               <div className='flex items-center justify-between mb-1'>
-                <Label htmlFor='update-description' className='text-sm font-medium'>
-                  Mô tả sản phẩm <span className='text-red-500'>*</span>
-                </Label>
+                <div className='flex items-center gap-2'>
+                  <Label htmlFor='update-description' className='text-sm font-medium'>
+                    Mô tả sản phẩm <span className='text-red-500'>*</span>
+                  </Label>
+                  <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200'>
+                    <AlertTriangle className='w-3 h-3' />
+                    Cần duyệt
+                  </span>
+                </div>
                 <span
                   className={`text-xs ${countWords(productData.description) > MAX_DESCRIPTION_WORDS ? 'text-red-500' : 'text-gray-500'}`}
                 >
@@ -1393,9 +1697,15 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             {existingImageUrls.length > 0 && (
               <div>
                 <div className='flex items-center justify-between mb-1'>
-                  <Label className='text-sm font-medium'>
-                    Ảnh hiện có <span className='text-red-500'>*</span>
-                  </Label>
+                  <div className='flex items-center gap-2'>
+                    <Label className='text-sm font-medium'>
+                      Ảnh hiện có <span className='text-red-500'>*</span>
+                    </Label>
+                    <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200'>
+                      <AlertTriangle className='w-3 h-3' />
+                      Cần duyệt
+                    </span>
+                  </div>
                   <span className='text-xs text-gray-500'>
                     {existingImageUrls.length + mediaData.newProductImages.length} / {MAX_IMAGES} ảnh
                   </span>
@@ -1430,9 +1740,15 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             {/* New Product Images */}
             <div>
               <div className='flex items-center justify-between mb-1'>
-                <Label className='text-sm font-medium'>
-                  Ảnh sản phẩm {existingImageUrls.length === 0 && <span className='text-red-500'>*</span>}
-                </Label>
+                <div className='flex items-center gap-2'>
+                  <Label className='text-sm font-medium'>
+                    Ảnh sản phẩm {existingImageUrls.length === 0 && <span className='text-red-500'>*</span>}
+                  </Label>
+                  <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200'>
+                    <AlertTriangle className='w-3 h-3' />
+                    Cần duyệt
+                  </span>
+                </div>
                 <span className='text-xs text-gray-500'>
                   {existingImageUrls.length + mediaData.newProductImages.length} / {MAX_IMAGES} ảnh
                 </span>
@@ -1517,7 +1833,13 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             {/* Product Video */}
             <div>
               <div className='flex items-center justify-between mb-1'>
-                <Label className='text-sm font-medium'>Video sản phẩm</Label>
+                <div className='flex items-center gap-2'>
+                  <Label className='text-sm font-medium'>Video sản phẩm</Label>
+                  <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200'>
+                    <AlertTriangle className='w-3 h-3' />
+                    Cần duyệt
+                  </span>
+                </div>
                 <span className='text-xs text-gray-500'>
                   {(() => {
                     const videoData = getProductVideoData()
@@ -1670,6 +1992,313 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+
+      {/* Warning Dialog cho Cold Update */}
+      {showColdUpdateWarning && (
+        <Dialog open={showColdUpdateWarning} onOpenChange={(open) => setShowColdUpdateWarning(!!open)}>
+          <DialogContent className='max-w-md'>
+            <DialogHeader>
+              <DialogTitle className='flex items-center gap-2 text-amber-600'>
+                <AlertTriangle className='w-5 h-5' />
+                Cảnh báo: Cập nhật sẽ ảnh hưởng đến sản phẩm
+              </DialogTitle>
+            </DialogHeader>
+            <div className='py-4 space-y-3'>
+              <div className='bg-amber-50 border border-amber-200 rounded-lg p-4'>
+                <div className='flex items-center gap-2 mb-3'>
+                  <div className='w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0'>
+                    <span className='text-white text-sm font-bold'>!</span>
+                  </div>
+                  <p className='text-sm font-semibold text-amber-900'>
+                    Cập nhật cần duyệt
+                  </p>
+                </div>
+                <p className='text-xs text-amber-700 mb-3 italic'>
+                  "Những thay đổi quan trọng sẽ được kiểm tra để đảm bảo thông tin chính xác trước khi hiển thị."
+                </p>
+                <p className='text-sm text-amber-800 mb-2 font-medium'>
+                  Bạn đã thay đổi các thông tin quan trọng sau:
+                </p>
+                <ul className='text-sm text-amber-800 space-y-1 list-disc list-inside ml-2'>
+                  {productData.name !== initialProductData.name && (
+                    <li>Tên sản phẩm</li>
+                  )}
+                  {productData.description !== initialProductData.description && (
+                    <li>Mô tả sản phẩm</li>
+                  )}
+                  {productData.material !== initialProductData.material && (
+                    <li>Nguyên liệu</li>
+                  )}
+                  {(existingImageUrls.length !== initialImages.length ||
+                    mediaData.newProductImages.length > 0) && (
+                    <li>Hình ảnh sản phẩm</li>
+                  )}
+                  {(mediaData.newProductVideo || mediaData.removeExistingVideo) && (
+                    <li>Video sản phẩm</li>
+                  )}
+                </ul>
+              </div>
+              <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+                <p className='text-sm font-semibold text-red-900 mb-2'>
+                  ⚠️ Hệ quả khi cập nhật:
+                </p>
+                <ul className='text-sm text-red-800 space-y-1.5'>
+                  <li>• Sản phẩm sẽ bị chuyển về trạng thái <strong>Nháp (Draft)</strong></li>
+                  <li>• Sản phẩm sẽ bị <strong>gỡ khỏi cửa hàng</strong> ngay lập tức</li>
+                  <li>• Bạn phải <strong>gửi duyệt lại</strong> để sản phẩm được hiển thị trở lại</li>
+                </ul>
+                <p className='text-xs text-red-700 mt-3 italic'>
+                  Điều này giúp đảm bảo chất lượng và tính chính xác của thông tin sản phẩm trước khi hiển thị cho khách hàng.
+                </p>
+              </div>
+              {hasFlexibleUpdateChanges && (
+                <div className='bg-green-50 border border-green-200 rounded-lg p-4'>
+                  <div className='flex items-center gap-2 mb-2'>
+                    <div className='w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0'>
+                      <CheckCircle className='w-3 h-3 text-white' />
+                    </div>
+                    <p className='text-sm font-semibold text-green-900'>
+                    Cần cập nhật ngay
+                    </p>
+                  </div>
+                  <p className='text-xs text-green-700 mb-2 italic'>
+                    "Những thay đổi nhỏ, không ảnh hưởng đến nội dung quan trọng, sẽ được cập nhật và hiển thị ngay."
+                  </p>
+                  <p className='text-sm text-green-800 mb-1 font-medium'>
+                    Các thay đổi sau sẽ được áp dụng ngay (không cần duyệt):
+                  </p>
+                  <ul className='text-sm text-green-800 space-y-1 list-disc list-inside ml-2'>
+                    {productData.categoryId !== initialProductData.categoryId && (
+                      <li>Loại sản phẩm</li>
+                    )}
+                    {(() => {
+                      const currentHashtagIds = selectedHashtags.map(tag => tag.id).sort()
+                      const initialHashtagIds = initialProductData.hashtagIds.sort()
+                      return currentHashtagIds.length !== initialHashtagIds.length ||
+                        currentHashtagIds.some((id, idx) => id !== initialHashtagIds[idx])
+                    })() && (
+                      <li>Nhãn dán</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant='outline'
+                onClick={() => setShowColdUpdateWarning(false)}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={async () => {
+                  setShowColdUpdateWarning(false)
+                  // Gọi lại handleUpdateProduct sau khi confirm
+                  await new Promise(resolve => setTimeout(resolve, 100))
+                  // Tạo một function wrapper để gọi lại
+                  const executeUpdate = async () => {
+                    if (!product?.id) return
+
+                    try {
+                      setIsSubmitting(true)
+
+                      // Validate name
+                      if (!productData.name.trim()) {
+                        toast.error('Vui lòng nhập tên sản phẩm')
+                        setNameError('Vui lòng nhập tên sản phẩm')
+                        return
+                      }
+
+                      const nameWordCount = countWords(productData.name)
+                      if (nameWordCount === 0) {
+                        toast.error('Tên sản phẩm phải có ít nhất 1 từ')
+                        setNameError('Tên sản phẩm phải có ít nhất 1 từ')
+                        return
+                      }
+
+                      if (nameWordCount > MAX_NAME_WORDS) {
+                        toast.error(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_WORDS} từ`)
+                        setNameError(`Tên sản phẩm chỉ được tối đa ${MAX_NAME_WORDS} từ`)
+                        return
+                      }
+
+                      // Validate description - required
+                      if (!productData.description.trim()) {
+                        toast.error('Vui lòng nhập mô tả sản phẩm')
+                        setDescriptionError('Vui lòng nhập mô tả sản phẩm')
+                        return
+                      }
+
+                      const descriptionWordCount = countWords(productData.description)
+                      if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
+                        toast.error(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+                        setDescriptionError(`Mô tả chỉ được tối đa ${MAX_DESCRIPTION_WORDS} từ.`)
+                        return
+                      }
+
+                      // Validate material - required
+                      if (!productData.material.trim()) {
+                        toast.error('Vui lòng nhập Nguyên liệu ')
+                        setMaterialError('Vui lòng nhập Nguyên liệu')
+                        return
+                      }
+
+                      const materialWordCount = countWords(productData.material)
+                      if (materialWordCount > MAX_MATERIAL_WORDS) {
+                        toast.error(`Material chỉ được tối đa ${MAX_MATERIAL_WORDS} từ`)
+                        setMaterialError(`Material chỉ được tối đa ${MAX_MATERIAL_WORDS} từ`)
+                        return
+                      }
+
+                      // Validate category - required
+                      if (!productData.categoryId) {
+                        toast.error('Vui lòng chọn loại sản phẩm')
+                        setCategoryError('Vui lòng chọn loại sản phẩm')
+                        return
+                      }
+
+                      // Validate images - at least 1 image required
+                      const totalImages = existingImageUrls.length + mediaData.newProductImages.length
+                      if (totalImages === 0) {
+                        toast.error('Vui lòng thêm ít nhất 1 hình ảnh sản phẩm')
+                        setImagesError('Vui lòng thêm ít nhất 1 hình ảnh sản phẩm')
+                        return
+                      }
+
+                      if (totalImages > MAX_IMAGES) {
+                        toast.error(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+                        setImagesError(`Chỉ được tối đa ${MAX_IMAGES} hình ảnh.`)
+                        return
+                      }
+
+                      // Validate video (only one video allowed)
+                      if (mediaData.newProductVideo && fetchedProduct?.productVideo && !mediaData.removeExistingVideo) {
+                        toast.error('Chỉ được tối đa 1 video. Vui lòng xóa video cũ trước khi thêm video mới.')
+                        return
+                      }
+
+                      if (!storeId || !provinceId) {
+                        toast.error('Không tìm thấy thông tin cửa hàng')
+                        return
+                      }
+
+                      // Prepare FormData according to the curl request
+                      const formData = new FormData()
+
+                      // Required and basic fields
+                      formData.append('Name', productData.name)
+                      formData.append('ProvinceId', provinceId.toString())
+                      formData.append('IsActive', productData.isActive.toString())
+                      formData.append('RemoveExistingVideo', mediaData.removeExistingVideo.toString())
+
+                      // Optional fields
+                      if (productData.description) {
+                        formData.append('Description', productData.description)
+                      }
+
+                      if (productData.material) {
+                        formData.append('Material', productData.material)
+                      }
+
+                      if (productData.categoryId) {
+                        formData.append('CategoryId', productData.categoryId)
+                      }
+
+                      // Existing image URLs
+                      if (existingImageUrls.length > 0) {
+                        existingImageUrls.forEach((url) => {
+                          formData.append('ExistingImageUrls', url)
+                        })
+                      }
+
+                      // New product images
+                      if (mediaData.newProductImages.length > 0) {
+                        mediaData.newProductImages.forEach((file) => {
+                          formData.append('NewProductImages', file)
+                        })
+                      }
+
+                      // New product video (can be empty)
+                      if (mediaData.newProductVideo) {
+                        formData.append('ProductVideo', mediaData.newProductVideo)
+                      } else if (mediaData.removeExistingVideo) {
+                        formData.append('ProductVideo', '')
+                      }
+
+                      // Add hashtag IDs if provided
+                      if (selectedHashtags.length > 0) {
+                        selectedHashtags.forEach((tag, index) => {
+                          formData.append(`HashtagIds[${index}]`, tag.id)
+                        })
+                      }
+
+                      // Call API
+                      const response = await productApi.updateWithFormData(product.id, formData)
+
+                      if (response.status === 202) {
+                        toast.success('Cập nhật sản phẩm thành công!')
+                        onSuccess()
+                        onOpenChange(false)
+                      }
+                    } catch (error: unknown) {
+                      console.error('Error updating product:', error)
+
+                      // Extract error message from backend response
+                      let errorMessage = 'Có lỗi xảy ra khi cập nhật sản phẩm'
+
+                      if (error && typeof error === 'object') {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const err = error as any
+
+                        // Check for errors object (validation errors)
+                        if (err.errors && typeof err.errors === 'object') {
+                          const errorMessages: string[] = []
+                          Object.keys(err.errors).forEach((field) => {
+                            const fieldErrors = err.errors[field]
+                            if (Array.isArray(fieldErrors)) {
+                              errorMessages.push(...fieldErrors)
+                            } else if (typeof fieldErrors === 'string') {
+                              errorMessages.push(fieldErrors)
+                            }
+                          })
+                          if (errorMessages.length > 0) {
+                            errorMessage = errorMessages.join(', ')
+                          }
+                        }
+                        // Check for title field
+                        else if (err.title) {
+                          errorMessage = err.title
+                        }
+                        // Check for message field
+                        else if (err.message) {
+                          errorMessage = err.message
+                        }
+                        // Check for errors array
+                        else if (err.errors && Array.isArray(err.errors)) {
+                          errorMessage = err.errors.join(', ')
+                        }
+                        // Check for error string
+                        else if (err.error && typeof err.error === 'string') {
+                          errorMessage = err.error
+                        }
+                      }
+
+                      toast.error(errorMessage)
+                    } finally {
+                      setIsSubmitting(false)
+                    }
+                  }
+                  await executeUpdate()
+                }}
+                className='bg-amber-600 hover:bg-amber-700'
+              >
+                Tôi hiểu, tiếp tục cập nhật
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      </Dialog>
+    </>
   )
 }
