@@ -384,7 +384,7 @@ function ManagerProduct() {
         </CardContent>
       </Card>
 
-      {/* Table */}
+      {/* Table - Giữ nguyên phần này */}
       <Card>
         <CardContent className='pt-6'>
           {loading && allProducts.length === 0 ? (

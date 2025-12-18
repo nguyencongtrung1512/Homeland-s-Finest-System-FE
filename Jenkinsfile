@@ -2,7 +2,11 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Nhánh cần deploy (main/dev/...)')
+        string(
+            name: 'BRANCH_NAME', 
+            defaultValue: 'main', 
+            description: 'Nhánh cần deploy (main/dev/production/...)'
+        )
     }
 
     stages {
@@ -42,9 +46,10 @@ pipeline {
             steps {
                 sshagent(['SSHKey']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 '
                             set -e
-                            echo '📥 Cloning FE repository...'
+                            echo "📥 Cloning FE repository..."
+                            echo "🌿 Target branch: ${params.BRANCH_NAME}"
                             
                             # Tạo thư mục nếu chưa có
                             mkdir -p ~/HomeLandFinest
@@ -55,14 +60,16 @@ pipeline {
                             
                             # Checkout nhánh
                             cd HomelandFinestFE
+                            git fetch origin
                             git checkout ${params.BRANCH_NAME}
+                            git pull origin ${params.BRANCH_NAME}
                             
-                            echo '✅ Source code cloned successfully!'
-                            echo '📂 Current branch:'
+                            echo "✅ Source code cloned successfully!"
+                            echo "📂 Current branch:"
                             git branch --show-current
-                            echo '📝 Latest commit:'
+                            echo "📝 Latest commit:"
                             git log -1 --oneline
-                        "
+                        '
                     """
                 }
             }
@@ -128,7 +135,7 @@ EOF
             }
         }
 
-        // 🗑️ CLEAR DOCKER CACHE (AGGRESSIVE)
+        // 🗑️ CLEAR DOCKER CACHE
         stage('🗑️ Clear Docker Cache') {
             steps {
                 sshagent(['SSHKey']) {
@@ -236,16 +243,18 @@ EOF
             echo '🧹 Cleanup ran for FRONTEND only - Backend services NOT affected'
         }
         success {
-            echo '🎉 FE DEPLOY SUCCESS!'
-            echo ''
-            echo '✅ Deployment Summary:'
-            echo '- Branch: ${params.BRANCH_NAME}'
-            echo '- Frontend URL: http://154.26.130.248:8082'
-            echo '- Frontend Domain: https://tinhhoaquenha.online'
-            echo '- Container: homelandfinest-fe'
-            echo '- Port Mapping: 8082:80 (host:container)'
-            echo ''
-            echo '⚠️ NOTE: Backend và các service khác KHÔNG bị ảnh hưởng'
+            script {
+                echo '🎉 FE DEPLOY SUCCESS!'
+                echo ''
+                echo '✅ Deployment Summary:'
+                echo "- Branch: ${params.BRANCH_NAME}"
+                echo '- Frontend URL: http://154.26.130.248:8082'
+                echo '- Frontend (Domain): https://tinhhoaquenha.online'
+                echo '- Container: homelandfinest-fe'
+                echo '- Port Mapping: 8082:80 (host:container)'
+                echo ''
+                echo '⚠️ NOTE: Backend và các service khác KHÔNG bị ảnh hưởng'
+            }
         }
         failure {
             echo '❌ FE DEPLOY FAILED!'

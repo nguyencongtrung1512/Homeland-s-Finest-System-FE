@@ -253,6 +253,31 @@ const formatDateOfBirthForAPI = (dateString: string): string => {
   return dateString // Return original if can't parse
 }
 
+// Helper function để chuyển đổi gender từ tiếng Việt sang tiếng Anh cho backend
+const normalizeGender = (gender: string | null | undefined): string => {
+  if (!gender) return ''
+  
+  const genderLower = gender.trim().toLowerCase()
+  
+  switch (genderLower) {
+    case 'nam':
+      return 'Male'
+    case 'nữ':
+    case 'nu':
+      return 'Female'
+    case 'khác':
+    case 'khac':
+      return 'Other'
+    // Nếu đã là giá trị hợp lệ (Male, Female, Other), giữ nguyên
+    case 'male':
+    case 'female':
+    case 'other':
+      return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase()
+    default:
+      return gender // Trả về giá trị gốc nếu không match
+  }
+}
+
 export const updateUser = async (userId: string, data: UpdateUserData): Promise<UpdateUserResponse> => {
   let currentUser: User | null = null
   try {
@@ -272,7 +297,9 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
   formData.append('LastName', data.lastName !== undefined ? data.lastName : currentUser?.lastName || '')
   formData.append('Email', data.email !== undefined ? data.email : currentUser?.email || '')
   formData.append('PhoneNumber', data.phoneNumber !== undefined ? data.phoneNumber : currentUser?.phoneNumber || '')
-  formData.append('Gender', data.gender !== undefined ? data.gender : currentUser?.gender || '')
+  // Normalize gender from Vietnamese to English for backend (Nam -> Male, Nữ -> Female, Khác -> Other)
+  const genderValue = data.gender !== undefined ? data.gender : currentUser?.gender || ''
+  formData.append('Gender', normalizeGender(genderValue))
 
   // Format dateOfBirth to YYYY-MM-DD before sending to API
   const dateOfBirthValue = data.dateOfBirth !== undefined ? data.dateOfBirth : currentUser?.dateOfBirth || ''

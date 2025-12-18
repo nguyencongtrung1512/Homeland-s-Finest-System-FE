@@ -31,7 +31,7 @@ interface Transaction {
 function TransactionManagementAdmin() {
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -108,9 +108,9 @@ function TransactionManagementAdmin() {
         if (statusFilter === 'refunded') params.status = 'Cancel'
       }
 
-      // Filter by payment method
-      if (paymentMethodFilter !== 'all') {
-        params.paymentMethod = paymentMethodFilter
+      // Filter by type
+      if (typeFilter !== 'all') {
+        params.type = typeFilter
       }
 
       // Search by username (API hỗ trợ search theo email/firstName/lastName)
@@ -156,13 +156,13 @@ function TransactionManagementAdmin() {
   useEffect(() => {
     fetchTransactions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, statusFilter, paymentMethodFilter, searchText])
+  }, [currentPage, statusFilter, typeFilter, searchText])
 
   // Reset filters
   const handleResetFilters = () => {
     setSearchText('')
     setStatusFilter('all')
-    setPaymentMethodFilter('all')
+    setTypeFilter('all')
     setCurrentPage(1)
   }
 
@@ -281,15 +281,14 @@ function TransactionManagementAdmin() {
               </SelectContent>
             </Select>
 
-            <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-              <SelectTrigger className='w-70 h-10 border-gray-200'>
-                <SelectValue placeholder='Phương thức thanh toán' />
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className='w-48 h-10 border-gray-200'>
+                <SelectValue placeholder='Loại giao dịch' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='all'>Tất cả phương thức</SelectItem>
-                <SelectItem value='COD'>Thanh toán khi nhận hàng</SelectItem>
-                <SelectItem value='Banking'>Thanh toán qua ngân hàng</SelectItem>
-                <SelectItem value='MyWallet'>Ví của tôi</SelectItem>
+                <SelectItem value='all'>Tất cả loại</SelectItem>
+                <SelectItem value='Deposit'>Nạp tiền</SelectItem>
+                <SelectItem value='Withdrawal'>Rút tiền</SelectItem>
               </SelectContent>
             </Select>
 
