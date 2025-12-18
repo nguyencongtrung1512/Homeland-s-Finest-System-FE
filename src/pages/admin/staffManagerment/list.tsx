@@ -37,12 +37,22 @@ import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { Switch } from '../../../components/ui/switch'
 import { Textarea } from '../../../components/ui/textarea'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '../../../components/ui/command'
+import { ChevronsUpDown, Check } from 'lucide-react'
 import { staffApi, type StaffInfo, type UpdateStaffRequest } from '../../../apis/staff.api'
 import { registerStaff, type StaffRegistrationData } from '../../../apis/auth.api'
 import { adminApi } from '../../../apis/admin.api'
 import { toast } from '../../../utils/toast'
 import Pagination from '../../../components/Pagination/Pagination'
 import { Label } from '../../../components/ui/label'
+import { getProvinces, type Province } from '../../../apis/province'
 
 function StaffManagement() {
   const [searchText, setSearchText] = useState('')
@@ -67,11 +77,18 @@ function StaffManagement() {
     gender: 'Male',
     phoneNumber: '',
     dateOfBirth: '',
-    hireDate: ''
+    hireDate: '',
+    provinceId: undefined
   })
   const [staffFormLoading, setStaffFormLoading] = useState(false)
   const [dateOfBirthOpen, setDateOfBirthOpen] = useState(false)
   const [hireDateOpen, setHireDateOpen] = useState(false)
+  
+  // Province states
+  const [provinces, setProvinces] = useState<Province[]>([])
+  const [loadingProvinces, setLoadingProvinces] = useState(false)
+  const [provinceOpen, setProvinceOpen] = useState(false)
+  const [provinceSearchValue, setProvinceSearchValue] = useState('')
 
   // Staff edit states
   const [isEditing, setIsEditing] = useState(false)
@@ -85,9 +102,11 @@ function StaffManagement() {
     HireDate: '',
     IsActive: true,
     Note: '',
-    EmployeeCode: '',
-    Avatar: undefined
+    Avatar: undefined,
+    ProvinceId: undefined
   })
+  const [editProvinceOpen, setEditProvinceOpen] = useState(false)
+  const [editProvinceSearchValue, setEditProvinceSearchValue] = useState('')
   const [editFormLoading, setEditFormLoading] = useState(false)
   const [editDateOfBirthOpen, setEditDateOfBirthOpen] = useState(false)
   const [editHireDateOpen, setEditHireDateOpen] = useState(false)
@@ -271,21 +290,38 @@ function StaffManagement() {
         LastName: selectedStaff.lastName,
         Email: selectedStaff.email,
         PhoneNumber: selectedStaff.phoneNumber,
-        Gender: 'Male', // Default value, will be updated based on actual data
+        Gender: 'Male' as 'Male' | 'Female' | 'Other', // Default value
         DateOfBirth: selectedStaff.dateOfBirth,
         HireDate: selectedStaff.hireDate,
         IsActive: selectedStaff.isActive,
         Note: selectedStaff.note || '',
-        EmployeeCode: '', // This field might not be available in StaffInfo
-        Avatar: undefined
+        Avatar: undefined,
+        ProvinceId: selectedStaff.provinceId || undefined
       })
       setAvatarPreview(getAvatarUrl(selectedStaff.avatar))
+      setEditProvinceSearchValue('')
       setIsEditing(true)
     }
   }
 
+  // Filter provinces for edit form
+  const filteredEditProvinces: Province[] = provinces.filter(
+    (province: Province) =>
+      province.name.toLowerCase().includes(editProvinceSearchValue.toLowerCase()) ||
+      province.region.toLowerCase().includes(editProvinceSearchValue.toLowerCase())
+  )
+
+  // Get selected province for edit form
+  const selectedEditProvince: Province | undefined = provinces.find((p: Province) => p.id === editFormData.ProvinceId)
+
+  // Handle province change for edit form
+  const handleEditProvinceChange = (provinceId: number) => {
+    handleEditFormChange('ProvinceId', provinceId)
+    setEditProvinceOpen(false)
+  }
+
   // Handle edit form change
-  const handleEditFormChange = (field: keyof UpdateStaffRequest, value: string | boolean | File | undefined) => {
+  const handleEditFormChange = (field: keyof UpdateStaffRequest, value: string | boolean | File | number | undefined) => {
     setEditFormData((prev) => ({
       ...prev,
       [field]: value
@@ -421,7 +457,6 @@ function StaffManagement() {
       HireDate: '',
       IsActive: true,
       Note: '',
-      EmployeeCode: '',
       Avatar: undefined
     })
     setAvatarPreview(null)
@@ -495,6 +530,42 @@ function StaffManagement() {
     paginateStaff()
   }, [paginateStaff])
 
+  // Load provinces on component mount
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      setLoadingProvinces(true)
+      try {
+        const data = await getProvinces()
+        setProvinces(data)
+      } catch (error) {
+        console.error('Error fetching provinces:', error)
+        toast.error('Không thể tải danh sách tỉnh/thành phố')
+      } finally {
+        setLoadingProvinces(false)
+      }
+    }
+    fetchProvinces()
+  }, [])
+
+  // Filter provinces based on search
+  const filteredProvinces = provinces.filter(
+    (province) =>
+      province.name.toLowerCase().includes(provinceSearchValue.toLowerCase()) ||
+      province.region.toLowerCase().includes(provinceSearchValue.toLowerCase())
+  )
+
+  // Get selected province name for display
+  const selectedProvince = provinces.find((p) => p.id === staffFormData.provinceId)
+
+  // Handle province change
+  const handleProvinceChange = (provinceId: number) => {
+    setStaffFormData((prev) => ({
+      ...prev,
+      provinceId
+    }))
+    setProvinceOpen(false)
+  }
+
   // Staff creation functions
   const handleCreateStaff = () => {
     setShowCreateStaffModal(true)
@@ -507,11 +578,14 @@ function StaffManagement() {
       gender: 'Male',
       phoneNumber: '',
       dateOfBirth: '',
-      hireDate: ''
+      hireDate: '',
+      provinceId: undefined
     })
+    setProvinceSearchValue('')
+    setProvinceOpen(false)
   }
 
-  const handleStaffFormChange = (field: keyof StaffRegistrationData, value: string) => {
+  const handleStaffFormChange = (field: keyof StaffRegistrationData, value: string | number | undefined) => {
     setStaffFormData((prev) => ({
       ...prev,
       [field]: value
@@ -633,8 +707,11 @@ function StaffManagement() {
       gender: 'Male',
       phoneNumber: '',
       dateOfBirth: '',
-      hireDate: ''
+      hireDate: '',
+      provinceId: undefined
     })
+    setProvinceSearchValue('')
+    setProvinceOpen(false)
     setDateOfBirthOpen(false)
     setHireDateOpen(false)
   }
@@ -1118,12 +1195,54 @@ function StaffManagement() {
                           </Select>
                         </div>
                         <div>
-                          <label className='block text-sm font-medium text-gray-700 mb-2'>Mã nhân viên</label>
-                          <Input
-                            value={editFormData.EmployeeCode}
-                            onChange={(e) => handleEditFormChange('EmployeeCode', e.target.value)}
-                            placeholder='Nhập mã nhân viên'
-                          />
+                          <label className='block text-sm font-medium text-gray-700 mb-2'>Quê quán</label>
+                          <Popover open={editProvinceOpen} onOpenChange={setEditProvinceOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant='outline'
+                                role='combobox'
+                                aria-expanded={editProvinceOpen}
+                                className='w-full justify-between font-normal'
+                                disabled={loadingProvinces}
+                                type='button'
+                              >
+                                <span className='flex-1 truncate mr-2 text-left'>
+                                  {loadingProvinces
+                                    ? 'Đang tải...'
+                                    : selectedEditProvince
+                                      ? `${selectedEditProvince.name} - ${selectedEditProvince.region}`
+                                      : 'Chọn tỉnh/thành phố'}
+                                </span>
+                                <ChevronsUpDown className='h-4 w-4 shrink-0 opacity-50' />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className='w-full p-0' align='start'>
+                              <Command>
+                                <CommandInput
+                                  placeholder='Tìm kiếm tỉnh/thành phố...'
+                                  value={editProvinceSearchValue}
+                                  onValueChange={setEditProvinceSearchValue}
+                                />
+                                <CommandList>
+                                  <CommandEmpty>Không tìm thấy tỉnh/thành phố nào.</CommandEmpty>
+                                  <CommandGroup>
+                                    {filteredEditProvinces.map((province) => (
+                                      <CommandItem
+                                        key={province.id}
+                                        value={`${province.name} - ${province.region}`}
+                                        onSelect={() => handleEditProvinceChange(province.id)}
+                                      >
+                                        <Check
+                                          className={`mr-2 h-4 w-4 ${editFormData.ProvinceId === province.id ? 'opacity-100' : 'opacity-0'}`}
+                                        />
+                                        {province.name} - {province.region}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </div>
 
@@ -1279,6 +1398,12 @@ function StaffManagement() {
                             <CalendarIcon className='w-4 h-4 mr-2 text-gray-400' />
                             <span>{selectedStaff.dateOfBirth}</span>
                           </div>
+                          {selectedStaff.provinceName && (
+                            <div className='flex items-center'>
+                              <Building2 className='w-4 h-4 mr-2 text-gray-400' />
+                              <span>{selectedStaff.provinceName}</span>
+                            </div>
+                          )}
                         </div>
                         <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                           <div className='space-y-3'>
@@ -1557,12 +1682,65 @@ function StaffManagement() {
                           setHireDateOpen(false)
                         }
                       }}
-                      disabled={(date) => date < new Date('2020-01-01')}
+                      disabled={(date) => 
+                        date < new Date('2020-01-01') || 
+                        date > new Date() // Không cho chọn ngày trong tương lai
+                      }
                       captionLayout='dropdown'
                       fromYear={2020}
                       toYear={new Date().getFullYear() + 1}
                       initialFocus
                     />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>Quê quán</label>
+                <Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant='outline'
+                      role='combobox'
+                      aria-expanded={provinceOpen}
+                      className='w-full h-10 justify-between font-normal'
+                      disabled={loadingProvinces}
+                      type='button'
+                    >
+                      <span className='flex-1 truncate mr-2 text-left'>
+                        {loadingProvinces
+                          ? 'Đang tải...'
+                          : selectedProvince
+                            ? `${selectedProvince.name} - ${selectedProvince.region}`
+                            : 'Chọn tỉnh/thành phố'}
+                      </span>
+                      <ChevronsUpDown className='h-4 w-4 shrink-0 opacity-50' />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className='w-full p-0' align='start'>
+                    <Command>
+                      <CommandInput
+                        placeholder='Tìm kiếm tỉnh/thành phố...'
+                        value={provinceSearchValue}
+                        onValueChange={setProvinceSearchValue}
+                      />
+                      <CommandList>
+                        <CommandEmpty>Không tìm thấy tỉnh/thành phố nào.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredProvinces.map((province) => (
+                            <CommandItem
+                              key={province.id}
+                              value={`${province.name} - ${province.region}`}
+                              onSelect={() => handleProvinceChange(province.id)}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${staffFormData.provinceId === province.id ? 'opacity-100' : 'opacity-0'}`}
+                              />
+                              {province.name} - {province.region}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
                   </PopoverContent>
                 </Popover>
               </div>

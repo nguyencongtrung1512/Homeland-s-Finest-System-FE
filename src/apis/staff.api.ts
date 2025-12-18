@@ -111,6 +111,7 @@ export interface ReviewProductResponse {
 export interface StaffInfo {
   userId: string
   provinceId: number | null
+  provinceName: string | null
   email: string
   phoneNumber: string
   role: string
@@ -158,6 +159,7 @@ export interface UpdateStaffRequest {
   Note?: string
   EmployeeCode?: string
   Avatar?: File
+  ProvinceId?: number
 }
 
 export interface UpdateStaffResponse {
@@ -492,13 +494,16 @@ export const staffApi = {
       formData.append('Note', updateData.Note)
     }
 
-    if (updateData.EmployeeCode) {
-      formData.append('EmployeeCode', updateData.EmployeeCode)
+    if (updateData.ProvinceId !== undefined && updateData.ProvinceId !== null) {
+      formData.append('ProvinceId', updateData.ProvinceId.toString())
     }
 
     if (updateData.Avatar) {
       formData.append('Avatar', updateData.Avatar)
     }
+
+    // Add BanUntil as empty string if not provided (required by backend)
+    formData.append('BanUntil', '')
 
     const response = await axiosInstance.put(`${API_URL}/${staffId}`, formData, {
       headers: {
