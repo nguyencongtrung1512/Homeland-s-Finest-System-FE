@@ -17,12 +17,16 @@ import searchApi, { type SearchRequest } from '../../../apis/search.api'
 import type { Product } from '../../../types/productType'
 import LiquidSegmentedControl from '../../../components/ui/tab'
 import { getProductCategoryById } from '../../../apis/productCategory.api'
+import SearchAutocomplete from '../../../components/SearchAutocomplete/SearchAutocomplete'
 
 function Products() {
   const { isAuthenticated, user } = useAuth()
   const [searchParams] = useSearchParams()
   const categoryId = searchParams.get('categoryId')
+  // searchQuery: text người dùng đang gõ
   const [searchQuery, setSearchQuery] = useState('')
+  // appliedSearchQuery: text đã được apply khi nhấn Enter hoặc nút tìm kiếm
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1) // 1-based for UI
   const [pageSize] = useState(24) // Items per page
   const { addToCart } = useCart()
@@ -129,7 +133,7 @@ function Products() {
         const limit = currentPage * pageSize
 
         const searchRequest: SearchRequest = {
-          queryText: searchQuery.trim() || '', // Empty string for trending
+          queryText: appliedSearchQuery.trim() || '', // Empty string for trending, sử dụng giá trị đã apply
           userId: user?.userId || null,
           limit: limit,
           sortBy: sortBy || null,
@@ -151,7 +155,7 @@ function Products() {
     }
 
     fetchProducts()
-  }, [activeTab, searchQuery, sortBy, productFilters, currentPage, pageSize, user?.userId])
+  }, [activeTab, appliedSearchQuery, sortBy, productFilters, currentPage, pageSize, user?.userId])
 
   // Fetch combos with filters
   useEffect(() => {
@@ -171,8 +175,8 @@ function Products() {
         }
 
         // Add search and sort if provided
-        if (searchQuery.trim()) {
-          filterRequest.queryText = searchQuery.trim()
+        if (appliedSearchQuery.trim()) {
+          filterRequest.queryText = appliedSearchQuery.trim()
         }
         if (sortBy) {
           filterRequest.sortBy = sortBy
@@ -201,7 +205,7 @@ function Products() {
       }
     }
     fetchCombos()
-  }, [activeTab, currentPage, comboFilters, searchQuery, sortBy])
+  }, [activeTab, currentPage, comboFilters, appliedSearchQuery, sortBy])
 
   // Client-side pagination - slice products for current page
   const paginatedProducts = useMemo(() => {
@@ -242,8 +246,11 @@ function Products() {
     }
   }
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSearch = (value?: string) => {
+    // Nếu autocomplete trả về value thì dùng luôn, còn không thì dùng searchQuery hiện tại
+    const finalValue = value !== undefined ? value : searchQuery
+    setSearchQuery(finalValue)
+    setAppliedSearchQuery(finalValue)
     setCurrentPage(1) // Reset to first page on new search
 
     // Update combo filters if on combo tab
@@ -365,32 +372,23 @@ function Products() {
               ))}
             </div>
 
-            <form
-              onSubmit={handleSearch}
-              className='flex w-full max-w-[420px] items-center rounded-full border border-[#D5E4CF] bg-white px-3 py-1.5 shadow-sm'
-            >
-              <svg
-                className='mr-2 h-4 w-4 text-gray-400'
-                xmlns='http://www.w3.org/2000/svg'
-                fill='none'
-                viewBox='0 0 24 24'
-                stroke='currentColor'
-              >
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth='2'
-                  d='M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z'
-                />
-              </svg>
-              <input
-                className='w-full border-none bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none'
-                type='text'
-                placeholder={activeTab === 'product' ? 'Tìm kiếm sản phẩm, vùng miền...' : 'Tìm kiếm combo...'}
+            <div className='flex w-full max-w-[420px] items-center gap-2'>
+              <SearchAutocomplete
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={setSearchQuery}
+                onSubmit={handleSearch}
+                placeholder={activeTab === 'product' ? 'Tìm kiếm sản phẩm, vùng miền...' : 'Tìm kiếm combo...'}
+                userId={user?.userId || null}
+                debounceDelay={300}
               />
-            </form>
+              <button
+                type='button'
+                onClick={() => handleSearch()}
+                className='px-4 py-2 rounded-full bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors whitespace-nowrap'
+              >
+                Tìm kiếm
+              </button>
+            </div>
           </div>
 
           {/* Loading state */}
