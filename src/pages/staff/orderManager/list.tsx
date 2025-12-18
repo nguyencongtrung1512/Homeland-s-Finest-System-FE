@@ -6,7 +6,7 @@ import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Input } from '../../../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
-import { Search, Eye, PieChart, Calendar, Loader2 } from 'lucide-react'
+import { Search, Eye, PieChart, Calendar, Loader2, RefreshCw } from 'lucide-react'
 import type { OrderListResponse } from '../../../types/orderType'
 import { getUsers } from '../../../apis/user.api'
 import type { Order, OrderStatus } from '../../../types/orderType'
@@ -18,6 +18,7 @@ import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import { toast } from '../../../utils/toast'
 import path from '../../../constants/path'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 import { getPaymentMethodDistribution, type PaymentMethodDistributionResponse } from '../../../apis/walletDashboard.api'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Pie } from 'react-chartjs-2'
@@ -300,15 +301,46 @@ function OrderManagementStaff() {
     <div className='p-6'>
       {/* Header */}
       <div className='mb-6'>
-        <div className='flex items-center justify-between mb-6'>
-          <h1 className='text-2xl font-bold'>Quản lý Đơn hàng</h1>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button variant='outline' onClick={() => setShowStats(!showStats)} className='flex items-center gap-2'>
-              <PieChart className='w-4 h-4' />
-              {showStats ? 'Ẩn thống kê' : 'Xem thống kê'}
-            </Button>
-          </motion.div>
-        </div>
+        <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg mb-6'>
+          <CardContent className='py-4'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-3'>
+                <h2 className='text-3xl font-bold text-white m-0'>Quản lý Đơn hàng</h2>
+              </div>
+              <div className='flex items-center gap-3'>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    variant='outline' 
+                    onClick={() => setShowStats(!showStats)} 
+                    className='flex items-center gap-2 bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-white/30'
+                  >
+                    <PieChart className='w-4 h-4' />
+                    {showStats ? 'Ẩn thống kê' : 'Xem thống kê'}
+                  </Button>
+                </motion.div>
+                <ShimmerBorder
+                  className='cursor-pointer'
+                  color='#ffffff'
+                  animationDuration='3s'
+                  contentClassName='bg-white/10 rounded-lg'
+                >
+                  <Button
+                    onClick={loadOrders}
+                    disabled={loading}
+                    variant='outline'
+                    className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+                  >
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    {loading ? 'Đang tải...' : 'Làm mới'}
+                  </Button>
+                </ShimmerBorder>
+              </div>
+            </div>
+            <p className='text-white/90 mt-2'>
+              Quản lý và theo dõi tất cả đơn hàng trong hệ thống
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Payment Method Statistics Section */}
         <AnimatePresence>

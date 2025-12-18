@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Button } from '../../../components/ui/button'
-import { Store, Package, AlertCircle, ShoppingBag, Layers, Grid3x3, TrendingUp, ArrowRight } from 'lucide-react'
+import { Store, Package, AlertCircle, ShoppingBag, Layers, Grid3x3, TrendingUp, ArrowRight, RefreshCw } from 'lucide-react'
 import { BarChartIcon, PieChartIcon } from 'lucide-react'
 import {
   Chart as ChartJS,
@@ -60,6 +61,151 @@ function StaffDashboard() {
   const [pendingReports, setPendingReports] = useState<FormDTO[]>([])
   const [reportsLoading, setReportsLoading] = useState(false)
 
+  // Fetch dashboard data function
+  const fetchDashboardData = useCallback(async () => {
+    if (!selectedYear) return
+    setLoading(true)
+    try {
+      // Fetch staff dashboard overview - không hỗ trợ filter theo năm
+      const staffDashboardResponse = await getStaffDashboard()
+      const staffData = staffDashboardResponse.data
+      console.log('Staff Dashboard Response:', staffDashboardResponse)
+      console.log('Staff Data:', staffData)
+
+      // Fetch store registration chart - HỖ TRỢ filter theo năm
+      const registrationChartResponse = await getStoreRegistrationChart(selectedYear)
+      const registrationData = registrationChartResponse.data
+      console.log('Registration Chart Response:', registrationChartResponse)
+      console.log('Registration Data:', registrationData)
+
+      // Fetch region distribution - HỖ TRỢ filter theo năm
+      const regionDistributionResponse = await getStoreRegionDistribution(selectedYear)
+      const regionData = regionDistributionResponse.data
+      console.log('Region Distribution Response:', regionDistributionResponse)
+      console.log('Region Data:', regionData)
+
+      // Fetch top stores - HỖ TRỢ filter theo năm
+      const topStoresResponse = await getTopStores(5, selectedYear)
+      const topStoresData = topStoresResponse.data
+      console.log('Top Stores Response:', topStoresResponse)
+      console.log('Top Stores Data:', topStoresData)
+
+      // Map staff stats từ API getStaffDashboard
+      // Backend trả về: totalStore, totalOrder, totalPendingCombo, totalPendingProduct, totalPendingReport
+      const regionDataAny = regionData as any
+      const staffDataAny = staffData as any
+      const registrationDataAny = registrationData as any
+
+      // Lấy dữ liệu từ staffData (API getStaffDashboard)
+      const mappedStats = {
+        totalStores: staffDataAny?.totalStore || staffDataAny?.TotalStore || 0,
+        totalCombos: staffDataAny?.totalPendingCombo || staffDataAny?.TotalPendingCombo || 0,
+        totalProducts: staffDataAny?.totalPendingProduct || staffDataAny?.TotalPendingProduct || 0,
+        pendingReports: staffDataAny?.totalPendingReport || staffDataAny?.TotalPendingReport || pendingReports.length || 0,
+        totalCategories: 0, // Không có trong API response
+        totalOrders: staffDataAny?.totalOrder || staffDataAny?.TotalOrder || 0
+      }
+      console.log('Staff Data from API:', staffDataAny)
+      console.log('Mapped Staff Stats:', mappedStats)
+      setStaffStats(mappedStats)
+
+      // Map store registration chart data - đảm bảo có đủ 12 tháng
+      const monthLabels = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12']
+      const storeCountByMonth = registrationDataAny?.storeCountByMonth || registrationDataAny?.StoreCountByMonth || {}
+      const registrationChartData = monthLabels.map((month) => {
+        return storeCountByMonth[month] || 0
+      })
+      console.log('Registration Chart Data mapped:', registrationChartData)
+      // Đảm bảo có đủ 12 giá trị
+      if (registrationChartData.length === 12) {
+        setStoreRegistrationData(registrationChartData)
+      } else {
+        // Nếu không đủ, fill với 0
+        const filledData = Array(12)
+          .fill(0)
+          .map((_, index) => {
+            const month = monthLabels[index]
+            return storeCountByMonth[month] || 0
+          })
+        console.log('Filled Registration Data:', filledData)
+        setStoreRegistrationData(filledData)
+      }
+
+      // Map region distribution data
+      const northData = regionDataAny?.north || regionDataAny?.North || {}
+      const centralData = regionDataAny?.central || regionDataAny?.Central || {}
+      const southData = regionDataAny?.south || regionDataAny?.South || {}
+      const regionDataMapped = {
+        labels: ['Miền Bắc', 'Miền Trung', 'Miền Nam'],
+        data: [
+          northData?.storeCount || northData?.StoreCount || 0,
+          centralData?.storeCount || centralData?.StoreCount || 0,
+          southData?.storeCount || southData?.StoreCount || 0
+        ]
+      }
+      console.log('Region Distribution Data mapped:', regionDataMapped)
+      setRegionDistributionData(regionDataMapped)
+
+      // Map top stores - giống admin dashboard
+      if (topStoresData && Array.isArray(topStoresData) && topStoresData.length > 0) {
+        const mappedTopStores = topStoresData.map((store) => ({
+          storeId: store.storeId,
+          storeName: store.storeName,
+          revenue: store.totalRevenues,
+          orderCount: 0, // Không có trong API response
+          logoUrl: null
+        }))
+        console.log('Top Stores mapped:', mappedTopStores)
+        setTopStores(mappedTopStores)
+      } else {
+        console.log('Top Stores Data is empty or not array:', topStoresData)
+        setTopStores([])
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+      // Set default values on error (giữ lại pendingReports từ state)
+      setStaffStats((prev) => ({
+        ...prev,
+        totalStores: 0,
+        totalCombos: 0,
+        totalProducts: 0,
+        totalCategories: 0,
+        totalOrders: 0
+      }))
+      setStoreRegistrationData([])
+      setRegionDistributionData({
+        labels: ['Miền Bắc', 'Miền Trung', 'Miền Nam'],
+        data: [0, 0, 0]
+      })
+      setTopStores([])
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedYear, pendingReports.length])
+
+  // Handle refresh
+  const handleRefresh = useCallback(async () => {
+    await fetchDashboardData()
+    // Also refresh pending reports
+    try {
+      setReportsLoading(true)
+      const allPendingForms = await formApi.getAllForms({
+        pageSize: 10,
+        pageNumber: 1
+      })
+      const pending = allPendingForms.filter((form) => form.status === 'Pending' || form.status === 'Processing')
+      setPendingReports(pending)
+      setStaffStats((prev) => ({
+        ...prev,
+        pendingReports: pending.length
+      }))
+    } catch (error) {
+      console.error('Error fetching pending reports:', error)
+    } finally {
+      setReportsLoading(false)
+    }
+  }, [fetchDashboardData])
+
   // Fetch pending reports
   useEffect(() => {
     const fetchPendingReports = async () => {
@@ -90,128 +236,8 @@ function StaffDashboard() {
   }, [])
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!selectedYear) return
-      setLoading(true)
-      try {
-        // Fetch staff dashboard overview - không hỗ trợ filter theo năm
-        const staffDashboardResponse = await getStaffDashboard()
-        const staffData = staffDashboardResponse.data
-        console.log('Staff Dashboard Response:', staffDashboardResponse)
-        console.log('Staff Data:', staffData)
-
-        // Fetch store registration chart - HỖ TRỢ filter theo năm
-        const registrationChartResponse = await getStoreRegistrationChart(selectedYear)
-        const registrationData = registrationChartResponse.data
-        console.log('Registration Chart Response:', registrationChartResponse)
-        console.log('Registration Data:', registrationData)
-
-        // Fetch region distribution - HỖ TRỢ filter theo năm
-        const regionDistributionResponse = await getStoreRegionDistribution(selectedYear)
-        const regionData = regionDistributionResponse.data
-        console.log('Region Distribution Response:', regionDistributionResponse)
-        console.log('Region Data:', regionData)
-
-        // Fetch top stores - HỖ TRỢ filter theo năm
-        const topStoresResponse = await getTopStores(5, selectedYear)
-        const topStoresData = topStoresResponse.data
-        console.log('Top Stores Response:', topStoresResponse)
-        console.log('Top Stores Data:', topStoresData)
-
-        // Map staff stats từ API getStaffDashboard
-        // Backend trả về: totalStore, totalOrder, totalPendingCombo, totalPendingProduct, totalPendingReport
-        const regionDataAny = regionData as any
-        const staffDataAny = staffData as any
-        const registrationDataAny = registrationData as any
-
-        // Lấy dữ liệu từ staffData (API getStaffDashboard)
-        const mappedStats = {
-          totalStores: staffDataAny?.totalStore || staffDataAny?.TotalStore || 0,
-          totalCombos: staffDataAny?.totalPendingCombo || staffDataAny?.TotalPendingCombo || 0,
-          totalProducts: staffDataAny?.totalPendingProduct || staffDataAny?.TotalPendingProduct || 0,
-          pendingReports: staffDataAny?.totalPendingReport || staffDataAny?.TotalPendingReport || pendingReports.length || 0,
-          totalCategories: 0, // Không có trong API response
-          totalOrders: staffDataAny?.totalOrder || staffDataAny?.TotalOrder || 0
-        }
-        console.log('Staff Data from API:', staffDataAny)
-        console.log('Mapped Staff Stats:', mappedStats)
-        setStaffStats(mappedStats)
-
-        // Map store registration chart data - đảm bảo có đủ 12 tháng
-        const monthLabels = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12']
-        const storeCountByMonth = registrationDataAny?.storeCountByMonth || registrationDataAny?.StoreCountByMonth || {}
-        const registrationChartData = monthLabels.map((month) => {
-          return storeCountByMonth[month] || 0
-        })
-        console.log('Registration Chart Data mapped:', registrationChartData)
-        // Đảm bảo có đủ 12 giá trị
-        if (registrationChartData.length === 12) {
-          setStoreRegistrationData(registrationChartData)
-        } else {
-          // Nếu không đủ, fill với 0
-          const filledData = Array(12)
-            .fill(0)
-            .map((_, index) => {
-              const month = monthLabels[index]
-              return storeCountByMonth[month] || 0
-            })
-          console.log('Filled Registration Data:', filledData)
-          setStoreRegistrationData(filledData)
-        }
-
-        // Map region distribution data
-        const northData = regionDataAny?.north || regionDataAny?.North || {}
-        const centralData = regionDataAny?.central || regionDataAny?.Central || {}
-        const southData = regionDataAny?.south || regionDataAny?.South || {}
-        const regionDataMapped = {
-          labels: ['Miền Bắc', 'Miền Trung', 'Miền Nam'],
-          data: [
-            northData?.storeCount || northData?.StoreCount || 0,
-            centralData?.storeCount || centralData?.StoreCount || 0,
-            southData?.storeCount || southData?.StoreCount || 0
-          ]
-        }
-        console.log('Region Distribution Data mapped:', regionDataMapped)
-        setRegionDistributionData(regionDataMapped)
-
-        // Map top stores - giống admin dashboard
-        if (topStoresData && Array.isArray(topStoresData) && topStoresData.length > 0) {
-          const mappedTopStores = topStoresData.map((store) => ({
-            storeId: store.storeId,
-            storeName: store.storeName,
-            revenue: store.totalRevenues,
-            orderCount: 0, // Không có trong API response
-            logoUrl: null
-          }))
-          console.log('Top Stores mapped:', mappedTopStores)
-          setTopStores(mappedTopStores)
-        } else {
-          console.log('Top Stores Data is empty or not array:', topStoresData)
-          setTopStores([])
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-        // Set default values on error (giữ lại pendingReports từ state)
-        setStaffStats((prev) => ({
-          ...prev,
-          totalStores: 0,
-          totalCombos: 0,
-          totalProducts: 0,
-          totalCategories: 0,
-          totalOrders: 0
-        }))
-        setStoreRegistrationData([])
-        setRegionDistributionData({
-          labels: ['Miền Bắc', 'Miền Trung', 'Miền Nam'],
-          data: [0, 0, 0]
-        })
-        setTopStores([])
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchDashboardData()
-  }, [selectedYear])
+  }, [fetchDashboardData])
 
   // Transform data for charts - giống admin dashboard
   const revenueData = {
@@ -284,51 +310,68 @@ function StaffDashboard() {
     <div className='min-h-screen bg-background'>
       <div className='space-y-6 p-6 max-w-7xl mx-auto'>
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'
-        >
-          <div>
-            <motion.h1
-              className='text-3xl font-bold tracking-tight'
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              Dashboard Nhân viên
-            </motion.h1>
-            <motion.p
-              className='text-muted-foreground mt-1'
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
+        <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+          <CardContent className='py-4'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-3'>
+                <h2 className='text-3xl font-bold text-white m-0 flex items-center gap-2'>
+                  <TrendingUp className='w-8 h-8' />
+                  Dashboard Nhân viên
+                </h2>
+              </div>
+              <div className='flex items-center gap-3'>
+                <div className='flex items-center gap-3 bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2.5 border border-white/30 shadow-lg hover:bg-white/25 transition-all duration-200'>
+                  <span className='text-sm font-semibold text-white whitespace-nowrap'>
+                    Chọn năm:
+                  </span>
+                  <Select 
+                    value={selectedYear.toString()} 
+                    onValueChange={(value) => setSelectedYear(Number.parseInt(value))}
+                  >
+                    <SelectTrigger className='w-[130px] bg-white border-0 text-cyan-700 font-semibold shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-white/50'>
+                      <SelectValue placeholder='Chọn năm' />
+                    </SelectTrigger>
+                    <SelectContent className='bg-white border-cyan-200'>
+                      {[
+                        new Date().getFullYear() - 2,
+                        new Date().getFullYear() - 1,
+                        new Date().getFullYear(),
+                        new Date().getFullYear() + 1
+                      ].map((year) => (
+                        <SelectItem 
+                          key={year} 
+                          value={year.toString()}
+                          className='font-medium hover:bg-cyan-50 focus:bg-cyan-100 cursor-pointer'
+                        >
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <ShimmerBorder
+                  className='cursor-pointer'
+                  color='#ffffff'
+                  animationDuration='3s'
+                  contentClassName='bg-white/10 rounded-lg'
+                >
+                  <Button
+                    variant='outline'
+                    onClick={handleRefresh}
+                    disabled={loading || reportsLoading}
+                    className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loading || reportsLoading ? 'animate-spin' : ''}`} />
+                    {loading || reportsLoading ? 'Đang tải...' : 'Làm mới'}
+                  </Button>
+                </ShimmerBorder>
+              </div>
+            </div>
+            <p className='text-white/90 mt-2'>
               Tổng quan quản lý cửa hàng, người dùng và hệ thống (Biểu đồ đăng ký cửa hàng có thể filter theo năm)
-            </motion.p>
-          </div>
-          <div className='flex items-center gap-3'>
-            <span className='text-sm font-medium'>Chọn năm:</span>
-            <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(Number.parseInt(value))}>
-              <SelectTrigger className='w-[120px]'>
-                <SelectValue placeholder='Chọn năm' />
-              </SelectTrigger>
-              <SelectContent>
-                {[
-                  new Date().getFullYear() - 2,
-                  new Date().getFullYear() - 1,
-                  new Date().getFullYear(),
-                  new Date().getFullYear() + 1
-                ].map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </motion.div>
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Key Metrics Grid */}
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4'>
