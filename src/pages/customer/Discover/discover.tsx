@@ -527,29 +527,18 @@ function Discover() {
   }
 
   const handleRegionClick = (region: string) => {
+    // Chỉ thay đổi miền được chọn, KHÔNG đụng tới trạng thái "Cửa hàng gần tôi"
+    // và KHÔNG tự động bật/tắt loại filter (origin) ở đây.
     if (selectedRegion === region) {
       setSelectedRegion(null)
-      // Nếu bỏ chọn miền, có thể bỏ chọn "Đặc sản theo vùng" nếu đang chọn
-      if (selectedFilterType === 'origin') {
-        setSelectedFilterType(null)
-      }
     } else {
       setSelectedRegion(region)
-      // Tự động chọn "Đặc sản theo vùng" khi chọn miền
-      if (selectedFilterType !== 'origin') {
-        setSelectedFilterType('origin')
-      }
     }
     setProvinceSearch('')
   }
 
   // Handle filter type selection
   const handleFilterTypeClick = (filterType: string) => {
-    // Nếu đang bật "Cửa hàng gần tôi" thì KHÔNG cho chọn "Đặc sản theo vùng"
-    if (isNearMeEnabled && filterType === 'origin') {
-      return
-    }
-
     if (selectedFilterType === filterType) {
       // Nếu bỏ chọn filter
       setSelectedFilterType(null)
@@ -1088,7 +1077,7 @@ function Discover() {
                           />
                         </svg>
                       </div>
-                      <span>Đặc sản phương xa</span>
+                      <span>Đặc sản vùng khác</span>
                     </div>
                     {otherSpecialtyEnabled && (
                       <div className='w-5 h-5 rounded-full bg-white flex items-center justify-center'>
@@ -1292,9 +1281,9 @@ function Discover() {
                   setProvinceSearch('')
                   setAppliedSearch('')
                 }}
-                className='absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors'
+                className='absolute inset-y-0 right-9 pr-2 flex items-center text-gray-400 hover:text-gray-600 transition-colors'
               >
-                <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                   <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
                 </svg>
               </button>
@@ -1302,7 +1291,7 @@ function Discover() {
             {/* Nút search để chủ động áp dụng, tránh filter mỗi ký tự */}
             <button
               onClick={() => setAppliedSearch(provinceSearch.trim())}
-              className='absolute inset-y-0 right-0 pr-4 flex items-center text-green-600 hover:text-green-700 transition-colors'
+              className='absolute inset-y-0 right-0 pr-3 flex items-center text-green-600 hover:text-green-700 transition-colors'
               aria-label='Search'
             >
               <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>

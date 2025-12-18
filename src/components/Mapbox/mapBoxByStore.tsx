@@ -477,17 +477,15 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
 
   // Hàm load preview sản phẩm/combo cho một cửa hàng
   const loadStorePreviewProducts = useCallback(async (storeId: string) => {
-    // Nếu đã có cache hoặc đang loading thì không load lại
-    if (cacheRef.current[storeId] || loadingRef.current[storeId]) {
-      return
-    }
+    // Nếu đang loading thì không gọi chồng thêm
+    if (loadingRef.current[storeId]) return
 
-    // Set loading state
+    // Đánh dấu đang loading và set state
     loadingRef.current[storeId] = true
     setStorePreviewLoading((prev) => ({ ...prev, [storeId]: true }))
 
     try {
-      // Load 2 sản phẩm và 1 combo song song
+      // Luôn gọi API để đảm bảo dữ liệu mới nhất (2 sản phẩm + 1 combo nếu có)
       const [productsResponse, combosResponse] = await Promise.all([
         storeApi.getStoreProducts(storeId, {
           productType: 'Product',
@@ -683,6 +681,19 @@ const MapBoxByStore: React.FC<MapBoxByStoreProps> = ({
 
           // Load preview products/combo khi popup mở
           loadStorePreviewProducts(store.ID)
+        }
+      })
+
+      // Bảo đảm click marker luôn mở popup (hoặc toggle đóng/mở)
+      el.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const p = marker.getPopup()
+        if (!p) return
+
+        if (!p.isOpen()) {
+          p.addTo(map.current!)
+        } else {
+          p.remove()
         }
       })
 

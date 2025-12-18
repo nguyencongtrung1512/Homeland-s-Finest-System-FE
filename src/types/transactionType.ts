@@ -57,6 +57,7 @@ export interface TransactionQueryParams {
   orderId?: string
   status?: TransactionStatus
   type?: string
+  paymentMethod?: string
   fromDate?: string
   toDate?: string
   sortBy?: 'createdAt' | 'amount' | 'status'
