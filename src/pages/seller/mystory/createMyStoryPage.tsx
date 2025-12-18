@@ -379,6 +379,9 @@ function CreateMyStoryPage() {
           VideoOpener: null,
           VideoOpenerDescription: '',
           VideoOpenerUrl: null,
+          VideoOpenerPreviewUrl: null,
+          VideoOpenerPlayBackUrl: null,
+          VideoOpenerFallBackUrl: null,
           SingleImage: null,
           SingleImageDescription: '',
           SingleImageUrl: null,
@@ -388,9 +391,15 @@ function CreateMyStoryPage() {
           VideoProcess: null,
           VideoProcessDescription: '',
           VideoProcessUrl: null,
+          VideoProcessPreviewUrl: null,
+          VideoProcessPlayBackUrl: null,
+          VideoProcessFallBackUrl: null,
           VideoTestimonial: null,
           VideoTestimonialDescription: '',
           VideoTestimonialUrl: null,
+          VideoTestimonialPreviewUrl: null,
+          VideoTestimonialPlayBackUrl: null,
+          VideoTestimonialFallBackUrl: null,
           ThumbnailImage: null,
           ThumbnailUrl: story.thumbnailUrl || null
         }
@@ -1028,10 +1037,7 @@ function CreateMyStoryPage() {
                     content.contentType,
                     content.contentData,
                     content.imageUrls,
-                    content.videoUrl,
-                    content.videoPreviewUrl,
-                    content.videoPlayBackUrl,
-                    content.videoFallBackUrl
+                    content.videoUrl || content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
                   )}
                 </div>
               ))}
