@@ -146,7 +146,14 @@ function TermsManagement() {
   // Helper function to safely search in text
   const safeSearch = (text: string | null | undefined, searchTerm: string): boolean => {
     if (!text || !searchTerm) return false
-    return text.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    // Normalize searchTerm: trim và thay thế nhiều khoảng trắng liên tiếp thành 1 khoảng trắng
+    const normalizedSearchTerm = searchTerm.trim().replace(/\s+/g, ' ').toLowerCase()
+    
+    // Normalize text: trim và thay thế nhiều khoảng trắng liên tiếp thành 1 khoảng trắng
+    const normalizedText = text.trim().replace(/\s+/g, ' ').toLowerCase()
+    
+    return normalizedText.includes(normalizedSearchTerm)
   }
 
   // Filter documents based on search text and other filters (Frontend filtering)

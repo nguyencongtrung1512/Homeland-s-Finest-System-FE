@@ -30,6 +30,7 @@ import {
 } from '../../../apis/systemStorage.api'
 import { toast } from '../../../utils/toast'
 import Loading from '../../../components/Loading/loading'
+import Pagination from '../../../components/Pagination/Pagination'
 
 function SystemStorage() {
   // State management
@@ -37,7 +38,10 @@ function SystemStorage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchText, setSearchText] = useState('')
-  const pageSize = 10
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -66,11 +70,31 @@ function SystemStorage() {
       setError('')
       const response = await getAllSystemStorage({
         pageSize: pageSize,
-        pageNumber: 1
+        pageNumber: currentPage
       })
 
-      if (response.status === 200) {
-        setSystemStorageData(response.data)
+      // Response từ axios interceptor đã được xử lý, response chính là response.data
+      const apiResponse = response as any
+      
+      if (apiResponse.status === 200) {
+        setSystemStorageData(apiResponse.data || [])
+        
+        // Cập nhật pagination từ API response
+        if (apiResponse.pagination) {
+          const apiTotalItems = Number(apiResponse.pagination.totalItems) || 0
+          const apiTotalPages = Number(apiResponse.pagination.totalPages) || Math.ceil(apiTotalItems / pageSize)
+          
+          // Đảm bảo totalPages là số nguyên dương
+          const finalTotalPages = Math.max(1, Math.ceil(apiTotalPages))
+          
+          setTotalPages(finalTotalPages)
+          setTotalItems(apiTotalItems)
+        } else {
+          // Fallback nếu không có pagination từ API
+          const dataLength = apiResponse.data?.length || 0
+          setTotalPages(Math.ceil(dataLength / pageSize))
+          setTotalItems(dataLength)
+        }
       } else {
         setError('Có lỗi xảy ra khi tải dữ liệu')
       }
@@ -78,23 +102,35 @@ function SystemStorage() {
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải dữ liệu'
       setError(errorMessage)
       toast.error('Không thể tải dữ liệu SystemStorage')
+      setTotalPages(1)
+      setTotalItems(0)
     } finally {
       setLoading(false)
     }
-  }, [pageSize])
+  }, [currentPage, pageSize])
 
   // Load data on component mount
   useEffect(() => {
     fetchSystemStorage()
   }, [fetchSystemStorage])
 
-  // Filter data based on search
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchText])
+
+  // Filter data based on search (frontend filtering)
   const filteredData = systemStorageData.filter(
     (item) =>
       item.name.toLowerCase().includes(searchText.toLowerCase()) ||
       item.description.toLowerCase().includes(searchText.toLowerCase()) ||
       item.value.toLowerCase().includes(searchText.toLowerCase())
   )
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
 
   // Handle view details
   const handleViewDetails = (item: SystemStorageItem) => {
@@ -379,6 +415,22 @@ function SystemStorage() {
             </Table>
           )}
         </CardContent>
+        {/* Pagination */}
+        {!loading && !error && (
+          <div className='flex items-center justify-between px-6 pb-6 pt-4 border-t border-gray-200'>
+            <div className='text-sm text-gray-600'>
+              Hiển thị {filteredData.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} đến{' '}
+              {Math.min(currentPage * pageSize, totalItems)} trong {totalItems} kết quả
+            </div>
+            {totalPages > 1 ? (
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+            ) : (
+              <div className='text-xs text-gray-500'>
+                Trang {currentPage}/{totalPages}
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Create/Edit Modal */}
