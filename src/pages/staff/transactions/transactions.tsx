@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Search, Filter, Eye, ChevronLeft, ChevronRight, Repeat, Loader2 } from 'lucide-react'
+import { Search, Filter, Eye, ChevronLeft, ChevronRight, Repeat, Loader2, RefreshCw } from 'lucide-react'
 import { Card, CardContent } from '../../../components/ui/card'
+import { ShimmerBorder } from '../../../components/ui/shimmer'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
@@ -275,10 +276,34 @@ function TransactionManagement() {
   return (
     <div className='space-y-6 p-6 bg-gray-50 min-h-screen'>
       {/* Header */}
-      <div>
-        <h1 className='text-2xl font-bold text-gray-900'>Quản lý giao dịch</h1>
-        <p className='text-gray-600 mt-1'>Theo dõi và quản lý tất cả giao dịch đi vào hệ thống</p>
-      </div>
+      <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
+        <CardContent className='py-4'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <h2 className='text-3xl font-bold text-white m-0'>Quản lý giao dịch</h2>
+            </div>
+            <ShimmerBorder
+              className='cursor-pointer'
+              color='#ffffff'
+              animationDuration='3s'
+              contentClassName='bg-white/10 rounded-lg'
+            >
+              <Button
+                onClick={fetchTransactions}
+                disabled={loading}
+                variant='outline'
+                className='flex items-center gap-2 bg-transparent border-transparent text-white hover:bg-white/20 hover:text-white w-full'
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Đang tải...' : 'Làm mới'}
+              </Button>
+            </ShimmerBorder>
+          </div>
+          <p className='text-white/90 mt-2'>
+            Theo dõi và quản lý tất cả giao dịch đi vào hệ thống
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       {/* <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>

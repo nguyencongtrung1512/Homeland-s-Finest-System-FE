@@ -49,14 +49,9 @@ export const confirmOrder = async (orderId: string): Promise<Order> => {
 }
 
 // PUT /api/Order/ready-to-pick/{orderId} - Xác nhận sẵn sàng lấy hàng (chuyển sang ReadyToPick)
-export const readyToPickOrder = async (orderId: string, ghnCode?: string): Promise<Order> => {
-  // API yêu cầu body là JSON string, gửi GHN code nếu có, nếu không gửi empty string
-  const body = ghnCode || ''
-  const response: OrderResponse = await axiosInstance.put(`${API_URL}/ready-to-pick/${orderId}`, body, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
+// BE hiện tại không bắt buộc nhập mã giao hàng nhanh (GHN code), chỉ cần gọi API với orderId
+export const readyToPickOrder = async (orderId: string): Promise<Order> => {
+  const response: OrderResponse = await axiosInstance.put(`${API_URL}/ready-to-pick/${orderId}`)
   return response.data
 }
 

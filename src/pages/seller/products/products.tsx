@@ -35,10 +35,10 @@ function ProductsSeller() {
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
   const [searchTerm, setSearchTerm] = useState('')
-  const [sortBy, setSortBy] = useState<'createdAt' | 'name' | 'price'>('createdAt')
+  const [sortBy, setSortBy] = useState<'createdAt' | 'name'>('createdAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [statusFilter, setStatusFilter] = useState<
-    'all' | 'approved' | 'pending' | 'rejected' | 'draft' | 'processing' | 'cancelled' | 'confirmed' | 'denied'
+    'all' | 'approved' | 'pending' | 'draft' | 'processing' | 'cancelled' | 'confirmed' | 'denied'
   >('all')
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [showUpdateDialog, setShowUpdateDialog] = useState(false)
@@ -414,8 +414,9 @@ function ProductsSeller() {
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       const matchesSearch = (() => {
-        if (!searchTerm.trim()) return true
-        const term = searchTerm.toLowerCase()
+        const trimmedSearchTerm = searchTerm.trim()
+        if (!trimmedSearchTerm) return true
+        const term = trimmedSearchTerm.toLowerCase()
         return (
           product.name.toLowerCase().includes(term) ||
           product.description?.toLowerCase().includes(term) ||
@@ -432,18 +433,16 @@ function ProductsSeller() {
             : statusFilter === 'pending'
               ? statusValue === 'pending'
               : statusFilter === 'processing'
-                ? statusValue === 'processing'
+                ? statusValue === 'processing' || statusValue === 'rejected'
                 : statusFilter === 'cancelled'
                   ? statusValue === 'cancelled'
-                  : statusFilter === 'rejected'
-                    ? statusValue === 'rejected'
-                    : statusFilter === 'confirmed'
-                      ? statusValue === 'confirmed'
-                      : statusFilter === 'denied'
-                        ? statusValue === 'denied'
-                        : statusFilter === 'draft'
-                          ? statusValue === 'draft'
-                          : !product.isActive
+                  : statusFilter === 'confirmed'
+                    ? statusValue === 'confirmed'
+                    : statusFilter === 'denied'
+                      ? statusValue === 'denied'
+                      : statusFilter === 'draft'
+                        ? statusValue === 'draft'
+                        : !product.isActive
 
       return matchesSearch && matchesStatus
     })
@@ -464,8 +463,6 @@ function ProductsSeller() {
         switch (sortBy) {
           case 'name':
             return product.name.toLowerCase()
-          case 'price':
-            return product.price ?? 0
           case 'createdAt':
           default:
             return getDateValue(product)
@@ -554,7 +551,7 @@ function ProductsSeller() {
               <Label className='text-sm font-bold text-gray-700'>Tìm kiếm</Label>
               <div className='relative'>
                 <Input
-                  placeholder='Tìm theo tên, mô tả hoặc trạng thái...'
+                  placeholder='Tìm theo tên, mô tả...'
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value)
@@ -571,7 +568,7 @@ function ProductsSeller() {
                 value={`${sortBy}-${sortDirection}`}
                 onValueChange={(value) => {
                   const [field, direction] = value.split('-')
-                  setSortBy(field as 'createdAt' | 'name' | 'price')
+                  setSortBy(field as 'createdAt' | 'name')
                   setSortDirection(direction as 'asc' | 'desc')
                 }}
               >
@@ -583,8 +580,6 @@ function ProductsSeller() {
                   <SelectItem value='createdAt-asc'>Cũ nhất</SelectItem>
                   <SelectItem value='name-asc'>Tên A-Z</SelectItem>
                   <SelectItem value='name-desc'>Tên Z-A</SelectItem>
-                  <SelectItem value='price-asc'>Giá tăng dần</SelectItem>
-                  <SelectItem value='price-desc'>Giá giảm dần</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -609,7 +604,6 @@ function ProductsSeller() {
                   <SelectItem value='processing'>Đang xử lý</SelectItem>
                   <SelectItem value='confirmed'>Đã xác nhận</SelectItem>
                   <SelectItem value='cancelled'>Đã hủy</SelectItem>
-                  <SelectItem value='rejected'>Từ chối</SelectItem>
                   <SelectItem value='denied'>Từ chối</SelectItem>
                 </SelectContent>
               </Select>

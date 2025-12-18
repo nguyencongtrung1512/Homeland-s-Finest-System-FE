@@ -180,3 +180,19 @@ export const getAllChatRoomsByUserId = async (userId: string): Promise<ChatRooms
     throw error
   }
 }
+
+/**
+ * Lấy phòng chat với AI chatbot của người dùng
+ * @param userId - ID của user
+ * @returns Thông tin phòng chat với AI chatbot
+ */
+export const getAIChatRoomByUserId = async (userId: string): Promise<ChatRoomResponse> => {
+  try {
+    const response = await axiosInstance.get<ChatRoomResponse>(`/Chat/ai/${userId}`)
+    // Interceptor đã trả về response.data
+    return response as unknown as ChatRoomResponse
+  } catch (error) {
+    console.error('Error getting AI chat room by user id:', error)
+    throw error
+  }
+}

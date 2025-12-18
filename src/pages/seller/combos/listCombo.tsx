@@ -49,6 +49,11 @@ function ComboSeller() {
     'all' | 'draft' | 'pending' | 'processing' | 'approved' | 'rejected' | 'active' | 'inactive' | 'cancelled'
   >('all')
 
+  // Helper function để tính tổng giá combo
+  const calculateTotalPrice = (comboItems: { finalPrice: number; quantity: number }[]) => {
+    return comboItems.reduce((total, item) => total + item.finalPrice * item.quantity, 0)
+  }
+
   const filteredCombos = useMemo(() => {
     return allCombos.filter((combo) => {
       const matchesSearch = (() => {
@@ -300,10 +305,6 @@ function ComboSeller() {
           className: 'bg-green-100 text-green-800 hover:bg-green-100'
         }
     }
-  }
-
-  const calculateTotalPrice = (comboItems: { finalPrice: number; quantity: number }[]) => {
-    return comboItems.reduce((total, item) => total + item.finalPrice * item.quantity, 0)
   }
 
   return (

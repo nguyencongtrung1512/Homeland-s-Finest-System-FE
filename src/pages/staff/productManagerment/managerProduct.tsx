@@ -228,7 +228,7 @@ function ManagerProduct() {
   }, [filteredProducts])
 
   return (
-    <div className='space-y-6 p-6'>
+    <div className='w-full space-y-4 p-6'>
       {/* Header */}
       <Card className='bg-gradient-to-br from-cyan-500 to-cyan-600 border-0 shadow-lg'>
         <CardContent className='py-4'>
@@ -259,127 +259,128 @@ function ManagerProduct() {
         </CardContent>
       </Card>
 
-      {/* Search and Filters */}
-      <Card>
-        <CardContent className='pt-6'>
+      {/* Search & Filters */}
+      <Card className='bg-white shadow-sm'>
+        <CardContent className='p-6'>
           <div className='flex flex-wrap items-end gap-4'>
-            {/* Search */}
-            <div className='flex-1 min-w-[300px]'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Tìm kiếm</label>
-              <div className='relative'>
-                <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' size={16} />
-                <Input
-                  placeholder='Tên sản phẩm...'
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSearch(searchText)
-                    }
-                  }}
-                  className='pl-10 w-full'
-                />
-              </div>
-            </div>
-
-            {/* Trạng thái sản phẩm */}
-            <div className='flex-1 min-w-[180px]'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái</label>
-              <Select value={productStatusFilter} onValueChange={setProductStatusFilter}>
-                <SelectTrigger className='w-full'>
-                  <SelectValue placeholder='Trạng thái sản phẩm' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>Tất cả trạng thái</SelectItem>
-                  <SelectItem value='Processing'>Chờ xử lý</SelectItem>
-                  <SelectItem value='Approved'>Đã duyệt</SelectItem>
-                  <SelectItem value='Confirmed'>Đã xác nhận</SelectItem>
-                  <SelectItem value='Rejected'>Từ chối xử lý</SelectItem>
-                  <SelectItem value='Denied'>Từ chối duyệt</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Trạng thái bán */}
-            <div className='flex-1 min-w-[180px]'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái bán</label>
-              <Select value={isActiveFilter} onValueChange={setIsActiveFilter}>
-                <SelectTrigger className='w-full'>
-                  <SelectValue placeholder='Trạng thái bán' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>Tất cả trạng thái bán</SelectItem>
-                  <SelectItem value='true'>Đang hoạt động</SelectItem>
-                  <SelectItem value='false'>Dừng bán</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Từ ngày */}
-            <div className='flex-1 min-w-[180px]'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Từ ngày</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant='outline' className='w-full justify-start text-left font-normal'>
-                    <CalendarIcon className='mr-2 h-4 w-4' />
-                    {fromDateFilter ? format(fromDateFilter, 'dd/MM/yyyy', { locale: vi }) : 'dd/MM/yyyy'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className='w-auto p-0' align='start'>
-                  <Calendar 
-                    mode='single' 
-                    selected={fromDateFilter} 
-                    onSelect={setFromDateFilter} 
-                    initialFocus 
-                    locale={vi}
-                    disabled={(date) => {
-                      const today = new Date()
-                      today.setHours(23, 59, 59, 999)
-                      return date > today
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Đến ngày */}
-            <div className='flex-1 min-w-[180px]'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>Đến ngày</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant='outline' className='w-full justify-start text-left font-normal'>
-                    <CalendarIcon className='mr-2 h-4 w-4' />
-                    {toDateFilter ? format(toDateFilter, 'dd/MM/yyyy', { locale: vi }) : 'dd/MM/yyyy'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className='w-auto p-0' align='start'>
-                  <Calendar 
-                    mode='single' 
-                    selected={toDateFilter} 
-                    onSelect={setToDateFilter} 
-                    initialFocus 
-                    locale={vi}
-                    disabled={(date) => {
-                      const today = new Date()
-                      today.setHours(23, 59, 59, 999)
-                      return date > today
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Clear Filter Button */}
-            <div className='flex items-end'>
-              <Button
-                onClick={handleClearFilter}
-                variant='outline'
-                className='h-10 px-4 border-gray-300 hover:bg-gray-100'
-              >
-                Xóa lọc
-              </Button>
+          {/* Search */}
+          <div className='flex-1 min-w-[260px]'>
+            <label className='block text-sm font-medium text-gray-700 mb-2'>Tìm kiếm</label>
+            <div className='relative'>
+              <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' size={16} />
+              <Input
+                placeholder='Tên sản phẩm...'
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch(searchText)
+                  }
+                }}
+                className='pl-10 w-full'
+              />
             </div>
           </div>
+
+          {/* Trạng thái sản phẩm */}
+          <div className='flex-1 min-w-[180px]'>
+            <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái</label>
+            <Select value={productStatusFilter} onValueChange={setProductStatusFilter}>
+              <SelectTrigger className='w-full'>
+                <SelectValue placeholder='Trạng thái sản phẩm' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Tất cả trạng thái</SelectItem>
+                <SelectItem value='Processing'>Chờ xử lý</SelectItem>
+                <SelectItem value='Approved'>Đã duyệt</SelectItem>
+                <SelectItem value='Confirmed'>Đã xác nhận</SelectItem>
+                <SelectItem value='Rejected'>Từ chối xử lý</SelectItem>
+                <SelectItem value='Denied'>Từ chối duyệt</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Trạng thái bán */}
+          <div className='flex-1 min-w-[180px]'>
+            <label className='block text-sm font-medium text-gray-700 mb-2'>Trạng thái bán</label>
+            <Select value={isActiveFilter} onValueChange={setIsActiveFilter}>
+              <SelectTrigger className='w-full'>
+                <SelectValue placeholder='Trạng thái bán' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Tất cả trạng thái bán</SelectItem>
+                <SelectItem value='true'>Đang hoạt động</SelectItem>
+                <SelectItem value='false'>Dừng bán</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Từ ngày */}
+          <div className='flex-1 min-w-[180px]'>
+            <label className='block text-sm font-medium text-gray-700 mb-2'>Từ ngày</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                  <CalendarIcon className='mr-2 h-4 w-4' />
+                  {fromDateFilter ? format(fromDateFilter, 'dd/MM/yyyy', { locale: vi }) : 'dd/MM/yyyy'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className='w-auto p-0' align='start'>
+                <Calendar
+                  mode='single'
+                  selected={fromDateFilter}
+                  onSelect={setFromDateFilter}
+                  initialFocus
+                  locale={vi}
+                  disabled={(date) => {
+                    // Không cho chọn hôm nay hoặc ngày trong tương lai
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    return date >= today
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Đến ngày */}
+          <div className='flex-1 min-w-[180px]'>
+            <label className='block text-sm font-medium text-gray-700 mb-2'>Đến ngày</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant='outline' className='w-full justify-start text-left font-normal'>
+                  <CalendarIcon className='mr-2 h-4 w-4' />
+                  {toDateFilter ? format(toDateFilter, 'dd/MM/yyyy', { locale: vi }) : 'dd/MM/yyyy'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className='w-auto p-0' align='start'>
+                <Calendar
+                  mode='single'
+                  selected={toDateFilter}
+                  onSelect={setToDateFilter}
+                  initialFocus
+                  locale={vi}
+                  disabled={(date) => {
+                    const today = new Date()
+                    today.setHours(23, 59, 59, 999)
+                    return date > today
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Clear Filter Button */}
+          <div className='flex items-end'>
+            <Button
+              onClick={handleClearFilter}
+              variant='outline'
+              className='h-10 px-4 border-gray-300 hover:bg-gray-100'
+            >
+              Xóa lọc
+            </Button>
+          </div>
+        </div>
         </CardContent>
       </Card>
 
