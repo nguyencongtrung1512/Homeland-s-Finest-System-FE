@@ -642,7 +642,7 @@ function ManagerComboStaff() {
           <p className='text-white/90 mt-2'>
             Quản lý và xử lý tất cả combo trong hệ thống ({totalCombos} combo)
           </p>
-        </CardContent>
+        </CardContent>  
       </Card>
 
       {/* Search and Filters */}
