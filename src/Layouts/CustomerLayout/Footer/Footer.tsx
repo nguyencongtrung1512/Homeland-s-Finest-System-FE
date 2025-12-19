@@ -112,9 +112,13 @@ const FooterSocial: React.FC<FooterSocialProps> = ({ title, socialIcons }) => {
 
 // Main Footer Component
 const Footer: React.FC = () => {
-  const productItems = [{ label: 'Nông sản' }, { label: 'Đặc sản' }, { label: 'Thủ công mỹ nghệ' }]
+  const productItems = [
+    { label: 'Nông sản', href: `${path.product}?queryText=Nông sản` },
+    { label: 'Đặc sản', href: `${path.product}?queryText=Đặc sản` },
+    { label: 'Thủ công mỹ nghệ', href: `${path.product}?queryText=Thủ công mỹ nghệ` }
+  ]
 
-  const supportItems = [{ label: 'Liên hệ' }, { label: 'Chính sách', href: path.portal }, { label: 'Hướng dẫn' }]
+  const supportItems = [{ label: 'Liên hệ' }, { label: 'Chính sách', href: `${path.portal}?type=customer` }, { label: 'Hướng dẫn' }]
 
   const socialIcons = [
     {

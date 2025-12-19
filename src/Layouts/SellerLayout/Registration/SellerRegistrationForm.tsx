@@ -2567,7 +2567,7 @@ function SellerRegistrationForm() {
                 selectedWard &&
                 specificAddress.trim() && (
                   <div className='p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800'>
-                     Không lấy được tọa độ. Vẫn có thể gửi, nhưng bản đồ có thể không chính xác.
+                    Không lấy được tọa độ. Vẫn có thể gửi, nhưng bản đồ có thể không chính xác.
                   </div>
                 )}
 
@@ -3034,7 +3034,7 @@ function SellerRegistrationForm() {
                   <button
                     type='button'
                     onClick={() => {
-                      window.open('/portal', '_blank')
+                      window.open('/portal?type=seller', '_blank')
                       setHasOpenedTermsPage(true)
                     }}
                     className='text-green-600 hover:text-green-700 underline font-medium'
@@ -3057,7 +3057,7 @@ function SellerRegistrationForm() {
                   <button
                     type='button'
                     onClick={() => {
-                      window.open('/portal', '_blank')
+                      window.open('/portal?type=seller', '_blank')
                       setHasOpenedTermsPage(true)
                     }}
                     className='text-green-600 hover:text-green-700 underline font-medium'
