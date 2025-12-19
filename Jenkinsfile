@@ -75,6 +75,46 @@ pipeline {
             }
         }
 
+        // 📝 CREATE NGINX CONFIG
+        stage('📝 Create Nginx Config') {
+            steps {
+                sshagent(['SSHKey']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
+                            set -e
+                            echo '📝 Creating nginx config file...'
+                            
+                            cd ~/HomeLandFinest/HomelandFinestFE
+                            
+                            # Tạo file nginx.conf
+                            cat > nginx.conf << 'EOF'
+server {
+    listen 80;
+    listen [::]:80;
+    server_name localhost;
+    root /usr/share/nginx/html;
+    index index.html index.htm;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}
+EOF
+                            
+                            echo '✅ nginx.conf created successfully!'
+                            echo '📋 Content:'
+                            cat nginx.conf
+                        "
+                    """
+                }
+            }
+        }
+
         // 📝 CREATE .ENV FILE
         stage('📝 Create .env File') {
             steps {
@@ -119,16 +159,17 @@ EOF
                     sh """
                         ssh -o StrictHostKeyChecking=no root@154.26.130.248 "
                             set -e
-                            echo '🔧 Fixing Dockerfile...'
+                            echo '🔧 Enabling nginx.conf in Dockerfile...'
                             
                             cd ~/HomeLandFinest/HomelandFinestFE
                             
-                            # Comment dòng COPY nginx.conf nếu chưa comment
-                            sed -i 's/^COPY nginx.conf/# COPY nginx.conf/' Dockerfile
+                            # UNCOMMENT dòng COPY nginx.conf để sử dụng custom config
+                            sed -i 's/^# COPY nginx.conf/COPY nginx.conf/' Dockerfile
+                            sed -i 's/^#COPY nginx.conf/COPY nginx.conf/' Dockerfile
                             
-                            echo '✅ Dockerfile fixed!'
+                            echo '✅ Dockerfile updated!'
                             echo '📋 Checking nginx.conf line:'
-                            grep 'nginx.conf' Dockerfile || echo 'No active COPY nginx.conf found'
+                            grep 'COPY nginx.conf' Dockerfile || echo '⚠️ Warning: COPY nginx.conf not found in Dockerfile'
                         "
                     """
                 }
@@ -231,6 +272,10 @@ EOF
                             echo ''
                             echo '💡 Test FE:'
                             curl -I http://localhost:8082 || echo '⚠️ Health check failed, but container is running'
+                            
+                            echo ''
+                            echo '✅ Nginx config in container:'
+                            docker exec homelandfinest-fe cat /etc/nginx/conf.d/default.conf || echo '⚠️ Could not read nginx config'
                         "
                     """
                 }
@@ -252,6 +297,7 @@ EOF
                 echo '- Frontend (Domain): https://tinhhoaquenha.online'
                 echo '- Container: homelandfinest-fe'
                 echo '- Port Mapping: 8082:80 (host:container)'
+                echo '- Nginx Config: Custom config with SPA routing enabled'
                 echo ''
                 echo '⚠️ NOTE: Backend và các service khác KHÔNG bị ảnh hưởng'
             }
@@ -271,6 +317,10 @@ EOF
                         echo ''
                         echo '🐳 Docker system info:'
                         docker info | grep -E 'Containers|Images|Server Version' || true
+                        
+                        echo ''
+                        echo '📂 Check if nginx.conf exists:'
+                        ls -la ~/HomeLandFinest/HomelandFinestFE/nginx.conf || echo 'nginx.conf not found'
                     "
                 """
             }
