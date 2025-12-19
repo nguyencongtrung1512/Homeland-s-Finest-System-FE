@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const N8N_WEBHOOK_BLOG_URL = 'https://trung8b.app.n8n.cloud/webhook/thb'
-const N8N_WEBHOOK_VALIDATE_CERTIFICATE_URL = 'http://143.198.85.51/webhook/content'
+const N8N_WEBHOOK_VALIDATE_CERTIFICATE_URL = 'https://143.198.85.51.nip.io/webhook/content'
 export interface N8NSuggestionRequest {
   topic: string
 }
@@ -160,7 +160,10 @@ export const validateCertificate = async (file: File | Blob): Promise<ValidateCe
       formData,
       {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Origin': 'https://tinhhoaquenha.online'
         }
       }
     )
