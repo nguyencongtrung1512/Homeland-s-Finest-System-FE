@@ -862,8 +862,18 @@ function CreateProduct() {
       // Show success message
       toast.success('Tạo sản phẩm thành công!')
 
-      // Navigate back to product management
-      navigate('../product-management')
+      // Lấy product ID từ response để navigate đến trang chi tiết
+      // Response có thể có cấu trúc: response.data.data.id hoặc response.data.id
+      const productId = response.data?.data?.id || response.data?.id
+
+      if (productId) {
+        // Navigate đến trang chi tiết sản phẩm vừa tạo
+        navigate(`/seller/product-management/detail-product/${productId}`)
+      } else {
+        // Fallback: nếu không có ID, quay về trang quản lý
+        console.warn('Không tìm thấy product ID trong response, quay về trang quản lý')
+        navigate('../product-management')
+      }
     } catch (error: unknown) {
       console.error('Error creating product:', error)
 
