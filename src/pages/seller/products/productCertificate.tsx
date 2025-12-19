@@ -14,11 +14,13 @@ import {
   AlertCircle,
   Image as ImageIcon,
   Upload,
-  X
+  X,
+  AlertTriangle,
+  Info
 } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import { productCertificateApi } from '../../../apis/productCertificate.api'
-import { n8nApi, type ValidateCertificateResponse } from '../../../apis/n8n.api'
+import { n8nApi, type ValidateCertificateResponse, type CertificateData } from '../../../apis/n8n.api'
 import Loading from '../../../components/Loading/loading'
 import type { ProductCertificateType } from '../../../types/productCertificateType'
 
@@ -45,6 +47,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [validationResult, setValidationResult] = useState<ValidateCertificateResponse | null>(null)
+  const [needsConfirmation, setNeedsConfirmation] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchCertificates = async () => {
@@ -102,7 +105,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId])
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
       // Validate file type
@@ -118,10 +121,39 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
       }
 
       setSelectedFile(file)
-      setValidationError(null) // Reset validation error when new file is selected
+      setValidationError(null)
+      setValidationResult(null)
+      setNeedsConfirmation(false)
       // Create preview URL
       const url = URL.createObjectURL(file)
       setPreviewUrl(url)
+
+      // Tự động validate khi chọn file
+      await validateFile(file)
+    }
+  }
+
+  const validateFile = async (file: File) => {
+    try {
+      setValidating(true)
+      setValidationError(null)
+
+      const result = await n8nApi.validateCertificate(file)
+      setValidationResult(result)
+
+      // Nếu level là Fair hoặc Bad, cần xác nhận
+      const level = result.level?.toLowerCase() || ''
+      if (level === 'fair' || level === 'bad') {
+        setNeedsConfirmation(true)
+      } else {
+        setNeedsConfirmation(false)
+      }
+    } catch (error: unknown) {
+      console.warn('n8n validation API error:', error)
+      setValidationResult(null)
+      setValidationError('Không thể kiểm tra giấy chứng nhận. Bạn vẫn có thể tiếp tục upload.')
+    } finally {
+      setValidating(false)
     }
   }
 
@@ -133,6 +165,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
     setPreviewUrl(null)
     setValidationError(null)
     setValidationResult(null)
+    setNeedsConfirmation(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -153,39 +186,13 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
       return
     }
 
+    // Nếu cần xác nhận và chưa xác nhận, yêu cầu xác nhận
+    if (needsConfirmation) {
+      toast.error('Vui lòng xác nhận trước khi tiếp tục')
+      return
+    }
+
     try {
-      // Bước 1: Kiểm tra giấy chứng nhận hợp lệ hay không (nếu n8n hoạt động)
-      setValidating(true)
-      setValidationError(null)
-
-      try {
-        const result = await n8nApi.validateCertificate(selectedFile)
-        setValidationResult(result)
-
-        // Kiểm tra category: phải là "Product" hoặc không có category (backward compatibility)
-        const categoryCheck = !result.category || result.category.toLowerCase() === 'product'
-        const levelValid = result.level.toLowerCase() === 'good'
-        const isValid = categoryCheck && levelValid
-
-        if (!isValid) {
-          // Nếu không hợp lệ, hiển thị lý do và không upload (không hiển thị toast)
-          const errorMessage = categoryCheck
-            ? result.reason || 'Chứng chỉ không hợp lệ'
-            : 'Vui lòng upload ảnh giấy chứng nhận sản phẩm. Ảnh này là chứng nhận cửa hàng.'
-          setValidationError(errorMessage)
-          setValidating(false)
-          return
-        }
-        // Nếu hợp lệ, tiếp tục upload
-      } catch (validationError: unknown) {
-        // Nếu n8n API bị lỗi (network error, server error, invalid response, etc.)
-        // Bỏ qua validation và vẫn cho phép upload
-        console.warn('n8n validation API error, skipping validation:', validationError)
-        setValidationResult(null)
-      }
-
-      // Nếu validation bị skip hoặc hợp lệ, tiếp tục upload
-      setValidating(false)
       setLoading(true)
 
       await productCertificateApi.create({
@@ -255,16 +262,14 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
         }
       }
 
-      // Nếu lỗi từ validation API, set validation error
-      if (errorMessage.includes('certificate') || errorMessage.includes('chứng nhận')) {
-        setValidationError(errorMessage)
-      }
-
       toast.error(errorMessage)
     } finally {
       setLoading(false)
-      setValidating(false)
     }
+  }
+
+  const handleConfirmUpload = () => {
+    setNeedsConfirmation(false)
   }
 
   const handleStatusChange = async (certificateId: string, isActive: boolean) => {
@@ -355,6 +360,180 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
     return status?.toLowerCase() === 'active'
   }
 
+  // Get level badge với màu sắc
+  const getLevelBadge = (level: string) => {
+    const levelLower = level?.toLowerCase() || ''
+    if (levelLower === 'good') {
+      return (
+        <Badge className='bg-emerald-100 text-emerald-700 font-medium flex items-center gap-1 w-fit'>
+          <CheckCircle2 className='w-3 h-3' />
+          Tốt
+        </Badge>
+      )
+    } else if (levelLower === 'fair') {
+      return (
+        <Badge className='bg-amber-100 text-amber-700 font-medium flex items-center gap-1 w-fit'>
+          <AlertTriangle className='w-3 h-3' />
+          Trung bình
+        </Badge>
+      )
+    } else {
+      return (
+        <Badge className='bg-red-100 text-red-700 font-medium flex items-center gap-1 w-fit'>
+          <AlertCircle className='w-3 h-3' />
+          Không hợp lệ
+        </Badge>
+      )
+    }
+  }
+
+  // Get border color theo level
+  const getBorderColor = (level: string) => {
+    const levelLower = level?.toLowerCase() || ''
+    if (levelLower === 'good') {
+      return 'border-emerald-300'
+    } else if (levelLower === 'fair') {
+      return 'border-amber-300'
+    } else {
+      return 'border-red-300'
+    }
+  }
+
+  // Format certificate type name
+  const formatCertificateType = (type: string) => {
+    const typeMap: Record<string, string> = {
+      CHUNG_NHAN_ISO_22000: 'Chứng nhận ISO 22000',
+      CHUNG_NHAN_HACCP: 'Chứng nhận HACCP',
+      GIAY_CHUNG_NHAN_DANG_KY_DOANH_NGHIEP: 'Giấy chứng nhận đăng ký doanh nghiệp',
+      GIAY_CHUNG_NHAN_DANG_KY_HO_KINH_DOANH: 'Giấy chứng nhận đăng ký hộ kinh doanh',
+      GIAY_CHUNG_NHAN_DIA_DIEM_KINH_DOANH: 'Giấy chứng nhận địa điểm kinh doanh',
+      CHUNG_NHAN_OCCOP: 'Chứng nhận OCOP',
+      CHUNG_NHAN_VIETGAP: 'Chứng nhận VietGAP'
+    }
+    return typeMap[type] || type
+  }
+
+  // Render certificate data details
+  const renderCertificateData = (data: CertificateData | null, type: string) => {
+    if (!data) return null
+
+    const renderField = (label: string, value: string | number | undefined) => {
+      if (!value) return null
+      return (
+        <div className='flex gap-2 py-1.5'>
+          <span className='text-sm font-medium text-slate-600 min-w-[140px]'>{label}:</span>
+          <span className='text-sm text-slate-900 flex-1'>{String(value)}</span>
+        </div>
+      )
+    }
+
+    const renderObjectField = (label: string, obj: Record<string, unknown> | undefined) => {
+      if (!obj) return null
+      return (
+        <div className='mt-2 pl-4 border-l-2 border-slate-200'>
+          <p className='text-sm font-semibold text-slate-700 mb-1'>{label}</p>
+          {Object.entries(obj).map(([key, value]) => {
+            if (!value) return null
+            const formattedKey = key
+              .split('_')
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ')
+            return (
+              <div key={key} className='flex gap-2 py-1'>
+                <span className='text-xs font-medium text-slate-500 min-w-[120px]'>{formattedKey}:</span>
+                <span className='text-xs text-slate-700 flex-1'>{String(value)}</span>
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+
+    return (
+      <div className='space-y-2 text-sm'>
+        {type.includes('ISO_22000') && 'so_giay_chung_nhan' in data && (
+          <>
+            {renderField('Tên đơn vị', 'ten_don_vi' in data ? data.ten_don_vi : undefined)}
+            {renderField('Địa chỉ', 'dia_chi' in data ? data.dia_chi : undefined)}
+            {renderField('Tiêu chuẩn áp dụng', 'tieu_chuan_ap_dung' in data ? data.tieu_chuan_ap_dung : undefined)}
+            {renderField('Phạm vi chứng nhận', 'pham_vi_chung_nhan' in data ? data.pham_vi_chung_nhan : undefined)}
+            {renderField('Số giấy chứng nhận', data.so_giay_chung_nhan)}
+            {renderField('Ngày chứng nhận', data.ngay_chung_nhan)}
+            {renderField('Ngày hết hạn', data.ngay_het_han)}
+          </>
+        )}
+        {type.includes('HACCP') && 'so_chung_chi' in data && (
+          <>
+            {renderField('Tên đơn vị', 'ten_don_vi' in data ? data.ten_don_vi : undefined)}
+            {renderField('Địa chỉ', 'dia_chi' in data ? data.dia_chi : undefined)}
+            {renderField('Tiêu chuẩn áp dụng', 'tieu_chuan_ap_dung' in data ? data.tieu_chuan_ap_dung : undefined)}
+            {renderField('Phạm vi chứng nhận', 'pham_vi_chung_nhan' in data ? data.pham_vi_chung_nhan : undefined)}
+            {renderField('Số chứng chỉ', data.so_chung_chi)}
+            {renderField('Ngày cấp', data.ngay_cap)}
+            {renderField('Ngày hết hạn', data.ngay_het_han)}
+          </>
+        )}
+        {type.includes('DOANH_NGHIEP') && 'ma_so_doanh_nghiep' in data && (
+          <>
+            {renderField('Tên doanh nghiệp (Tiếng Việt)', data.ten_doanh_nghiep_tieng_viet)}
+            {renderField('Tên doanh nghiệp (Tiếng nước ngoài)', data.ten_doanh_nghiep_tieng_nuoc_ngoai)}
+            {renderField('Tên doanh nghiệp (Viết tắt)', data.ten_doanh_nghiep_viet_tat)}
+            {renderField('Mã số doanh nghiệp', data.ma_so_doanh_nghiep)}
+            {renderField('Ngày đăng ký lần đầu', data.ngay_dang_ky_lan_dau)}
+            {renderField('Địa chỉ trụ sở chính', data.dia_chi_tru_so_chinh)}
+            {renderField('Vốn điều lệ', data.von_dieu_le)}
+            {renderObjectField('Người đại diện pháp luật', data.nguoi_dai_dien_phap_luat)}
+          </>
+        )}
+        {type.includes('HO_KINH_DOANH') && 'ten_ho_kinh_doanh' in data && (
+          <>
+            {renderField('Tên hộ kinh doanh', data.ten_ho_kinh_doanh)}
+            {renderField('Mã số đăng ký', data.ma_so_dang_ky_ho_kinh_doanh)}
+            {renderField('Ngày đăng ký lần đầu', data.ngay_dang_ky_lan_dau)}
+            {renderField('Địa chỉ trụ sở', data.dia_chi_tru_so)}
+            {renderField('Ngành nghề kinh doanh', data.nganh_nghe_kinh_doanh)}
+            {renderField('Vốn kinh doanh', data.von_kinh_doanh)}
+            {renderObjectField('Chủ hộ kinh doanh', data.chu_ho_kinh_doanh)}
+          </>
+        )}
+        {type.includes('DIA_DIEM') && 'ten_dia_diem_kinh_doanh' in data && (
+          <>
+            {renderField('Tên địa điểm kinh doanh', data.ten_dia_diem_kinh_doanh)}
+            {renderField('Mã số địa điểm', data.ma_so_dia_diem_kinh_doanh)}
+            {renderField('Địa chỉ', data.dia_chi)}
+            {renderObjectField('Người đứng đầu', data.nguoi_dung_dau)}
+            {renderObjectField('Đơn vị chủ quản', data.don_vi_chu_quan)}
+          </>
+        )}
+        {type.includes('OCCOP') && 'ten_san_pham' in data && (
+          <>
+            {renderField('Tên sản phẩm', data.ten_san_pham)}
+            {renderField('Tên chủ thể', data.ten_chu_the)}
+            {renderField('Hạng sao', data.hang_sao)}
+            {renderField('Số quyết định', data.so_quyet_dinh)}
+            {renderField('Năm đánh giá', data.nam_danh_gia)}
+            {renderField('Tên cuộc thi', data.ten_cuoc_thi)}
+            {renderField('Tỉnh/Thành phố', data.tinh_thanh_pho)}
+            {renderField('Ngày hết hạn', data.ngay_het_han)}
+          </>
+        )}
+        {type.includes('VIETGAP') && 'san_pham_duoc_chung_nhan' in data && (
+          <>
+            {renderField('Sản phẩm được chứng nhận', data.san_pham_duoc_chung_nhan)}
+            {renderField('Tên cơ sở', data.ten_co_so)}
+            {renderField('Địa chỉ vùng trồng', data.dia_chi_vung_trong)}
+            {renderField('Diện tích canh tác', data.dien_tich_canh_tac)}
+            {renderField('Sản lượng dự kiến', data.san_luong_du_kien)}
+            {renderField('Tiêu chuẩn áp dụng', data.tieu_chuan_ap_dung)}
+            {renderField('Số giấy chứng nhận', data.so_giay_chung_nhan)}
+            {renderField('Hiệu lực từ ngày', data.hieu_luc_tu_ngay)}
+            {renderField('Hiệu lực đến ngày', data.hieu_luc_den_ngay)}
+          </>
+        )}
+      </div>
+    )
+  }
+
   return (
     <Card className='border-0 shadow-sm bg-background'>
       <CardHeader className='border-b border-border bg-gradient-to-r from-slate-50 to-white px-6 py-4'>
@@ -400,10 +579,14 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                   <Loading text='Đang kiểm tra giấy chứng nhận...' size='md' />
                 </div>
               ) : previewUrl ? (
-                <div className='space-y-3'>
+                <div className='space-y-4'>
                   <div className='relative group'>
                     <div
-                      className={`border-2 rounded-lg overflow-hidden bg-slate-50 ${validationError ? 'border-red-300' : 'border-emerald-200'
+                      className={`border-2 rounded-lg overflow-hidden bg-slate-50 ${validationResult
+                          ? getBorderColor(validationResult.level)
+                          : validationError
+                            ? 'border-red-300'
+                            : 'border-emerald-200'
                         }`}
                     >
                       <img src={previewUrl} alt='Xem trước' className='w-full h-auto max-h-64 object-contain' />
@@ -416,23 +599,140 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                       <X className='w-4 h-4' />
                     </button>
                   </div>
-                  {validationError ? (
-                    <div className='p-3 bg-red-50 border border-red-200 rounded-lg'>
-                      <div className='flex items-start gap-2'>
-                        <AlertCircle className='w-4 h-4 text-red-600 flex-shrink-0 mt-0.5' />
-                        <div className='flex-1'>
-                          <p className='text-sm font-medium text-red-800 mb-1'>Giấy chứng nhận không hợp lệ</p>
-                          <p className='text-xs text-red-700'>{validationError}</p>
+
+                  {/* Hiển thị thông tin file */}
+                  <div className='flex items-center gap-2 text-sm text-slate-600'>
+                    <FileText className='w-4 h-4' />
+                    <span className='font-medium'>{selectedFile?.name}</span>
+                    <span className='text-xs text-slate-500'>
+                      ({selectedFile?.size ? (selectedFile.size / 1024 / 1024).toFixed(2) : '0'} MB)
+                    </span>
+                  </div>
+
+                  {/* Hiển thị kết quả validation */}
+                  {validationResult && (
+                    <div
+                      className={`p-4 rounded-lg border-2 ${validationResult.level?.toLowerCase() === 'good'
+                          ? 'bg-emerald-50 border-emerald-200'
+                          : validationResult.level?.toLowerCase() === 'fair'
+                            ? 'bg-amber-50 border-amber-200'
+                            : 'bg-red-50 border-red-200'
+                        }`}
+                    >
+                      <div className='flex items-start justify-between mb-3'>
+                        <div className='flex items-center gap-2'>
+                          {validationResult.level?.toLowerCase() === 'good' ? (
+                            <CheckCircle2 className='w-5 h-5 text-emerald-600' />
+                          ) : validationResult.level?.toLowerCase() === 'fair' ? (
+                            <AlertTriangle className='w-5 h-5 text-amber-600' />
+                          ) : (
+                            <AlertCircle className='w-5 h-5 text-red-600' />
+                          )}
+                          <div>
+                            <p className='font-semibold text-slate-900'>
+                              {formatCertificateType(validationResult.type)}
+                            </p>
+                            <div className='mt-1'>{getLevelBadge(validationResult.level)}</div>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Cảnh báo cho Fair và Bad */}
+                      {(validationResult.level?.toLowerCase() === 'fair' ||
+                        validationResult.level?.toLowerCase() === 'bad') && (
+                          <div
+                            className={`mb-3 p-3 rounded-lg ${validationResult.level?.toLowerCase() === 'fair'
+                                ? 'bg-amber-100 border border-amber-300'
+                                : 'bg-red-100 border border-red-300'
+                              }`}
+                          >
+                            <div className='flex items-start gap-2'>
+                              <AlertTriangle
+                                className={`w-4 h-4 flex-shrink-0 mt-0.5 ${validationResult.level?.toLowerCase() === 'fair' ? 'text-amber-700' : 'text-red-700'
+                                  }`}
+                              />
+                              <div className='flex-1'>
+                                <p
+                                  className={`text-sm font-medium mb-1 ${validationResult.level?.toLowerCase() === 'fair' ? 'text-amber-900' : 'text-red-900'
+                                    }`}
+                                >
+                                  {validationResult.level?.toLowerCase() === 'fair'
+                                    ? 'Cảnh báo: Chứng chỉ không thuộc loại được khuyến nghị'
+                                    : 'Cảnh báo: Chứng chỉ có thể không hợp lệ'}
+                                </p>
+                                {validationResult.reason && (
+                                  <p
+                                    className={`text-xs ${validationResult.level?.toLowerCase() === 'fair' ? 'text-amber-800' : 'text-red-800'
+                                      }`}
+                                  >
+                                    {validationResult.reason}
+                                  </p>
+                                )}
+                                {validationResult.category && validationResult.category.toLowerCase() !== 'product' && (
+                                  <p
+                                    className={`text-xs mt-1 ${validationResult.level?.toLowerCase() === 'fair' ? 'text-amber-800' : 'text-red-800'
+                                      }`}
+                                  >
+                                    Loại: {validationResult.category} (Khuyến nghị: Product)
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                      {/* Hiển thị thông tin chi tiết */}
+                      {validationResult.data && (
+                        <div className='mt-3 pt-3 border-t border-slate-200'>
+                          <p className='text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2'>
+                            <Info className='w-4 h-4' />
+                            Thông tin giấy tờ
+                          </p>
+                          <div className='bg-white rounded-lg p-3 border border-slate-200'>
+                            {renderCertificateData(validationResult.data, validationResult.type)}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Thông báo hết hạn */}
+                      {validationResult.IsExpired && (
+                        <div className='mt-3 p-2 bg-red-100 border border-red-300 rounded-lg'>
+                          <p className='text-xs font-medium text-red-800 flex items-center gap-1'>
+                            <AlertCircle className='w-3 h-3' />
+                            Chứng chỉ đã hết hạn
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Nút xác nhận cho Fair và Bad */}
+                      {needsConfirmation && (
+                        <div className='mt-4 p-3 bg-slate-100 rounded-lg border border-slate-300'>
+                          <p className='text-sm font-medium text-slate-800 mb-2'>
+                            Bạn có chắc chắn muốn tiếp tục upload chứng chỉ này?
+                          </p>
+                          <Button
+                            type='button'
+                            onClick={handleConfirmUpload}
+                            className='w-full bg-slate-700 hover:bg-slate-800 text-white'
+                            size='sm'
+                          >
+                            Xác nhận và tiếp tục
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className='flex items-center gap-2 text-sm text-emerald-600'>
-                      <CheckCircle2 className='w-4 h-4' />
-                      <span className='font-medium'>{selectedFile?.name}</span>
-                      <span className='text-xs text-slate-500'>
-                        ({selectedFile?.size ? (selectedFile.size / 1024 / 1024).toFixed(2) : '0'} MB)
-                      </span>
+                  )}
+
+                  {/* Hiển thị lỗi validation nếu có */}
+                  {validationError && !validationResult && (
+                    <div className='p-3 bg-yellow-50 border border-yellow-200 rounded-lg'>
+                      <div className='flex items-start gap-2'>
+                        <AlertCircle className='w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5' />
+                        <div className='flex-1'>
+                          <p className='text-sm font-medium text-yellow-800 mb-1'>Lưu ý</p>
+                          <p className='text-xs text-yellow-700'>{validationError}</p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -468,8 +768,13 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                         return
                       }
                       setSelectedFile(file)
-                      setValidationError(null) // Reset validation error when new file is dropped
-                      setPreviewUrl(URL.createObjectURL(file))
+                      setValidationError(null)
+                      setValidationResult(null)
+                      setNeedsConfirmation(false)
+                      const url = URL.createObjectURL(file)
+                      setPreviewUrl(url)
+                      // Tự động validate khi drop file
+                      validateFile(file)
                     } else {
                       toast.error('File phải là hình ảnh')
                     }
@@ -506,8 +811,8 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                 )}
                 <Button
                   onClick={handleAddCertificate}
-                  disabled={!selectedFile || loading || validating || !canEdit}
-                  className='flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-medium gap-2 transition-colors'
+                  disabled={!selectedFile || loading || validating || !canEdit || needsConfirmation}
+                  className='flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-medium gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   {validating ? (
                     <>

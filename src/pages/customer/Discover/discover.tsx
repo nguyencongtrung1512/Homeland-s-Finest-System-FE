@@ -526,9 +526,22 @@ function Discover() {
     touchEndX.current = 0
   }
 
-  const handleRegionClick = (region: string) => {
-    // Chỉ thay đổi miền được chọn, KHÔNG đụng tới trạng thái "Cửa hàng gần tôi"
-    // và KHÔNG tự động bật/tắt loại filter (origin) ở đây.
+  // Handle region selection trong filter "Đặc sản theo vùng"
+  const handleOriginRegionClick = (region: string) => {
+    // Đảm bảo filter type là 'origin' trước khi set region
+    if (selectedFilterType !== 'origin') {
+      setSelectedFilterType('origin')
+      // Reset các filter khác khi chuyển sang filter 'origin'
+      setIsNearMeEnabled(false)
+      setUserProvinceId(null)
+      setUserProvinceName(null)
+      setLocalSpecialtyEnabled(false)
+      setOtherSpecialtyEnabled(false)
+      setUserLocation(null)
+      setNearbyStores([])
+      setZoomToUserLocation(false)
+    }
+    // Set region (toggle nếu đã chọn cùng region)
     if (selectedRegion === region) {
       setSelectedRegion(null)
     } else {
@@ -1161,11 +1174,10 @@ function Discover() {
                   </button>
                   <button
                     onClick={() => {
-                      handleFilterTypeClick('origin')
-                      handleRegionClick('Miền bắc')
+                      handleOriginRegionClick('Miền Bắc')
                       setOpenFilterDropdown(null)
                     }}
-                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${selectedRegion === 'Miền bắc'
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${selectedRegion === 'Miền Bắc'
                       ? 'bg-blue-500 text-white shadow-md'
                       : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                       }`}
@@ -1182,11 +1194,10 @@ function Discover() {
                   </button>
                   <button
                     onClick={() => {
-                      handleFilterTypeClick('origin')
-                      handleRegionClick('Miền trung')
+                      handleOriginRegionClick('Miền Trung')
                       setOpenFilterDropdown(null)
                     }}
-                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${selectedRegion === 'Miền trung'
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${selectedRegion === 'Miền Trung'
                       ? 'bg-orange-500 text-white shadow-md'
                       : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                       }`}
@@ -1203,11 +1214,10 @@ function Discover() {
                   </button>
                   <button
                     onClick={() => {
-                      handleFilterTypeClick('origin')
-                      handleRegionClick('Miền nam')
+                      handleOriginRegionClick('Miền Nam')
                       setOpenFilterDropdown(null)
                     }}
-                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${selectedRegion === 'Miền nam'
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2.5 ${selectedRegion === 'Miền Nam'
                       ? 'bg-red-500 text-white shadow-md'
                       : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                       }`}

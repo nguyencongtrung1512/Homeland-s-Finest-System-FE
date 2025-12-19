@@ -8,6 +8,11 @@ export interface Staff {
   staffName: string
   email: string
   processingStoreCount: number
+  provinceId?: number | null
+  provinceName?: string | null
+  lat?: number | null
+  lng?: number | null
+  isRecommended?: boolean
 }
 
 // Interface cho API response

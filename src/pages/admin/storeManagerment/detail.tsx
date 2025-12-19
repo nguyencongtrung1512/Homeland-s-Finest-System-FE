@@ -24,7 +24,6 @@ import { Button } from '../../../components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '../../../components/ui/avatar'
 import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
 import { Textarea } from '../../../components/ui/textarea'
 import { Label } from '../../../components/ui/label'
 import { Input } from '../../../components/ui/input'
@@ -37,6 +36,7 @@ import {
   type ActiveOrdersResponse
 } from '../../../apis/admin.api'
 import { staffApi } from '../../../apis/staff.api'
+import { geocodeProvinceName, geocodeStoreAddress } from '../../../utils/geocode'
 import { getAllCombos } from '../../../apis/combo.api'
 import { type Combo } from '../../../types/combo.type'
 import { toast } from '../../../utils/toast'
@@ -44,6 +44,8 @@ import ProductModal, { type ProductWithCreatedAt } from './modalProduct'
 import { exportStoreToExcel } from './excelExport'
 import { productApi } from '../../../apis/product.api'
 import type { Product } from '../../../types'
+import MapBoxStaffAssignment from '../../../components/Mapbox/mapBoxStaffAssignment'
+import { Search } from 'lucide-react'
 
 function StoreDetailAdmin() {
   const { storeId } = useParams<{ storeId: string }>()
@@ -69,6 +71,9 @@ function StoreDetailAdmin() {
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('')
   const [activeOrders, setActiveOrders] = useState<ActiveOrdersResponse['data'] | null>(null)
   const [activeOrdersLoading, setActiveOrdersLoading] = useState(false)
+  const [storeLat, setStoreLat] = useState<number | null>(null)
+  const [storeLng, setStoreLng] = useState<number | null>(null)
+  const [staffGeocodingLoading, setStaffGeocodingLoading] = useState(false)
 
   // Product states
   const [products, setProducts] = useState<Product[]>([])
@@ -179,6 +184,19 @@ function StoreDetailAdmin() {
 
       if (storeData) {
         setStore(storeData)
+        // Geocode store address if needed
+        if (storeData.address) {
+          const coords = await geocodeStoreAddress(
+            storeData.address,
+            storeData.province,
+            storeData.district,
+            storeData.ward
+          )
+          if (coords) {
+            setStoreLat(coords.lat)
+            setStoreLng(coords.lng)
+          }
+        }
       } else {
         if (response && typeof response === 'object' && response !== null) {
           setStore(response)
@@ -225,6 +243,9 @@ function StoreDetailAdmin() {
             staffName?: string
             name?: string
             email?: string
+            provinceId?: number | null
+            provinceName?: string | null
+            processingStoreCount?: number
           }
 
           // Generate staff name with fallbacks
@@ -244,17 +265,40 @@ function StoreDetailAdmin() {
             staffId: info.userId || info.id || '',
             staffName: staffName,
             email: info.email || '',
-            processingStoreCount: 0 // Default value as this field is not available in StaffInfo
+            processingStoreCount: info.processingStoreCount || 0,
+            provinceId: info.provinceId || null,
+            provinceName: info.provinceName || null
           }
         })
         console.log('mappedStaffList', mappedStaffList)
         setStaffList(mappedStaffList)
+
+        // Geocode province names for staff
+        setStaffGeocodingLoading(true)
+        const geocodedStaff = await Promise.all(
+          mappedStaffList.map(async (staff) => {
+            if (staff.provinceName) {
+              const coords = await geocodeProvinceName(staff.provinceName)
+              if (coords) {
+                return {
+                  ...staff,
+                  lat: coords.lat,
+                  lng: coords.lng
+                }
+              }
+            }
+            return staff
+          })
+        )
+        setStaffList(geocodedStaff)
+        setStaffGeocodingLoading(false)
       } else {
         toast.error('Không có nhân viên nào')
       }
     } catch (error: unknown) {
       const errorMessage = handleApiError(error, 'Có lỗi xảy ra khi tải danh sách nhân viên')
       toast.error(errorMessage)
+      setStaffGeocodingLoading(false)
     }
   }
 
@@ -537,6 +581,24 @@ function StoreDetailAdmin() {
   const handleAssignStaff = () => {
     setSelectedStaffId('')
     setAssignDialogOpen(true)
+  }
+
+  // Hàm đề xuất nhân viên dựa trên provinceId
+  const getRecommendedStaff = (): Staff[] => {
+    if (!store || !store.provinceId) return []
+    const recommended = staffList
+      .filter((staff) => staff.provinceId === store.provinceId)
+      .sort((a, b) => (a.processingStoreCount || 0) - (b.processingStoreCount || 0))
+    return recommended.map((staff) => ({ ...staff, isRecommended: true }))
+  }
+
+  // Hàm lấy danh sách nhân viên không được đề xuất
+  const getOtherStaff = (): Staff[] => {
+    if (!store || !store.provinceId) return staffList
+    const recommendedIds = new Set(
+      staffList.filter((staff) => staff.provinceId === store.provinceId).map((s) => s.staffId)
+    )
+    return staffList.filter((staff) => !recommendedIds.has(staff.staffId))
   }
 
   const handleConfirmAssign = async () => {
@@ -1438,7 +1500,7 @@ function StoreDetailAdmin() {
 
       {/* Assign Staff Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent className='sm:max-w-md'>
+        <DialogContent className='max-w-6xl max-h-[90vh] overflow-hidden flex flex-col'>
           <DialogHeader>
             <DialogTitle className='flex items-center gap-2 text-gray-900'>
               <UserPlus className='w-5 h-5 text-purple-500' />
@@ -1446,53 +1508,153 @@ function StoreDetailAdmin() {
             </DialogTitle>
           </DialogHeader>
           {store && (
-            <div className='space-y-4 mt-4'>
+            <div className='flex-1 flex flex-col gap-4 mt-4 overflow-hidden'>
+              {/* Store Info */}
               <div className='p-4 bg-gray-50 border rounded-lg'>
                 <h4 className='text-xs font-medium text-gray-500 mb-2'>Cửa hàng được chọn:</h4>
                 <div className='flex items-center gap-3'>
                   <div>
                     <p className='font-medium text-sm'>{store.storeName}</p>
-                    <p className='text-xs text-gray-500'>Trạng thái: {getStatusConfig(store.status).text}</p>
+                    <p className='text-xs text-gray-500'>
+                      Trạng thái: {getStatusConfig(store.status).text} | {store.province || 'N/A'}
+                    </p>
                   </div>
                 </div>
               </div>
-              <div>
-                <label className='block text-xs font-medium text-gray-600 mb-2'>Chọn nhân viên:</label>
-                {!staffList || staffList.length === 0 ? (
-                  <div className='p-6 bg-gray-50 border rounded-lg text-center text-sm text-gray-500'>
-                    Chưa có nhân viên nào
-                  </div>
-                ) : (
-                  <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                    <SelectTrigger className='w-full h-[120px]'>
-                      <SelectValue placeholder='Chọn nhân viên...' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {staffList.map((staff) => (
-                        <SelectItem
-                          key={staff.staffId}
-                          value={staff.staffId}
-                          className='hover:bg-gray-100 focus:bg-gray-100 px-2 py-2 rounded-md cursor-pointer'
-                        >
-                          <div className='flex items-center gap-3 w-full h-[64px]'>
-                            <div className='w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center'>
-                              <span className='text-sm font-semibold text-purple-600'>
-                                {staff.staffName?.charAt(0)?.toUpperCase() || 'S'}
-                              </span>
-                            </div>
 
-                            <div className='flex items-center gap-3 mt-3'>
-                              <p className='text-sm font-medium text-gray-900'>{staff.staffName}</p>
-                              <p className='text-xs text-gray-500'>{staff.email}</p>
+              {/* Main Content: Map and Staff List */}
+              <div className='flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-hidden'>
+                {/* Left: Map */}
+                <div className='flex-1 min-h-[400px] rounded-lg overflow-hidden border border-gray-200'>
+                  {staffGeocodingLoading ? (
+                    <div className='w-full h-full flex items-center justify-center bg-gray-50'>
+                      <div className='flex items-center gap-2 text-gray-600'>
+                        <Loader2 className='w-5 h-5 animate-spin text-purple-500' />
+                        <span className='text-sm'>Đang tải tọa độ nhân viên...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <MapBoxStaffAssignment
+                      store={store}
+                      staffList={staffList}
+                      selectedStaffId={selectedStaffId}
+                      onStaffSelect={setSelectedStaffId}
+                      storeLat={storeLat}
+                      storeLng={storeLng}
+                    />
+                  )}
+                </div>
+
+                {/* Right: Staff List */}
+                <div className='flex-1 flex flex-col overflow-hidden'>
+                  {/* Search Bar */}
+                  <div className='mb-4'>
+                    <div className='relative'>
+                      <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4' />
+                      <Input placeholder='Tìm kiếm nhân viên...' className='pl-10' />
+                    </div>
+                  </div>
+
+                  {/* Staff List with Scroll */}
+                  <div className='flex-1 overflow-y-auto space-y-4 pr-2'>
+                    {!staffList || staffList.length === 0 ? (
+                      <div className='p-6 bg-gray-50 border rounded-lg text-center text-sm text-gray-500'>
+                        Chưa có nhân viên nào
+                      </div>
+                    ) : (
+                      <>
+                        {/* Recommended Staff */}
+                        {getRecommendedStaff().length > 0 && (
+                          <div>
+                            <h3 className='text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2'>
+                              <span className='w-2 h-2 bg-green-500 rounded-full' />
+                              Đề xuất ({getRecommendedStaff().length})
+                            </h3>
+                            <div className='space-y-2'>
+                              {getRecommendedStaff().map((staff) => (
+                                <div
+                                  key={staff.staffId}
+                                  onClick={() => setSelectedStaffId(staff.staffId)}
+                                  className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${selectedStaffId === staff.staffId
+                                    ? 'border-purple-500 bg-purple-50'
+                                    : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                                    }`}
+                                >
+                                  <div className='flex items-center gap-3'>
+                                    <Avatar className='w-10 h-10'>
+                                      <AvatarFallback className='bg-purple-100 text-purple-600'>
+                                        {staff.staffName?.charAt(0)?.toUpperCase() || 'S'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className='flex-1 min-w-0'>
+                                      <div className='flex items-center gap-2'>
+                                        <p className='text-sm font-medium text-gray-900 truncate'>
+                                          {staff.staffName}
+                                        </p>
+                                        <Badge className='bg-green-100 text-green-800 text-xs'>Đề xuất</Badge>
+                                      </div>
+                                      <p className='text-xs text-gray-500 truncate'>{staff.email}</p>
+                                      <p className='text-xs text-gray-400 mt-1'>
+                                        {staff.provinceName || 'N/A'}
+                                      </p>
+                                    </div>
+                                    {selectedStaffId === staff.staffId && (
+                                      <Check className='w-5 h-5 text-purple-500' />
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                        )}
+
+                        {/* Other Staff */}
+                        {getOtherStaff().length > 0 && (
+                          <div>
+                            <h3 className='text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2'>
+                              <span className='w-2 h-2 bg-gray-400 rounded-full' />
+                              Tất cả nhân viên ({getOtherStaff().length})
+                            </h3>
+                            <div className='space-y-2'>
+                              {getOtherStaff().map((staff) => (
+                                <div
+                                  key={staff.staffId}
+                                  onClick={() => setSelectedStaffId(staff.staffId)}
+                                  className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${selectedStaffId === staff.staffId
+                                    ? 'border-purple-500 bg-purple-50'
+                                    : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                                    }`}
+                                >
+                                  <div className='flex items-center gap-3'>
+                                    <Avatar className='w-10 h-10'>
+                                      <AvatarFallback className='bg-gray-100 text-gray-600'>
+                                        {staff.staffName?.charAt(0)?.toUpperCase() || 'S'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className='flex-1 min-w-0'>
+                                      <p className='text-sm font-medium text-gray-900 truncate'>{staff.staffName}</p>
+                                      <p className='text-xs text-gray-500 truncate'>{staff.email}</p>
+                                      <p className='text-xs text-gray-400 mt-1'>
+                                        {staff.provinceName || 'N/A'}
+                                      </p>
+                                    </div>
+                                    {selectedStaffId === staff.staffId && (
+                                      <Check className='w-5 h-5 text-purple-500' />
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className='flex justify-end gap-3 pt-2'>
+
+              {/* Action Buttons */}
+              <div className='flex justify-end gap-3 pt-2 border-t'>
                 <Button variant='outline' onClick={() => setAssignDialogOpen(false)} disabled={assignLoading}>
                   Hủy
                 </Button>

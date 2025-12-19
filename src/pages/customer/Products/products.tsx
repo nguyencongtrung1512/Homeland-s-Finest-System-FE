@@ -23,6 +23,7 @@ function Products() {
   const { isAuthenticated, user } = useAuth()
   const [searchParams] = useSearchParams()
   const categoryId = searchParams.get('categoryId')
+  const queryTextFromUrl = searchParams.get('queryText')
   // searchQuery: text người dùng đang gõ
   const [searchQuery, setSearchQuery] = useState('')
   // appliedSearchQuery: text đã được apply khi nhấn Enter hoặc nút tìm kiếm
@@ -63,6 +64,15 @@ function Products() {
   // Category state
   const [currentCategory, setCurrentCategory] = useState<{ id: string; name: string } | null>(null)
   const [loadingCategory, setLoadingCategory] = useState(false)
+
+  // Read queryText from URL and apply to search
+  useEffect(() => {
+    if (queryTextFromUrl) {
+      setSearchQuery(queryTextFromUrl)
+      setAppliedSearchQuery(queryTextFromUrl)
+      setCurrentPage(1) // Reset to first page when queryText changes
+    }
+  }, [queryTextFromUrl])
 
   // Fetch category information when categoryId is present in URL
   useEffect(() => {

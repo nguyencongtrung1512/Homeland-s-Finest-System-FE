@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, FileText } from 'lucide-react'
-import { getDocumentsCustomer, type DocumentType } from '../../../apis/document.api'
+import { getDocumentsCustomer, getDocumentsSeller, type DocumentType } from '../../../apis/document.api'
 import Loading from '../../../components/Loading/loading'
 import { toast } from '../../../utils/toast'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import path from '../../../constants/path'
 import Footer from '../../../Layouts/CustomerLayout/Footer/Footer'
 
@@ -14,7 +14,9 @@ const TYPE_LABELS: Record<string, string> = {
   Guide: 'Hướng dẫn',
   PaymentGuide: 'Hướng dẫn thanh toán',
   ShippingPolicy: 'Chính sách vận chuyển',
-  Legal: 'Pháp lý'
+  Legal: 'Pháp lý',
+  Seller: 'Người bán',
+  Customer: 'Khách hàng'
 }
 
 // Get label for type or return the type itself
@@ -23,6 +25,8 @@ const getTypeLabel = (type: string): string => {
 }
 
 function PolicyCustomer() {
+  const [searchParams] = useSearchParams()
+  const documentType = searchParams.get('type') || 'customer' // Mặc định là 'customer'
   const [documents, setDocuments] = useState<DocumentType[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null)
@@ -33,14 +37,21 @@ function PolicyCustomer() {
     const fetchDocuments = async () => {
       try {
         setLoading(true)
-        const response = await getDocumentsCustomer({
-          pageSize: 0,
-          pageNumber: 1
-        })
+        // Gọi API dựa trên documentType từ query parameter
+        const response = documentType === 'seller'
+          ? await getDocumentsSeller({
+            pageSize: 0,
+            pageNumber: 1
+          })
+          : await getDocumentsCustomer({
+            pageSize: 0,
+            pageNumber: 1
+          })
 
-        // Filter only documents with type = "Seller" and isPublished = true
+        // Filter documents với type tương ứng và isPublished = true
+        const targetType = documentType === 'seller' ? 'Seller' : 'Customer'
         const documentsArray: DocumentType[] = (response.data || []).filter(
-          (doc: DocumentType) => doc.type === 'Seller' && doc.isPublished === true
+          (doc: DocumentType) => doc.type === targetType && doc.isPublished === true
         )
 
         setDocuments(documentsArray)
@@ -64,7 +75,7 @@ function PolicyCustomer() {
     }
 
     fetchDocuments()
-  }, [])
+  }, [documentType]) // Thêm documentType vào dependency array
 
   // Group documents by type
   const documentsByType = useMemo(() => {
