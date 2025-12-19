@@ -374,7 +374,7 @@ const FileUploadFieldWithOCR = ({
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className='max-w-4xl max-h-4xl'>
           <DialogHeader>
-            <DialogTitle>Preview ảnh</DialogTitle>
+            <DialogTitle>Xem trước ảnh</DialogTitle>
           </DialogHeader>
           <div className='flex justify-center'>
             <img src={previewImage} alt='Xem trước' className='max-w-full max-h-96 object-contain rounded-lg' />
@@ -657,6 +657,7 @@ const SimpleFileUploadField = ({
   maxCount = 1,
   disabled = false,
   previewUrls = [],
+  currentFileCount,
   onRemove
 }: {
   label: string
@@ -668,6 +669,7 @@ const SimpleFileUploadField = ({
   maxCount?: number
   disabled?: boolean
   previewUrls?: string[]
+  currentFileCount?: number
   onRemove?: (index: number) => void
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -703,7 +705,7 @@ const SimpleFileUploadField = ({
 
     if (validFiles.length > 0) {
       // Kiểm tra số lượng file
-      const currentCount = previewUrls.length
+      const currentCount = currentFileCount !== undefined ? currentFileCount : previewUrls.length
       const remainingSlots = maxCount - currentCount
 
       if (remainingSlots <= 0) {
@@ -775,7 +777,7 @@ const SimpleFileUploadField = ({
 
     if (validFiles.length > 0) {
       // Kiểm tra số lượng file
-      const currentCount = previewUrls.length
+      const currentCount = currentFileCount !== undefined ? currentFileCount : previewUrls.length
       const remainingSlots = maxCount - currentCount
 
       if (remainingSlots <= 0) {
@@ -1002,6 +1004,10 @@ function SellerRegistrationForm() {
   const [businessLicensePreviewUrl, setBusinessLicensePreviewUrl] = useState<string | null>(null)
   const [vendorApplicationPreviewUrls, setVendorApplicationPreviewUrls] = useState<string[]>([])
 
+  // States cho preview modal chứng nhận cửa hàng
+  const [previewVendorApplicationImage, setPreviewVendorApplicationImage] = useState<string | null>(null)
+  const [showVendorApplicationPreview, setShowVendorApplicationPreview] = useState(false)
+
   // Tạo preview URL cho business license
   React.useEffect(() => {
     if (formData.businessLicense.length > 0) {
@@ -1024,6 +1030,15 @@ function SellerRegistrationForm() {
       urls.forEach((url) => URL.revokeObjectURL(url))
     }
   }, [formData.vendorApplicationImageUrl])
+
+  // Hàm xử lý preview chứng nhận cửa hàng
+  const handleVendorApplicationPreview = (index: number) => {
+    const previewUrl = vendorApplicationPreviewUrls[index]
+    if (previewUrl) {
+      setPreviewVendorApplicationImage(previewUrl)
+      setShowVendorApplicationPreview(true)
+    }
+  }
 
   // ===== Xử lý dữ liệu từ OCR mặt sau =====
   const handleOCRBackData = async (backData: ExtractedCCCDBackInfo) => {
@@ -2777,7 +2792,8 @@ function SellerRegistrationForm() {
                       description='Có thể upload nhiều file (tối đa 5 file), định dạng JPG/PNG/PDF. Hệ thống sẽ tự động kiểm tra từng file sau khi upload.'
                       maxCount={5}
                       disabled={Array.from(vendorApplicationValidations.values()).some((v) => v.isValidating)}
-                      previewUrls={vendorApplicationPreviewUrls}
+                      previewUrls={[]}
+                      currentFileCount={formData.vendorApplicationImageUrl.length}
                       onRemove={(index) => {
                         setFormData((prev) => ({
                           ...prev,
@@ -2811,29 +2827,59 @@ function SellerRegistrationForm() {
                           // Tạo key stable dựa trên file name và size
                           const fileKey = `${file.name}-${file.size}-${index}`
 
+                          const categoryLower = validation.validationResult?.category?.toLowerCase()
+                          const levelLower = validation.validationResult?.level?.toLowerCase()
+                          const effectiveLevel = categoryLower === 'product' ? 'fair' : levelLower
+
+                          // Xác định màu border dựa trên level từ validationResult
+                          const getBorderColor = () => {
+                            if (validation.isValidating) {
+                              return 'border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm animate-pulse'
+                            }
+                            if (effectiveLevel) {
+                              if (effectiveLevel === 'good') {
+                                return 'border-green-400 bg-white shadow-md hover:shadow-lg'
+                              } else if (effectiveLevel === 'fair') {
+                                return 'border-yellow-400 bg-white shadow-md hover:shadow-lg'
+                              } else {
+                                return 'border-red-400 bg-white shadow-md hover:shadow-lg'
+                              }
+                            }
+                            if (validation.isValid === true) {
+                              return 'border-green-400 bg-white shadow-md hover:shadow-lg'
+                            }
+                            if (validation.isValid === false) {
+                              return 'border-red-400 bg-white shadow-md hover:shadow-lg'
+                            }
+                            return 'border-gray-300 bg-gray-50'
+                          }
+
                           return (
                             <div
                               key={fileKey}
-                              className={`group relative border-2 rounded-xl transition-all duration-300 overflow-hidden ${validation.isValidating
-                                ? 'border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm animate-pulse'
-                                : validation.isValid === true
-                                  ? 'border-green-400 bg-white shadow-md hover:shadow-lg'
-                                  : validation.isValid === false
-                                    ? 'border-red-400 bg-white shadow-md hover:shadow-lg'
-                                    : 'border-gray-300 bg-gray-50'
-                                }`}
+                              className={`group relative border-2 rounded-xl transition-all duration-300 overflow-hidden ${getBorderColor()}`}
                             >
                               {/* Header với preview và status */}
                               <div className='flex gap-4 p-4'>
                                 {/* Preview ảnh */}
                                 {previewUrl && (
-                                  <div className='flex-shrink-0'>
+                                  <div
+                                    className='flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity'
+                                    onClick={() => handleVendorApplicationPreview(index)}
+                                    title='Click để xem preview lớn hơn'
+                                  >
                                     <div
-                                      className={`w-24 h-24 rounded-lg overflow-hidden border-2 ${validation.isValid === true
-                                        ? 'border-green-300'
-                                        : validation.isValid === false
-                                          ? 'border-red-300'
-                                          : 'border-gray-200'
+                                      className={`w-24 h-24 rounded-lg overflow-hidden border-2 ${effectiveLevel
+                                        ? effectiveLevel === 'good'
+                                          ? 'border-green-300'
+                                          : effectiveLevel === 'fair'
+                                            ? 'border-yellow-300'
+                                            : 'border-red-300'
+                                        : validation.isValid === true
+                                          ? 'border-green-300'
+                                          : validation.isValid === false
+                                            ? 'border-red-300'
+                                            : 'border-gray-200'
                                         }`}
                                     >
                                       <img
@@ -2851,13 +2897,19 @@ function SellerRegistrationForm() {
                                     <div className='flex-1 min-w-0'>
                                       <div className='flex items-center gap-2 mb-1'>
                                         <span
-                                          className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${validation.isValid === true
-                                            ? 'bg-green-100 text-green-700'
-                                            : validation.isValid === false
-                                              ? 'bg-red-100 text-red-700'
-                                              : validation.isValidating
-                                                ? 'bg-blue-100 text-blue-700'
-                                                : 'bg-gray-100 text-gray-600'
+                                          className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${effectiveLevel
+                                            ? effectiveLevel === 'good'
+                                              ? 'bg-green-100 text-green-700'
+                                              : effectiveLevel === 'fair'
+                                                ? 'bg-yellow-100 text-yellow-700'
+                                                : 'bg-red-100 text-red-700'
+                                            : validation.isValid === true
+                                              ? 'bg-green-100 text-green-700'
+                                              : validation.isValid === false
+                                                ? 'bg-red-100 text-red-700'
+                                                : validation.isValidating
+                                                  ? 'bg-blue-100 text-blue-700'
+                                                  : 'bg-gray-100 text-gray-600'
                                             }`}
                                         >
                                           {index + 1}
@@ -2875,18 +2927,36 @@ function SellerRegistrationForm() {
                                           <span className='text-xs font-medium text-blue-700'>Đang kiểm tra</span>
                                         </div>
                                       )}
-                                      {validation.isValid === true && (
+                                      {effectiveLevel ? (
+                                        effectiveLevel === 'good' ? (
+                                          <div className='flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full'>
+                                            <CheckCircle2 className='h-4 w-4 text-green-600' />
+                                            <span className='text-xs font-semibold text-green-700'>
+                                              {categoryLower === 'product' ? 'Sản phẩm - cần duyệt' : 'Hợp lệ'}
+                                            </span>
+                                          </div>
+                                        ) : effectiveLevel === 'fair' ? (
+                                          <div className='flex items-center gap-2 px-3 py-1 bg-yellow-100 rounded-full'>
+                                            <AlertCircle className='h-4 w-4 text-yellow-600' />
+                                            <span className='text-xs font-semibold text-yellow-700'>Cần xem xét</span>
+                                          </div>
+                                        ) : (
+                                          <div className='flex items-center gap-2 px-3 py-1 bg-red-100 rounded-full'>
+                                            <AlertCircle className='h-4 w-4 text-red-600' />
+                                            <span className='text-xs font-semibold text-red-700'>Không hợp lệ</span>
+                                          </div>
+                                        )
+                                      ) : validation.isValid === true ? (
                                         <div className='flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full'>
                                           <CheckCircle2 className='h-4 w-4 text-green-600' />
                                           <span className='text-xs font-semibold text-green-700'>Hợp lệ</span>
                                         </div>
-                                      )}
-                                      {validation.isValid === false && (
+                                      ) : validation.isValid === false ? (
                                         <div className='flex items-center gap-2 px-3 py-1 bg-red-100 rounded-full'>
                                           <AlertCircle className='h-4 w-4 text-red-600' />
                                           <span className='text-xs font-semibold text-red-700'>Không hợp lệ</span>
                                         </div>
-                                      )}
+                                      ) : null}
                                       {validation.isValid === null && !validation.isValidating && (
                                         <div className='flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full'>
                                           <span className='text-xs font-medium text-gray-600'>Chưa kiểm tra</span>
@@ -2938,28 +3008,61 @@ function SellerRegistrationForm() {
                                     </div>
                                   )}
 
-                                  {!validation.isValidating && validation.isValid === false && validation.reason && (
-                                    <div className='mt-3 p-3 bg-red-50 rounded-lg border border-red-200'>
-                                      <div className='flex items-start gap-2'>
-                                        <AlertCircle className='h-4 w-4 text-red-600 flex-shrink-0 mt-0.5' />
-                                        <div className='flex-1'>
-                                          <p className='text-sm font-medium text-red-900 mb-1'>Lý do không hợp lệ:</p>
-                                          <p className='text-xs text-red-800 leading-relaxed'>{validation.reason}</p>
+                                  {!validation.isValidating &&
+                                    validation.isValid === false &&
+                                    validation.reason &&
+                                    !validation.validationResult && (
+                                      <div className='mt-3 p-3 bg-red-50 rounded-lg border border-red-200'>
+                                        <div className='flex items-start gap-2'>
+                                          <AlertCircle className='h-4 w-4 text-red-600 flex-shrink-0 mt-0.5' />
+                                          <div className='flex-1'>
+                                            <p className='text-sm font-medium text-red-900 mb-1'>Lý do không hợp lệ:</p>
+                                            <p className='text-xs text-red-800 leading-relaxed'>{validation.reason}</p>
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
-                                  )}
+                                    )}
+                                  {!validation.isValidating &&
+                                    validation.validationResult &&
+                                    effectiveLevel !== 'good' &&
+                                    validation.reason && (
+                                      <div className={`mt-3 p-3 rounded-lg border ${effectiveLevel === 'fair'
+                                        ? 'bg-yellow-50 border-yellow-200'
+                                        : 'bg-red-50 border-red-200'
+                                        }`}>
+                                        <div className='flex items-start gap-2'>
+                                          <AlertCircle className={`h-4 w-4 flex-shrink-0 mt-0.5 ${effectiveLevel === 'fair'
+                                            ? 'text-yellow-600'
+                                            : 'text-red-600'
+                                            }`} />
+                                          <div className='flex-1'>
+                                            <p className={`text-sm font-medium mb-1 ${effectiveLevel === 'fair'
+                                              ? 'text-yellow-900'
+                                              : 'text-red-900'
+                                              }`}>
+                                              {effectiveLevel === 'fair'
+                                                ? 'Lưu ý:'
+                                                : 'Lý do không hợp lệ:'}
+                                            </p>
+                                            <p className={`text-xs leading-relaxed ${effectiveLevel === 'fair'
+                                              ? 'text-yellow-800'
+                                              : 'text-red-800'
+                                              }`}>
+                                              {validation.reason}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
                                 </div>
                               </div>
 
-                              {/* Chi tiết chứng chỉ (nếu hợp lệ) */}
-                              {!validation.isValidating &&
-                                validation.isValid === true &&
-                                validation.validationResult && (
-                                  <div className='border-t border-gray-200 bg-gray-50'>
-                                    <CertificateInfoDisplay validationResult={validation.validationResult} />
-                                  </div>
-                                )}
+                              {/* Chi tiết chứng chỉ (hiển thị khi có validationResult) */}
+                              {!validation.isValidating && validation.validationResult && (
+                                <div className='border-t border-gray-200 bg-gray-50'>
+                                  <CertificateInfoDisplay validationResult={validation.validationResult} />
+                                </div>
+                              )}
                             </div>
                           )
                         })}
@@ -2990,6 +3093,24 @@ function SellerRegistrationForm() {
                         )}
                       </div>
                     )}
+
+                    {/* Dialog preview ảnh chứng nhận cửa hàng */}
+                    <Dialog open={showVendorApplicationPreview} onOpenChange={setShowVendorApplicationPreview}>
+                      <DialogContent className='max-w-4xl max-h-[90vh]'>
+                        <DialogHeader>
+                          <DialogTitle>Preview ảnh</DialogTitle>
+                        </DialogHeader>
+                        <div className='flex justify-center items-center max-h-[70vh] overflow-auto'>
+                          {previewVendorApplicationImage && (
+                            <img
+                              src={previewVendorApplicationImage}
+                              alt='Xem trước'
+                              className='max-w-full max-h-full object-contain rounded-lg'
+                            />
+                          )}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
 
                   <div className='bg-white/60 rounded-lg p-4 border border-green-200'>

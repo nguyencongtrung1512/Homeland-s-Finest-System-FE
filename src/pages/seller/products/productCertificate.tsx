@@ -21,6 +21,7 @@ import {
 import { toast } from '../../../utils/toast'
 import { productCertificateApi } from '../../../apis/productCertificate.api'
 import { n8nApi, type ValidateCertificateResponse, type CertificateData } from '../../../apis/n8n.api'
+import { getCategoryLabel } from '../../../utils/certificateUtils'
 import Loading from '../../../components/Loading/loading'
 import type { ProductCertificateType } from '../../../types/productCertificateType'
 
@@ -139,11 +140,15 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
       setValidationError(null)
 
       const result = await n8nApi.validateCertificate(file)
+      // Áp dụng logic tương tự SellerRegistration: nếu category không phải product thì hạ xuống cảnh báo
+      const categoryLower = result.category?.toLowerCase()
+      const rawLevel = result.level?.toLowerCase() || ''
+      const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+
       setValidationResult(result)
 
-      // Nếu level là Fair hoặc Bad, cần xác nhận
-      const level = result.level?.toLowerCase() || ''
-      if (level === 'fair' || level === 'bad') {
+      // Nếu level/effectiveLevel là Fair hoặc Bad, cần xác nhận
+      if (effectiveLevel === 'fair' || effectiveLevel === 'bad') {
         setNeedsConfirmation(true)
       } else {
         setNeedsConfirmation(false)
@@ -451,7 +456,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
 
     return (
       <div className='space-y-2 text-sm'>
-        {type.includes('ISO_22000') && 'so_giay_chung_nhan' in data && (
+        {type.includes('ISO_22000') && 'so_giay_chung_nhan' in data && 'ngay_chung_nhan' in data && (
           <>
             {renderField('Tên đơn vị', 'ten_don_vi' in data ? data.ten_don_vi : undefined)}
             {renderField('Địa chỉ', 'dia_chi' in data ? data.dia_chi : undefined)}
@@ -583,10 +588,10 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                   <div className='relative group'>
                     <div
                       className={`border-2 rounded-lg overflow-hidden bg-slate-50 ${validationResult
-                          ? getBorderColor(validationResult.level)
-                          : validationError
-                            ? 'border-red-300'
-                            : 'border-emerald-200'
+                        ? getBorderColor(validationResult.level)
+                        : validationError
+                          ? 'border-red-300'
+                          : 'border-emerald-200'
                         }`}
                     >
                       <img src={previewUrl} alt='Xem trước' className='w-full h-auto max-h-64 object-contain' />
@@ -612,68 +617,118 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                   {/* Hiển thị kết quả validation */}
                   {validationResult && (
                     <div
-                      className={`p-4 rounded-lg border-2 ${validationResult.level?.toLowerCase() === 'good'
-                          ? 'bg-emerald-50 border-emerald-200'
-                          : validationResult.level?.toLowerCase() === 'fair'
-                            ? 'bg-amber-50 border-amber-200'
-                            : 'bg-red-50 border-red-200'
-                        }`}
+                      className={`p-4 rounded-lg border-2 ${(() => {
+                        const categoryLower = validationResult.category?.toLowerCase()
+                        const rawLevel = validationResult.level?.toLowerCase() || ''
+                        const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                        if (effectiveLevel === 'good') return 'bg-emerald-50 border-emerald-200'
+                        if (effectiveLevel === 'fair') return 'bg-amber-50 border-amber-200'
+                        return 'bg-red-50 border-red-200'
+                      })()}`}
                     >
                       <div className='flex items-start justify-between mb-3'>
                         <div className='flex items-center gap-2'>
-                          {validationResult.level?.toLowerCase() === 'good' ? (
-                            <CheckCircle2 className='w-5 h-5 text-emerald-600' />
-                          ) : validationResult.level?.toLowerCase() === 'fair' ? (
-                            <AlertTriangle className='w-5 h-5 text-amber-600' />
-                          ) : (
-                            <AlertCircle className='w-5 h-5 text-red-600' />
-                          )}
+                          {(() => {
+                            const categoryLower = validationResult.category?.toLowerCase()
+                            const rawLevel = validationResult.level?.toLowerCase() || ''
+                            const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                            if (effectiveLevel === 'good') return <CheckCircle2 className='w-5 h-5 text-emerald-600' />
+                            if (effectiveLevel === 'fair') return <AlertTriangle className='w-5 h-5 text-amber-600' />
+                            return <AlertCircle className='w-5 h-5 text-red-600' />
+                          })()}
                           <div>
                             <p className='font-semibold text-slate-900'>
                               {formatCertificateType(validationResult.type)}
                             </p>
-                            <div className='mt-1'>{getLevelBadge(validationResult.level)}</div>
+                            <div className='mt-1'>
+                              {getLevelBadge(
+                                (() => {
+                                  const categoryLower = validationResult.category?.toLowerCase()
+                                  const rawLevel = validationResult.level?.toLowerCase() || ''
+                                  return categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                                })()
+                              )}
+                            </div>
+                            {validationResult.category && (
+                              <div className='mt-1'>
+                                <Badge className='bg-blue-100 text-blue-700 border-blue-300 text-xs font-medium'>
+                                  {getCategoryLabel(validationResult.category)}
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
 
                       {/* Cảnh báo cho Fair và Bad */}
-                      {(validationResult.level?.toLowerCase() === 'fair' ||
-                        validationResult.level?.toLowerCase() === 'bad') && (
+                      {(() => {
+                        const categoryLower = validationResult.category?.toLowerCase()
+                        const rawLevel = validationResult.level?.toLowerCase() || ''
+                        const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                        return effectiveLevel === 'fair' || effectiveLevel === 'bad'
+                      })() && (
                           <div
-                            className={`mb-3 p-3 rounded-lg ${validationResult.level?.toLowerCase() === 'fair'
+                            className={`mb-3 p-3 rounded-lg ${(() => {
+                              const categoryLower = validationResult.category?.toLowerCase()
+                              const rawLevel = validationResult.level?.toLowerCase() || ''
+                              const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                              return effectiveLevel === 'fair'
                                 ? 'bg-amber-100 border border-amber-300'
                                 : 'bg-red-100 border border-red-300'
-                              }`}
+                            })()}`}
                           >
                             <div className='flex items-start gap-2'>
-                              <AlertTriangle
-                                className={`w-4 h-4 flex-shrink-0 mt-0.5 ${validationResult.level?.toLowerCase() === 'fair' ? 'text-amber-700' : 'text-red-700'
-                                  }`}
-                              />
+                              {(() => {
+                                const categoryLower = validationResult.category?.toLowerCase()
+                                const rawLevel = validationResult.level?.toLowerCase() || ''
+                                const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                                return (
+                                  <AlertTriangle
+                                    className={`w-4 h-4 flex-shrink-0 mt-0.5 ${effectiveLevel === 'fair' ? 'text-amber-700' : 'text-red-700'
+                                      }`}
+                                  />
+                                )
+                              })()}
                               <div className='flex-1'>
                                 <p
-                                  className={`text-sm font-medium mb-1 ${validationResult.level?.toLowerCase() === 'fair' ? 'text-amber-900' : 'text-red-900'
-                                    }`}
+                                  className={`text-sm font-medium mb-1 ${(() => {
+                                    const categoryLower = validationResult.category?.toLowerCase()
+                                    const rawLevel = validationResult.level?.toLowerCase() || ''
+                                    const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                                    return effectiveLevel === 'fair' ? 'text-amber-900' : 'text-red-900'
+                                  })()}`}
                                 >
-                                  {validationResult.level?.toLowerCase() === 'fair'
-                                    ? 'Cảnh báo: Chứng chỉ không thuộc loại được khuyến nghị'
-                                    : 'Cảnh báo: Chứng chỉ có thể không hợp lệ'}
+                                  {(() => {
+                                    const categoryLower = validationResult.category?.toLowerCase()
+                                    const rawLevel = validationResult.level?.toLowerCase() || ''
+                                    const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                                    return effectiveLevel === 'fair'
+                                      ? 'Cảnh báo: Chứng chỉ không thuộc loại được khuyến nghị'
+                                      : 'Cảnh báo: Chứng chỉ có thể không hợp lệ'
+                                  })()}
                                 </p>
                                 {validationResult.reason && (
                                   <p
-                                    className={`text-xs ${validationResult.level?.toLowerCase() === 'fair' ? 'text-amber-800' : 'text-red-800'
-                                      }`}
+                                    className={`text-xs ${(() => {
+                                      const categoryLower = validationResult.category?.toLowerCase()
+                                      const rawLevel = validationResult.level?.toLowerCase() || ''
+                                      const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                                      return effectiveLevel === 'fair' ? 'text-amber-800' : 'text-red-800'
+                                    })()}`}
                                   >
                                     {validationResult.reason}
                                   </p>
                                 )}
                                 {validationResult.category && validationResult.category.toLowerCase() !== 'product' && (
                                   <p
-                                    className={`text-xs mt-1 ${validationResult.level?.toLowerCase() === 'fair' ? 'text-amber-800' : 'text-red-800'
-                                      }`}
+                                    className={`text-xs mt-1 ${(() => {
+                                      const categoryLower = validationResult.category?.toLowerCase()
+                                      const rawLevel = validationResult.level?.toLowerCase() || ''
+                                      const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                                      return effectiveLevel === 'fair' ? 'text-amber-800' : 'text-red-800'
+                                    })()}`}
                                   >
-                                    Loại: {validationResult.category} (Khuyến nghị: Product)
+                                    Loại: {getCategoryLabel(validationResult.category)} (Khuyến nghị: Sản phẩm)
                                   </p>
                                 )}
                               </div>
@@ -681,18 +736,60 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                           </div>
                         )}
 
-                      {/* Hiển thị thông tin chi tiết */}
-                      {validationResult.data && (
-                        <div className='mt-3 pt-3 border-t border-slate-200'>
-                          <p className='text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2'>
-                            <Info className='w-4 h-4' />
-                            Thông tin giấy tờ
-                          </p>
-                          <div className='bg-white rounded-lg p-3 border border-slate-200'>
-                            {renderCertificateData(validationResult.data, validationResult.type)}
+                      {/* Hiển thị thông tin chi tiết (kể cả khi không có data) */}
+                      <div className='mt-3 pt-3 border-t border-slate-200'>
+                        <p className='text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2'>
+                          <Info className='w-4 h-4' />
+                          Thông tin giấy tờ
+                        </p>
+                        <div className='bg-white rounded-lg p-3 border border-slate-200 space-y-2'>
+                          <div className='text-sm text-slate-800'>
+                            <p>
+                              <span className='font-medium'>Loại: </span>
+                              {formatCertificateType(validationResult.type)}
+                            </p>
+                            <p>
+                              <span className='font-medium'>Mức: </span>
+                              {(() => {
+                                const categoryLower = validationResult.category?.toLowerCase()
+                                const rawLevel = validationResult.level?.toLowerCase() || ''
+                                const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+                                return effectiveLevel === 'good'
+                                  ? 'Tốt'
+                                  : effectiveLevel === 'fair'
+                                    ? 'Cần xem xét'
+                                    : 'Không hợp lệ'
+                              })()}
+                            </p>
+                            {validationResult.category && (
+                              <p>
+                                <span className='font-medium'>Danh mục: </span>
+                                {getCategoryLabel(validationResult.category)}
+                              </p>
+                            )}
+                            {validationResult.IsExpired !== undefined && (
+                              <p>
+                                <span className='font-medium'>Hiệu lực: </span>
+                                {validationResult.IsExpired ? 'Đã hết hạn' : 'Còn hiệu lực'}
+                              </p>
+                            )}
+                            {validationResult.reason && (
+                              <p className='text-sm text-slate-700'>
+                                <span className='font-medium'>Ghi chú: </span>
+                                {validationResult.reason}
+                              </p>
+                            )}
                           </div>
+
+                          {validationResult.data ? (
+                            <div className='mt-2'>
+                              {renderCertificateData(validationResult.data, validationResult.type)}
+                            </div>
+                          ) : (
+                            <p className='text-xs text-slate-500'>Không có dữ liệu chi tiết.</p>
+                          )}
                         </div>
-                      )}
+                      </div>
 
                       {/* Thông báo hết hạn */}
                       {validationResult.IsExpired && (
@@ -713,7 +810,7 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
                           <Button
                             type='button'
                             onClick={handleConfirmUpload}
-                            className='w-full bg-slate-700 hover:bg-slate-800 text-white'
+                            className='w-full bg-green-300 hover:bg-green-400 text-white'
                             size='sm'
                           >
                             Xác nhận và tiếp tục

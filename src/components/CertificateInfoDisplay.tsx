@@ -2,7 +2,13 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Info } from 'lucide-react'
 import { Badge } from './ui/badge'
 import type { ValidateCertificateResponse } from '../apis/n8n.api'
-import { getCertificateTypeLabel, getLevelBadgeColor, getLevelLabel, formatCertificateData } from '../utils/certificateUtils'
+import {
+  getCertificateTypeLabel,
+  getLevelBadgeColor,
+  getLevelLabel,
+  formatCertificateData,
+  getCategoryLabel
+} from '../utils/certificateUtils'
 
 interface CertificateInfoDisplayProps {
   validationResult: ValidateCertificateResponse
@@ -13,13 +19,16 @@ export default function CertificateInfoDisplay({ validationResult, className = '
   const [isExpanded, setIsExpanded] = useState(false)
 
   const { type, data, level, category, IsExpired } = validationResult
-  const levelLower = level.toLowerCase()
+  const categoryLower = category?.toLowerCase()
+  const computedLevel = categoryLower === 'product' ? 'fair' : level
+  const levelLower = computedLevel.toLowerCase()
   const isValid = levelLower === 'good'
 
   const typeLabel = getCertificateTypeLabel(type)
-  const levelLabel = getLevelLabel(level)
-  const badgeColor = getLevelBadgeColor(level)
+  const levelLabel = getLevelLabel(computedLevel)
+  const badgeColor = getLevelBadgeColor(computedLevel)
   const formattedFields = formatCertificateData(data, type)
+  const categoryLabel = getCategoryLabel(category)
 
   return (
     <div className={`border rounded-lg overflow-hidden ${className}`}>
@@ -45,8 +54,8 @@ export default function CertificateInfoDisplay({ validationResult, className = '
                     {IsExpired ? 'Đã hết hạn' : 'Còn hiệu lực'}
                   </Badge>
                 )}
-                {category && (
-                  <Badge className='bg-blue-100 text-blue-700 border-blue-300 text-xs'>{category}</Badge>
+                {categoryLabel && (
+                  <Badge className='bg-blue-100 text-blue-700 border-blue-300 text-xs'>{categoryLabel}</Badge>
                 )}
               </div>
               {!isValid && validationResult.reason && (

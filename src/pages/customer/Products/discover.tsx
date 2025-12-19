@@ -1,4 +1,8 @@
+import { useNavigate } from "react-router-dom"
+import path from "../../../constants/path"
+
 function Discover() {
+  const navigate = useNavigate()
   return (
     <section className='relative w-full h-[300px] overflow-hidden'>
       {/* Background Image */}
@@ -17,8 +21,8 @@ function Discover() {
           <p className='text-lg md:text-xl mb-8 leading-relaxed max-w-3xl mx-auto'>
             Khám phá hành trình từ nông trại đến bàn ăn, từ đôi tay nghệ nhân đến trái tim người tiêu dùng
           </p>
-          <button className='bg-[#D4A017] hover:bg-[#B8911A] text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors duration-300 shadow-lg'>
-            Khám phá câu chuyện
+          <button onClick={() => navigate(path.discover)} className='bg-[#D4A017] hover:bg-[#B8911A] text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors duration-300 shadow-lg'>
+            Khám phá cửa hàng
           </button>
         </div>
       </div>

@@ -1,10 +1,24 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingCart } from 'lucide-react'
-import { useCart } from '../../contexts/cart.context'
+import { useCart, type CartItem } from '../../contexts/cart.context'
 import { useAuth } from '../../contexts/auth.context'
 import { Button } from '../../components/ui/button'
 import path from '../../constants/path'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+
+// Interface cho combo group
+interface ComboGroup {
+  id: string // comboId
+  name: string // "Combo" hoặc combo name từ API
+  image: string // từ item đầu tiên
+  quantity: number // quantity của combo
+  price: number // tổng giá của combo
+  isCombo: true
+  items: CartItem[] // các items trong combo
+}
+
+// Union type cho display item (có thể là CartItem hoặc ComboGroup)
+type DisplayItem = CartItem | ComboGroup
 
 function Header() {
   const navigate = useNavigate()
@@ -77,6 +91,53 @@ function Header() {
     setShowUserDropdown(false)
     navigate(path.home)
   }
+
+  // Function để nhóm các items có cùng comboId thành combo
+  const groupCartItems = useMemo((): DisplayItem[] => {
+    if (!cart || cart.length === 0) return []
+
+    const comboMap = new Map<string, CartItem[]>()
+    const regularItems: CartItem[] = []
+
+    // Phân loại items: combo items và regular items
+    cart.forEach((item) => {
+      if (item.isCombo && item.comboId) {
+        // Item thuộc combo
+        if (!comboMap.has(item.comboId)) {
+          comboMap.set(item.comboId, [])
+        }
+        comboMap.get(item.comboId)!.push(item)
+      } else {
+        // Item thường
+        regularItems.push(item)
+      }
+    })
+
+    // Tạo combo groups từ comboMap
+    const comboGroups: ComboGroup[] = Array.from(comboMap.entries()).map(([comboId, items]) => {
+      // Tính tổng giá của combo (tổng price * quantity của tất cả items)
+      const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+
+      // Lấy quantity từ item đầu tiên (tất cả items trong combo có cùng quantity)
+      const quantity = items[0]?.quantity || 1
+
+      // Lấy hình ảnh từ item đầu tiên
+      const image = items[0]?.image || ''
+
+      return {
+        id: comboId,
+        name: 'Combo', // Tạm thời dùng "Combo", có thể fetch combo name sau
+        image,
+        quantity,
+        price: totalPrice,
+        isCombo: true,
+        items
+      }
+    })
+
+    // Kết hợp combo groups và regular items
+    return [...comboGroups, ...regularItems]
+  }, [cart])
 
   return (
     <div className='w-full fixed top-0 left-0 z-50 bg-[#ecf2ea] border-b border-gray-500'>
@@ -169,30 +230,46 @@ function Header() {
                     </div>
                   ) : (
                     <ul className='divide-y'>
-                      {[...cart]
+                      {[...groupCartItems]
                         .reverse()
                         .slice(0, 3)
-                        .map((item, idx) => (
-                          <li key={item.id + idx} className='flex items-center gap-3 px-4 py-3'>
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className='w-16 h-16 object-cover rounded border'
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.src = 'https://i.pinimg.com/1200x/93/b6/9f/93b69fd5d973b3f2fbc325982eb8e658.jpg'
-                              }}
-                            />
-                            <div className='flex-1 min-w-0'>
-                              <div className='truncate font-medium text-gray-900 text-base'>{item.name}</div>
-                              <div className='text-xs text-gray-500'>Số lượng: {item.quantity}</div>
-                              {item.variant && <div className='text-xs text-gray-500'>Phân loại: {item.variant}</div>}
-                            </div>
-                            <div className='text-orange-600 font-semibold text-base whitespace-nowrap'>
-                              {item.price.toLocaleString('vi-VN')}₫
-                            </div>
-                          </li>
-                        ))}
+                        .map((item, idx) => {
+                          const isCombo = 'isCombo' in item && item.isCombo === true
+                          return (
+                            <li key={item.id + idx} className='flex items-center gap-3 px-4 py-3'>
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className='w-16 h-16 object-cover rounded border'
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.src =
+                                    'https://i.pinimg.com/1200x/93/b6/9f/93b69fd5d973b3f2fbc325982eb8e658.jpg'
+                                }}
+                              />
+                              <div className='flex-1 min-w-0'>
+                                <div className='truncate font-medium text-gray-900 text-base flex items-center gap-2'>
+                                  {item.name}
+                                  {isCombo && (
+                                    <span className='inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800'>
+                                      Combo
+                                    </span>
+                                  )}
+                                </div>
+                                <div className='text-xs text-gray-500'>Số lượng: {item.quantity}</div>
+                                {!isCombo && 'variant' in item && item.variant && (
+                                  <div className='text-xs text-gray-500'>Phân loại: {item.variant}</div>
+                                )}
+                                {isCombo && 'items' in item && (
+                                  <div className='text-xs text-gray-500'>Gồm {item.items.length} sản phẩm</div>
+                                )}
+                              </div>
+                              <div className='text-orange-600 font-semibold text-base whitespace-nowrap'>
+                                {item.price.toLocaleString('vi-VN')}₫
+                              </div>
+                            </li>
+                          )
+                        })}
                     </ul>
                   )}
                 </div>

@@ -863,8 +863,8 @@ function CreateProduct() {
       toast.success('Tạo sản phẩm thành công!')
 
       // Lấy product ID từ response để navigate đến trang chi tiết
-      // Response có thể có cấu trúc: response.data.data.id hoặc response.data.id
-      const productId = response.data?.data?.id || response.data?.id
+      // ProductResponse có cấu trúc: { status, message, data: Product }
+      const productId = response.data?.id
 
       if (productId) {
         // Navigate đến trang chi tiết sản phẩm vừa tạo

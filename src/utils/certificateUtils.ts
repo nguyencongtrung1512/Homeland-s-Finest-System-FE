@@ -49,6 +49,18 @@ export const getLevelLabel = (level: string): string => {
 }
 
 /**
+ * Label tiếng Việt cho category
+ */
+export const getCategoryLabel = (category?: string): string => {
+  if (!category) return ''
+  const map: Record<string, string> = {
+    Store: 'Cửa hàng',
+    Product: 'Sản phẩm'
+  }
+  return map[category] || category
+}
+
+/**
  * Format và render certificate data theo từng loại
  */
 export const formatCertificateData = (
