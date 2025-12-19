@@ -122,6 +122,8 @@ export interface WalletTransactionDTO {
   status: TransactionWalletStatus | null
   description: string | null
   paymentMethod: string
+  userEmail?: string | null
+  userPhoneNumber?: string | null
   orderVerificationId?: string
   billImages: string[] | null
   processedBy?: string

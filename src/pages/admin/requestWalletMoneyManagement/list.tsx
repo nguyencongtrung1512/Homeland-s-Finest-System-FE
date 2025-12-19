@@ -1080,6 +1080,10 @@ function RequestWalletMoneyManagement() {
                   <p className='text-sm font-semibold text-gray-900 mb-2'>ID Đơn hàng</p>
                   <span className='font-mono text-sm text-gray-700'>{selectedRequest.orderId || 'Không có'}</span>
                 </div>
+                <div>
+                  <p className='text-sm font-semibold text-gray-900 mb-2'>Mã GHN</p>
+                  <span className='font-mono text-sm text-gray-700'>{selectedRequest.ghnorderCode || 'Không có'}</span>
+                </div>
 
                 {selectedRequest.transactionId && (
                   <div>

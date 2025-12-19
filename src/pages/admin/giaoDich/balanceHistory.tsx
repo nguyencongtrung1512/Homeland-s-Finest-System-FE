@@ -141,11 +141,10 @@ function BalanceHistory() {
                       setPaymentMethodFilter(option.value as 'all' | 'COD' | 'WalletOrBanking' | 'Orther')
                       setTransactionPage(1)
                     }}
-                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${
-                      paymentMethodFilter === option.value
-                        ? 'bg-[#38bdf8] text-white shadow-sm hover:bg-[#0ea5e9]'
-                        : 'bg-white text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${paymentMethodFilter === option.value
+                      ? 'bg-[#38bdf8] text-white shadow-sm hover:bg-[#0ea5e9]'
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     {option.label}
                   </button>
@@ -329,6 +328,18 @@ function BalanceHistory() {
                     <p className='text-sm font-semibold text-gray-900'>{selectedTransaction.paymentMethod}</p>
                   </div>
                 )}
+                {selectedTransaction.userEmail && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Email người dùng</p>
+                    <p className='text-sm font-semibold text-gray-900 break-all'>{selectedTransaction.userEmail}</p>
+                  </div>
+                )}
+                {selectedTransaction.userPhoneNumber && (
+                  <div>
+                    <p className='text-sm text-gray-600 mb-1'>Số điện thoại người dùng</p>
+                    <p className='text-sm font-semibold text-gray-900'>{selectedTransaction.userPhoneNumber}</p>
+                  </div>
+                )}
                 {selectedTransaction.orderId && (
                   <div>
                     <p className='text-sm text-gray-600 mb-1'>Mã đơn hàng</p>
@@ -348,6 +359,48 @@ function BalanceHistory() {
                   </div>
                 )}
               </div>
+
+              {/* Chi tiết đơn hàng */}
+              {(selectedTransaction.orderGrossRevenue !== null &&
+                selectedTransaction.orderGrossRevenue !== undefined) ||
+                (selectedTransaction.orderNetRevenue !== null && selectedTransaction.orderNetRevenue !== undefined) ? (
+                <div className='mt-4 border border-blue-100 bg-blue-50 rounded-xl p-4 md:p-5'>
+                  <p className='font-semibold text-gray-900 mb-3'>Chi tiết đơn hàng</p>
+                  <div className='space-y-1 text-sm'>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-gray-700'>Doanh thu gộp:</span>
+                      <span className='font-semibold text-gray-900'>
+                        {(selectedTransaction.orderGrossRevenue || 0).toLocaleString('vi-VN')} đ
+                      </span>
+                    </div>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-gray-700'>Phí ship:</span>
+                      <span className='font-semibold text-red-500'>
+                        -{(selectedTransaction.orderShipFee || 0).toLocaleString('vi-VN')} đ
+                      </span>
+                    </div>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-gray-700'>Bảo hiểm:</span>
+                      <span className='font-semibold text-red-500'>
+                        -{(selectedTransaction.orderInsurance || 0).toLocaleString('vi-VN')} đ
+                      </span>
+                    </div>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-gray-700'>Hoa hồng:</span>
+                      <span className='font-semibold text-red-500'>
+                        -{(selectedTransaction.orderCommission || 0).toLocaleString('vi-VN')} đ
+                      </span>
+                    </div>
+                    <hr className='my-2 border-blue-100' />
+                    <div className='flex items-center justify-between'>
+                      <span className='font-semibold text-gray-900'>Doanh thu ròng:</span>
+                      <span className='font-bold text-blue-600'>
+                        {(selectedTransaction.orderNetRevenue || 0).toLocaleString('vi-VN')} đ
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
           <DialogFooter>
@@ -362,4 +415,3 @@ function BalanceHistory() {
 }
 
 export default BalanceHistory
-

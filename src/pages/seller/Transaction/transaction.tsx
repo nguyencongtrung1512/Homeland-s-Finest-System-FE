@@ -338,7 +338,7 @@ function Transaction() {
   // Format date
   const formatDate = (dateString: string) => {
     if (!dateString) return dateString
-    
+
     try {
       // Handle format: "15:01:34 13/12/2025" (HH:mm:ss dd/MM/yyyy) - return as is
       const timeDateMatch = dateString.match(/^(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})$/)
@@ -346,7 +346,7 @@ function Transaction() {
         // Already in desired format, return as is
         return dateString
       }
-      
+
       // Try standard Date parsing and format with time
       const date = new Date(dateString)
       if (!isNaN(date.getTime())) {
@@ -354,7 +354,7 @@ function Transaction() {
         const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
         return `${timeStr} ${dateStr}`
       }
-      
+
       return dateString
     } catch {
       return dateString
@@ -2697,6 +2697,18 @@ function Transaction() {
                     {selectedTransaction.balanceAfter.toLocaleString()} đ
                   </p>
                 </div>
+                {selectedTransaction.userEmail && (
+                  <div>
+                    <p className='text-sm font-medium text-gray-700 mb-1'>Email khách hàng</p>
+                    <p className='text-sm text-gray-900 break-all'>{selectedTransaction.userEmail}</p>
+                  </div>
+                )}
+                {selectedTransaction.userPhoneNumber && (
+                  <div>
+                    <p className='text-sm font-medium text-gray-700 mb-1'>Số điện thoại khách hàng</p>
+                    <p className='text-sm text-gray-900'>{selectedTransaction.userPhoneNumber}</p>
+                  </div>
+                )}
                 <div>
                   <p className='text-sm font-medium text-gray-700 mb-1'>Ngày tạo</p>
                   <p className='text-sm text-gray-900'>

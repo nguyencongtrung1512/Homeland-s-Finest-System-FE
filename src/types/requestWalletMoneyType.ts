@@ -17,6 +17,7 @@ export interface RequestWalletMoney {
   id: string
   walletId: string
   orderId: string | null
+  ghnorderCode: string | null
   transactionId: string | null
   userId: string
   userEmail: string

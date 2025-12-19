@@ -921,12 +921,12 @@ function ReportDetail() {
                       </>
                     ) : form.status === 'Confirmed' || form.status === 'Rejected' ? (
                       <>
-                        <SelectItem value='ApprovedByStaff'>Chấp nhận</SelectItem>
-                        <SelectItem value='DeniedByStaff'>Từ chối</SelectItem>
+                        <SelectItem value='ApprovedByStaff'>Đề xuất duyệt</SelectItem>
+                        <SelectItem value='DeniedByStaff'>Đề xuất từ chối</SelectItem>
                       </>
                     ) : (
                       <>
-                        <SelectItem value='ApprovedByStaff'>Đề xuất duyệ</SelectItem>
+                        <SelectItem value='ApprovedByStaff'>Đề xuất duyệt</SelectItem>
                         <SelectItem value='DeniedByStaff'>Đề xuất từ chối</SelectItem>
                         <SelectItem value='Confirmed'>Chờ phản hồi người bán</SelectItem>
                         <SelectItem value='Rejected'>Từ chối</SelectItem>
@@ -981,9 +981,9 @@ function ReportDetail() {
                       Đang cập nhật...
                     </>
                   ) : selectedStatus === 'ApprovedByStaff' ? (
-                    'Chấp nhận'
+                    'Đề xuất duyệt'
                   ) : selectedStatus === 'DeniedByStaff' ? (
-                    'Từ chối'
+                    'Đề xuất từ chối'
                   ) : selectedStatus === 'Confirmed' ? (
                     'Tiếp nhận'
                   ) : selectedStatus === 'Rejected' ? (
@@ -1018,7 +1018,6 @@ function ReportDetail() {
               <p className='text-sm text-gray-600'>
                 <span className='font-medium'>Khiếu nại:</span> {form?.subject}
               </p>
-              <p className='text-xs text-gray-500 mt-1'>#{form?.id}</p>
             </div>
 
             {/* Confirmation Message */}
