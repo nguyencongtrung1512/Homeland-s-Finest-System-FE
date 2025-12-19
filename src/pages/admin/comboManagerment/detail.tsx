@@ -13,15 +13,18 @@ interface ComboDetailPopupProps {
   comboId: string | null
   isOpen: boolean
   onClose: () => void
+  onStatusUpdated?: () => void
 }
 
-function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
+function ComboDetailPopup({ comboId, isOpen, onClose, onStatusUpdated }: ComboDetailPopupProps) {
   const navigate = useNavigate()
   const [combo, setCombo] = useState<Combo | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [staffName, setStaffName] = useState<string | null>(null)
   const [loadingStaff, setLoadingStaff] = useState(false)
+  const [note, setNote] = useState('')
+  const [updatingStatus, setUpdatingStatus] = useState<'approve' | 'deny' | null>(null)
 
   const fetchStaffInfo = useCallback(async (staffId: string) => {
     try {
@@ -99,8 +102,30 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
       setCombo(null)
       setStaffName(null)
       setError(null)
+      setNote('')
+      setUpdatingStatus(null)
     }
   }, [isOpen, comboId, fetchComboDetail])
+
+  const handleStatusUpdate = async (action: 'approve' | 'deny') => {
+    if (!comboId) return
+
+    try {
+      setUpdatingStatus(action)
+      if (action === 'approve') {
+        await staffApi.approveCombo(comboId, note)
+      } else {
+        await staffApi.denyCombo(comboId, note)
+      }
+      // Cập nhật lại dữ liệu chi tiết & danh sách
+      await fetchComboDetail()
+      onStatusUpdated?.()
+    } catch (err) {
+      console.error('Error update combo status:', err)
+    } finally {
+      setUpdatingStatus(null)
+    }
+  }
 
   const handleStoreClick = (storeId: string) => {
     navigate(`/admin/storeManagement/store-detail/${storeId}`)
@@ -207,7 +232,7 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className='max-w-4xl max-h-[90vh] overflow-y-auto'>
           <DialogHeader>
-            <DialogTitle>Chi tiết Combo</DialogTitle>
+            <DialogTitle> 1212</DialogTitle>
           </DialogHeader>
           <div className='flex items-center justify-center py-8'>
             {loading ? (
@@ -234,6 +259,7 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
 
   const statusConfig = getStatusConfig(combo.status)
   const StatusIcon = statusConfig.icon
+  const canQuickApprove = !['Approved', 'Denied', 'Cancelled'].includes(combo.status) && !updatingStatus
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -399,7 +425,7 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
                 )}
                 {combo.staffNote && (
                   <div className='flex justify-between'>
-                    <span className='text-gray-600'>Ghi chú nhân  viên:</span>
+                    <span className='text-gray-600'>Ghi chú nhân viên:</span>
                     <span className='font-medium'>{combo.staffNote}</span>
                   </div>
                 )}
@@ -412,6 +438,36 @@ function ComboDetailPopup({ comboId, isOpen, onClose }: ComboDetailPopupProps) {
                   <span className='font-medium text-blue-600'>{formatCurrency(combo.totalFinalPrice)}</span>
                 </div>
               </div>
+              {canQuickApprove && (
+                <div className='mt-4 space-y-3'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-2'>Ghi chú (tùy chọn)</label>
+                    <textarea
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder='Thêm ghi chú khi duyệt / từ chối'
+                      className='w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      rows={3}
+                    />
+                  </div>
+                  <div className='flex gap-2 justify-end'>
+                    <button
+                      onClick={() => handleStatusUpdate('deny')}
+                      disabled={!!updatingStatus}
+                      className='px-4 py-2 rounded-md border text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-60'
+                    >
+                      {updatingStatus === 'deny' ? 'Đang từ chối...' : 'Từ chối'}
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate('approve')}
+                      disabled={!!updatingStatus}
+                      className='px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60'
+                    >
+                      {updatingStatus === 'approve' ? 'Đang duyệt...' : 'Duyệt ngay'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

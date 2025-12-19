@@ -566,7 +566,12 @@ function ManagerComboAdmin() {
       </div>
 
       {/* Combo Detail Popup */}
-      <ComboDetailPopup comboId={selectedComboId} isOpen={isDetailPopupOpen} onClose={handleCloseDetail} />
+      <ComboDetailPopup
+        comboId={selectedComboId}
+        isOpen={isDetailPopupOpen}
+        onClose={handleCloseDetail}
+        onStatusUpdated={fetchCombos}
+      />
 
       {/* Assign Staff Modal */}
       <Dialog open={isAssignStaffModalOpen} onOpenChange={setIsAssignStaffModalOpen}>

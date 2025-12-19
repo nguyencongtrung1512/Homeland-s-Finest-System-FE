@@ -436,7 +436,7 @@ function CreateMyStoryPage() {
       if (desc.text.trim()) {
         const descChars = countCharacters(desc.text)
         if (descChars > 500) {
-          return `${desc.label} không được vượt quá 1000 ký tự (hiện tại: ${descChars} ký tự)`
+          return `${desc.label} không được vượt quá 500 ký tự (hiện tại: ${descChars} ký tự)`
         }
       }
     }
@@ -1457,14 +1457,14 @@ function CreateMyStoryPage() {
                   placeholder='Ví dụ: Câu chuyện về hành trình làm nông sản sạch của gia đình tôi...'
                   value={storyData.TextIntro}
                   onChange={(e) => handleInputChange('TextIntro', e.target.value)}
-                  className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextIntro) > 1000 ? 'border-red-500' : ''
+                  className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextIntro) > 500 ? 'border-red-500' : ''
                     }`}
                 />
                 <div className='flex justify-end items-center mt-1'>
                   <p
-                    className={`text-xs ${countCharacters(storyData.TextIntro) > 1000 ? 'text-red-500' : 'text-gray-500'}`}
+                    className={`text-xs ${countCharacters(storyData.TextIntro) > 500 ? 'text-red-500' : 'text-gray-500'}`}
                   >
-                    {countCharacters(storyData.TextIntro)}/1000 ký tự
+                    {countCharacters(storyData.TextIntro)}/500 ký tự
                   </p>
                 </div>
               </motion.div>
@@ -1625,15 +1625,15 @@ function CreateMyStoryPage() {
                       placeholder='Ví dụ: Video giới thiệu về quy trình trồng trọt của gia đình...'
                       value={storyData.VideoOpenerDescription}
                       onChange={(e) => handleInputChange('VideoOpenerDescription', e.target.value)}
-                      className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoOpenerDescription) > 1000 ? 'border-red-500' : ''
+                      className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoOpenerDescription) > 500 ? 'border-red-500' : ''
                         }`}
                     />
                     <div className='flex justify-end items-center mt-1'>
                       <p
-                        className={`text-xs ${countCharacters(storyData.VideoOpenerDescription) > 1000 ? 'text-red-500' : 'text-gray-500'
+                        className={`text-xs ${countCharacters(storyData.VideoOpenerDescription) > 500 ? 'text-red-500' : 'text-gray-500'
                           }`}
                       >
-                        {countCharacters(storyData.VideoOpenerDescription)}/1000 ký tự
+                        {countCharacters(storyData.VideoOpenerDescription)}/500 ký tự
                       </p>
                     </div>
                   </div>
@@ -1805,15 +1805,15 @@ function CreateMyStoryPage() {
                                 placeholder='Ví dụ: Hình ảnh cánh đồng lúa chín vàng vào mùa thu hoạch...'
                                 value={storyData.SingleImageDescription}
                                 onChange={(e) => handleInputChange('SingleImageDescription', e.target.value)}
-                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.SingleImageDescription) > 1000 ? 'border-red-500' : ''
+                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.SingleImageDescription) > 500 ? 'border-red-500' : ''
                                   }`}
                               />
                               <div className='flex justify-end items-center mt-1'>
                                 <p
-                                  className={`text-xs ${countCharacters(storyData.SingleImageDescription) > 1000 ? 'text-red-500' : 'text-gray-500'
+                                  className={`text-xs ${countCharacters(storyData.SingleImageDescription) > 500 ? 'text-red-500' : 'text-gray-500'
                                     }`}
                                 >
-                                  {countCharacters(storyData.SingleImageDescription)}/1000 ký tự
+                                  {countCharacters(storyData.SingleImageDescription)}/500 ký tự
                                 </p>
                               </div>
                             </div>
@@ -2032,14 +2032,14 @@ function CreateMyStoryPage() {
                                 placeholder='Ví dụ: Những khoảnh khắc đẹp trong quá trình sản xuất...'
                                 value={storyData.GalleryDescription}
                                 onChange={(e) => handleInputChange('GalleryDescription', e.target.value)}
-                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.GalleryDescription) > 1000 ? 'border-red-500' : ''
+                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.GalleryDescription) > 500 ? 'border-red-500' : ''
                                   }`}
                               />
                               <div className='flex justify-end items-center mt-1'>
                                 <p
-                                  className={`text-xs ${countCharacters(storyData.GalleryDescription) > 1000 ? 'text-red-500' : 'text-gray-500'}`}
+                                  className={`text-xs ${countCharacters(storyData.GalleryDescription) > 500 ? 'text-red-500' : 'text-gray-500'}`}
                                 >
-                                  {countCharacters(storyData.GalleryDescription)}/1000 ký tự
+                                  {countCharacters(storyData.GalleryDescription)}/500 ký tự
                                 </p>
                               </div>
                             </div>
@@ -2123,14 +2123,14 @@ function CreateMyStoryPage() {
                               placeholder='Ví dụ: Quy trình làm nông sản sạch của chúng tôi bắt đầu từ việc chọn giống...'
                               value={storyData.TextExpanded}
                               onChange={(e) => handleInputChange('TextExpanded', e.target.value)}
-                              className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextExpanded) > 1000 ? 'border-red-500' : ''
+                              className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextExpanded) > 500 ? 'border-red-500' : ''
                                 }`}
                             />
                             <div className='flex justify-end items-center mt-1'>
                               <p
-                                className={`text-xs ${countCharacters(storyData.TextExpanded) > 1000 ? 'text-red-500' : 'text-gray-500'}`}
+                                className={`text-xs ${countCharacters(storyData.TextExpanded) > 500 ? 'text-red-500' : 'text-gray-500'}`}
                               >
-                                {countCharacters(storyData.TextExpanded)}/1000 ký tự
+                                {countCharacters(storyData.TextExpanded)}/500 ký tự
                               </p>
                             </div>
                           </div>
@@ -2341,15 +2341,15 @@ function CreateMyStoryPage() {
                                 placeholder='Ví dụ: Video giới thiệu chi tiết các bước trong quy trình sản xuất...'
                                 value={storyData.VideoProcessDescription}
                                 onChange={(e) => handleInputChange('VideoProcessDescription', e.target.value)}
-                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoProcessDescription) > 1000 ? 'border-red-500' : ''
+                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoProcessDescription) > 500 ? 'border-red-500' : ''
                                   }`}
                               />
                               <div className='flex justify-end items-center mt-1'>
                                 <p
-                                  className={`text-xs ${countCharacters(storyData.VideoProcessDescription) > 1000 ? 'text-red-500' : 'text-gray-500'
+                                  className={`text-xs ${countCharacters(storyData.VideoProcessDescription) > 500 ? 'text-red-500' : 'text-gray-500'
                                     }`}
                                 >
-                                  {countCharacters(storyData.VideoProcessDescription)}/1000 ký tự
+                                  {countCharacters(storyData.VideoProcessDescription)}/500 ký tự
                                 </p>
                               </div>
                             </div>
@@ -2561,15 +2561,15 @@ function CreateMyStoryPage() {
                                 placeholder='Ví dụ: Video tổng kết câu chuyện của bạn...'
                                 value={storyData.VideoTestimonialDescription}
                                 onChange={(e) => handleInputChange('VideoTestimonialDescription', e.target.value)}
-                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoTestimonialDescription) > 1000 ? 'border-red-500' : ''
+                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoTestimonialDescription) > 500 ? 'border-red-500' : ''
                                   }`}
                               />
                               <div className='flex justify-end items-center mt-1'>
                                 <p
-                                  className={`text-xs ${countCharacters(storyData.VideoTestimonialDescription) > 1000 ? 'text-red-500' : 'text-gray-500'
+                                  className={`text-xs ${countCharacters(storyData.VideoTestimonialDescription) > 500 ? 'text-red-500' : 'text-gray-500'
                                     }`}
                                 >
-                                  {countCharacters(storyData.VideoTestimonialDescription)}/1000 ký tự
+                                  {countCharacters(storyData.VideoTestimonialDescription)}/500 ký tự
                                 </p>
                               </div>
                             </div>
@@ -2620,14 +2620,14 @@ function CreateMyStoryPage() {
                     placeholder='Ví dụ: Chúng tôi cam kết mang đến những sản phẩm chất lượng nhất...'
                     value={storyData.TextClosing}
                     onChange={(e) => handleInputChange('TextClosing', e.target.value)}
-                    className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextClosing) > 1000 ? 'border-red-500' : ''
+                    className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextClosing) > 500 ? 'border-red-500' : ''
                       }`}
                   />
                   <div className='flex justify-end items-center mt-1'>
                     <p
-                      className={`text-xs ${countCharacters(storyData.TextClosing) > 1000 ? 'text-red-500' : 'text-gray-500'}`}
+                      className={`text-xs ${countCharacters(storyData.TextClosing) > 500 ? 'text-red-500' : 'text-gray-500'}`}
                     >
-                      {countCharacters(storyData.TextClosing)}/1000 ký tự
+                      {countCharacters(storyData.TextClosing)}/500 ký tự
                     </p>
                   </div>
                 </div>

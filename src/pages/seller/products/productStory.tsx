@@ -49,6 +49,7 @@ function ProductStoryComponent({
 }: ProductStoryProps) {
   const [stories, setStories] = useState<ProductStory[]>([])
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [editData, setEditData] = useState<StoryEditData>({
     title: '',
     content: '',
@@ -259,6 +260,7 @@ function ProductStoryComponent({
 
   const handleSave = async () => {
     try {
+      setSaving(true)
       // Validate title
       const titleWordCount = countWords(editData.title)
       if (titleWordCount === 0) {
@@ -411,6 +413,8 @@ function ProductStoryComponent({
     } catch (err) {
       console.error('❌ Error saving story:', err)
       toast.error('Có lỗi xảy ra khi lưu câu chuyện')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -785,9 +789,14 @@ function ProductStoryComponent({
                 <X className='w-4 h-4 mr-2' />
                 Hủy
               </Button>
-              <Button size='sm' onClick={handleSave} className='bg-green-600 hover:bg-green-700'>
+              <Button
+                size='sm'
+                onClick={handleSave}
+                className='bg-green-600 hover:bg-green-700'
+                disabled={saving}
+              >
                 <Save className='w-4 h-4 mr-2' />
-                Lưu
+                {saving ? 'Đang lưu...' : 'Lưu'}
               </Button>
             </>
           ) : canEdit && stories.length > 0 ? (
@@ -824,9 +833,8 @@ function ProductStoryComponent({
                   Tiêu đề câu chuyện
                 </Label>
                 <span
-                  className={`text-xs ${
-                    countWords(editData.title) > MAX_TITLE_WORDS ? 'text-red-500' : 'text-gray-500'
-                  }`}
+                  className={`text-xs ${countWords(editData.title) > MAX_TITLE_WORDS ? 'text-red-500' : 'text-gray-500'
+                    }`}
                 >
                   {countWords(editData.title)} / {MAX_TITLE_WORDS} từ
                 </span>
@@ -846,9 +854,8 @@ function ProductStoryComponent({
                   Nội dung câu chuyện
                 </Label>
                 <span
-                  className={`text-xs ${
-                    countWords(editData.content) > MAX_CONTENT_WORDS ? 'text-red-500' : 'text-gray-500'
-                  }`}
+                  className={`text-xs ${countWords(editData.content) > MAX_CONTENT_WORDS ? 'text-red-500' : 'text-gray-500'
+                    }`}
                 >
                   {countWords(editData.content)} / {MAX_CONTENT_WORDS} từ
                 </span>
@@ -867,11 +874,10 @@ function ProductStoryComponent({
               <div className='flex items-center justify-between mb-1'>
                 <Label className='text-sm font-medium'>Hình ảnh minh họa</Label>
                 <span
-                  className={`text-xs ${
-                    editData.images.length < MIN_IMAGES || editData.images.length > MAX_IMAGES
-                      ? 'text-red-500'
-                      : 'text-green-600'
-                  }`}
+                  className={`text-xs ${editData.images.length < MIN_IMAGES || editData.images.length > MAX_IMAGES
+                    ? 'text-red-500'
+                    : 'text-green-600'
+                    }`}
                 >
                   {editData.images.length} / {MIN_IMAGES}-{MAX_IMAGES} ảnh (bắt buộc)
                 </span>
@@ -907,25 +913,22 @@ function ProductStoryComponent({
                 {editData.images.length < MAX_IMAGES && (
                   <div className='space-y-3'>
                     <div
-                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
-                        isDraggingImages
-                          ? 'border-green-500 bg-green-50 scale-105'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
+                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${isDraggingImages
+                        ? 'border-green-500 bg-green-50 scale-105'
+                        : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       onClick={() => imageInputRef.current?.click()}
                       onDragOver={handleImageDragOver}
                       onDragLeave={handleImageDragLeave}
                       onDrop={handleImageDrop}
                     >
                       <Image
-                        className={`w-10 h-10 mx-auto mb-3 ${
-                          isDraggingImages ? 'text-green-600' : 'text-gray-400'
-                        }`}
+                        className={`w-10 h-10 mx-auto mb-3 ${isDraggingImages ? 'text-green-600' : 'text-gray-400'
+                          }`}
                       />
                       <p
-                        className={`mb-1 ${
-                          isDraggingImages ? 'text-green-700 font-medium' : 'text-gray-600'
-                        }`}
+                        className={`mb-1 ${isDraggingImages ? 'text-green-700 font-medium' : 'text-gray-600'
+                          }`}
                       >
                         {isDraggingImages
                           ? 'Thả hình ảnh vào đây'
@@ -987,25 +990,22 @@ function ProductStoryComponent({
                 {!editData.video && (
                   <div className='space-y-3'>
                     <div
-                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
-                        isDraggingVideo
-                          ? 'border-green-500 bg-green-50 scale-105'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
+                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${isDraggingVideo
+                        ? 'border-green-500 bg-green-50 scale-105'
+                        : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       onClick={() => videoInputRef.current?.click()}
                       onDragOver={handleVideoDragOver}
                       onDragLeave={handleVideoDragLeave}
                       onDrop={handleVideoDrop}
                     >
                       <Video
-                        className={`w-10 h-10 mx-auto mb-3 ${
-                          isDraggingVideo ? 'text-green-600' : 'text-gray-400'
-                        }`}
+                        className={`w-10 h-10 mx-auto mb-3 ${isDraggingVideo ? 'text-green-600' : 'text-gray-400'
+                          }`}
                       />
                       <p
-                        className={`mb-1 ${
-                          isDraggingVideo ? 'text-green-700 font-medium' : 'text-gray-600'
-                        }`}
+                        className={`mb-1 ${isDraggingVideo ? 'text-green-700 font-medium' : 'text-gray-600'
+                          }`}
                       >
                         {isDraggingVideo
                           ? 'Thả video vào đây'
@@ -1037,25 +1037,22 @@ function ProductStoryComponent({
                 {editData.video && (
                   <div className='space-y-3'>
                     <div
-                      className={`border-2 border-dashed rounded-lg p-4 text-center transition-all cursor-pointer ${
-                        isDraggingVideo
-                          ? 'border-green-500 bg-green-50 scale-105'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
+                      className={`border-2 border-dashed rounded-lg p-4 text-center transition-all cursor-pointer ${isDraggingVideo
+                        ? 'border-green-500 bg-green-50 scale-105'
+                        : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       onClick={() => videoInputRef.current?.click()}
                       onDragOver={handleVideoDragOver}
                       onDragLeave={handleVideoDragLeave}
                       onDrop={handleVideoDrop}
                     >
                       <Video
-                        className={`w-8 h-8 mx-auto mb-2 ${
-                          isDraggingVideo ? 'text-green-600' : 'text-gray-400'
-                        }`}
+                        className={`w-8 h-8 mx-auto mb-2 ${isDraggingVideo ? 'text-green-600' : 'text-gray-400'
+                          }`}
                       />
                       <p
-                        className={`text-sm mb-1 ${
-                          isDraggingVideo ? 'text-green-700 font-medium' : 'text-gray-600'
-                        }`}
+                        className={`text-sm mb-1 ${isDraggingVideo ? 'text-green-700 font-medium' : 'text-gray-600'
+                          }`}
                       >
                         {isDraggingVideo
                           ? 'Thả video vào đây để thay thế'
@@ -1151,8 +1148,8 @@ function ProductStoryComponent({
                               !currentStory.videoSources.dash &&
                               !currentStory.videoSources.preview &&
                               !currentStory.videoSources.fallback)) && (
-                            <source src={currentStory.video} type='video/mp4' />
-                          )}
+                              <source src={currentStory.video} type='video/mp4' />
+                            )}
                           Trình duyệt của bạn không hỗ trợ video.
                         </video>
                       </div>
