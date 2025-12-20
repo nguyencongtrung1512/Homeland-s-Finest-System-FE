@@ -583,21 +583,67 @@ function StoreDetailAdmin() {
     setAssignDialogOpen(true)
   }
 
-  // Hàm đề xuất nhân viên dựa trên provinceId
+  // Hàm tính khoảng cách giữa hai điểm (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371 // Bán kính Trái Đất (km)
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c // Khoảng cách (km)
+  }
+
+  // Hàm đề xuất nhân viên dựa trên provinceId và khoảng cách địa lý
   const getRecommendedStaff = (): Staff[] => {
-    if (!store || !store.provinceId) return []
-    const recommended = staffList
-      .filter((staff) => staff.provinceId === store.provinceId)
-      .sort((a, b) => (a.processingStoreCount || 0) - (b.processingStoreCount || 0))
-    return recommended.map((staff) => ({ ...staff, isRecommended: true }))
+    if (!store) return []
+
+    const recommended: Staff[] = []
+
+    // Bước 1: Ưu tiên nhân viên cùng province với cửa hàng
+    if (store.provinceId) {
+      const sameProvinceStaff = staffList
+        .filter((staff) => staff.provinceId === store.provinceId)
+        .sort((a, b) => (a.processingStoreCount || 0) - (b.processingStoreCount || 0))
+        .map((staff) => ({ ...staff, isRecommended: true }))
+
+      recommended.push(...sameProvinceStaff)
+    }
+
+    // Bước 2: Nếu không có nhân viên cùng province, đề xuất 2 nhân viên gần nhất về mặt địa lý
+    if (recommended.length === 0 && storeLat !== null && storeLng !== null) {
+      // Lọc ra nhân viên có tọa độ
+      const staffWithCoords = staffList
+        .filter((staff) => {
+          // Chỉ lấy nhân viên có tọa độ
+          const hasCoords = staff.lat !== undefined && staff.lng !== undefined &&
+            staff.lat !== null && staff.lng !== null
+          return hasCoords
+        })
+        .map((staff) => {
+          const distance = calculateDistance(storeLat, storeLng, staff.lat!, staff.lng!)
+          return { ...staff, distance, isRecommended: true } as Staff & { distance: number }
+        })
+        .sort((a, b) => {
+          // Sắp xếp theo khoảng cách, sau đó theo số lượng cửa hàng đang xử lý
+          if (a.distance !== b.distance) {
+            return a.distance - b.distance
+          }
+          return (a.processingStoreCount || 0) - (b.processingStoreCount || 0)
+        })
+
+      // Đề xuất 2 nhân viên gần nhất
+      const nearbyStaff = staffWithCoords.slice(0, 2).map(({ distance, ...staff }) => staff)
+      recommended.push(...nearbyStaff)
+    }
+
+    return recommended
   }
 
   // Hàm lấy danh sách nhân viên không được đề xuất
   const getOtherStaff = (): Staff[] => {
-    if (!store || !store.provinceId) return staffList
-    const recommendedIds = new Set(
-      staffList.filter((staff) => staff.provinceId === store.provinceId).map((s) => s.staffId)
-    )
+    const recommendedIds = new Set(getRecommendedStaff().map((s) => s.staffId))
     return staffList.filter((staff) => !recommendedIds.has(staff.staffId))
   }
 

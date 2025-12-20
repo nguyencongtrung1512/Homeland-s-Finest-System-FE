@@ -184,7 +184,7 @@ const FileUploadFieldWithOCR = ({
   const validateFile = (file: File): boolean => {
     const isImage = file.type.startsWith('image/')
     if (!isImage) {
-      message.error('Chỉ được upload file ảnh!')
+      message.error('Chỉ được tải file ảnh!')
       return false
     }
 
@@ -214,14 +214,14 @@ const FileUploadFieldWithOCR = ({
     const remainingSlots = maxCount - currentCount
 
     if (remainingSlots <= 0) {
-      message.warning(`Chỉ được upload tối đa ${maxCount} file`)
+      message.warning(`Chỉ được tải tối đa ${maxCount} file`)
       return
     }
 
     const filesToAdd = multiple ? validFiles.slice(0, remainingSlots) : validFiles.slice(0, 1)
 
     if (validFiles.length > filesToAdd.length) {
-      message.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
+      message.warning(`Chỉ được tải tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
     }
 
     // Tạo UploadFile objects
@@ -475,14 +475,14 @@ const FileUploadFieldWithBackOCR = ({
     const remainingSlots = maxCount - currentCount
 
     if (remainingSlots <= 0) {
-      message.warning(`Chỉ được upload tối đa ${maxCount} file`)
+      message.warning(`Chỉ được tải tối đa ${maxCount} file`)
       return
     }
 
     const filesToAdd = multiple ? validFiles.slice(0, remainingSlots) : validFiles.slice(0, 1)
 
     if (validFiles.length > filesToAdd.length) {
-      message.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
+      message.warning(`Chỉ được tải tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
     }
 
     // Tạo UploadFile objects
@@ -709,14 +709,14 @@ const SimpleFileUploadField = ({
       const remainingSlots = maxCount - currentCount
 
       if (remainingSlots <= 0) {
-        toast.warning(`Chỉ được upload tối đa ${maxCount} file`)
+        toast.warning(`Chỉ được tải tối đa ${maxCount} file`)
         return
       }
 
       const filesToAdd = multiple ? validFiles.slice(0, remainingSlots) : validFiles.slice(0, 1)
 
       if (validFiles.length > filesToAdd.length) {
-        toast.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
+        toast.warning(`Chỉ được tải tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
       }
 
       onChange(filesToAdd)
@@ -781,14 +781,14 @@ const SimpleFileUploadField = ({
       const remainingSlots = maxCount - currentCount
 
       if (remainingSlots <= 0) {
-        toast.warning(`Chỉ được upload tối đa ${maxCount} file`)
+        toast.warning(`Chỉ được tải tối đa ${maxCount} file`)
         return
       }
 
       const filesToAdd = multiple ? validFiles.slice(0, remainingSlots) : validFiles.slice(0, 1)
 
       if (validFiles.length > filesToAdd.length) {
-        toast.warning(`Chỉ được upload tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
+        toast.warning(`Chỉ được tải tối đa ${maxCount} file. Đã chọn ${filesToAdd.length} file đầu tiên.`)
       }
 
       onChange(filesToAdd)
@@ -1316,7 +1316,7 @@ function SellerRegistrationForm() {
             isValid,
             reason: categoryCheck
               ? fullResult.reason || ''
-              : 'Vui lòng upload ảnh giấy chứng nhận cửa hàng. Ảnh này là chứng nhận sản phẩm.',
+              : 'Vui lòng tải ảnh giấy chứng nhận cửa hàng. Ảnh này là chứng nhận sản phẩm.',
             isValidating: false,
             validationResult: fullResult
           })
@@ -1353,7 +1353,7 @@ function SellerRegistrationForm() {
               isValid,
               reason: categoryCheck
                 ? fullResult.reason || ''
-                : 'Vui lòng upload ảnh giấy chứng nhận cửa hàng. Ảnh này là chứng nhận sản phẩm.',
+                : 'Vui lòng tải ảnh giấy chứng nhận cửa hàng. Ảnh này là chứng nhận sản phẩm.',
               isValidating: false,
               validationResult: fullResult
             })
@@ -2674,7 +2674,7 @@ function SellerRegistrationForm() {
               </div>
               <div>
                 <h2 className='text-xl font-semibold text-gray-900'>Giấy tờ và chứng nhận</h2>
-                <p className='text-sm text-gray-500'>Upload các giấy tờ cần thiết</p>
+                <p className='text-sm text-gray-500'>Tải các giấy tờ cần thiết</p>
               </div>
             </div>
 
@@ -2703,7 +2703,7 @@ function SellerRegistrationForm() {
                       label='Giấy phép kinh doanh'
                       onChange={(files) => handleFileChange('businessLicense', files)}
                       required
-                      description='Bắt buộc: 1 file ảnh/PDF rõ nét. Hệ thống sẽ tự động kiểm tra sau khi upload.'
+                      description='Bắt buộc: 1 file ảnh/PDF rõ nét. Hệ thống sẽ tự động kiểm tra sau khi tải.'
                       accept='image/*,.pdf'
                       maxCount={1}
                       disabled={businessLicenseValidation.isValidating}
@@ -2789,7 +2789,7 @@ function SellerRegistrationForm() {
                       label='Chứng nhận cửa hàng'
                       onChange={(files) => handleFileChange('vendorApplicationImageUrl', files)}
                       multiple
-                      description='Có thể upload nhiều file (tối đa 5 file), định dạng JPG/PNG/PDF. Hệ thống sẽ tự động kiểm tra từng file sau khi upload.'
+                      description='Có thể tải nhiều file (tối đa 5 file), định dạng JPG/PNG/PDF. Hệ thống sẽ tự động kiểm tra từng file sau khi tải.'
                       maxCount={5}
                       disabled={Array.from(vendorApplicationValidations.values()).some((v) => v.isValidating)}
                       previewUrls={[]}
@@ -3114,7 +3114,7 @@ function SellerRegistrationForm() {
                   </div>
 
                   <div className='bg-white/60 rounded-lg p-4 border border-green-200'>
-                    <h4 className='font-medium text-gray-900 mb-3'>Các loại giấy tờ có thể upload:</h4>
+                    <h4 className='font-medium text-gray-900 mb-3'>Các loại giấy tờ có thể tải:</h4>
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600'>
                       <div className='flex items-center gap-2'>
                         <div className='w-2 h-2 bg-green-500 rounded-full'></div>

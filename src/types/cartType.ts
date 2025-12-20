@@ -9,6 +9,7 @@ export interface CartItem {
   isCombo: boolean
   productVariantId: string
   comboId: string
+  comboName?: string
   isStock?: boolean
   isSelected?: boolean
   availableQuantity?: number

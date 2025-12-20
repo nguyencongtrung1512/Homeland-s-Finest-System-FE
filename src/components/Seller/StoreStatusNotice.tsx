@@ -113,7 +113,7 @@ function StoreStatusNotice() {
           title: 'Cửa hàng đang chờ duyệt',
           description: 'Hồ sơ cửa hàng của bạn đang được xem xét bởi đội ngũ quản trị.',
           color: 'warning',
-          step: 0
+          step: 1
         }
       case 'Processing':
         return {
@@ -121,7 +121,7 @@ function StoreStatusNotice() {
           title: 'Đang được xử lý',
           description: 'Nhân viên đang xem xét chi tiết hồ sơ cửa hàng của bạn.',
           color: 'processing',
-          step: 1
+          step: 2
         }
       case 'ApprovedByStaff':
         return {
@@ -129,7 +129,7 @@ function StoreStatusNotice() {
           title: 'Đang được xử lý',
           description: 'Nhân viên đã phê duyệt hồ sơ cửa hàng của bạn. Hồ sơ đang chờ admin phê duyệt cuối cùng.',
           color: 'processing',
-          step: 2
+          step: 3
         }
       case 'Rejected':
         return {
@@ -137,7 +137,7 @@ function StoreStatusNotice() {
           title: 'Hồ sơ bị từ chối',
           description: 'Hồ sơ cửa hàng không đáp ứng yêu cầu. Vui lòng cập nhật và gửi lại.',
           color: 'error',
-          step: 3
+          step: 4
         }
       case 'RejectedByStaff':
         return {
@@ -145,7 +145,7 @@ function StoreStatusNotice() {
           title: 'Hồ sơ bị từ chối',
           description: 'Nhân viên đã từ chối hồ sơ cửa hàng của bạn. Vui lòng kiểm tra lý do và cập nhật lại thông tin.',
           color: 'error',
-          step: 2
+          step: 3
         }
       case 'Inactive':
         return {
@@ -257,7 +257,7 @@ function StoreStatusNotice() {
 
             {/* Additional Info */}
             <div className='mt-6 p-4 bg-blue-50 rounded-lg'>
-              <h4 className='font-medium text-blue-900 mb-2'>💡 Lưu ý quan trọng</h4>
+              <h4 className='font-medium text-blue-900 mb-2'> Lưu ý quan trọng</h4>
               <ul className='text-sm text-blue-800 space-y-1'>
                 <li>• Thời gian xử lý hồ sơ thường từ 1-3 ngày làm việc</li>
                 <li>• Đảm bảo thông tin cửa hàng chính xác và đầy đủ</li>

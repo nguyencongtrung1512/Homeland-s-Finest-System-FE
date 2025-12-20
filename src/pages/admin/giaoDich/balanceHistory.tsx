@@ -141,10 +141,11 @@ function BalanceHistory() {
                       setPaymentMethodFilter(option.value as 'all' | 'COD' | 'WalletOrBanking' | 'Orther')
                       setTransactionPage(1)
                     }}
-                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${paymentMethodFilter === option.value
-                      ? 'bg-[#38bdf8] text-white shadow-sm hover:bg-[#0ea5e9]'
-                      : 'bg-white text-gray-700 hover:bg-gray-100'
-                      }`}
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${
+                      paymentMethodFilter === option.value
+                        ? 'bg-[#38bdf8] text-white shadow-sm hover:bg-[#0ea5e9]'
+                        : 'bg-white text-gray-700 hover:bg-gray-100'
+                    }`}
                   >
                     {option.label}
                   </button>
@@ -226,6 +227,11 @@ function BalanceHistory() {
                                   </Badge>
                                 </div>
 
+                                {transaction.userEmail && (
+                                  <p className='text-xs text-gray-500 mt-1'>
+                                    Email người dùng: {transaction.userEmail}
+                                  </p>
+                                )}
                                 {transaction.description && (
                                   <p className='text-xs text-gray-500 mt-1'>{transaction.description}</p>
                                 )}
@@ -363,7 +369,7 @@ function BalanceHistory() {
               {/* Chi tiết đơn hàng */}
               {(selectedTransaction.orderGrossRevenue !== null &&
                 selectedTransaction.orderGrossRevenue !== undefined) ||
-                (selectedTransaction.orderNetRevenue !== null && selectedTransaction.orderNetRevenue !== undefined) ? (
+              (selectedTransaction.orderNetRevenue !== null && selectedTransaction.orderNetRevenue !== undefined) ? (
                 <div className='mt-4 border border-blue-100 bg-blue-50 rounded-xl p-4 md:p-5'>
                   <p className='font-semibold text-gray-900 mb-3'>Chi tiết đơn hàng</p>
                   <div className='space-y-1 text-sm'>

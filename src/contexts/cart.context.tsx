@@ -16,6 +16,7 @@ export interface CartItem {
   storeId?: string
   productVariantId?: string
   comboId?: string
+  comboName?: string
   isCombo?: boolean
 }
 
@@ -55,6 +56,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           storeId: storeCart.storeId,
           productVariantId: item.productVariantId,
           comboId: item.comboId,
+          comboName: item.comboName,
           isCombo: item.isCombo
         })
       })

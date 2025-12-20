@@ -679,7 +679,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
     setUploadVerificationLoading(true)
     try {
       await uploadVerificationImages(order.id, verificationImages, existingVerificationImages)
-      toast.success('Upload ảnh xác minh thành công!')
+      toast.success('Tải ảnh xác minh thành công!')
 
       // Reset upload state first
       setVerificationImages([])
@@ -688,7 +688,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
       // Always refresh order data to ensure VerificationImages are up to date
       await fetchOrderDetail()
     } catch (error) {
-      const errorMessage = getErrorMessage(error, 'Không thể upload ảnh xác minh')
+      const errorMessage = getErrorMessage(error, 'Không thể tải ảnh xác minh')
       toast.error(errorMessage)
     } finally {
       setUploadVerificationLoading(false)
@@ -810,7 +810,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                           </h3>
                         </div>
                         <p className={`text-sm mb-2 ${warning.isOverdue ? 'text-red-700' : 'text-yellow-700'}`}>
-                          Đơn hàng đã hoàn thành nhưng bạn chưa upload ảnh xác minh giao hàng.
+                          Đơn hàng đã hoàn thành nhưng bạn chưa tải ảnh xác minh giao hàng.
                         </p>
                         {order.deadlineVerificationAt && (
                           <div
@@ -821,7 +821,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                               className={`text-xs font-medium mb-1 ${warning.isOverdue ? 'text-red-800' : 'text-yellow-800'
                                 }`}
                             >
-                              Hạn upload ảnh xác minh:
+                              Hạn tải ảnh xác minh:
                             </p>
                             <p
                               className={`text-sm font-bold ${warning.isOverdue ? 'text-red-900' : 'text-yellow-900'}`}
@@ -842,17 +842,14 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                           <div className='mt-3 p-3 bg-red-100 rounded-lg border border-red-200'>
                             <p className='text-sm font-bold text-red-900 mb-1'>⛔ BẠN SẼ BỊ PHẠT TĂNG ĐIỂM VI PHẠM!</p>
                             <p className='text-sm text-red-800'>
-                              Đã quá 2 ngày kể từ khi đơn hàng hoàn thành. Nếu không upload ảnh xác minh ngay, hệ thống
+                              Đã quá 2 ngày kể từ khi đơn hàng hoàn thành. Nếu không tải ảnh xác minh ngay, hệ thống
                               sẽ tự động tăng số lượng điểm vi phạm của cửa hàng.
                             </p>
                           </div>
                         ) : (
                           <div className='mt-3 p-3 bg-yellow-100 rounded-lg border border-yellow-200'>
-                            <p className='text-sm font-semibold text-yellow-900 mb-1'>
-                              Còn {2 - warning.days} {2 - warning.days === 1 ? 'ngày' : 'ngày'} để upload ảnh
-                            </p>
                             <p className='text-sm text-yellow-800'>
-                              Vui lòng upload ảnh xác minh giao hàng ngay để tránh bị phạt tăng điểm vi phạm sau 2 ngày.
+                              Vui lòng tải ảnh xác minh giao hàng ngay để tránh bị phạt tăng điểm vi phạm sau 2 ngày.
                             </p>
                           </div>
                         )}
@@ -1084,7 +1081,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                       </h3>
                       {order.deadlineVerificationAt && existingVerificationImages.length === 0 && (
                         <p className='text-xs text-orange-600 mt-1 font-medium'>
-                          ⏰ Hạn upload: {order.deadlineVerificationAt}
+                          Hạn gửi ảnh: {order.deadlineVerificationAt}
                         </p>
                       )}
                     </div>
@@ -1228,12 +1225,12 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                               {uploadVerificationLoading ? (
                                 <>
                                   <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                                  Đang upload...
+                                  Đang tải...
                                 </>
                               ) : (
                                 <>
                                   <Upload className='w-4 h-4 mr-2' />
-                                  Upload ảnh xác minh
+                                  Tải ảnh xác minh
                                 </>
                               )}
                             </Button>

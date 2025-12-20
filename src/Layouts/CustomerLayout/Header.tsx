@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/auth.context'
 import { Button } from '../../components/ui/button'
 import path from '../../constants/path'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { getComboById } from '../../apis/combo.api'
 
 // Interface cho combo group
 interface ComboGroup {
@@ -31,6 +32,8 @@ function Header() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
+  const [comboImages, setComboImages] = useState<Record<string, string>>({}) // Map comboId -> thumbnailUrl
+  const fetchedComboIdsRef = useRef<Set<string>>(new Set()) // Track các comboId đã fetch
   const dropdownRef = useRef<HTMLDivElement>(null)
   const cartContainerRef = useRef<HTMLDivElement>(null)
   const userDropdownRef = useRef<HTMLDivElement>(null)
@@ -86,6 +89,63 @@ function Header() {
     }
   }, [showDropdown, showUserDropdown, handleCloseDropdown])
 
+  // Fetch combo images khi có combo mới
+  useEffect(() => {
+    const fetchComboImages = async () => {
+      if (!cart || cart.length === 0) return
+
+      // Lấy danh sách các comboId cần fetch
+      const comboIds = new Set<string>()
+      cart.forEach((item) => {
+        if (item.isCombo && item.comboId) {
+          comboIds.add(item.comboId)
+        }
+      })
+
+      // Lọc các comboId chưa được fetch (sử dụng ref để tránh dependency loop)
+      const comboIdsToFetch: string[] = []
+      comboIds.forEach((comboId) => {
+        if (!fetchedComboIdsRef.current.has(comboId)) {
+          comboIdsToFetch.push(comboId)
+          fetchedComboIdsRef.current.add(comboId)
+        }
+      })
+
+      // Fetch images cho các combo chưa có
+      if (comboIdsToFetch.length > 0) {
+        const fetchPromises = comboIdsToFetch.map(async (comboId) => {
+          try {
+            const response = await getComboById(comboId)
+            const comboData = response?.data?.data ?? response?.data
+            const thumbnailUrl = comboData?.thumbnailUrl
+            if (thumbnailUrl) {
+              return { comboId, thumbnailUrl }
+            }
+          } catch (error) {
+            console.error(`Error fetching combo image for ${comboId}:`, error)
+            // Remove from ref nếu fetch thất bại để có thể retry sau
+            fetchedComboIdsRef.current.delete(comboId)
+          }
+          return null
+        })
+
+        const results = await Promise.all(fetchPromises)
+        const newComboImages: Record<string, string> = {}
+        results.forEach((result) => {
+          if (result) {
+            newComboImages[result.comboId] = result.thumbnailUrl
+          }
+        })
+
+        if (Object.keys(newComboImages).length > 0) {
+          setComboImages((prev) => ({ ...prev, ...newComboImages }))
+        }
+      }
+    }
+
+    fetchComboImages()
+  }, [cart])
+
   const handleLogout = async () => {
     await logout()
     setShowUserDropdown(false)
@@ -121,12 +181,15 @@ function Header() {
       // Lấy quantity từ item đầu tiên (tất cả items trong combo có cùng quantity)
       const quantity = items[0]?.quantity || 1
 
-      // Lấy hình ảnh từ item đầu tiên
-      const image = items[0]?.image || ''
+      // Lấy hình ảnh từ comboImages (thumbnailUrl của combo) hoặc fallback về ảnh item đầu tiên
+      const image = comboImages[comboId] || items[0]?.image || ''
+
+      // Lấy comboName từ item đầu tiên (tất cả items trong combo có cùng comboName)
+      const comboName = items[0]?.comboName || 'Combo'
 
       return {
         id: comboId,
-        name: 'Combo', // Tạm thời dùng "Combo", có thể fetch combo name sau
+        name: comboName,
         image,
         quantity,
         price: totalPrice,
@@ -137,7 +200,7 @@ function Header() {
 
     // Kết hợp combo groups và regular items
     return [...comboGroups, ...regularItems]
-  }, [cart])
+  }, [cart, comboImages])
 
   return (
     <div className='w-full fixed top-0 left-0 z-50 bg-[#ecf2ea] border-b border-gray-500'>

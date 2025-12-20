@@ -762,7 +762,8 @@ export default function Cart() {
   }
 
   const getTotalItems = () => {
-    return cartData ? cartData.carts.reduce((sum, store) => sum + store.items.length, 0) : 0
+    // Sử dụng summary.totalItems từ API để đếm đúng (1 combo = 1 item)
+    return cartData?.summary?.totalItems ?? 0
   }
 
   const getSelectedTotal = () => {
