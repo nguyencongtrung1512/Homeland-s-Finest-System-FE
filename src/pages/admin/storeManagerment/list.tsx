@@ -45,7 +45,7 @@ function StoreManagement() {
   // Helper function to parse Vietnamese date format "HH:mm:ss DD/MM/YYYY" to Date object
   const parseVietnameseDate = (dateString: string): Date => {
     if (!dateString) return new Date()
-    
+
     // Try to parse format "HH:mm:ss DD/MM/YYYY"
     const match = dateString.match(/(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})/)
     if (match) {
@@ -137,8 +137,31 @@ function StoreManagement() {
       // Filter theo ngày nếu có
       let matchesDate = true
       if (dateFilter) {
-        const filterDate = new Date(dateFilter).toLocaleDateString('vi-VN')
-        matchesDate = store.createDate === filterDate
+        // Chuyển đổi dateFilter (YYYY-MM-DD) sang Date object
+        const filterDateObj = new Date(dateFilter)
+        const filterYear = filterDateObj.getFullYear()
+        const filterMonth = filterDateObj.getMonth() + 1 // Month is 0-indexed
+        const filterDay = filterDateObj.getDate()
+
+        // Trích xuất ngày từ store.createDate (format: "HH:mm:ss DD/MM/YYYY")
+        const dateMatch = store.createDate.match(/(\d{2})\/(\d{2})\/(\d{4})/)
+        if (dateMatch) {
+          const [, day, month, year] = dateMatch
+          const storeDay = parseInt(day, 10)
+          const storeMonth = parseInt(month, 10)
+          const storeYear = parseInt(year, 10)
+
+          // So sánh ngày, tháng, năm
+          matchesDate =
+            storeDay === filterDay && storeMonth === filterMonth && storeYear === filterYear
+        } else {
+          // Fallback: nếu không parse được, dùng cách so sánh timestamp
+          const storeDateObj = parseVietnameseDate(store.createDate)
+          matchesDate =
+            storeDateObj.getDate() === filterDay &&
+            storeDateObj.getMonth() + 1 === filterMonth &&
+            storeDateObj.getFullYear() === filterYear
+        }
       }
 
       return matchesSearch && matchesStatus && matchesDate
