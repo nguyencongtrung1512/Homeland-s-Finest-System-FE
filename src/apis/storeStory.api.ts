@@ -12,6 +12,7 @@ export interface StoreStoryUpdateData {
   SingleImageDescription: string
   GalleryImages?: File[]
   RemoveExistingGalleryImages?: boolean
+  ExistingGalleryImageUrls?: string[] // MỚI: Danh sách URL ảnh muốn giữ lại
   GalleryDescription: string
   VideoProcess?: File
   RemoveExistingVideoProcess?: boolean
@@ -84,7 +85,7 @@ export const storeStoryApi = {
     formData.append('Title', data.Title)
     formData.append('TextIntro', data.TextIntro || '')
     formData.append('TextClosing', data.TextClosing || '')
-    
+
     // Optional text fields
     if (data.TextExpanded) {
       formData.append('TextExpanded', data.TextExpanded)
@@ -132,13 +133,24 @@ export const storeStoryApi = {
       formData.append('RemoveExistingVideoProcess', data.RemoveExistingVideoProcess.toString())
     }
 
-    // Gallery Images - Backend expects NewGalleryImages and RemoveExistingGalleryImages
+    // Gallery Images - Backend expects NewGalleryImages, RemoveExistingGalleryImages, và ExistingGalleryImageUrls
+    // Ưu tiên: Nếu có ExistingGalleryImageUrls, sử dụng logic mới (xóa chọn lọc)
+    // Nếu không có ExistingGalleryImageUrls, sử dụng logic cũ (RemoveExistingGalleryImages)
+    if (data.ExistingGalleryImageUrls && data.ExistingGalleryImageUrls.length > 0) {
+      // Logic mới: Gửi danh sách URL ảnh muốn giữ lại
+      data.ExistingGalleryImageUrls.forEach((url) => {
+        formData.append('ExistingGalleryImageUrls', url)
+      })
+    }
+
     if (data.GalleryImages && data.GalleryImages.length > 0) {
       data.GalleryImages.forEach((image) => {
         formData.append('NewGalleryImages', image)
       })
     }
-    if (data.RemoveExistingGalleryImages !== undefined) {
+
+    // Chỉ gửi RemoveExistingGalleryImages khi không có ExistingGalleryImageUrls (tương thích ngược)
+    if (!data.ExistingGalleryImageUrls && data.RemoveExistingGalleryImages !== undefined) {
       formData.append('RemoveExistingGalleryImages', data.RemoveExistingGalleryImages.toString())
     }
 

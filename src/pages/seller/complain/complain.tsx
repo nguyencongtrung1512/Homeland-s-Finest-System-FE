@@ -809,8 +809,8 @@ function ComplainSeller() {
                         <div className='flex items-center gap-2 text-xs text-gray-500'>
                           <span>Đơn hàng:</span>
                           <CopyButton
-                            textToCopy={form.orderId}
-                            idleText={form.orderId}
+                            textToCopy={form.orderId.slice(-8)}
+                            idleText={form.orderId.slice(-8)}
                             copiedText='Đã copy!'
                             className='h-6 px-2 text-xs min-w-16'
                             successDuration={2000}

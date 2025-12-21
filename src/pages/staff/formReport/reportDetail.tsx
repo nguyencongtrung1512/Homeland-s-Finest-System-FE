@@ -816,7 +816,7 @@ function ReportDetail() {
                             className='w-full bg-green-600 hover:bg-green-700 text-white h-12'
                           >
                             <CheckCircle className='w-4 h-4 mr-2' />
-                            Duyệt đơn
+                            Đề xuất duyệt
                           </Button>
                           <Button
                             onClick={() => {
