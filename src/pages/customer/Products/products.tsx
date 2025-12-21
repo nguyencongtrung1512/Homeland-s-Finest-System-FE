@@ -61,6 +61,13 @@ function Products() {
     totalPages?: number
   } | null>(null)
 
+  // Category state
+  const [currentCategory, setCurrentCategory] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+  const [loadingCategory, setLoadingCategory] = useState(false)
+
   // Read queryText from URL and apply to search
   useEffect(() => {
     if (queryTextFromUrl) {
@@ -145,7 +152,8 @@ function Products() {
           sortBy: sortBy || null,
           minPrice: productFilters.minPrice || null,
           maxPrice: productFilters.maxPrice || null,
-          provinceFilters: productFilters.provinceFilters || null
+          provinceFilters: productFilters.provinceFilters || null,
+          categoryFilterIds: categoryId ? [categoryId] : null // Filter by category if categoryId exists
         }
 
         const results = await searchApi.search(searchRequest)
@@ -161,7 +169,7 @@ function Products() {
     }
 
     fetchProducts()
-  }, [activeTab, appliedSearchQuery, sortBy, productFilters, currentPage, pageSize, user?.userId])
+  }, [activeTab, appliedSearchQuery, sortBy, productFilters, currentPage, pageSize, user?.userId, categoryId])
 
   // Fetch combos with filters
   useEffect(() => {
@@ -353,8 +361,24 @@ function Products() {
         <div className='flex-1'>
           {/* Switch tabs and category */}
           <div className='flex items-center justify-between mb-6'>
-            <LiquidSegmentedControl activeTab={activeTab} onTabChange={handleTabChange} className='flex-1' />
-
+            <div className='flex items-center gap-4 flex-1'>
+              <LiquidSegmentedControl activeTab={activeTab} onTabChange={handleTabChange} className='flex-1' />
+              {currentCategory && (
+                <div className='flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg'>
+                  {loadingCategory ? (
+                    <div className='flex items-center gap-2'>
+                      <div className='w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin'></div>
+                      <span className='text-sm text-gray-600'>Đang tải...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <span className='text-sm text-gray-600'>Danh mục:</span>
+                      <span className='text-sm font-semibold text-green-700'>{currentCategory.name}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Search and filter section */}

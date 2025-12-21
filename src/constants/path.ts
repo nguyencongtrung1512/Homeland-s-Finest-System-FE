@@ -1,7 +1,7 @@
 export const path = {
   //===============Public===============
   portal: '/portal',
-  home: '/homePage',
+  home: '/',
   blog: '/view-blog',
   blogDetail: '/view-blog/:id',
   login: '/login',
