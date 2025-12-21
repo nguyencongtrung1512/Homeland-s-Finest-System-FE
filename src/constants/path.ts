@@ -2,11 +2,12 @@ export const path = {
   //===============Public===============
   portal: '/portal',
   home: '/',
+  homePage: '/homePage',
+  homepage3D: '/about-us',
   blog: '/view-blog',
   blogDetail: '/view-blog/:id',
   login: '/login',
   product: '/products',
-  homepage3D: '/about-us',
   detailCombo: '/combo/:id',
   productDetail: '/product/:id',
   store: '/store/:storeId',

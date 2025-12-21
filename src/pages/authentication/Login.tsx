@@ -44,8 +44,9 @@ function Login() {
       case 'Admin':
         return path.BASE_ADMIN
       case 'Customer':
+        return path.homePage
       default:
-        return path.home
+        return path.homePage
     }
   }
 
@@ -193,7 +194,7 @@ function Login() {
           <h2 className='text-4xl font-bold text-gray-800 mb-1 drop-shadow-sm'>
             Tinh Hoa Quê Nhà
           </h2>
-          
+
         </div>
 
         {/* Form Section */}

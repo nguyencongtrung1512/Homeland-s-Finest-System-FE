@@ -104,6 +104,10 @@ export default function useRouteElements() {
       children: [
         {
           path: path.home,
+          element: <HomePage3D />
+        },
+        {
+          path: path.homePage,
           element: <HomePage />
         },
         {

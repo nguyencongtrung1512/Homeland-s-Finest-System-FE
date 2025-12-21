@@ -42,8 +42,9 @@ function SellerLogin() {
       case 'Admin':
         return path.BASE_ADMIN
       case 'Customer':
+        return path.homePage
       default:
-        return path.home
+        return path.homePage
     }
   }
 
