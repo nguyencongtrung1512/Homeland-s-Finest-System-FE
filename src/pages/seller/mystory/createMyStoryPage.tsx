@@ -720,6 +720,7 @@ function CreateMyStoryPage() {
   const [visibleOptionalFields, setVisibleOptionalFields] = useState<Set<string>>(new Set())
 
   // Hàm xác định field optional tiếp theo cần hiển thị (memoized)
+  // Khi ở chế độ chỉnh sửa, cho phép thêm bất kỳ field optional nào chưa có dữ liệu
   const getNextOptionalField = useMemo((): 'singleImage' | 'galleryImages' | 'textExpanded' | 'videoProcess' | 'videoTestimonial' | null => {
     const order: Array<'singleImage' | 'galleryImages' | 'textExpanded' | 'videoProcess' | 'videoTestimonial'> = [
       'singleImage',
@@ -734,28 +735,41 @@ function CreateMyStoryPage() {
       const isCompleted = optionalFieldsCompleted[field]
       const isVisible = visibleOptionalFields.has(field)
 
-      // Nếu field này chưa hoàn thành và chưa được hiển thị, trả về field này
+      // Nếu field này chưa hoàn thành và chưa được hiển thị
       if (!isCompleted && !isVisible) {
-        // Kiểm tra field trước đó đã hoàn thành hoặc đã được thêm vào chưa
-        if (i === 0) {
-          // Field đầu tiên (singleImage) chỉ hiển thị khi Video Opener đã hoàn thành
-          if (requiredFieldsCompleted.videoOpener) {
+        // Khi ở chế độ chỉnh sửa, cho phép thêm bất kỳ field optional nào (không cần kiểm tra field trước đó)
+        if (isEditMode) {
+          // Field đầu tiên (singleImage) vẫn cần Video Opener đã hoàn thành
+          if (i === 0) {
+            if (requiredFieldsCompleted.videoOpener) {
+              return field
+            }
+          } else {
+            // Các field khác: luôn cho phép thêm khi ở chế độ chỉnh sửa
             return field
           }
         } else {
-          const prevField = order[i - 1]
-          const prevCompleted = optionalFieldsCompleted[prevField]
-          const prevVisible = visibleOptionalFields.has(prevField)
+          // Chế độ tạo mới: giữ nguyên logic tuần tự
+          if (i === 0) {
+            // Field đầu tiên (singleImage) chỉ hiển thị khi Video Opener đã hoàn thành
+            if (requiredFieldsCompleted.videoOpener) {
+              return field
+            }
+          } else {
+            const prevField = order[i - 1]
+            const prevCompleted = optionalFieldsCompleted[prevField]
+            const prevVisible = visibleOptionalFields.has(prevField)
 
-          // Chỉ hiển thị field này nếu field trước đó đã hoàn thành hoặc đã được thêm vào
-          if (prevCompleted || prevVisible) {
-            return field
+            // Chỉ hiển thị field này nếu field trước đó đã hoàn thành hoặc đã được thêm vào
+            if (prevCompleted || prevVisible) {
+              return field
+            }
           }
         }
       }
     }
     return null
-  }, [optionalFieldsCompleted, visibleOptionalFields, requiredFieldsCompleted.videoOpener])
+  }, [optionalFieldsCompleted, visibleOptionalFields, requiredFieldsCompleted.videoOpener, isEditMode])
 
   const toggleOptionalField = (field: string) => {
     setVisibleOptionalFields((prev) => {
@@ -1701,7 +1715,8 @@ function CreateMyStoryPage() {
           {/* Single Image Section - Optional, hiển thị ngay sau Video Opener */}
           <AnimatePresence>
             {(visibleOptionalFields.has('singleImage') || storyData.SingleImage || storyData.SingleImageUrl ||
-              (requiredFieldsCompleted.videoOpener && getNextOptionalField === 'singleImage')) && (
+              (requiredFieldsCompleted.videoOpener && getNextOptionalField === 'singleImage') ||
+              (isEditMode && requiredFieldsCompleted.videoOpener && !optionalFieldsCompleted.singleImage)) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -1711,7 +1726,7 @@ function CreateMyStoryPage() {
                 >
                   {/* Button để thêm Single Image */}
                   {!storyData.SingleImage && !storyData.SingleImageUrl && !visibleOptionalFields.has('singleImage') &&
-                    requiredFieldsCompleted.videoOpener && getNextOptionalField === 'singleImage' && (
+                    requiredFieldsCompleted.videoOpener && (getNextOptionalField === 'singleImage' || isEditMode) && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1907,7 +1922,8 @@ function CreateMyStoryPage() {
           {/* Gallery Images Section - Optional, hiển thị sau Single Image */}
           <AnimatePresence>
             {(visibleOptionalFields.has('galleryImages') || storyData.GalleryImages.length > 0 || storyData.GalleryImageUrls.length > 0 ||
-              (optionalFieldsCompleted.singleImage && getNextOptionalField === 'galleryImages')) && (
+              (optionalFieldsCompleted.singleImage && getNextOptionalField === 'galleryImages') ||
+              (isEditMode && !optionalFieldsCompleted.galleryImages)) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -1918,7 +1934,7 @@ function CreateMyStoryPage() {
                   {/* Button để thêm Gallery Images */}
                   {storyData.GalleryImages.length === 0 && storyData.GalleryImageUrls.length === 0 &&
                     !visibleOptionalFields.has('galleryImages') &&
-                    optionalFieldsCompleted.singleImage && getNextOptionalField === 'galleryImages' && (
+                    (optionalFieldsCompleted.singleImage && getNextOptionalField === 'galleryImages' || isEditMode) && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -2133,7 +2149,8 @@ function CreateMyStoryPage() {
           {/* Text Expanded Section - Optional, hiển thị sau Gallery Images */}
           <AnimatePresence>
             {(visibleOptionalFields.has('textExpanded') || storyData.TextExpanded ||
-              (optionalFieldsCompleted.galleryImages && getNextOptionalField === 'textExpanded')) && (
+              (optionalFieldsCompleted.galleryImages && getNextOptionalField === 'textExpanded') ||
+              (isEditMode && !optionalFieldsCompleted.textExpanded)) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -2143,7 +2160,7 @@ function CreateMyStoryPage() {
                 >
                   {/* Button để thêm Text Expanded */}
                   {!storyData.TextExpanded && !visibleOptionalFields.has('textExpanded') &&
-                    optionalFieldsCompleted.galleryImages && getNextOptionalField === 'textExpanded' && (
+                    (optionalFieldsCompleted.galleryImages && getNextOptionalField === 'textExpanded' || isEditMode) && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -2224,7 +2241,8 @@ function CreateMyStoryPage() {
           <AnimatePresence>
             {(visibleOptionalFields.has('videoProcess') || storyData.VideoProcess ||
               storyData.VideoProcessUrl || storyData.VideoProcessPlayBackUrl || storyData.VideoProcessPreviewUrl ||
-              (optionalFieldsCompleted.textExpanded && getNextOptionalField === 'videoProcess')) && (
+              (optionalFieldsCompleted.textExpanded && getNextOptionalField === 'videoProcess') ||
+              (isEditMode && !optionalFieldsCompleted.videoProcess)) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -2235,7 +2253,7 @@ function CreateMyStoryPage() {
                   {/* Button để thêm Video Process */}
                   {!storyData.VideoProcess && !storyData.VideoProcessUrl && !storyData.VideoProcessPlayBackUrl && !storyData.VideoProcessPreviewUrl &&
                     !visibleOptionalFields.has('videoProcess') &&
-                    optionalFieldsCompleted.textExpanded && getNextOptionalField === 'videoProcess' && (
+                    (optionalFieldsCompleted.textExpanded && getNextOptionalField === 'videoProcess' || isEditMode) && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -2447,7 +2465,8 @@ function CreateMyStoryPage() {
           <AnimatePresence>
             {(visibleOptionalFields.has('videoTestimonial') || storyData.VideoTestimonial ||
               storyData.VideoTestimonialUrl || storyData.VideoTestimonialPlayBackUrl || storyData.VideoTestimonialPreviewUrl ||
-              (optionalFieldsCompleted.videoProcess && getNextOptionalField === 'videoTestimonial')) && (
+              (optionalFieldsCompleted.videoProcess && getNextOptionalField === 'videoTestimonial') ||
+              (isEditMode && !optionalFieldsCompleted.videoTestimonial)) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -2458,7 +2477,7 @@ function CreateMyStoryPage() {
                   {/* Button để thêm Video Testimonial */}
                   {!storyData.VideoTestimonial && !storyData.VideoTestimonialUrl && !storyData.VideoTestimonialPlayBackUrl && !storyData.VideoTestimonialPreviewUrl &&
                     !visibleOptionalFields.has('videoTestimonial') &&
-                    optionalFieldsCompleted.videoProcess && getNextOptionalField === 'videoTestimonial' && (
+                    (optionalFieldsCompleted.videoProcess && getNextOptionalField === 'videoTestimonial' || isEditMode) && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}

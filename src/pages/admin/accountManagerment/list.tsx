@@ -182,14 +182,14 @@ function CustomerManagement() {
         // Parse date từ format "HH:mm:ss dd/MM/yyyy" hoặc ISO format
         const parseDate = (dateString: string): Date | null => {
           if (!dateString) return null
-          
+
           // Thử parse format "HH:mm:ss dd/MM/yyyy"
           const timeDateMatch = dateString.match(/(\d{2}):(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})/)
           if (timeDateMatch) {
             const [, hh, mm, ss, dd, MM, yyyy] = timeDateMatch
             return new Date(parseInt(yyyy), parseInt(MM) - 1, parseInt(dd), parseInt(hh), parseInt(mm), parseInt(ss))
           }
-          
+
           // Fallback: parse ISO format
           const date = new Date(dateString)
           return isNaN(date.getTime()) ? null : date
@@ -437,24 +437,22 @@ function CustomerManagement() {
 
       {/* Filters */}
       <Card>
-        <CardContent>
-          <div className='flex flex-col sm:flex-row gap-4 items-end'>
-            <div className='flex-1 py-5'>
-              <Label className='text-sm font-medium text-gray-700 mb-2'>Tìm kiếm</Label>
-              <div className='w-full sm:w-120'>
-                <Input
-                  placeholder='Tìm kiếm theo tên, email, số điện thoại...'
-                  value={searchText}
-                  onChange={(e) => {
-                    setSearchText(e.target.value)
-                    setCurrentPage(1) // Reset về trang 1 khi search thay đổi
-                  }}
-                  className='w-full'
-                />
-              </div>
+        <CardContent className='py-5'>
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4'>
+            <div className='md:col-span-2 lg:col-span-1'>
+              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Tìm kiếm</Label>
+              <Input
+                placeholder='Tìm kiếm theo tên, email, số điện thoại...'
+                value={searchText}
+                onChange={(e) => {
+                  setSearchText(e.target.value)
+                  setCurrentPage(1) // Reset về trang 1 khi search thay đổi
+                }}
+                className='w-full'
+              />
             </div>
-            <div className='w-full sm:w-48 py-5'>
-              <Label className='text-sm font-medium text-gray-700 mb-2'>Trạng thái</Label>
+            <div>
+              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Trạng thái</Label>
               <Select
                 value={statusFilter}
                 onValueChange={(value) => {
@@ -472,8 +470,8 @@ function CustomerManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className='w-full sm:w-48 py-5'>
-              <Label className='text-sm font-medium text-gray-700 mb-2'>Từ ngày</Label>
+            <div>
+              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Từ ngày</Label>
               <Popover open={dateFromOpen} onOpenChange={setDateFromOpen}>
                 <PopoverTrigger asChild>
                   <Button variant='outline' className='w-full justify-start text-left font-normal'>
@@ -500,8 +498,8 @@ function CustomerManagement() {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className='w-full sm:w-48 py-5'>
-              <Label className='text-sm font-medium text-gray-700 mb-2'>Đến ngày</Label>
+            <div>
+              <Label className='text-sm font-medium text-gray-700 mb-2 block'>Đến ngày</Label>
               <Popover open={dateToOpen} onOpenChange={setDateToOpen}>
                 <PopoverTrigger asChild>
                   <Button variant='outline' className='w-full justify-start text-left font-normal'>
@@ -537,7 +535,7 @@ function CustomerManagement() {
               </Popover>
             </div>
             {(dateFrom || dateTo) && (
-              <div>
+              <div className='flex items-end'>
                 <Button
                   variant='outline'
                   onClick={() => {
@@ -545,6 +543,7 @@ function CustomerManagement() {
                     setDateTo(undefined)
                     setCurrentPage(1) // Reset về trang 1 khi xóa filter
                   }}
+                  className='w-full'
                 >
                   Xóa lọc ngày
                 </Button>

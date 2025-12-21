@@ -83,7 +83,7 @@ function StaffManagement() {
   const [staffFormLoading, setStaffFormLoading] = useState(false)
   const [dateOfBirthOpen, setDateOfBirthOpen] = useState(false)
   const [hireDateOpen, setHireDateOpen] = useState(false)
-  
+
   // Province states
   const [provinces, setProvinces] = useState<Province[]>([])
   const [loadingProvinces, setLoadingProvinces] = useState(false)
@@ -720,7 +720,26 @@ function StaffManagement() {
   // Date formatting functions
   const formatDateForForm = (date: Date | undefined): string => {
     if (!date) return ''
-    return date.toISOString().split('T')[0] // Format as YYYY-MM-DD
+    // Format theo local timezone để tránh lùi ngày
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}` // Format as YYYY-MM-DD
+  }
+
+  // Parse date string theo local timezone để tránh lùi ngày
+  const parseDateFromString = (dateString: string): Date | undefined => {
+    if (!dateString) return undefined
+    // Parse YYYY-MM-DD theo local timezone
+    const parts = dateString.split('-')
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10)
+      const month = parseInt(parts[1], 10) - 1 // Month is 0-indexed
+      const day = parseInt(parts[2], 10)
+      return new Date(year, month, day)
+    }
+    // Fallback to standard parsing
+    return new Date(dateString)
   }
 
   const formatDisplayDate = (dateString: string): string => {
@@ -865,12 +884,12 @@ function StaffManagement() {
           const errors = axiosError.response.data.errors
           const errorMessages = Object.values(errors).flat()
           const firstError = errorMessages[0] || 'Có lỗi xảy ra khi khóa nhân viên'
-          
+
           // Set error state for display
           if (errors.Reason && errors.Reason.length > 0) {
             setBanReasonError(errors.Reason[0])
           }
-          
+
           toast.error(firstError, {
             position: 'top-right',
             autoClose: 5000
@@ -1196,7 +1215,7 @@ function StaffManagement() {
                               onCheckedChange={(checked) => handleEditFormChange('IsActive', checked)}
                             />
                           </div>
-                          
+
                         </div>
                       </div>
 
@@ -1311,9 +1330,8 @@ function StaffManagement() {
                             <PopoverTrigger asChild>
                               <Button
                                 variant='outline'
-                                className={`w-full justify-start text-left font-normal ${
-                                  !editFormData.DateOfBirth ? 'text-muted-foreground' : ''
-                                }`}
+                                className={`w-full justify-start text-left font-normal ${!editFormData.DateOfBirth ? 'text-muted-foreground' : ''
+                                  }`}
                               >
                                 <CalendarIcon className='mr-2 h-4 w-4' />
                                 {editFormData.DateOfBirth
@@ -1324,7 +1342,7 @@ function StaffManagement() {
                             <PopoverContent className='w-auto p-0' align='start'>
                               <Calendar
                                 mode='single'
-                                selected={editFormData.DateOfBirth ? new Date(editFormData.DateOfBirth) : undefined}
+                                selected={editFormData.DateOfBirth ? parseDateFromString(editFormData.DateOfBirth) : undefined}
                                 onSelect={(date) => {
                                   if (date) {
                                     handleEditFormChange('DateOfBirth', formatDateForForm(date))
@@ -1346,9 +1364,8 @@ function StaffManagement() {
                             <PopoverTrigger asChild>
                               <Button
                                 variant='outline'
-                                className={`w-full justify-start text-left font-normal ${
-                                  !editFormData.HireDate ? 'text-muted-foreground' : ''
-                                }`}
+                                className={`w-full justify-start text-left font-normal ${!editFormData.HireDate ? 'text-muted-foreground' : ''
+                                  }`}
                               >
                                 <CalendarIcon className='mr-2 h-4 w-4' />
                                 {editFormData.HireDate
@@ -1359,7 +1376,7 @@ function StaffManagement() {
                             <PopoverContent className='w-auto p-0' align='start'>
                               <Calendar
                                 mode='single'
-                                selected={editFormData.HireDate ? new Date(editFormData.HireDate) : undefined}
+                                selected={editFormData.HireDate ? parseDateFromString(editFormData.HireDate) : undefined}
                                 onSelect={(date) => {
                                   if (date) {
                                     handleEditFormChange('HireDate', formatDateForForm(date))
@@ -1688,9 +1705,8 @@ function StaffManagement() {
                   <PopoverTrigger asChild>
                     <Button
                       variant='outline'
-                      className={`w-full h-10 justify-start text-left font-normal ${
-                        !staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
-                      }`}
+                      className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.dateOfBirth ? 'text-muted-foreground' : ''
+                        }`}
                     >
                       <CalendarIcon className='mr-2 h-4 w-4' />
                       {staffFormData.dateOfBirth ? formatDisplayDate(staffFormData.dateOfBirth) : 'Chọn ngày sinh'}
@@ -1699,7 +1715,7 @@ function StaffManagement() {
                   <PopoverContent className='w-auto p-0' align='start'>
                     <Calendar
                       mode='single'
-                      selected={staffFormData.dateOfBirth ? new Date(staffFormData.dateOfBirth) : undefined}
+                      selected={staffFormData.dateOfBirth ? parseDateFromString(staffFormData.dateOfBirth) : undefined}
                       onSelect={(date) => {
                         if (date) {
                           handleStaffFormChange('dateOfBirth', formatDateForForm(date))
@@ -1721,9 +1737,8 @@ function StaffManagement() {
                   <PopoverTrigger asChild>
                     <Button
                       variant='outline'
-                      className={`w-full h-10 justify-start text-left font-normal ${
-                        !staffFormData.hireDate ? 'text-muted-foreground' : ''
-                      }`}
+                      className={`w-full h-10 justify-start text-left font-normal ${!staffFormData.hireDate ? 'text-muted-foreground' : ''
+                        }`}
                     >
                       <CalendarIcon className='mr-2 h-4 w-4' />
                       {staffFormData.hireDate ? formatDisplayDate(staffFormData.hireDate) : 'Chọn ngày tuyển dụng'}
@@ -1732,15 +1747,15 @@ function StaffManagement() {
                   <PopoverContent className='w-auto p-0' align='start'>
                     <Calendar
                       mode='single'
-                      selected={staffFormData.hireDate ? new Date(staffFormData.hireDate) : undefined}
+                      selected={staffFormData.hireDate ? parseDateFromString(staffFormData.hireDate) : undefined}
                       onSelect={(date) => {
                         if (date) {
                           handleStaffFormChange('hireDate', formatDateForForm(date))
                           setHireDateOpen(false)
                         }
                       }}
-                      disabled={(date) => 
-                        date < new Date('2020-01-01') || 
+                      disabled={(date) =>
+                        date < new Date('2020-01-01') ||
                         date > new Date() // Không cho chọn ngày trong tương lai
                       }
                       captionLayout='dropdown'

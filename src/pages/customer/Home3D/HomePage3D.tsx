@@ -52,7 +52,7 @@ function HomePage3D() {
       // Kiểm tra xem click có phải từ iframe không
       const target = e.target as HTMLElement
       const iframe = container.querySelector('iframe')
-      
+
       if (iframe && target === iframe) {
         // Click vào iframe, không làm gì cả
         return

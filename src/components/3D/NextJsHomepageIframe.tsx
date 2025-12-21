@@ -116,6 +116,15 @@ const NextJsHomepageIframe: React.FC<NextJsHomepageIframeProps> = ({
         allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
         allowFullScreen
         loading='lazy'
+        // Sandbox attribute để ngăn iframe navigate parent window
+        // allow-same-origin: Cho phép truy cập cùng origin
+        // allow-scripts: Cho phép chạy scripts
+        // allow-popups: Cho phép mở popup
+        // allow-forms: Cho phép submit forms
+        // allow-modals: Cho phép hiển thị modals
+        // allow-presentation: Cho phép presentation API
+        // KHÔNG có allow-top-navigation: Ngăn iframe navigate parent window
+        sandbox='allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-presentation'
       />
     </div>
   )

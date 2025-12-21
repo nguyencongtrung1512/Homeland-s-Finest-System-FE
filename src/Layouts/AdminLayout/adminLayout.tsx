@@ -1,17 +1,43 @@
 import { useState } from 'react'
-import { User, LogOut, Menu, ChevronRight } from 'lucide-react'
+import { User, LogOut, Menu, ChevronRight, CreditCard, Edit, Save, X } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Button } from '../../components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '../../components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../../components/ui/select'
 import { cn } from '../../lib/utils'
 import { useAuth } from '../../contexts/auth.context'
+import { getUserById, updateUser, getBanks, type User as UserType, type Bank } from '../../apis/user.api'
+import { toast } from '../../utils/toast'
 import SideBar from './sideBar'
 import { Outlet } from 'react-router-dom'
 
 function AdminLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { user, logout } = useAuth()
+  const [userInfo, setUserInfo] = useState<UserType | null>(null)
+  const [isEditingBank, setIsEditingBank] = useState(false)
+  const [bankAccount, setBankAccount] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [banks, setBanks] = useState<Bank[]>([])
+  const [loadingBanks, setLoadingBanks] = useState(false)
+  const [loadingUser, setLoadingUser] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
 
   const handleLogout = async () => {
     try {
@@ -23,6 +49,108 @@ function AdminLayout() {
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
+  }
+
+  // Fetch user info
+  const fetchUserInfo = async () => {
+    if (!user?.userId) return
+
+    try {
+      setLoadingUser(true)
+      const data = await getUserById(user.userId)
+      setUserInfo(data)
+      setBankAccount(data.bankAccount || '')
+      setBankName(data.bankName || '')
+    } catch (error) {
+      console.error('Error fetching user info:', error)
+      toast.error('Không thể tải thông tin người dùng', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+    } finally {
+      setLoadingUser(false)
+    }
+  }
+
+  // Fetch banks list
+  const fetchBanks = async () => {
+    try {
+      setLoadingBanks(true)
+      const data = await getBanks()
+      setBanks(data)
+    } catch (error) {
+      console.error('Error fetching banks:', error)
+      toast.error('Không thể tải danh sách ngân hàng', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+    } finally {
+      setLoadingBanks(false)
+    }
+  }
+
+  // Handle save bank account
+  const handleSaveBankAccount = async () => {
+    if (!user?.userId) return
+
+    if (!bankAccount.trim()) {
+      toast.error('Vui lòng nhập số tài khoản ngân hàng', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    if (!bankName) {
+      toast.error('Vui lòng chọn ngân hàng', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    try {
+      setSaving(true)
+      await updateUser(user.userId, {
+        bankAccount: bankAccount.trim(),
+        bankName: bankName,
+        role: 'Admin'
+      })
+
+      toast.success('Cập nhật thông tin tài khoản ngân hàng thành công!', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+
+      setIsEditingBank(false)
+      await fetchUserInfo()
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi cập nhật thông tin'
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Handle open profile modal
+  const handleOpenProfileModal = () => {
+    setShowProfileModal(true)
+    fetchUserInfo()
+    if (banks.length === 0) {
+      fetchBanks()
+    }
+  }
+
+  // Handle cancel edit
+  const handleCancelEdit = () => {
+    setIsEditingBank(false)
+    if (userInfo) {
+      setBankAccount(userInfo.bankAccount || '')
+      setBankName(userInfo.bankName || '')
+    }
   }
 
   const menuItems = [
@@ -82,9 +210,13 @@ function AdminLayout() {
                     <div key={item.key}>
                       {index === 2 && <div className='border-t border-gray-200 my-1' />}
                       {item.isModal ? (
-                        <Dialog>
+                        <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
                           <DialogTrigger asChild>
-                            <Button variant='ghost' className='w-full justify-start gap-2 h-9 px-3 text-sm'>
+                            <Button
+                              variant='ghost'
+                              className='w-full justify-start gap-2 h-9 px-3 text-sm'
+                              onClick={handleOpenProfileModal}
+                            >
                               {item.icon}
                               {item.label}
                             </Button>
@@ -93,33 +225,146 @@ function AdminLayout() {
                             <DialogHeader>
                               <DialogTitle>Thông tin cá nhân</DialogTitle>
                             </DialogHeader>
-                            <div className='space-y-4'>
-                              <div className='flex items-center gap-4'>
-                                <Avatar className='h-16 w-16'>
-                                  <AvatarImage src={undefined} />
-                                  <AvatarFallback className='bg-blue-600 text-white text-xl'>
-                                    {user?.email?.charAt(0).toUpperCase() || 'A'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <h3 className='text-lg font-semibold'>{user?.email || 'admin@example.com'}</h3>
-                                  <p className='text-sm text-gray-500'>{user?.roleName || 'Admin'}</p>
+                            {loadingUser ? (
+                              <div className='flex justify-center items-center py-8'>
+                                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
+                              </div>
+                            ) : (
+                              <div className='space-y-4'>
+                                <div className='flex items-center gap-4'>
+                                  <Avatar className='h-16 w-16'>
+                                    <AvatarImage src={userInfo?.avatar || undefined} />
+                                    <AvatarFallback className='bg-blue-600 text-white text-xl'>
+                                      {user?.email?.charAt(0).toUpperCase() || 'A'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <h3 className='text-lg font-semibold'>{user?.email || 'admin@example.com'}</h3>
+                                    <p className='text-sm text-gray-500'>{user?.roleName || 'Admin'}</p>
+                                  </div>
+                                </div>
+                                <div className='space-y-3'>
+                                  <div className='flex justify-between items-center py-2 border-b border-gray-100'>
+                                    <span className='text-sm font-medium text-gray-600'>Email:</span>
+                                    <span className='text-sm text-gray-900'>{user?.email || 'admin@example.com'}</span>
+                                  </div>
+                                  <div className='flex justify-between items-center py-2 border-b border-gray-100'>
+                                    <span className='text-sm font-medium text-gray-600'>Vai trò:</span>
+                                    <span className='text-sm text-gray-900'>{user?.roleName || 'Admin'}</span>
+                                  </div>
+
+                                  {/* Bank Account Section */}
+                                  <div className='pt-3 border-t border-gray-200'>
+                                    <div className='flex items-center justify-between mb-3'>
+                                      <div className='flex items-center gap-2'>
+                                        <CreditCard className='w-4 h-4 text-gray-600' />
+                                        <span className='text-sm font-medium text-gray-900'>Tài khoản ngân hàng</span>
+                                      </div>
+                                      {!isEditingBank && (
+                                        <Button
+                                          variant='ghost'
+                                          size='sm'
+                                          onClick={() => setIsEditingBank(true)}
+                                          className='h-7 px-2'
+                                        >
+                                          <Edit className='w-3 h-3 mr-1' />
+                                          {userInfo?.bankAccount ? 'Sửa' : 'Thêm'}
+                                        </Button>
+                                      )}
+                                    </div>
+
+                                    {isEditingBank ? (
+                                      <div className='space-y-3'>
+                                        <div className='space-y-2'>
+                                          <Label htmlFor='bank-name'>Ngân hàng *</Label>
+                                          <Select
+                                            value={bankName}
+                                            onValueChange={setBankName}
+                                            disabled={loadingBanks}
+                                          >
+                                            <SelectTrigger id='bank-name'>
+                                              <SelectValue placeholder={loadingBanks ? 'Đang tải...' : 'Chọn ngân hàng'} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {banks.map((bank) => (
+                                                <SelectItem key={bank.code} value={bank.name}>
+                                                  {bank.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div className='space-y-2'>
+                                          <Label htmlFor='bank-account'>Số tài khoản *</Label>
+                                          <Input
+                                            id='bank-account'
+                                            type='text'
+                                            placeholder='Nhập số tài khoản'
+                                            value={bankAccount}
+                                            onChange={(e) => {
+                                              const value = e.target.value.replace(/[^\d]/g, '')
+                                              setBankAccount(value)
+                                            }}
+                                          />
+                                        </div>
+                                        <div className='flex gap-2'>
+                                          <Button
+                                            variant='outline'
+                                            size='sm'
+                                            onClick={handleCancelEdit}
+                                            disabled={saving}
+                                            className='flex-1'
+                                          >
+                                            <X className='w-4 h-4 mr-1' />
+                                            Hủy
+                                          </Button>
+                                          <Button
+                                            variant='blue'
+                                            size='sm'
+                                            onClick={handleSaveBankAccount}
+                                            disabled={saving || !bankAccount.trim() || !bankName}
+                                            className='flex-1'
+                                          >
+                                            {saving ? (
+                                              <>
+                                                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1'></div>
+                                                Đang lưu...
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Save className='w-4 h-4 mr-1' />
+                                                Lưu
+                                              </>
+                                            )}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className='space-y-2'>
+                                        {userInfo?.bankAccount ? (
+                                          <>
+                                            <div className='flex justify-between items-center py-2'>
+                                              <span className='text-sm font-medium text-gray-600'>Ngân hàng:</span>
+                                              <span className='text-sm text-gray-900'>{userInfo.bankName || 'N/A'}</span>
+                                            </div>
+                                            <div className='flex justify-between items-center py-2'>
+                                              <span className='text-sm font-medium text-gray-600'>Số tài khoản:</span>
+                                              <span className='text-sm font-mono font-semibold text-gray-900'>
+                                                {userInfo.bankAccount}
+                                              </span>
+                                            </div>
+                                          </>
+                                        ) : (
+                                          <div className='text-center py-4 text-gray-500 text-sm'>
+                                            Chưa có thông tin tài khoản ngân hàng
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                              <div className='space-y-3'>
-                                <div className='flex justify-between items-center py-2 border-b border-gray-100'>
-                                  <span className='text-sm font-medium text-gray-600'>Email:</span>
-                                  <span className='text-sm text-gray-900'>{user?.email || 'admin@example.com'}</span>
-                                </div>
-                                <div className='flex justify-between items-center py-2 border-b border-gray-100'>
-                                  <span className='text-sm font-medium text-gray-600'>Vai trò:</span>
-                                  <span className='text-sm text-gray-900'>{user?.roleName || 'Admin'}</span>
-                                </div>
-
-
-                            
-                              </div>
-                            </div>
+                            )}
                           </DialogContent>
                         </Dialog>
                       ) : (
