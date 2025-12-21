@@ -84,6 +84,8 @@ function CreateProduct() {
   const [nameError, setNameError] = useState('')
   const [descriptionError, setDescriptionError] = useState('')
   const [materialError, setMaterialError] = useState('')
+  const [categoryError, setCategoryError] = useState('')
+  const [imagesError, setImagesError] = useState('')
 
   const [productData, setProductData] = useState({
     name: '',
@@ -162,6 +164,11 @@ function CreateProduct() {
       ...prev,
       productImages: prev.productImages.filter((_, index) => index !== indexToRemove)
     }))
+    // Clear images error when user removes images (but only if there are still images left)
+    // Error will remain if user removes all images
+    if (mediaData.productImages.length > 1) {
+      setImagesError('')
+    }
   }
 
   // Hashtag handler - Thêm hashtag (tạo mới nếu chưa có, thêm vào nếu đã có)
@@ -295,7 +302,6 @@ function CreateProduct() {
     setSelectedHashtags((prev) => prev.filter((tag) => tag.id !== hashtagId))
   }
 
-
   // Handle mention search input change
   const handleMentionInputChange = (value: string) => {
     setMentionSearchKeyword(value)
@@ -345,6 +351,11 @@ function CreateProduct() {
       ...prev,
       categoryId: categoryId
     }))
+
+    // Clear category error when user selects
+    if (categoryId) {
+      setCategoryError('')
+    }
 
     // Update selected category path
     if (categoryId) {
@@ -551,6 +562,8 @@ function CreateProduct() {
         ...prev,
         productImages: [...prev.productImages, ...validFiles]
       }))
+      // Clear images error when user adds valid images
+      setImagesError('')
       if (validFiles.length < newFiles.length) {
         toast.warning(`Đã thêm ${validFiles.length}/${newFiles.length} ảnh hợp lệ.`)
       } else if (validFiles.length + currentCount >= MAX_PRODUCT_IMAGES) {
@@ -728,13 +741,25 @@ function CreateProduct() {
     }
   }, [showMentionSuggestions])
 
-  const handleCreateProduct = async () => {
-    setIsSubmitting(true)
-
-    // Validation before submit
+  // Validate all fields before submit
+  const validateAllFields = (): boolean => {
     let hasError = false
 
-    // Validate name
+    // Clear all previous errors
+    setNameError('')
+    setDescriptionError('')
+    setMaterialError('')
+    setCategoryError('')
+    setImagesError('')
+
+    // 1. Validate storeId
+    if (!storeId) {
+      toast.error('Không tìm thấy thông tin cửa hàng. Vui lòng thử lại.')
+      setIsSubmitting(false)
+      return false
+    }
+
+    // 2. Validate name
     if (!productData.name.trim()) {
       setNameError('Tên sản phẩm không được để trống')
       hasError = true
@@ -749,18 +774,24 @@ function CreateProduct() {
       }
     }
 
-    // Validate description
-    if (productData.description.trim()) {
+    // 3. Validate description
+    if (!productData.description.trim()) {
+      setDescriptionError('Mô tả chi tiết không được để trống')
+      hasError = true
+    } else {
       const descriptionWordCount = countWords(productData.description)
       if (descriptionWordCount > MAX_DESCRIPTION_WORDS) {
         setDescriptionError(
           `Mô tả không được vượt quá ${MAX_DESCRIPTION_WORDS} từ (hiện tại: ${descriptionWordCount} từ)`
         )
         hasError = true
+      } else if (descriptionWordCount < 1) {
+        setDescriptionError('Mô tả phải có ít nhất 1 từ')
+        hasError = true
       }
     }
 
-    // Validate material
+    // 4. Validate material
     if (!productData.material.trim()) {
       setMaterialError('Nguyên liệu không được để trống')
       hasError = true
@@ -775,68 +806,79 @@ function CreateProduct() {
       }
     }
 
+    // 5. Validate categoryId (required - có dấu * trong UI)
+    if (!productData.categoryId || productData.categoryId.trim() === '') {
+      setCategoryError('Vui lòng chọn danh mục sản phẩm')
+      hasError = true
+    }
+
+    // 6. Validate product images
+    if (!mediaData.productImages || mediaData.productImages.length === 0) {
+      setImagesError('Vui lòng thêm ít nhất một hình ảnh sản phẩm')
+      hasError = true
+    } else {
+      // Validate maximum number of images
+      if (mediaData.productImages.length > MAX_PRODUCT_IMAGES) {
+        setImagesError(`Chỉ được tải tối đa ${MAX_PRODUCT_IMAGES} hình ảnh. Vui lòng xóa bớt ảnh.`)
+        hasError = true
+      } else {
+        // Validate each image file
+        const imageValidationErrors: string[] = []
+        mediaData.productImages.forEach((file, index) => {
+          const validation = validateImageFile(file)
+          if (!validation.valid && validation.error) {
+            imageValidationErrors.push(`Ảnh ${index + 1}: ${validation.error}`)
+          }
+        })
+
+        if (imageValidationErrors.length > 0) {
+          setImagesError(imageValidationErrors[0]) // Show first error
+          // Show all errors via toast
+          imageValidationErrors.forEach((error) => toast.error(error))
+          hasError = true
+        }
+      }
+    }
+
+    // 7. Validate video if provided
+    if (mediaData.productVideo) {
+      const videoValidation = validateVideoFile(mediaData.productVideo)
+      if (!videoValidation.valid) {
+        toast.error(videoValidation.error || 'Video không hợp lệ')
+        hasError = true
+      }
+    }
+
     if (hasError) {
+      toast.error('Vui lòng kiểm tra lại thông tin trước khi tạo sản phẩm')
+      // Scroll to first error field
+      setTimeout(() => {
+        const firstErrorElement = document.querySelector('[class*="border-red-500"]')
+        if (firstErrorElement) {
+          firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+      return false
+    }
+
+    return true
+  }
+
+  const handleCreateProduct = async () => {
+    setIsSubmitting(true)
+
+    // Validate all fields before making API call
+    if (!validateAllFields()) {
       setIsSubmitting(false)
-      toast.error('Vui lòng kiểm tra lại thông tin')
       return
     }
 
     try {
-      // Check if storeId is available
+      // storeId is guaranteed to be non-null after validateAllFields
       if (!storeId) {
         toast.error('Không tìm thấy thông tin cửa hàng. Vui lòng thử lại.')
+        setIsSubmitting(false)
         return
-      }
-
-      // Validate required fields
-      if (!productData.name.trim()) {
-        toast.error('Vui lòng nhập tên sản phẩm')
-        return
-      }
-
-      if (!productData.description.trim()) {
-        toast.error('Vui lòng nhập mô tả chi tiết')
-        return
-      }
-
-      if (!productData.material.trim()) {
-        toast.error('Vui lòng nhập Nguyên liệu / material')
-        return
-      }
-
-      // Validate product images - required and at least 1 image
-      if (!mediaData.productImages || mediaData.productImages.length === 0) {
-        toast.error('Vui lòng thêm ít nhất một hình ảnh sản phẩm')
-        return
-      }
-
-      // Validate maximum number of images
-      if (mediaData.productImages.length > MAX_PRODUCT_IMAGES) {
-        toast.error(`Chỉ được tải tối đa ${MAX_PRODUCT_IMAGES} hình ảnh. Vui lòng xóa bớt ảnh.`)
-        return
-      }
-
-      // Validate each image file before submit (double check)
-      const imageValidationErrors: string[] = []
-      mediaData.productImages.forEach((file) => {
-        const validation = validateImageFile(file)
-        if (!validation.valid && validation.error) {
-          imageValidationErrors.push(validation.error)
-        }
-      })
-
-      if (imageValidationErrors.length > 0) {
-        imageValidationErrors.forEach((error) => toast.error(error))
-        return
-      }
-
-      // Validate video if provided
-      if (mediaData.productVideo) {
-        const videoValidation = validateVideoFile(mediaData.productVideo)
-        if (!videoValidation.valid) {
-          toast.error(videoValidation.error || 'Video không hợp lệ')
-          return
-        }
       }
 
       const formData: ProductCreateFormData = {
@@ -1360,11 +1402,13 @@ function CreateProduct() {
 
                 {/* Upload Area */}
                 <div
-                  className={`mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 bg-gradient-to-br ${mediaData.productImages.length >= MAX_PRODUCT_IMAGES
-                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
-                    : isDraggingImages
-                      ? 'border-green-500 bg-green-100 shadow-lg scale-[1.02]'
-                      : 'border-gray-300 hover:border-green-400 hover:bg-green-50 cursor-pointer from-white to-gray-50'
+                  className={`mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 bg-gradient-to-br ${imagesError
+                    ? 'border-red-500 bg-red-50'
+                    : mediaData.productImages.length >= MAX_PRODUCT_IMAGES
+                      ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                      : isDraggingImages
+                        ? 'border-green-500 bg-green-100 shadow-lg scale-[1.02]'
+                        : 'border-gray-300 hover:border-green-400 hover:bg-green-50 cursor-pointer from-white to-gray-50'
                     }`}
                   onClick={() => {
                     if (mediaData.productImages.length < MAX_PRODUCT_IMAGES) {
@@ -1467,6 +1511,7 @@ function CreateProduct() {
                         : 'Chọn ảnh'}
                   </Button>
                 </div>
+                {imagesError && <p className='text-red-500 text-xs mt-2'>{imagesError}</p>}
 
                 {/* Image Preview Grid */}
                 {mediaData.productImages.length > 0 && (
@@ -1743,7 +1788,10 @@ function CreateProduct() {
                     )}
 
                     {/* Category Tree */}
-                    <div className='border border-gray-200 rounded-lg p-3 max-h-96 overflow-y-auto bg-white shadow-inner'>
+                    <div
+                      className={`border rounded-lg p-3 max-h-96 overflow-y-auto bg-white shadow-inner ${categoryError ? 'border-red-500' : 'border-gray-200'
+                        }`}
+                    >
                       {filteredCategoryTree.length === 0 ? (
                         <div className='text-center py-8 text-gray-500'>
                           <Search className='w-8 h-8 mx-auto mb-2 text-gray-400' />
@@ -1755,6 +1803,7 @@ function CreateProduct() {
                         </div>
                       )}
                     </div>
+                    {categoryError && <p className='text-red-500 text-xs mt-1'>{categoryError}</p>}
 
                     {/* Clear Selection Button */}
                     {productData.categoryId && (

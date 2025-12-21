@@ -65,7 +65,7 @@ function FeaturedProducts() {
 
   return (
     <ProductShowcaseSection
-      title='Sản Phẩm Nổi Bật'
+      title='Sản Phẩm Đặc Sản'
       subtitle='Được tuyển chọn từ những nghệ nhân tâm huyết'
       products={products}
       loading={loading}

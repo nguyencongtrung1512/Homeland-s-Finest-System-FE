@@ -1989,7 +1989,7 @@ function SellerRegistrationForm() {
                   onOCRData={handleOCRBackData}
                   enableOCR={true}
                   required
-                  description='File ảnh rõ nét, đầy đủ 4 góc, định dạng JPG/PNG. Hệ thống sẽ tự động đọc ngày cấp.'
+                  description='File ảnh rõ nét, đầy đủ 4 góc, định dạng JPG/PNG1'
                   maxCount={1}
                 />
               </div>
@@ -3155,7 +3155,7 @@ function SellerRegistrationForm() {
                   <button
                     type='button'
                     onClick={() => {
-                      window.open('/portal?type=seller', '_blank')
+                      window.open('/portal?type=Seller', '_blank')
                       setHasOpenedTermsPage(true)
                     }}
                     className='text-green-600 hover:text-green-700 underline font-medium'
@@ -3178,7 +3178,7 @@ function SellerRegistrationForm() {
                   <button
                     type='button'
                     onClick={() => {
-                      window.open('/portal?type=seller', '_blank')
+                      window.open('/portal?type=Seller', '_blank')
                       setHasOpenedTermsPage(true)
                     }}
                     className='text-green-600 hover:text-green-700 underline font-medium'

@@ -61,10 +61,6 @@ function Products() {
     totalPages?: number
   } | null>(null)
 
-  // Category state
-  const [currentCategory, setCurrentCategory] = useState<{ id: string; name: string } | null>(null)
-  const [loadingCategory, setLoadingCategory] = useState(false)
-
   // Read queryText from URL and apply to search
   useEffect(() => {
     if (queryTextFromUrl) {
@@ -358,11 +354,7 @@ function Products() {
           {/* Switch tabs and category */}
           <div className='flex items-center justify-between mb-6'>
             <LiquidSegmentedControl activeTab={activeTab} onTabChange={handleTabChange} className='flex-1' />
-            {currentCategory && (
-              <div className='flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full ml-4'>
-                <span className='text-sm text-green-700 font-medium'>{currentCategory.name}</span>
-              </div>
-            )}
+
           </div>
 
           {/* Search and filter section */}

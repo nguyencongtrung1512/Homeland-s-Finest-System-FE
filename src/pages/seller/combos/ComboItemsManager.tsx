@@ -324,10 +324,7 @@ function ComboItemsManager({
   // Không cho phép chỉnh sửa khi: Processing, Rejected, Confirmed
   // canEdit prop đã xử lý logic cho Approved với isActive = false
   const isEditable =
-    canEdit &&
-    comboStatus !== 'Processing' &&
-    comboStatus !== 'Rejected' &&
-    comboStatus !== 'Confirmed'
+    canEdit && comboStatus !== 'Processing' && comboStatus !== 'Rejected' && comboStatus !== 'Confirmed'
 
   const getStatusMessage = () => {
     // Không hiển thị thông báo nếu có thể chỉnh sửa (bao gồm Approved với isActive = false)
@@ -383,10 +380,11 @@ function ComboItemsManager({
       <CardHeader>
         {statusInfo && (
           <div
-            className={`mb-4 p-3 rounded-lg ${statusInfo.type === 'warning'
-              ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-              : 'bg-red-100 text-red-800 border border-red-200'
-              }`}
+            className={`mb-4 p-3 rounded-lg ${
+              statusInfo.type === 'warning'
+                ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}
           >
             <div className='flex items-center gap-2'>
               {statusInfo.type === 'warning' && <Clock className='w-4 h-4' />}
@@ -521,11 +519,7 @@ function ComboItemsManager({
                   <Button variant='outline' onClick={() => setShowAddDialog(false)} className='flex-1'>
                     Hủy
                   </Button>
-                  <Button
-                    onClick={handleAddItem}
-                    disabled={saving}
-                    className='flex-1 bg-green-600 hover:bg-green-700'
-                  >
+                  <Button onClick={handleAddItem} disabled={saving} className='flex-1 bg-green-600 hover:bg-green-700'>
                     {saving ? 'Đang thêm...' : 'Thêm'}
                   </Button>
                 </div>
@@ -759,7 +753,7 @@ function ComboItemsManager({
           </AlertDialogContent>
         </AlertDialog>
       </CardContent>
-    </Card >
+    </Card>
   )
 }
 

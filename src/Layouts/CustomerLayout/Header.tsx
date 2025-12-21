@@ -206,7 +206,7 @@ function Header() {
     <div className='w-full fixed top-0 left-0 z-50 bg-[#ecf2ea] border-b border-gray-500'>
       <div className='mx-auto flex w-full max-w-8xl items-center justify-between px-4 py-3 gap-4 flex-nowrap'>
         {/* Logo + Tên */}
-        <Link to='/' className='flex items-center gap-2 ml-20 flex-shrink-0'>
+        <Link to='/homePage' className='flex items-center gap-2 ml-20 flex-shrink-0'>
           <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none'>
             <path d='M24 24H0V0H24V24Z' stroke='#ecf2ea' />
             <path
