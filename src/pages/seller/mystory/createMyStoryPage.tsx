@@ -993,7 +993,15 @@ function CreateMyStoryPage() {
     }
 
     // Render content similar to StorySection
-    const renderContent = (contentType: string, contentData: string, imageUrls?: string[], videoUrl?: string | null) => {
+    const renderContent = (
+      contentType: string,
+      contentData: string,
+      imageUrls?: string[],
+      videoUrl?: string | null,
+      videoPreviewUrl?: string | null,
+      videoPlayBackUrl?: string | null,
+      videoFallBackUrl?: string | null
+    ) => {
       switch (contentType.toLowerCase()) {
         case 'text': {
           return (
@@ -1006,7 +1014,11 @@ function CreateMyStoryPage() {
         }
 
         case 'video': {
-          const { video, videoId, videoSources } = processVideo(videoUrl || null)
+          const { video, videoId, videoSources } = processVideo(
+            videoPlayBackUrl || videoUrl || null,
+            videoPreviewUrl || null,
+            videoFallBackUrl || null
+          )
 
           if (!video && !videoId) {
             if (contentData && contentData !== 'string') {
