@@ -1,22 +1,13 @@
 import RegisterLayout from '../../Layouts/Authentication/registerLayout'
-import { User, Phone, ChevronDownIcon, Loader2, ChevronsUpDown, Check, Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { User, Phone, ChevronDownIcon, Loader2, Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getProvinces, type Province } from '../../apis/province'
 import { toast } from '../../utils/toast'
 import { registerCustomer, type RegisterCustomerData } from '../../apis/auth.api'
 import { path } from '../../constants/path'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from '../../components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Calendar as CalendarComponent } from '../../components/ui/calendar'
 import { format } from 'date-fns'
@@ -83,41 +74,12 @@ function Register() {
   })
   const [errors, setErrors] = useState<FormErrors>({})
   const [calendarOpen, setCalendarOpen] = useState(false)
-  const [provinces, setProvinces] = useState<Province[]>([])
-  const [loadingProvinces, setLoadingProvinces] = useState(false)
-  const [provinceOpen, setProvinceOpen] = useState(false)
-  const [provinceSearchValue, setProvinceSearchValue] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  // Load provinces on component mount
-  useEffect(() => {
-    const fetchProvinces = async () => {
-      setLoadingProvinces(true)
-      try {
-        const data = await getProvinces()
-        setProvinces(data)
-      } catch (error) {
-        console.error('Error fetching provinces:', error)
-        toast.error('Không thể tải danh sách tỉnh/thành phố')
-      } finally {
-        setLoadingProvinces(false)
-      }
-    }
-    fetchProvinces()
-  }, [])
-
-  // Filter provinces based on search
-  const filteredProvinces = provinces.filter(
-    (province) =>
-      province.name.toLowerCase().includes(provinceSearchValue.toLowerCase()) ||
-      province.region.toLowerCase().includes(provinceSearchValue.toLowerCase())
-  )
-
-  // Get selected province name for display
-  const selectedProvince = provinces.find((p) => p.id === formData.provinceId)
+  // TODO: nếu cần chọn tỉnh/thành, mở lại logic fetch provinces và UI combobox
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -147,19 +109,19 @@ function Register() {
     }
   }
 
-  const handleProvinceChange = (provinceId: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      provinceId
-    }))
-    setProvinceOpen(false)
-    if (errors.provinceId) {
-      setErrors((prev) => ({
-        ...prev,
-        provinceId: undefined
-      }))
-    }
-  }
+  // const handleProvinceChange = (provinceId: number) => {
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     provinceId
+  //   }))
+  //   setProvinceOpen(false)
+  //   if (errors.provinceId) {
+  //     setErrors((prev) => ({
+  //       ...prev,
+  //       provinceId: undefined
+  //     }))
+  //   }
+  // }
 
   const validateForm = (data: RegisterFormData = formData): FormErrors => {
     const newErrors: FormErrors = {}
@@ -470,7 +432,7 @@ function Register() {
           </div>
 
           {/* Hometown (Province) */}
-          <div className='space-y-2'>
+          {/* <div className='space-y-2'>
             <Label>
               Quê quán
             </Label>
@@ -526,7 +488,7 @@ function Register() {
               </PopoverContent>
             </Popover>
             {errors.provinceId && <p className='text-sm text-destructive'>{errors.provinceId}</p>}
-          </div>
+          </div> */}
 
           {/* Gender and Date of Birth */}
           <div className='grid grid-cols-2 gap-4'>
