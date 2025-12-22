@@ -25,7 +25,7 @@ const steps: Step[] = [
   },
   {
     number: 3,
-    title: 'Hương ước cộng đồng',
+    title: 'Hương ước quê nhà',
     icon: <Home className='w-5 h-5' />
   }
 ]

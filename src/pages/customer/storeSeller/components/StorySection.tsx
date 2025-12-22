@@ -143,48 +143,48 @@ const StorySection: FC<StorySectionProps> = ({ storeId }) => {
 
     // Ưu tiên contentType chuẩn
     if (isVideoContent(contentType) || contentTypeLower === 'video') {
-      const { video, videoId, videoSources } = processVideo(content)
-      if (!video && !videoId) {
-        if (content.contentData && content.contentData !== 'string') {
-          return (
-            <div className='bg-yellow-50 border border-yellow-200 p-4 rounded-lg'>
-              <p className='text-yellow-800 text-sm'>
-                <strong>Video:</strong> {content.contentData}
-              </p>
-              <p className='text-yellow-600 text-xs mt-1'>Video URL không khả dụng</p>
-            </div>
-          )
-        }
-        return null
-      }
-
-      return (
-        <div className='space-y-2'>
-          <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200'>
-            {videoId ? (
-              <div className='w-full aspect-video'>
-                <Stream src={videoId} controls responsive className='w-full h-full' preload='metadata' />
+        const { video, videoId, videoSources } = processVideo(content)
+        if (!video && !videoId) {
+          if (content.contentData && content.contentData !== 'string') {
+            return (
+              <div className='bg-yellow-50 border border-yellow-200 p-4 rounded-lg'>
+                <p className='text-yellow-800 text-sm'>
+                  <strong>Video:</strong> {content.contentData}
+                </p>
+                <p className='text-yellow-600 text-xs mt-1'>Video URL không khả dụng</p>
               </div>
-            ) : (
-              <video controls className='w-full aspect-video' preload='metadata' playsInline>
-                {videoSources?.preview && <source src={videoSources.preview} type='video/mp4' />}
-                {videoSources?.hls && <source src={videoSources.hls} type='application/vnd.apple.mpegurl' />}
-                {videoSources?.dash && <source src={videoSources.dash} type='application/dash+xml' />}
-                {videoSources?.fallback && <source src={videoSources.fallback} type='video/mp4' />}
-                {(!videoSources ||
-                  (!videoSources.hls && !videoSources.dash && !videoSources.preview && !videoSources.fallback)) && (
-                    <source src={video} type='video/mp4' />
-                  )}
-                Trình duyệt của bạn không hỗ trợ video.
-              </video>
+            )
+          }
+          return null
+        }
+
+        return (
+          <div className='space-y-2'>
+            <div className='aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200'>
+              {videoId ? (
+                <div className='w-full aspect-video'>
+                  <Stream src={videoId} controls responsive className='w-full h-full' preload='metadata' />
+                </div>
+              ) : (
+                <video controls className='w-full aspect-video' preload='metadata' playsInline>
+                  {videoSources?.preview && <source src={videoSources.preview} type='video/mp4' />}
+                  {videoSources?.hls && <source src={videoSources.hls} type='application/vnd.apple.mpegurl' />}
+                  {videoSources?.dash && <source src={videoSources.dash} type='application/dash+xml' />}
+                  {videoSources?.fallback && <source src={videoSources.fallback} type='video/mp4' />}
+                  {(!videoSources ||
+                    (!videoSources.hls && !videoSources.dash && !videoSources.preview && !videoSources.fallback)) && (
+                      <source src={video} type='video/mp4' />
+                    )}
+                  Trình duyệt của bạn không hỗ trợ video.
+                </video>
+              )}
+            </div>
+            {content.contentData && content.contentData !== 'string' && (
+              <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
             )}
           </div>
-          {content.contentData && content.contentData !== 'string' && (
-            <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
-          )}
-        </div>
-      )
-    }
+        )
+      }
 
     if (isTextContent(contentType) || contentTypeLower === 'text') {
       return (
@@ -197,49 +197,49 @@ const StorySection: FC<StorySectionProps> = ({ storeId }) => {
     }
 
     if (isImageContent(contentType) || contentTypeLower === 'image') {
-      const imageUrls =
-        content.imageUrls && Array.isArray(content.imageUrls) && content.imageUrls.length > 0 ? content.imageUrls : []
+        const imageUrls =
+          content.imageUrls && Array.isArray(content.imageUrls) && content.imageUrls.length > 0 ? content.imageUrls : []
 
-      if (imageUrls.length > 0) {
-        return (
-          <div className='space-y-2'>
-            <StoryContentCarousel imageUrls={imageUrls} showBadge={false} />
-            {content.contentData && content.contentData !== 'string' && (
-              <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
-            )}
-          </div>
-        )
+        if (imageUrls.length > 0) {
+          return (
+            <div className='space-y-2'>
+              <StoryContentCarousel imageUrls={imageUrls} showBadge={false} />
+              {content.contentData && content.contentData !== 'string' && (
+                <p className='text-sm text-gray-600 italic mt-2'>{content.contentData}</p>
+              )}
+            </div>
+          )
+        }
+        if (content.contentData && content.contentData !== 'string') {
+          return (
+            <div className='bg-gray-50 p-4 rounded-lg'>
+              <p className='text-gray-700'>{content.contentData}</p>
+            </div>
+          )
+        }
+        return null
       }
-      if (content.contentData && content.contentData !== 'string') {
-        return (
-          <div className='bg-gray-50 p-4 rounded-lg'>
-            <p className='text-gray-700'>{content.contentData}</p>
-          </div>
-        )
-      }
-      return null
-    }
 
     // Fallback: không hiển thị loại, chỉ hiển thị nội dung và ảnh nếu có
-    return (
+        return (
       <div className='bg-gray-50 p-4 rounded-lg space-y-3'>
-        {content.contentData && content.contentData !== 'string' && (
+            {content.contentData && content.contentData !== 'string' && (
           <p className='text-gray-700 whitespace-pre-wrap leading-relaxed'>{content.contentData}</p>
-        )}
-        {content.imageUrls && content.imageUrls.length > 0 && (
+            )}
+            {content.imageUrls && content.imageUrls.length > 0 && (
           <div className='grid grid-cols-2 gap-3'>
-            {content.imageUrls.map((url: string, idx: number) => (
+                {content.imageUrls.map((url: string, idx: number) => (
               <img
                 key={idx}
                 src={url}
                 alt={`Image ${idx + 1}`}
                 className='w-full rounded-md border border-gray-200 object-cover'
               />
-            ))}
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    )
+        )
   }
 
   if (loading) {

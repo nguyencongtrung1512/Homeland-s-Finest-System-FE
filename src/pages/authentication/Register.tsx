@@ -691,10 +691,21 @@ function Register() {
     } else if (currentStep === 3) {
       return (
         <div className='space-y-4 py-8'>
-          <div className='text-center mb-6'>
+          <div className='text-center mb-6 space-y-2'>
             <h3 className='text-2xl font-bold mb-2'>Hương ước quê nhà</h3>
-            <p className='text-muted-foreground'>
-              Vui lòng đọc và đồng ý với các điều khoản và quy định của quê nhà
+            <p className='text-sm text-muted-foreground max-w-md mx-auto leading-relaxed'>
+              Vui lòng đọc và đồng ý với{' '}
+              <button
+                type='button'
+                onClick={() => {
+                  const url = `${window.location.origin}${path.portal}?type=Customer`
+                  window.open(url, '_blank', 'noopener,noreferrer')
+                }}
+                className='text-green-700 font-semibold underline-offset-4 hover:underline'
+              >
+                Điều khoản &amp; Quy định dịch vụ
+              </button>{' '}
+              của Tinh Hoa Quê Nhà trước khi hoàn tất đăng ký.
             </p>
           </div>
 

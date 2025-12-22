@@ -4,7 +4,13 @@ import { Badge } from '../../../components/ui/badge'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Dialog, DialogContent } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/textarea'
-import { getOrderDetail, confirmOrder, cancelOrder, uploadVerificationImages, readyToPickOrder } from '../../../apis/order.api'
+import {
+  getOrderDetail,
+  confirmOrder,
+  cancelOrder,
+  uploadVerificationImages,
+  readyToPickOrder
+} from '../../../apis/order.api'
 import type { Order as APIOrder } from '../../../types/orderType'
 import {
   Loader2,
@@ -842,8 +848,8 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                           <div className='mt-3 p-3 bg-red-100 rounded-lg border border-red-200'>
                             <p className='text-sm font-bold text-red-900 mb-1'>⛔ BẠN SẼ BỊ PHẠT TĂNG ĐIỂM VI PHẠM!</p>
                             <p className='text-sm text-red-800'>
-                              Đã quá 2 ngày kể từ khi đơn hàng hoàn thành. Nếu không tải ảnh xác minh ngay, hệ thống
-                              sẽ tự động tăng số lượng điểm vi phạm của cửa hàng.
+                              Đã quá 2 ngày kể từ khi đơn hàng hoàn thành. Nếu không tải ảnh xác minh ngay, hệ thống sẽ
+                              tự động tăng số lượng điểm vi phạm của cửa hàng.
                             </p>
                           </div>
                         ) : (
@@ -1074,11 +1080,14 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
               {(order.status === 'Delivered' || order.status === 'Paid') && (
                 <div className='bg-white rounded-lg p-4 shadow-sm border border-gray-100'>
                   <div className='flex items-center gap-2 mb-3'>
-                    <ImageIcon className='h-4 w-4 text-green-600' />
+                    <ImageIcon className='h-4 w-4 text-green-600 mb-1' />
                     <div className='flex-1'>
-                      <h3 className='font-semibold text-gray-900'>
-                        Ảnh xác minh giao hàng. Vui lòng kiểm tra kĩ trước khi nộp
-                      </h3>
+                      <div className='flex items-center gap-2'>
+                        <h3 className='font-semibold text-gray-900'>Ảnh xác minh giao hàng.</h3>
+                        {existingVerificationImages.length === 0 && (
+                          <span className='text-xs text-red-500'> Vui lòng kiểm tra kĩ trước khi nộp</span>
+                        )}
+                      </div>
                       {order.deadlineVerificationAt && existingVerificationImages.length === 0 && (
                         <p className='text-xs text-orange-600 mt-1 font-medium'>
                           Hạn gửi ảnh: {order.deadlineVerificationAt}
@@ -1095,7 +1104,7 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
                         <div className='mb-3 p-2 bg-green-50 rounded-lg border border-green-200'>
                           <div className='flex items-center gap-2'>
                             <CheckCircle className='h-4 w-4 text-green-600' />
-                            <span className='text-xs text-gray-600'>Thời gian cập nhật:</span>
+                            <span className='text-xs text-gray-600 mt-1'>Thời gian cập nhật:</span>
                             <span className='text-sm font-medium text-gray-900'>{order.VerificationAt}</span>
                           </div>
                         </div>
