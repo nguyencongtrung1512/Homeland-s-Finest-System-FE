@@ -41,7 +41,7 @@ export default function ModalEditVariant({
   const [weightError, setWeightError] = useState<string>('')
 
   // Constants for validation
-  const MAX_ATTRIBUTE_NAME_LENGTH = 10
+  const MAX_ATTRIBUTE_NAME_LENGTH = 25
   const MIN_ATTRIBUTE_NAME_LENGTH = 1
   const MAX_DIMENSION = 200 // cm
   const MAX_WEIGHT = 50000 // gram (50kg)
@@ -761,7 +761,6 @@ export default function ModalEditVariant({
             <div className='space-y-4'>
               <div className='flex items-center justify-between mb-2'>
                 <Label className='text-sm font-medium'>Kích thước (cm)</Label>
-                <span className='text-xs text-gray-500'>Tùy chọn</span>
               </div>
               <div className='grid grid-cols-3 gap-4'>
                 {/* Length */}

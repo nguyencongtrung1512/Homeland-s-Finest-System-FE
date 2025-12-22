@@ -44,8 +44,9 @@ const ImageCard = ({
   return (
     <motion.div
       ref={cardRef}
-      className={`relative w-56 h-80 flex-shrink-0 rounded-lg overflow-hidden shadow-lg group cursor-pointer ${isSelected ? 'ring-2 ring-green-500' : ''
-        }`}
+      className={`relative w-56 h-80 flex-shrink-0 rounded-lg overflow-hidden shadow-lg group cursor-pointer ${
+        isSelected ? 'ring-2 ring-green-500' : ''
+      }`}
       whileHover={{ y: -4, scale: 1.01, transition: { type: 'spring', stiffness: 300 } }}
       onClick={onClick}
     >
@@ -99,8 +100,9 @@ const VideoCard = ({
   return (
     <motion.div
       ref={cardRef}
-      className={`relative w-56 h-80 flex-shrink-0 rounded-lg overflow-hidden shadow-lg group cursor-pointer ${isSelected ? 'ring-2 ring-green-500' : ''
-        }`}
+      className={`relative w-56 h-80 flex-shrink-0 rounded-lg overflow-hidden shadow-lg group cursor-pointer ${
+        isSelected ? 'ring-2 ring-green-500' : ''
+      }`}
       whileHover={{ y: -4, scale: 1.01, transition: { type: 'spring', stiffness: 300 } }}
       onClick={onClick}
     >
@@ -117,13 +119,7 @@ const VideoCard = ({
           `}</style>
           {video.videoId ? (
             <div className='absolute inset-0 w-full h-full bg-black overflow-hidden video-player-container'>
-              <Stream
-                src={video.videoId}
-                controls
-                responsive={false}
-                className='w-full h-full'
-                preload='metadata'
-              />
+              <Stream src={video.videoId} controls responsive={false} className='w-full h-full' preload='metadata' />
             </div>
           ) : (
             <video
@@ -134,25 +130,15 @@ const VideoCard = ({
               playsInline
               autoPlay
             >
-              {video.videoSources?.preview && (
-                <source src={video.videoSources.preview} type='video/mp4' />
-              )}
-              {video.videoSources?.hls && (
-                <source src={video.videoSources.hls} type='application/vnd.apple.mpegurl' />
-              )}
-              {video.videoSources?.dash && (
-                <source src={video.videoSources.dash} type='application/dash+xml' />
-              )}
-              {video.videoSources?.fallback && (
-                <source src={video.videoSources.fallback} type='video/mp4' />
-              )}
+              {video.videoSources?.preview && <source src={video.videoSources.preview} type='video/mp4' />}
+              {video.videoSources?.hls && <source src={video.videoSources.hls} type='application/vnd.apple.mpegurl' />}
+              {video.videoSources?.dash && <source src={video.videoSources.dash} type='application/dash+xml' />}
+              {video.videoSources?.fallback && <source src={video.videoSources.fallback} type='video/mp4' />}
               {(!video.videoSources ||
                 (!video.videoSources.hls &&
                   !video.videoSources.dash &&
                   !video.videoSources.preview &&
-                  !video.videoSources.fallback)) && (
-                  <source src={video.url} type='video/mp4' />
-                )}
+                  !video.videoSources.fallback)) && <source src={video.url} type='video/mp4' />}
               Trình duyệt của bạn không hỗ trợ video.
             </video>
           )}
@@ -185,7 +171,7 @@ const VideoCard = ({
             }}
           />
           <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300'></div>
-          
+
           {/* Play button overlay */}
           <div className='absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors'>
             <div className='bg-white/90 rounded-full p-3 group-hover:scale-110 transition-transform'>
@@ -361,8 +347,9 @@ export default function ProductImageCarousel({
           <button
             key={index}
             onClick={() => onImageSelect(index)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${selectedIndex === index ? 'w-6 bg-green-500' : 'w-1.5 bg-gray-300 hover:bg-gray-400'
-              }`}
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              selectedIndex === index ? 'w-6 bg-green-500' : 'w-1.5 bg-gray-300 hover:bg-gray-400'
+            }`}
             aria-label={`Chuyển đến ${index === 0 && video ? 'video' : `ảnh ${index}`}`}
           />
         ))}

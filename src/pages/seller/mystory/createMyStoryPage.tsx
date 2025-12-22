@@ -53,9 +53,6 @@ function CreateMyStoryPage() {
     RemoveExistingVideoTestimonial: false
   })
 
-  // State để track số lượng ảnh gallery cũ ban đầu khi load
-  const [initialGalleryImageCount, setInitialGalleryImageCount] = useState(0)
-
   // Hàm kiểm tra phần bắt buộc đã hoàn thành chưa
   // const isRequiredFieldCompleted = (field: 'title' | 'thumbnail' | 'videoOpener' | 'textIntro' | 'textClosing'): boolean => {
   //   switch (field) {
@@ -124,25 +121,18 @@ function CreateMyStoryPage() {
   }), [titleCompleted, storyData.ThumbnailImage, storyData.VideoOpener, textIntroCompleted, textClosingCompleted])
 
   const optionalFieldsCompleted = useMemo(() => ({
-    singleImage: !!storyData.SingleImage || !!storyData.SingleImageUrl,
+    singleImage: !!storyData.SingleImage,
     galleryImages: storyData.GalleryImages.length > 0 || storyData.GalleryImageUrls.length > 0,
     textExpanded: !!storyData.TextExpanded.trim(),
-    videoProcess: !!storyData.VideoProcess || !!storyData.VideoProcessUrl || !!storyData.VideoProcessPlayBackUrl || !!storyData.VideoProcessPreviewUrl,
-    videoTestimonial: !!storyData.VideoTestimonial || !!storyData.VideoTestimonialUrl || !!storyData.VideoTestimonialPlayBackUrl || !!storyData.VideoTestimonialPreviewUrl
+    videoProcess: !!storyData.VideoProcess,
+    videoTestimonial: !!storyData.VideoTestimonial
   }), [
     storyData.SingleImage,
-    storyData.SingleImageUrl,
     storyData.GalleryImages.length,
     storyData.GalleryImageUrls.length,
     storyData.TextExpanded,
     storyData.VideoProcess,
-    storyData.VideoProcessUrl,
-    storyData.VideoProcessPlayBackUrl,
-    storyData.VideoProcessPreviewUrl,
-    storyData.VideoTestimonial,
-    storyData.VideoTestimonialUrl,
-    storyData.VideoTestimonialPlayBackUrl,
-    storyData.VideoTestimonialPreviewUrl
+    storyData.VideoTestimonial
   ])
 
   // Memoize URLs để tránh tạo lại mỗi lần render
@@ -168,13 +158,8 @@ function CreateMyStoryPage() {
   ])
 
   const singleImageUrl = useMemo(() => {
-    // Priority: New file > Existing URL from backend
-    if (storyData.SingleImage) {
-      return URL.createObjectURL(storyData.SingleImage)
-    }
-    // Use backend URL if no new file uploaded
-    return storyData.SingleImageUrl || null
-  }, [storyData.SingleImage, storyData.SingleImageUrl])
+    return storyData.SingleImage ? URL.createObjectURL(storyData.SingleImage) : null
+  }, [storyData.SingleImage])
 
   const videoProcessUrl = useMemo(() => {
     if (storyData.VideoProcess) {
@@ -392,31 +377,17 @@ function CreateMyStoryPage() {
   }
 
   const removeGalleryImage = (index: number) => {
-    setStoryData((prev) => {
-      const newImages = prev.GalleryImages.filter((_, i) => i !== index)
-      // Nếu xóa hết ảnh mới và không còn ảnh cũ, set flag để xóa
-      if (newImages.length === 0 && prev.GalleryImageUrls.length === 0 && initialGalleryImageCount > 0) {
-        setRemoveFlags((flags) => ({ ...flags, RemoveExistingGalleryImages: true }))
-      }
-      return {
-        ...prev,
-        GalleryImages: newImages
-      }
-    })
+    setStoryData((prev) => ({
+      ...prev,
+      GalleryImages: prev.GalleryImages.filter((_, i) => i !== index)
+    }))
   }
 
   const removeGalleryImageUrl = (index: number) => {
-    setStoryData((prev) => {
-      const newUrls = prev.GalleryImageUrls.filter((_, i) => i !== index)
-      // Nếu xóa hết ảnh cũ và không còn ảnh mới, set flag để xóa
-      if (newUrls.length === 0 && prev.GalleryImages.length === 0 && initialGalleryImageCount > 0) {
-        setRemoveFlags((flags) => ({ ...flags, RemoveExistingGalleryImages: true }))
-      }
-      return {
-        ...prev,
-        GalleryImageUrls: newUrls
-      }
-    })
+    setStoryData((prev) => ({
+      ...prev,
+      GalleryImageUrls: prev.GalleryImageUrls.filter((_, i) => i !== index)
+    }))
   }
 
   const countCharacters = (text: string): number => {
@@ -465,7 +436,7 @@ function CreateMyStoryPage() {
       if (desc.text.trim()) {
         const descChars = countCharacters(desc.text)
         if (descChars > 500) {
-          return `${desc.label} không được vượt quá 500 ký tự (hiện tại: ${descChars} ký tự)`
+          return `${desc.label} không được vượt quá 1000 ký tự (hiện tại: ${descChars} ký tự)`
         }
       }
     }
@@ -657,23 +628,6 @@ function CreateMyStoryPage() {
         })
 
         setStoryData(initialData)
-
-        // Lưu số lượng ảnh gallery cũ ban đầu
-        setInitialGalleryImageCount(initialData.GalleryImageUrls.length)
-
-        // Tự động hiển thị các phần optional đã có dữ liệu
-        const fieldsToShow = new Set<string>()
-        if (initialData.SingleImageUrl) fieldsToShow.add('singleImage')
-        if (initialData.GalleryImageUrls.length > 0) fieldsToShow.add('galleryImages')
-        if (initialData.TextExpanded.trim()) fieldsToShow.add('textExpanded')
-        if (initialData.VideoProcessUrl || initialData.VideoProcessPlayBackUrl || initialData.VideoProcessPreviewUrl) {
-          fieldsToShow.add('videoProcess')
-        }
-        if (initialData.VideoTestimonialUrl || initialData.VideoTestimonialPlayBackUrl || initialData.VideoTestimonialPreviewUrl) {
-          fieldsToShow.add('videoTestimonial')
-        }
-        setVisibleOptionalFields(fieldsToShow)
-
         // Reset remove flags when loading story data
         setRemoveFlags({
           RemoveExistingThumbnail: false,
@@ -720,7 +674,6 @@ function CreateMyStoryPage() {
   const [visibleOptionalFields, setVisibleOptionalFields] = useState<Set<string>>(new Set())
 
   // Hàm xác định field optional tiếp theo cần hiển thị (memoized)
-  // Khi ở chế độ chỉnh sửa, cho phép thêm bất kỳ field optional nào chưa có dữ liệu
   const getNextOptionalField = useMemo((): 'singleImage' | 'galleryImages' | 'textExpanded' | 'videoProcess' | 'videoTestimonial' | null => {
     const order: Array<'singleImage' | 'galleryImages' | 'textExpanded' | 'videoProcess' | 'videoTestimonial'> = [
       'singleImage',
@@ -735,41 +688,28 @@ function CreateMyStoryPage() {
       const isCompleted = optionalFieldsCompleted[field]
       const isVisible = visibleOptionalFields.has(field)
 
-      // Nếu field này chưa hoàn thành và chưa được hiển thị
+      // Nếu field này chưa hoàn thành và chưa được hiển thị, trả về field này
       if (!isCompleted && !isVisible) {
-        // Khi ở chế độ chỉnh sửa, cho phép thêm bất kỳ field optional nào (không cần kiểm tra field trước đó)
-        if (isEditMode) {
-          // Field đầu tiên (singleImage) vẫn cần Video Opener đã hoàn thành
-          if (i === 0) {
-            if (requiredFieldsCompleted.videoOpener) {
-              return field
-            }
-          } else {
-            // Các field khác: luôn cho phép thêm khi ở chế độ chỉnh sửa
+        // Kiểm tra field trước đó đã hoàn thành hoặc đã được thêm vào chưa
+        if (i === 0) {
+          // Field đầu tiên (singleImage) chỉ hiển thị khi Video Opener đã hoàn thành
+          if (requiredFieldsCompleted.videoOpener) {
             return field
           }
         } else {
-          // Chế độ tạo mới: giữ nguyên logic tuần tự
-          if (i === 0) {
-            // Field đầu tiên (singleImage) chỉ hiển thị khi Video Opener đã hoàn thành
-            if (requiredFieldsCompleted.videoOpener) {
-              return field
-            }
-          } else {
-            const prevField = order[i - 1]
-            const prevCompleted = optionalFieldsCompleted[prevField]
-            const prevVisible = visibleOptionalFields.has(prevField)
+          const prevField = order[i - 1]
+          const prevCompleted = optionalFieldsCompleted[prevField]
+          const prevVisible = visibleOptionalFields.has(prevField)
 
-            // Chỉ hiển thị field này nếu field trước đó đã hoàn thành hoặc đã được thêm vào
-            if (prevCompleted || prevVisible) {
-              return field
-            }
+          // Chỉ hiển thị field này nếu field trước đó đã hoàn thành hoặc đã được thêm vào
+          if (prevCompleted || prevVisible) {
+            return field
           }
         }
       }
     }
     return null
-  }, [optionalFieldsCompleted, visibleOptionalFields, requiredFieldsCompleted.videoOpener, isEditMode])
+  }, [optionalFieldsCompleted, visibleOptionalFields, requiredFieldsCompleted.videoOpener])
 
   const toggleOptionalField = (field: string) => {
     setVisibleOptionalFields((prev) => {
@@ -863,22 +803,12 @@ function CreateMyStoryPage() {
         }
 
         // Gallery Images
-        // Logic mới sử dụng ExistingGalleryImageUrls (ưu tiên):
-        // - Nếu ban đầu có ảnh cũ và vẫn còn ảnh cũ: Gửi ExistingGalleryImageUrls với danh sách URL muốn giữ lại
-        // - Nếu ban đầu có ảnh cũ nhưng đã xóa hết: Không gửi ExistingGalleryImageUrls, sử dụng RemoveExistingGalleryImages (tương thích ngược)
-        // - Nếu ban đầu không có ảnh cũ: Không gửi ExistingGalleryImageUrls
-
-        if (initialGalleryImageCount > 0 && storyData.GalleryImageUrls.length > 0) {
-          // Logic mới: Gửi danh sách URL ảnh muốn giữ lại
-          storyPayload.ExistingGalleryImageUrls = storyData.GalleryImageUrls
-        } else if (initialGalleryImageCount > 0 && storyData.GalleryImageUrls.length === 0) {
-          // Đã xóa hết ảnh cũ: Sử dụng logic cũ (tương thích ngược)
-          storyPayload.RemoveExistingGalleryImages = true
-        }
-
-        // Thêm ảnh mới nếu có
         if (storyData.GalleryImages.length > 0) {
           storyPayload.GalleryImages = storyData.GalleryImages
+          storyPayload.RemoveExistingGalleryImages = true
+        } else if (removeFlags.RemoveExistingGalleryImages) {
+          // User deleted gallery images, set flag to remove existing
+          storyPayload.RemoveExistingGalleryImages = true
         }
 
         // Video Testimonial
@@ -1311,7 +1241,10 @@ function CreateMyStoryPage() {
                     content.contentType,
                     content.contentData,
                     content.imageUrls,
-                    content.videoUrl || content.videoPlayBackUrl || content.videoPreviewUrl || content.videoFallBackUrl || null
+                    content.videoUrl,
+                    content.videoPreviewUrl,
+                    content.videoPlayBackUrl,
+                    content.videoFallBackUrl
                   )}
                 </div>
               ))}
@@ -1527,14 +1460,14 @@ function CreateMyStoryPage() {
                   placeholder='Ví dụ: Câu chuyện về hành trình làm nông sản sạch của gia đình tôi...'
                   value={storyData.TextIntro}
                   onChange={(e) => handleInputChange('TextIntro', e.target.value)}
-                  className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextIntro) > 500 ? 'border-red-500' : ''
+                  className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextIntro) > 1000 ? 'border-red-500' : ''
                     }`}
                 />
                 <div className='flex justify-end items-center mt-1'>
                   <p
-                    className={`text-xs ${countCharacters(storyData.TextIntro) > 500 ? 'text-red-500' : 'text-gray-500'}`}
+                    className={`text-xs ${countCharacters(storyData.TextIntro) > 1000 ? 'text-red-500' : 'text-gray-500'}`}
                   >
-                    {countCharacters(storyData.TextIntro)}/500 ký tự
+                    {countCharacters(storyData.TextIntro)}/1000 ký tự
                   </p>
                 </div>
               </motion.div>
@@ -1695,15 +1628,15 @@ function CreateMyStoryPage() {
                       placeholder='Ví dụ: Video giới thiệu về quy trình trồng trọt của gia đình...'
                       value={storyData.VideoOpenerDescription}
                       onChange={(e) => handleInputChange('VideoOpenerDescription', e.target.value)}
-                      className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoOpenerDescription) > 500 ? 'border-red-500' : ''
+                      className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoOpenerDescription) > 1000 ? 'border-red-500' : ''
                         }`}
                     />
                     <div className='flex justify-end items-center mt-1'>
                       <p
-                        className={`text-xs ${countCharacters(storyData.VideoOpenerDescription) > 500 ? 'text-red-500' : 'text-gray-500'
+                        className={`text-xs ${countCharacters(storyData.VideoOpenerDescription) > 1000 ? 'text-red-500' : 'text-gray-500'
                           }`}
                       >
-                        {countCharacters(storyData.VideoOpenerDescription)}/500 ký tự
+                        {countCharacters(storyData.VideoOpenerDescription)}/1000 ký tự
                       </p>
                     </div>
                   </div>
@@ -1714,9 +1647,8 @@ function CreateMyStoryPage() {
 
           {/* Single Image Section - Optional, hiển thị ngay sau Video Opener */}
           <AnimatePresence>
-            {(visibleOptionalFields.has('singleImage') || storyData.SingleImage || storyData.SingleImageUrl ||
-              (requiredFieldsCompleted.videoOpener && getNextOptionalField === 'singleImage') ||
-              (isEditMode && requiredFieldsCompleted.videoOpener && !optionalFieldsCompleted.singleImage)) && (
+            {(visibleOptionalFields.has('singleImage') || storyData.SingleImage ||
+              (requiredFieldsCompleted.videoOpener && getNextOptionalField === 'singleImage')) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -1725,8 +1657,8 @@ function CreateMyStoryPage() {
                   className='overflow-hidden'
                 >
                   {/* Button để thêm Single Image */}
-                  {!storyData.SingleImage && !storyData.SingleImageUrl && !visibleOptionalFields.has('singleImage') &&
-                    requiredFieldsCompleted.videoOpener && (getNextOptionalField === 'singleImage' || isEditMode) && (
+                  {!storyData.SingleImage && !visibleOptionalFields.has('singleImage') &&
+                    requiredFieldsCompleted.videoOpener && getNextOptionalField === 'singleImage' && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1746,7 +1678,7 @@ function CreateMyStoryPage() {
                     )}
 
                   {/* Single Image Card */}
-                  {(visibleOptionalFields.has('singleImage') || storyData.SingleImage || storyData.SingleImageUrl) && (
+                  {(visibleOptionalFields.has('singleImage') || storyData.SingleImage) && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -1821,7 +1753,7 @@ function CreateMyStoryPage() {
                                 </div>
                               )}
 
-                              {(storyData.SingleImage || storyData.SingleImageUrl) && singleImageUrl ? (
+                              {storyData.SingleImage && singleImageUrl ? (
                                 <div className={`space-y-2 transition-all duration-200 ${isDraggingSingleImage ? 'opacity-30' : 'opacity-100'}`}>
                                   <div className='flex justify-center items-center'>
                                     <img
@@ -1830,20 +1762,10 @@ function CreateMyStoryPage() {
                                       className='max-w-full max-h-96 object-contain rounded'
                                     />
                                   </div>
-                                  {storyData.SingleImage && (
-                                    <p className='text-sm text-gray-500'>{storyData.SingleImage.name}</p>
-                                  )}
-                                  {!storyData.SingleImage && storyData.SingleImageUrl && (
-                                    <p className='text-sm text-gray-500'>Ảnh hiện tại từ câu chuyện</p>
-                                  )}
-                                  <Button
-                                    variant='outline'
-                                    size='sm'
-                                    onClick={() => handleFileChange('SingleImage', null)}
-                                    className='border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400'
-                                  >
+                                  <p className='text-sm text-gray-500'>{storyData.SingleImage.name}</p>
+                                  <Button variant='outline' size='sm' onClick={() => handleFileChange('SingleImage', null)}>
                                     <X className='w-4 h-4 mr-1' />
-                                    {storyData.SingleImage ? 'Xóa ảnh mới' : 'Xóa ảnh'}
+                                    Xóa ảnh
                                   </Button>
                                 </div>
                               ) : (
@@ -1886,22 +1808,22 @@ function CreateMyStoryPage() {
                                 placeholder='Ví dụ: Hình ảnh cánh đồng lúa chín vàng vào mùa thu hoạch...'
                                 value={storyData.SingleImageDescription}
                                 onChange={(e) => handleInputChange('SingleImageDescription', e.target.value)}
-                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.SingleImageDescription) > 500 ? 'border-red-500' : ''
+                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.SingleImageDescription) > 1000 ? 'border-red-500' : ''
                                   }`}
                               />
                               <div className='flex justify-end items-center mt-1'>
                                 <p
-                                  className={`text-xs ${countCharacters(storyData.SingleImageDescription) > 500 ? 'text-red-500' : 'text-gray-500'
+                                  className={`text-xs ${countCharacters(storyData.SingleImageDescription) > 1000 ? 'text-red-500' : 'text-gray-500'
                                     }`}
                                 >
-                                  {countCharacters(storyData.SingleImageDescription)}/500 ký tự
+                                  {countCharacters(storyData.SingleImageDescription)}/1000 ký tự
                                 </p>
                               </div>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                      {!storyData.SingleImage && !storyData.SingleImageUrl && (
+                      {!storyData.SingleImage && (
                         <Button
                           type='button'
                           variant='ghost'
@@ -1922,8 +1844,7 @@ function CreateMyStoryPage() {
           {/* Gallery Images Section - Optional, hiển thị sau Single Image */}
           <AnimatePresence>
             {(visibleOptionalFields.has('galleryImages') || storyData.GalleryImages.length > 0 || storyData.GalleryImageUrls.length > 0 ||
-              (optionalFieldsCompleted.singleImage && getNextOptionalField === 'galleryImages') ||
-              (isEditMode && !optionalFieldsCompleted.galleryImages)) && (
+              (optionalFieldsCompleted.singleImage && getNextOptionalField === 'galleryImages')) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -1934,7 +1855,7 @@ function CreateMyStoryPage() {
                   {/* Button để thêm Gallery Images */}
                   {storyData.GalleryImages.length === 0 && storyData.GalleryImageUrls.length === 0 &&
                     !visibleOptionalFields.has('galleryImages') &&
-                    (optionalFieldsCompleted.singleImage && getNextOptionalField === 'galleryImages' || isEditMode) && (
+                    optionalFieldsCompleted.singleImage && getNextOptionalField === 'galleryImages' && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -2114,14 +2035,14 @@ function CreateMyStoryPage() {
                                 placeholder='Ví dụ: Những khoảnh khắc đẹp trong quá trình sản xuất...'
                                 value={storyData.GalleryDescription}
                                 onChange={(e) => handleInputChange('GalleryDescription', e.target.value)}
-                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.GalleryDescription) > 500 ? 'border-red-500' : ''
+                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.GalleryDescription) > 1000 ? 'border-red-500' : ''
                                   }`}
                               />
                               <div className='flex justify-end items-center mt-1'>
                                 <p
-                                  className={`text-xs ${countCharacters(storyData.GalleryDescription) > 500 ? 'text-red-500' : 'text-gray-500'}`}
+                                  className={`text-xs ${countCharacters(storyData.GalleryDescription) > 1000 ? 'text-red-500' : 'text-gray-500'}`}
                                 >
-                                  {countCharacters(storyData.GalleryDescription)}/500 ký tự
+                                  {countCharacters(storyData.GalleryDescription)}/1000 ký tự
                                 </p>
                               </div>
                             </div>
@@ -2149,8 +2070,7 @@ function CreateMyStoryPage() {
           {/* Text Expanded Section - Optional, hiển thị sau Gallery Images */}
           <AnimatePresence>
             {(visibleOptionalFields.has('textExpanded') || storyData.TextExpanded ||
-              (optionalFieldsCompleted.galleryImages && getNextOptionalField === 'textExpanded') ||
-              (isEditMode && !optionalFieldsCompleted.textExpanded)) && (
+              (optionalFieldsCompleted.galleryImages && getNextOptionalField === 'textExpanded')) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -2160,7 +2080,7 @@ function CreateMyStoryPage() {
                 >
                   {/* Button để thêm Text Expanded */}
                   {!storyData.TextExpanded && !visibleOptionalFields.has('textExpanded') &&
-                    (optionalFieldsCompleted.galleryImages && getNextOptionalField === 'textExpanded' || isEditMode) && (
+                    optionalFieldsCompleted.galleryImages && getNextOptionalField === 'textExpanded' && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -2206,14 +2126,14 @@ function CreateMyStoryPage() {
                               placeholder='Ví dụ: Quy trình làm nông sản sạch của chúng tôi bắt đầu từ việc chọn giống...'
                               value={storyData.TextExpanded}
                               onChange={(e) => handleInputChange('TextExpanded', e.target.value)}
-                              className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextExpanded) > 500 ? 'border-red-500' : ''
+                              className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextExpanded) > 1000 ? 'border-red-500' : ''
                                 }`}
                             />
                             <div className='flex justify-end items-center mt-1'>
                               <p
-                                className={`text-xs ${countCharacters(storyData.TextExpanded) > 500 ? 'text-red-500' : 'text-gray-500'}`}
+                                className={`text-xs ${countCharacters(storyData.TextExpanded) > 1000 ? 'text-red-500' : 'text-gray-500'}`}
                               >
-                                {countCharacters(storyData.TextExpanded)}/500 ký tự
+                                {countCharacters(storyData.TextExpanded)}/1000 ký tự
                               </p>
                             </div>
                           </div>
@@ -2240,9 +2160,7 @@ function CreateMyStoryPage() {
           {/* Video Process Section - Optional, hiển thị sau Text Expanded */}
           <AnimatePresence>
             {(visibleOptionalFields.has('videoProcess') || storyData.VideoProcess ||
-              storyData.VideoProcessUrl || storyData.VideoProcessPlayBackUrl || storyData.VideoProcessPreviewUrl ||
-              (optionalFieldsCompleted.textExpanded && getNextOptionalField === 'videoProcess') ||
-              (isEditMode && !optionalFieldsCompleted.videoProcess)) && (
+              (optionalFieldsCompleted.textExpanded && getNextOptionalField === 'videoProcess')) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -2251,9 +2169,8 @@ function CreateMyStoryPage() {
                   className='overflow-hidden'
                 >
                   {/* Button để thêm Video Process */}
-                  {!storyData.VideoProcess && !storyData.VideoProcessUrl && !storyData.VideoProcessPlayBackUrl && !storyData.VideoProcessPreviewUrl &&
-                    !visibleOptionalFields.has('videoProcess') &&
-                    (optionalFieldsCompleted.textExpanded && getNextOptionalField === 'videoProcess' || isEditMode) && (
+                  {!storyData.VideoProcess && !visibleOptionalFields.has('videoProcess') &&
+                    optionalFieldsCompleted.textExpanded && getNextOptionalField === 'videoProcess' && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -2273,190 +2190,189 @@ function CreateMyStoryPage() {
                     )}
 
                   {/* Video Process Card */}
-                  {(visibleOptionalFields.has('videoProcess') || storyData.VideoProcess ||
-                    storyData.VideoProcessUrl || storyData.VideoProcessPlayBackUrl || storyData.VideoProcessPreviewUrl) && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
-                          <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
-                            <CardTitle className='text-green-700 flex items-center gap-2'>
-                              <Video className='w-5 h-5' />
-                              Video về quy trình sản xuất
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className='space-y-4 pt-6'>
-                            <div>
-                              <Label className='text-sm font-medium'>Video quy trình sản xuất</Label>
-                              <p className='text-xs text-gray-500 mt-1 mb-2'>
-                                Video này sẽ giúp khách hàng hiểu rõ hơn về quy trình sản xuất sản phẩm của bạn
-                              </p>
-                              <div
-                                className={`mt-2 border-2 border-dashed rounded-lg p-4 transition-all duration-200 relative overflow-hidden ${isDraggingVideoProcess
-                                  ? 'border-green-500 bg-green-50 scale-[1.02] shadow-lg'
-                                  : 'border-gray-300 hover:border-green-400'
-                                  }`}
-                                onDragEnter={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  dragCounterVideoProcess.current++
-                                  if (dragCounterVideoProcess.current === 1) {
-                                    setIsDraggingVideoProcess(true)
-                                  }
-                                }}
-                                onDragLeave={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  dragCounterVideoProcess.current--
-                                  if (dragCounterVideoProcess.current === 0) {
-                                    setIsDraggingVideoProcess(false)
-                                  }
-                                }}
-                                onDragOver={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  if (dragCounterVideoProcess.current === 0) {
-                                    dragCounterVideoProcess.current = 1
-                                    setIsDraggingVideoProcess(true)
-                                  }
-                                }}
-                                onDrop={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  dragCounterVideoProcess.current = 0
+                  {(visibleOptionalFields.has('videoProcess') || storyData.VideoProcess) && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
+                        <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
+                          <CardTitle className='text-green-700 flex items-center gap-2'>
+                            <Video className='w-5 h-5' />
+                            Video về quy trình sản xuất
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className='space-y-4 pt-6'>
+                          <div>
+                            <Label className='text-sm font-medium'>Video quy trình sản xuất</Label>
+                            <p className='text-xs text-gray-500 mt-1 mb-2'>
+                              Video này sẽ giúp khách hàng hiểu rõ hơn về quy trình sản xuất sản phẩm của bạn
+                            </p>
+                            <div
+                              className={`mt-2 border-2 border-dashed rounded-lg p-4 transition-all duration-200 relative overflow-hidden ${isDraggingVideoProcess
+                                ? 'border-green-500 bg-green-50 scale-[1.02] shadow-lg'
+                                : 'border-gray-300 hover:border-green-400'
+                                }`}
+                              onDragEnter={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                dragCounterVideoProcess.current++
+                                if (dragCounterVideoProcess.current === 1) {
+                                  setIsDraggingVideoProcess(true)
+                                }
+                              }}
+                              onDragLeave={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                dragCounterVideoProcess.current--
+                                if (dragCounterVideoProcess.current === 0) {
                                   setIsDraggingVideoProcess(false)
+                                }
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                if (dragCounterVideoProcess.current === 0) {
+                                  dragCounterVideoProcess.current = 1
+                                  setIsDraggingVideoProcess(true)
+                                }
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                dragCounterVideoProcess.current = 0
+                                setIsDraggingVideoProcess(false)
 
-                                  const files = e.dataTransfer.files
-                                  if (files.length > 0) {
-                                    const file = files[0]
-                                    if (file.type.startsWith('video/')) {
-                                      handleFileChange('VideoProcess', file)
-                                    } else {
-                                      toast.error('Chỉ được upload file video!')
-                                    }
+                                const files = e.dataTransfer.files
+                                if (files.length > 0) {
+                                  const file = files[0]
+                                  if (file.type.startsWith('video/')) {
+                                    handleFileChange('VideoProcess', file)
+                                  } else {
+                                    toast.error('Chỉ được upload file video!')
                                   }
-                                }}
-                              >
-                                {/* Overlay khi đang kéo thả */}
-                                {isDraggingVideoProcess && (
-                                  <div className='absolute inset-0 bg-green-50/90 flex items-center justify-center z-10 transition-all duration-200'>
-                                    <div className='text-center transform transition-transform duration-200'>
-                                      <div className='text-green-600 font-semibold text-lg mb-2'>Thả video vào đây</div>
-                                      <div className='text-green-500 text-sm'>MP4, MOV tối đa 50MB</div>
-                                    </div>
+                                }
+                              }}
+                            >
+                              {/* Overlay khi đang kéo thả */}
+                              {isDraggingVideoProcess && (
+                                <div className='absolute inset-0 bg-green-50/90 flex items-center justify-center z-10 transition-all duration-200'>
+                                  <div className='text-center transform transition-transform duration-200'>
+                                    <div className='text-green-600 font-semibold text-lg mb-2'>Thả video vào đây</div>
+                                    <div className='text-green-500 text-sm'>MP4, MOV tối đa 50MB</div>
                                   </div>
-                                )}
+                                </div>
+                              )}
 
-                                {videoProcessUrl ? (
-                                  <div className={`transition-all duration-200 ${isDraggingVideoProcess ? 'opacity-30' : 'opacity-100'}`}>
-                                    <div className='flex justify-center items-center mb-4'>
-                                      {/* Extract Cloudflare Stream video ID if available */}
-                                      {(() => {
-                                        const extractVideoId = (url: string): string | undefined => {
-                                          try {
-                                            const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
-                                            return match ? match[1] : undefined
-                                          } catch {
-                                            return undefined
-                                          }
+                              {videoProcessUrl ? (
+                                <div className={`transition-all duration-200 ${isDraggingVideoProcess ? 'opacity-30' : 'opacity-100'}`}>
+                                  <div className='flex justify-center items-center mb-4'>
+                                    {/* Extract Cloudflare Stream video ID if available */}
+                                    {(() => {
+                                      const extractVideoId = (url: string): string | undefined => {
+                                        try {
+                                          const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
+                                          return match ? match[1] : undefined
+                                        } catch {
+                                          return undefined
                                         }
-                                        const videoId = extractVideoId(videoProcessUrl)
+                                      }
+                                      const videoId = extractVideoId(videoProcessUrl)
 
-                                        if (videoId) {
-                                          // Use Cloudflare Stream component for Cloudflare URLs
-                                          return (
-                                            <div className='w-full max-w-2xl aspect-video'>
-                                              <Stream src={videoId} controls responsive className='w-full h-full rounded' preload='metadata' />
-                                            </div>
-                                          )
-                                        } else {
-                                          // Use regular video tag for other URLs
-                                          return (
-                                            <video
-                                              src={videoProcessUrl}
-                                              controls
-                                              className='max-w-full max-h-96 object-contain rounded'
-                                              preload='metadata'
-                                            />
-                                          )
-                                        }
-                                      })()}
-                                    </div>
-                                    {/* Info and delete button - always visible below video */}
-                                    <div className='flex flex-col items-center gap-2 py-3 border-t border-gray-100'>
-                                      {storyData.VideoProcess && (
-                                        <p className='text-sm text-gray-500'>{storyData.VideoProcess.name}</p>
-                                      )}
-                                      {!storyData.VideoProcess && (storyData.VideoProcessUrl || storyData.VideoProcessPlayBackUrl || storyData.VideoProcessPreviewUrl) && (
-                                        <p className='text-sm text-gray-500'>Video hiện tại từ câu chuyện</p>
-                                      )}
-                                      <Button
-                                        variant='outline'
-                                        size='sm'
-                                        onClick={() => handleFileChange('VideoProcess', null)}
-                                        className='border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400'
-                                      >
-                                        <X className='w-4 h-4 mr-1' />
-                                        {storyData.VideoProcess ? 'Xóa video mới' : 'Xóa video'}
-                                      </Button>
-                                    </div>
+                                      if (videoId) {
+                                        // Use Cloudflare Stream component for Cloudflare URLs
+                                        return (
+                                          <div className='w-full max-w-2xl aspect-video'>
+                                            <Stream src={videoId} controls responsive className='w-full h-full rounded' preload='metadata' />
+                                          </div>
+                                        )
+                                      } else {
+                                        // Use regular video tag for other URLs
+                                        return (
+                                          <video
+                                            src={videoProcessUrl}
+                                            controls
+                                            className='max-w-full max-h-96 object-contain rounded'
+                                            preload='metadata'
+                                          />
+                                        )
+                                      }
+                                    })()}
                                   </div>
-                                ) : (
-                                  <div className={`text-center transition-all duration-200 ${isDraggingVideoProcess ? 'opacity-0 scale-95' : 'opacity-100'}`}>
-                                    <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                                    <p className='text-gray-500 mb-2 text-sm'>Kéo thả hoặc click để tải video quy trình sản xuất</p>
-                                    <p className='text-xs text-gray-400 mb-3'>Định dạng: MP4, MOV. Kích thước tối đa: 50MB</p>
-                                    <input
-                                      type='file'
-                                      accept='video/*'
-                                      onChange={(e) => handleFileChange('VideoProcess', e.target.files?.[0] || null)}
-                                      className='hidden'
-                                      id='video-process-upload'
-                                    />
-                                    <Button variant='outline' size='sm' onClick={() => document.getElementById('video-process-upload')?.click()} className='mx-auto'>
-                                      <Upload className='w-4 h-4 mr-1' />
-                                      Chọn video quy trình
+                                  {/* Info and delete button - always visible below video */}
+                                  <div className='flex flex-col items-center gap-2 py-3 border-t border-gray-100'>
+                                    {storyData.VideoProcess && (
+                                      <p className='text-sm text-gray-500'>{storyData.VideoProcess.name}</p>
+                                    )}
+                                    {!storyData.VideoProcess && (storyData.VideoProcessUrl || storyData.VideoProcessPlayBackUrl || storyData.VideoProcessPreviewUrl) && (
+                                      <p className='text-sm text-gray-500'>Video hiện tại từ câu chuyện</p>
+                                    )}
+                                    <Button
+                                      variant='outline'
+                                      size='sm'
+                                      onClick={() => handleFileChange('VideoProcess', null)}
+                                      className='border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400'
+                                    >
+                                      <X className='w-4 h-4 mr-1' />
+                                      {storyData.VideoProcess ? 'Xóa video mới' : 'Xóa video'}
                                     </Button>
                                   </div>
-                                )}
-                              </div>
-                              <div className='mt-2'>
-                                <Label className='text-xs text-gray-600'>Mô tả cho video quy trình sản xuất</Label>
-                                <Textarea
-                                  placeholder='Ví dụ: Video giới thiệu chi tiết các bước trong quy trình sản xuất...'
-                                  value={storyData.VideoProcessDescription}
-                                  onChange={(e) => handleInputChange('VideoProcessDescription', e.target.value)}
-                                  className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoProcessDescription) > 500 ? 'border-red-500' : ''
-                                    }`}
-                                />
-                                <div className='flex justify-end items-center mt-1'>
-                                  <p
-                                    className={`text-xs ${countCharacters(storyData.VideoProcessDescription) > 500 ? 'text-red-500' : 'text-gray-500'
-                                      }`}
-                                  >
-                                    {countCharacters(storyData.VideoProcessDescription)}/500 ký tự
-                                  </p>
                                 </div>
+                              ) : (
+                                <div className={`text-center transition-all duration-200 ${isDraggingVideoProcess ? 'opacity-0 scale-95' : 'opacity-100'}`}>
+                                  <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
+                                  <p className='text-gray-500 mb-2 text-sm'>Kéo thả hoặc click để tải video quy trình sản xuất</p>
+                                  <p className='text-xs text-gray-400 mb-3'>Định dạng: MP4, MOV. Kích thước tối đa: 50MB</p>
+                                  <input
+                                    type='file'
+                                    accept='video/*'
+                                    onChange={(e) => handleFileChange('VideoProcess', e.target.files?.[0] || null)}
+                                    className='hidden'
+                                    id='video-process-upload'
+                                  />
+                                  <Button variant='outline' size='sm' onClick={() => document.getElementById('video-process-upload')?.click()} className='mx-auto'>
+                                    <Upload className='w-4 h-4 mr-1' />
+                                    Chọn video quy trình
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                            <div className='mt-2'>
+                              <Label className='text-xs text-gray-600'>Mô tả cho video quy trình sản xuất</Label>
+                              <Textarea
+                                placeholder='Ví dụ: Video giới thiệu chi tiết các bước trong quy trình sản xuất...'
+                                value={storyData.VideoProcessDescription}
+                                onChange={(e) => handleInputChange('VideoProcessDescription', e.target.value)}
+                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoProcessDescription) > 1000 ? 'border-red-500' : ''
+                                  }`}
+                              />
+                              <div className='flex justify-end items-center mt-1'>
+                                <p
+                                  className={`text-xs ${countCharacters(storyData.VideoProcessDescription) > 1000 ? 'text-red-500' : 'text-gray-500'
+                                    }`}
+                                >
+                                  {countCharacters(storyData.VideoProcessDescription)}/1000 ký tự
+                                </p>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                        {!storyData.VideoProcess && !storyData.VideoProcessUrl && !storyData.VideoProcessPlayBackUrl && !storyData.VideoProcessPreviewUrl && (
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => toggleOptionalField('videoProcess')}
-                            className='mt-2 text-gray-500 hover:text-gray-700 w-full'
-                          >
-                            <X className='w-4 h-4 mr-1' />
-                            Ẩn phần này
-                          </Button>
-                        )}
-                      </motion.div>
-                    )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                      {!storyData.VideoProcess && (
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='sm'
+                          onClick={() => toggleOptionalField('videoProcess')}
+                          className='mt-2 text-gray-500 hover:text-gray-700 w-full'
+                        >
+                          <X className='w-4 h-4 mr-1' />
+                          Ẩn phần này
+                        </Button>
+                      )}
+                    </motion.div>
+                  )}
                 </motion.div>
               )}
           </AnimatePresence>
@@ -2464,9 +2380,7 @@ function CreateMyStoryPage() {
           {/* Video Testimonial Section - Optional, hiển thị trước Text Closing */}
           <AnimatePresence>
             {(visibleOptionalFields.has('videoTestimonial') || storyData.VideoTestimonial ||
-              storyData.VideoTestimonialUrl || storyData.VideoTestimonialPlayBackUrl || storyData.VideoTestimonialPreviewUrl ||
-              (optionalFieldsCompleted.videoProcess && getNextOptionalField === 'videoTestimonial') ||
-              (isEditMode && !optionalFieldsCompleted.videoTestimonial)) && (
+              (optionalFieldsCompleted.videoProcess && getNextOptionalField === 'videoTestimonial')) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -2475,9 +2389,8 @@ function CreateMyStoryPage() {
                   className='overflow-hidden'
                 >
                   {/* Button để thêm Video Testimonial */}
-                  {!storyData.VideoTestimonial && !storyData.VideoTestimonialUrl && !storyData.VideoTestimonialPlayBackUrl && !storyData.VideoTestimonialPreviewUrl &&
-                    !visibleOptionalFields.has('videoTestimonial') &&
-                    (optionalFieldsCompleted.videoProcess && getNextOptionalField === 'videoTestimonial' || isEditMode) && (
+                  {!storyData.VideoTestimonial && !visibleOptionalFields.has('videoTestimonial') &&
+                    optionalFieldsCompleted.videoProcess && getNextOptionalField === 'videoTestimonial' && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -2497,190 +2410,189 @@ function CreateMyStoryPage() {
                     )}
 
                   {/* Video Testimonial Card */}
-                  {(visibleOptionalFields.has('videoTestimonial') || storyData.VideoTestimonial ||
-                    storyData.VideoTestimonialUrl || storyData.VideoTestimonialPlayBackUrl || storyData.VideoTestimonialPreviewUrl) && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
-                          <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
-                            <CardTitle className='text-green-700 flex items-center gap-2'>
-                              <Video className='w-5 h-5' />
-                              Video tổng kết
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className='space-y-4 pt-6'>
-                            <div>
-                              <Label className='text-sm font-medium'>Video tổng kết</Label>
-                              <p className='text-xs text-gray-500 mt-1 mb-2'>
-                                Video này sẽ là lời kết thúc cho câu chuyện
-                              </p>
-                              <div
-                                className={`mt-2 border-2 border-dashed rounded-lg p-4 transition-all duration-200 relative overflow-hidden ${isDraggingVideoTestimonial
-                                  ? 'border-green-500 bg-green-50 scale-[1.02] shadow-lg'
-                                  : 'border-gray-300 hover:border-green-400'
-                                  }`}
-                                onDragEnter={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  dragCounterVideoTestimonial.current++
-                                  if (dragCounterVideoTestimonial.current === 1) {
-                                    setIsDraggingVideoTestimonial(true)
-                                  }
-                                }}
-                                onDragLeave={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  dragCounterVideoTestimonial.current--
-                                  if (dragCounterVideoTestimonial.current === 0) {
-                                    setIsDraggingVideoTestimonial(false)
-                                  }
-                                }}
-                                onDragOver={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  if (dragCounterVideoTestimonial.current === 0) {
-                                    dragCounterVideoTestimonial.current = 1
-                                    setIsDraggingVideoTestimonial(true)
-                                  }
-                                }}
-                                onDrop={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  dragCounterVideoTestimonial.current = 0
+                  {(visibleOptionalFields.has('videoTestimonial') || storyData.VideoTestimonial) && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Card className='border-green-100 shadow-sm hover:shadow-md transition-shadow duration-200'>
+                        <CardHeader className='bg-gradient-to-r from-green-100 to-emerald-100 border-t-2 border-b border-green-100 text-green-700 pt-4'>
+                          <CardTitle className='text-green-700 flex items-center gap-2'>
+                            <Video className='w-5 h-5' />
+                            Video tổng kết
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className='space-y-4 pt-6'>
+                          <div>
+                            <Label className='text-sm font-medium'>Video tổng kết</Label>
+                            <p className='text-xs text-gray-500 mt-1 mb-2'>
+                              Video này sẽ là lời kết thúc cho câu chuyện
+                            </p>
+                            <div
+                              className={`mt-2 border-2 border-dashed rounded-lg p-4 transition-all duration-200 relative overflow-hidden ${isDraggingVideoTestimonial
+                                ? 'border-green-500 bg-green-50 scale-[1.02] shadow-lg'
+                                : 'border-gray-300 hover:border-green-400'
+                                }`}
+                              onDragEnter={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                dragCounterVideoTestimonial.current++
+                                if (dragCounterVideoTestimonial.current === 1) {
+                                  setIsDraggingVideoTestimonial(true)
+                                }
+                              }}
+                              onDragLeave={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                dragCounterVideoTestimonial.current--
+                                if (dragCounterVideoTestimonial.current === 0) {
                                   setIsDraggingVideoTestimonial(false)
+                                }
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                if (dragCounterVideoTestimonial.current === 0) {
+                                  dragCounterVideoTestimonial.current = 1
+                                  setIsDraggingVideoTestimonial(true)
+                                }
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                dragCounterVideoTestimonial.current = 0
+                                setIsDraggingVideoTestimonial(false)
 
-                                  const files = e.dataTransfer.files
-                                  if (files.length > 0) {
-                                    const file = files[0]
-                                    if (file.type.startsWith('video/')) {
-                                      handleFileChange('VideoTestimonial', file)
-                                    } else {
-                                      toast.error('Chỉ được upload file video!')
-                                    }
+                                const files = e.dataTransfer.files
+                                if (files.length > 0) {
+                                  const file = files[0]
+                                  if (file.type.startsWith('video/')) {
+                                    handleFileChange('VideoTestimonial', file)
+                                  } else {
+                                    toast.error('Chỉ được upload file video!')
                                   }
-                                }}
-                              >
-                                {/* Overlay khi đang kéo thả */}
-                                {isDraggingVideoTestimonial && (
-                                  <div className='absolute inset-0 bg-green-50/90 flex items-center justify-center z-10 transition-all duration-200'>
-                                    <div className='text-center transform transition-transform duration-200'>
-                                      <div className='text-green-600 font-semibold text-lg mb-2'>Thả video vào đây</div>
-                                      <div className='text-green-500 text-sm'>MP4, MOV tối đa 50MB</div>
-                                    </div>
+                                }
+                              }}
+                            >
+                              {/* Overlay khi đang kéo thả */}
+                              {isDraggingVideoTestimonial && (
+                                <div className='absolute inset-0 bg-green-50/90 flex items-center justify-center z-10 transition-all duration-200'>
+                                  <div className='text-center transform transition-transform duration-200'>
+                                    <div className='text-green-600 font-semibold text-lg mb-2'>Thả video vào đây</div>
+                                    <div className='text-green-500 text-sm'>MP4, MOV tối đa 50MB</div>
                                   </div>
-                                )}
+                                </div>
+                              )}
 
-                                {videoTestimonialUrl ? (
-                                  <div className={`transition-all duration-200 ${isDraggingVideoTestimonial ? 'opacity-30' : 'opacity-100'}`}>
-                                    <div className='flex justify-center items-center mb-4'>
-                                      {/* Extract Cloudflare Stream video ID if available */}
-                                      {(() => {
-                                        const extractVideoId = (url: string): string | undefined => {
-                                          try {
-                                            const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
-                                            return match ? match[1] : undefined
-                                          } catch {
-                                            return undefined
-                                          }
+                              {videoTestimonialUrl ? (
+                                <div className={`transition-all duration-200 ${isDraggingVideoTestimonial ? 'opacity-30' : 'opacity-100'}`}>
+                                  <div className='flex justify-center items-center mb-4'>
+                                    {/* Extract Cloudflare Stream video ID if available */}
+                                    {(() => {
+                                      const extractVideoId = (url: string): string | undefined => {
+                                        try {
+                                          const match = url.match(/cloudflarestream\.com\/([a-f0-9]+)/i)
+                                          return match ? match[1] : undefined
+                                        } catch {
+                                          return undefined
                                         }
-                                        const videoId = extractVideoId(videoTestimonialUrl)
+                                      }
+                                      const videoId = extractVideoId(videoTestimonialUrl)
 
-                                        if (videoId) {
-                                          // Use Cloudflare Stream component for Cloudflare URLs
-                                          return (
-                                            <div className='w-full max-w-2xl aspect-video'>
-                                              <Stream src={videoId} controls responsive className='w-full h-full rounded' preload='metadata' />
-                                            </div>
-                                          )
-                                        } else {
-                                          // Use regular video tag for other URLs
-                                          return (
-                                            <video
-                                              src={videoTestimonialUrl}
-                                              controls
-                                              className='max-w-full max-h-96 object-contain rounded'
-                                              preload='metadata'
-                                            />
-                                          )
-                                        }
-                                      })()}
-                                    </div>
-                                    {/* Info and delete button - always visible below video */}
-                                    <div className='flex flex-col items-center gap-2 py-3 border-t border-gray-100'>
-                                      {storyData.VideoTestimonial && (
-                                        <p className='text-sm text-gray-500'>{storyData.VideoTestimonial.name}</p>
-                                      )}
-                                      {!storyData.VideoTestimonial && (storyData.VideoTestimonialUrl || storyData.VideoTestimonialPlayBackUrl || storyData.VideoTestimonialPreviewUrl) && (
-                                        <p className='text-sm text-gray-500'>Video hiện tại từ câu chuyện</p>
-                                      )}
-                                      <Button
-                                        variant='outline'
-                                        size='sm'
-                                        onClick={() => handleFileChange('VideoTestimonial', null)}
-                                        className='border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400'
-                                      >
-                                        <X className='w-4 h-4 mr-1' />
-                                        {storyData.VideoTestimonial ? 'Xóa video mới' : 'Xóa video'}
-                                      </Button>
-                                    </div>
+                                      if (videoId) {
+                                        // Use Cloudflare Stream component for Cloudflare URLs
+                                        return (
+                                          <div className='w-full max-w-2xl aspect-video'>
+                                            <Stream src={videoId} controls responsive className='w-full h-full rounded' preload='metadata' />
+                                          </div>
+                                        )
+                                      } else {
+                                        // Use regular video tag for other URLs
+                                        return (
+                                          <video
+                                            src={videoTestimonialUrl}
+                                            controls
+                                            className='max-w-full max-h-96 object-contain rounded'
+                                            preload='metadata'
+                                          />
+                                        )
+                                      }
+                                    })()}
                                   </div>
-                                ) : (
-                                  <div className={`text-center transition-all duration-200 ${isDraggingVideoTestimonial ? 'opacity-0 scale-95' : 'opacity-100'}`}>
-                                    <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
-                                    <p className='text-gray-500 mb-2 text-sm'>Kéo thả hoặc click để tải video tổng kết</p>
-                                    <p className='text-xs text-gray-400 mb-3'>Định dạng: MP4, MOV. Kích thước tối đa: 50MB</p>
-                                    <input
-                                      type='file'
-                                      accept='video/*'
-                                      onChange={(e) => handleFileChange('VideoTestimonial', e.target.files?.[0] || null)}
-                                      className='hidden'
-                                      id='video-testimonial-upload'
-                                    />
-                                    <Button variant='outline' size='sm' onClick={() => document.getElementById('video-testimonial-upload')?.click()} className='mx-auto'>
-                                      <Upload className='w-4 h-4 mr-1' />
-                                      Chọn video tổng kết
+                                  {/* Info and delete button - always visible below video */}
+                                  <div className='flex flex-col items-center gap-2 py-3 border-t border-gray-100'>
+                                    {storyData.VideoTestimonial && (
+                                      <p className='text-sm text-gray-500'>{storyData.VideoTestimonial.name}</p>
+                                    )}
+                                    {!storyData.VideoTestimonial && (storyData.VideoTestimonialUrl || storyData.VideoTestimonialPlayBackUrl || storyData.VideoTestimonialPreviewUrl) && (
+                                      <p className='text-sm text-gray-500'>Video hiện tại từ câu chuyện</p>
+                                    )}
+                                    <Button
+                                      variant='outline'
+                                      size='sm'
+                                      onClick={() => handleFileChange('VideoTestimonial', null)}
+                                      className='border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400'
+                                    >
+                                      <X className='w-4 h-4 mr-1' />
+                                      {storyData.VideoTestimonial ? 'Xóa video mới' : 'Xóa video'}
                                     </Button>
                                   </div>
-                                )}
-                              </div>
-                              <div className='mt-2'>
-                                <Label className='text-xs text-gray-600'>Mô tả cho video tổng kết</Label>
-                                <Textarea
-                                  placeholder='Ví dụ: Video tổng kết câu chuyện của bạn...'
-                                  value={storyData.VideoTestimonialDescription}
-                                  onChange={(e) => handleInputChange('VideoTestimonialDescription', e.target.value)}
-                                  className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoTestimonialDescription) > 500 ? 'border-red-500' : ''
-                                    }`}
-                                />
-                                <div className='flex justify-end items-center mt-1'>
-                                  <p
-                                    className={`text-xs ${countCharacters(storyData.VideoTestimonialDescription) > 500 ? 'text-red-500' : 'text-gray-500'
-                                      }`}
-                                  >
-                                    {countCharacters(storyData.VideoTestimonialDescription)}/500 ký tự
-                                  </p>
                                 </div>
+                              ) : (
+                                <div className={`text-center transition-all duration-200 ${isDraggingVideoTestimonial ? 'opacity-0 scale-95' : 'opacity-100'}`}>
+                                  <Video className='w-8 h-8 text-gray-400 mx-auto mb-2' />
+                                  <p className='text-gray-500 mb-2 text-sm'>Kéo thả hoặc click để tải video tổng kết</p>
+                                  <p className='text-xs text-gray-400 mb-3'>Định dạng: MP4, MOV. Kích thước tối đa: 50MB</p>
+                                  <input
+                                    type='file'
+                                    accept='video/*'
+                                    onChange={(e) => handleFileChange('VideoTestimonial', e.target.files?.[0] || null)}
+                                    className='hidden'
+                                    id='video-testimonial-upload'
+                                  />
+                                  <Button variant='outline' size='sm' onClick={() => document.getElementById('video-testimonial-upload')?.click()} className='mx-auto'>
+                                    <Upload className='w-4 h-4 mr-1' />
+                                    Chọn video tổng kết
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                            <div className='mt-2'>
+                              <Label className='text-xs text-gray-600'>Mô tả cho video tổng kết</Label>
+                              <Textarea
+                                placeholder='Ví dụ: Video tổng kết câu chuyện của bạn...'
+                                value={storyData.VideoTestimonialDescription}
+                                onChange={(e) => handleInputChange('VideoTestimonialDescription', e.target.value)}
+                                className={`mt-1 min-h-[60px] text-sm ${countCharacters(storyData.VideoTestimonialDescription) > 1000 ? 'border-red-500' : ''
+                                  }`}
+                              />
+                              <div className='flex justify-end items-center mt-1'>
+                                <p
+                                  className={`text-xs ${countCharacters(storyData.VideoTestimonialDescription) > 1000 ? 'text-red-500' : 'text-gray-500'
+                                    }`}
+                                >
+                                  {countCharacters(storyData.VideoTestimonialDescription)}/1000 ký tự
+                                </p>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                        {!storyData.VideoTestimonial && !storyData.VideoTestimonialUrl && !storyData.VideoTestimonialPlayBackUrl && !storyData.VideoTestimonialPreviewUrl && (
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='sm'
-                            onClick={() => toggleOptionalField('videoTestimonial')}
-                            className='mt-2 text-gray-500 hover:text-gray-700 w-full'
-                          >
-                            <X className='w-4 h-4 mr-1' />
-                            Ẩn phần này
-                          </Button>
-                        )}
-                      </motion.div>
-                    )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                      {!storyData.VideoTestimonial && (
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='sm'
+                          onClick={() => toggleOptionalField('videoTestimonial')}
+                          className='mt-2 text-gray-500 hover:text-gray-700 w-full'
+                        >
+                          <X className='w-4 h-4 mr-1' />
+                          Ẩn phần này
+                        </Button>
+                      )}
+                    </motion.div>
+                  )}
                 </motion.div>
               )}
           </AnimatePresence>
@@ -2711,14 +2623,14 @@ function CreateMyStoryPage() {
                     placeholder='Ví dụ: Chúng tôi cam kết mang đến những sản phẩm chất lượng nhất...'
                     value={storyData.TextClosing}
                     onChange={(e) => handleInputChange('TextClosing', e.target.value)}
-                    className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextClosing) > 500 ? 'border-red-500' : ''
+                    className={`mt-1 min-h-[100px] transition-all duration-200 focus:ring-green-500 focus:border-green-500 ${countCharacters(storyData.TextClosing) > 1000 ? 'border-red-500' : ''
                       }`}
                   />
                   <div className='flex justify-end items-center mt-1'>
                     <p
-                      className={`text-xs ${countCharacters(storyData.TextClosing) > 500 ? 'text-red-500' : 'text-gray-500'}`}
+                      className={`text-xs ${countCharacters(storyData.TextClosing) > 1000 ? 'text-red-500' : 'text-gray-500'}`}
                     >
-                      {countCharacters(storyData.TextClosing)}/500 ký tự
+                      {countCharacters(storyData.TextClosing)}/1000 ký tự
                     </p>
                   </div>
                 </div>

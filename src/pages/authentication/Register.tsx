@@ -57,6 +57,16 @@ interface FormErrors {
 // Vietnamese phone number regex (10-11 digits, can start with 0 or +84)
 const VN_PHONE_REGEX = /^(0|\+84)[1-9][0-9]{8,9}$/
 
+const sanitizeFormData = (data: RegisterFormData): RegisterFormData => ({
+  ...data,
+  firstName: data.firstName.trim(),
+  lastName: data.lastName.trim(),
+  phoneNumber: data.phoneNumber.trim(),
+  email: data.email.trim(),
+  password: data.password.trim(),
+  confirmPassword: data.confirmPassword.trim()
+})
+
 function Register() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -151,45 +161,45 @@ function Register() {
     }
   }
 
-  const validateForm = (): boolean => {
+  const validateForm = (data: RegisterFormData = formData): FormErrors => {
     const newErrors: FormErrors = {}
 
     if (currentStep === 1) {
       // Validate step 1 fields
-      if (!formData.firstName.trim()) {
+      if (!data.firstName.trim()) {
         newErrors.firstName = 'Vui lòng nhập tên'
-      } else if (formData.firstName.trim().length > 50) {
+      } else if (data.firstName.trim().length > 50) {
         newErrors.firstName = 'Tên không được vượt quá 50 ký tự'
       }
 
-      if (!formData.lastName.trim()) {
+      if (!data.lastName.trim()) {
         newErrors.lastName = 'Vui lòng nhập họ'
-      } else if (formData.lastName.trim().length > 50) {
+      } else if (data.lastName.trim().length > 50) {
         newErrors.lastName = 'Họ không được vượt quá 50 ký tự'
       }
 
-      if (!formData.phoneNumber.trim()) {
+      if (!data.phoneNumber.trim()) {
         newErrors.phoneNumber = 'Vui lòng nhập số điện thoại'
-      } else       if (!VN_PHONE_REGEX.test(formData.phoneNumber)) {
+      } else if (!VN_PHONE_REGEX.test(data.phoneNumber)) {
         newErrors.phoneNumber = 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam (10-11 chữ số)'
       }
 
-      if (!formData.gender) {
+      if (!data.gender) {
         newErrors.gender = 'Vui lòng chọn giới tính'
       }
 
-      if (!formData.dateOfBirth) {
+      if (!data.dateOfBirth) {
         newErrors.dateOfBirth = 'Vui lòng chọn ngày sinh'
       } else {
         const today = new Date()
         today.setHours(23, 59, 59, 999)
 
-        if (formData.dateOfBirth > today) {
+        if (data.dateOfBirth > today) {
           newErrors.dateOfBirth = 'Ngày sinh không được là ngày trong tương lai'
         } else {
-          const age = today.getFullYear() - formData.dateOfBirth.getFullYear()
-          const monthDiff = today.getMonth() - formData.dateOfBirth.getMonth()
-          const dayDiff = today.getDate() - formData.dateOfBirth.getDate()
+          const age = today.getFullYear() - data.dateOfBirth.getFullYear()
+          const monthDiff = today.getMonth() - data.dateOfBirth.getMonth()
+          const dayDiff = today.getDate() - data.dateOfBirth.getDate()
           const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age
 
           if (actualAge < 13) {
@@ -197,7 +207,7 @@ function Register() {
           }
 
           const minDate = new Date('1900-01-01')
-          if (formData.dateOfBirth < minDate) {
+          if (data.dateOfBirth < minDate) {
             newErrors.dateOfBirth = 'Ngày sinh không hợp lệ'
           }
         }
@@ -205,40 +215,44 @@ function Register() {
     } else if (currentStep === 2) {
       // Validate step 2 fields
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!formData.email.trim()) {
+      if (!data.email.trim()) {
         newErrors.email = 'Vui lòng nhập email'
-      } else if (!emailRegex.test(formData.email)) {
+      } else if (!emailRegex.test(data.email)) {
         newErrors.email = 'Email không hợp lệ'
       }
 
-      if (!formData.password) {
+      if (!data.password) {
         newErrors.password = 'Vui lòng nhập mật khẩu'
-      } else if (formData.password.length < 8) {
+      } else if (data.password.length < 8) {
         newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự'
       }
 
-      if (!formData.confirmPassword) {
+      if (!data.confirmPassword) {
         newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu'
-      } else if (formData.password !== formData.confirmPassword) {
+      } else if (data.password !== data.confirmPassword) {
         newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp'
       }
     } else if (currentStep === 3) {
       // Validate step 3 fields
-      if (!formData.acceptedTerms) {
-        newErrors.acceptedTerms = 'Vui lòng đồng ý với điều khoản và quy định của cộng đồng'
+      if (!data.acceptedTerms) {
+        newErrors.acceptedTerms = 'Vui lòng đồng ý với điều khoản và quy định của quê nhà'
       }
     }
 
     setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    return newErrors
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateForm()) {
+    const sanitizedData = sanitizeFormData(formData)
+    setFormData(sanitizedData)
+
+    const validationErrors = validateForm(sanitizedData)
+    if (Object.keys(validationErrors).length > 0) {
       // Show first error toast
-      const firstError = Object.values(errors)[0]
+      const firstError = Object.values(validationErrors).find((msg) => msg)
       if (firstError) {
         toast.warning(firstError, { position: 'top-right', autoClose: 3000 })
       }
@@ -263,7 +277,7 @@ function Register() {
         })
       } else if (currentStep === 3) {
         // Submit final registration
-        if (!formData.dateOfBirth) {
+        if (!sanitizedData.dateOfBirth) {
           toast.error('Vui lòng kiểm tra lại thông tin', {
             position: 'top-right',
             autoClose: 3000
@@ -272,17 +286,17 @@ function Register() {
         }
 
         // Format dateOfBirth to ISO string (YYYY-MM-DD)
-        const dateOfBirthString = formData.dateOfBirth.toISOString().split('T')[0]
+        const dateOfBirthString = sanitizedData.dateOfBirth.toISOString().split('T')[0]
 
         const registrationData: RegisterCustomerData = {
-          email: formData.email,
-          password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          gender: formData.gender,
-          phoneNumber: formData.phoneNumber,
+          email: sanitizedData.email,
+          password: sanitizedData.password,
+          firstName: sanitizedData.firstName,
+          lastName: sanitizedData.lastName,
+          gender: sanitizedData.gender,
+          phoneNumber: sanitizedData.phoneNumber,
           dateOfBirth: dateOfBirthString,
-          ...(formData.provinceId !== undefined && { provinceId: formData.provinceId })
+          ...(sanitizedData.provinceId !== undefined && { provinceId: sanitizedData.provinceId })
         }
 
         await registerCustomer(registrationData)
@@ -299,26 +313,62 @@ function Register() {
       }
     } catch (error: unknown) {
       console.error('Error submitting form:', error)
-      
+
       // Xử lý lỗi từ API response
       let errorMessage = 'Có lỗi xảy ra. Vui lòng thử lại.'
-      
+      const backendFieldErrors: FormErrors = {}
+      const serverFieldMap: Record<string, keyof FormErrors> = {
+        Email: 'email',
+        email: 'email',
+        Password: 'password',
+        password: 'password',
+        ConfirmPassword: 'confirmPassword',
+        FirstName: 'firstName',
+        LastName: 'lastName',
+        PhoneNumber: 'phoneNumber',
+        Gender: 'gender',
+        DateOfBirth: 'dateOfBirth',
+        ProvinceId: 'provinceId',
+        PronviceId: 'provinceId'
+      }
+
       if (error && typeof error === 'object') {
         // Kiểm tra error có phải là AxiosError với response.data
-        if ('message' in error) {
-          const errorData = error as { message?: string; status?: number }
-          if (errorData.message) {
-            errorMessage = errorData.message
+        const errorData = error as { message?: string; status?: number; errors?: Record<string, string[] | string>; title?: string }
+
+        if (errorData.errors && typeof errorData.errors === 'object') {
+          const entries = Object.entries(errorData.errors)
+          entries.forEach(([field, message]) => {
+            const mappedField = serverFieldMap[field] || (field as keyof FormErrors)
+            const normalizedMessage = Array.isArray(message) ? message.join(' ') : String(message)
+            backendFieldErrors[mappedField] = normalizedMessage
+          })
+
+          const firstServerError = entries[0]?.[1]
+          const firstServerMessage = Array.isArray(firstServerError) ? firstServerError[0] : entries[0]?.[1]
+          if (firstServerMessage) {
+            errorMessage = String(firstServerMessage)
           }
+        } else if (errorData.message) {
+          errorMessage = errorData.message
+        } else if (errorData.title) {
+          errorMessage = errorData.title
         }
       }
-      
+
+      if (Object.keys(backendFieldErrors).length > 0) {
+        setErrors((prev) => ({
+          ...prev,
+          ...backendFieldErrors
+        }))
+      }
+
       // Hiển thị lỗi cụ thể từ server
       toast.error(errorMessage, {
         position: 'top-right',
         autoClose: 5000
       })
-      
+
       // Nếu là lỗi về số điện thoại đã tồn tại, hiển thị lỗi ở field phoneNumber
       if (errorMessage.includes('Số điện thoại') || errorMessage.includes('số điện thoại')) {
         setErrors((prev) => ({
@@ -326,7 +376,7 @@ function Register() {
           phoneNumber: errorMessage
         }))
       }
-      
+
       // Nếu là lỗi về email đã tồn tại, hiển thị lỗi ở field email
       if (errorMessage.includes('Email') || errorMessage.includes('email')) {
         setErrors((prev) => ({
@@ -365,8 +415,8 @@ function Register() {
                   onChange={handleInputChange}
                   placeholder='Nhập tên của bạn'
                   className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.firstName
-                      ? 'border-b-red-500 focus-visible:border-b-red-500'
-                      : 'border-b-gray-300 focus-visible:border-b-green-600'
+                    ? 'border-b-red-500 focus-visible:border-b-red-500'
+                    : 'border-b-gray-300 focus-visible:border-b-green-600'
                     }`}
                 />
               </div>
@@ -387,8 +437,8 @@ function Register() {
                   onChange={handleInputChange}
                   placeholder='Nhập họ của bạn'
                   className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.lastName
-                      ? 'border-b-red-500 focus-visible:border-b-red-500'
-                      : 'border-b-gray-300 focus-visible:border-b-green-600'
+                    ? 'border-b-red-500 focus-visible:border-b-red-500'
+                    : 'border-b-gray-300 focus-visible:border-b-green-600'
                     }`}
                 />
               </div>
@@ -411,8 +461,8 @@ function Register() {
                 onChange={handleInputChange}
                 placeholder='Nhập số điện thoại'
                 className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.phoneNumber
-                    ? 'border-b-red-500 focus-visible:border-b-red-500'
-                    : 'border-b-gray-300 focus-visible:border-b-green-600'
+                  ? 'border-b-red-500 focus-visible:border-b-red-500'
+                  : 'border-b-gray-300 focus-visible:border-b-green-600'
                   }`}
               />
             </div>
@@ -431,8 +481,8 @@ function Register() {
                   role='combobox'
                   aria-expanded={provinceOpen}
                   className={`w-full justify-between bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 font-normal focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.provinceId
-                      ? 'border-b-red-500 focus-visible:border-b-red-500'
-                      : 'border-b-gray-300 focus-visible:border-b-green-600'
+                    ? 'border-b-red-500 focus-visible:border-b-red-500'
+                    : 'border-b-gray-300 focus-visible:border-b-green-600'
                     }`}
                   disabled={loadingProvinces}
                   type='button'
@@ -487,8 +537,8 @@ function Register() {
               <Select value={formData.gender} onValueChange={handleSelectChange}>
                 <SelectTrigger
                   className={`bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none shadow-none ${errors.gender
-                      ? 'border-b-red-500 focus-visible:border-b-red-500'
-                      : 'border-b-gray-300 focus-visible:border-b-green-600'
+                    ? 'border-b-red-500 focus-visible:border-b-red-500'
+                    : 'border-b-gray-300 focus-visible:border-b-green-600'
                     }`}
                 >
                   <SelectValue placeholder='Chọn giới tính' />
@@ -513,8 +563,8 @@ function Register() {
                     id='dateOfBirth'
                     type='button'
                     className={`w-full justify-between bg-transparent border-none border-b-2 rounded-none h-auto py-2 px-0 font-normal focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.dateOfBirth
-                        ? 'border-b-red-500 focus-visible:border-b-red-500'
-                        : 'border-b-gray-300 focus-visible:border-b-green-600'
+                      ? 'border-b-red-500 focus-visible:border-b-red-500'
+                      : 'border-b-gray-300 focus-visible:border-b-green-600'
                       }`}
                   >
                     {formData.dateOfBirth
@@ -569,8 +619,8 @@ function Register() {
                 onChange={handleInputChange}
                 placeholder='Nhập email của bạn'
                 className={`pl-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.email
-                    ? 'border-b-red-500 focus-visible:border-b-red-500'
-                    : 'border-b-gray-300 focus-visible:border-b-green-600'
+                  ? 'border-b-red-500 focus-visible:border-b-red-500'
+                  : 'border-b-gray-300 focus-visible:border-b-green-600'
                   }`}
               />
             </div>
@@ -592,8 +642,8 @@ function Register() {
                 onChange={handleInputChange}
                 placeholder='Nhập mật khẩu (tối thiểu 8 ký tự)'
                 className={`pl-10 pr-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.password
-                    ? 'border-b-red-500 focus-visible:border-b-red-500'
-                    : 'border-b-gray-300 focus-visible:border-b-green-600'
+                  ? 'border-b-red-500 focus-visible:border-b-red-500'
+                  : 'border-b-gray-300 focus-visible:border-b-green-600'
                   }`}
               />
               <button
@@ -622,8 +672,8 @@ function Register() {
                 onChange={handleInputChange}
                 placeholder='Nhập lại mật khẩu'
                 className={`pl-10 pr-10 bg-transparent border-none border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none ${errors.confirmPassword
-                    ? 'border-b-red-500 focus-visible:border-b-red-500'
-                    : 'border-b-gray-300 focus-visible:border-b-green-600'
+                  ? 'border-b-red-500 focus-visible:border-b-red-500'
+                  : 'border-b-gray-300 focus-visible:border-b-green-600'
                   }`}
               />
               <button
@@ -642,9 +692,9 @@ function Register() {
       return (
         <div className='space-y-4 py-8'>
           <div className='text-center mb-6'>
-            <h3 className='text-2xl font-bold mb-2'>Hương ước cộng đồng</h3>
+            <h3 className='text-2xl font-bold mb-2'>Hương ước quê nhà</h3>
             <p className='text-muted-foreground'>
-              Vui lòng đọc và đồng ý với các điều khoản và quy định của cộng đồng
+              Vui lòng đọc và đồng ý với các điều khoản và quy định của quê nhà
             </p>
           </div>
 
@@ -670,7 +720,7 @@ function Register() {
               htmlFor='acceptedTerms'
               className='text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1'
             >
-              Tôi đồng ý với các điều khoản và quy định của cộng đồng
+              Tôi đồng ý với các điều khoản và quy định của quê nhà
               <span className='text-destructive ml-1'>*</span>
             </Label>
           </div>

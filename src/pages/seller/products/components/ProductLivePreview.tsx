@@ -457,7 +457,8 @@ function ProductLivePreview({ product }: ProductLivePreviewProps) {
                       <div className='flex flex-wrap gap-2'>
                         {group.options.map((option) => {
                           const isSelected = selectedVariants[group.attributeType] === option.id
-                          const isDisabled = !option.isActive || (option.quantity || 0) === 0
+                          // Variant cha: cho phép chọn kể cả khi chưa có quantity; chỉ khóa khi isActive=false
+                          const isDisabled = option.isActive === false
                           const variantImage =
                             option.productImages && option.productImages.length > 0 ? option.productImages[0] : null
 

@@ -34,17 +34,25 @@ import {
   DialogFooter
 } from '../../../components/ui/dialog'
 
+const formatWithDots = (digits: string) => {
+  if (!digits) return ''
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
 function DetailComboSeller() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [combo, setCombo] = useState<Combo | null>(null)
   const [loading, setLoading] = useState(true)
   const [finalPrice, setFinalPrice] = useState<number>(0)
+  const [finalPriceInput, setFinalPriceInput] = useState<string>('')
+  const [finalPriceRaw, setFinalPriceRaw] = useState<string>('')
   const [discountPercent, setDiscountPercent] = useState<number>(0)
   const [priceInputMode, setPriceInputMode] = useState<'direct' | 'percent'>('direct')
   const [isEditingFinalPrice, setIsEditingFinalPrice] = useState(false)
   const [savingFinalPrice, setSavingFinalPrice] = useState(false)
   const isEditingRef = useRef(false)
+  const finalPriceInputRef = useRef<HTMLInputElement>(null)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [confirmModalType, setConfirmModalType] = useState<'inactive' | 'approved-inactive'>('inactive')
 
@@ -181,10 +189,14 @@ function DetailComboSeller() {
   // Cập nhật finalPrice và tính discountPercent khi combo data được load lần đầu
   useEffect(() => {
     if (combo?.totalFinalPrice !== undefined && combo?.totalBasePrice && finalPrice === 0 && !isEditingRef.current) {
-      setFinalPrice(combo.totalFinalPrice || 0)
+      const price = combo.totalFinalPrice || 0
+      const digits = price.toString()
+      setFinalPrice(price)
+      setFinalPriceRaw(digits)
+      setFinalPriceInput(formatWithDots(digits))
       // Tính discountPercent từ finalPrice và totalBasePrice
       if (combo.totalBasePrice > 0) {
-        const calculatedDiscount = ((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100
+        const calculatedDiscount = ((combo.totalBasePrice - price) / combo.totalBasePrice) * 100
         setDiscountPercent(Math.round(calculatedDiscount * 100) / 100) // Làm tròn 2 chữ số thập phân
       }
     }
@@ -935,7 +947,11 @@ function DetailComboSeller() {
                           variant={priceInputMode === 'direct' ? 'ghost' : 'outline'}
                           onClick={() => {
                             setPriceInputMode('direct')
-                            setFinalPrice(combo.totalFinalPrice || 0)
+                            const price = combo.totalFinalPrice || 0
+                            const digits = price.toString()
+                            setFinalPrice(price)
+                            setFinalPriceRaw(digits)
+                            setFinalPriceInput(formatWithDots(digits))
                           }}
                           className={`h-7 text-xs px-3 ${priceInputMode === 'direct'
                             ? 'bg-gray-100 hover:bg-gray-200 text-white'
@@ -954,6 +970,11 @@ function DetailComboSeller() {
                               const calculatedDiscount =
                                 ((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100
                               setDiscountPercent(Math.round(calculatedDiscount * 100) / 100)
+                              const price = combo.totalFinalPrice || 0
+                              const digits = price.toString()
+                              setFinalPrice(price)
+                              setFinalPriceRaw(digits)
+                              setFinalPriceInput(formatWithDots(digits))
                             }
                           }}
                           className={`h-7 text-xs px-3 ${priceInputMode === 'percent'
@@ -971,20 +992,52 @@ function DetailComboSeller() {
                           <>
                             <Input
                               id='finalPrice'
-                              type='number'
-                              value={finalPrice}
+                              type='text'
+                              inputMode='numeric'
+                              ref={finalPriceInputRef}
+                              value={finalPriceInput}
                               onChange={(e) => {
-                                const value = Number(e.target.value)
+                                const input = e.target
+                                const selectionStart = input.selectionStart ?? 0
+                                const rawBeforeCaret = input.value.slice(0, selectionStart).replace(/\D/g, '')
+                                const rawAll = input.value.replace(/\D/g, '')
+
+                                setFinalPriceRaw(rawAll)
+                                const value = rawAll ? Number(rawAll) : 0
                                 setFinalPrice(value)
+                                const formatted = formatWithDots(rawAll)
+                                setFinalPriceInput(formatted)
+
+                                requestAnimationFrame(() => {
+                                  const el = finalPriceInputRef.current
+                                  if (!el) return
+                                  let digitsSeen = 0
+                                  let pos = 0
+                                  while (pos < formatted.length && digitsSeen < rawBeforeCaret.length) {
+                                    if (/\d/.test(formatted[pos])) digitsSeen++
+                                    pos++
+                                  }
+                                  el.selectionStart = el.selectionEnd = pos
+                                })
+
                                 if (combo.totalBasePrice > 0 && value >= 0) {
                                   const calculatedDiscount =
                                     ((combo.totalBasePrice - value) / combo.totalBasePrice) * 100
                                   setDiscountPercent(Math.round(calculatedDiscount * 100) / 100)
                                 }
                               }}
+                              onBlur={() => setFinalPriceInput(formatWithDots(finalPriceRaw))}
+                              onFocus={() => {
+                                const digits = finalPriceRaw || finalPrice.toString()
+                                const formatted = formatWithDots(digits)
+                                setFinalPriceInput(formatted)
+                                requestAnimationFrame(() => {
+                                  const el = finalPriceInputRef.current
+                                  if (!el) return
+                                  el.selectionStart = el.selectionEnd = el.value.length
+                                })
+                              }}
                               className='w-32 h-9 text-right text-sm bg-white'
-                              min='0'
-                              max={combo.totalBasePrice}
                               disabled={savingFinalPrice || !canEdit}
                               autoFocus
                             />
@@ -1002,7 +1055,11 @@ function DetailComboSeller() {
                                   setDiscountPercent(value)
                                   if (combo.totalBasePrice > 0) {
                                     const calculatedPrice = combo.totalBasePrice * (1 - value / 100)
-                                    setFinalPrice(Math.round(calculatedPrice))
+                                    const price = Math.round(calculatedPrice)
+                                    const digits = price.toString()
+                                    setFinalPrice(price)
+                                    setFinalPriceRaw(digits)
+                                    setFinalPriceInput(formatWithDots(digits))
                                   }
                                 }
                               }}
@@ -1038,7 +1095,11 @@ function DetailComboSeller() {
                           onClick={() => {
                             isEditingRef.current = false
                             setIsEditingFinalPrice(false)
-                            setFinalPrice(combo.totalFinalPrice || 0)
+                            const price = combo.totalFinalPrice || 0
+                            const digits = price.toString()
+                            setFinalPrice(price)
+                            setFinalPriceRaw(digits)
+                            setFinalPriceInput(formatWithDots(digits))
                             if (combo.totalBasePrice > 0) {
                               const calculatedDiscount =
                                 ((combo.totalBasePrice - combo.totalFinalPrice) / combo.totalBasePrice) * 100

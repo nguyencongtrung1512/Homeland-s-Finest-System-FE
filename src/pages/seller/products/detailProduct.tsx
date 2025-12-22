@@ -52,6 +52,7 @@ import ProductLivePreview from './components/ProductLivePreview'
 import { toast } from '../../../utils/toast'
 import ProductImageCarousel from '../../../components/ui/product-image-carousel'
 import { motion, AnimatePresence } from 'motion/react'
+import variantSampleImage from '../../../assets/mau.png'
 
 // Helper function to translate product type to Vietnamese
 const getProductTypeLabel = (typeProduct: string | null | undefined): string => {
@@ -93,6 +94,7 @@ function DetailProductSeller() {
   // States for Dialogs
   const [showCreateDetailDialog, setShowCreateDetailDialog] = useState(false)
   const [showCreateVariantDialog, setShowCreateVariantDialog] = useState(false)
+  const [showVariantSampleDialog, setShowVariantSampleDialog] = useState(false)
   const [variantParentId, setVariantParentId] = useState<string | undefined>(undefined)
   const [selectedParentVariant, setSelectedParentVariant] = useState<VariantOption | null>(null)
 
@@ -135,7 +137,7 @@ function DetailProductSeller() {
   // State for active tab
   const [activeTab, setActiveTab] = useState<string>('info')
   const [showPopover, setShowPopover] = useState<{ [key: string]: boolean }>({})
-  
+
   // State for description expand/collapse
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const [shouldShowExpandButton, setShouldShowExpandButton] = useState(false)
@@ -329,14 +331,14 @@ function DetailProductSeller() {
         const originalOverflow = element.style.overflow
         element.style.maxHeight = 'none'
         element.style.overflow = 'visible'
-        
+
         const scrollHeight = element.scrollHeight
         const maxHeightPx = 144 // 9rem = 144px
-        
+
         // Khôi phục lại style
         element.style.maxHeight = originalMaxHeight
         element.style.overflow = originalOverflow
-        
+
         // Nếu chiều cao thực tế > 9rem thì hiển thị nút
         setShouldShowExpandButton(scrollHeight > maxHeightPx)
       } else {
@@ -346,7 +348,7 @@ function DetailProductSeller() {
 
     // Delay một chút để đảm bảo DOM đã render xong
     const timeoutId = setTimeout(checkDescriptionHeight, 100)
-    
+
     return () => clearTimeout(timeoutId)
   }, [product?.description, isDescriptionExpanded])
 
@@ -1728,16 +1730,26 @@ function DetailProductSeller() {
                         <Archive size={20} />
                         Loại sản phẩm
                       </CardTitle>
-                      <Button
-                        onClick={() => {
-                          setSelectedParentVariant(null)
-                          setShowCreateVariantDialog(true)
-                        }}
-                        className='bg-green-600 hover:bg-green-700 text-white'
-                      >
-                        <Plus className='w-4 h-4 mr-2' />
-                        Thêm Tùy chọn sản phẩm
-                      </Button>
+                      <div className='flex items-center gap-3'>
+                        <Button
+                          variant='outline'
+                          className='flex items-center gap-2'
+                          onClick={() => setShowVariantSampleDialog(true)}
+                        >
+                          <ImageIcon className='w-4 h-4' />
+                          Xem ảnh mẫu
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setSelectedParentVariant(null)
+                            setShowCreateVariantDialog(true)
+                          }}
+                          className='bg-green-600 hover:bg-green-700 text-white'
+                        >
+                          <Plus className='w-4 h-4 mr-2' />
+                          Thêm Tùy chọn sản phẩm
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -1764,18 +1776,29 @@ function DetailProductSeller() {
                         <Archive size={20} />
                         Loại sản phẩm
                       </CardTitle>
-                      <Button
-                        onClick={() => {
-                          setSelectedParentVariant(null)
-                          setShowCreateVariantDialog(true)
-                        }}
-                        className='bg-green-600 hover:bg-green-700 text-white'
-                        variant='outline'
-                        size='sm'
-                      >
-                        <Plus className='w-4 h-4 mr-2' />
-                        Thêm tùy chọn sản phẩm
-                      </Button>
+                      <div className='flex items-center gap-3'>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          className='flex items-center gap-2'
+                          onClick={() => setShowVariantSampleDialog(true)}
+                        >
+                          <ImageIcon className='w-4 h-4' />
+                          Ảnh mẫu
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setSelectedParentVariant(null)
+                            setShowCreateVariantDialog(true)
+                          }}
+                          className='bg-green-600 hover:bg-green-700 text-white'
+                          variant='outline'
+                          size='sm'
+                        >
+                          <Plus className='w-4 h-4 mr-2' />
+                          Thêm tùy chọn sản phẩm
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -2363,7 +2386,7 @@ function DetailProductSeller() {
                 <CardHeader>
                   <CardTitle className='flex items-center gap-2'>
                     <Eye size={20} className='text-green-600' />
-                    Xem trước sản phẩm (Live Preview)
+                    Xem trước sản phẩm
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -2407,6 +2430,23 @@ function DetailProductSeller() {
         selectedParentVariant={selectedParentVariant}
         onSuccess={handleRefreshProduct}
       />
+
+      {/* Modal xem ảnh mẫu tùy chọn sản phẩm */}
+      <Dialog open={showVariantSampleDialog} onOpenChange={setShowVariantSampleDialog}>
+        <DialogContent className='max-w-3xl'>
+          <DialogHeader>
+            <DialogTitle>Ảnh mẫu tùy chọn sản phẩm</DialogTitle>
+            <DialogDescription>Tham khảo cách sắp xếp và trình bày hình ảnh.</DialogDescription>
+          </DialogHeader>
+          <div className='w-full flex justify-center'>
+            <img
+              src={variantSampleImage}
+              alt='Ảnh mẫu tùy chọn sản phẩm'
+              className='rounded-lg shadow-lg max-h-[70vh] object-contain'
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Edit Variant */}
       <ModalEditVariant

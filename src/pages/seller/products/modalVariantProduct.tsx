@@ -127,7 +127,7 @@ export default function ModalVariantProduct({
         ...prev,
         attributeName: ''
       }))
-      
+
       // Reset isGroupNode when dialog opens
       setIsGroupNode(false)
     }
@@ -727,7 +727,7 @@ export default function ModalVariantProduct({
             {isGroupNode && (
               <div className='p-3 bg-amber-50 border-l-4 border-amber-400 rounded-r-lg'>
                 <p className='text-sm text-amber-800'>
-                  <strong>Lưu ý:</strong> Nút nhóm chỉ chứa thông tin phân loại (Loại thuộc tính và Tên thuộc tính), 
+                  <strong>Lưu ý:</strong> Nút nhóm chỉ chứa thông tin phân loại (Loại thuộc tính và Tên thuộc tính),
                   không có thông tin SKU (giá, số lượng, kích thước, trọng lượng, hình ảnh).
                 </p>
               </div>
@@ -841,21 +841,21 @@ export default function ModalVariantProduct({
                 <Label htmlFor='variant-price' className='text-sm font-medium'>
                   Giá cửa hàng thu về (đ) <span className='text-red-500'>*</span>
                 </Label>
-              <Input
-                id='variant-price'
-                type='number'
-                min='0'
-                step='1000'
-                placeholder='Nhập giá cửa hàng thu về...'
-                value={variantData.price || ''}
-                onChange={(e) => {
-                  const value = e.target.value === '' ? 0 : Number(e.target.value)
-                  if (value >= 0) {
-                    handleVariantInputChange('price', value)
-                  }
-                }}
-                className='mt-1'
-              />
+                <Input
+                  id='variant-price'
+                  type='number'
+                  min='0'
+                  step='1000'
+                  placeholder='Nhập giá cửa hàng thu về...'
+                  value={variantData.price || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : Number(e.target.value)
+                    if (value >= 0) {
+                      handleVariantInputChange('price', value)
+                    }
+                  }}
+                  className='mt-1'
+                />
                 {variantData.price < 0 && <p className='mt-1 text-sm text-red-500'>Giá không được là số âm</p>}
               </div>
             )}
@@ -863,24 +863,24 @@ export default function ModalVariantProduct({
             {/* Sale Price - Chỉ hiển thị khi không phải nút nhóm */}
             {!isGroupNode && (
               <div>
-              <Label className='text-sm font-medium'>Giá bán trên sàn dự kiến (đ)</Label>
-              <div className='relative mt-1'>
-                <Input
-                  value={
-                    commissionLoading
-                      ? 'Đang tải...'
-                      : formatCurrency(computeSalePrice(variantData.price, commissionRate))
-                  }
-                  readOnly
-                  className='bg-gray-100'
-                  disabled={commissionLoading}
-                />
-                {commissionLoading && (
-                  <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-                    <Loader2 className='w-4 h-4 animate-spin text-gray-400' />
-                  </div>
-                )}
-              </div>
+                <Label className='text-sm font-medium'>Giá bán trên sàn dự kiến (đ)</Label>
+                <div className='relative mt-1'>
+                  <Input
+                    value={
+                      commissionLoading
+                        ? 'Đang tải...'
+                        : formatCurrency(computeSalePrice(variantData.price, commissionRate))
+                    }
+                    readOnly
+                    className='bg-gray-100'
+                    disabled={commissionLoading}
+                  />
+                  {commissionLoading && (
+                    <div className='absolute right-3 top-1/2 -translate-y-1/2'>
+                      <Loader2 className='w-4 h-4 animate-spin text-gray-400' />
+                    </div>
+                  )}
+                </div>
 
                 {commissionError && <p className='mt-1 text-sm text-amber-600'>{commissionError}</p>}
               </div>
@@ -889,23 +889,23 @@ export default function ModalVariantProduct({
             {/* Số lượng - Chỉ hiển thị khi không phải nút nhóm */}
             {!isGroupNode && (
               <div>
-              <Label htmlFor='variant-quantity' className='text-sm font-medium'>
-                Số lượng tồn kho <span className='text-red-500'>*</span>
-              </Label>
-              <Input
-                id='variant-quantity'
-                type='number'
-                min='0'
-                placeholder='Nhập số lượng tồn kho...'
-                value={variantData.quantity || ''}
-                onChange={(e) => {
-                  const value = e.target.value === '' ? 0 : Number(e.target.value)
-                  if (value >= 0) {
-                    handleVariantInputChange('quantity', value)
-                  }
-                }}
-                className='mt-1'
-              />
+                <Label htmlFor='variant-quantity' className='text-sm font-medium'>
+                  Số lượng tồn kho <span className='text-red-500'>*</span>
+                </Label>
+                <Input
+                  id='variant-quantity'
+                  type='number'
+                  min='0'
+                  placeholder='Nhập số lượng tồn kho...'
+                  value={variantData.quantity || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? 0 : Number(e.target.value)
+                    if (value >= 0) {
+                      handleVariantInputChange('quantity', value)
+                    }
+                  }}
+                  className='mt-1'
+                />
                 {variantData.quantity < 0 && (
                   <p className='mt-1 text-sm text-red-500'>Số lượng tồn kho không được là số âm</p>
                 )}
@@ -939,188 +939,190 @@ export default function ModalVariantProduct({
           {/* Kích thước - Chỉ hiển thị khi không phải nút nhóm */}
           {!isGroupNode && (
             <div className='space-y-4'>
-            <div className='flex items-center justify-between mb-2'>
-              <Label className='text-sm font-medium'>Kích thước (cm)</Label>
-              <span className='text-xs text-gray-500'>Tùy chọn</span>
-            </div>
-            <div className='grid grid-cols-3 gap-4'>
-              {/* Length */}
+              <div className='flex items-center justify-between mb-2'>
+                <Label className='text-sm font-medium'>Kích thước (cm)</Label>
+              </div>
+              <div className='grid grid-cols-3 gap-4'>
+                {/* Length */}
+                <div>
+                  <Label htmlFor='variant-length' className='text-sm font-medium'>
+                    Chiều dài
+                  </Label>
+                  <Input
+                    id='variant-length'
+                    type='number'
+                    min='0'
+                    max={MAX_DIMENSION}
+                    placeholder='cm'
+                    value={variantData.length || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value)
+                      if (value >= 0) {
+                        handleVariantInputChange('length', value)
+                      }
+                    }}
+                    className={`mt-2 ${lengthError ? 'border-red-500' : ''}`}
+                  />
+                  {lengthError && <p className='mt-2 text-sm text-red-500'>{lengthError}</p>}
+                </div>
+
+                {/* Width */}
+                <div>
+                  <Label htmlFor='variant-width' className='text-sm font-medium'>
+                    Chiều rộng
+                  </Label>
+                  <Input
+                    id='variant-width'
+                    type='number'
+                    min='0'
+                    max={MAX_DIMENSION}
+                    placeholder='cm'
+                    value={variantData.width || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value)
+                      if (value >= 0) {
+                        handleVariantInputChange('width', value)
+                      }
+                    }}
+                    className={`mt-2 ${widthError ? 'border-red-500' : ''}`}
+                  />
+                  {widthError && <p className='mt-2 text-sm text-red-500'>{widthError}</p>}
+                </div>
+
+                {/* Height */}
+                <div>
+                  <Label htmlFor='variant-height' className='text-sm font-medium'>
+                    Chiều cao
+                  </Label>
+                  <Input
+                    id='variant-height'
+                    type='number'
+                    min='0'
+                    max={MAX_DIMENSION}
+                    placeholder='cm'
+                    value={variantData.height || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : Number(e.target.value)
+                      if (value >= 0) {
+                        handleVariantInputChange('height', value)
+                      }
+                    }}
+                    className={`mt-2 ${heightError ? 'border-red-500' : ''}`}
+                  />
+                  {heightError && <p className='mt-2 text-sm text-red-500'>{heightError}</p>}
+                </div>
+              </div>
+
+              {/* Weight */}
               <div>
-                <Label htmlFor='variant-length' className='text-sm font-medium'>
-                  Chiều dài
+                <Label htmlFor='variant-weight' className='text-sm font-medium'>
+                  Trọng lượng (g)
                 </Label>
                 <Input
-                  id='variant-length'
+                  id='variant-weight'
                   type='number'
                   min='0'
-                  max={MAX_DIMENSION}
-                  placeholder='cm'
-                  value={variantData.length || ''}
+                  max={MAX_WEIGHT}
+                  placeholder='gram'
+                  value={variantData.weight || ''}
                   onChange={(e) => {
                     const value = e.target.value === '' ? 0 : Number(e.target.value)
                     if (value >= 0) {
-                      handleVariantInputChange('length', value)
+                      handleVariantInputChange('weight', value)
                     }
                   }}
-                  className={`mt-2 ${lengthError ? 'border-red-500' : ''}`}
+                  className={`mt-2 ${weightError ? 'border-red-500' : ''}`}
                 />
-                {lengthError && <p className='mt-2 text-sm text-red-500'>{lengthError}</p>}
-              </div>
-
-              {/* Width */}
-              <div>
-                <Label htmlFor='variant-width' className='text-sm font-medium'>
-                  Chiều rộng
-                </Label>
-                <Input
-                  id='variant-width'
-                  type='number'
-                  min='0'
-                  max={MAX_DIMENSION}
-                  placeholder='cm'
-                  value={variantData.width || ''}
-                  onChange={(e) => {
-                    const value = e.target.value === '' ? 0 : Number(e.target.value)
-                    if (value >= 0) {
-                      handleVariantInputChange('width', value)
-                    }
-                  }}
-                  className={`mt-2 ${widthError ? 'border-red-500' : ''}`}
-                />
-                {widthError && <p className='mt-2 text-sm text-red-500'>{widthError}</p>}
-              </div>
-
-              {/* Height */}
-              <div>
-                <Label htmlFor='variant-height' className='text-sm font-medium'>
-                  Chiều cao
-                </Label>
-                <Input
-                  id='variant-height'
-                  type='number'
-                  min='0'
-                  max={MAX_DIMENSION}
-                  placeholder='cm'
-                  value={variantData.height || ''}
-                  onChange={(e) => {
-                    const value = e.target.value === '' ? 0 : Number(e.target.value)
-                    if (value >= 0) {
-                      handleVariantInputChange('height', value)
-                    }
-                  }}
-                  className={`mt-2 ${heightError ? 'border-red-500' : ''}`}
-                />
-                {heightError && <p className='mt-2 text-sm text-red-500'>{heightError}</p>}
+                {weightError && <p className='mt-2 text-sm text-red-500'>{weightError}</p>}
               </div>
             </div>
-
-            {/* Weight */}
-            <div>
-              <Label htmlFor='variant-weight' className='text-sm font-medium'>
-                Trọng lượng (g)
-              </Label>
-              <Input
-                id='variant-weight'
-                type='number'
-                min='0'
-                max={MAX_WEIGHT}
-                placeholder='gram'
-                value={variantData.weight || ''}
-                onChange={(e) => {
-                  const value = e.target.value === '' ? 0 : Number(e.target.value)
-                  if (value >= 0) {
-                    handleVariantInputChange('weight', value)
-                  }
-                }}
-                className={`mt-2 ${weightError ? 'border-red-500' : ''}`}
-              />
-              {weightError && <p className='mt-2 text-sm text-red-500'>{weightError}</p>}
-            </div>
-          </div>
           )}
 
           {/* Variant Images - Chỉ hiển thị khi không phải nút nhóm */}
           {!isGroupNode && (
             <div>
-            <div className='flex items-center justify-between mb-1'>
-              <Label className='text-sm font-medium'>Hình ảnh biến thể sản phẩm</Label>
-              <span className={`text-xs ${variantImages.length > MAX_IMAGES ? 'text-red-500' : 'text-gray-500'}`}>
-                {variantImages.length} / {MAX_IMAGES} ảnh
-              </span>
-            </div>
-            {variantImages.length < MAX_IMAGES ? (
-              <div
-                className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
-                onClick={() => document.getElementById('variant-images')?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault()
-                  e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                  const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'))
-                  if (files.length > 0) {
-                    addVariantImages(files)
-                  }
-                }}
-              >
-                <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
-                <p className='text-gray-600 mb-2'>
-                  {variantImages.length > 0 ? 'Thay đổi ảnh' : 'Kéo thả hoặc click để tải ảnh lên'}
-                </p>
-                <input
-                  type='file'
-                  accept='image/*'
-                  className='hidden'
-                  id='variant-images'
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || [])
+              <div className='flex items-center justify-between mb-1'>
+                <div className='flex items-center gap-2'>
+                  <Label className='text-sm font-medium'>Hình ảnh biến thể sản phẩm</Label>
+                  <span className='text-xs text-gray-500'>(Tùy chọn)</span>
+                </div>
+                <span className={`text-xs ${variantImages.length > MAX_IMAGES ? 'text-red-500' : 'text-gray-500'}`}>
+                  {variantImages.length} / {MAX_IMAGES} ảnh
+                </span>
+              </div>
+              {variantImages.length < MAX_IMAGES ? (
+                <div
+                  className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer'
+                  onClick={() => document.getElementById('variant-images')?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
+                    const files = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'))
                     if (files.length > 0) {
                       addVariantImages(files)
                     }
-                    e.target.value = ''
                   }}
-                />
-                <Button type='button' variant='outline' size='sm' className='mt-3'>
-                  <Upload className='w-4 h-4 mr-2' />
-                  {variantImages.length > 0 ? 'Thay đổi ảnh' : 'Chọn ảnh'}
-                </Button>
-                <p className='text-xs text-gray-500 mt-2'>Tối đa 1 ảnh, định dạng: JPG, PNG, WEBP, tối đa 5MB</p>
-              </div>
-            ) : (
-              <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'>
-                <p className='text-sm text-amber-600'>
-                  Đã đạt giới hạn tối đa {MAX_IMAGES} hình ảnh. Vui lòng xóa ảnh cũ để thêm ảnh mới.
-                </p>
-              </div>
-            )}
-
-            {variantImages.length > 0 && (
-              <div className='mt-4'>
-                <div className='relative inline-block group'>
-                  <div className='w-32 h-32 rounded-lg overflow-hidden border-2 border-gray-200'>
-                    <img
-                      src={createPreviewUrl(variantImages[0])}
-                      alt='Variant image'
-                      className='w-full h-full object-cover'
-                    />
-                  </div>
-                  <button
-                    type='button'
-                    onClick={() => removeVariantImage(0)}
-                    className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all'
-                  >
-                    <X className='w-4 h-4' />
-                  </button>
+                >
+                  <ImageIcon className='w-10 h-10 text-gray-400 mx-auto mb-3' />
+                  <p className='text-gray-600 mb-2'>
+                    {variantImages.length > 0 ? 'Thay đổi ảnh' : 'Kéo thả hoặc click để tải ảnh lên'}
+                  </p>
+                  <input
+                    type='file'
+                    accept='image/*'
+                    className='hidden'
+                    id='variant-images'
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || [])
+                      if (files.length > 0) {
+                        addVariantImages(files)
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                  <Button type='button' variant='outline' size='sm' className='mt-3'>
+                    <Upload className='w-4 h-4 mr-2' />
+                    {variantImages.length > 0 ? 'Thay đổi ảnh' : 'Chọn ảnh'}
+                  </Button>
+                  <p className='text-xs text-gray-500 mt-2'>Tối đa 1 ảnh, định dạng: JPG, PNG, WEBP, tối đa 5MB</p>
                 </div>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className='mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center'>
+                  <p className='text-sm text-amber-600'>
+                    Đã đạt giới hạn tối đa {MAX_IMAGES} hình ảnh. Vui lòng xóa ảnh cũ để thêm ảnh mới.
+                  </p>
+                </div>
+              )}
+
+              {variantImages.length > 0 && (
+                <div className='mt-4'>
+                  <div className='relative inline-block group'>
+                    <div className='w-32 h-32 rounded-lg overflow-hidden border-2 border-gray-200'>
+                      <img
+                        src={createPreviewUrl(variantImages[0])}
+                        alt='Variant image'
+                        className='w-full h-full object-cover'
+                      />
+                    </div>
+                    <button
+                      type='button'
+                      onClick={() => removeVariantImage(0)}
+                      className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all'
+                    >
+                      <X className='w-4 h-4' />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 

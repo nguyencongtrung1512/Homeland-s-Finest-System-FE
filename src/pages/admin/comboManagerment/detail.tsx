@@ -276,15 +276,16 @@ function ComboDetailPopup({ comboId, isOpen, onClose, onStatusUpdated }: ComboDe
                 <Avatar className='h-16 w-16'>
                   {combo.thumbnailUrl ? (
                     <img src={combo.thumbnailUrl} alt={combo.name} className='w-full h-full object-cover' />
-                  ) : null}
-                  <AvatarFallback className='text-white font-semibold text-lg bg-gradient-to-br from-blue-500 to-blue-600'>
-                    {combo.name
-                      .split(' ')
-                      .map((word) => word.charAt(0))
-                      .join('')
-                      .toUpperCase()
-                      .slice(0, 2)}
-                  </AvatarFallback>
+                  ) : (
+                    <AvatarFallback className='text-white font-semibold text-lg bg-gradient-to-br from-blue-500 to-blue-600'>
+                      {combo.name
+                        .split(' ')
+                        .map((word) => word.charAt(0))
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
                 <div className='flex-1'>
                   <CardTitle className='text-2xl mb-2'>{combo.name}</CardTitle>
