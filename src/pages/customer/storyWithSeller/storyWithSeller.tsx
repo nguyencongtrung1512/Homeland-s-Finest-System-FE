@@ -6,7 +6,7 @@ import { Button } from '../../../components/ui/button'
 import { Search, MapPin, Users, ChevronLeft, ChevronRight } from 'lucide-react'
 import ChatBot from '../../../components/ChatBot/chatbot'
 import { storeApi, type StoreResponse, type StoreListParams } from '../../../apis/store.api'
-import { toast } from 'react-toastify'
+import { toast } from '../../../utils/toast'
 
 interface StoryData {
   id: string

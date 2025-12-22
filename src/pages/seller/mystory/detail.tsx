@@ -18,7 +18,7 @@ import type { StoreStory } from '../../../types/storeStoryType'
 import { formatDate } from '../../../utils/formatDate'
 import { Stream } from '@cloudflare/stream-react'
 import { StoryContentCarousel } from '../../../components/ui/next-storyConten'
-import { Edit, Pause, Loader2 } from 'lucide-react'
+import { Edit, Loader2, Trash } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import path from '../../../constants/path'
 import { StoreStoryContentType, isVideoContent, isTextContent, isImageContent } from '../../../constants/storeStoryContentType'
@@ -84,40 +84,54 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
     // Validation: Check if this is the only active story
     // activeStoriesCount includes current story, so if <= 1, it means only this story is active
     if (activeStoriesCount !== null && activeStoriesCount <= 1 && story.isActive !== false) {
-      toast.error('Cửa hàng phải có ít nhất 1 câu chuyện đang hoạt động. Không thể tạm dừng câu chuyện này.')
+      toast.error('Cửa hàng phải có ít nhất 1 câu chuyện đang hoạt động. Không thể xóa câu chuyện này.')
       setShowDeactivateDialog(false)
       return
     }
 
     try {
       setIsDeactivating(true)
-      // Use update API with IsActive = false
-      // Note: StoreStory doesn't have textIntro, textExpanded, textClosing as direct properties
-      // These might be in contents, but for deactivation we just need Title and StoreId
-      await storeStoryApi.deactivateUsingUpdate(storyId, {
+
+      // Lấy dữ liệu text/description hiện có từ contents để thỏa validation backend
+      const findContent = (contentType: string) =>
+        story.contents?.find((c) => (c.contentType || '').toLowerCase() === contentType.toLowerCase())
+
+      const textIntroContent = findContent(StoreStoryContentType.TextIntro)
+      const textExpandedContent = findContent(StoreStoryContentType.TextExpanded)
+      const textClosingContent = findContent(StoreStoryContentType.TextClosing)
+      const videoOpenerContent = findContent(StoreStoryContentType.VideoOpener)
+      const singleImageContent = findContent(StoreStoryContentType.SingleImage)
+      const imageGalleryContent = findContent(StoreStoryContentType.ImageGallery)
+      const videoProcessContent = findContent(StoreStoryContentType.VideoProcess)
+      const videoTestimonialContent = findContent(StoreStoryContentType.VideoTestimonial)
+
+      const payload = {
         Title: story.title || '',
-        TextIntro: '',
-        VideoOpenerDescription: '',
-        SingleImageDescription: '',
-        GalleryDescription: '',
-        VideoProcessDescription: '',
-        TextExpanded: '',
-        VideoTestimonialDescription: '',
-        TextClosing: '',
+        TextIntro: textIntroContent?.contentData || '',
+        TextExpanded: textExpandedContent?.contentData || '',
+        TextClosing: textClosingContent?.contentData || '',
+        VideoOpenerDescription: videoOpenerContent?.contentData || '',
+        SingleImageDescription: singleImageContent?.contentData || '',
+        GalleryDescription: imageGalleryContent?.contentData || '',
+        VideoProcessDescription: videoProcessContent?.contentData || '',
+        VideoTestimonialDescription: videoTestimonialContent?.contentData || '',
         StoreId: story.storeId || ''
-      })
-      toast.success('Câu chuyện đã được tạm dừng thành công')
+      }
+
+      // Use update API with IsActive = false
+      await storeStoryApi.deactivateUsingUpdate(storyId, payload)
+      toast.success('Câu chuyện đã được xóa thành công')
       setShowDeactivateDialog(false)
       onOpenChange(false)
       if (onRefresh) {
         onRefresh()
       }
     } catch (error: any) {
-      console.error('Error deactivating story:', error)
+      console.error('Error deleting story:', error)
       const errorMessage =
         error?.response?.data?.message ||
         error?.message ||
-        'Không thể tạm dừng câu chuyện. Vui lòng thử lại sau.'
+        'Không thể xóa câu chuyện. Vui lòng thử lại sau.'
       toast.error('Lỗi', errorMessage)
       setShowDeactivateDialog(false)
     } finally {
@@ -209,7 +223,7 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
 
     // Use new contentType values: VideoOpener, TextIntro, SingleImage, TextExpanded, VideoProcess, ImageGallery, VideoTestimonial, TextClosing
     // Check by specific contentType first, then fallback to helper functions for backward compatibility
-    
+
     // Handle video content types
     if (isVideoContent(contentType)) {
       const { video, videoId, videoSources } = processVideo(content)
@@ -526,8 +540,8 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
                   disabled={isDeactivating}
                   className='text-orange-600 border-orange-600 hover:bg-orange-50'
                 >
-                  <Pause className='w-4 h-4 mr-2' />
-                  Tạm dừng
+                  <Trash className='w-4 h-4 mr-2' />
+                  Xóa
                 </Button>
               </>
             )}
@@ -550,9 +564,9 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
       <AlertDialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận tạm dừng</AlertDialogTitle>
+            <AlertDialogTitle>Xác nhận xóa câu chuyện này</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn tạm dừng câu chuyện <strong>"{story?.title}"</strong>?
+              Bạn có chắc chắn muốn xóa câu chuyện <strong>"{story?.title}"</strong>?
               <br />
               <br />
               {activeStoriesCount !== null && activeStoriesCount <= 1 && story?.isActive !== false && (
@@ -577,7 +591,7 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
                   Đang xử lý...
                 </>
               ) : (
-                'Xác nhận tạm dừng'
+                'Xác nhận xóa câu chuyện này'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
