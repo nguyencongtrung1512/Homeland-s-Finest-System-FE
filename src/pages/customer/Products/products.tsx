@@ -42,6 +42,7 @@ function Products() {
     minPrice?: number
     maxPrice?: number
     provinceFilters?: string[]
+    categoryFilterIds?: string[]
   }>({})
 
   // Combo state
@@ -110,6 +111,7 @@ function Products() {
     minPrice?: number
     maxPrice?: number
     provinceFilters?: string[]
+    categoryFilterIds?: string[]
   }) => {
     // Áp dụng filter cho tab hiện tại, không tự động chuyển tab
     if (activeTab === 'product') {
@@ -117,7 +119,8 @@ function Products() {
       setProductFilters({
         minPrice: filterState.minPrice,
         maxPrice: filterState.maxPrice,
-        provinceFilters: filterState.provinceFilters
+        provinceFilters: filterState.provinceFilters,
+        categoryFilterIds: filterState.categoryFilterIds
       })
       setCurrentPage(1) // Reset về trang đầu khi filter thay đổi
     } else if (activeTab === 'combo') {
@@ -127,6 +130,7 @@ function Products() {
         minPrice: filterState.minPrice,
         maxPrice: filterState.maxPrice,
         provinceFilters: filterState.provinceFilters,
+        categoryFilterIds: filterState.categoryFilterIds,
         pageNumber: 1 // Reset về trang đầu khi filter thay đổi
       }))
       setCurrentPage(1)
@@ -145,6 +149,20 @@ function Products() {
         // Calculate limit based on current page: page 1 = 10, page 2 = 20, page 3 = 30, etc.
         const limit = currentPage * pageSize
 
+        // Combine categoryId from URL with categoryFilterIds from filters
+        const categoryIds: string[] = []
+        if (categoryId) {
+          categoryIds.push(categoryId)
+        }
+        if (productFilters.categoryFilterIds && productFilters.categoryFilterIds.length > 0) {
+          // Add filter category IDs, avoiding duplicates
+          productFilters.categoryFilterIds.forEach((id) => {
+            if (!categoryIds.includes(id)) {
+              categoryIds.push(id)
+            }
+          })
+        }
+
         const searchRequest: SearchRequest = {
           queryText: appliedSearchQuery.trim() || '', // Empty string for trending, sử dụng giá trị đã apply
           userId: user?.userId || null,
@@ -153,7 +171,7 @@ function Products() {
           minPrice: productFilters.minPrice || null,
           maxPrice: productFilters.maxPrice || null,
           provinceFilters: productFilters.provinceFilters || null,
-          categoryFilterIds: categoryId ? [categoryId] : null // Filter by category if categoryId exists
+          categoryFilterIds: categoryIds.length > 0 ? categoryIds : null
         }
 
         const results = await searchApi.search(searchRequest)
@@ -346,12 +364,14 @@ function Products() {
                 ? {
                   minPrice: comboFilters.minPrice,
                   maxPrice: comboFilters.maxPrice,
-                  provinceFilters: comboFilters.provinceFilters
+                  provinceFilters: comboFilters.provinceFilters,
+                  categoryFilterIds: comboFilters.categoryFilterIds
                 }
                 : {
                   minPrice: productFilters.minPrice,
                   maxPrice: productFilters.maxPrice,
-                  provinceFilters: productFilters.provinceFilters
+                  provinceFilters: productFilters.provinceFilters,
+                  categoryFilterIds: productFilters.categoryFilterIds
                 }
             }
           />
