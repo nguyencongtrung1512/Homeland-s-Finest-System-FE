@@ -2,6 +2,8 @@ import axiosInstance from '../service/axiosInstance'
 
 // Interface cho Store response từ API
 export interface StoreResponse {
+  sellerEmail: string
+  sellerName: string
   /** Thông tin cơ bản của cửa hàng */
   id: string
   sellerId: string

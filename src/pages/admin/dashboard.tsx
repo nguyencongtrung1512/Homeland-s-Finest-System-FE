@@ -127,15 +127,24 @@ function AdminDashboard() {
   }
 
   // Fetch stores needing action (processing stores)
-  const fetchStoresNeedingAction = async () => {
+  const fetchStoresNeedingAction = async (targetProvinceId?: number) => {
     try {
-      const response = await getProcessingStores()
+      const response = await getProcessingStores(targetProvinceId)
       if (response.status === 200 && response.data) {
         // Map response data to StoreResponse format
-        const stores = response.data.map((store: Partial<StoreResponse> & { storeId?: string; sellerEmail?: string }) => ({
-          ...store,
-          id: store.id || store.storeId || '',
-          sellerInfo: store.sellerInfo || {
+        // API response có: id, sellerId, sellerName, sellerEmail, storeName, address, logoUrl, status, etc.
+        const stores = response.data.map((store: any) => ({
+          id: store.id || '',
+          sellerId: store.sellerId || '',
+          storeName: store.storeName || '',
+          address: store.address || '',
+          logoUrl: store.logoUrl || null,
+          status: store.status || 'Pending',
+          sellerEmail: store.sellerEmail || '',
+          sellerName: store.sellerName || '',
+          province: store.province || '',
+          district: store.district || '',
+          sellerInfo: {
             reportCount: 0,
             userInfo: {
               email: store.sellerEmail || 'Không có'
@@ -196,10 +205,10 @@ function AdminDashboard() {
   }
 
   // Fetch top stores data only
-  const fetchTopStoresData = async (year: number) => {
+  const fetchTopStoresData = async (year: number, targetProvinceId?: number) => {
     try {
       setStoresLoading(true)
-      const topStoresResponse = await getTopStores(5, year)
+      const topStoresResponse = await getTopStores(5, year, targetProvinceId)
       const topStoresData = topStoresResponse.data
 
       // Update only top stores data in dashboardData
@@ -212,7 +221,7 @@ function AdminDashboard() {
               storeId: store.storeId,
               storeName: store.storeName,
               revenue: store.totalRevenues,
-              orderCount: 0,
+              orderCount: store.orderCount || 0,
               logoUrl: null
             }))
           }
@@ -239,8 +248,8 @@ function AdminDashboard() {
       const revenueResponse = await getMonthlyRevenue(year, selectedProvinceId)
       const revenueData = revenueResponse.data
 
-      // Fetch top stores - HỖ TRỢ filter theo năm
-      const topStoresResponse = await getTopStores(5, year)
+      // Fetch top stores - HỖ TRỢ filter theo năm và provinceId
+      const topStoresResponse = await getTopStores(5, year, selectedProvinceId)
       const topStoresData = topStoresResponse.data
 
       // Set promotion stats from admin dashboard data
@@ -256,7 +265,7 @@ function AdminDashboard() {
       })
 
       // Fetch stores needing action
-      await fetchStoresNeedingAction()
+      await fetchStoresNeedingAction(selectedProvinceId)
 
       // Map API response to TransactionDashboardData format
       const mappedDashboardData: TransactionDashboardData = {
@@ -306,7 +315,7 @@ function AdminDashboard() {
             storeId: store.storeId,
             storeName: store.storeName,
             revenue: store.totalRevenues,
-            orderCount: 0, // Không có trong API response
+            orderCount: store.orderCount || 0,
             logoUrl: null // StoreAdminRevenueResponse không có logoUrl, sẽ dùng ảnh default
           }))
         },
@@ -337,6 +346,12 @@ function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear, selectedProvinceId])
 
+  // Fetch stores needing action when province changes
+  useEffect(() => {
+    fetchStoresNeedingAction(selectedProvinceId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProvinceId])
+
   // Transform data for charts
   const revenueData = dashboardData?.summary?.revenueByMonth
     ? monthNames.map((month, index) => ({
@@ -351,7 +366,7 @@ function AdminDashboard() {
     if (component === 'revenue') {
       fetchRevenueData(year, selectedProvinceId)
     } else if (component === 'stores') {
-      fetchTopStoresData(year)
+      fetchTopStoresData(year, selectedProvinceId)
     }
   }
 
@@ -818,14 +833,10 @@ function AdminDashboard() {
                         <p className='text-sm text-gray-600'>
                           {store.province} • {store.district}
                         </p>
-                        <p className='text-xs text-gray-500'>{store.sellerInfo?.userInfo?.email || 'Không có'}</p>
+                        <p className='text-xs text-gray-500'>{store.sellerEmail || 'Không có'}</p>
                       </div>
                     </div>
                     <div className='flex items-center gap-3'>
-                      <div className='text-right'>
-                        <p className='text-sm font-bold text-red-600'>{reportCount}</p>
-                        <p className='text-xs text-gray-500'>báo cáo</p>
-                      </div>
                       <Button
                         size='sm'
                         variant='blue'
