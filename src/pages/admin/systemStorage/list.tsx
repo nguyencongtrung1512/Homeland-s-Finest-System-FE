@@ -305,7 +305,7 @@ function SystemStorage() {
     <div className='space-y-6 p-6 bg-gray-50 min-h-screen'>
       {/* Header */}
       <div className='flex items-center justify-between'>
-        <h1 className='text-2xl font-bold text-gray-900'>Quản lý System Storage</h1>
+        <h1 className='text-2xl font-bold text-gray-900'>Quản lý hệ thống</h1>
         <Button onClick={handleCreateNew} className='text-white' variant='blue'>
           <Plus className='w-4 h-4 mr-2' />
           Thêm mới

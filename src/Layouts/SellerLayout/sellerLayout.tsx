@@ -14,7 +14,8 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import GlowCard from '../../components/ui/spotlight-card'
 import { formatDate } from '../../utils/formatDate'
-import { Edit, Save, X, Upload } from 'lucide-react'
+import { Edit, Save, X, Upload, Eye, EyeOff, Lock } from 'lucide-react'
+import { changePassword, resetPassword } from '../../apis/auth.api'
 
 const { Header, Content } = Layout
 
@@ -37,6 +38,14 @@ function SellerLayout() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [isEditingPassword, setIsEditingPassword] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleLogout = async () => {
     try {
@@ -84,6 +93,10 @@ function SellerLayout() {
     setIsEditMode(false)
     setAvatarFile(null)
     setAvatarPreview(null)
+    setIsEditingPassword(false)
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
   }
 
   const handleEditClick = () => {
@@ -157,6 +170,137 @@ function SellerLayout() {
       toast.error(errorMessage || 'Có lỗi xảy ra khi cập nhật thông tin')
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  // Handle cancel password edit
+  const handleCancelPasswordEdit = () => {
+    setIsEditingPassword(false)
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+  }
+
+  // Handle change password
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Vui lòng nhập đầy đủ thông tin mật khẩu', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('Mật khẩu xác nhận không khớp', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    if (newPassword.length < 8) {
+      toast.error('Mật khẩu mới phải có ít nhất 8 ký tự', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    if (currentPassword === newPassword) {
+      toast.error('Mật khẩu mới phải khác mật khẩu hiện tại', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    if (!user?.email) {
+      toast.error('Không thể lấy thông tin email người dùng', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    try {
+      setChangingPassword(true)
+      const response = await changePassword({
+        email: user.email,
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword
+      })
+
+      if (response.success) {
+        toast.success(response.message || 'Đổi mật khẩu thành công!', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+
+        // Clear password fields
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+        setIsEditingPassword(false)
+      } else {
+        toast.error(response.message || 'Đổi mật khẩu thất bại', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      }
+    } catch (error: unknown) {
+      console.error('Change password error:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ||
+        (error as { message?: string }).message ||
+        'Có lỗi xảy ra khi đổi mật khẩu'
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
+  // Handle forgot password
+  const handleForgotPassword = async () => {
+    if (!user?.email) {
+      toast.error('Không thể lấy thông tin email người dùng', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    try {
+      const response = await resetPassword({ email: user.email })
+
+      if (response.success) {
+        toast.success(
+          response.message || 'Email đặt lại mật khẩu đã được gửi đến địa chỉ email của bạn. Vui lòng kiểm tra hộp thư!',
+          {
+            position: 'top-right',
+            autoClose: 5000
+          }
+        )
+      } else {
+        toast.error(response.message || 'Có lỗi xảy ra khi gửi email đặt lại mật khẩu', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      }
+    } catch (error: unknown) {
+      console.error('Reset password error:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ||
+        (error as { message?: string }).message ||
+        'Có lỗi xảy ra khi gửi email đặt lại mật khẩu'
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
     }
   }
 
@@ -364,9 +508,9 @@ function SellerLayout() {
 
       {/* Profile Modal */}
       <Dialog open={isProfileModalOpen} onOpenChange={handleCloseProfileModal}>
-        <DialogContent className='max-w-2xl p-0 border-none bg-transparent shadow-none'>
-          <GlowCard glowColor='green' customSize={true} width='100%' className='max-w-2xl mx-auto'>
-            <div style={{ padding: '24px' }}>
+        <DialogContent className='max-w-2xl p-0 border-none bg-transparent shadow-none max-h-[90vh] overflow-hidden flex flex-col'>
+          <GlowCard glowColor='green' customSize={true} width='100%' className='max-w-2xl mx-auto h-full flex flex-col'>
+            <div style={{ padding: '24px', overflowY: 'auto', maxHeight: 'calc(90vh - 48px)' }}>
               <DialogHeader>
                 <div
                   style={{
@@ -623,6 +767,242 @@ function SellerLayout() {
                       )}
                     </div>
                   )}
+
+                  {/* Change Password Section */}
+                  <div
+                    style={{
+                      marginTop: '24px',
+                      paddingTop: '24px',
+                      borderTop: '1px solid #e5e7eb'
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '16px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Lock className='w-4 h-4' style={{ color: '#6b7280' }} />
+                        <span style={{ fontSize: '14px', fontWeight: '500', color: '#262626' }}>Đổi mật khẩu</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {!isEditingPassword && (
+                          <Button
+                            onClick={() => setIsEditingPassword(true)}
+                            variant='outline'
+                            size='sm'
+                            style={{ height: '28px', padding: '0 12px' }}
+                          >
+                            <Edit className='w-3 h-3 mr-1' />
+                            Sửa
+                          </Button>
+                        )}
+                        <button
+                          type='button'
+                          onClick={handleForgotPassword}
+                          style={{
+                            fontSize: '12px',
+                            color: '#2563eb',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '4px 8px',
+                            height: '28px'
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                        >
+                          Quên mật khẩu?
+                        </button>
+                      </div>
+                    </div>
+
+                    {isEditingPassword ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div>
+                          <Label htmlFor='current-password' className='text-xs text-gray-600'>
+                            Mật khẩu hiện tại *
+                          </Label>
+                          <div style={{ position: 'relative' }}>
+                            <Lock
+                              className='absolute'
+                              style={{
+                                left: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '16px',
+                                height: '16px',
+                                color: '#9ca3af',
+                                pointerEvents: 'none'
+                              }}
+                            />
+                            <Input
+                              id='current-password'
+                              type={showPassword ? 'text' : 'password'}
+                              placeholder='Nhập mật khẩu hiện tại'
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                              className='mt-1 pl-10 pr-10'
+                            />
+                            <button
+                              type='button'
+                              onClick={() => setShowPassword(!showPassword)}
+                              style={{
+                                position: 'absolute',
+                                right: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#9ca3af'
+                              }}
+                            >
+                              {showPassword ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor='new-password' className='text-xs text-gray-600'>
+                            Mật khẩu mới *
+                          </Label>
+                          <div style={{ position: 'relative' }}>
+                            <Lock
+                              className='absolute'
+                              style={{
+                                left: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '16px',
+                                height: '16px',
+                                color: '#9ca3af',
+                                pointerEvents: 'none'
+                              }}
+                            />
+                            <Input
+                              id='new-password'
+                              type={showNewPassword ? 'text' : 'password'}
+                              placeholder='Nhập mật khẩu mới (tối thiểu 8 ký tự)'
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className='mt-1 pl-10 pr-10'
+                            />
+                            <button
+                              type='button'
+                              onClick={() => setShowNewPassword(!showNewPassword)}
+                              style={{
+                                position: 'absolute',
+                                right: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#9ca3af'
+                              }}
+                            >
+                              {showNewPassword ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor='confirm-password' className='text-xs text-gray-600'>
+                            Xác nhận mật khẩu mới *
+                          </Label>
+                          <div style={{ position: 'relative' }}>
+                            <Lock
+                              className='absolute'
+                              style={{
+                                left: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '16px',
+                                height: '16px',
+                                color: '#9ca3af',
+                                pointerEvents: 'none'
+                              }}
+                            />
+                            <Input
+                              id='confirm-password'
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              placeholder='Nhập lại mật khẩu mới'
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              className='mt-1 pl-10 pr-10'
+                            />
+                            <button
+                              type='button'
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              style={{
+                                position: 'absolute',
+                                right: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#9ca3af'
+                              }}
+                            >
+                              {showConfirmPassword ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                          <Button
+                            onClick={handleCancelPasswordEdit}
+                            variant='outline'
+                            className='flex-1'
+                            disabled={changingPassword}
+                          >
+                            <X className='w-4 h-4 mr-2' />
+                            Hủy
+                          </Button>
+                          <Button
+                            onClick={handleChangePassword}
+                            className='flex-1 bg-green-600 hover:bg-green-700'
+                            disabled={
+                              changingPassword ||
+                              !currentPassword.trim() ||
+                              !newPassword.trim() ||
+                              !confirmPassword.trim()
+                            }
+                          >
+                            {changingPassword ? (
+                              <>
+                                <div
+                                  className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'
+                                  style={{ display: 'inline-block' }}
+                                ></div>
+                                Đang lưu...
+                              </>
+                            ) : (
+                              <>
+                                <Save className='w-4 h-4 mr-2' />
+                                Lưu
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          textAlign: 'center',
+                          padding: '16px',
+                          color: '#9ca3af',
+                          fontSize: '14px',
+                          background: 'rgba(22, 163, 74, 0.05)',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        Nhấn "Sửa" để thay đổi mật khẩu
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#8c8c8c' }}>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { User, LogOut, Menu, ChevronRight, CreditCard, Edit, Save, X } from 'lucide-react'
+import { User, LogOut, Menu, ChevronRight, CreditCard, Edit, Save, X, Eye, EyeOff, Lock } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Button } from '../../components/ui/button'
@@ -22,6 +22,7 @@ import {
 import { cn } from '../../lib/utils'
 import { useAuth } from '../../contexts/auth.context'
 import { getUserById, updateUser, getBanks, type User as UserType, type Bank } from '../../apis/user.api'
+import { changePassword, resetPassword } from '../../apis/auth.api'
 import { toast } from '../../utils/toast'
 import SideBar from './sideBar'
 import { Outlet } from 'react-router-dom'
@@ -38,6 +39,14 @@ function AdminLayout() {
   const [loadingUser, setLoadingUser] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  const [isEditingPassword, setIsEditingPassword] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleLogout = async () => {
     try {
@@ -150,6 +159,137 @@ function AdminLayout() {
     if (userInfo) {
       setBankAccount(userInfo.bankAccount || '')
       setBankName(userInfo.bankName || '')
+    }
+  }
+
+  // Handle cancel password edit
+  const handleCancelPasswordEdit = () => {
+    setIsEditingPassword(false)
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+  }
+
+  // Handle change password
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Vui lòng nhập đầy đủ thông tin mật khẩu', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('Mật khẩu xác nhận không khớp', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    if (newPassword.length < 8) {
+      toast.error('Mật khẩu mới phải có ít nhất 8 ký tự', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    if (currentPassword === newPassword) {
+      toast.error('Mật khẩu mới phải khác mật khẩu hiện tại', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    if (!user?.email) {
+      toast.error('Không thể lấy thông tin email người dùng', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    try {
+      setChangingPassword(true)
+      const response = await changePassword({
+        email: user.email,
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword
+      })
+
+      if (response.success) {
+        toast.success(response.message || 'Đổi mật khẩu thành công!', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+
+        // Clear password fields
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+        setIsEditingPassword(false)
+      } else {
+        toast.error(response.message || 'Đổi mật khẩu thất bại', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      }
+    } catch (error: unknown) {
+      console.error('Change password error:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ||
+        (error as { message?: string }).message ||
+        'Có lỗi xảy ra khi đổi mật khẩu'
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
+  // Handle forgot password
+  const handleForgotPassword = async () => {
+    if (!user?.email) {
+      toast.error('Không thể lấy thông tin email người dùng', {
+        position: 'top-right',
+        autoClose: 3000
+      })
+      return
+    }
+
+    try {
+      const response = await resetPassword({ email: user.email })
+
+      if (response.success) {
+        toast.success(
+          response.message || 'Email đặt lại mật khẩu đã được gửi đến địa chỉ email của bạn. Vui lòng kiểm tra hộp thư!',
+          {
+            position: 'top-right',
+            autoClose: 5000
+          }
+        )
+      } else {
+        toast.error(response.message || 'Có lỗi xảy ra khi gửi email đặt lại mật khẩu', {
+          position: 'top-right',
+          autoClose: 5000
+        })
+      }
+    } catch (error: unknown) {
+      console.error('Reset password error:', error)
+      const errorMessage =
+        (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ||
+        (error as { message?: string }).message ||
+        'Có lỗi xảy ra khi gửi email đặt lại mật khẩu'
+      toast.error(errorMessage, {
+        position: 'top-right',
+        autoClose: 5000
+      })
     }
   }
 
@@ -359,6 +499,152 @@ function AdminLayout() {
                                             Chưa có thông tin tài khoản ngân hàng
                                           </div>
                                         )}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Change Password Section */}
+                                  <div className='pt-3 border-t border-gray-200'>
+                                    <div className='flex items-center justify-between mb-3'>
+                                      <div className='flex items-center gap-2'>
+                                        <Lock className='w-4 h-4 text-gray-600' />
+                                        <span className='text-sm font-medium text-gray-900'>Đổi mật khẩu</span>
+                                      </div>
+                                      <div className='flex items-center gap-2'>
+                                        {!isEditingPassword && (
+                                          <Button
+                                            variant='ghost'
+                                            size='sm'
+                                            onClick={() => setIsEditingPassword(true)}
+                                            className='h-7 px-2'
+                                          >
+                                            <Edit className='w-3 h-3 mr-1' />
+                                            Sửa
+                                          </Button>
+                                        )}
+                                        <button
+                                          type='button'
+                                          onClick={handleForgotPassword}
+                                          className='text-sm text-blue-600 hover:text-blue-700 hover:underline h-7 px-2'
+                                        >
+                                          Quên mật khẩu?
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {isEditingPassword ? (
+                                      <div className='space-y-3'>
+                                        <div className='space-y-2'>
+                                          <Label htmlFor='current-password'>Mật khẩu hiện tại *</Label>
+                                          <div className='relative'>
+                                            <Lock className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+                                            <Input
+                                              id='current-password'
+                                              type={showPassword ? 'text' : 'password'}
+                                              placeholder='Nhập mật khẩu hiện tại'
+                                              value={currentPassword}
+                                              onChange={(e) => setCurrentPassword(e.target.value)}
+                                              className='pl-10 pr-10'
+                                            />
+                                            <button
+                                              type='button'
+                                              onClick={() => setShowPassword(!showPassword)}
+                                              className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+                                            >
+                                              {showPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <div className='space-y-2'>
+                                          <Label htmlFor='new-password'>Mật khẩu mới *</Label>
+                                          <div className='relative'>
+                                            <Lock className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+                                            <Input
+                                              id='new-password'
+                                              type={showNewPassword ? 'text' : 'password'}
+                                              placeholder='Nhập mật khẩu mới (tối thiểu 8 ký tự)'
+                                              value={newPassword}
+                                              onChange={(e) => setNewPassword(e.target.value)}
+                                              className='pl-10 pr-10'
+                                            />
+                                            <button
+                                              type='button'
+                                              onClick={() => setShowNewPassword(!showNewPassword)}
+                                              className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+                                            >
+                                              {showNewPassword ? (
+                                                <EyeOff className='h-4 w-4' />
+                                              ) : (
+                                                <Eye className='h-4 w-4' />
+                                              )}
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <div className='space-y-2'>
+                                          <Label htmlFor='confirm-password'>Xác nhận mật khẩu mới *</Label>
+                                          <div className='relative'>
+                                            <Lock className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+                                            <Input
+                                              id='confirm-password'
+                                              type={showConfirmPassword ? 'text' : 'password'}
+                                              placeholder='Nhập lại mật khẩu mới'
+                                              value={confirmPassword}
+                                              onChange={(e) => setConfirmPassword(e.target.value)}
+                                              className='pl-10 pr-10'
+                                            />
+                                            <button
+                                              type='button'
+                                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                              className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+                                            >
+                                              {showConfirmPassword ? (
+                                                <EyeOff className='h-4 w-4' />
+                                              ) : (
+                                                <Eye className='h-4 w-4' />
+                                              )}
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <div className='flex gap-2'>
+                                          <Button
+                                            variant='outline'
+                                            size='sm'
+                                            onClick={handleCancelPasswordEdit}
+                                            disabled={changingPassword}
+                                            className='flex-1'
+                                          >
+                                            <X className='w-4 h-4 mr-1' />
+                                            Hủy
+                                          </Button>
+                                          <Button
+                                            variant='blue'
+                                            size='sm'
+                                            onClick={handleChangePassword}
+                                            disabled={
+                                              changingPassword ||
+                                              !currentPassword.trim() ||
+                                              !newPassword.trim() ||
+                                              !confirmPassword.trim()
+                                            }
+                                            className='flex-1'
+                                          >
+                                            {changingPassword ? (
+                                              <>
+                                                <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1'></div>
+                                                Đang lưu...
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Save className='w-4 h-4 mr-1' />
+                                                Lưu
+                                              </>
+                                            )}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className='text-center py-4 text-gray-500 text-sm'>
+                                        Nhấn "Sửa" để thay đổi mật khẩu
                                       </div>
                                     )}
                                   </div>
