@@ -244,9 +244,7 @@ function ProductStoryComponent({ productId }: ProductStoryProps) {
             <>
               <div className='flex flex-col items-center'>
                 <h3 className='text-xl font-semibold text-gray-900 mb-3 text-center w-full'>{currentStory.title}</h3>
-                <p className='text-gray-700 whitespace-pre-wrap leading-relaxed max-w-4xl text-center'>
-                  {currentStory.content}
-                </p>
+                <p className='text-gray-700 whitespace-pre-wrap leading-relaxed max-w-4xl'>{currentStory.content}</p>
               </div>
 
               {/* Story Images */}
@@ -303,8 +301,8 @@ function ProductStoryComponent({ productId }: ProductStoryProps) {
                             !currentStory.videoSources.dash &&
                             !currentStory.videoSources.preview &&
                             !currentStory.videoSources.fallback)) && (
-                            <source src={currentStory.video} type='video/mp4' />
-                          )}
+                          <source src={currentStory.video} type='video/mp4' />
+                        )}
                         Trình duyệt của bạn không hỗ trợ video.
                       </video>
                     </div>

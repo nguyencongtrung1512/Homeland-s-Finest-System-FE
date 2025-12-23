@@ -1081,11 +1081,11 @@ function CreateProduct() {
               >
                 {node.name}
               </span>
-              {hasChildren && (
+              {/* {hasChildren && (
                 <span className='text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded'>
                   {node.children?.length} con
                 </span>
-              )}
+              )} */}
             </div>
             {node.description && (
               <p

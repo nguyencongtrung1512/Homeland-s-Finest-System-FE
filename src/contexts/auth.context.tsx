@@ -7,6 +7,7 @@ interface User {
   expiresAt: string
   userId: string
   email: string
+  isActive: boolean
 }
 
 interface AuthContextType {

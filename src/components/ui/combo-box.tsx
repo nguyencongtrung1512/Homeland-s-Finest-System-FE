@@ -43,8 +43,18 @@ const ComboBox = <T,>({
         // Display label instead of ID
         setInputValue(getOptionLabel(foundOption));
         setSelectedOption(foundOption);
+      } else if (value) {
+        // If option not found but value exists, keep the value (user might be typing)
+        // Only clear if value is explicitly empty
+        if (value === "") {
+          setInputValue("");
+          setSelectedOption(null);
+        } else {
+          // Keep the input value as is, user might be typing
+          setInputValue(value);
+        }
       } else {
-        // If option not found, clear the input
+        // If value is empty/undefined, clear the input
         setInputValue("");
         setSelectedOption(null);
       }

@@ -2314,7 +2314,8 @@ function SellerRegistrationForm() {
                   options={banks}
                   placeholder={isLoadingBanks ? 'Đang tải danh sách ngân hàng...' : 'Chọn ngân hàng'}
                   disabled={isLoadingBanks}
-                  value={selectedBank ? selectedBank.id.toString() : ''}
+                  // Dùng bank.code làm giá trị duy nhất để tránh lệch khi click sau khi search
+                  value={selectedBank ? selectedBank.code : ''}
                   onSelect={(bank) => {
                     if (bank) {
                       setSelectedBank(bank)
@@ -2330,7 +2331,7 @@ function SellerRegistrationForm() {
                     }
                   }}
                   getOptionLabel={(bank) => bank.name}
-                  getOptionValue={(bank) => bank.id.toString()}
+                  getOptionValue={(bank) => bank.code}
                   renderOption={(bank) => (
                     <div className='flex items-center gap-3'>
                       {bank.logo && (

@@ -24,7 +24,13 @@ interface CategoryTreeNodeProps {
   onToggleExpand: (id: string) => void
 }
 
-function CategoryTreeNode({ category, selectedIds, expandedIds, onToggleSelect, onToggleExpand }: CategoryTreeNodeProps) {
+function CategoryTreeNode({
+  category,
+  selectedIds,
+  expandedIds,
+  onToggleSelect,
+  onToggleExpand
+}: CategoryTreeNodeProps) {
   const hasChildren = category.children && category.children.length > 0
   const isExpanded = expandedIds.has(category.id)
   const isSelected = selectedIds.has(category.id)
@@ -112,7 +118,8 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<string>>(new Set())
   const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(new Set())
   const [categorySearchText, setCategorySearchText] = useState('')
-  const isInitialMount = useRef(true)
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false)
+  const [parentMap, setParentMap] = useState<Map<string, string | null>>(new Map())
   const isUpdatingFromInitialFilters = useRef(false)
 
   // Cập nhật filters khi initialFilters thay đổi
@@ -219,6 +226,17 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
     fetchCategories()
   }, [])
 
+  // Build parent map for ancestor lookup
+  useEffect(() => {
+    const map = new Map<string, string | null>()
+    const walk = (node: ProductCategoryItem, parentId: string | null) => {
+      map.set(node.id, parentId)
+      node.children?.forEach((child) => walk(child, node.id))
+    }
+    categories.forEach((c) => walk(c, null))
+    setParentMap(map)
+  }, [categories])
+
   // Handle province selection from VietnamMap
   const handleProvinceSelect = (province: ProvinceProperties | null) => {
     if (province && selectedProvince && selectedProvince.Name === province.Name) {
@@ -247,14 +265,58 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
 
   // Handle category selection toggle
   const handleToggleCategory = (categoryId: string) => {
-    setSelectedCategoryIds((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(categoryId)) {
-        newSet.delete(categoryId)
-      } else {
-        newSet.add(categoryId)
+    // Helpers
+    const getAncestors = (id: string): string[] => {
+      const res: string[] = []
+      let cur = parentMap.get(id) || null
+      while (cur) {
+        res.push(cur)
+        cur = parentMap.get(cur) || null
       }
-      return newSet
+      return res
+    }
+
+    const findNodeById = (id: string, nodes: ProductCategoryItem[]): ProductCategoryItem | null => {
+      for (const n of nodes) {
+        if (n.id === id) return n
+        if (n.children) {
+          const found = findNodeById(id, n.children)
+          if (found) return found
+        }
+      }
+      return null
+    }
+
+    const collectDescendants = (node: ProductCategoryItem): string[] => {
+      const res: string[] = []
+      node.children?.forEach((c) => {
+        res.push(c.id, ...collectDescendants(c))
+      })
+      return res
+    }
+
+    setSelectedCategoryIds((prev) => {
+      const next = new Set(prev)
+
+      if (next.has(categoryId)) {
+        // Uncheck
+        next.delete(categoryId)
+        return next
+      }
+
+      // Check current
+      next.add(categoryId)
+
+      // Remove ancestors to avoid selecting parent when child selected
+      getAncestors(categoryId).forEach((id) => next.delete(id))
+
+      // Remove descendants if selecting a parent
+      const node = findNodeById(categoryId, categories)
+      if (node) {
+        collectDescendants(node).forEach((id) => next.delete(id))
+      }
+
+      return next
     })
   }
 
@@ -268,6 +330,16 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
         newSet.add(categoryId)
       }
       return newSet
+    })
+  }
+
+  // Áp dụng filter theo trạng thái hiện tại (chỉ gọi khi người dùng bấm nút)
+  const applyFilters = () => {
+    onFilterChange?.({
+      minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+      maxPrice: priceRange[1] < 1000000 ? priceRange[1] : undefined,
+      provinceFilters: selectedProvince ? [selectedProvince.Name] : undefined,
+      categoryFilterIds: selectedCategoryIds.size > 0 ? Array.from(selectedCategoryIds) : undefined
     })
   }
 
@@ -326,6 +398,30 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
 
   const filteredCategories = filterResult.filtered
 
+  // Thu gọn danh sách: chỉ hiển thị các danh mục đã chọn (và ancestor) khi bật toggle
+  const categoriesToRender = useMemo(() => {
+    if (!showSelectedOnly) return filteredCategories
+
+    const filterSelected = (node: ProductCategoryItem): ProductCategoryItem | null => {
+      const children =
+        node.children
+          ?.map((child) => filterSelected(child))
+          .filter((child): child is ProductCategoryItem => Boolean(child)) || []
+
+      const isSelected = selectedCategoryIds.has(node.id)
+      const hasSelectedChild = children.length > 0
+
+      if (isSelected || hasSelectedChild) {
+        return { ...node, children }
+      }
+      return null
+    }
+
+    return filteredCategories
+      .map((node) => filterSelected(node))
+      .filter((node): node is ProductCategoryItem => Boolean(node))
+  }, [filteredCategories, selectedCategoryIds, showSelectedOnly])
+
   // Auto-expand when searching
   useEffect(() => {
     if (categorySearchText.trim() && filterResult.expandIds.length > 0) {
@@ -342,32 +438,6 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
     return new Intl.NumberFormat('vi-VN').format(price) + '₫'
   }
 
-  // Auto-apply filters với debounce 3 giây khi có thay đổi
-  useEffect(() => {
-    // Bỏ qua lần mount đầu tiên và khi đang update từ initialFilters
-    if (isInitialMount.current) {
-      isInitialMount.current = false
-      return
-    }
-
-    if (isUpdatingFromInitialFilters.current) {
-      return
-    }
-
-    // Không debounce cho province selection (đã được xử lý trong handleProvinceSelect)
-    // Chỉ debounce cho category và price changes
-    const timeoutId = setTimeout(() => {
-      onFilterChange?.({
-        minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
-        maxPrice: priceRange[1] < 1000000 ? priceRange[1] : undefined,
-        provinceFilters: selectedProvince ? [selectedProvince.Name] : undefined,
-        categoryFilterIds: selectedCategoryIds.size > 0 ? Array.from(selectedCategoryIds) : undefined
-      })
-    }, 2000) // 3 giây debounce
-
-    return () => clearTimeout(timeoutId)
-  }, [priceRange, selectedCategoryIds, selectedProvince, onFilterChange])
-
   return (
     <aside className='w-full bg-white rounded-xl border border-gray-200 p-4 sticky top-24 h-max'>
       <h3 className='text-sm font-bold bg-green-600 border border-green-600 p-2 rounded-lg uppercase text-white text-center'>
@@ -378,18 +448,14 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
       <div className='mt-4 flex gap-2 border-b border-gray-200'>
         <button
           onClick={() => setActiveTab('map')}
-          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${activeTab === 'map'
-            ? 'text-green-600 border-b-2 border-green-600'
-            : 'text-gray-500 hover:text-gray-700'
+          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${activeTab === 'map' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-500 hover:text-gray-700'
             }`}
         >
           Bản đồ
         </button>
         <button
           onClick={() => setActiveTab('filter')}
-          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${activeTab === 'filter'
-            ? 'text-green-600 border-b-2 border-green-600'
-            : 'text-gray-500 hover:text-gray-700'
+          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${activeTab === 'filter' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-500 hover:text-gray-700'
             }`}
         >
           Lọc
@@ -433,7 +499,7 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
 
             {/* Search Input */}
             {!loadingCategories && categories.length > 0 && (
-              <div className='mb-3'>
+              <div className='mb-3 space-y-2'>
                 <div className='relative'>
                   <input
                     type='text'
@@ -453,6 +519,17 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
                     </button>
                   )}
                 </div>
+
+                {/* Toggle chỉ hiển thị danh mục đã chọn */}
+                <label className='flex items-center gap-2 text-xs text-gray-700 cursor-pointer select-none'>
+                  <input
+                    type='checkbox'
+                    checked={showSelectedOnly}
+                    onChange={(e) => setShowSelectedOnly(e.target.checked)}
+                    className='w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-0 cursor-pointer accent-green-600'
+                  />
+                  <span>Chỉ hiển thị danh mục đã chọn</span>
+                </label>
               </div>
             )}
 
@@ -466,7 +543,7 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
               <p className='text-sm text-gray-500 py-4'>Không tìm thấy danh mục nào</p>
             ) : (
               <div className='max-h-64 overflow-y-auto space-y-1 pr-2'>
-                {filteredCategories.map((category) => (
+                {categoriesToRender.map((category) => (
                   <CategoryTreeNode
                     key={category.id}
                     category={category}
@@ -482,9 +559,7 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
 
           {/* Khoảng Giá Section */}
           <div>
-            <h4 className='text-sm font-semibold text-gray-800 mb-3'>
-              KHOẢNG GIÁ (TRÊN M | KG)
-            </h4>
+            <h4 className='text-sm font-semibold text-gray-800 mb-3'>KHOẢNG GIÁ (TRÊN M | KG)</h4>
             <div className='space-y-3'>
               <Slider
                 value={priceRange}
@@ -499,6 +574,17 @@ function AsideFilter({ onFilterChange, initialFilters }: AsideFilterProps) {
                 <span>Tối đa: {formatPrice(priceRange[1])}</span>
               </div>
             </div>
+          </div>
+
+          {/* Apply button */}
+          <div className='pt-2'>
+            <button
+              type='button'
+              onClick={applyFilters}
+              className='w-full py-2 px-4 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-sm transition-colors'
+            >
+              Áp dụng lọc
+            </button>
           </div>
         </div>
       )}

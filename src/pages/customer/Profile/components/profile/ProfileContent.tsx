@@ -580,21 +580,27 @@ export default function ProfileContent() {
                       Cập nhật thông tin ngân hàng để thanh toán và nhận hoàn tiền dễ dàng hơn
                     </p>
 
-                    <div className='grid grid-rows-2 gap-6'>
+                    <div className='space-y-3'>
                       <div>
-                        <Label htmlFor='bankName' className='py-2'>Tên ngân hàng</Label>
+                        <Label htmlFor='bankName' className='py-2'>
+                          Tên ngân hàng
+                        </Label>
                         <div className='mt-1 relative'>
                           {(() => {
+                            // Debug: Log banks array
+                            if (banks.length > 0 && !loadingBanks) {
+                              console.log('ComboBox banks:', banks.length, 'options available')
+                            }
                             return (
                               <>
                                 <div className='w-full'>
                                   <ComboBox<Bank>
                                     options={banks}
                                     placeholder={loadingBanks ? 'Đang tải...' : 'Chọn ngân hàng'}
-                                    value={formData.bankName}
+                                    value={selectedBank ? selectedBank.code : ''}
                                     disabled={loadingBanks}
                                     getOptionLabel={(bank) => `${bank.name} (${bank.shortName})`}
-                                    getOptionValue={(bank) => bank.name}
+                                    getOptionValue={(bank) => bank.code}
                                     onSelect={(bank) => {
                                       handleInputChange('bankName', bank?.name || '')
                                       setSelectedBank(bank || null)
@@ -603,11 +609,16 @@ export default function ProfileContent() {
                                       setAccountVerificationError(null)
                                     }}
                                     filterFunction={(bank, searchValue) => {
-                                      const search = searchValue.toLowerCase()
+                                      if (!searchValue || searchValue.trim() === '') {
+                                        return true
+                                      }
+                                      const search = searchValue.toLowerCase().trim()
+                                      const fullLabel = `${bank.name} (${bank.shortName})`.toLowerCase()
                                       return (
+                                        fullLabel.includes(search) ||
                                         bank.name.toLowerCase().includes(search) ||
-                                        bank.shortName.toLowerCase().includes(search) ||
-                                        bank.code.toLowerCase().includes(search)
+                                        (bank.shortName ? bank.shortName.toLowerCase().includes(search) : false) ||
+                                        (bank.code ? bank.code.toLowerCase().includes(search) : false)
                                       )
                                     }}
                                     renderOption={(bank) => (
@@ -635,7 +646,9 @@ export default function ProfileContent() {
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor='bankAccount' className='py-2'>Số tài khoản ngân hàng</Label>
+                        <Label htmlFor='bankAccount' className='py-2'>
+                          Số tài khoản ngân hàng
+                        </Label>
                         <div className='flex gap-2'>
                           <div className='relative flex-1'>
                             <CreditCard className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
@@ -673,12 +686,11 @@ export default function ProfileContent() {
                         {accountVerificationError && (
                           <div className='mt-2 p-3 bg-red-50 border border-red-200 rounded-lg'>
                             <p className='text-sm text-red-800'>
-                              <span className='font-semibold'>✗ {accountVerificationError}</span>
+                              <span className='font-semibold'>✗ Không tìm thấy tài khoản hợp lệ</span>
                             </p>
                           </div>
                         )}
                       </div>
-
                     </div>
 
                     <div className='mt-4 p-3 bg-blue-50 rounded-lg'>

@@ -186,16 +186,16 @@ function OrderCreate() {
 
   const cartItems: CartItem[] = buyNowProduct
     ? [
-      {
-        id: buyNowProduct.id,
-        productVariantId: buyNowProduct.productVariantId,
-        name: buyNowProduct.name,
-        desc: buyNowProduct.desc || buyNowProduct.description,
-        price: buyNowProduct.price,
-        quantity: buyNowProduct.quantity,
-        image: buyNowProduct.image
-      }
-    ]
+        {
+          id: buyNowProduct.id,
+          productVariantId: buyNowProduct.productVariantId,
+          name: buyNowProduct.name,
+          desc: buyNowProduct.desc || buyNowProduct.description,
+          price: buyNowProduct.price,
+          quantity: buyNowProduct.quantity,
+          image: buyNowProduct.image
+        }
+      ]
     : []
 
   // Get all items from all orders
@@ -331,10 +331,7 @@ function OrderCreate() {
           const productCount = combo.items.length
           // Tính số lần combo được đặt (lấy quantity chung của items, thường tất cả items trong combo có cùng quantity)
           // Nếu có items với quantity khác nhau, lấy quantity nhỏ nhất (số lần combo được đặt)
-          const comboQuantity =
-            combo.items.length > 0
-              ? Math.min(...combo.items.map((item) => item.quantity))
-              : 1
+          const comboQuantity = combo.items.length > 0 ? Math.min(...combo.items.map((item) => item.quantity)) : 1
 
           comboList.push({
             orderId: order.id,
@@ -407,13 +404,13 @@ function OrderCreate() {
       }
     } catch (error: unknown) {
       console.error('Error in payment process:', error)
-      
+
       // Lấy lỗi từ backend (axios interceptor trả về error.response.data)
       let errorMessage = 'Có lỗi xảy ra khi xử lý thanh toán'
-      
+
       if (error && typeof error === 'object') {
         const err = error as any
-        
+
         // Priority 1: Lấy message từ backend response (vì axios interceptor trả về error.response.data)
         if (err.message && typeof err.message === 'string') {
           errorMessage = err.message
@@ -429,7 +426,7 @@ function OrderCreate() {
       } else if (typeof error === 'string') {
         errorMessage = error
       }
-      
+
       toast.error(errorMessage)
     }
   }
@@ -467,7 +464,7 @@ function OrderCreate() {
         applyTransactionStatuses(transactions)
         const firstTransaction = transactions[0]
 
-        toast.success('Đang chuyển đến trang thanh toán...')
+        // toast.success('Đang chuyển đến trang thanh toán...')
         if (firstTransaction.checkoutUrl) {
           window.location.href = firstTransaction.checkoutUrl
         } else {
@@ -475,7 +472,9 @@ function OrderCreate() {
           const orderIdsParam = orderIds.join(',')
           console.log('🔍 DEBUG OrderCreate: Banking redirect with orderIds:', orderIdsParam)
 
-          navigate(`/cart/invoice?orderId=${orderIdsParam}&status=pending&type=banking&multiple=true`, { replace: true })
+          navigate(`/cart/invoice?orderId=${orderIdsParam}&status=pending&type=banking&multiple=true`, {
+            replace: true
+          })
         }
       } else if (paymentMethod === 'MyWallet') {
         // MyWallet: Thanh toán bằng ví
@@ -506,13 +505,13 @@ function OrderCreate() {
       }
     } catch (error: unknown) {
       console.error('Error processing payment:', error)
-      
+
       // Lấy lỗi từ backend (axios interceptor trả về error.response.data)
       let errorMessage = 'Có lỗi xảy ra khi xử lý thanh toán'
-      
+
       if (error && typeof error === 'object') {
         const err = error as any
-        
+
         // Priority 1: Lấy message từ backend response (vì axios interceptor trả về error.response.data)
         if (err.message && typeof err.message === 'string') {
           errorMessage = err.message
@@ -528,7 +527,7 @@ function OrderCreate() {
       } else if (typeof error === 'string') {
         errorMessage = error
       }
-      
+
       toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
@@ -633,89 +632,89 @@ function OrderCreate() {
 
                 {ordersFromState.length > 0
                   ? ordersFromState.map((order, orderIndex) => (
-                    <div key={order.id} className='space-y-4'>
-                      <div className='flex items-center justify-between gap-2 p-3 bg-green-100 rounded-lg border border-blue-200 flex-wrap'>
-                        <span className='font-semibold flex-1 min-w-[200px]'>
-                          Đơn hàng {orderIndex + 1}: {order.fromName}
-                        </span>
-                      </div>
+                      <div key={order.id} className='space-y-4'>
+                        <div className='flex items-center justify-between gap-2 p-3 bg-green-100 rounded-lg border border-blue-200 flex-wrap'>
+                          <span className='font-semibold flex-1 min-w-[200px]'>
+                            Đơn hàng {orderIndex + 1}: {order.fromName}
+                          </span>
+                        </div>
 
-                      <div className='space-y-3'>
-                        {order.orderItems?.map((item) => (
-                          <div
-                            key={item.id}
-                            className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
-                          >
-                            <img
-                              src={item.orderItemImageUrl}
-                              alt={item.orderItemName}
-                              className='w-12 h-12 rounded-lg object-cover border flex-shrink-0'
-                            />
-                            <div className='flex-1 min-w-0'>
-                              <h3 className='font-semibold text-gray-900 mb-1'>{item.orderItemName}</h3>
-                              <div className='flex items-center justify-between'>
-                                <span className='text-sm text-gray-500'>Số lượng: {item.quantity}</span>
-                                <span className='text-lg font-bold text-green-700'>
-                                  {(item.finalPrice || 0).toLocaleString('vi-VN')}₫
-                                </span>
+                        <div className='space-y-3'>
+                          {order.orderItems?.map((item) => (
+                            <div
+                              key={item.id}
+                              className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
+                            >
+                              <img
+                                src={item.orderItemImageUrl}
+                                alt={item.orderItemName}
+                                className='w-12 h-12 rounded-lg object-cover border flex-shrink-0'
+                              />
+                              <div className='flex-1 min-w-0'>
+                                <h3 className='font-semibold text-gray-900 mb-1'>{item.orderItemName}</h3>
+                                <div className='flex items-center justify-between'>
+                                  <span className='text-sm text-gray-500'>Số lượng: {item.quantity}</span>
+                                  <span className='text-lg font-bold text-green-700'>
+                                    {(item.finalPrice || 0).toLocaleString('vi-VN')}₫
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
 
-                      {comboGroupsByOrder[order.id]?.length > 0 && (
-                        <div className='ml-4'>
-                          <ComboList combos={comboGroupsByOrder[order.id]} title='Combo trong đơn' />
-                        </div>
-                      )}
-
-                      <div className='ml-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
-                        <div className='flex justify-between text-sm text-gray-600 mb-1'>
-                          <span>Tạm tính:</span>
-                          <span>{order.totalOrder.toLocaleString('vi-VN')}₫</span>
-                        </div>
-                        <div className='flex justify-between text-sm text-gray-600 mb-1'>
-                          <span>Phí vận chuyển:</span>
-                          <span>{order.shipPrice.toLocaleString('vi-VN')}₫</span>
-                        </div>
-                        {order.insurance && order.insurance > 0 && (
-                          <div className='flex justify-between text-sm text-gray-600 mb-1'>
-                            <span>Tiền bảo hiểm:</span>
-                            <span>{order.insurance.toLocaleString('vi-VN')}₫</span>
+                        {comboGroupsByOrder[order.id]?.length > 0 && (
+                          <div className='ml-4'>
+                            <ComboList combos={comboGroupsByOrder[order.id]} title='Combo trong đơn' />
                           </div>
                         )}
-                        <div className='flex justify-between text-sm font-semibold text-gray-900 border-t pt-1'>
-                          <span>Thành tiền:</span>
-                          <span className='text-green-700'>{order.finalPrice.toLocaleString('vi-VN')}₫</span>
+
+                        <div className='ml-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
+                          <div className='flex justify-between text-sm text-gray-600 mb-1'>
+                            <span>Tạm tính:</span>
+                            <span>{order.totalOrder.toLocaleString('vi-VN')}₫</span>
+                          </div>
+                          <div className='flex justify-between text-sm text-gray-600 mb-1'>
+                            <span>Phí vận chuyển:</span>
+                            <span>{order.shipPrice.toLocaleString('vi-VN')}₫</span>
+                          </div>
+                          {order.insurance && order.insurance > 0 && (
+                            <div className='flex justify-between text-sm text-gray-600 mb-1'>
+                              <span>Tiền bảo hiểm:</span>
+                              <span>{order.insurance.toLocaleString('vi-VN')}₫</span>
+                            </div>
+                          )}
+                          <div className='flex justify-between text-sm font-semibold text-gray-900 border-t pt-1'>
+                            <span>Thành tiền:</span>
+                            <span className='text-green-700'>{order.finalPrice.toLocaleString('vi-VN')}₫</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))
                   : displayItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className='w-12 h-12 rounded-lg object-cover border flex-shrink-0'
-                      />
-                      <div className='flex-1 min-w-0'>
-                        <h3 className='font-semibold text-gray-900 mb-1'>{item.name}</h3>
-                        <p className='text-sm text-gray-600 whitespace-pre-line mb-2'>{item.desc}</p>
-                        <div className='flex items-center justify-between'>
-                          <span className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>
-                            Số lượng: {item.quantity}
-                          </span>
-                          <span className='text-lg font-bold text-green-700'>
-                            {item.price.toLocaleString('vi-VN')}₫
-                          </span>
+                      <div
+                        key={item.id}
+                        className='flex items-start gap-4 p-4 border border-gray-100 rounded-lg hover:border-gray-200 transition-colors'
+                      >
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className='w-12 h-12 rounded-lg object-cover border flex-shrink-0'
+                        />
+                        <div className='flex-1 min-w-0'>
+                          <h3 className='font-semibold text-gray-900 mb-1'>{item.name}</h3>
+                          <p className='text-sm text-gray-600 whitespace-pre-line mb-2'>{item.desc}</p>
+                          <div className='flex items-center justify-between'>
+                            <span className='text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full'>
+                              Số lượng: {item.quantity}
+                            </span>
+                            <span className='text-lg font-bold text-green-700'>
+                              {item.price.toLocaleString('vi-VN')}₫
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
 
                 {ordersFromState.length === 0 && singleOrderComboGroups.length > 0 && (
                   <ComboList combos={singleOrderComboGroups} title='Combo trong đơn' />
@@ -769,8 +768,7 @@ function OrderCreate() {
             </div>
 
             {/* Order Note Section */}
-            {(ordersFromState.length > 0 && ordersFromState.some((o) => o.note)) ||
-            (order && order.note) ? (
+            {(ordersFromState.length > 0 && ordersFromState.some((o) => o.note)) || (order && order.note) ? (
               <div className='bg-white rounded-lg shadow-sm border p-6'>
                 <h2 className='text-xl font-semibold mb-4 flex items-center gap-2'>
                   <AlertCircle className='w-5 h-5 text-green-600' />
@@ -818,13 +816,19 @@ function OrderCreate() {
                       {comboSummaryList.length > 0 && (
                         <div className='space-y-2 mt-2'>
                           {comboSummaryList.map((comboInfo, idx) => (
-                            <div key={`${comboInfo.orderId}-${comboInfo.comboName}-${idx}`} className='bg-white rounded-lg border border-gray-200 p-3'>
+                            <div
+                              key={`${comboInfo.orderId}-${comboInfo.comboName}-${idx}`}
+                              className='bg-white rounded-lg border border-gray-200 p-3'
+                            >
                               <div className='text-xs text-gray-500 mb-1'>{comboInfo.storeName}</div>
                               <div className='flex items-start justify-between gap-2'>
                                 <div className='flex-1 min-w-0'>
-                                  <div className='text-sm font-semibold text-gray-900 truncate'>{comboInfo.comboName}</div>
+                                  <div className='text-sm font-semibold text-gray-900 truncate'>
+                                    {comboInfo.comboName}
+                                  </div>
                                   <div className='text-xs text-gray-500 mt-0.5'>
-                                    {comboInfo.productCount} sản phẩm{comboInfo.comboQuantity > 1 ? ` - x${comboInfo.comboQuantity}` : ''}
+                                    {comboInfo.productCount} sản phẩm
+                                    {comboInfo.comboQuantity > 1 ? ` - x${comboInfo.comboQuantity}` : ''}
                                   </div>
                                 </div>
                                 <div className='text-sm font-semibold text-orange-600 whitespace-nowrap'>
@@ -880,13 +884,19 @@ function OrderCreate() {
                       {comboSummaryList.length > 0 && (
                         <div className='space-y-2 mt-2'>
                           {comboSummaryList.map((comboInfo, idx) => (
-                            <div key={`${comboInfo.orderId}-${comboInfo.comboName}-${idx}`} className='bg-white rounded-lg border border-gray-200 p-3'>
+                            <div
+                              key={`${comboInfo.orderId}-${comboInfo.comboName}-${idx}`}
+                              className='bg-white rounded-lg border border-gray-200 p-3'
+                            >
                               <div className='text-xs text-gray-500 mb-1'>{comboInfo.storeName}</div>
                               <div className='flex items-start justify-between gap-2'>
                                 <div className='flex-1 min-w-0'>
-                                  <div className='text-sm font-semibold text-gray-900 truncate'>{comboInfo.comboName}</div>
+                                  <div className='text-sm font-semibold text-gray-900 truncate'>
+                                    {comboInfo.comboName}
+                                  </div>
                                   <div className='text-xs text-gray-500 mt-0.5'>
-                                    {comboInfo.productCount} sản phẩm{comboInfo.comboQuantity > 1 ? ` - x${comboInfo.comboQuantity}` : ''}
+                                    {comboInfo.productCount} sản phẩm
+                                    {comboInfo.comboQuantity > 1 ? ` - x${comboInfo.comboQuantity}` : ''}
                                   </div>
                                 </div>
                                 <div className='text-sm font-semibold text-orange-600 whitespace-nowrap'>
@@ -938,8 +948,9 @@ function OrderCreate() {
                           <div className='flex justify-between text-xs'>
                             <span className='text-gray-600'>Số dư khả dụng:</span>
                             <span
-                              className={`font-semibold ${walletBalance.availableBalance >= total ? 'text-green-600' : 'text-red-600'
-                                }`}
+                              className={`font-semibold ${
+                                walletBalance.availableBalance >= total ? 'text-green-600' : 'text-red-600'
+                              }`}
                             >
                               {walletBalance.availableBalance.toLocaleString('vi-VN')}₫
                             </span>
@@ -969,7 +980,9 @@ function OrderCreate() {
                         isSubmitting ||
                         isLoadingWallet ||
                         (ordersFromState.length === 0 && !order && !existingOrder) ||
-                        (paymentMethod === 'MyWallet' && walletBalance !== null && walletBalance.availableBalance < total)
+                        (paymentMethod === 'MyWallet' &&
+                          walletBalance !== null &&
+                          walletBalance.availableBalance < total)
                       }
                       className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2'
                     >
@@ -1053,13 +1066,13 @@ function OrderCreate() {
         orderInfo={
           ordersFromState.length > 0
             ? {
-              orderId:
-                ordersFromState.length === 1
-                  ? ordersFromState[0].id
-                  : `${ordersFromState[0].id} + ${ordersFromState.length - 1} đơn khác`,
-              userId: user?.userId || '',
-              totalAmount: ordersFromState.reduce((sum, current) => sum + (current.finalPrice || 0), 0)
-            }
+                orderId:
+                  ordersFromState.length === 1
+                    ? ordersFromState[0].id
+                    : `${ordersFromState[0].id} + ${ordersFromState.length - 1} đơn khác`,
+                userId: user?.userId || '',
+                totalAmount: ordersFromState.reduce((sum, current) => sum + (current.finalPrice || 0), 0)
+              }
             : order
               ? { orderId: order.id, userId: user?.userId || '', totalAmount: order.finalPrice }
               : undefined

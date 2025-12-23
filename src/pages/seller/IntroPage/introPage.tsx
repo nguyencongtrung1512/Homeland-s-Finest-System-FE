@@ -1,20 +1,45 @@
 import { useNavigate } from 'react-router-dom'
+import { motion, useScroll, useTransform, useSpring } from 'framer-motion'
+import { useMemo, useRef } from 'react'
 import { path } from '../../../constants/path'
 import Footer from '../../../Layouts/CustomerLayout/Footer/Footer'
 import BannerWelcome from '../../../assets/BannerWelcome.png'
+import LandingPageHero from '../../../assets/langding_page1.png'
 import HeaderRegister from '../components/headerRegister'
+import { EssenceLanding } from '../../../components/landingPage'
+import TinhHoa from '../../../assets/tinhhoa.svg'
+import Discover from '../../../assets/discover.png'
+import Mau from '../../../assets/mau.png'
 
 function IntroPage() {
   const navigate = useNavigate()
+  const stickyRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: stickyRef,
+    offset: ['start start', 'end end']
+  })
+
+  const completionPoint = 0.35
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 180, damping: 22, mass: 0.22 })
+  const scaleValue = useTransform(smoothProgress, [0, completionPoint, 1], [0.9, 1.1, 1.1])
+  const gapValue = useTransform(smoothProgress, [0, completionPoint, 1], [80, 0, 0])
+  const radiusValue = useTransform(smoothProgress, [0, completionPoint, 1], [56, 6, 0])
+  const heightValue = useTransform(smoothProgress, [0, completionPoint, 1], [320, 960, 960])
+  const overlayOpacity = useTransform(smoothProgress, [0, completionPoint, 1], [0.35, 0.08, 0])
+  const fullImageOpacity = useTransform(smoothProgress, [completionPoint * 0.7, completionPoint, 1], [0, 1, 1])
+  const columnsOpacity = useTransform(smoothProgress, [0, completionPoint, completionPoint + 0.08], [1, 1, 0])
+
+  const segments = useMemo(() => Array.from({ length: 5 }, (_, i) => i), [])
 
   const handleRegisterClick = () => {
     navigate(path.registerSeller)
   }
 
   return (
-    <div>
+    <div className='bg-white text-black'>
       <HeaderRegister />
-      <div className='min-h-screen bg-green-50'>
+      {/* Scroll-to-Zoom Mask Hero */}
+      <div className='min-h-screen bg-green-50 text-black'>
         {/* Hero Banner Section */}
         <section className='relative w-full bg-[#f2f2ea]'>
           <div className='max-w-7xl mx-auto px-6 py-16 lg:py-24'>
@@ -157,6 +182,36 @@ function IntroPage() {
           </div>
         </section>
 
+        {/* Landing block “Tinh hoa quê nhà” - dành cho nhà bán */}
+        <div className='px-6 pb-16'>
+          <div className='max-w-6xl mx-auto'>
+            <EssenceLanding
+              heading='Cùng đưa đặc sản của bạn ra thị trường'
+              subheading='Chúng tôi đồng hành với nhà sản xuất địa phương: chuẩn hóa hồ sơ, kể câu chuyện thương hiệu và kết nối người mua phù hợp.'
+              highlight='Đồng hành nhà bán · Minh bạch · Hiệu quả'
+              cta={{ label: 'Đăng ký bán hàng', href: path.registerSeller }}
+              items={[
+                {
+                  title: 'Kể câu chuyện thương hiệu',
+                  description: 'Trình bày nguồn gốc, quy trình thủ công, chứng nhận để tăng niềm tin và giá trị sản phẩm.',
+                  imageUrl: TinhHoa,
+                  badge: 'Brand Story'
+                },
+                {
+                  title: 'Vận hành tinh gọn',
+                  description: 'Quản lý đơn, theo dõi tồn kho, nhận thanh toán an toàn – tất cả trong một bảng điều khiển.',
+                  imageUrl: Mau
+                },
+                {
+                  title: 'Định danh giá trị Gốc',
+                  description: 'Tiếp cận đúng phân khúc sẵn sàng chi trả cho tinh hoa văn hóa quê nhà.',
+                  imageUrl: Discover
+                }
+              ]}
+            />
+          </div>
+        </div>
+
         {/* Section 2: Journey to become a partner */}
         <section className='py-16 px-6 bg-green-50'>
           <div className='max-w-6xl mx-auto'>
@@ -231,7 +286,74 @@ function IntroPage() {
             <p className='text-lg text-black mb-8 max-w-2xl mx-auto'>
               Hãy cùng chúng tôi mang những sản phẩm đặc sản và thủ công tuyệt vời của bạn đến với nhiều khách hàng hơn.
             </p>
-            <h1 className='text-red-500'> Bussiness Role và cách tính hoa hồng....CHƯA LÀM</h1>
+          </div>
+        </section>
+
+        <section className='relative h-[300vh]' ref={stickyRef}>
+          <div className='sticky top-0 h-screen overflow-hidden flex items-center justify-center px-6 bg-white'>
+            <div className='absolute inset-0 bg-white' aria-hidden />
+            <motion.div
+              style={{ opacity: fullImageOpacity, scale: 1.02 }}
+              className='absolute inset-0 bg-cover bg-center'
+              aria-hidden
+            >
+              <div
+                className='absolute inset-0'
+                style={{
+                  backgroundImage: `url(${LandingPageHero})`,
+                  backgroundSize: 'cover',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundAttachment: 'fixed',
+                  backgroundPosition: 'center'
+                }}
+              />
+            </motion.div>
+            <motion.div
+              style={{ scale: scaleValue }}
+              className='relative z-10 flex flex-col items-center justify-center gap-10 text-center'
+            >
+              <div className='space-y-4'>
+                <motion.span
+                  style={{ opacity: overlayOpacity }}
+                  className='inline-flex items-center rounded-full bg-white/10 px-4 py-2 text-sm uppercase tracking-[0.2em]'
+                >
+                  Tinh Hoa Quê Nhà
+                </motion.span>
+                <h1 className='text-4xl md:text-6xl lg:text-7xl font-bold text-white'>Tinh Hoa Quê Nhà</h1>
+                <p className='text-lg md:text-xl text-white/80'>Cùng mở ra cơ hội mới</p>
+              </div>
+
+              <motion.div
+                style={{ gap: gapValue }}
+                className='flex w-full max-w-[1400px] items-center justify-center overflow-hidden'
+              >
+                {segments.map((item) => (
+                  <motion.div
+                    key={item}
+                    style={{
+                      opacity: columnsOpacity,
+                      borderRadius: radiusValue,
+                      backgroundImage: `url(${LandingPageHero})`,
+                      backgroundSize: 'cover',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundAttachment: 'fixed',
+                      backgroundPosition: `${(item / (segments.length - 1)) * 100}% center`,
+                      height: heightValue,
+                      boxShadow: 'none',
+                      flex: '0 1 260px'
+                    }}
+                    className='flex-1 transition-all duration-500'
+                    aria-hidden
+                  />
+                ))}
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              style={{ opacity: overlayOpacity }}
+              className='absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900/60 to-slate-950'
+              aria-hidden
+            />
           </div>
         </section>
         <div className='mt-10'>

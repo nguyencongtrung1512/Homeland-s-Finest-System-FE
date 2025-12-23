@@ -51,19 +51,22 @@ function Login() {
   }
 
   const validateForm = (): boolean => {
-    if (!formData.email.trim()) {
+    const emailTrimmed = formData.email.trim()
+    const passwordTrimmed = formData.password.trim()
+
+    if (!emailTrimmed) {
       const errorMsg = 'Vui lòng nhập địa chỉ email'
       setError(errorMsg)
       toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
       return false
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
       const errorMsg = 'Địa chỉ email không hợp lệ'
       setError(errorMsg)
       toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
       return false
     }
-    if (!formData.password) {
+    if (!passwordTrimmed) {
       const errorMsg = 'Vui lòng nhập mật khẩu'
       setError(errorMsg)
       toast.warning(errorMsg, { position: 'top-right', autoClose: 3000 })
@@ -82,8 +85,8 @@ function Login() {
 
     try {
       const loginData = {
-        ...formData,
-        email: formData.email.toLowerCase()
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password.trim()
       }
       const response: LoginResponseData = await login(loginData)
 
@@ -191,10 +194,7 @@ function Login() {
               <AvatarImage src={logoImage} alt='Logo' className='object-cover' />
             </Avatar>
           </div>
-          <h2 className='text-4xl font-bold text-gray-800 mb-1 drop-shadow-sm'>
-            Tinh Hoa Quê Nhà
-          </h2>
-
+          <h2 className='text-4xl font-bold text-gray-800 mb-1 drop-shadow-sm'>Tinh Hoa Quê Nhà</h2>
         </div>
 
         {/* Form Section */}

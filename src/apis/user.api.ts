@@ -146,20 +146,69 @@ export interface GetBanksResponse {
   data: Bank[]
 }
 
+// Interface cho response từ API banklookup.net
+interface BankLookupBank {
+  id?: string
+  name: string
+  code: string
+  bin: number | string
+  short_name?: string
+  shortName?: string
+  logo_url?: string
+  logo?: string
+  icon_url?: string
+  swift_code?: string | null
+  lookup_supported?: number
+}
+
 export const getBanks = async (): Promise<Bank[]> => {
-  const apiUrl = import.meta.env.VITE_API_VIETQR
-  if (!apiUrl) {
-    throw new Error('VITE_API_VIETQR không được cấu hình trong file .env')
-  }
+  const apiKey = '7d65308a-69ae-45c6-9e39-f4598f517353key'
+  const apiSecret = 'd0a8164c-9aaf-428d-9174-492aa5dee326secret'
 
   try {
-    const response = await axios.get<GetBanksResponse>(apiUrl)
-    if (response.data.code === '00' && response.data.data) {
-      return response.data.data
+    // Sử dụng API banklookup.net để đảm bảo code khớp với verifyBankAccount
+    const response = await axios.get('https://api.banklookup.net/bank/list', {
+      headers: {
+        'x-api-key': apiKey,
+        'x-api-secret': apiSecret,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    // Kiểm tra response data - có thể là array trực tiếp hoặc có wrapper
+    let banksData: BankLookupBank[] = []
+
+    if (Array.isArray(response.data)) {
+      banksData = response.data
+    } else if (response.data?.data && Array.isArray(response.data.data)) {
+      banksData = response.data.data
+    } else if (response.data?.banks && Array.isArray(response.data.banks)) {
+      banksData = response.data.banks
+    } else {
+      console.error('Unexpected response format:', response.data)
+      throw new Error('Định dạng dữ liệu từ API không hợp lệ')
     }
-    throw new Error(response.data.desc || 'Không thể lấy danh sách ngân hàng')
+
+    // Map dữ liệu từ API banklookup.net sang format Bank interface
+    const mappedBanks = banksData.map((bank: BankLookupBank, index: number) => ({
+      id: bank.id ? (typeof bank.id === 'string' ? parseInt(bank.id) : bank.id) : index + 1,
+      name: bank.name || '',
+      code: bank.code || '', // Đảm bảo sử dụng code từ API banklookup.net
+      bin: bank.bin?.toString() || '',
+      shortName: bank.short_name || bank.shortName || '',
+      logo: bank.logo_url || bank.logo || '',
+      transferSupported: 1,
+      lookupSupported: bank.lookup_supported || 0
+    }))
+
+    console.log('Mapped banks:', mappedBanks.length, 'banks loaded')
+    return mappedBanks
   } catch (error) {
     console.error('Error fetching banks:', error)
+    if (axios.isAxiosError(error)) {
+      console.error('Response data:', error.response?.data)
+      console.error('Response status:', error.response?.status)
+    }
     throw error
   }
 }
@@ -222,8 +271,6 @@ export const verifyBankAccount = async (
   }
 }
 
-
-
 // Helper function to format date from DD-MM-YYYY to YYYY-MM-DD
 const formatDateOfBirthForAPI = (dateString: string): string => {
   if (!dateString) return ''
@@ -256,9 +303,9 @@ const formatDateOfBirthForAPI = (dateString: string): string => {
 // Helper function để chuyển đổi gender từ tiếng Việt sang tiếng Anh cho backend
 const normalizeGender = (gender: string | null | undefined): string => {
   if (!gender) return ''
-  
+
   const genderLower = gender.trim().toLowerCase()
-  
+
   switch (genderLower) {
     case 'nam':
       return 'Male'

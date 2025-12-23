@@ -5,14 +5,18 @@ import { Badge } from '../ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import {
-  Loader2, Clock, CheckCircle, XCircle, Gift, Store, User,
-  AlertCircle, TrendingDown, BarChart3
+  Loader2,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Gift,
+  Store,
+  User,
+  AlertCircle,
+  TrendingDown,
+  BarChart3
 } from 'lucide-react'
-import {
-  type PromotionModalProps,
-  type PromotionDTO,
-  type UserPromotionDetailDTO
-} from '../../types/promotionType'
+import { type PromotionModalProps, type PromotionDTO, type UserPromotionDetailDTO } from '../../types/promotionType'
 import { promotionApi } from '../../apis/promotion.api'
 import { removePromotionFromCart } from '../../apis/cart.api'
 import { useAuth } from '../../contexts/auth.context'
@@ -42,10 +46,10 @@ interface ApiError {
 
 // ✅ HELPER FUNCTION TO CATEGORIZE PROMOTIONS
 const categorizePromotions = <T extends { canApply?: boolean }>(promotions: T[]) => {
-  const available = promotions.filter(p => p.canApply !== false);
-  const unavailable = promotions.filter(p => p.canApply === false);
-  return { available, unavailable };
-};
+  const available = promotions.filter((p) => p.canApply !== false)
+  const unavailable = promotions.filter((p) => p.canApply === false)
+  return { available, unavailable }
+}
 
 const formatDate = (dateString: string): string => {
   try {
@@ -103,8 +107,8 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
   const promo = 'promotion' in promotion ? promotion.promotion : promotion
 
   // ✅ DETERMINE CARD STATUS
-  const isUnavailable = promo.canApply === false;
-  const cardVariant = isApplied ? 'applied' : isUnavailable ? 'unavailable' : 'available';
+  const isUnavailable = promo.canApply === false
+  const cardVariant = isApplied ? 'applied' : isUnavailable ? 'unavailable' : 'available'
 
   // Check if promotion is upcoming (start date in future)
   const isUpcoming = () => {
@@ -135,87 +139,73 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
     }
   }
 
-
-
   // ✅ GET CARD STYLING BASED ON STATUS
   const getCardClassName = () => {
-    const base = 'transition-all duration-200 hover:shadow-md';
+    const base = 'transition-all duration-200 hover:shadow-md'
     switch (cardVariant) {
       case 'applied':
-        return `${base} border-green-500 bg-green-50`;
+        return `${base} border-green-500 bg-green-50`
       case 'unavailable':
-        return `${base} border-red-300 bg-red-50 opacity-75`;
+        return `${base} border-red-300 bg-red-50 opacity-75`
       case 'available':
-        return `${base} border-gray-200 hover:border-gray-300`;
+        return `${base} border-gray-200 hover:border-gray-300`
       default:
-        return base;
+        return base
     }
-  };
+  }
 
   // ✅ FORMAT USAGE INFO DISPLAY
   const formatUsageInfo = () => {
-    if (promo.usedCount === undefined) return null;
+    if (promo.usedCount === undefined) return null
 
     if ('claimedQuantity' in promotion && promotion.claimedQuantity !== undefined) {
       // User promotion
       return (
-        <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
-          <BarChart3 className="h-3 w-3" />
+        <div className='flex items-center gap-2 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded'>
+          <BarChart3 className='h-3 w-3' />
           <span>
-            Đã claim: <strong>{promotion.claimedQuantity}</strong> |
-            Đã dùng: <strong>{promotion.usedCount}</strong> |
+            Đã claim: <strong>{promotion.claimedQuantity}</strong> | Đã dùng: <strong>{promotion.usedCount}</strong> |
             Còn lại: <strong>{promotion.remainingCount || 0}</strong>
           </span>
         </div>
-      );
+      )
     } else {
       // Global/Product promotion
-      const maxPerUser = promo.maxPerUser || 0;
-      const remainingText = promo.remainingCount === -1
-        ? 'Không giới hạn'
-        : `${promo.remainingCount || 0}`;
+      const maxPerUser = promo.maxPerUser || 0
+      const remainingText = promo.remainingCount === -1 ? 'Không giới hạn' : `${promo.remainingCount || 0}`
 
       return (
-        <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
-          <TrendingDown className="h-3 w-3" />
+        <div className='flex items-center gap-2 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded'>
+          <TrendingDown className='h-3 w-3' />
           <span>
-            Đã dùng: <strong>{promo.usedCount}</strong>/{maxPerUser > 0 ? maxPerUser : '∞'} |
-            Còn lại: <strong>{remainingText}</strong>
+            Đã dùng: <strong>{promo.usedCount}</strong>/{maxPerUser > 0 ? maxPerUser : '∞'} | Còn lại:{' '}
+            <strong>{remainingText}</strong>
           </span>
         </div>
-      );
+      )
     }
-  };
+  }
 
   // ✅ RENDER ACTION BUTTON
   const renderActionButton = () => {
-    if (!showActions) return null;
+    if (!showActions) return null
 
     if (isApplied) {
       return (
-        <Button
-          onClick={onRemove}
-          disabled={loading}
-          variant="destructive"
-          className="w-full"
-        >
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button onClick={onRemove} disabled={loading} variant='destructive' className='w-full'>
+          {loading && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
           Bỏ áp dụng
         </Button>
-      );
+      )
     }
 
     if (isUnavailable) {
       return (
-        <Button
-          disabled
-          variant="secondary"
-          className="w-full bg-gray-200 text-gray-500 cursor-not-allowed"
-        >
-          <AlertCircle className="mr-2 h-4 w-4" />
+        <Button disabled variant='secondary' className='w-full bg-gray-200 text-gray-500 cursor-not-allowed'>
+          <AlertCircle className='mr-2 h-4 w-4' />
           {promo.reasonCannotApply || 'Không thể sử dụng'}
         </Button>
-      );
+      )
     }
 
     // Available promotion
@@ -223,22 +213,20 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
       <Button
         onClick={() => onApply?.(promo.id, promotionType)}
         disabled={loading || isUpcoming()}
-        className="w-full bg-blue-500 hover:bg-blue-600"
+        className='w-full bg-blue-500 hover:bg-blue-600'
       >
-        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {loading && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
         {isUpcoming() ? (
           <>
-            <Clock className="mr-2 h-4 w-4" />
+            <Clock className='mr-2 h-4 w-4' />
             Sắp có thể dùng
           </>
         ) : (
-          <>
-            Áp dụng
-          </>
+          <>Áp dụng</>
         )}
       </Button>
-    );
-  };
+    )
+  }
 
   return (
     <Card className={getCardClassName()}>
@@ -255,17 +243,13 @@ const PromotionCard: React.FC<PromotionCardProps> = ({
         <p className='text-sm text-gray-600 mb-4 line-clamp-2'>{promo.description}</p>
 
         {/* ✅ USAGE INFO SECTION */}
-        {formatUsageInfo() && (
-          <div className="mb-3">
-            {formatUsageInfo()}
-          </div>
-        )}
+        {formatUsageInfo() && <div className='mb-3'>{formatUsageInfo()}</div>}
 
         {/* ✅ PROMOTION DETAILS */}
         <div className='space-y-2 mb-4'>
           {promo.minValueDiscount && (
             <div className='flex items-center gap-2 text-xs text-gray-600'>
-              <span className="font-medium">Đơn tối thiểu:</span>
+              <span className='font-medium'>Đơn tối thiểu:</span>
               <span>{promo.minValueDiscount.toLocaleString('vi-VN')}₫</span>
             </div>
           )}
@@ -315,10 +299,10 @@ const PromotionList: React.FC<PromotionListProps> = ({
   promotionType
 }) => {
   // ✅ CATEGORIZE PROMOTIONS BASED ON canApply
-  const { available, unavailable } = categorizePromotions(notYet);
+  const { available, unavailable } = categorizePromotions(notYet)
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {/* ✅ APPLIED PROMOTIONS */}
       {applied.length > 0 && (
         <div>
@@ -389,7 +373,7 @@ const PromotionList: React.FC<PromotionListProps> = ({
       {applied.length === 0 && notYet.length === 0 && (
         <div className='text-center py-8 text-gray-500'>
           <Gift className='h-12 w-12 mx-auto mb-4 text-gray-300' />
-          <p>Không có Mã khuyến mãi  nào</p>
+          <p>Không có Mã khuyến mãi nào</p>
         </div>
       )}
     </div>
@@ -418,10 +402,10 @@ const UserPromotionList: React.FC<UserPromotionListProps> = ({
   promotionType
 }) => {
   // ✅ CATEGORIZE USER PROMOTIONS
-  const { available, unavailable } = categorizePromotions(notYet);
+  const { available, unavailable } = categorizePromotions(notYet)
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {/* ✅ APPLIED USER PROMOTIONS */}
       {applied.length > 0 && (
         <div>
@@ -495,7 +479,7 @@ const UserPromotionList: React.FC<UserPromotionListProps> = ({
       {applied.length === 0 && notYet.length === 0 && (
         <div className='text-center py-8 text-gray-500'>
           <User className='h-12 w-12 mx-auto mb-4 text-gray-300' />
-          <p>Không có Mã khuyến mãi  cá nhân nào</p>
+          <p>Không có Mã khuyến mãi cá nhân nào</p>
         </div>
       )}
     </div>
@@ -673,10 +657,18 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className='max-w-4xl max-h-[80vh] flex flex-col'>
+      <DialogContent
+        className='
+        w-[95vw] sm:w-[90vw] lg:w-[80vw] xl:w-[70vw]
+        max-w-5xl
+        h-[90vh] lg:h-auto
+        max-h-[90vh]
+        flex flex-col
+        overflow-hidden'
+      >
         <DialogHeader>
           <DialogTitle className='text-xl font-bold text-gray-900 flex items-center gap-2'>
-            <Gift className="h-5 w-5" />
+            <Gift className='h-5 w-5' />
             Chọn mã khuyến mãi
           </DialogTitle>
         </DialogHeader>
@@ -692,7 +684,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                 <Gift className='h-4 w-4' />
                 Mã toàn hệ thống
                 {(availablePromotions.global?.applied?.length || 0) > 0 && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
+                  <Badge variant='secondary' className='ml-1 text-xs'>
                     {availablePromotions.global.applied.length}
                   </Badge>
                 )}
@@ -701,7 +693,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                 <Store className='h-4 w-4' />
                 Mã của shop
                 {(availablePromotions.store?.applied?.length || 0) > 0 && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
+                  <Badge variant='secondary' className='ml-1 text-xs'>
                     {availablePromotions.store.applied.length}
                   </Badge>
                 )}
@@ -710,7 +702,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                 <User className='h-4 w-4' />
                 Mã cá nhân
                 {(availablePromotions.user?.applied?.length || 0) > 0 && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
+                  <Badge variant='secondary' className='ml-1 text-xs'>
                     {availablePromotions.user.applied.length}
                   </Badge>
                 )}
@@ -722,7 +714,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                 {loading ? (
                   <div className='flex items-center justify-center py-8'>
                     <Loader2 className='h-8 w-8 animate-spin' />
-                    <span className="ml-2">Đang tải mã toàn hệ thống...</span>
+                    <span className='ml-2'>Đang tải mã toàn hệ thống...</span>
                   </div>
                 ) : (
                   <PromotionList
@@ -740,7 +732,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                 {loading ? (
                   <div className='flex items-center justify-center py-8'>
                     <Loader2 className='h-8 w-8 animate-spin' />
-                    <span className="ml-2">Đang tải mã của shop...</span>
+                    <span className='ml-2'>Đang tải mã của shop...</span>
                   </div>
                 ) : (
                   <PromotionList
@@ -758,7 +750,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ cartId, isOpen, onClose
                 {loading ? (
                   <div className='flex items-center justify-center py-8'>
                     <Loader2 className='h-8 w-8 animate-spin' />
-                    <span className="ml-2">Đang tải mã cá nhân...</span>
+                    <span className='ml-2'>Đang tải mã cá nhân...</span>
                   </div>
                 ) : (
                   <UserPromotionList
