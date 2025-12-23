@@ -328,6 +328,7 @@ export interface StoreAdminRevenueResponse {
   sellerFullName: string
   sellerStatus: string
   totalRevenues: number
+  orderCount: number
 }
 
 /**
@@ -388,22 +389,31 @@ export const getMonthlyRevenue = async (
 
 /**
  * Lấy danh sách cửa hàng có doanh thu cao nhất
- * GET /api/wallet-dashboard/top-stores?topCount=10&year=2025
+ * GET /api/wallet-dashboard/top-stores?topCount=10&year=2025&targetProvinceId=234
  * 
  * @param topCount - Số lượng cửa hàng cần lấy (mặc định: 10)
  * @param year - Năm cần xem (optional)
+ * @param targetProvinceId - ID tỉnh cần filter (optional)
  */
 export const getTopStores = async (
   topCount: number = 10,
-  year?: number
+  year?: number,
+  targetProvinceId?: number
 ): Promise<ApiResponse<StoreAdminRevenueResponse[]>> => {
+  const params: Record<string, string> = {
+    topCount: topCount.toString()
+  }
+  if (year) {
+    params.year = year.toString()
+  }
+  if (targetProvinceId !== undefined) {
+    params.targetProvinceId = targetProvinceId.toString()
+  }
+  
   const response = await axiosInstance.get<ApiResponse<StoreAdminRevenueResponse[]>>(
     `${API_URL}/top-stores`,
     {
-      params: {
-        topCount,
-        ...(year && { year })
-      }
+      params
     }
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
@@ -412,11 +422,19 @@ export const getTopStores = async (
 
 /**
  * Lấy danh sách cửa hàng đang chờ duyệt (status Pending)
- * GET /api/wallet-dashboard/Admin/processing-stores
+ * GET /api/wallet-dashboard/Admin/processing-stores?targetProvinceId=202
+ * 
+ * @param targetProvinceId - ID tỉnh cần filter (optional)
  */
-export const getProcessingStores = async (): Promise<ApiResponse<any[]>> => {
+export const getProcessingStores = async (targetProvinceId?: number): Promise<ApiResponse<any[]>> => {
+  const params: Record<string, string> = {}
+  if (targetProvinceId !== undefined) {
+    params.targetProvinceId = targetProvinceId.toString()
+  }
+  
+  const queryString = Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : ''
   const response = await axiosInstance.get<ApiResponse<any[]>>(
-    `${API_URL}/Admin/processing-stores`
+    `${API_URL}/Admin/processing-stores${queryString}`
   )
   // axiosInstance interceptor đã trả về response.data, nên response ở đây đã là {status, message, data}
   return response as any
