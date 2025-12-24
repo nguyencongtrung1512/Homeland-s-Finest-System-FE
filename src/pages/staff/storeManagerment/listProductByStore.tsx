@@ -662,7 +662,7 @@ function ListProductByStoreStaff() {
                   />
                 </div>
 
-                <Select value={categoryFilter} onValueChange={setCategoryFilter} disabled={categoriesLoading}>
+                {/* <Select value={categoryFilter} onValueChange={setCategoryFilter} disabled={categoriesLoading}>
                   <SelectTrigger className='w-48'>
                     <SelectValue placeholder={categoriesLoading ? 'Đang tải...' : 'Tất cả ngành hàng'} />
                   </SelectTrigger>
@@ -674,10 +674,10 @@ function ListProductByStoreStaff() {
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
+                </Select> */}
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className='w-40'>
+                  <SelectTrigger className='w-[200px]'>
                     <SelectValue placeholder='Tất cả trạng thái' />
                   </SelectTrigger>
                   <SelectContent>
@@ -785,7 +785,7 @@ function ListProductByStoreStaff() {
                     setComboCurrentPage(1)
                   }}
                 >
-                  <SelectTrigger className='w-48'>
+                  <SelectTrigger className='w-[200px]'>
                     <SelectValue placeholder='Tất cả trạng thái' />
                   </SelectTrigger>
                   <SelectContent>

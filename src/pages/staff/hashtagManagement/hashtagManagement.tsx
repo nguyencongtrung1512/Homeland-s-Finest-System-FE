@@ -307,7 +307,7 @@ function HashtagManagementStaff() {
                   <thead>
                     <tr className='border-b border-gray-200 bg-gray-50'>
                       <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Tên nhãn dán</th>
-                      <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Cửa hàng</th>
+                      <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Cửa hàng sử dụng</th>
                       <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Số lần sử dụng</th>
                       <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Trạng thái</th>
                       <th className='text-left px-6 py-3 font-medium text-gray-700 text-sm'>Hành động</th>

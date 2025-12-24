@@ -165,10 +165,10 @@ const AppliedPromotionItem: React.FC<AppliedPromotionItemProps> = ({ promotion, 
             <Badge variant='destructive' className='bg-red-500 hover:bg-red-600 text-xs'>
               {getDiscountText()}
             </Badge>
-            <Badge variant='outline' className={`${getStatusColor()} text-xs flex items-center gap-1`}>
+            {/* <Badge variant='outline' className={`${getStatusColor()} text-xs flex items-center gap-1`}>
               {getStatusIcon()}
               {promotion.status}
-            </Badge>
+            </Badge> */}
           </div>
 
           <Button

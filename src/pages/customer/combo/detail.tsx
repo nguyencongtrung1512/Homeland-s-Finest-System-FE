@@ -188,7 +188,7 @@ function ComboDetail() {
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12'>
             {/* Combo Image */}
             <div className='space-y-4'>
-      <ThreeDCard
+              <ThreeDCard
                 className='aspect-square [&>div]:bg-transparent [&>div]:p-0'
                 enableGlow={true}
                 enableShadow={true}
@@ -282,20 +282,23 @@ function ComboDetail() {
                         key={index}
                         className='flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-gray-200 rounded-lg gap-2 sm:gap-0'
                       >
+                        <div className='w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-100'>
+                          <img src={item.comboItemImageUrl} alt="comboitem" className='w-full h-full object-cover' />
+                        </div>
                         <div className='flex-1'>
                           <div className='font-medium text-gray-900 text-sm sm:text-base truncate'>
                             {item.comboItemName}
                           </div>
                           <div className='text-xs sm:text-sm text-gray-600'>Số lượng: {item.quantity}</div>
                         </div>
-                        <div className='text-left sm:text-right'>
+                        {/* <div className='text-left sm:text-right'>
                           <div className='font-semibold text-green-600 text-sm sm:text-base'>
                             {new Intl.NumberFormat('vi-VN', {
                               style: 'currency',
                               currency: 'VND'
                             }).format(item.basePrice)}
                           </div>
-                        </div>
+                        </div> */}
                       </div>
                     ))}
                   </div>
