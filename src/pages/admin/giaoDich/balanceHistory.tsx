@@ -396,6 +396,18 @@ function BalanceHistory() {
                       <span className='font-semibold text-red-500'>
                         -{(selectedTransaction.orderCommission || 0).toLocaleString('vi-VN')} đ
                       </span>
+                      </div>
+                      <div className='flex items-center justify-between'>
+                      <span className='text-gray-700'>Giảm giá người bán:</span>
+                     <span className='font-semibold text-red-500'>
+                        -{(selectedTransaction.orderSellerDiscount || 0).toLocaleString('vi-VN')} đ
+                      </span>
+                    </div>
+                    <div className='flex items-center justify-between'>
+                     <span className='text-gray-700'>Giảm giá hệ thống:</span>
+                      <span className='font-semibold text-red-500'>
+                       -{(selectedTransaction.orderSystemDiscount || 0).toLocaleString('vi-VN')} đ
+                     </span>
                     </div>
                     <hr className='my-2 border-blue-100' />
                     <div className='flex items-center justify-between'>

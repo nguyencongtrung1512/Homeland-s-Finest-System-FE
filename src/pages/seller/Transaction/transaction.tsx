@@ -993,9 +993,9 @@ function Transaction() {
         </div>
       </motion.div>
 
-      {/* 2.1. Chiết khấu (Discount Fields) */}
+      {/* 2.1. Giảm giá (Discount Fields) */}
       <motion.div className='mb-6 sm:mb-8' variants={containerVariants} initial='hidden' animate='visible'>
-        <h2 className='text-lg sm:text-xl font-semibold text-gray-900 mb-4'>Chiết khấu</h2>
+        <h2 className='text-lg sm:text-xl font-semibold text-gray-900 mb-4'>Giảm giá</h2>
         <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6'>
           {/* Total Seller Discount */}
           <motion.div variants={itemVariants}>
@@ -1005,7 +1005,7 @@ function Transaction() {
                   <div className='flex justify-between items-start'>
                     <div className='flex-1'>
                       <div className='flex items-center gap-2 mb-2'>
-                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Chiết khấu của bạn</h3>
+                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Giảm giá của bạn</h3>
                         <button
                           onClick={() => {
                             setSelectedFormula('totalSellerDiscount')
@@ -1045,7 +1045,7 @@ function Transaction() {
                   <div className='flex justify-between items-start'>
                     <div className='flex-1'>
                       <div className='flex items-center gap-2 mb-2'>
-                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Chiết khấu hệ thống</h3>
+                        <h3 className='text-xs sm:text-sm font-medium text-gray-600'>Giảm giá hệ thống</h3>
                         <button
                           onClick={() => {
                             setSelectedFormula('totalSystemDiscount')
@@ -1293,7 +1293,7 @@ function Transaction() {
                             transition={{ delay: index * 0.05 }}
                           >
                             <td className='py-4 px-4 text-gray-900 font-medium text-sm'>
-                              {transaction.orderId ? `#${transaction.orderId}` : 'Rút tiền'}
+                              {transaction.orderId?.slice(0, 8) ? `#${transaction.orderId?.slice(0, 8)}` : 'Rút tiền'}
                             </td>
                             <td className='py-4 px-4 text-gray-700 text-sm'>{formatDate(transaction.createdAt)}</td>
                             <td className='py-4 px-4 text-gray-700 text-sm'>
@@ -1347,7 +1347,7 @@ function Transaction() {
                                 <div>
                                   <p className='text-xs text-gray-500'>Mã đơn hàng</p>
                                   <p className='font-medium text-gray-900'>
-                                    {transaction.orderId && transaction.orderId.slice(0, 8)
+                                    {transaction.orderId?.slice(0, 8)
                                       ? `#${transaction.orderId.slice(0, 8)}`
                                       : 'Không có'}
                                   </p>
@@ -1594,7 +1594,7 @@ function Transaction() {
                   <div className='flex items-center gap-2'>
                     <span className='font-medium text-gray-700'>Công thức:</span>
                     <code className='bg-white px-2 py-1 rounded border border-green-300 text-green-700'>
-                      Doanh thu gộp = Doanh thu ròng + Chiết khấu của bạn + Tổng hoa hồng + Tổng phí ship + Tổng bảo
+                      Doanh thu gộp = Doanh thu ròng + Giảm giá của bạn + Tổng hoa hồng + Tổng phí ship + Tổng bảo
                       hiểm
                     </code>
                   </div>
@@ -1602,7 +1602,7 @@ function Transaction() {
                     <p className='mb-1'>Trong đó:</p>
                     <ul className='list-disc list-inside space-y-1 ml-2'>
                       <li>Doanh thu ròng = Số tiền bạn thực sự nhận được sau khi trừ tất cả chi phí</li>
-                      <li>Chiết khấu của bạn = Tổng giảm giá bạn đã chi trả cho khách hàng</li>
+                      <li>Giảm giá của bạn = Tổng giảm giá bạn đã chi trả cho khách hàng</li>
                       <li>Tổng hoa hồng = Tổng phí sàn thu từ các đơn hàng</li>
                       <li>Tổng phí ship = Tổng chi phí vận chuyển</li>
                       <li>Tổng bảo hiểm = Tổng chi phí bảo hiểm</li>
@@ -1615,7 +1615,7 @@ function Transaction() {
                         <span className='text-gray-600'>{walletDataDisplay.netRevenue.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2'>
-                        <span className='font-medium text-gray-700'>Cộng chiết khấu của bạn:</span>
+                        <span className='font-medium text-gray-700'>Cộng Giảm giá của bạn:</span>
                         <span className='text-green-600'>
                           +{(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} đ
                         </span>
@@ -1649,13 +1649,13 @@ function Transaction() {
               <div className='bg-orange-50 p-4 rounded-lg border border-orange-200'>
                 <h3 className='font-semibold text-orange-900 mb-3 flex items-center gap-2'>
                   <Tag className='w-5 h-5' />
-                  Chiết khấu của bạn
+                  Giảm giá của bạn
                 </h3>
                 <div className='space-y-2 text-sm'>
                   <div className='flex items-center gap-2'>
                     <span className='font-medium text-gray-700'>Công thức:</span>
                     <code className='bg-white px-2 py-1 rounded border border-orange-300 text-orange-700'>
-                      Chiết khấu của bạn = Σ(productPromotion)
+                      Giảm giá của bạn = Σ(productPromotion)
                     </code>
                   </div>
                   <div className='text-gray-600 mt-2'>
@@ -1663,7 +1663,7 @@ function Transaction() {
                     <ul className='list-disc list-inside space-y-1 ml-2'>
                       <li>productPromotion = Tổng discount từ các promotion có PromotionType = "Product"</li>
                       <li>Bao gồm: Giảm giá sản phẩm, giảm giá đơn hàng từ Store của bạn</li>
-                      <li>Σ là ký hiệu tổng (tổng tất cả các chiết khấu từ đơn hàng đã PayoutSeller)</li>
+                      <li>Σ là ký hiệu tổng (tổng tất cả các Giảm giá từ đơn hàng đã PayoutSeller)</li>
                     </ul>
                   </div>
                   <div className='text-gray-600 mt-3 pt-3 border-t border-orange-200'>
@@ -1690,35 +1690,14 @@ function Transaction() {
               <div className='bg-cyan-50 p-4 rounded-lg border border-cyan-200'>
                 <h3 className='font-semibold text-cyan-900 mb-3 flex items-center gap-2'>
                   <Gift className='w-5 h-5' />
-                  Chiết khấu hệ thống
+                  Giảm giá hệ thống
                 </h3>
                 <div className='space-y-2 text-sm'>
                   <div className='flex items-center gap-2'>
                     <span className='font-medium text-gray-700'>Công thức:</span>
                     <code className='bg-white px-2 py-1 rounded border border-cyan-300 text-cyan-700'>
-                      Chiết khấu hệ thống = Σ(platformPromotion)
+                      Giảm giá hệ thống = các khuyến mãi hệ thống đưa ra cho khách hàng
                     </code>
-                  </div>
-                  <div className='text-gray-600 mt-2'>
-                    <p className='mb-1'>Trong đó:</p>
-                    <ul className='list-disc list-inside space-y-1 ml-2'>
-                      <li>
-                        platformPromotion = Tổng discount từ các promotion có PromotionType = "Global" hoặc "User"
-                      </li>
-                      <li>+ ShipPrice (nếu FreeShip từ Global/User promotions - Platform trả phí ship)</li>
-                      <li>Σ là ký hiệu tổng (tổng tất cả các chiết khấu từ đơn hàng đã PayoutSeller)</li>
-                    </ul>
-                  </div>
-                  <div className='text-gray-600 mt-3 pt-3 border-t border-cyan-200'>
-                    <p className='mb-1'>
-                      <strong>Logic:</strong>
-                    </p>
-                    <ul className='list-disc list-inside space-y-1 ml-2'>
-                      <li>✅ Tăng khi có đơn hàng sử dụng Global/User promotions (Platform chịu chi phí)</li>
-                      <li>✅ Tăng khi có đơn hàng FreeShip từ Global/User promotions (Platform trả phí ship)</li>
-                      <li>❌ KHÔNG bao gồm Product FreeShip (Bạn tự trả)</li>
-                      <li>✅ Đây là số tiền Platform đã hỗ trợ giảm giá cho khách hàng</li>
-                    </ul>
                   </div>
                   <div className='mt-3 pt-3 border-t border-cyan-200'>
                     <span className='font-medium text-gray-700'>Giá trị hiện tại: </span>
@@ -1741,7 +1720,7 @@ function Transaction() {
                   <div className='flex items-center gap-2'>
                     <span className='font-medium text-gray-700'>Công thức:</span>
                     <code className='bg-white px-2 py-1 rounded border border-blue-300 text-blue-700'>
-                      Doanh thu ròng = Doanh thu gộp - Chiết khấu của bạn - Tổng hoa hồng - Tổng phí ship - Tổng bảo
+                      Doanh thu ròng = Doanh thu gộp - Giảm giá của bạn - Tổng hoa hồng - Tổng phí ship - Tổng bảo
                       hiểm
                     </code>
                   </div>
@@ -1750,7 +1729,7 @@ function Transaction() {
                     <ul className='list-disc list-inside space-y-1 ml-2'>
                       <li>Doanh thu gộp = Tổng giá trị đơn hàng (bao gồm cả phí ship, bảo hiểm, hoa hồng)</li>
                       <li>
-                        Chiết khấu của bạn = Tổng giảm giá bạn đã chi trả cho khách hàng từ các khuyến mãi Product
+                        Giảm giá của bạn = Tổng giảm giá bạn đã chi trả cho khách hàng từ các khuyến mãi Product
                       </li>
                       <li>Tổng hoa hồng = Tổng phí sàn thu từ các đơn hàng</li>
                       <li>Tổng phí ship = Tổng chi phí vận chuyển</li>
@@ -1764,7 +1743,7 @@ function Transaction() {
                         <span className='text-gray-600'>{walletDataDisplay.grossRevenue.toLocaleString()} đ</span>
                       </div>
                       <div className='flex items-center gap-2'>
-                        <span className='font-medium text-gray-700'>Trừ chiết khấu của bạn:</span>
+                        <span className='font-medium text-gray-700'>Trừ Giảm giá của bạn:</span>
                         <span className='text-red-600'>
                           -{(walletDataDisplay.totalSellerDiscount || 0).toLocaleString()} đ
                         </span>
@@ -1956,7 +1935,7 @@ function Transaction() {
                     <div className='flex items-center gap-2'>
                       <span className='font-medium text-gray-700'>Công thức:</span>
                       <code className='bg-white px-2 py-1 rounded border border-green-300 text-green-700'>
-                        Doanh thu gộp = Doanh thu ròng + Chiết khấu của bạn + Tổng hoa hồng + Tổng phí ship + Tổng bảo
+                        Doanh thu gộp = Doanh thu ròng + Giảm giá của bạn + Tổng hoa hồng + Tổng phí ship + Tổng bảo
                         hiểm
                       </code>
                     </div>
@@ -1976,14 +1955,14 @@ function Transaction() {
                     <div className='flex items-center gap-2'>
                       <span className='font-medium text-gray-700'>Công thức:</span>
                       <code className='bg-white px-2 py-1 rounded border border-blue-300 text-blue-700'>
-                        Doanh thu ròng = Doanh thu gộp - Chiết khấu của bạn - Tổng hoa hồng - Tổng phí ship - Tổng bảo
+                        Doanh thu ròng = Doanh thu gộp - Giảm giá của bạn - Tổng hoa hồng - Tổng phí ship - Tổng bảo
                         hiểm
                       </code>
                     </div>
                     <div className='text-gray-600 mt-2'>
                       <p className='mb-1'>Trong đó:</p>
                       <ul className='list-disc list-inside space-y-1 ml-2'>
-                        <li>Chiết khấu của bạn = Tổng giảm giá bạn đã chi trả cho khách hàng</li>
+                        <li>Giảm giá của bạn = Tổng giảm giá bạn đã chi trả cho khách hàng</li>
                         <li>Tổng hoa hồng = Tổng phí sàn thu từ đơn hàng</li>
                         <li>Tổng phí ship = Tổng chi phí vận chuyển</li>
                         <li>Tổng bảo hiểm = Tổng chi phí bảo hiểm</li>
@@ -1996,13 +1975,13 @@ function Transaction() {
                 <div className='bg-orange-50 p-4 rounded-lg border border-orange-200'>
                   <h3 className='font-semibold text-orange-900 mb-3 flex items-center gap-2'>
                     <Tag className='w-5 h-5' />
-                    Chiết khấu của bạn
+                    Giảm giá của bạn
                   </h3>
                   <div className='space-y-2 text-sm'>
                     <div className='flex items-center gap-2'>
                       <span className='font-medium text-gray-700'>Công thức:</span>
                       <code className='bg-white px-2 py-1 rounded border border-orange-300 text-orange-700'>
-                        Chiết khấu của bạn = Σ(productPromotion)
+                        Giảm giá của bạn = Σ(productPromotion)
                       </code>
                     </div>
                     <div className='text-gray-600 mt-2'>
@@ -2015,13 +1994,13 @@ function Transaction() {
                 <div className='bg-cyan-50 p-4 rounded-lg border border-cyan-200'>
                   <h3 className='font-semibold text-cyan-900 mb-3 flex items-center gap-2'>
                     <Gift className='w-5 h-5' />
-                    Chiết khấu hệ thống
+                    Giảm giá hệ thống
                   </h3>
                   <div className='space-y-2 text-sm'>
                     <div className='flex items-center gap-2'>
                       <span className='font-medium text-gray-700'>Công thức:</span>
                       <code className='bg-white px-2 py-1 rounded border border-cyan-300 text-cyan-700'>
-                        Chiết khấu hệ thống = Σ(platformPromotion)
+                        Giảm giá hệ thống = Σ(platformPromotion)
                       </code>
                     </div>
                     <div className='text-gray-600 mt-2'>
@@ -2661,7 +2640,7 @@ function Transaction() {
                 </div>
                 <div>
                   <p className='text-sm font-medium text-gray-700 mb-1'>Mã đơn hàng</p>
-                  <p className='text-sm text-gray-900'>{selectedTransaction.orderId || 'Không có'}</p>
+                  <p className='text-sm text-gray-900'>{selectedTransaction.orderId?.slice(0, 8) || 'Không có'}</p>
                 </div>
                 <div>
                   <p className='text-sm font-medium text-gray-700 mb-1'>Loại giao dịch</p>
@@ -2734,8 +2713,8 @@ function Transaction() {
 
               {/* Order Breakdown (for Seller) */}
               {(selectedTransaction.orderGrossRevenue !== null ||
-                selectedTransaction.totalSellerDiscount !== null ||
-                selectedTransaction.totalSystemDiscount !== null ||
+                selectedTransaction.orderSellerDiscount !== null ||
+                selectedTransaction.orderSystemDiscount !== null ||
                 selectedTransaction.orderShipFee !== null ||
                 selectedTransaction.orderInsurance !== null ||
                 selectedTransaction.orderCommission !== null ||
@@ -2752,21 +2731,21 @@ function Transaction() {
                             </span>
                           </div>
                         )}
-                      {selectedTransaction.totalSellerDiscount !== null &&
-                        selectedTransaction.totalSellerDiscount !== undefined && (
+                      {selectedTransaction.orderSellerDiscount !== null &&
+                        selectedTransaction.orderSellerDiscount !== undefined && (
                           <div className='flex justify-between items-center'>
-                            <span className='text-xs text-gray-600'>Chiết khấu của bạn:</span>
+                            <span className='text-xs text-gray-600'>Giảm giá của bạn:</span>
                             <span className='text-sm font-medium text-red-600'>
-                              -{selectedTransaction.totalSellerDiscount.toLocaleString()} đ
+                              -{selectedTransaction.orderSellerDiscount.toLocaleString()} đ
                             </span>
                           </div>
                         )}
-                      {selectedTransaction.totalSystemDiscount !== null &&
-                        selectedTransaction.totalSystemDiscount !== undefined && (
+                      {selectedTransaction.orderSystemDiscount !== null &&
+                        selectedTransaction.orderSystemDiscount !== undefined && (
                           <div className='flex justify-between items-center'>
-                            <span className='text-xs text-gray-600'>Chiết khấu hệ thống:</span>
+                            <span className='text-xs text-gray-600'>Giảm giá hệ thống:</span>
                             <span className='text-sm font-medium text-gray-500'>
-                              -{selectedTransaction.totalSystemDiscount.toLocaleString()} đ
+                              -{selectedTransaction.orderSystemDiscount.toLocaleString()} đ
                             </span>
                           </div>
                         )}

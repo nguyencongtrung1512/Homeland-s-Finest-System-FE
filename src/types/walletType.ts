@@ -131,8 +131,8 @@ export interface WalletTransactionDTO {
   processNote?: string
   // Order breakdown fields (only visible for Seller/Admin/Staff)
   orderGrossRevenue?: number | null
-  totalSellerDiscount?: number | null
-  totalSystemDiscount?: number | null
+  orderSellerDiscount?: number | null
+  orderSystemDiscount?: number | null
   orderShipFee?: number | null
   orderInsurance?: number | null
   orderCommission?: number | null
