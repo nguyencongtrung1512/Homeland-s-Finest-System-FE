@@ -5,7 +5,9 @@ import { useAuth } from '../../../contexts/auth.context'
 import { useActiveUserGuard } from '../../../hooks/useActiveUserGuard'
 import { useChat } from '../../../contexts/chat.context'
 import { getComboById } from '../../../apis/combo.api'
+import { productApi } from '../../../apis/product.api'
 import { type Combo } from '../../../types/combo.type'
+import { toast } from 'react-toastify'
 import Loading from '../../../components/Loading/loading'
 import EmptyState from '../../../components/EmptyState/emptyState'
 import {
@@ -53,6 +55,7 @@ function ComboDetail() {
   const [quantity, setQuantity] = useState(1)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [loadingProductIds, setLoadingProductIds] = useState<Set<string>>(new Set())
 
   const fetchComboDetail = useCallback(async () => {
     if (!id) return
@@ -149,6 +152,32 @@ function ComboDetail() {
   const handleSendMessage = () => {
     if (combo?.storeId && combo?.storeName) {
       openChatWithStore(combo.storeId, combo.storeName)
+    }
+  }
+
+  const handleProductClick = async (productVariantId: string) => {
+    if (!productVariantId) {
+      toast.error('Không tìm thấy thông tin sản phẩm')
+      return
+    }
+
+    setLoadingProductIds((prev) => new Set(prev).add(productVariantId))
+    try {
+      const response = await productApi.getDisplayRootByVariantId(productVariantId)
+      if (response?.data?.id) {
+        navigate(path.productDetail.replace(':id', response.data.id))
+      } else {
+        toast.error('Không thể tìm thấy thông tin sản phẩm')
+      }
+    } catch (error) {
+      console.error('Error getting product ID:', error)
+      toast.error('Có lỗi xảy ra khi tải thông tin sản phẩm. Vui lòng thử lại.')
+    } finally {
+      setLoadingProductIds((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(productVariantId)
+        return newSet
+      })
     }
   }
 
@@ -277,30 +306,52 @@ function ComboDetail() {
                 <div>
                   <h3 className='text-base sm:text-lg font-semibold mb-3'>Sản phẩm trong combo:</h3>
                   <div className='space-y-2 sm:space-y-3'>
-                    {combo.comboItems.map((item, index) => (
-                      <div
-                        key={index}
-                        className='flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-gray-200 rounded-lg gap-2 sm:gap-0'
-                      >
-                        <div className='w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-100'>
-                          <img src={item.comboItemImageUrl} alt="comboitem" className='w-full h-full object-cover' />
-                        </div>
-                        <div className='flex-1'>
-                          <div className='font-medium text-gray-900 text-sm sm:text-base truncate'>
-                            {item.comboItemName}
+                    {combo.comboItems.map((item, index) => {
+                      const isLoading = loadingProductIds.has(item.productVariantId)
+                      return (
+                        <div
+                          key={index}
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-gray-200 rounded-lg gap-2 sm:gap-0 transition-all ${item.productVariantId ? 'cursor-pointer hover:bg-gray-50 hover:border-green-300 hover:shadow-md' : ''} ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                          onClick={() => {
+                            if (item.productVariantId && !isLoading) {
+                              handleProductClick(item.productVariantId)
+                            }
+                          }}
+                          title={item.productVariantId ? 'Click để xem chi tiết sản phẩm' : ''}
+                        >
+                          <div className='relative w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-100'>
+                            {isLoading && (
+                              <div className='absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-10'>
+                                <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-white'></div>
+                              </div>
+                            )}
+                            <img
+                              src={item.comboItemImageUrl}
+                              alt={item.comboItemName}
+                              className='w-full h-full object-cover'
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.src = 'https://via.placeholder.com/200x200?text=No+Image'
+                              }}
+                            />
                           </div>
-                          <div className='text-xs sm:text-sm text-gray-600'>Số lượng: {item.quantity}</div>
-                        </div>
-                        {/* <div className='text-left sm:text-right'>
-                          <div className='font-semibold text-green-600 text-sm sm:text-base'>
-                            {new Intl.NumberFormat('vi-VN', {
-                              style: 'currency',
-                              currency: 'VND'
-                            }).format(item.basePrice)}
+                          <div className='flex-1'>
+                            <div className='font-medium text-gray-900 text-sm sm:text-base truncate'>
+                              {item.comboItemName}
+                            </div>
+                            <div className='text-xs sm:text-sm text-gray-600'>Số lượng: {item.quantity}</div>
                           </div>
-                        </div> */}
-                      </div>
-                    ))}
+                          {/* <div className='text-left sm:text-right'>
+                            <div className='font-semibold text-green-600 text-sm sm:text-base'>
+                              {new Intl.NumberFormat('vi-VN', {
+                                style: 'currency',
+                                currency: 'VND'
+                              }).format(item.basePrice)}
+                            </div>
+                          </div> */}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
