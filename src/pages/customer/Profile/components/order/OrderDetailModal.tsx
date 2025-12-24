@@ -6,6 +6,8 @@ import { Dialog, DialogContent } from '../../../../../components/ui/dialog'
 import { getOrderDetail } from '../../../../../apis/order.api'
 import { storeApi } from '../../../../../apis/store.api'
 import type { StoreResponse } from '../../../../../apis/store.api'
+import { productApi } from '../../../../../apis/product.api'
+import { getComboById } from '../../../../../apis/combo.api'
 import {
   Loader2,
   Package,
@@ -29,6 +31,7 @@ interface OrderItemWithCombo {
   comboItemId?: string
   comboId?: string
   comboName?: string
+  productVariantId?: string
   orderItemName: string
   orderItemImageUrl: string
   quantity: number
@@ -42,6 +45,7 @@ interface OrderItemWithCombo {
 
 interface OrderItem {
   id: string
+  productVariantId?: string
   orderItemName: string
   orderItemImageUrl: string
   quantity: number
@@ -115,6 +119,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
   const [store, setStore] = useState<StoreResponse | null>(null)
   const [storeLoading, setStoreLoading] = useState(false)
   const [storeError, setStoreError] = useState<string | null>(null)
+  const [loadingProductIds, setLoadingProductIds] = useState<Set<string>>(new Set())
+  const [comboInfoMap, setComboInfoMap] = useState<Map<string, { thumbnailUrl: string; name: string }>>(new Map())
+  const [loadingComboIds, setLoadingComboIds] = useState<Set<string>>(new Set())
 
   // Transform API order to UI order format
   const transformAPIOrderToUIOrder = (apiOrder: Record<string, unknown>): Order => {
@@ -135,6 +142,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       note: (apiOrder?.note as string) || undefined,
       orderItems: ((apiOrder?.orderItems as Array<Record<string, unknown>>) || []).map((item) => ({
         id: (item?.id as string) || '',
+        productVariantId: item?.productVariantId as string | undefined,
         orderItemName: (item?.orderItemName as string) || 'Sản phẩm không xác định',
         orderItemImageUrl: (item?.orderItemImageUrl as string) || DEFAULT_PRODUCT_IMAGE,
         quantity: (item?.quantity as number) || 0,
@@ -150,6 +158,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
         comboItemId: item?.comboItemId as string | undefined,
         comboId: item?.comboId as string | undefined,
         comboName: item?.comboName as string | undefined,
+        productVariantId: item?.productVariantId as string | undefined,
         orderItemName: (item?.orderItemName as string) || 'Sản phẩm không xác định',
         orderItemImageUrl: (item?.orderItemImageUrl as string) || DEFAULT_PRODUCT_IMAGE,
         quantity: (item?.quantity as number) || 0,
@@ -231,8 +240,59 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
       setError(null)
       setStore(null)
       setStoreError(null)
+      setComboInfoMap(new Map())
+      setLoadingComboIds(new Set())
     }
   }, [isOpen])
+
+  // Fetch combo info when order is loaded
+  useEffect(() => {
+    const fetchComboInfo = async () => {
+      if (!order?.orderItemsWithCombo || order.orderItemsWithCombo.length === 0) return
+
+      const comboIds = new Set<string>()
+      order.orderItemsWithCombo.forEach((item) => {
+        if (item.comboId && !comboInfoMap.has(item.comboId) && !loadingComboIds.has(item.comboId)) {
+          comboIds.add(item.comboId)
+        }
+      })
+
+      if (comboIds.size === 0) return
+
+      const fetchPromises = Array.from(comboIds).map(async (comboId) => {
+        setLoadingComboIds((prev) => new Set(prev).add(comboId))
+        try {
+          const response = await getComboById(comboId)
+          const comboData = response?.data?.data || response?.data
+          if (comboData?.thumbnailUrl) {
+            setComboInfoMap((prev) => {
+              const newMap = new Map(prev)
+              newMap.set(comboId, {
+                thumbnailUrl: comboData.thumbnailUrl,
+                name: comboData.name || ''
+              })
+              return newMap
+            })
+          }
+        } catch (error) {
+          console.error(`Error fetching combo ${comboId}:`, error)
+        } finally {
+          setLoadingComboIds((prev) => {
+            const newSet = new Set(prev)
+            newSet.delete(comboId)
+            return newSet
+          })
+        }
+      })
+
+      await Promise.all(fetchPromises)
+    }
+
+    if (order) {
+      fetchComboInfo()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order])
 
   const getStatusText = (status: string) => {
     const statusTextMap: Record<string, string> = {
@@ -270,6 +330,44 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
   const handleStoreClick = (storeId: string) => {
     const storeDetailPath = path.store.replace(':storeId', storeId)
     navigate(storeDetailPath)
+    onClose() // Close the modal after navigation
+  }
+
+  // Handle navigation to product detail page
+  const handleProductClick = async (productVariantId: string) => {
+    if (!productVariantId) {
+      toast.error('Không tìm thấy thông tin sản phẩm')
+      return
+    }
+
+    setLoadingProductIds((prev) => new Set(prev).add(productVariantId))
+    try {
+      const response = await productApi.getDisplayRootByVariantId(productVariantId)
+      if (response?.data?.id) {
+        navigate(path.productDetail.replace(':id', response.data.id))
+        onClose() // Close the modal after navigation
+      } else {
+        toast.error('Không thể tìm thấy thông tin sản phẩm')
+      }
+    } catch (error) {
+      console.error('Error getting product ID:', error)
+      toast.error('Có lỗi xảy ra khi tải thông tin sản phẩm. Vui lòng thử lại.')
+    } finally {
+      setLoadingProductIds((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(productVariantId)
+        return newSet
+      })
+    }
+  }
+
+  // Handle navigation to combo detail page
+  const handleComboClick = (comboId: string) => {
+    if (!comboId) {
+      toast.error('Không tìm thấy thông tin combo')
+      return
+    }
+    navigate(path.detailCombo.replace(':id', comboId))
     onClose() // Close the modal after navigation
   }
 
@@ -420,66 +518,135 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, or
                   <h3 className='font-semibold text-gray-900'>Sản phẩm trong đơn</h3>
                 </div>
 
-                <div className='space-y-3'>
+                <div className='space-y-4'>
                   {/* Combo Products */}
                   {comboGroups &&
-                    Object.entries(comboGroups).map(([comboId, group]) => (
-                      <div key={comboId} className='border-l-4 border-amber-500 pl-3'>
-                        {group.comboName && (
-                          <div className='flex items-center justify-between mb-2'>
-                            <div className='flex items-center gap-2'>
-                              <span className='text-xs text-gray-600'>Combo:</span>
-                              <span className='text-xs font-semibold text-amber-800'>{group.comboName}</span>
-                            </div>
-                            <span className='text-sm font-semibold text-amber-800'>
-                              {formatPrice(group.totalPrice)}
-                            </span>
-                          </div>
-                        )}
-                        {group.items.map((item) => (
+                    Object.entries(comboGroups).map(([comboId, group]) => {
+                      const firstItem = group.items[0]
+                      const comboIdToNavigate = firstItem?.comboId || comboId
+                      const comboInfo = comboInfoMap.get(comboIdToNavigate)
+                      const isLoadingCombo = loadingComboIds.has(comboIdToNavigate)
+                      const comboImage = comboInfo?.thumbnailUrl || firstItem?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE
+                      const comboName = comboInfo?.name || group.comboName || 'Combo'
+
+                      return (
+                        <div
+                          key={comboId}
+                          className='bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border-2 border-amber-200 overflow-hidden shadow-sm'
+                        >
+                          {/* Combo Header */}
                           <div
-                            key={item.id}
-                            className='flex gap-3 mb-3 last:mb-0 bg-amber-50/50 rounded-lg p-2 border border-amber-100'
+                            className={`flex items-center gap-4 p-4 cursor-pointer hover:bg-amber-100/50 transition-colors ${isLoadingCombo ? 'opacity-50' : ''}`}
+                            onClick={() => comboIdToNavigate && !isLoadingCombo && handleComboClick(comboIdToNavigate)}
+                            title='Click để xem chi tiết combo'
                           >
-                            <img
-                              src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
-                              alt={item.orderItemName}
-                              className='w-16 h-16 object-cover rounded-lg border-2 border-amber-300'
-                              onError={handleImageError}
-                            />
+                            <div className='relative flex-shrink-0'>
+                              {isLoadingCombo && (
+                                <div className='absolute inset-0 bg-black bg-opacity-30 rounded-lg flex items-center justify-center z-10'>
+                                  <Loader2 className='h-5 w-5 animate-spin text-white' />
+                                </div>
+                              )}
+                              <img
+                                src={comboImage}
+                                alt={comboName}
+                                className='w-20 h-20 object-cover rounded-lg border-2 border-amber-300 shadow-md'
+                                onError={handleImageError}
+                              />
+                              <div className='absolute -top-1 -right-1 bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md'>
+                                COMBO
+                              </div>
+                            </div>
                             <div className='flex-1 min-w-0'>
                               <div className='flex items-center gap-2 mb-1'>
-                                <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
+                                <span className='text-xs text-gray-600 font-medium'>Combo:</span>
+                                <h4 className='font-semibold text-amber-900 text-sm line-clamp-2'>{comboName}</h4>
                               </div>
-
-                              <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
+                              <div className='flex items-center gap-2'>
+                                <span className='text-xs text-gray-600'>
+                                  {group.items.length} sản phẩm • Số lượng: {group.items.reduce((sum, item) => sum + item.quantity, 0)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className='text-right flex-shrink-0'>
+                              <p className='text-lg font-bold text-amber-900'>{formatPrice(group.totalPrice)}</p>
+                              <p className='text-xs text-gray-500 mt-1'>Tổng giá combo</p>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    ))}
+
+                          {/* Combo Items */}
+                          <div className='bg-white/50 border-t border-amber-200 p-3'>
+                            <p className='text-xs font-medium text-gray-700 mb-2'>Các sản phẩm trong combo:</p>
+                            <div className='space-y-2'>
+                              {group.items.map((item) => {
+                                const isLoading = loadingProductIds.has(item.productVariantId || '')
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className={`flex gap-3 bg-white rounded-lg p-2 border border-amber-100 ${item.productVariantId ? 'cursor-pointer hover:bg-amber-50 hover:border-amber-300 transition-all' : ''} ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                                    onClick={() => {
+                                      if (item.productVariantId && !isLoading) {
+                                        handleProductClick(item.productVariantId)
+                                      }
+                                    }}
+                                    title={item.productVariantId ? 'Click để xem chi tiết sản phẩm' : ''}
+                                  >
+                                    <img
+                                      src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
+                                      alt={item.orderItemName}
+                                      className='w-12 h-12 object-cover rounded-lg border border-amber-200'
+                                      onError={handleImageError}
+                                    />
+                                    <div className='flex-1 min-w-0'>
+                                      <h5 className='font-medium text-gray-900 text-xs line-clamp-2 mb-1'>{item.orderItemName}</h5>
+                                      <div className='flex items-center gap-3'>
+                                        <span className='text-xs text-gray-600'>SL: {item.quantity}</span>
+                                        <span className='text-xs font-semibold text-amber-700'>
+                                          {formatPrice(item.totalPrice)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
 
                   {/* Regular Products */}
-                  {order.orderItems.map((item) => (
-                    <div key={item.id} className='flex gap-3 bg-white rounded-lg p-2 border border-gray-200'>
-                      <img
-                        src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
-                        alt={item.orderItemName}
-                        className='w-16 h-16 object-cover rounded-lg border border-gray-200'
-                        onError={handleImageError}
-                      />
-                      <div className='flex-1 min-w-0'>
-                        <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
-                        {item.length && item.width && (
-                          <p className='text-xs text-gray-600'>Túi {item.length}kg từ nông quê</p>
-                        )}
-                        <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
+                  {order.orderItems.map((item) => {
+                    const isLoading = loadingProductIds.has(item.productVariantId || '')
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex gap-3 bg-white rounded-lg p-2 border border-gray-200 ${item.productVariantId ? 'cursor-pointer hover:bg-gray-50 hover:border-green-300 transition-colors' : ''} ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                        onClick={() => {
+                          if (item.productVariantId && !isLoading) {
+                            handleProductClick(item.productVariantId)
+                          }
+                        }}
+                        title={item.productVariantId ? 'Click để xem chi tiết sản phẩm' : ''}
+                      >
+                        <img
+                          src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
+                          alt={item.orderItemName}
+                          className='w-16 h-16 object-cover rounded-lg border border-gray-200'
+                          onError={handleImageError}
+                        />
+                        <div className='flex-1 min-w-0'>
+                          <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
+                          {item.length && item.width && (
+                            <p className='text-xs text-gray-600'>Túi {item.length}kg từ nông quê</p>
+                          )}
+                          <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
+                        </div>
+                        <div className='text-right'>
+                          <p className='font-semibold text-gray-900'>{formatPrice(item.totalPrice)}</p>
+                        </div>
                       </div>
-                      <div className='text-right'>
-                        <p className='font-semibold text-gray-900'>{formatPrice(item.totalPrice)}</p>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 

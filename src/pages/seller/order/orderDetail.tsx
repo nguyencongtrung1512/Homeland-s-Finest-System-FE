@@ -866,74 +866,73 @@ const OrderDetail: React.FC<OrderDetailModalProps> = ({ isOpen, onClose, orderId
               })()}
 
               {/* Products Section */}
-              <div className='bg-white rounded-lg p-4 shadow-sm border border-gray-100'>
-                <div className='flex items-center gap-2 mb-3'>
-                  <Package className='h-4 w-4 text-green-600' />
-                  <h3 className='font-semibold text-gray-900 mt-3'>Sản phẩm trong đơn</h3>
-                </div>
+                  <div className='bg-white rounded-lg p-4 shadow-sm border border-gray-100'>
+                    <div className='flex items-center gap-2 mb-3'>
+                      <Package className='h-4 w-4 text-green-600' />
+                      <h3 className='font-semibold text-gray-900'>Sản phẩm trong đơn</h3>
+                    </div>
 
                 <div className='space-y-3'>
                   {/* Combo Products */}
-                  {comboGroups &&
-                    Object.entries(comboGroups).map(([comboId, group]) => (
-                      <div key={comboId} className='border-l-4 border-amber-500 pl-3'>
-                        {group.comboName && (
-                          <div className='flex items-center gap-2 mb-2'>
-                            <span className='text-xs text-gray-600'>Combo:</span>
-                            <span className='text-xs font-semibold text-amber-800'>{group.comboName}</span>
-                          </div>
-                        )}
-                        {group.items.map((item) => (
-                          <div
-                            key={item.id}
-                            className='flex gap-3 mb-3 last:mb-0 bg-amber-50/50 rounded-lg p-2 border border-amber-100'
-                          >
-                            <img
-                              src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
-                              alt={item.orderItemName}
-                              className='w-16 h-16 object-cover rounded-lg border-2 border-amber-300'
-                              onError={handleImageError}
-                            />
-                            <div className='flex-1 min-w-0'>
-                              <div className='flex items-center gap-2 mb-1'>
-                                <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
+                      {comboGroups &&
+                        Object.entries(comboGroups).map(([comboId, group]) => (
+                          <div key={comboId} className='border-l-4 border-amber-500 pl-3'>
+                            {group.comboName && (
+                              <div className='flex items-center justify-between mb-2'>
+                                <div className='flex items-center gap-2'>
+                                  <span className='text-xs text-gray-600'>Combo:</span>
+                                  <span className='text-xs font-semibold text-amber-800'>{group.comboName}</span>
+                                </div>
+                                <span className='text-sm font-semibold text-amber-800'>
+                                  {formatPrice(group.totalPrice)}
+                                </span>
                               </div>
-                              {group.comboName && (
-                                <p className='text-xs text-amber-600 font-medium'>Combo Sạch bà nông trại</p>
-                              )}
-                              <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
-                            </div>
-                            <div className='text-right'>
-                              <p className='font-semibold text-gray-900'>{formatPrice(item.totalPrice)}</p>
-                            </div>
+                            )}
+                            {group.items.map((item) => (
+                              <div
+                                key={item.id}
+                                className='flex gap-3 mb-3 last:mb-0 bg-amber-50/50 rounded-lg p-2 border border-amber-100'
+                              >
+                                <img
+                                  src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
+                                  alt={item.orderItemName}
+                                  className='w-16 h-16 object-cover rounded-lg border-2 border-amber-300'
+                                  onError={handleImageError}
+                                />
+                                <div className='flex-1 min-w-0'>
+                                  <div className='flex items-center gap-2 mb-1'>
+                                    <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
+                                  </div>
+                                  <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         ))}
-                      </div>
-                    ))}
 
                   {/* Regular Products */}
-                  {order.orderItems.map((item) => (
-                    <div key={item.id} className='flex gap-3 bg-white rounded-lg p-2 border border-gray-200'>
-                      <img
-                        src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
-                        alt={item.orderItemName}
-                        className='w-16 h-16 object-cover rounded-lg border border-gray-200'
-                        onError={handleImageError}
-                      />
-                      <div className='flex-1 min-w-0'>
-                        <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
-                        {item.length && item.width && (
-                          <p className='text-xs text-gray-600'>Túi {item.length}kg từ nông quê</p>
-                        )}
-                        <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
-                      </div>
-                      <div className='text-right'>
-                        <p className='font-semibold text-gray-900'>{formatPrice(item.totalPrice)}</p>
-                      </div>
+                      {order.orderItems.map((item) => (
+                        <div key={item.id} className='flex gap-3 bg-white rounded-lg p-2 border border-gray-200'>
+                          <img
+                            src={item.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE}
+                            alt={item.orderItemName}
+                            className='w-16 h-16 object-cover rounded-lg border border-gray-200'
+                            onError={handleImageError}
+                          />
+                          <div className='flex-1 min-w-0'>
+                            <h4 className='font-medium text-gray-900 text-sm line-clamp-2'>{item.orderItemName}</h4>
+                            {item.length && item.width && (
+                              <p className='text-xs text-gray-600'>Túi {item.length}kg từ nông quê</p>
+                            )}
+                            <p className='text-xs text-gray-600'>Số lượng: {item.quantity}</p>
+                          </div>
+                          <div className='text-right'>
+                            <p className='font-semibold text-gray-900'>{formatPrice(item.totalPrice)}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
               {/* Promotions Section */}
               {order.orderPromotions && order.orderPromotions.length > 0 && (

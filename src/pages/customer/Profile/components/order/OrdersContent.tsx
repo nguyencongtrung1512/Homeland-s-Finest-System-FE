@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EllipsisVertical, MessageCircle, ChevronLeft, ChevronRight, Eye, HelpCircle } from 'lucide-react'
 import { motion, type PanInfo } from 'framer-motion'
@@ -366,14 +366,14 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
       if (comboMap.has(comboId)) {
         const existing = comboMap.get(comboId)!
         existing.totalQuantity += item?.quantity || 0
-        existing.totalPrice += item?.finalPrice || 0
+        existing.totalPrice += item?.totalPrice || 0
       } else {
         comboMap.set(comboId, {
           comboId: comboId,
           comboName: item?.comboName || 'Combo',
           image: item?.orderItemImageUrl || DEFAULT_PRODUCT_IMAGE,
           totalQuantity: item?.quantity || 0,
-          totalPrice: item?.finalPrice || 0
+          totalPrice: item?.totalPrice || 0
         })
       }
     })
@@ -381,7 +381,7 @@ const transformAPIOrderToUIOrder = (apiOrder: APIOrder): Order => {
   // Convert combo map to array
   const comboProducts = Array.from(comboMap.values()).map((combo) => ({
     id: combo.comboId,
-    productInventoryId: '', // Not needed for combo navigation
+    productInventoryId: combo.comboId, // Use comboId for navigation
     name: combo.comboName,
     image: combo.image,
     quantity: combo.totalQuantity.toString(),
@@ -644,15 +644,39 @@ export default function OrdersContent({
   }, [orders])
 
   // Merge itemsWithComboItemId into products after getting comboIds from API
+  // Also update combo info for combos created from orderItemsWithCombo
   const ordersWithCombos: Order[] = useMemo(() => {
     return orders.map((order) => {
+      // Update existing combo products with info from comboInfoMap
+      const updatedProducts = order.products.map((product) => {
+        if (product.isCombo && product.comboId) {
+          const comboInfo = comboInfoMap.get(product.comboId)
+          if (comboInfo) {
+            return {
+              ...product,
+              name: comboInfo.name || product.name,
+              image: comboInfo.thumbnailUrl || product.image,
+              comboName: comboInfo.name || product.comboName
+            }
+          }
+        }
+        return product
+      })
+
+      // Process itemsWithComboItemId from orderItems (if any)
       if (!order.itemsWithComboItemId || order.itemsWithComboItemId.length === 0) {
-        return order
+        return {
+          ...order,
+          products: updatedProducts
+        }
       }
 
       const comboItemToComboMap = orderComboMap.get(order.id)
       if (!comboItemToComboMap || comboItemToComboMap.size === 0) {
-        return order
+        return {
+          ...order,
+          products: updatedProducts
+        }
       }
 
       // Group items by comboId
@@ -687,7 +711,7 @@ export default function OrdersContent({
         const comboInfo = comboInfoMap.get(group.comboId)
         return {
           id: group.comboId,
-          productInventoryId: '',
+          productInventoryId: group.comboId, // Use comboId for navigation
           name: comboInfo?.name || 'Combo',
           image: comboInfo?.thumbnailUrl || DEFAULT_PRODUCT_IMAGE,
           quantity: group.totalQuantity.toString(),
@@ -701,12 +725,12 @@ export default function OrdersContent({
       })
 
       // Filter out existing combo products with same comboId to avoid duplicates
-      const existingComboIds = new Set(order.products.filter((p) => p.isCombo && p.comboId).map((p) => p.comboId))
+      const existingComboIds = new Set(updatedProducts.filter((p) => p.isCombo && p.comboId).map((p) => p.comboId))
       const newComboProducts = comboProductsFromItems.filter((p) => !existingComboIds.has(p.comboId))
 
       return {
         ...order,
-        products: [...order.products, ...newComboProducts]
+        products: [...updatedProducts, ...newComboProducts]
       }
     })
   }, [orders, orderComboMap, comboInfoMap])
@@ -805,7 +829,7 @@ export default function OrdersContent({
     })
 
     return filtered
-  }, [orders, selectedFilter, searchQuery])
+  }, [ordersWithCombos, selectedFilter, searchQuery])
 
   const handleFilterChange = (filterKey: string) => {
     // Lưu scroll position hiện tại trước khi state thay đổi
@@ -2011,51 +2035,68 @@ function ProductCarousel({
   comboInfoMap,
   onProductClick
 }: ProductCarouselProps) {
-  const [activeIndex, setActiveIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
-  const itemsPerView = 3 // Số sản phẩm hiển thị cùng lúc
-  const canScrollLeft = activeIndex > 0
-  const canScrollRight = activeIndex < products.length - itemsPerView
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+  const itemWidth = 320 // min-w-[320px]
+  const gap = 12 // gap-3 = 12px
+  const itemWidthWithGap = itemWidth + gap
 
-  const scrollToIndex = (index: number) => {
-    const newIndex = Math.max(0, Math.min(index, products.length - itemsPerView))
-    setActiveIndex(newIndex)
+  // Kiểm tra scroll position và cập nhật buttons
+  const checkScrollButtons = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
 
-    if (containerRef.current) {
-      const scrollAmount = newIndex * (320 + 12) // min-w-[320px] + gap-3
-      containerRef.current.scrollTo({
-        left: scrollAmount,
-        behavior: 'smooth'
-      })
-    }
-  }
+    const scrollLeft = container.scrollLeft
+    const scrollWidth = container.scrollWidth
+    const clientWidth = container.clientWidth
+    const threshold = 1 // Ngưỡng để xác định đã scroll hết
 
-  const onDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const dragThreshold = 50
-    const dragOffset = info.offset.x
+    setCanScrollLeft(scrollLeft > threshold)
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - threshold)
+  }, [])
 
-    if (dragOffset > dragThreshold && canScrollLeft) {
-      scrollToIndex(activeIndex - 1)
-    } else if (dragOffset < -dragThreshold && canScrollRight) {
-      scrollToIndex(activeIndex + 1)
-    }
-  }
-
-  // Auto-detect scroll position
+  // Scroll handler
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
-    const handleScroll = () => {
-      const scrollLeft = container.scrollLeft
-      const itemWidth = 320 + 12 // min-w-[320px] + gap-3
-      const newIndex = Math.round(scrollLeft / itemWidth)
-      setActiveIndex(Math.max(0, Math.min(newIndex, products.length - itemsPerView)))
-    }
+    checkScrollButtons()
+    container.addEventListener('scroll', checkScrollButtons, { passive: true })
+    window.addEventListener('resize', checkScrollButtons)
 
-    container.addEventListener('scroll', handleScroll)
-    return () => container.removeEventListener('scroll', handleScroll)
-  }, [products.length])
+    return () => {
+      container.removeEventListener('scroll', checkScrollButtons)
+      window.removeEventListener('resize', checkScrollButtons)
+    }
+  }, [checkScrollButtons, products.length])
+
+  // Scroll functions
+  const scrollNext = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const currentScroll = container.scrollLeft
+    const scrollAmount = itemWidthWithGap // Scroll từng item một
+
+    container.scrollTo({
+      left: currentScroll + scrollAmount,
+      behavior: 'smooth'
+    })
+  }, [itemWidthWithGap])
+
+  const scrollPrev = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const currentScroll = container.scrollLeft
+    const scrollAmount = itemWidthWithGap // Scroll từng item một
+
+    container.scrollTo({
+      left: Math.max(0, currentScroll - scrollAmount),
+      behavior: 'smooth'
+    })
+  }, [itemWidthWithGap])
 
   if (products.length === 0) return null
 
@@ -2063,9 +2104,9 @@ function ProductCarousel({
     <div className='relative'>
       {canScrollLeft && (
         <button
-          onClick={() => scrollToIndex(activeIndex - 1)}
+          onClick={scrollPrev}
           className='absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors'
-          aria-label='Cuộn trái'
+          aria-label='Xem sản phẩm trước'
         >
           <ChevronLeft className='h-5 w-5 text-gray-700' />
         </button>
@@ -2076,107 +2117,91 @@ function ProductCarousel({
         className='flex overflow-x-auto gap-3 pb-2 scrollbar-hide scroll-smooth'
         style={{ scrollSnapType: 'x mandatory' }}
       >
-        <motion.div
-          className='flex gap-3'
-          drag='x'
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
-          onDragEnd={onDragEnd}
-        >
-          {products.map((product, index) => {
-            const isLoading = loadingProductIds.has(product.productInventoryId || '')
-            const isDisabled = isLoading
+        {products.map((product, index) => {
+          const isLoading = loadingProductIds.has(product.productInventoryId || '')
+          const isDisabled = isLoading
 
-            // Get combo thumbnailUrl from comboInfoMap if available
-            const comboInfo = product.isCombo && product.comboId ? comboInfoMap.get(product.comboId) : null
-            const displayImage = comboInfo?.thumbnailUrl || product.image || DEFAULT_PRODUCT_IMAGE
-            const displayName = comboInfo?.name || product.name
+          // Get combo thumbnailUrl from comboInfoMap if available
+          const comboInfo = product.isCombo && product.comboId ? comboInfoMap.get(product.comboId) : null
+          const displayImage = comboInfo?.thumbnailUrl || product.image || DEFAULT_PRODUCT_IMAGE
+          const displayName = comboInfo?.name || product.name
 
-            return (
-              <div
-                key={`${product.id || index}-${product.productInventoryId || ''}-${product.comboId || ''}`}
-                className={`flex-shrink-0 bg-white rounded-lg border border-gray-200 overflow-hidden transition-all ${isDisabled ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:shadow-md hover:border-green-300'
-                  }`}
-                style={{ scrollSnapAlign: 'start', minWidth: '320px' }}
-                onClick={() => {
-                  if (!isDisabled) {
-                    onProductClick(
-                      product.productInventoryId || '',
-                      product.isCombo || false,
-                      product.comboId
-                    )
-                  }
-                }}
-              >
-                <div className='flex items-center gap-3 p-2'>
-                  <div className='relative flex-shrink-0'>
-                    {(loadingComboIds.has(product.comboId || '') || isLoading) && (
-                      <div className='absolute inset-0 bg-black bg-opacity-30 rounded-lg flex items-center justify-center z-10'>
-                        <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-white'></div>
-                      </div>
-                    )}
-                    <img
-                      src={displayImage}
-                      alt={displayName}
-                      className='w-20 h-20 object-cover rounded-lg border'
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = DEFAULT_PRODUCT_IMAGE
-                      }}
-                    />
-                    {product.isCombo && (
-                      <div className='absolute top-1 right-1 bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded'>
-                        Combo
-                      </div>
-                    )}
-                  </div>
-                  <div className='flex-1 min-w-0'>
-                    <p className='text-sm font-medium text-gray-900 line-clamp-2'>{displayName}</p>
-                    {product.variant && !product.isCombo && (
-                      <p className='text-xs text-gray-500 mt-1'>{product.variant}</p>
-                    )}
-                    <div className='flex flex-col gap-1 mt-1'>
-                      <div className='flex items-center gap-2'>
-                        <span className='text-xs text-gray-500'>Số lượng: {product.quantity}</span>
-                        {(product.finalPrice ?? 0) > 0 && (
-                          <span className='text-xs font-semibold text-green-600'>
-                            {formatPrice(product.finalPrice ?? 0)}
-                          </span>
-                        )}
-                      </div>
+          return (
+            <div
+              key={`${product.id || index}-${product.productInventoryId || ''}-${product.comboId || ''}`}
+              className={`flex-shrink-0 bg-white rounded-lg border border-gray-200 overflow-hidden transition-all ${isDisabled ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:shadow-md hover:border-green-300'
+                }`}
+              style={{ scrollSnapAlign: 'start', minWidth: `${itemWidth}px` }}
+              onClick={() => {
+                if (!isDisabled) {
+                  onProductClick(
+                    product.productInventoryId || '',
+                    product.isCombo || false,
+                    product.comboId
+                  )
+                }
+              }}
+            >
+              <div className='flex items-center gap-3 p-2'>
+                <div className='relative flex-shrink-0'>
+                  {(loadingComboIds.has(product.comboId || '') || isLoading) && (
+                    <div className='absolute inset-0 bg-black bg-opacity-30 rounded-lg flex items-center justify-center z-10'>
+                      <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-white'></div>
+                    </div>
+                  )}
+                  <img
+                    src={displayImage}
+                    alt={displayName}
+                    className='w-20 h-20 object-cover rounded-lg border'
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.src = DEFAULT_PRODUCT_IMAGE
+                    }}
+                  />
+                  {product.isCombo && (
+                    <div className='absolute top-1 right-1 bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded'>
+                      Combo
+                    </div>
+                  )}
+                </div>
+                <div className='flex-1 min-w-0'>
+                  <p className='text-sm font-medium text-gray-900 line-clamp-2'>{displayName}</p>
+                  {product.variant && !product.isCombo && (
+                    <p className='text-xs text-gray-500 mt-1'>{product.variant}</p>
+                  )}
+                  <div className='flex flex-col gap-1 mt-1'>
+                    <div className='flex items-center gap-2'>
+                      <span className='text-xs text-gray-500'>Số lượng: {product.quantity}</span>
+                      {(product.finalPrice ?? 0) > 0 && (
+                        <span className='text-xs font-semibold text-green-600'>
+                          {formatPrice(product.finalPrice ?? 0)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
-            )
-          })}
-        </motion.div>
+            </div>
+          )
+        })}
       </div>
 
       {canScrollRight && (
         <button
-          onClick={() => scrollToIndex(activeIndex + 1)}
+          onClick={scrollNext}
           className='absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors'
-          aria-label='Cuộn phải'
+          aria-label='Xem sản phẩm tiếp theo'
         >
           <ChevronRight className='h-5 w-5 text-gray-700' />
         </button>
       )}
 
-      {/* Dots indicator */}
-      {products.length > itemsPerView && (
+      {/* Product counter */}
+      {products.length > 1 && (
         <div className='flex items-center justify-center gap-2 mt-3'>
-          {Array.from({ length: Math.ceil(products.length / itemsPerView) }).map((_, index) => (
-            <button
-              key={index}
-              onClick={() => scrollToIndex(index * itemsPerView)}
-              className={`h-2 rounded-full transition-all ${Math.floor(activeIndex / itemsPerView) === index
-                ? 'w-6 bg-green-600'
-                : 'w-2 bg-gray-300 hover:bg-gray-400'
-                }`}
-              aria-label={`Go to page ${index + 1}`}
-            />
-          ))}
+          <span className='text-xs text-gray-500'>
+            {products.length} sản phẩm
+          </span>
         </div>
       )}
     </div>
