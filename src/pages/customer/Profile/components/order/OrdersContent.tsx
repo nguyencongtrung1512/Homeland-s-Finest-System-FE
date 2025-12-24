@@ -1931,10 +1931,10 @@ export default function OrdersContent({
                   <div className='text-sm text-gray-600 mb-1'>Số tài khoản</div>
                   <div className='text-sm font-medium text-gray-900'>{refundInfo.bankAccount || '-'}</div>
                 </div>
-                <div className='col-span-2'>
+                {/* <div className='col-span-2'>
                   <div className='text-sm text-gray-600 mb-1'>Tên chủ tài khoản</div>
                   <div className='text-sm font-medium text-gray-900'>{refundInfo.accountHolderName || '-'}</div>
-                </div>
+                </div> */}
               </div>
 
               {/* Process Information */}

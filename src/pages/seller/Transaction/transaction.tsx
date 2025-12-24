@@ -2198,10 +2198,6 @@ function Transaction() {
                       <span>Số tài khoản:</span>
                       <span className='font-medium'>{formatAccountNumber(userInfo?.bankAccount || null)}</span>
                     </div>
-                    <div className='flex justify-between'>
-                      <span>Tên chủ tài khoản:</span>
-                      <span className='font-medium'>{getAccountHolderName()}</span>
-                    </div>
                   </div>
                 </div>
                 {/* Available Balance */}
