@@ -98,24 +98,25 @@ function StoryDetailModal({ open, onOpenChange, storyId, onRefresh }: StoryDetai
 
       const textIntroContent = findContent(StoreStoryContentType.TextIntro)
       const textExpandedContent = findContent(StoreStoryContentType.TextExpanded)
-      const textClosingContent = findContent(StoreStoryContentType.TextClosing)
+      
       const videoOpenerContent = findContent(StoreStoryContentType.VideoOpener)
       const singleImageContent = findContent(StoreStoryContentType.SingleImage)
       const imageGalleryContent = findContent(StoreStoryContentType.ImageGallery)
       const videoProcessContent = findContent(StoreStoryContentType.VideoProcess)
       const videoTestimonialContent = findContent(StoreStoryContentType.VideoTestimonial)
+      const textClosingContent = findContent(StoreStoryContentType.TextClosing)
 
       const payload = {
         Title: story.title || '',
         TextIntro: textIntroContent?.contentData || '',
-        TextExpanded: textExpandedContent?.contentData || '',
-        TextClosing: textClosingContent?.contentData || '',
+        TextExpanded: textExpandedContent?.contentData || '',  
         VideoOpenerDescription: videoOpenerContent?.contentData || '',
         SingleImageDescription: singleImageContent?.contentData || '',
         GalleryDescription: imageGalleryContent?.contentData || '',
         VideoProcessDescription: videoProcessContent?.contentData || '',
         VideoTestimonialDescription: videoTestimonialContent?.contentData || '',
-        StoreId: story.storeId || ''
+        StoreId: story.storeId || '',
+        TextClosing: textClosingContent?.contentData || ''
       }
 
       // Use update API with IsActive = false

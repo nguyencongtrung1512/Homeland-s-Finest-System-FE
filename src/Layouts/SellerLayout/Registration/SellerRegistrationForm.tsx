@@ -3156,7 +3156,7 @@ function SellerRegistrationForm() {
                   <button
                     type='button'
                     onClick={() => {
-                      window.open('/portal?type=Seller', '_blank')
+                      window.open(`${path.portal}?type=Seller`, '_blank')
                       setHasOpenedTermsPage(true)
                     }}
                     className='text-green-600 hover:text-green-700 underline font-medium'
@@ -3179,7 +3179,7 @@ function SellerRegistrationForm() {
                   <button
                     type='button'
                     onClick={() => {
-                      window.open('/portal?type=Seller', '_blank')
+                      window.open(`${path.portal}?type=Seller`, '_blank')
                       setHasOpenedTermsPage(true)
                     }}
                     className='text-green-600 hover:text-green-700 underline font-medium'

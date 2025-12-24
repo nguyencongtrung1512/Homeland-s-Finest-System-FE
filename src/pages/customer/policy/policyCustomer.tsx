@@ -26,7 +26,9 @@ const getTypeLabel = (type: string): string => {
 
 function PolicyCustomer() {
   const [searchParams] = useSearchParams()
-  const documentType = searchParams.get('type') || 'customer' // Mặc định là 'customer'
+  const documentTypeParam = searchParams.get('type') || 'customer' // Mặc định là 'customer'
+  // Normalize documentType để handle cả 'seller', 'Seller', 'SELLER', etc.
+  const documentType = documentTypeParam.toLowerCase()
   const [documents, setDocuments] = useState<DocumentType[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null)
@@ -37,8 +39,9 @@ function PolicyCustomer() {
     const fetchDocuments = async () => {
       try {
         setLoading(true)
-        // Gọi API dựa trên documentType từ query parameter
-        const response = documentType === 'seller'
+        // Gọi API dựa trên documentType từ query parameter (case insensitive)
+        const isSeller = documentType === 'seller'
+        const response = isSeller
           ? await getDocumentsSeller({
             pageSize: 0,
             pageNumber: 1
@@ -48,10 +51,16 @@ function PolicyCustomer() {
             pageNumber: 1
           })
 
-        // Filter documents với type tương ứng và isPublished = true
-        const targetType = documentType === 'seller' ? 'Seller' : 'Customer'
+        // Filter documents với type tương ứng
+        // Cho seller: hiển thị tất cả documents (kể cả chưa published)
+        // Cho customer: chỉ hiển thị published documents
+        const targetType = isSeller ? 'Seller' : 'Customer'
         const documentsArray: DocumentType[] = (response.data || []).filter(
-          (doc: DocumentType) => doc.type === targetType && doc.isPublished === true
+          (doc: DocumentType) => {
+            const typeMatch = doc.type === targetType
+            // Nếu là seller, hiển thị tất cả. Nếu là customer, chỉ hiển thị published
+            return typeMatch && (isSeller || doc.isPublished === true)
+          }
         )
 
         setDocuments(documentsArray)
