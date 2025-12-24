@@ -179,10 +179,10 @@ function ListCategory() {
       } else {
         setError('Có lỗi xảy ra khi tải dữ liệu')
       }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải dữ liệu'
+    }  catch (err: any) {  
+      const errorMessage = err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi tải dữ liệu'
       setError(errorMessage)
-      toast.error('Không thể tải dữ liệu ProductCategory')
+      toast.error(errorMessage) 
     } finally {
       setLoading(false)
     }
@@ -358,8 +358,8 @@ function ListCategory() {
       setNameError('')
       setDescriptionError('')
       fetchProductCategory() // Refresh data
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra'
+    } catch (err: any) { 
+      const errorMessage = err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi tải dữ liệu'
       toast.error(errorMessage)
     } finally {
       setFormLoading(false)
