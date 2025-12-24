@@ -13,6 +13,7 @@ import { PromotionBubble } from '../../../components/PromotionBubble'
 import ChatBot from '../../../components/ChatBot/chatbot'
 import ChatSystem from '../Chat/chatSystem'
 import { useAuth } from '../../../contexts/auth.context'
+import { useActiveUserGuard } from '../../../hooks/useActiveUserGuard'
 import searchApi, { type SearchRequest } from '../../../apis/search.api'
 import type { Product } from '../../../types/productType'
 import LiquidSegmentedControl from '../../../components/ui/tab'
@@ -21,6 +22,7 @@ import SearchAutocomplete from '../../../components/SearchAutocomplete/SearchAut
 
 function Products() {
   const { isAuthenticated, user } = useAuth()
+  const { isActiveUser } = useActiveUserGuard()
   const [searchParams] = useSearchParams()
   const categoryId = searchParams.get('categoryId')
   const queryTextFromUrl = searchParams.get('queryText')
@@ -271,6 +273,7 @@ function Products() {
   })
 
   const handleAddCombo = async (comboId: string) => {
+    if (!isActiveUser) return
     try {
       await addToCart('', 1, comboId)
     } catch {
@@ -494,6 +497,7 @@ function Products() {
                     onAddToCart={handleAddCombo}
                     currentPage={currentPage}
                     onPageChange={setCurrentPage}
+                    isDisabled={!isActiveUser}
                   />
                   {comboPagination && (
                     <>

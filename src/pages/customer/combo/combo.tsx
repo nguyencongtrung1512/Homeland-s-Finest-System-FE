@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
+import { useActiveUserGuard } from '../../../hooks/useActiveUserGuard'
 import { Button } from '../../../components/ui/button'
 import Loading from '../../../components/Loading/loading'
 import Pagination from '../../../components/Pagination/Pagination'
@@ -17,9 +18,10 @@ interface ComboCardProps {
     savingsPercentage: number
   }
   onAddToCart: (comboId: string) => void
+  isDisabled?: boolean
 }
 
-export const ComboCard = ({ combo, onAddToCart }: ComboCardProps) => {
+export const ComboCard = ({ combo, onAddToCart, isDisabled }: ComboCardProps) => {
   const navigate = useNavigate()
 
   const handleCardClick = () => {
@@ -110,6 +112,7 @@ export const ComboCard = ({ combo, onAddToCart }: ComboCardProps) => {
               e.stopPropagation()
               onAddToCart(combo.id)
             }}
+            disabled={isDisabled}
           >
             <ShoppingCart className='w-4 h-4' />
           </Button>
@@ -127,9 +130,18 @@ interface ComboListProps {
   onAddToCart: (comboId: string) => void
   currentPage: number
   onPageChange: (page: number) => void
+  isDisabled?: boolean
 }
 
-export const ComboList = ({ combos, loading, error, onAddToCart, currentPage, onPageChange }: ComboListProps) => {
+export const ComboList = ({
+  combos,
+  loading,
+  error,
+  onAddToCart,
+  currentPage,
+  onPageChange,
+  isDisabled
+}: ComboListProps) => {
   // Filter combos for active and approved only
   const filteredCombos = combos.filter((combo) => combo.isActive === true && combo.status === 'Approved')
 
@@ -214,7 +226,7 @@ export const ComboList = ({ combos, loading, error, onAddToCart, currentPage, on
 
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
         {combosWithSavings.map((combo) => (
-          <ComboCard key={combo.id} combo={combo} onAddToCart={onAddToCart} />
+          <ComboCard key={combo.id} combo={combo} onAddToCart={onAddToCart} isDisabled={isDisabled} />
         ))}
       </div>
 
@@ -231,6 +243,7 @@ export const ComboList = ({ combos, loading, error, onAddToCart, currentPage, on
 // Main ComboPage component (standalone combo page)
 export default function ComboPage() {
   const { addToCart } = useCart()
+  const { isActiveUser } = useActiveUserGuard()
   const [combos, setCombos] = useState<Combo[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -269,6 +282,7 @@ export default function ComboPage() {
   }, [searchQuery, combos])
 
   const handleAddCombo = async (comboId: string) => {
+    if (!isActiveUser) return
     try {
       await addToCart('', 1, comboId)
     } catch {
@@ -312,6 +326,7 @@ export default function ComboPage() {
         onAddToCart={handleAddCombo}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
+        isDisabled={!isActiveUser}
       />
     </div>
   )

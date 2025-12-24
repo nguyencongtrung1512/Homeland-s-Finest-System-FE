@@ -19,6 +19,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../../contexts/store.context'
 import path from '../../constants/path'
+import { formatDateTime } from '../../utils/formatDate'
 
 const AnimatedIcon: React.FC<{
   children: React.ReactNode
@@ -55,6 +56,12 @@ function SideBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { store, isStoreApproved } = useStore()
+  const isStoreLocked =
+    store?.status === 'Inactive' ||
+    store?.sellerInfo?.sellerStatus === 'Blocked' ||
+    store?.sellerInfo?.userInfo?.isActive === false
+  const banAt = store?.sellerInfo?.userInfo?.banAt
+  const banUntil = store?.sellerInfo?.userInfo?.banUntil
 
   const pendingMenuItems = [
     {
@@ -216,7 +223,7 @@ function SideBar() {
     }
   ]
 
-  // Menu item for Story - only shown when status is Inactive
+  // Menu item for Story - chỉ thêm khi Inactive nhưng chưa bật chế độ khóa tổng
   const storyMenuItem = {
     key: path.myStorySeller,
     label: 'Câu chuyện',
@@ -227,12 +234,16 @@ function SideBar() {
     )
   }
 
-  // Build menu items based on approval status and store status
+  // Build menu items based on approval status và trạng thái khóa
   let menuItems = isStoreApproved ? approvedMenuItems : pendingMenuItems
 
-  // Only show Story menu when store status is Inactive
-  if (store?.status === 'Inactive') {
-    menuItems = [...menuItems, storyMenuItem]
+  // Khi cửa hàng bị khóa: dùng bộ menu đầy đủ (đã có Câu chuyện) và không thêm trùng
+  if (isStoreLocked) {
+    menuItems = approvedMenuItems
+  } else if (store?.status === 'Inactive') {
+    // Chỉ thêm Câu chuyện khi Inactive nhưng chưa bị khóa hoàn toàn
+    const hasStory = menuItems.some((item) => item.key === storyMenuItem.key)
+    menuItems = hasStory ? menuItems : [...menuItems, storyMenuItem]
   }
 
   const handleMenuClick = ({ key }: { key: string }) => {
@@ -299,7 +310,7 @@ function SideBar() {
           </span>
         </div>
 
-        {store && !isStoreApproved && (
+        {store && !isStoreApproved && !isStoreLocked && (
           <div
             style={{
               padding: '12px 24px',
@@ -311,6 +322,23 @@ function SideBar() {
           >
             <div style={{ fontWeight: '500', marginBottom: '4px' }}>⚠️ Chế độ hạn chế</div>
             <div>Cửa hàng chưa được phê duyệt</div>
+          </div>
+        )}
+
+        {store && isStoreLocked && (
+          <div
+            style={{
+              padding: '12px 24px',
+              background: '#fff2f0',
+              borderBottom: '1px solid #ffccc7',
+              fontSize: '12px',
+              color: '#a8071a'
+            }}
+          >
+            <div style={{ fontWeight: '600', marginBottom: '4px' }}>🔒 Cửa hàng đang bị khóa</div>
+            {banAt && <div>Khóa từ: {formatDateTime(banAt)}</div>}
+            {banUntil && <div>Dự kiến mở khóa: {formatDateTime(banUntil)}</div>}
+            {!banAt && !banUntil && <div>Vui lòng liên hệ hỗ trợ để biết thêm chi tiết.</div>}
           </div>
         )}
 

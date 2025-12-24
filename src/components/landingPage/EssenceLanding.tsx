@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
 import React from 'react'
@@ -24,18 +24,18 @@ type EssenceLandingProps = {
   className?: string
 }
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.55, delay: 0.08 * i, ease: [0.22, 0.68, 0, 1] }
+    transition: { duration: 0.55, delay: 0.08 * i, ease: [0.22, 0.68, 0, 1] as const }
   })
 }
 
-const fadeIn = {
+const fadeIn: Variants = {
   hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 0.61, 0.36, 1] as const } }
 }
 
 export const EssenceLanding: React.FC<EssenceLandingProps> = ({
@@ -62,7 +62,13 @@ export const EssenceLanding: React.FC<EssenceLandingProps> = ({
       </div>
 
       <div className='relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between'>
-        <motion.div variants={fadeIn} initial='hidden' whileInView='visible' viewport={{ once: true }} className='max-w-2xl space-y-3'>
+        <motion.div
+          variants={fadeIn}
+          initial='hidden'
+          whileInView='visible'
+          viewport={{ once: true }}
+          className='max-w-2xl space-y-3'
+        >
           <p className='text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700'>{highlight}</p>
           <h2 className='text-3xl sm:text-4xl font-bold text-emerald-900 leading-tight'>{heading}</h2>
           <p className='text-base sm:text-lg text-slate-600'>{subheading}</p>
@@ -82,7 +88,8 @@ export const EssenceLanding: React.FC<EssenceLandingProps> = ({
           className='rounded-xl bg-white/70 backdrop-blur border border-emerald-100 px-4 py-3 text-sm text-emerald-800 shadow-sm lg:max-w-xs'
         >
           <p>
-            Từ ruộng đồng đến gian bếp, mỗi sản vật đều có câu chuyện riêng. Chúng tôi chọn tông xanh tươi mát để tôn vinh sự trong lành của làng nghề và sự bền vững trong canh tác.
+            Từ ruộng đồng đến gian bếp, mỗi sản vật đều có câu chuyện riêng. Chúng tôi chọn tông xanh tươi mát để tôn
+            vinh sự trong lành của làng nghề và sự bền vững trong canh tác.
           </p>
         </motion.div>
       </div>
@@ -139,4 +146,3 @@ export const EssenceLanding: React.FC<EssenceLandingProps> = ({
 }
 
 export default EssenceLanding
-

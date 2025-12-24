@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCart } from '../../../../../contexts/cart.context'
+import { useActiveUserGuard } from '../../../../../hooks/useActiveUserGuard'
 import { getCombosByProductId } from '../../../../../apis/combo.api'
 import { type Combo } from '../../../../../types/combo.type'
 import { Button } from '../../../../../components/ui/button'
@@ -12,6 +13,7 @@ function Suggest() {
   const { id: productId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { addToCart } = useCart()
+  const { isActiveUser } = useActiveUserGuard()
   const [combos, setCombos] = useState<Combo[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,6 +48,7 @@ function Suggest() {
 
   const handleAddToCart = async (e: React.MouseEvent, comboId: string) => {
     e.stopPropagation()
+    if (!isActiveUser) return
     try {
       await addToCart('', 1, comboId)
     } catch (err) {

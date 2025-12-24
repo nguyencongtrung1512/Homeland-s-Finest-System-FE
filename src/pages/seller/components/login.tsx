@@ -76,7 +76,8 @@ function SellerLogin() {
           token: response.token,
           expiresAt: response.expiresAt,
           userId: response.userId,
-          email: response.email
+          email: response.email,
+          isActive: response.isActive ?? true
         }
 
         // Cập nhật Auth Context (sẽ tự động lưu vào localStorage)

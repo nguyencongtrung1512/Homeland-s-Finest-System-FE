@@ -3,6 +3,7 @@ import { Button } from '../../../components/ui/button'
 import { CheckCircle, Truck, ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../contexts/auth.context'
+import { useActiveUserGuard } from '../../../hooks/useActiveUserGuard'
 import { cancelOrder, getOrderDetail } from '../../../apis/order.api'
 import { purchaseOrder } from '../../../apis/transaction.api'
 import { getWalletBalance } from '../../../apis/wallet.api'
@@ -116,6 +117,7 @@ function OrderCreate() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
+  const { isActiveUser } = useActiveUserGuard()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
@@ -974,16 +976,20 @@ function OrderCreate() {
                     contentClassName='bg-green-600 rounded-lg'
                     className='w-full'
                   >
-                    <Button
-                      onClick={handlePayment}
-                      disabled={
-                        isSubmitting ||
-                        isLoadingWallet ||
-                        (ordersFromState.length === 0 && !order && !existingOrder) ||
-                        (paymentMethod === 'MyWallet' &&
-                          walletBalance !== null &&
-                          walletBalance.availableBalance < total)
-                      }
+                  <Button
+                    onClick={() => {
+                      if (!isActiveUser) return
+                      handlePayment()
+                    }}
+                    disabled={
+                      !isActiveUser ||
+                      isSubmitting ||
+                      isLoadingWallet ||
+                      (ordersFromState.length === 0 && !order && !existingOrder) ||
+                      (paymentMethod === 'MyWallet' &&
+                        walletBalance !== null &&
+                        walletBalance.availableBalance < total)
+                    }
                       className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2'
                     >
                       {isSubmitting ? (

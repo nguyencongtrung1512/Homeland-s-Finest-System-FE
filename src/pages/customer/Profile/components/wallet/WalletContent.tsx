@@ -31,6 +31,7 @@ import {
 } from '../../../../../types/requestWalletMoneyType'
 import { useAuth } from '../../../../../contexts/auth.context'
 import { formatDate } from '../../../../../utils/formatDate'
+import { useActiveUserGuard } from '../../../../../hooks/useActiveUserGuard'
 
 interface WalletContentProps {
   walletBalance?: number
@@ -63,6 +64,7 @@ export default function WalletContent({
   const [loadingRequests, setLoadingRequests] = useState(false)
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'WalletOrBanking' | 'Orther'>('all')
   const { user } = useAuth()
+  const { isActiveUser } = useActiveUserGuard()
 
   // Fetch wallet data
   const fetchWalletData = async () => {
@@ -235,6 +237,7 @@ export default function WalletContent({
   }
 
   const handleDeposit = () => {
+    if (!isActiveUser) return
     if (!depositAmount || parseFloat(depositAmount) <= 0) {
       return
     }
@@ -254,6 +257,10 @@ export default function WalletContent({
   }
 
   const handleConfirmDeposit = async () => {
+    if (!isActiveUser) {
+      toast.error('Tài khoản đang bị khóa, không thể nạp tiền')
+      return
+    }
     if (!depositAmount || parseFloat(depositAmount) <= 0) {
       toast.error('Vui lòng nhập số tiền hợp lệ')
       return
@@ -357,6 +364,12 @@ export default function WalletContent({
   // Get quick select options for current input
   const depositQuickOptions = getQuickSelectOptions(depositAmount)
   const withdrawQuickOptions = getQuickSelectOptions(withdrawAmount)
+
+  useEffect(() => {
+    if (!isActiveUser && activeTab === 'deposit') {
+      setActiveTab('withdraw')
+    }
+  }, [isActiveUser, activeTab])
 
   if (loading) {
     return (
@@ -517,9 +530,10 @@ export default function WalletContent({
           {/* Tab Buttons */}
           <div className='flex gap-2 mb-4'>
             <Button
-              onClick={() => setActiveTab('deposit')}
+              onClick={() => isActiveUser && setActiveTab('deposit')}
               variant={activeTab === 'deposit' ? 'default' : 'outline'}
               className={`flex-1 ${activeTab === 'deposit' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+              disabled={!isActiveUser}
             >
               <ArrowDown className='w-4 h-4 mr-2' />
               Nạp tiền
@@ -537,7 +551,7 @@ export default function WalletContent({
         </CardHeader>
         <CardContent className='space-y-4'>
           {/* Deposit Form */}
-          {activeTab === 'deposit' && (
+          {activeTab === 'deposit' && isActiveUser && (
             <>
               <div className='space-y-2'>
                 <Label htmlFor='depositAmount'>Số tiền muốn nạp (₫)</Label>
@@ -567,6 +581,7 @@ export default function WalletContent({
                     variant='outline'
                     onClick={() => setDepositAmount(option.toString())}
                     className='flex-1 min-w-[100px]'
+                    disabled={!isActiveUser}
                   >
                     {option.toLocaleString('vi-VN')} ₫
                   </Button>
@@ -621,7 +636,7 @@ export default function WalletContent({
           )}
 
           {/* Deposit Summary */}
-          {activeTab === 'deposit' && depositAmount && parseFloat(depositAmount) > 0 && (
+          {activeTab === 'deposit' && isActiveUser && depositAmount && parseFloat(depositAmount) > 0 && (
             <div className='bg-gray-50 p-4 rounded-lg space-y-2'>
               <div className='flex justify-between text-sm'>
                 <span className='text-gray-600'>Số tiền nạp:</span>
@@ -677,7 +692,7 @@ export default function WalletContent({
           )}
 
           {/* Action Buttons */}
-          {activeTab === 'deposit' && (
+          {activeTab === 'deposit' && isActiveUser && (
             <Button
               onClick={handleDeposit}
               disabled={
@@ -708,7 +723,7 @@ export default function WalletContent({
             </Button>
           )}
 
-          {showConfirmDepositModal && (
+          {showConfirmDepositModal && isActiveUser && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -888,8 +903,8 @@ export default function WalletContent({
                       setPaymentMethodFilter(option.value as 'all' | 'WalletOrBanking' | 'Orther')
                     }}
                     className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all text-center ${paymentMethodFilter === option.value
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-white text-gray-700 hover:bg-gray-100'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     {option.label}

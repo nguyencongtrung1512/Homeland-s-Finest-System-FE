@@ -43,6 +43,13 @@ const convertDateFormat = (dateString: string): string => {
   return dateString
 }
 
+const formatDisplayDateTime = (value?: string | null) => {
+  if (!value) return ''
+  const parsed = new Date(value)
+  if (isNaN(parsed.getTime())) return value
+  return format(parsed, 'HH:mm dd/MM/yyyy', { locale: vi })
+}
+
 export default function ProfileContent() {
   const { user: authUser } = useAuth()
   const [user, setUser] = useState<UserType | null>(null)
@@ -373,6 +380,40 @@ export default function ProfileContent() {
       >
         <ProfileCard3D user={user} className='rounded-lg overflow-hidden' />
       </motion.div>
+
+      {/* Ban info */}
+      {user?.isActive === false && (user?.banAt || user?.banUntil) && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className='mb-6'
+        >
+          <div className='border border-red-200 bg-red-50 text-red-800 rounded-lg p-4 flex flex-col gap-2'>
+            <div className='flex items-center gap-2 font-semibold text-sm'>
+              <span className='w-2 h-2 rounded-full bg-red-500 animate-pulse' />
+              Tài khoản đang bị khóa
+            </div>
+            <div className='text-sm space-y-1'>
+              {user?.banAt && (
+                <p>
+                  <span className='font-medium'>Bị khóa lúc:</span> {formatDisplayDateTime(user.banAt)}
+                </p>
+              )}
+              {user?.banUntil && (
+                <p>
+                  <span className='font-medium'>Hiệu lực đến:</span> {formatDisplayDateTime(user.banUntil)}
+                </p>
+              )}
+              {user?.note && (
+                <p>
+                  <span className='font-medium'>Ghi chú:</span> {user.note}
+                </p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Personal Information Section */}
       <motion.div

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { useCart } from '../../../../../contexts/cart.context'
 import { useAuth } from '../../../../../contexts/auth.context'
+import { useActiveUserGuard } from '../../../../../hooks/useActiveUserGuard'
 import {
   Dialog,
   DialogContent,
@@ -102,6 +103,7 @@ function ProductGallery() {
   const productImageRef = useRef<HTMLDivElement>(null)
   const { addToCart } = useCart()
   const { isAuthenticated } = useAuth()
+  const { isActiveUser } = useActiveUserGuard()
 
   // Helper function to extract Cloudflare Stream video ID from URL
   const extractVideoId = (url: string): string | undefined => {
@@ -449,6 +451,7 @@ function ProductGallery() {
       setShowLoginModal(true)
       return
     }
+    if (!isActiveUser) return
 
     try {
       setIsAddingToCart(true)
@@ -481,6 +484,7 @@ function ProductGallery() {
       setShowLoginModal(true)
       return
     }
+    if (!isActiveUser) return
 
     try {
       setIsAddingToCart(true)
@@ -957,7 +961,7 @@ function ProductGallery() {
               <div className='flex items-center gap-4 mt-6'>
                 <button
                   onClick={handleAddToCart}
-                  disabled={!product.isActive || currentStock === 0 || !currentVariant || isAddingToCart}
+                  disabled={!product.isActive || currentStock === 0 || !currentVariant || isAddingToCart || !isActiveUser}
                   className='flex-1 border border-green-600 text-green-600 bg-green-50 py-3 px-6 rounded hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-normal'
                 >
                   {isAddingToCart ? (
@@ -982,7 +986,7 @@ function ProductGallery() {
 
                 <button
                   onClick={handleBuyNow}
-                  disabled={!product.isActive || currentStock === 0 || !currentVariant}
+                  disabled={!product.isActive || currentStock === 0 || !currentVariant || !isActiveUser}
                   className='flex-1 bg-green-600 text-white py-3 px-6 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-normal'
                 >
                   {!product.isActive || currentStock === 0 ? 'Mua Ngay' : 'Mua Ngay'}

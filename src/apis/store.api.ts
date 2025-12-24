@@ -41,7 +41,7 @@ export interface StoreResponse {
     taxCode: string | null
     identifyFrontImage: string | null
     identifyBackImage: string | null
-    sellerStatus: 'Active' | 'Inactive' | 'Pending'
+    sellerStatus: 'Active' | 'Inactive' | 'Pending' | 'Blocked'
     approvedAt: string | null
     reportCount: number
     userInfo: {
@@ -56,6 +56,8 @@ export interface StoreResponse {
       avatar: string | null
       isActive: boolean
       dateOfBirth: string | null
+      banAt?: string | null
+      banUntil?: string | null
     }
   }
   storeStories: unknown[]
@@ -201,7 +203,7 @@ export const storeApi = {
   },
 
   // Lấy thông tin chi tiết một store
-  getStoreById: async (storeId: string): Promise<any> => {
+  getStoreById: async (storeId: string): Promise<StoreApiResponse> => {
     return await axiosInstance.get(`/Store/${storeId}`)
   },
 
@@ -267,7 +269,7 @@ export const storeApi = {
 
   // Get store products with filters
   getStoreProducts: async (storeId: string, params?: StoreProductsRequest): Promise<StoreProductsResponse> => {
-    const queryParams: any = {}
+    const queryParams: Record<string, unknown> = {}
 
     if (params?.pageSize !== undefined) {
       queryParams.pageSize = params.pageSize

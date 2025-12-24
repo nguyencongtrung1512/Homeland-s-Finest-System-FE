@@ -39,10 +39,12 @@ import AvatarUploadModal from './components/profile/AvatarUploadModal'
 import { Camera } from 'lucide-react'
 import type { FormDTO } from '../../../types/form.type'
 import ChatSystem from '../Chat/chatSystem'
+import { useActiveUserGuard } from '../../../hooks/useActiveUserGuard'
 
 export default function Profile() {
   const location = useLocation()
   const { user: authUser } = useAuth()
+  const { isActiveUser, isRestricted } = useActiveUserGuard()
   const [activeTab, setActiveTab] = useState('profile')
   const [user, setUser] = useState<User | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
@@ -420,7 +422,7 @@ export default function Profile() {
                 >
                   Thành viên từ {formatMemberSince(user?.createdAt)}
                 </motion.p>
-                <div className='flex gap-4 mt-2'>
+                <div className='flex gap-4 mt-2 items-center flex-wrap'>
                   {user?.userPoint !== undefined && (
                     <motion.p
                       initial={{ opacity: 0, scale: 0.8 }}
@@ -430,6 +432,17 @@ export default function Profile() {
                     >
                       Điểm tích lũy: {user.userPoint} điểm
                     </motion.p>
+                  )}
+                  {isRestricted && (
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.4, delay: 0.7, type: 'spring', stiffness: 220 }}
+                      className='inline-flex items-center gap-1 px-3 py-1 bg-red-50 text-red-700 text-xs font-semibold rounded-full border border-red-200'
+                    >
+                      <span className='w-2 h-2 rounded-full bg-red-500 animate-pulse'></span>
+                      Tài khoản đang bị khóa
+                    </motion.span>
                   )}
                 </div>
               </motion.div>

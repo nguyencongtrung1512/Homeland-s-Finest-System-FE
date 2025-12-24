@@ -3,6 +3,7 @@ import { Star, ShoppingCart, Search, Grid, List } from 'lucide-react'
 import { Button } from '../../../../components/ui/button'
 import { Input } from '../../../../components/ui/input'
 import { useCart } from '../../../../contexts/cart.context'
+import { useActiveUserGuard } from '../../../../hooks/useActiveUserGuard'
 import { useNavigate } from 'react-router-dom'
 
 interface Product {
@@ -26,6 +27,7 @@ interface ProductsSectionProps {
 
 const ProductsSection: FC<ProductsSectionProps> = ({ products }) => {
   const { addToCart, cart } = useCart()
+  const { isActiveUser } = useActiveUserGuard()
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('newest')
@@ -172,7 +174,9 @@ const ProductsSection: FC<ProductsSectionProps> = ({ products }) => {
                 {/* Add to cart button */}
                 <Button
                   className='w-full bg-green-600 hover:bg-green-700 text-white relative'
+                  disabled={!isActiveUser}
                   onClick={() => {
+                    if (!isActiveUser) return
                     addToCart(product.id, 1)
                     navigate('/cart')
                   }}

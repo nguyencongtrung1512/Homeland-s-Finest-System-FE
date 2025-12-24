@@ -3,6 +3,7 @@ import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Gift } from 'lucide-react'
 import { useAuth } from '../../contexts/auth.context'
+import { useActiveUserGuard } from '../../hooks/useActiveUserGuard'
 import { useChat } from '../../contexts/chat.context'
 import { promotionApi } from '../../apis/promotion.api'
 import { type PromotionDTO } from '../../types/promotionType'
@@ -16,6 +17,7 @@ interface PromotionBubbleProps {
 
 const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => {
   const { user } = useAuth()
+  const { isActiveUser } = useActiveUserGuard()
   const { isOpen: isChatOpen } = useChat()
   const [showModal, setShowModal] = useState(false)
   const [promotions, setPromotions] = useState<PromotionDTO[]>([])
@@ -23,7 +25,7 @@ const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => 
   const [hasCheckedPromotions, setHasCheckedPromotions] = useState(false)
 
   const checkActivePromotions = useCallback(async () => {
-    if (!user) return
+    if (!user || !isActiveUser) return
 
     try {
       const response = await promotionApi.getActivePromotionsForUser()
@@ -48,7 +50,7 @@ const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => 
   }, [user, hasCheckedPromotions, checkActivePromotions])
 
   const handleClaimPromotion = async (promotionId: string) => {
-    if (!user) return
+    if (!user || !isActiveUser) return
 
     try {
       setClaiming(promotionId)
@@ -177,7 +179,7 @@ const PromotionBubble: React.FC<PromotionBubbleProps> = ({ className = '' }) => 
     }
   }
 
-  if (!user || promotions.length === 0) {
+  if (!user || !isActiveUser || promotions.length === 0) {
     return null
   }
 

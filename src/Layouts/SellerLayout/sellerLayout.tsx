@@ -13,7 +13,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import GlowCard from '../../components/ui/spotlight-card'
-import { formatDate } from '../../utils/formatDate'
+import { formatDate, formatDateTime } from '../../utils/formatDate'
 import { Edit, Save, X, Upload, Eye, EyeOff, Lock } from 'lucide-react'
 import { changePassword, resetPassword } from '../../apis/auth.api'
 
@@ -374,6 +374,12 @@ function SellerLayout() {
   }
 
   const statusMessage = getStoreStatusMessage()
+  const isStoreLocked =
+    store?.status === 'Inactive' ||
+    store?.sellerInfo?.sellerStatus === 'Blocked' ||
+    store?.sellerInfo?.userInfo?.isActive === false
+  const banAt = store?.sellerInfo?.userInfo?.banAt
+  const banUntil = store?.sellerInfo?.userInfo?.banUntil
 
   return (
     <Layout style={{ minHeight: '80vh', background: '#f5f5f5' }}>
@@ -489,6 +495,29 @@ function SellerLayout() {
             overflow: 'auto'
           }}
         >
+          {isStoreLocked && (
+            <Alert
+              type='warning'
+              showIcon
+              message='Tài khoản/Cửa hàng đang bị khóa'
+              description={
+                <>
+                  {banAt && (
+                    <div>
+                      Khóa từ: <strong>{formatDateTime(banAt)}</strong>
+                    </div>
+                  )}
+                  {banUntil && (
+                    <div>
+                      Dự kiến mở khóa: <strong>{formatDateTime(banUntil)}</strong>
+                    </div>
+                  )}
+                  {!banAt && !banUntil && <div>Vui lòng liên hệ hỗ trợ để biết chi tiết.</div>}
+                </>
+              }
+              style={{ marginBottom: '16px' }}
+            />
+          )}
           {/* Store Status Alert */}
           {statusMessage && (
             <Alert

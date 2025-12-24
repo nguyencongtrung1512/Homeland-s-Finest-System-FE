@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
 import { useAuth } from '../../../contexts/auth.context'
+import { useActiveUserGuard } from '../../../hooks/useActiveUserGuard'
 import { useChat } from '../../../contexts/chat.context'
 import { getComboById } from '../../../apis/combo.api'
 import { type Combo } from '../../../types/combo.type'
@@ -44,6 +45,7 @@ function ComboDetail() {
   const navigate = useNavigate()
   const { addToCart } = useCart()
   const { isAuthenticated } = useAuth()
+  const { isActiveUser } = useActiveUserGuard()
   const { openChatWithStore } = useChat()
   const [combo, setCombo] = useState<Combo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -90,6 +92,7 @@ function ComboDetail() {
       setShowLoginModal(true)
       return
     }
+    if (!isActiveUser) return
 
     try {
       setIsAddingToCart(true)
@@ -108,6 +111,7 @@ function ComboDetail() {
       setShowLoginModal(true)
       return
     }
+    if (!isActiveUser) return
 
     try {
       setIsAddingToCart(true)
@@ -184,7 +188,7 @@ function ComboDetail() {
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12'>
             {/* Combo Image */}
             <div className='space-y-4'>
-              <ThreeDCard
+      <ThreeDCard
                 className='aspect-square [&>div]:bg-transparent [&>div]:p-0'
                 enableGlow={true}
                 enableShadow={true}
@@ -330,7 +334,7 @@ function ComboDetail() {
                 <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2'>
                   <Button
                     onClick={handleAddToCart}
-                    disabled={!combo.isActive || combo.status !== 'Approved' || isAddingToCart}
+                    disabled={!combo.isActive || combo.status !== 'Approved' || isAddingToCart || !isActiveUser}
                     className='flex-1 bg-green-600 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm sm:text-base'
                   >
                     {isAddingToCart ? (
@@ -347,7 +351,7 @@ function ComboDetail() {
                   <Button
                     onClick={handleBuyNow}
                     variant='greenLight'
-                    disabled={!combo.isActive || combo.status !== 'Approved'}
+                    disabled={!combo.isActive || combo.status !== 'Approved' || !isActiveUser}
                     className='flex-1'
                   >
                     {!combo.isActive || combo.status !== 'Approved' ? 'Không có sẵn' : 'Mua ngay'}

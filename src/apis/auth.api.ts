@@ -37,6 +37,7 @@ export interface LoginResponseData {
   role: string
   userId: string
   email: string
+  isActive?: boolean
 }
 
 export const registerCustomer = async (data: RegisterCustomerData) => {

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef, type CSSProperties } from 're
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
 import { useAuth } from '../../../contexts/auth.context'
+import { useActiveUserGuard } from '../../../hooks/useActiveUserGuard'
 import {
   updateCartItem,
   removeCartItem,
@@ -72,6 +73,7 @@ export default function Cart() {
   const navigate = useNavigate()
   const { refreshCart, loading, removeComboFromCart } = useCart()
   const { user } = useAuth()
+  const { isActiveUser } = useActiveUserGuard()
   const [cartData, setCartData] = useState<CartData | null>(null)
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({})
   const [selectAll, setSelectAll] = useState(false)
@@ -585,7 +587,7 @@ export default function Cart() {
         let errorMessage = 'Có lỗi xảy ra khi cập nhật số lượng'
 
         if (error && typeof error === 'object') {
-          const err = error as any
+          const err = error as { message?: string; response?: { data?: { message?: string } } }
 
           // Priority 1: Lấy message từ backend response (vì axios interceptor trả về error.response.data)
           if (err.message && typeof err.message === 'string') {
@@ -972,20 +974,6 @@ export default function Cart() {
     return grouped
   }
 
-  // Promotion handlers for specific store
-  const handleOpenPromotionModal = (storeId: string) => {
-    setSelectedStoreForPromotion(storeId)
-    setIsPromotionModalOpen(true)
-  }
-
-  const handleOpenAppliedPromotionsModal = (storeId: string) => {
-    const store = cartData?.carts.find((s) => s.storeId === storeId)
-    if (store?.appliedPromotions && store.appliedPromotions.length > 0) {
-      setSelectedStoreForAppliedPromotions(storeId)
-      setIsAppliedPromotionsModalOpen(true)
-    }
-  }
-
   const handleApplyPromotion = async () => {
     if (!selectedStoreForPromotion) return false
 
@@ -1135,8 +1123,8 @@ export default function Cart() {
                       <Button
                         variant='outline'
                         size='sm'
-                        onClick={() => handleOpenPromotionModal(store.storeId)}
-                        className='text-xs'
+                        disabled
+                        className='text-xs cursor-not-allowed opacity-60'
                       >
                         <Tag className='h-3 w-3 mr-1' />
                         Mã khuyến mãi
@@ -1145,8 +1133,8 @@ export default function Cart() {
                         <Button
                           variant='outline'
                           size='sm'
-                          onClick={() => handleOpenAppliedPromotionsModal(store.storeId)}
-                          className='text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                          disabled
+                          className='text-xs bg-green-50 border-green-200 text-green-700 opacity-60 cursor-not-allowed'
                         >
                           <Gift className='h-3 w-3 mr-1' />
                           Đã áp dụng ({store.appliedPromotions.length})
@@ -1597,6 +1585,7 @@ export default function Cart() {
               <div className='flex flex-col gap-4'>
                 <button
                   onClick={() => {
+                    if (!isActiveUser) return
                     if (getSelectedCount() === 0) {
                       toast.error('Vui lòng chọn ít nhất một sản phẩm')
                       return
@@ -1624,7 +1613,7 @@ export default function Cart() {
                     })
                   }}
                   className='w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                  disabled={getSelectedCount() === 0 || hasOutOfStockSelectedItems() || hasMaxShippingLimitStores() || isOrderBlocked}
+                  disabled={!isActiveUser || getSelectedCount() === 0 || hasOutOfStockSelectedItems() || hasMaxShippingLimitStores() || isOrderBlocked}
                 >
                   {hasOutOfStockSelectedItems()
                     ? 'Có sản phẩm hết hàng'
@@ -1636,8 +1625,12 @@ export default function Cart() {
                 </button>
 
                 <button
-                  onClick={() => navigate('/products')}
+                  onClick={() => {
+                    if (!isActiveUser) return
+                    navigate('/products')
+                  }}
                   className='w-full hover:bg-green-50 border border-gray-300 text-green-600 font-medium py-3 rounded-lg hover:bg-gray-50 transition-colors'
+                  disabled={!isActiveUser}
                 >
                   Tiếp tục mua sắm
                 </button>

@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useCart } from '../../../contexts/cart.context'
 import { useAuth } from '../../../contexts/auth.context'
+import { useActiveUserGuard } from '../../../hooks/useActiveUserGuard'
 import { getCartByUserId, removePromotionFromCart, calculateShippingFee } from '../../../apis/cart.api'
 import { getComboById } from '../../../apis/combo.api'
 import { toast } from '../../../utils/toast'
@@ -58,6 +59,7 @@ export default function Checkout() {
   const location = useLocation()
   const { clearCartAfterOrder } = useCart()
   const { user } = useAuth()
+  const { isActiveUser } = useActiveUserGuard()
   const [cartData, setCartData] = useState<CartData | null>(location.state?.cartData || null)
   const [selectedItems] = useState<Record<string, boolean>>(location.state?.selectedItems || {})
   const [addresses, setAddresses] = useState<Address[]>([])
@@ -89,7 +91,7 @@ export default function Checkout() {
 
   // Helper function to load user addresses
   const loadUserAddresses = useCallback(async () => {
-    if (!user?.userId) return
+    if (!user?.userId || !isActiveUser) return
 
     try {
       const response = await addressApi.getUserAddresses(user.userId)
@@ -112,7 +114,7 @@ export default function Checkout() {
 
   // Reload cart data
   const reloadCartData = useCallback(async () => {
-    if (!user?.userId) return
+    if (!user?.userId || !isActiveUser) return
     try {
       const response = await getCartByUserId(user.userId)
       if (response?.status === 200) {
@@ -1375,6 +1377,7 @@ export default function Checkout() {
                   isSubmitting ||
                   isLoadingWallet ||
                   isOrderBlocked ||
+                  !isActiveUser ||
                   (selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient) ||
                   hasOutOfStockSelectedItems() ||
                   (selectedPaymentMethod === 'COD' && isCODDisabled) ? (
@@ -1389,7 +1392,9 @@ export default function Checkout() {
                         ? 'Đang kiểm tra số dư...'
                         : isOrderBlocked
                           ? `Đơn hàng từ ${formatPrice(ORDER_BLOCK_THRESHOLD)}đ không thể đặt`
-                          : hasOutOfStockSelectedItems()
+                      : !isActiveUser
+                        ? 'Tài khoản đang bị khóa'
+                        : hasOutOfStockSelectedItems()
                             ? 'Có sản phẩm hết hàng'
                             : selectedPaymentMethod === 'MyWallet' && !isWalletBalanceSufficient
                               ? 'Số dư không đủ'

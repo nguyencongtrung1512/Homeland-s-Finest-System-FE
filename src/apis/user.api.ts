@@ -325,6 +325,44 @@ const normalizeGender = (gender: string | null | undefined): string => {
   }
 }
 
+// Helper: chuẩn hóa thời gian BanUntil về ISO 8601 cho backend.
+// Chấp nhận:
+// - ISO đã hợp lệ -> trả về nguyên vẹn
+// - "HH:mm:ss DD/MM/YYYY" -> chuyển sang ISO
+// - null -> rỗng (unban)
+// - undefined -> giữ nguyên giá trị hiện có
+const normalizeBanUntil = (banUntil?: string | null, current?: string | null): string => {
+  const source = banUntil === undefined ? current : banUntil
+  if (source === null) return ''
+  if (source === undefined) return ''
+  const trimmed = source.trim()
+  if (!trimmed) return ''
+
+  // Nếu đã là ISO, thử parse; nếu hợp lệ, trả nguyên
+  const isoCandidate = new Date(trimmed)
+  if (!isNaN(isoCandidate.getTime()) && trimmed.includes('T')) {
+    return isoCandidate.toISOString()
+  }
+
+  // Parse định dạng "HH:mm:ss DD/MM/YYYY"
+  const match = trimmed.match(/^(\d{2}):(\d{2}):(\d{2}) (\d{2})\/(\d{2})\/(\d{4})$/)
+  if (match) {
+    const [, hh, mm, ss, dd, MM, yyyy] = match
+    const dateObj = new Date(Number(yyyy), Number(MM) - 1, Number(dd), Number(hh), Number(mm), Number(ss))
+    if (!isNaN(dateObj.getTime())) {
+      return dateObj.toISOString()
+    }
+  }
+
+  // Fallback: thử parse với Date bất kể format, nếu được thì dùng ISO
+  if (!isNaN(isoCandidate.getTime())) {
+    return isoCandidate.toISOString()
+  }
+
+  // Nếu không parse được, trả về rỗng để tránh lỗi validation
+  return ''
+}
+
 export const updateUser = async (userId: string, data: UpdateUserData): Promise<UpdateUserResponse> => {
   let currentUser: User | null = null
   try {
@@ -382,13 +420,13 @@ export const updateUser = async (userId: string, data: UpdateUserData): Promise<
   // Ban vĩnh viễn: isActive = false và không truyền banUntil (undefined)
   // Unban: isActive = true và banUntil = null hoặc '' (xóa ban)
   if (data.banUntil !== undefined) {
-    // Nếu banUntil là null, gửi rỗng string để xóa ban
-    // Nếu banUntil có giá trị, gửi giá trị đó (ban tạm thời)
-    const banUntilValue = data.banUntil || ''
+    // Normalize banUntil về ISO cho backend; null hoặc chuỗi trống sẽ unban
+    const banUntilValue = normalizeBanUntil(data.banUntil, currentUser?.banUntil)
     formData.append('BanUntil', banUntilValue)
   } else {
     // Nếu không có banUntil trong data (undefined), giữ nguyên giá trị hiện tại
-    formData.append('BanUntil', currentUser?.banUntil || '')
+    const banUntilValue = normalizeBanUntil(undefined, currentUser?.banUntil)
+    formData.append('BanUntil', banUntilValue)
   }
 
   // Thêm UpdatedAt timestamp
