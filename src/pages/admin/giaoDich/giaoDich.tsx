@@ -11,8 +11,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../components/ui/dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import { ArrowDownCircle, ArrowUpCircle, Wallet } from 'lucide-react'
+import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
 import TransactionManagementAdmin from '../transactionManager/transactionManager'
 import RequestWalletMoneyManagement from '../requestWalletMoneyManagement/list'
 import BalanceHistory from './balanceHistory'
@@ -85,10 +84,10 @@ function GiaoDich() {
   }
 
   // Handle open withdrawal modal
-  const handleOpenWithdrawalModal = () => {
-    setShowWithdrawalModal(true)
-    fetchWalletInfo()
-  }
+  // const handleOpenWithdrawalModal = () => {
+  //   setShowWithdrawalModal(true)
+  //   fetchWalletInfo()
+  // }
 
   // Handle deposit
   const handleDeposit = async () => {
@@ -189,7 +188,7 @@ function GiaoDich() {
       </div>
 
       {/* Quick Actions */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle className='flex items-center gap-2 py-2'>
             <Wallet className='w-5 h-5' />
@@ -208,7 +207,7 @@ function GiaoDich() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Tabs */}
       <Tabs

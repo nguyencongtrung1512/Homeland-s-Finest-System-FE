@@ -95,6 +95,19 @@ const AppliedPromotionItem: React.FC<AppliedPromotionItemProps> = ({ promotion, 
     }
   }
 
+  const getDiscountType = () => {
+    switch (promotion.type) {
+      case 'Product':
+        return 'Sản phẩm'
+      case 'Global':
+        return 'Hệ thống'
+      case 'User':
+        return 'Cá nhân'
+      default:
+        return 'Không xác định'
+    }
+  }
+
   const getTypeColor = () => {
     switch (promotion.type) {
       case 'Global':
@@ -147,7 +160,7 @@ const AppliedPromotionItem: React.FC<AppliedPromotionItemProps> = ({ promotion, 
         <div className='flex items-start justify-between'>
           <div className='flex items-center gap-2 flex-wrap'>
             <Badge variant='outline' className={`${getTypeColor()} text-xs`}>
-              {promotion.type}
+              {getDiscountType()}
             </Badge>
             <Badge variant='destructive' className='bg-red-500 hover:bg-red-600 text-xs'>
               {getDiscountText()}
