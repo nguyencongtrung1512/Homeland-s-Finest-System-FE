@@ -175,15 +175,16 @@ function StoreDetailAdmin() {
       let storeData = null
 
       if (response) {
-        if (response.id || response.storeName) {
-          storeData = response
-        } else if ((response as any).data && ((response as any).data.id || (response as any).data.storeName)) {
-          storeData = (response as any).data
+        if (response.data && (response.data.id || response.data.storeName)) {
+          storeData = response.data
+        } else if ((response as any).id || (response as any).storeName) {
+          // Fallback for direct StoreResponse
+          storeData = response as any
         }
       }
 
       if (storeData) {
-        setStore(storeData)
+        setStore(storeData as StoreResponse)
         // Geocode store address if needed
         if (storeData.address) {
           const coords = await geocodeStoreAddress(
@@ -198,11 +199,7 @@ function StoreDetailAdmin() {
           }
         }
       } else {
-        if (response && typeof response === 'object' && response !== null) {
-          setStore(response)
-        } else {
-          setError('Không tìm thấy thông tin cửa hàng')
-        }
+        setError('Không tìm thấy thông tin cửa hàng')
       }
     } catch (err: any) {
       const errorMessage = handleApiError(err, 'Có lỗi xảy ra khi tải thông tin cửa hàng')
@@ -768,7 +765,7 @@ function StoreDetailAdmin() {
                 className='flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white'
               >
                 <ArrowLeft size={16} />
-                Trở về danh sách cửa hàng
+                Trở về
               </Button>
             </div>
           </div>

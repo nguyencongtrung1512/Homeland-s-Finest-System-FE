@@ -115,7 +115,14 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
       })
       toast.success('Gửi khiếu nại thành công! Đơn hỗ trợ sẽ được xử lí trong vòng 24 giờ.')
       setShowCreateModal(false)
-      onRefresh()
+
+      // Reset filter to 'all' to ensure new form is visible
+      setSelectedStatus('all')
+
+      // Wait a bit for backend to fully process, then refresh
+      setTimeout(() => {
+        onRefresh()
+      }, 300)
     } catch (error) {
       console.error('Error creating form:', error)
 
@@ -358,14 +365,27 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className='flex items-center justify-between'
+          className='flex items-center justify-between gap-3 flex-wrap'
         >
           <h3 className='text-lg font-semibold text-gray-900'>Đơn hỗ trợ của tôi</h3>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button onClick={onRefresh} variant='outline' size='sm'>
-              Làm mới
-            </Button>
-          </motion.div>
+          <div className='flex items-center gap-2'>
+            {userId && (
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  className='bg-green-600 hover:bg-green-700 text-white'
+                  size='sm'
+                >
+                  Tạo đơn hỗ trợ
+                </Button>
+              </motion.div>
+            )}
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button onClick={onRefresh} variant='outline' size='sm'>
+                Làm mới
+              </Button>
+            </motion.div>
+          </div>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -378,6 +398,13 @@ const FormsContent = ({ forms, loading, onRefresh, userId }: FormsContentProps) 
             type='search'
           />
         </motion.div>
+        <GeneralSupportFormModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateForm}
+          isSubmitting={creatingForm}
+          allowedTypes={['Orther']}
+        />
       </motion.div>
     )
   }

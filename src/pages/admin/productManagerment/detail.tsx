@@ -198,7 +198,7 @@ function DetailProductAdmin() {
       const response = await storeApi.getStoreById(storeId)
 
       if (response.data) {
-        const storeData = response.data.data || response.data
+        const storeData = response.data
         setStoreInfo(storeData as StoreResponse)
       }
     } catch (error) {

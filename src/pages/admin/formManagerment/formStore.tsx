@@ -80,7 +80,7 @@ export default function FormStoreManagement() {
           missingIds.map(async (id) => {
             try {
               const response = await storeApi.getStoreById(id)
-              const storeName = response?.storeName || response?.data?.storeName || id
+              const storeName = response?.data?.storeName || id
               return { id, storeName }
             } catch (error) {
               console.error(`Error fetching store ${id}:`, error)

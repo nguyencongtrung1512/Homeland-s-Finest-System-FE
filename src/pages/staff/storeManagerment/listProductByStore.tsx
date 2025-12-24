@@ -13,7 +13,7 @@ import {
   Component,
   Store
 } from 'lucide-react'
-import { storeApi, type StoreResponse } from '../../../apis/store.api'
+import { storeApi, type StoreResponse, type StoreApiResponse } from '../../../apis/store.api'
 import { getAllProductCategory, type ProductCategoryItem } from '../../../apis/productCategory.api'
 import { getAllCombos } from '../../../apis/combo.api'
 import { type ComboParams, type Combo } from '../../../types/combo.type'
@@ -178,8 +178,8 @@ function ListProductByStoreStaff() {
     if (!storeId) return
 
     try {
-      const response = await storeApi.getStoreById(storeId)
-      const storeData: StoreResponse = response.data?.data || response.data || (response as unknown as StoreResponse)
+      const response: StoreApiResponse = await storeApi.getStoreById(storeId)
+      const storeData: StoreResponse = response.data
       if (storeData) {
         setStoreName(storeData.storeName || '')
       }
