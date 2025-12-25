@@ -200,9 +200,27 @@ function ProductCertificate({ productId, onRefresh, canEdit = true }: ProductCer
     try {
       setLoading(true)
 
+      // Determine status based on validation level
+      let status = 'Good' // Default status
+      if (validationResult) {
+        const categoryLower = validationResult.category?.toLowerCase()
+        const rawLevel = validationResult.level?.toLowerCase() || ''
+        const effectiveLevel = categoryLower && categoryLower !== 'product' ? 'fair' : rawLevel
+
+        // Map effective level to status
+        if (effectiveLevel === 'good') {
+          status = 'Good'
+        } else if (effectiveLevel === 'fair') {
+          status = 'Fair'
+        } else if (effectiveLevel === 'bad') {
+          status = 'Bad'
+        }
+      }
+
       await productCertificateApi.create({
         productId,
-        certificateImage: selectedFile
+        certificateImage: selectedFile,
+        status
       })
 
       toast.success('Thêm chứng nhận thành công')

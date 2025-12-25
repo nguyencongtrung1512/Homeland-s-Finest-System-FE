@@ -13,6 +13,7 @@ export interface ProductCertificateType {
 export interface ProductCertificateCreateInput {
   productId: string
   certificateImage: File // File object cho multipart/form-data
+  status: string // Status based on validation level
 }
 
 export interface ProductCertificateUpdateInput {

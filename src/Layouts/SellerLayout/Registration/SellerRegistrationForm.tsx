@@ -62,17 +62,17 @@ const checkboxStyles = `
     position: relative;
     transition: all 0.2s ease-in-out;
   }
-  
+
   .custom-checkbox:hover {
     border-color: #10b981;
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
   }
-  
+
   .custom-checkbox:checked {
     background-color: #10b981;
     border-color: #10b981;
   }
-  
+
   .custom-checkbox:checked::after {
     content: '✓';
     position: absolute;
@@ -83,7 +83,7 @@ const checkboxStyles = `
     font-size: 14px;
     font-weight: bold;
   }
-  
+
   .custom-checkbox:focus {
     outline: none;
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
@@ -1307,16 +1307,25 @@ function SellerRegistrationForm() {
         // Nếu result là ValidateCertificateResponse (có type, data, level)
         if ('type' in result && 'level' in result) {
           const fullResult = result as ValidateCertificateResponse
+          const categoryLower = fullResult.category?.toLowerCase()
+          const levelLower = fullResult.level?.toLowerCase()
+
           // Kiểm tra category: phải là "Store" hoặc không có category (backward compatibility)
-          const categoryCheck = !fullResult.category || fullResult.category.toLowerCase() === 'store'
-          const levelValid = fullResult.level.toLowerCase() === 'good'
+          const categoryCheck = !categoryLower || categoryLower === 'store'
+          const levelValid = levelLower === 'good'
           const isValid = categoryCheck && levelValid
+
+          // Nếu là product category, hiển thị message thân thiện hơn
+          let reason = fullResult.reason || ''
+          if (categoryLower === 'product') {
+            reason = 'Có vẻ bạn đã gửi 1 chứng chỉ thuộc về sản phẩm'
+          } else if (!categoryCheck) {
+            reason = reason || 'Loại chứng chỉ không phù hợp.'
+          }
 
           setBusinessLicenseValidation({
             isValid,
-            reason: categoryCheck
-              ? fullResult.reason || ''
-              : 'Vui lòng tải ảnh giấy chứng nhận cửa hàng. Ảnh này là chứng nhận sản phẩm.',
+            reason,
             isValidating: false,
             validationResult: fullResult
           })
@@ -1342,18 +1351,27 @@ function SellerRegistrationForm() {
         // Nếu result là ValidateCertificateResponse (có type, data, level)
         if ('type' in result && 'level' in result) {
           const fullResult = result as ValidateCertificateResponse
+          const categoryLower = fullResult.category?.toLowerCase()
+          const levelLower = fullResult.level?.toLowerCase()
+
           // Kiểm tra category: phải là "Store" hoặc không có category (backward compatibility)
-          const categoryCheck = !fullResult.category || fullResult.category.toLowerCase() === 'store'
-          const levelValid = fullResult.level.toLowerCase() === 'good'
+          const categoryCheck = !categoryLower || categoryLower === 'store'
+          const levelValid = levelLower === 'good'
           const isValid = categoryCheck && levelValid
+
+          // Nếu là product category, hiển thị message thân thiện hơn
+          let reason = fullResult.reason || ''
+          if (categoryLower === 'product') {
+            reason = 'Có vẻ bạn đã gửi 1 chứng chỉ sản phẩm'
+          } else if (!categoryCheck) {
+            reason = reason || 'Loại chứng chỉ không phù hợp.'
+          }
 
           setVendorApplicationValidations((prev) => {
             const newValidations = new Map(prev)
             newValidations.set(fileIndex, {
               isValid,
-              reason: categoryCheck
-                ? fullResult.reason || ''
-                : 'Vui lòng tải ảnh giấy chứng nhận cửa hàng. Ảnh này là chứng nhận sản phẩm.',
+              reason,
               isValidating: false,
               validationResult: fullResult
             })
@@ -2730,8 +2748,54 @@ function SellerRegistrationForm() {
                     )}
                     {!businessLicenseValidation.isValidating && businessLicenseValidation.isValid !== null && (
                       <div className='mt-3'>
-                        {businessLicenseValidation.validationResult && businessLicenseValidation.isValid ? (
-                          <CertificateInfoDisplay validationResult={businessLicenseValidation.validationResult} />
+                        {businessLicenseValidation.validationResult ? (
+                          <>
+                            {businessLicenseValidation.reason && (
+                              <div
+                                className={`mb-3 p-4 rounded-xl border-2 transition-all duration-300 ${
+                                  businessLicenseValidation.isValid
+                                    ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 shadow-green-100 shadow-sm'
+                                    : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-300 shadow-orange-100 shadow-sm'
+                                }`}
+                              >
+                                <div className='flex items-start gap-3'>
+                                  <div
+                                    className={`flex-shrink-0 p-2 rounded-full ${
+                                      businessLicenseValidation.isValid ? 'bg-green-100' : 'bg-orange-100'
+                                    }`}
+                                  >
+                                    {businessLicenseValidation.isValid ? (
+                                      <svg className='w-6 h-6 text-green-600' fill='currentColor' viewBox='0 0 20 20'>
+                                        <path
+                                          fillRule='evenodd'
+                                          d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z'
+                                          clipRule='evenodd'
+                                        />
+                                      </svg>
+                                    ) : (
+                                      <svg className='w-6 h-6 text-orange-600' fill='currentColor' viewBox='0 0 20 20'>
+                                        <path
+                                          fillRule='evenodd'
+                                          d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z'
+                                          clipRule='evenodd'
+                                        />
+                                      </svg>
+                                    )}
+                                  </div>
+                                  <div className='flex-1'>
+                                    <p
+                                      className={`text-sm font-semibold ${
+                                        businessLicenseValidation.isValid ? 'text-green-900' : 'text-orange-900'
+                                      }`}
+                                    >
+                                      {businessLicenseValidation.reason}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            <CertificateInfoDisplay validationResult={businessLicenseValidation.validationResult} />
+                          </>
                         ) : (
                           <div
                             className={`p-4 rounded-xl border-2 transition-all duration-300 animate-in fade-in slide-in-from-top-2 ${businessLicenseValidation.isValid
@@ -2766,9 +2830,7 @@ function SellerRegistrationForm() {
                                   className={`text-sm font-semibold ${businessLicenseValidation.isValid ? 'text-green-900' : 'text-red-900'
                                     }`}
                                 >
-                                  {businessLicenseValidation.isValid
-                                    ? '✓ Giấy phép kinh doanh hợp lệ'
-                                    : '✗ Giấy phép kinh doanh không hợp lệ'}
+
                                 </p>
                                 {businessLicenseValidation.reason && (
                                   <p
@@ -2933,7 +2995,7 @@ function SellerRegistrationForm() {
                                           <div className='flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full'>
                                             <CheckCircle2 className='h-4 w-4 text-green-600' />
                                             <span className='text-xs font-semibold text-green-700'>
-                                              {categoryLower === 'product' ? 'Sản phẩm - cần duyệt' : 'Hợp lệ'}
+                                              {categoryLower === 'product' ? 'Sản phẩm - cần duyệt' : 'Đạt'}
                                             </span>
                                           </div>
                                         ) : effectiveLevel === 'fair' ? (
@@ -2944,18 +3006,18 @@ function SellerRegistrationForm() {
                                         ) : (
                                           <div className='flex items-center gap-2 px-3 py-1 bg-red-100 rounded-full'>
                                             <AlertCircle className='h-4 w-4 text-red-600' />
-                                            <span className='text-xs font-semibold text-red-700'>Không hợp lệ</span>
+                                            <span className='text-xs font-semibold text-red-700'>Chưa đạt</span>
                                           </div>
                                         )
                                       ) : validation.isValid === true ? (
                                         <div className='flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full'>
                                           <CheckCircle2 className='h-4 w-4 text-green-600' />
-                                          <span className='text-xs font-semibold text-green-700'>Hợp lệ</span>
+                                          <span className='text-xs font-semibold text-green-700'>Đạt</span>
                                         </div>
                                       ) : validation.isValid === false ? (
                                         <div className='flex items-center gap-2 px-3 py-1 bg-red-100 rounded-full'>
                                           <AlertCircle className='h-4 w-4 text-red-600' />
-                                          <span className='text-xs font-semibold text-red-700'>Không hợp lệ</span>
+                                          <span className='text-xs font-semibold text-red-700'>Chưa đạt</span>
                                         </div>
                                       ) : null}
                                       {validation.isValid === null && !validation.isValidating && (
@@ -3008,59 +3070,56 @@ function SellerRegistrationForm() {
                                       <p className='text-xs text-blue-600 mt-1 ml-6'>Vui lòng chờ trong giây lát</p>
                                     </div>
                                   )}
-
-                                  {!validation.isValidating &&
-                                    validation.isValid === false &&
-                                    validation.reason &&
-                                    !validation.validationResult && (
-                                      <div className='mt-3 p-3 bg-red-50 rounded-lg border border-red-200'>
-                                        <div className='flex items-start gap-2'>
-                                          <AlertCircle className='h-4 w-4 text-red-600 flex-shrink-0 mt-0.5' />
-                                          <div className='flex-1'>
-                                            <p className='text-sm font-medium text-red-900 mb-1'>Lý do không hợp lệ:</p>
-                                            <p className='text-xs text-red-800 leading-relaxed'>{validation.reason}</p>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                  {!validation.isValidating &&
-                                    validation.validationResult &&
-                                    effectiveLevel !== 'good' &&
-                                    validation.reason && (
-                                      <div className={`mt-3 p-3 rounded-lg border ${effectiveLevel === 'fair'
-                                        ? 'bg-yellow-50 border-yellow-200'
-                                        : 'bg-red-50 border-red-200'
-                                        }`}>
-                                        <div className='flex items-start gap-2'>
-                                          <AlertCircle className={`h-4 w-4 flex-shrink-0 mt-0.5 ${effectiveLevel === 'fair'
-                                            ? 'text-yellow-600'
-                                            : 'text-red-600'
-                                            }`} />
-                                          <div className='flex-1'>
-                                            <p className={`text-sm font-medium mb-1 ${effectiveLevel === 'fair'
-                                              ? 'text-yellow-900'
-                                              : 'text-red-900'
-                                              }`}>
-                                              {effectiveLevel === 'fair'
-                                                ? 'Lưu ý:'
-                                                : 'Lý do không hợp lệ:'}
-                                            </p>
-                                            <p className={`text-xs leading-relaxed ${effectiveLevel === 'fair'
-                                              ? 'text-yellow-800'
-                                              : 'text-red-800'
-                                              }`}>
-                                              {validation.reason}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
                                 </div>
                               </div>
 
                               {/* Chi tiết chứng chỉ (hiển thị khi có validationResult) */}
                               {!validation.isValidating && validation.validationResult && (
                                 <div className='border-t border-gray-200 bg-gray-50'>
+                                  {validation.reason && (
+                                    <div
+                                      className={`m-3 p-4 rounded-xl border-2 transition-all duration-300 ${
+                                        validation.isValid
+                                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 shadow-green-100 shadow-sm'
+                                          : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-300 shadow-orange-100 shadow-sm'
+                                      }`}
+                                    >
+                                      <div className='flex items-start gap-3'>
+                                        <div
+                                          className={`flex-shrink-0 p-2 rounded-full ${
+                                            validation.isValid ? 'bg-green-100' : 'bg-orange-100'
+                                          }`}
+                                        >
+                                          {validation.isValid ? (
+                                            <svg className='w-6 h-6 text-green-600' fill='currentColor' viewBox='0 0 20 20'>
+                                              <path
+                                                fillRule='evenodd'
+                                                d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z'
+                                                clipRule='evenodd'
+                                              />
+                                            </svg>
+                                          ) : (
+                                            <svg className='w-6 h-6 text-orange-600' fill='currentColor' viewBox='0 0 20 20'>
+                                              <path
+                                                fillRule='evenodd'
+                                                d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z'
+                                                clipRule='evenodd'
+                                              />
+                                            </svg>
+                                          )}
+                                        </div>
+                                        <div className='flex-1'>
+                                          <p
+                                            className={`text-sm font-semibold ${
+                                              validation.isValid ? 'text-green-900' : 'text-orange-900'
+                                            }`}
+                                          >
+                                            {validation.reason}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                   <CertificateInfoDisplay validationResult={validation.validationResult} />
                                 </div>
                               )}

@@ -25,6 +25,7 @@ export const productCertificateApi = {
     const formData = new FormData()
     formData.append('ProductId', data.productId)
     formData.append('CertificateImage', data.certificateImage)
+    formData.append('Status', data.status)
 
     return await axiosInstance.post<ProductCertificateResponse>(`${API_URL}`, formData, {
       headers: {

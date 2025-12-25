@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import { Shield, ZoomIn, Image as ImageIcon } from 'lucide-react'
+import { Badge } from '../../../components/ui/badge'
+import { Shield, ZoomIn, Image as ImageIcon, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react'
 import { toast } from '../../../utils/toast'
 import { productCertificateApi } from '../../../apis/productCertificate.api'
 import type { ProductCertificateType } from '../../../types/productCertificateType'
@@ -57,6 +58,55 @@ function ProductCertificate({ productId }: ProductCertificateProps) {
     return trimmed.length > 0 && (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/'))
   }
 
+  // Convert status to Vietnamese label
+  const getStatusLabel = (status: string): string => {
+    const statusLower = status?.toLowerCase() || ''
+    switch (statusLower) {
+      case 'good':
+        return 'Đạt'
+      case 'fair':
+        return 'Cần xem xét'
+      case 'bad':
+        return 'Chưa đạt'
+      default:
+        return status || 'Không xác định'
+    }
+  }
+
+  // Get status badge with appropriate styling
+  const getStatusBadge = (status: string) => {
+    const statusLower = status?.toLowerCase() || ''
+
+    if (statusLower === 'good') {
+      return (
+        <Badge className='bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold flex items-center gap-2 px-4 py-2 text-base shadow-md hover:shadow-lg transition-shadow'>
+          <CheckCircle2 className='w-5 h-5' />
+          {getStatusLabel(status)}
+        </Badge>
+      )
+    } else if (statusLower === 'fair') {
+      return (
+        <Badge className='bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold flex items-center gap-2 px-4 py-2 text-base shadow-md hover:shadow-lg transition-shadow'>
+          <AlertTriangle className='w-5 h-5' />
+          {getStatusLabel(status)}
+        </Badge>
+      )
+    } else if (statusLower === 'bad') {
+      return (
+        <Badge className='bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold flex items-center gap-2 px-4 py-2 text-base shadow-md hover:shadow-lg transition-shadow'>
+          <XCircle className='w-5 h-5' />
+          {getStatusLabel(status)}
+        </Badge>
+      )
+    } else {
+      return (
+        <Badge className='bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold flex items-center gap-2 px-4 py-2 text-base shadow-md hover:shadow-lg transition-shadow'>
+          {getStatusLabel(status)}
+        </Badge>
+      )
+    }
+  }
+
   // Handle image preview
   const handleImagePreview = (imageUrl: string) => {
     if (isValidImageUrl(imageUrl)) {
@@ -92,10 +142,10 @@ function ProductCertificate({ productId }: ProductCertificateProps) {
               <div className='grid gap-4'>
                 {certificates.map((cert) => (
                   <div key={cert.id} className='border border-gray-200 rounded-lg p-4 bg-gray-50 flex flex-col items-center'>
-
-
-
-
+                    {/* Status Badge */}
+                    <div className='mb-4 flex justify-center'>
+                      {getStatusBadge(cert.status)}
+                    </div>
 
                     {/* Certificate Images Section - Always show label, conditionally show image */}
                     <div className='mt-4 flex flex-col items-center'>

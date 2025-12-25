@@ -48,19 +48,12 @@ export default function CertificateInfoDisplay({ validationResult, className = '
             <div className='flex-1 min-w-0'>
               <div className='flex items-center gap-2 flex-wrap'>
                 <span className='font-semibold text-gray-900'>{typeLabel}</span>
-                <Badge className={`${badgeColor} border text-xs`}>{levelLabel}</Badge>
                 {IsExpired !== undefined && (
                   <Badge className={IsExpired ? 'bg-red-100 text-red-700 border-red-300' : 'bg-green-100 text-green-700 border-green-300'}>
                     {IsExpired ? 'Đã hết hạn' : 'Còn hiệu lực'}
                   </Badge>
                 )}
-                {categoryLabel && (
-                  <Badge className='bg-blue-100 text-blue-700 border-blue-300 text-xs'>{categoryLabel}</Badge>
-                )}
               </div>
-              {!isValid && validationResult.reason && (
-                <p className='text-sm text-gray-600 mt-1'>{validationResult.reason}</p>
-              )}
             </div>
           </div>
           <div className='flex items-center gap-2'>
