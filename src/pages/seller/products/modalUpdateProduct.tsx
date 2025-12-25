@@ -27,6 +27,7 @@ import { toast } from '../../../utils/toast'
 import type { Product } from '../../../types/productType'
 import { storeApi } from '../../../apis/store.api'
 import { useAuth } from '../../../contexts/auth.context'
+import { motion, AnimatePresence } from 'framer-motion'
 
 // Extended interface for tree structure
 interface CategoryTreeNode extends ProductCategoryItem {
@@ -69,6 +70,11 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
   const [hasColdUpdateChanges, setHasColdUpdateChanges] = useState(false)
   const [hasFlexibleUpdateChanges, setHasFlexibleUpdateChanges] = useState(false)
   const [showColdUpdateWarning, setShowColdUpdateWarning] = useState(false)
+  const [showInitialNotifications, setShowInitialNotifications] = useState(false)
+
+   // States để điều khiển dropdown
+   const [coldSectionExpanded, setColdSectionExpanded] = useState(true)
+   const [flexibleSectionExpanded, setFlexibleSectionExpanded] = useState(true)
 
   // States để lưu giá trị ban đầu
   const [initialProductData, setInitialProductData] = useState({
@@ -372,6 +378,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
             setCategorySearchText('')
             setMentionSearchKeyword('')
             setShowMentionSuggestions(false)
+            setShowInitialNotifications(true) 
 
             // Update category path if category is selected - chỉ khi categoryTree đã sẵn sàng
             if (categoryId && categoryTree.length > 0) {
@@ -1279,62 +1286,198 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
         ) : (
           <div className='space-y-6 mt-4'>
             {/* Thông báo loại cập nhật - chỉ hiển thị khi thực sự có thay đổi */}
-            {!loadingProductDetail && fetchedProduct && initialProductData.name && (
-              <div className='mb-4 space-y-2'>
-                {hasColdUpdateChanges && (
-                  <div 
-                    key='cold-update-notification'
-                    className='bg-amber-50 border-l-4 border-amber-400 p-4 rounded transition-all duration-300 ease-out'
-                    style={{ 
-                      animation: 'fadeIn 0.3s ease-out forwards'
-                    }}
-                  >
-                    <div className='flex items-start'>
-                      <div className='w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center mr-3 flex-shrink-0 mt-0.5'>
-                        <span className='text-white text-xs font-bold'>!</span>
+                {!loadingProductDetail && fetchedProduct && initialProductData.name && (
+                  <div className='mb-4 space-y-3'>
+                    {/* Thông báo vàng - Cần duyệt */}
+                    {(showInitialNotifications || hasColdUpdateChanges) && (
+                      <div className='bg-amber-50 border-l-4 border-amber-400 rounded-r-lg overflow-hidden'>
+                        <button
+                          type='button'
+                          onClick={() => setColdSectionExpanded(!coldSectionExpanded)}
+                          className='w-full flex items-center justify-between p-4 hover:bg-amber-100 transition-colors cursor-pointer'
+                        >
+                          <div className='flex items-center gap-3'>
+                            <div className='w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0'>
+                              <span className='text-white text-xs font-bold'>!</span>
+                            </div>
+                            <div className='text-left'>
+                              <p className='text-sm font-semibold text-amber-900'>
+                                Cập nhật cần duyệt
+                              </p>
+                              <p className='text-xs text-amber-700'>
+                                {hasColdUpdateChanges
+                                  ? `${[
+                                    productData.name !== initialProductData.name && 'Tên',
+                                    productData.description !== initialProductData.description && 'Mô tả',
+                                    productData.material !== initialProductData.material && 'Nguyên liệu',
+                                    (existingImagesKey !== initialImagesKey || mediaData.newProductImages.length > 0) && 'Ảnh',
+                                    (mediaData.newProductVideo || mediaData.removeExistingVideo) && 'Video'
+                                  ].filter(Boolean).join(', ')} đã thay đổi`
+                                  : 'Click để xem chi tiết'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                          <motion.div
+                            animate={{ rotate: coldSectionExpanded ? 180 : 0 }}
+                            transition={{ duration: 0.3 }}
+                            className='flex-shrink-0'
+                          >
+                            <ChevronDown className='w-5 h-5 text-amber-600' />
+                          </motion.div>
+                        </button>
+
+                        <AnimatePresence initial={false}>
+                          {coldSectionExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: 'easeInOut' }}
+                              className='overflow-hidden'
+                            >
+                              <div className='px-4 pb-4 pt-0'>
+                                <div className='border-t border-amber-200 pt-3'>
+                                  <p className='text-xs text-amber-800 mb-2 italic'>
+                                    "Những thay đổi quan trọng sẽ được kiểm tra để đảm bảo thông tin chính xác trước khi hiển thị."
+                                  </p>
+                                  {hasColdUpdateChanges ? (
+                                    <>
+                                      <p className='text-sm text-amber-800 mb-2 font-medium'>
+                                        Bạn đã thay đổi các thông tin sau:
+                                      </p>
+                                      <ul className='text-sm text-amber-800 space-y-1 list-disc list-inside ml-2'>
+                                        {productData.name !== initialProductData.name && (
+                                          <li>Tên sản phẩm</li>
+                                        )}
+                                        {productData.description !== initialProductData.description && (
+                                          <li>Mô tả sản phẩm</li>
+                                        )}
+                                        {productData.material !== initialProductData.material && (
+                                          <li>Nguyên liệu</li>
+                                        )}
+                                        {(existingImagesKey !== initialImagesKey ||
+                                          mediaData.newProductImages.length > 0) && (
+                                            <li>Hình ảnh sản phẩm</li>
+                                          )}
+                                        {(mediaData.newProductVideo || mediaData.removeExistingVideo) && (
+                                          <li>Video sản phẩm</li>
+                                        )}
+                                      </ul>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className='text-sm text-amber-800 mb-2 font-medium'>
+                                        Các trường sau nếu thay đổi sẽ cần duyệt:
+                                      </p>
+                                      <ul className='text-sm text-amber-800 space-y-1 list-disc list-inside ml-2'>
+                                        <li>Tên sản phẩm</li>
+                                        <li>Mô tả sản phẩm</li>
+                                        <li>Nguyên liệu</li>
+                                        <li>Hình ảnh sản phẩm</li>
+                                        <li>Video sản phẩm</li>
+                                      </ul>
+                                    </>
+                                  )}
+                                  <p className='text-xs text-amber-700 mt-3 font-medium bg-amber-100 p-2 rounded'>
+                                    ⚠️ Lưu ý: Sau khi cập nhật, sản phẩm sẽ tạm thời bị ẩn khỏi cửa hàng và cần được duyệt lại trước khi hiển thị.
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      <div className='flex-1'>
-                        <p className='text-sm font-semibold text-amber-900 mb-1'>
-                          Cập nhật cần duyệt
-                        </p>
-                        <p className='text-xs text-amber-800'>
-                          "Những thay đổi quan trọng sẽ được kiểm tra để đảm bảo thông tin chính xác trước khi hiển thị."
-                        </p>
-                        <p className='text-xs text-amber-700 mt-2 font-medium'>
-                          ⚠️ Lưu ý: Sau khi cập nhật, sản phẩm sẽ tạm thời bị ẩn khỏi cửa hàng và cần được duyệt lại trước khi hiển thị.
-                        </p>
+                    )}
+
+                    {/* Thông báo xanh - Không cần duyệt */}
+                    {(showInitialNotifications || hasFlexibleUpdateChanges) && (
+                      <div className='bg-green-50 border-l-4 border-green-400 rounded-r-lg overflow-hidden'>
+                        <button
+                          type='button'
+                          onClick={() => setFlexibleSectionExpanded(!flexibleSectionExpanded)}
+                          className='w-full flex items-center justify-between p-4 hover:bg-green-100 transition-colors cursor-pointer'
+                        >
+                          <div className='flex items-center gap-3'>
+                            <div className='w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0'>
+                              <CheckCircle className='w-3.5 h-3.5 text-white' />
+                            </div>
+                            <div className='text-left'>
+                              <p className='text-sm font-semibold text-green-900'>
+                                Không cần duyệt
+                              </p>
+                              <p className='text-xs text-green-700'>
+                                {hasFlexibleUpdateChanges
+                                  ? `${[
+                                    productData.categoryId !== initialProductData.categoryId && 'Loại sản phẩm',
+                                    currentHashtagIdsKey !== initialHashtagIdsKey && 'Nhãn dán'
+                                  ].filter(Boolean).join(', ')} đã thay đổi`
+                                  : 'Click để xem chi tiết'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                          <motion.div
+                            animate={{ rotate: flexibleSectionExpanded ? 180 : 0 }}
+                            transition={{ duration: 0.3 }}
+                            className='flex-shrink-0'
+                          >
+                            <ChevronDown className='w-5 h-5 text-green-600' />
+                          </motion.div>
+                        </button>
+
+                        <AnimatePresence initial={false}>
+                          {flexibleSectionExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: 'easeInOut' }}
+                              className='overflow-hidden'
+                            >
+                              <div className='px-4 pb-4 pt-0'>
+                                <div className='border-t border-green-200 pt-3'>
+                                  <p className='text-xs text-green-800 mb-2 italic'>
+                                    "Những thay đổi nhỏ, không ảnh hưởng đến nội dung quan trọng, sẽ được cập nhật và hiển thị ngay."
+                                  </p>
+                                  {hasFlexibleUpdateChanges ? (
+                                    <>
+                                      <p className='text-sm text-green-800 mb-2 font-medium'>
+                                        Các thay đổi đã thực hiện:
+                                      </p>
+                                      <ul className='text-sm text-green-800 space-y-1 list-disc list-inside ml-2'>
+                                        {productData.categoryId !== initialProductData.categoryId && (
+                                          <li>Loại sản phẩm</li>
+                                        )}
+                                        {currentHashtagIdsKey !== initialHashtagIdsKey && (
+                                          <li>Nhãn dán</li>
+                                        )}
+                                      </ul>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className='text-sm text-green-800 mb-2 font-medium'>
+                                        Các trường sau có thể thay đổi tự do:
+                                      </p>
+                                      <ul className='text-sm text-green-800 space-y-1 list-disc list-inside ml-2'>
+                                        <li>Loại sản phẩm</li>
+                                        <li>Nhãn dán</li>
+                                      </ul>
+                                    </>
+                                  )}
+                                  <p className='text-xs text-green-700 mt-3 font-medium bg-green-100 p-2 rounded'>
+                                    ✓ Các thay đổi sẽ được áp dụng ngay lập tức và không ảnh hưởng đến trạng thái sản phẩm.
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
-                {hasFlexibleUpdateChanges && !hasColdUpdateChanges && (
-                  <div 
-                    key='flexible-update-notification'
-                    className='bg-green-50 border-l-4 border-green-400 p-4 rounded transition-all duration-300 ease-out'
-                    style={{ 
-                      animation: 'fadeIn 0.3s ease-out forwards'
-                    }}
-                  >
-                    <div className='flex items-start'>
-                      <div className='w-5 h-5 rounded-full bg-green-500 flex items-center justify-center mr-3 flex-shrink-0 mt-0.5'>
-                        <CheckCircle className='w-3.5 h-3.5 text-white' />
-                      </div>
-                      <div className='flex-1'>
-                        <p className='text-sm font-semibold text-green-900 mb-1'>
-                          Cần cập nhật ngay
-                        </p>
-                        <p className='text-xs text-green-800'>
-                          "Những thay đổi nhỏ, không ảnh hưởng đến nội dung quan trọng, sẽ được cập nhật và hiển thị ngay."
-                        </p>
-                        <p className='text-xs text-green-700 mt-2 font-medium'>
-                          ✓ Các thay đổi sẽ được áp dụng ngay lập tức và không ảnh hưởng đến trạng thái sản phẩm.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+
             {/* Product Name */}
             <div>
               <div className='flex items-center justify-between mb-1'>
@@ -1399,7 +1542,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                 </Label>
                 <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200'>
                   <CheckCircle className='w-3 h-3' />
-                  Cần cập nhật ngay
+                  Không cần duyệt
                 </span>
               </div>
               {categoryError && <p className='mt-1 text-sm text-red-500'>{categoryError}</p>}
@@ -1490,7 +1633,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                 <Label className='text-sm font-medium'>Nhãn dán</Label>
                 <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200'>
                   <CheckCircle className='w-3 h-3' />
-                  Cần cập nhật ngay
+                  Không cần duyệt
                 </span>
               </div>
               <div className='mt-2 space-y-3'>
@@ -2058,7 +2201,7 @@ export default function ModalUpdateProduct({ open, onOpenChange, product, onSucc
                       <CheckCircle className='w-3 h-3 text-white' />
                     </div>
                     <p className='text-sm font-semibold text-green-900'>
-                    Cần cập nhật ngay
+                    Không cần duyệt
                     </p>
                   </div>
                   <p className='text-xs text-green-700 mb-2 italic'>
